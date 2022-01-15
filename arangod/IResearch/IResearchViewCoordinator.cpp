@@ -281,7 +281,7 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
           link.collection().name())) {
     return TRI_ERROR_NO_ERROR;
   }
-  static const std::function<bool(irs::string_ref key)> acceptor =
+  std::function<bool(irs::string_ref key)> const acceptor =
       [](std::string_view key) -> bool {
     return key != arangodb::StaticStrings::IndexId &&
            key != arangodb::StaticStrings::IndexType &&
@@ -291,9 +291,8 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   builder.openObject();
 
-  auto res = link.properties(
-      builder,
-      true);  // generate user-visible definition, agency will not see links
+  // generate user-visible definition, agency will not see links
+  auto res = link.properties(builder, true);
 
   if (!res.ok()) {
     return res;
@@ -326,11 +325,10 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
   UNUSED(it);
 
   if (!emplaced) {
-    return Result(                              // result
-        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,  // code
-        std::string("duplicate entry while emplacing collection '") +
-            std::to_string(cid.id()) + "' into arangosearch View '" + name() +
-            "'");
+    return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+            "duplicate entry while emplacing collection '" +
+                std::to_string(cid.id()) + "' into arangosearch View '" +
+                name() + "'"};
   }
 
   return Result();
@@ -368,10 +366,10 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
                                             bool isUserRequest,
                                             bool partialUpdate) {
   if (!vocbase().server().hasFeature<ClusterFeature>()) {
-    return Result(TRI_ERROR_INTERNAL,
-                  std::string("failure to get storage engine while "
-                              "updating arangosearch view '") +
-                      name() + "'");
+    return {TRI_ERROR_INTERNAL,
+            std::string("failure to get storage engine while "
+                        "updating arangosearch view '") +
+                name() + "'"};
   }
   auto& engine = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -557,7 +555,3 @@ Result IResearchViewCoordinator::dropImpl() {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

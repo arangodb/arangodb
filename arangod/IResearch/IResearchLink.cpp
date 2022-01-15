@@ -1224,7 +1224,7 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   IResearchLinkMeta meta;
 
   // definition should already be normalized and analyzers created if required
-  if (!meta.init(_collection.vocbase().server(), definition, true, error,
+  if (!meta.init(_collection.vocbase().server(), definition, error,
                  _collection.vocbase().name())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "error parsing view link parameters from json: " + error};
@@ -1959,12 +1959,12 @@ bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
   IResearchLinkMeta other;
   std::string errorField;
 
-  return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    _collection.vocbase()
-                        .name())  // for db-server analyzer validation should
-                                  // have already passed on coordinator (missing
-                                  // analyzer == no match)
-         && _meta == other;
+  // for db-server analyzer validation should
+  // have already passed on coordinator (missing
+  // analyzer == no match)
+  return other.init(_collection.vocbase().server(), slice, errorField,
+                    _collection.vocbase().name()) &&
+         _meta == other;
 }
 
 Result IResearchLink::properties(velocypack::Builder& builder,

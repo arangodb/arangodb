@@ -514,7 +514,12 @@ size_t FieldMeta::memory() const noexcept {
 // -----------------------------------------------------------------------------
 
 IResearchLinkMeta::IResearchLinkMeta()
-    : _version{static_cast<uint32_t>(LinkVersion::MAX)} {}
+    : _version{static_cast<uint32_t>(LinkVersion::MIN)} {
+  auto identity = IResearchAnalyzerFeature::identity();
+  _analyzers.emplace_back(identity);
+  _primitiveOffset = _analyzers.size();
+  _analyzerDefinitions.emplace(identity);
+}
 
 bool IResearchLinkMeta::operator==(
     IResearchLinkMeta const& other) const noexcept {
@@ -548,7 +553,7 @@ bool IResearchLinkMeta::operator==(
 
 bool IResearchLinkMeta::init(
     application_features::ApplicationServer& server, VPackSlice slice,
-    bool readAnalyzerDefinition, std::string& errorField,
+    std::string& errorField,
     irs::string_ref defaultVocbase /*= irs::string_ref::NIL*/,
     LinkVersion defaultVersion /* = LinkVersion::MIN*/,
     Mask* mask /*= nullptr*/) {
@@ -567,8 +572,7 @@ bool IResearchLinkMeta::init(
     auto const field = slice.get(StaticStrings::PrimarySortField);
     mask->_sort = field.isArray();
 
-    if (readAnalyzerDefinition && mask->_sort &&
-        !_sort.fromVelocyPack(field, errorField)) {
+    if (mask->_sort && !_sort.fromVelocyPack(field, errorField)) {
       return false;
     }
   }
@@ -578,7 +582,7 @@ bool IResearchLinkMeta::init(
     auto const field = slice.get(StaticStrings::StoredValuesField);
     mask->_storedValues = field.isArray();
 
-    if (readAnalyzerDefinition && mask->_storedValues &&
+    if (mask->_storedValues &&
         !_storedValues.fromVelocyPack(field, errorField)) {
       return false;
     }
@@ -588,7 +592,7 @@ bool IResearchLinkMeta::init(
     auto const field = slice.get(StaticStrings::PrimarySortCompressionField);
     mask->_sortCompression = field.isString();
 
-    if (readAnalyzerDefinition && mask->_sortCompression &&
+    if (mask->_sortCompression &&
         (_sortCompression = columnCompressionFromString(getStringRef(field))) ==
             nullptr) {
       return false;
@@ -602,26 +606,46 @@ bool IResearchLinkMeta::init(
     auto const field = slice.get(kFieldName);
     mask->_version = field.isNumber<uint32_t>();
 
-    if (readAnalyzerDefinition) {
-      if (mask->_version) {
-        _version = field.getNumber<uint32_t>();
-        if (_version > static_cast<uint32_t>(LinkVersion::MAX)) {
-          errorField = kFieldName;
-          return false;
-        }
-      } else if (field.isNone()) {
-        // Not present -> default version.
-        _version = static_cast<uint32_t>(defaultVersion);
-      } else {
+    if (mask->_version) {
+      _version = field.getNumber<uint32_t>();
+      if (_version > static_cast<uint32_t>(LinkVersion::MAX)) {
         errorField = kFieldName;
         return false;
       }
+    } else if (field.isNone()) {
+      // Not present -> default version.
+      _version = static_cast<uint32_t>(defaultVersion);
+    } else {
+      errorField = kFieldName;
+      return false;
     }
   }
 
-  {
-    _analyzerDefinitions.clear();
+  FieldMeta defaults;
 
+  // Initialize version specific defaults.
+  {
+    bool const extendedNames =
+        server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+    AnalyzerPool::ptr analyzer;
+    auto const identity = IResearchAnalyzerFeature::identity();
+    auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
+        analyzer, identity->name(), identity->type(), identity->properties(),
+        AnalyzersRevision::Revision{AnalyzersRevision::MIN},
+        identity->features(), LinkVersion{_version}, extendedNames);
+    if (res.fail()) {
+      TRI_ASSERT(false);
+      return false;
+    }
+
+    defaults._analyzers.emplace_back(analyzer);
+    defaults._primitiveOffset = _analyzers.size();
+
+    _analyzerDefinitions.clear();
+    _analyzerDefinitions.emplace(analyzer);
+  }
+
+  {
     // optional object list
     constexpr std::string_view kFieldName{
         StaticStrings::AnalyzerDefinitionsField};
@@ -630,7 +654,7 @@ bool IResearchLinkMeta::init(
 
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
-    if (readAnalyzerDefinition && mask->_analyzerDefinitions) {
+    if (mask->_analyzerDefinitions) {
       auto field = slice.get(kFieldName);
 
       if (!field.isArray()) {
@@ -796,27 +820,6 @@ bool IResearchLinkMeta::init(
     _collectionName = field.copyString();
   }
 
-  FieldMeta defaults;
-
-  // Initialize version specific defaults.
-  {
-    bool const extendedNames =
-        server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-    AnalyzerPool::ptr analyzer;
-    auto const identity = IResearchAnalyzerFeature::identity();
-    auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-        analyzer, identity->name(), identity->type(), identity->properties(),
-        AnalyzersRevision::Revision{AnalyzersRevision::MIN},
-        identity->features(), LinkVersion{_version}, extendedNames);
-    if (res.fail()) {
-      TRI_ASSERT(false);
-      return false;
-    }
-
-    defaults._analyzers.emplace_back(analyzer);
-    defaults._primitiveOffset = _analyzers.size();
-  }
-
   return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults,
                          mask, &_analyzerDefinitions);
 }
@@ -866,6 +869,10 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
                                  StaticStrings::AnalyzerDefinitionsField);
 
     for (auto& entry : _analyzerDefinitions) {
+      if (entry->name() == "identity") {
+        continue;
+      }
+
       TRI_ASSERT(entry);  // ensured by emplace into 'analyzers' above
       entry->toVelocyPack(builder, defaultVocbase);
     }

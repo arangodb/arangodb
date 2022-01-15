@@ -3159,7 +3159,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -3173,7 +3173,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       expectedMeta._trackListPositions = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -3186,7 +3186,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -3227,8 +3227,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -3293,8 +3292,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -3358,8 +3356,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -3470,7 +3467,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -3483,7 +3480,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -3524,8 +3521,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -3590,8 +3586,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -3848,7 +3843,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -3861,7 +3856,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -3902,8 +3897,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -3967,8 +3961,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -4081,7 +4074,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -4095,7 +4088,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       expectedMeta._trackListPositions = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -4108,7 +4101,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -4149,8 +4142,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -4216,8 +4208,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -4282,8 +4273,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -4605,7 +4595,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -4618,7 +4608,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -4659,8 +4649,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -4724,8 +4713,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -4856,7 +4844,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       expectedMeta._trackListPositions = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -4897,8 +4885,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -5012,7 +4999,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -5053,8 +5040,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -5314,7 +5300,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -5328,7 +5314,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
       expectedMeta._trackListPositions = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -5341,7 +5327,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -5382,8 +5368,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -5449,8 +5434,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -5514,8 +5498,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -5792,7 +5775,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       std::string error;
-      EXPECT_TRUE(actualMeta.init(server.server(), value, false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), value, error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
@@ -5835,8 +5818,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       std::string error;
-      EXPECT_TRUE(
-          actualMeta.init(server.server(), builder->slice(), false, error));
+      EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(expectedMeta == actualMeta);
       auto const slice = builder->slice();

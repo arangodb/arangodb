@@ -328,10 +328,9 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
         << "', normalized definition:" << link.toString();
 
     std::function<bool(irs::string_ref key)> const acceptor =
-        [](irs::string_ref key) -> bool {
-      return std::string_view{key} != arangodb::StaticStrings::IndexType &&
-             std::string_view{key} !=
-                 arangodb::iresearch::StaticStrings::ViewIdField;
+        [](std::string_view key) -> bool {
+      return key != arangodb::StaticStrings::IndexType &&
+             key != arangodb::iresearch::StaticStrings::ViewIdField;
     };
     velocypack::Builder namedJson;
 
@@ -354,7 +353,7 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
     IResearchLinkMeta linkMeta;
 
     // validated and normalized with 'isCreation=true' above via normalize(...)
-    if (!linkMeta.init(view.vocbase().server(), namedJson.slice(), true, error,
+    if (!linkMeta.init(view.vocbase().server(), namedJson.slice(), error,
                        view.vocbase().name())) {
       return {TRI_ERROR_BAD_PARAMETER,
               std::string("error parsing link parameters from json for "
@@ -653,9 +652,8 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(server, lhs, true, errorField, dbname) &&
-         rhsMeta.init(server, rhs, true, errorField, dbname) &&
-         lhsMeta == rhsMeta;
+  return lhsMeta.init(server, lhs, errorField, dbname) &&
+         rhsMeta.init(server, rhs, errorField, dbname) && lhsMeta == rhsMeta;
 }
 
 /*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
@@ -719,7 +717,7 @@ namespace iresearch {
   // IResearchLinkHelper::normalize(...) if creating via collection API
   // ::modifyLinks(...) (via call to normalize(...) prior to getting
   // superuser) if creating via IResearchLinkHelper API
-  if (!meta.init(vocbase.server(), definition, true, error, vocbase.name(),
+  if (!meta.init(vocbase.server(), definition, error, vocbase.name(),
                  defaultVersion)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "error parsing arangosearch link parameters from json: " + error};
@@ -845,7 +843,7 @@ namespace iresearch {
     if (!linkDefinition.isNull()) {  // have link definition
       // for db-server analyzer validation should have already applied on
       // coordinator
-      if (!meta.init(vocbase.server(), linkDefinition, true, errorField,
+      if (!meta.init(vocbase.server(), linkDefinition, errorField,
                      vocbase.name())) {
         return {TRI_ERROR_BAD_PARAMETER,
                 errorField.empty()

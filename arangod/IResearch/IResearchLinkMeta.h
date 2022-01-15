@@ -247,8 +247,6 @@ struct IResearchLinkMeta : public FieldMeta {
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
   /// @param slice definition
-  /// @param readAnalyzerDefinition allow reading analyzer definitions instead
-  ///                               of just name
   /// @param erroField field causing error (out-param)
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
@@ -256,7 +254,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(application_features::ApplicationServer& server, VPackSlice slice,
-            bool readAnalyzerDefinition, std::string& errorField,
+            std::string& errorField,
             irs::string_ref defaultVocbase = irs::string_ref::NIL,
             LinkVersion defaultVersion = LinkVersion::MIN,
             Mask* mask = nullptr);
