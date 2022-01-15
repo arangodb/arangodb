@@ -202,9 +202,7 @@ Result createLink(LogicalCollection& collection,
 
   velocypack::Builder tmp;
 
-  return methods::Indexes::ensureIndex(        // ensure index
-      &collection, builder.slice(), true, tmp  // args
-  );
+  return methods::Indexes::ensureIndex(&collection, builder.slice(), true, tmp);
 }
 
 template<typename ViewType>
@@ -243,8 +241,8 @@ Result dropLink<arangodb::iresearch::IResearchViewCoordinator>(
 
 struct State {
   std::shared_ptr<LogicalCollection> _collection;
-  size_t _collectionsToLockOffset;  // std::numeric_limits<size_t>::max() ==
-                                    // removal only
+  // std::numeric_limits<size_t>::max() == removal only
+  size_t _collectionsToLockOffset;
   std::shared_ptr<IResearchLink> _link;
   size_t _linkDefinitionsOffset;
   Result _result;       // operation result
@@ -492,13 +490,13 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
       // remove modification if came from the stale list and a separate reindex
       // or removal request also present otherwise consider 'stale list
       // requests' as valid removal requests
-      if (state._stale  // originated from the stale list
-          &&
-          (collectionsToRemove.find(cid) !=
-               collectionsToRemove.end()  // also has a removal request
-                                          // (duplicate removal request)
-           || collectionsToUpdate.find(cid) !=
-                  collectionsToUpdate.end())) {  // also has a reindex request
+
+      // originated from the stale list
+      if (state._stale &&
+          // also has a removal request (duplicate removal request)
+          (collectionsToRemove.find(cid) != collectionsToRemove.end()
+           // also has a reindex request
+           || collectionsToUpdate.find(cid) != collectionsToUpdate.end())) {
         LOG_TOPIC("5c99e", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, came from stale list, for link '"
             << state._link->id() << "'";
@@ -517,11 +515,14 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
 
       // remove modification if removal request with an update request also
       // present
-      if (state._link  // links currently exists
-          && state._linkDefinitionsOffset >=
-                 linkDefinitions.size()  // link removal request
+
+      // links currently exists
+      if (state._link
+          // link removal request
+          && state._linkDefinitionsOffset >= linkDefinitions.size()
+          // also has a reindex request
           && collectionsToUpdate.find(state._collection->id()) !=
-                 collectionsToUpdate.end()) {  // also has a reindex request
+                 collectionsToUpdate.end()) {
         LOG_TOPIC("1d095", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, remove+update, for link '"
             << state._link->id() << "'";
@@ -530,13 +531,17 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
       }
 
       // remove modification state if no change on existing link or
-      if (state._link  // links currently exists
-          && state._linkDefinitionsOffset <
-                 linkDefinitions.size()  // link creation request
+
+      // links currently exists
+      if (state._link
+          // link creation request
+          && state._linkDefinitionsOffset < linkDefinitions.size()
+          // not a reindex request
           && collectionsToRemove.find(state._collection->id()) ==
-                 collectionsToRemove.end()  // not a reindex request
-          && *(state._link) == linkDefinitions[state._linkDefinitionsOffset]
-                                   .second) {  // link meta not modified
+                 collectionsToRemove.end() &&
+          // link meta not modified
+          *(state._link) ==
+              linkDefinitions[state._linkDefinitionsOffset].second) {
         LOG_TOPIC("4c196", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, no change, for link '"
             << state._link->id() << "'";
