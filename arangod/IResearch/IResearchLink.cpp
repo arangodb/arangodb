@@ -1213,7 +1213,7 @@ bool IResearchLink::hasSelectivityEstimate() {
                  // fields are indexed
 }
 
-Result IResearchLink::init(velocypack::Slice const& definition,
+Result IResearchLink::init(velocypack::Slice definition,
                            InitCallback const& initCallback) {
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {

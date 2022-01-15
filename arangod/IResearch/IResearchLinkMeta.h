@@ -42,9 +42,9 @@
 namespace arangodb {
 namespace velocypack {
 
-class Builder;         // forward declarations
-struct ObjectBuilder;  // forward declarations
-class Slice;           // forward declarations
+class Builder;
+struct ObjectBuilder;
+class Slice;
 
 }  // namespace velocypack
 }  // namespace arangodb
@@ -140,10 +140,10 @@ struct FieldMeta {
   ////////////////////////////////////////////////////////////////////////////////
   bool init(application_features::ApplicationServer& server,
             velocypack::Slice const& slice, std::string& errorField,
-            irs::string_ref defaultVocbase, FieldMeta const& defaults,
-            Mask* mask = nullptr,
-            std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers =
-                nullptr);
+            irs::string_ref defaultVocbase, LinkVersion version,
+            FieldMeta const& defaults,
+            std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
+            Mask* mask);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a FieldMeta object
@@ -222,14 +222,6 @@ struct IResearchLinkMeta : public FieldMeta {
   // _id attribute without doing agency request for collection name
   std::string _collectionName;
 
-  // NOTE: if adding fields don't forget to modify the comparison operator !!!
-  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
-  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask
-  // constructor !!! NOTE: if adding fields don't forget to modify the init(...)
-  // function !!! NOTE: if adding fields don't forget to modify the json(...)
-  // function !!! NOTE: if adding fields don't forget to modify the memory()
-  // function !!!
-
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;
   IResearchLinkMeta(IResearchLinkMeta&& other) noexcept = default;
@@ -250,7 +242,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param erroField field causing error (out-param)
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
-  /// @param defaults inherited defaults
+  /// @param defaultVersion fallback version if not present in definition
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(application_features::ApplicationServer& server, VPackSlice slice,

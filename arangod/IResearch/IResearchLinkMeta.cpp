@@ -22,8 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <span>
-
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
@@ -51,8 +49,8 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-bool equalAnalyzers(std::span<const FieldMeta::Analyzer> lhs,
-                    std::span<const FieldMeta::Analyzer> rhs) noexcept {
+bool equalAnalyzers(std::vector<FieldMeta::Analyzer> const& lhs,
+                    std::vector<FieldMeta::Analyzer> const& rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -136,12 +134,13 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   return true;
 }
 
-bool FieldMeta::init(application_features::ApplicationServer& server,
-                     velocypack::Slice const& slice, std::string& errorField,
-                     irs::string_ref defaultVocbase, FieldMeta const& defaults,
-                     Mask* mask /*= nullptr*/,
-                     std::set<AnalyzerPool::ptr, AnalyzerComparer>*
-                         referencedAnalyzers /*= nullptr*/) {
+bool FieldMeta::init(
+    application_features::ApplicationServer& server,
+    velocypack::Slice const& slice, std::string& errorField,
+    irs::string_ref defaultVocbase, LinkVersion version,
+    FieldMeta const& defaults,
+    std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
+    Mask* mask) {
   if (!slice.isObject()) {
     return false;
   }
@@ -163,6 +162,8 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
       _primitiveOffset = defaults._primitiveOffset;
     } else {
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
+      bool const extendedNames =
+          server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
 
       auto field = slice.get(kFieldName);
 
@@ -197,42 +198,53 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
         AnalyzerPool::ptr analyzer;
         bool found = false;
 
-        if (referencedAnalyzers) {
-          auto it = referencedAnalyzers->find(irs::string_ref(name));
+        auto it = referencedAnalyzers.find(irs::string_ref(name));
 
-          if (it != referencedAnalyzers->end()) {
-            analyzer = *it;
-            found = static_cast<bool>(analyzer);
+        if (it != referencedAnalyzers.end()) {
+          analyzer = *it;
+          found = static_cast<bool>(analyzer);
 
-            if (ADB_UNLIKELY(!found)) {
-              TRI_ASSERT(false);               // should not happen
-              referencedAnalyzers->erase(it);  // remove null analyzer
-            }
+          if (ADB_UNLIKELY(!found)) {
+            TRI_ASSERT(false);              // should not happen
+            referencedAnalyzers.erase(it);  // remove null analyzer
           }
         }
 
         if (!found) {
-          // for cluster only check cache to avoid ClusterInfo locking issues
-          // analyzer should have been populated via 'analyzerDefinitions' above
+          // For cluster only check cache to avoid ClusterInfo locking issues
+          // analyzer should have been populated via 'analyzerDefinitions'
+          // above.
           analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
                                    ServerState::instance()->isClusterRole());
+
+          if (!analyzer) {
+            errorField = std::string{kFieldName} + "." + value.copyString();
+
+            return false;
+          }
+
+          // Remap analyzer features to match version.
+          AnalyzerPool::ptr remappedAnalyzer;
+
+          auto const res = IResearchAnalyzerFeature::copyAnalyzerPool(
+              remappedAnalyzer, *analyzer, version, extendedNames);
+
+          if (res.fail() || !remappedAnalyzer) {
+            errorField = std::string{kFieldName} + "." + value.copyString();
+
+            return false;
+          }
+
+          analyzer = remappedAnalyzer;
+          referencedAnalyzers.emplace(analyzer);
         }
 
-        if (!analyzer) {
-          errorField = std::string{kFieldName} + "." + value.copyString();
-
-          return false;
-        }
-
-        if (!found && referencedAnalyzers) {
-          // save in referencedAnalyzers
-          referencedAnalyzers->emplace(analyzer);
-        }
-
-        // avoid adding same analyzer twice
+        // Avoid adding same analyzer twice.
         if (uniqueGuard.emplace(analyzer->name()).second) {
           _analyzers.emplace_back(analyzer, std::move(shortName));
         }
+
+        TRI_ASSERT(referencedAnalyzers.contains(analyzer));
       }
 
       auto* begin = _analyzers.data();
@@ -374,7 +386,8 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
         std::string childErrorField;
 
         if (!_fields[name]->init(server, value, childErrorField, defaultVocbase,
-                                 subDefaults, nullptr, referencedAnalyzers)) {
+                                 version, subDefaults, referencedAnalyzers,
+                                 nullptr)) {
           errorField =
               std::string{kFieldName} + "." + name + "." + childErrorField;
 
@@ -515,10 +528,8 @@ size_t FieldMeta::memory() const noexcept {
 
 IResearchLinkMeta::IResearchLinkMeta()
     : _version{static_cast<uint32_t>(LinkVersion::MIN)} {
-  auto identity = IResearchAnalyzerFeature::identity();
-  _analyzers.emplace_back(identity);
+  _analyzers.emplace_back(IResearchAnalyzerFeature::identity());
   _primitiveOffset = _analyzers.size();
-  _analyzerDefinitions.emplace(identity);
 }
 
 bool IResearchLinkMeta::operator==(
@@ -621,31 +632,12 @@ bool IResearchLinkMeta::init(
     }
   }
 
-  FieldMeta defaults;
+  bool const extendedNames =
+      server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
 
-  // Initialize version specific defaults.
   {
-    bool const extendedNames =
-        server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-    AnalyzerPool::ptr analyzer;
-    auto const identity = IResearchAnalyzerFeature::identity();
-    auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-        analyzer, identity->name(), identity->type(), identity->properties(),
-        AnalyzersRevision::Revision{AnalyzersRevision::MIN},
-        identity->features(), LinkVersion{_version}, extendedNames);
-    if (res.fail()) {
-      TRI_ASSERT(false);
-      return false;
-    }
-
-    defaults._analyzers.emplace_back(analyzer);
-    defaults._primitiveOffset = _analyzers.size();
-
     _analyzerDefinitions.clear();
-    _analyzerDefinitions.emplace(analyzer);
-  }
 
-  {
     // optional object list
     constexpr std::string_view kFieldName{
         StaticStrings::AnalyzerDefinitionsField};
@@ -788,8 +780,6 @@ bool IResearchLinkMeta::init(
           }
         }
 
-        bool extendedNames =
-            server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
         AnalyzerPool::ptr analyzer;
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
             analyzer, name, type, properties, revision, features,
@@ -820,8 +810,31 @@ bool IResearchLinkMeta::init(
     _collectionName = field.copyString();
   }
 
-  return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults,
-                         mask, &_analyzerDefinitions);
+  // Initialize version specific defaults
+  FieldMeta defaults;
+  {
+    auto const& identity = *IResearchAnalyzerFeature::identity();
+    AnalyzerPool::ptr analyzer;
+
+    auto const res = IResearchAnalyzerFeature::copyAnalyzerPool(
+        analyzer, identity, LinkVersion{_version}, extendedNames);
+
+    if (res.fail() || !analyzer) {
+      TRI_ASSERT(false);
+      return false;
+    }
+
+    defaults._analyzers.emplace_back(analyzer);
+    defaults._primitiveOffset = defaults._analyzers.size();
+
+    _analyzers.clear();
+    _analyzers.emplace_back(analyzer);
+    _primitiveOffset = _analyzers.size();
+  }
+
+  return FieldMeta::init(server, slice, errorField, defaultVocbase,
+                         LinkVersion{_version}, defaults, _analyzerDefinitions,
+                         mask);
 }
 
 bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
