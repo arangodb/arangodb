@@ -65,6 +65,37 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
+// Ensures that all referenced analyzer features are consistent.
+[[maybe_unused]] void checkAnalyzerFeatures(IResearchLinkMeta const& meta) {
+  auto assertAnalyzerFeatures =
+      [version = LinkVersion{meta._version}](auto const& analyzers) {
+        for (auto& analyzer : analyzers) {
+          irs::type_info::type_id invalidNorm;
+          if (version < LinkVersion::MAX) {
+            invalidNorm = irs::type<irs::Norm2>::id();
+          } else {
+            invalidNorm = irs::type<irs::Norm>::id();
+          }
+
+          const auto features = analyzer->fieldFeatures();
+
+          TRI_ASSERT(std::end(features) == std::find(std::begin(features),
+                                                     std::end(features),
+                                                     invalidNorm));
+        }
+      };
+
+  auto checkFieldFeatures = [&assertAnalyzerFeatures](auto const& fieldMeta,
+                                                      auto&& self) -> void {
+    assertAnalyzerFeatures(fieldMeta._analyzers);
+    for (auto const& entry : fieldMeta._fields) {
+      self(*entry.value(), self);
+    }
+  };
+  assertAnalyzerFeatures(meta._analyzerDefinitions);
+  checkFieldFeatures(meta, checkFieldFeatures);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,17 +289,16 @@ struct Task {
   IndexId id;
 };  // Task
 
+template<typename NormyType>
 auto getIndexFeatures() {
   return [](irs::type_info::type_id id) {
+    TRI_ASSERT(irs::type<NormyType>::id() == id ||
+               irs::type<irs::granularity_prefix>::id() == id);
     const irs::column_info info{
         irs::type<irs::compression::none>::get(), {}, false};
 
-    if (irs::type<irs::Norm2>::id() == id) {
-      return std::make_pair(info, &irs::Norm2::MakeWriter);
-    }
-
-    if (irs::type<irs::Norm>::id() == id) {
-      return std::make_pair(info, &irs::Norm::MakeWriter);
+    if (irs::type<NormyType>::id() == id) {
+      return std::make_pair(info, &NormyType::MakeWriter);
     }
 
     return std::make_pair(info, irs::feature_writer_factory_t{});
@@ -1062,7 +1092,7 @@ bool IResearchLink::hasSelectivityEstimate() const {
                  // fields are indexed
 }
 
-Result IResearchLink::init(velocypack::Slice const& definition,
+Result IResearchLink::init(velocypack::Slice definition,
                            InitCallback const& initCallback /* = { }*/) {
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {
@@ -1073,11 +1103,15 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   IResearchLinkMeta meta;
 
   // definition should already be normalized and analyzers created if required
-  if (!meta.init(_collection.vocbase().server(), definition, true, error,
+  if (!meta.init(_collection.vocbase().server(), definition, error,
                  _collection.vocbase().name())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "error parsing view link parameters from json: " + error};
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  checkAnalyzerFeatures(meta);
+#endif
 
   if (!definition.isObject()  // not object
       || !definition.get(StaticStrings::ViewIdField).isString()) {
@@ -1434,16 +1468,19 @@ Result IResearchLink::initDataStore(
   // Set comparator if requested.
   options.comparator = sorted ? &_comparer : nullptr;
   // Set index features.
-  options.features = getIndexFeatures();
-  // Initialize commit callback
+  if (LinkVersion{version} < LinkVersion::MAX) {
+    options.features = getIndexFeatures<irs::Norm>();
+  } else {
+    options.features = getIndexFeatures<irs::Norm2>();
+  }
+  // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
-    _lastCommittedTick =
-        std::max(_lastCommittedTick, TRI_voc_tick_t(tick));  // update last tick
-    tick = irs::numeric_utils::hton64(
-        uint64_t(_lastCommittedTick));  // convert to BE
+    // update last tick
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t{tick});
+    // convert to BE
+    tick = irs::numeric_utils::hton64(uint64_t{_lastCommittedTick});
 
-    out.append(reinterpret_cast<irs::byte_type const*>(&tick),
-               sizeof(uint64_t));
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
 
     return true;
   };
@@ -1779,12 +1816,12 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   IResearchLinkMeta other;
   std::string errorField;
 
-  return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    _collection.vocbase()
-                        .name())  // for db-server analyzer validation should
-                                  // have already apssed on coordinator (missing
-                                  // analyzer == no match)
-         && _meta == other;
+  // for db-server analyzer validation should
+  // have already passed on coordinator (missing
+  // analyzer == no match)
+  return other.init(_collection.vocbase().server(), slice, errorField,
+                    _collection.vocbase().name()) &&
+         _meta == other;
 }
 
 Result IResearchLink::properties(velocypack::Builder& builder,

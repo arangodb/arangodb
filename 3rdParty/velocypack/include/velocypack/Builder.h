@@ -1086,7 +1086,7 @@ struct ObjectBuilder final : public BuilderContainer,
       : BuilderContainer(builder) {
     builder->openObject(allowUnindexed);
   }
-  ObjectBuilder(Builder* builder, std::string const& attributeName,
+  ObjectBuilder(Builder* builder, std::string_view attributeName,
                 bool allowUnindexed = false)
       : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
@@ -1117,7 +1117,7 @@ struct ArrayBuilder final : public BuilderContainer,
       : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }
-  ArrayBuilder(Builder* builder, std::string const& attributeName,
+  ArrayBuilder(Builder* builder, std::string_view attributeName,
                bool allowUnindexed = false)
       : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Array, allowUnindexed));

@@ -116,22 +116,21 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
   defaults._writebufferSizeMax = 12;
   defaults._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(VPackStringRef("nested")),
-          arangodb::basics::AttributeName(VPackStringRef("field"))},
+          arangodb::basics::AttributeName(std::string_view("nested")),
+          arangodb::basics::AttributeName(std::string_view("field"))},
       true);
   defaults._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(VPackStringRef("another")),
-          arangodb::basics::AttributeName(VPackStringRef("nested")),
-          arangodb::basics::AttributeName(VPackStringRef("field"))},
+          arangodb::basics::AttributeName(std::string_view("another")),
+          arangodb::basics::AttributeName(std::string_view("nested")),
+          arangodb::basics::AttributeName(std::string_view("field"))},
       true);
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     EXPECT_TRUE(meta.init(json->slice(), tmpString, defaults));
-    EXPECT_TRUE(metaState.init(json->slice(), tmpString, defaultsState));
-    EXPECT_EQ(1, metaState._collections.size());
-    EXPECT_EQ(42, metaState._collections.begin()->id());
+    EXPECT_TRUE(metaState.init(json->slice(), tmpString));
+    EXPECT_EQ(0, metaState._collections.size());
     EXPECT_EQ(654, meta._cleanupIntervalStep);
     EXPECT_EQ(321, meta._commitIntervalMsec);
     EXPECT_EQ(456, meta._consolidationIntervalMsec);
@@ -693,14 +692,14 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   meta._writebufferSizeMax = 12;
   meta._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(VPackStringRef("nested")),
-          arangodb::basics::AttributeName(VPackStringRef("field"))},
+          arangodb::basics::AttributeName(std::string_view("nested")),
+          arangodb::basics::AttributeName(std::string_view("field"))},
       true);
   meta._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(VPackStringRef("another")),
-          arangodb::basics::AttributeName(VPackStringRef("nested")),
-          arangodb::basics::AttributeName(VPackStringRef("field"))},
+          arangodb::basics::AttributeName(std::string_view("another")),
+          arangodb::basics::AttributeName(std::string_view("nested")),
+          arangodb::basics::AttributeName(std::string_view("field"))},
       false);
   meta._primarySortCompression = irs::type<irs::compression::none>::id();
   auto storedValuesJSON = arangodb::velocypack::Parser::fromJson(
@@ -828,9 +827,7 @@ TEST_F(IResearchViewMetaTest, test_readMaskAll) {
   EXPECT_TRUE(meta.init(json->slice(), errorField,
                         arangodb::iresearch::IResearchViewMeta::DEFAULT(),
                         &mask));
-  EXPECT_TRUE(metaState.init(
-      json->slice(), errorField,
-      arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState));
+  EXPECT_TRUE(metaState.init(json->slice(), errorField, &maskState));
   EXPECT_TRUE(maskState._collections);
   EXPECT_TRUE(mask._commitIntervalMsec);
   EXPECT_TRUE(mask._consolidationIntervalMsec);
@@ -857,9 +854,7 @@ TEST_F(IResearchViewMetaTest, test_readMaskNone) {
   EXPECT_TRUE(meta.init(json->slice(), errorField,
                         arangodb::iresearch::IResearchViewMeta::DEFAULT(),
                         &mask));
-  EXPECT_TRUE(metaState.init(
-      json->slice(), errorField,
-      arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState));
+  EXPECT_TRUE(metaState.init(json->slice(), errorField, &maskState));
   EXPECT_FALSE(maskState._collections);
   EXPECT_FALSE(mask._commitIntervalMsec);
   EXPECT_FALSE(mask._consolidationIntervalMsec);
