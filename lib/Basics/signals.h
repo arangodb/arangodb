@@ -40,6 +40,8 @@ bool isDeadly(int signal);
 char const* name(int signal);
 
 void maskAllSignals();
+void maskAllSignalsServer();
+void maskAllSignalsClient();
 void unmaskAllSignals();
 
 }  // namespace signals
