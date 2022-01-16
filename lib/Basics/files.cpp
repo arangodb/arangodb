@@ -926,6 +926,9 @@ TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length) {
     TRI_read_return_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(remainLength));
 
     if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("c9c0c", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
       return n; // always negative
