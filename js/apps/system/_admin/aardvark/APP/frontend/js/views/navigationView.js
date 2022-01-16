@@ -157,7 +157,6 @@
         type: "GET",
         url: url,
         success: function (timeData) {
-          console.log("timeData: ", timeData);
           if (!timeData.error && timeData.code === 200 && timeData.time) {
             self.fetchLicenseInfo(timeData.time);
           } else {
