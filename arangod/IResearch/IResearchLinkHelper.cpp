@@ -179,29 +179,27 @@ Result createLink(LogicalCollection& collection,
     // SmartEdgeCollection and do not allow to have their own modifications.
     return TRI_ERROR_NO_ERROR;
   }
-  std::function<bool(irs::string_ref key)> const acceptor =
+
+  std::function<bool(irs::string_ref)> const acceptor =
       [](std::string_view key) -> bool {
     return key != arangodb::StaticStrings::IndexType &&
            key != arangodb::iresearch::StaticStrings::ViewIdField;
   };
-  velocypack::Builder builder;
 
+  velocypack::Builder builder;
   builder.openObject();
   builder.add(arangodb::StaticStrings::IndexType, velocypack::Value(LINK_TYPE));
   builder.add(arangodb::iresearch::StaticStrings::ViewIdField,
               velocypack::Value(view.guid()));
-
   if (!arangodb::iresearch::mergeSliceSkipKeys(builder, definition, acceptor)) {
     return {TRI_ERROR_INTERNAL,
             std::string("failed to generate definition while creating link "
                         "between arangosearch view '") +
                 view.name() + "' and collection '" + collection.name() + "'"};
   }
-
   builder.close();
 
   velocypack::Builder tmp;
-
   return methods::Indexes::ensureIndex(&collection, builder.slice(), true, tmp);
 }
 
@@ -256,7 +254,7 @@ struct State {
 
 template<typename ViewType>
 Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
-                   velocypack::Slice const& links, LinkVersion defaultVersion,
+                   velocypack::Slice links, LinkVersion defaultVersion,
                    std::unordered_set<DataSourceId> const& stale = {}) {
   LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
       << "link modification request for view '" << view.name()
@@ -324,26 +322,24 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
         << "link modification request for view '" << view.name()
         << "', normalized definition:" << link.toString();
 
-    std::function<bool(irs::string_ref key)> const acceptor =
+    std::function<bool(irs::string_ref)> const acceptor =
         [](std::string_view key) -> bool {
       return key != arangodb::StaticStrings::IndexType &&
              key != arangodb::iresearch::StaticStrings::ViewIdField;
     };
-    velocypack::Builder namedJson;
 
+    velocypack::Builder namedJson;
     namedJson.openObject();
     namedJson.add(arangodb::StaticStrings::IndexType,
                   velocypack::Value(LINK_TYPE));
     namedJson.add(arangodb::iresearch::StaticStrings::ViewIdField,
                   velocypack::Value(view.guid()));
-
     if (!mergeSliceSkipKeys(namedJson, link, acceptor)) {
       return {TRI_ERROR_INTERNAL,
               std::string("failed to update link definition with the view name "
                           "while updating arangosearch view '") +
                   view.name() + "' collection '" + collectionName + "'"};
     }
-
     namedJson.close();
 
     std::string error;

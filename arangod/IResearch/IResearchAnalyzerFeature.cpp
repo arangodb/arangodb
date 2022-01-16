@@ -1000,7 +1000,6 @@ bool AnalyzerPool::init(irs::string_ref const& type,
       }
       _fieldFeatures = features.fieldFeatures(version);
       _features = features;  // store only requested features
-
       _revision = revision;
       return true;
     }

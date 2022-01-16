@@ -52,9 +52,7 @@ class Slice;
 namespace arangodb {
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enum of possible ways to store values in the view
-////////////////////////////////////////////////////////////////////////////////
+// Possible ways to store values in the view.
 enum class ValueStorage : uint32_t {
   NONE = 0,  // do not store values in the view
   ID,        // only store value existance
@@ -72,8 +70,8 @@ struct FieldMeta {
         : _pool(pool), _shortName(std::move(shortName)) {}
     operator bool() const noexcept { return false == !_pool; }
 
-    AnalyzerPool const* operator->() const { return _pool.get(); }
-    AnalyzerPool* operator->() { return _pool.get(); }
+    AnalyzerPool const* operator->() const noexcept { return _pool.get(); }
+    AnalyzerPool* operator->() noexcept { return _pool.get(); }
 
     AnalyzerPool::ptr _pool;
     std::string _shortName;  // vocbase-independent short analyzer name
