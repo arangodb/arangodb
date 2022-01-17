@@ -253,7 +253,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         std::chrono::steady_clock::duration executionDelay);
 
     std::weak_ptr<LogLeader> _parentLog;
-    std::shared_ptr<FollowerInfo> _follower;
+    std::weak_ptr<FollowerInfo> _follower;
     std::chrono::steady_clock::duration _executionDelay;
   };
 

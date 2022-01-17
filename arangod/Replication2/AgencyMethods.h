@@ -38,10 +38,13 @@ class LogId;
 struct LogTerm;
 }  // namespace arangodb::replication2
 namespace arangodb::replication2::agency {
+struct LogCurrentSupervision;
 struct LogCurrentSupervisionElection;
 struct LogPlanSpecification;
 struct LogPlanTermSpecification;
 }  // namespace arangodb::replication2::agency
+
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2::agency::methods {
 
@@ -49,6 +52,12 @@ auto updateTermSpecificationTrx(arangodb::agency::envelope envelope,
                                 DatabaseID const& database, LogId id,
                                 LogPlanTermSpecification const& spec,
                                 std::optional<LogTerm> prevTerm = {})
+    -> arangodb::agency::envelope;
+
+auto updateParticipantsConfigTrx(arangodb::agency::envelope envelope,
+                                 DatabaseID const& database, LogId id,
+                                 ParticipantsConfig const& participantsConfig,
+                                 ParticipantsConfig const& prevConfig)
     -> arangodb::agency::envelope;
 
 auto updateTermSpecification(DatabaseID const& database, LogId id,
@@ -77,5 +86,6 @@ auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
 auto createReplicatedLog(DatabaseID const& database,
                          LogPlanSpecification const& spec)
     -> futures::Future<ResultT<uint64_t>>;
-
+auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
+    -> LogCurrentSupervision;
 }  // namespace arangodb::replication2::agency::methods

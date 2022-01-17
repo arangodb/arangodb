@@ -1,8 +1,0 @@
-//[example_output
-> example
-Running 4 test cases...
-test.cpp(21): fatal error: in "test_suite1/test_case2": critical check 1 == 2 has failed [1 != 2]
-test.cpp(35): error: in "test_suite2/test_case4": check false has failed
-
-*** 2 failures are detected in the test module "example"
-//]
