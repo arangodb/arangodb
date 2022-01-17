@@ -40,6 +40,9 @@ const {
   dbservers, getParticipantsObjectForServers,
   nextUniqueLogId, allServersHealthy,
   registerAgencyTestBegin, registerAgencyTestEnd,
+  replicatedLogLeaderEstablished,
+  replicatedLogUpdateTargetParticipants,
+  replicatedLogParticipantsFlag,
 } = helper;
 
 const database = "replication2_supervision_test_db";
@@ -166,15 +169,45 @@ const replicatedLogSuite = function () {
     return {logId, servers, leader, term, followers};
   };
 
+  const setReplicatedLogLeaderPlan = function (database, logId) {
+    let {plan} = readReplicatedLogAgency(database, logId);
+    if (!plan.currentTerm) {
+      throw Error("no current term in plan");
+    }
+    if (!plan.currentTerm.leader) {
+      throw Error("current term has no leader");
+    }
+    return plan.currentTerm.leader.serverId;
+  };
+
+  const createReplicatedLogAndWaitForLeader = function (database) {
+    const logId = nextUniqueLogId();
+    const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+    const term = 1;
+    replicatedLogSetTarget(database, logId, {
+      id: logId,
+      config: targetConfig,
+      participants: getParticipantsObjectForServers(servers),
+    });
+
+
+    waitFor(replicatedLogLeaderEstablished(database, logId, term, servers));
+
+    const leader = setReplicatedLogLeaderPlan(database, logId);
+    const followers = _.difference(servers, [leader]);
+    return {logId, servers, leader, term, followers};
+  };
+
   const setReplicatedLogLeaderTarget = function (database, logId, leader) {
     let {target} = readReplicatedLogAgency(database, logId);
-    if (leader === undefined) {
+    if (leader !== null) {
       target.leader = leader;
     } else {
       delete target.leader;
     }
     replicatedLogSetTarget(database, logId, target);
   };
+
   return {
     setUpAll, tearDownAll,
     setUp: registerAgencyTestBegin,
@@ -184,9 +217,7 @@ const replicatedLogSuite = function () {
     },
 
     testCheckSimpleFailover: function () {
-      const {logId, servers, leader, term} = createReplicatedLog(database);
-      // wait for all servers to have reported in current
-      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+      const {logId, servers, leader, term} = createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
 
       // now stop one server
@@ -239,14 +270,53 @@ const replicatedLogSuite = function () {
     },
 
     testChangeLeader: function () {
-      const {logId, servers, leader, term, followers} = createReplicatedLog(database);
-      // wait for all servers to have reported in current
-      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
 
       // now change the leader
       const newLeader = _.sample(followers);
       setReplicatedLogLeaderTarget(database, logId, newLeader);
       waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testAddExcludedFlag: function () {
+      const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      // now add the excluded flag to one of the servers
+      const server = _.sample(followers);
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [server]: {excluded: true},
+      });
+
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [server]: {excluded: true, forced: false},
+      }));
+
+      // now remove the flag again
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [server]: {excluded: false},
+      });
+
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [server]: {excluded: false, forced: false},
+      }));
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testAddParticipant: function () {
+      const {logId, servers} = createReplicatedLogAndWaitForLeader(database);
+
+      // now add a new server, but with excluded flag
+      const newServer = _.sample(_.difference(dbservers, servers));
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [newServer]: {excluded: true},
+      });
+
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {excluded: true, forced: false},
+      }));
 
       replicatedLogDeleteTarget(database, logId);
     },
@@ -257,15 +327,15 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
       waitForReplicatedLogAvailable(logId);
 
-            let log = db._replicatedLog(logId);
-            let globalStatus = log.status();
-            assertEqual(globalStatus.supervision, {});
-            assertEqual(globalStatus.leaderId, leader);
-            let localStatus = helper.getLocalStatus(database, logId, leader);
-            assertEqual(localStatus.role, "leader");
-            assertEqual(globalStatus.participants[leader], localStatus);
-            localStatus = helper.getLocalStatus(database, logId, servers[1]);
-            assertEqual(localStatus.role, "follower");
+      let log = db._replicatedLog(logId);
+      let globalStatus = log.status();
+      assertEqual(globalStatus.supervision, {});
+      assertEqual(globalStatus.leaderId, leader);
+      let localStatus = helper.getLocalStatus(database, logId, leader);
+      assertEqual(localStatus.role, "leader");
+      assertEqual(globalStatus.participants[leader], localStatus);
+      localStatus = helper.getLocalStatus(database, logId, servers[1]);
+      assertEqual(localStatus.role, "follower");
 
       stopServer(leader);
       stopServer(servers[1]);

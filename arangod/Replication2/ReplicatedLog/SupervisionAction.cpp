@@ -204,17 +204,12 @@ auto UpdateTermAction::execute(std::string dbName,
                   ->currentTerm()
                   ->str();
 
-  /*
+
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { _term.toVelocyPack(builder); })
+          path, [&](VPackBuilder& builder) { _newTerm.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
-      .precs()
-      .isEmpty(path)
       .end();
- */
-
-  return envelope;
 }
 
 /*
@@ -320,6 +315,7 @@ auto UpdateParticipantFlagsAction::execute(std::string dbName,
           path->participants()->server(_participant)->str(),
           [&](VPackBuilder& builder) { _flags.toVelocyPack(builder); })
       .inc(path->generation()->str())
+      .inc(paths::plan()->version()->str())
       .precs()
       .isEqual(path->generation()->str(), _generation)
       .end();

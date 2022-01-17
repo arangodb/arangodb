@@ -41,6 +41,8 @@ struct LeaderElectionCampaign {
   replication2::TermIndexPair bestTermIndex;
   std::vector<ParticipantId> electibleLeaderSet;
 
+
+
   void toVelocyPack(VPackBuilder& builder) const;
 };
 auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view;

@@ -171,7 +171,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   // Check whether there are enough participants to reach a quorum
   if (plan.participantsConfig.participants.size() + 1 <=
       plan.currentTerm->config.writeConcern) {
-    return std::make_unique<ImpossibleCampaignAction>(
+    return std::make_unique<ImpossibleCampaignAction>(plan.id
         /* TODO: should we have an error message? */);
   }
 

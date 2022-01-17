@@ -177,7 +177,7 @@ auto operator<<(std::ostream& os, FailedLeaderElectionAction const& action)
     -> std::ostream&;
 
 struct ImpossibleCampaignAction : Action {
-  ImpossibleCampaignAction(){};
+  ImpossibleCampaignAction(LogId id) : _id(id){};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
 
