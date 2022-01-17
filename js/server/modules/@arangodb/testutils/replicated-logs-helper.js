@@ -132,7 +132,7 @@ const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database
 };
 
 const replicatedLogUpdateTargetParticipants = function (database, logId, participants) {
-  const oldValue = readAgencyValueAt(`Target/ReplicatedLogs/${database}/${logId}/participantsConfig`);
+  const oldValue = readAgencyValueAt(`Target/ReplicatedLogs/${database}/${logId}/participants`);
   const newValue = oldValue || {};
   for (const [p, v] of Object.entries(participants)) {
     if (v === null) {

@@ -350,6 +350,54 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    testChangeLeaderWithExcluded: function () {
+      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      // first make the new leader excluded
+      const newLeader = followers[0];
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [newLeader]: {excluded: true},
+      });
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newLeader]: {excluded: true, forced: false},
+      }));
+
+      // new we try to change to the new leader
+      setReplicatedLogLeaderTarget(database, logId, newLeader);
+
+      // nothing should happen (supervision should not elect leader)
+      sleep(3);
+      // TODO check here that the supervision complains
+      //      that an excluded participant must not be a leader
+
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [newLeader]: {excluded: false},
+      });
+      waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testChangeLeaderWithExcludedOtherFollower: function () {
+      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      // first make one follower excluded
+      const excludedFollower = followers[0];
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [excludedFollower]: {excluded: true},
+      });
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [excludedFollower]: {excluded: true, forced: false},
+      }));
+
+      // new we try to change to the new leader
+      const newLeader = followers[1];
+      setReplicatedLogLeaderTarget(database, logId, newLeader);
+      waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     testLogStatus: function () {
       const {logId, servers, leader, term} = createReplicatedLog(database);
 
