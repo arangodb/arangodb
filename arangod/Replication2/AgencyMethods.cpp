@@ -81,7 +81,7 @@ auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
                                          std::optional<LogTerm> prevTerm)
     -> arangodb::agency::envelope {
   auto path =
-      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
+      paths::plan()->replicatedLogs()->database(database)->log(id);
   auto logPath = path->str();
   auto termPath = path->currentTerm()->str();
 
@@ -104,7 +104,7 @@ auto methods::updateParticipantsConfigTrx(
     ParticipantsConfig const& participantsConfig,
     ParticipantsConfig const& prevConfig) -> arangodb::agency::envelope {
   auto const logPath =
-      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
+      paths::plan()->replicatedLogs()->database(database)->log(id);
 
   return envelope.write()
       .emplace_object(logPath->participantsConfig()->str(),
@@ -195,7 +195,7 @@ auto methods::removeElectionResult(arangodb::agency::envelope envelope,
   auto path = paths::current()
                   ->replicatedLogs()
                   ->database(database)
-                  ->log(to_string(id))
+                  ->log(id)
                   ->str();
 
   return envelope.write()
@@ -211,7 +211,7 @@ auto methods::updateElectionResult(arangodb::agency::envelope envelope,
   auto path = paths::current()
                   ->replicatedLogs()
                   ->database(database)
-                  ->log(to_string(id))
+                  ->log(id)
                   ->str();
 
   return envelope.write()

@@ -198,4 +198,19 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */,
 
 auto operator<<(std::ostream& stream, Path const& path) -> std::ostream&;
 
+template<typename T>
+struct PathParamConverter {
+  auto operator()(T const& t) -> std::string {
+    using std::to_string;
+    return to_string(t);
+  }
+};
+
+template<>
+struct PathParamConverter<std::string> {
+  auto operator()(std::string const& t) -> std::string {
+    return t;
+  }
+};
+
 }  // namespace arangodb::cluster::paths

@@ -1349,7 +1349,7 @@ static void writeUpdateReplicatedLogLeader(
   auto reportPath = aliases::current()
                         ->replicatedLogs()
                         ->database(dbName)
-                        ->log(to_string(id))
+                        ->log(id)
                         ->leader()
                         ->str(SkipComponents(
                             1) /* skip first path component, i.e. 'arango' */);
@@ -1357,7 +1357,7 @@ static void writeUpdateReplicatedLogLeader(
       aliases::plan()
           ->replicatedLogs()
           ->database(dbName)
-          ->log(to_string(id))
+          ->log(id)
           ->currentTerm()
           ->term()
           ->str(
@@ -1392,7 +1392,7 @@ static void writeUpdateReplicatedLogLocal(
   auto reportPath = aliases::current()
                         ->replicatedLogs()
                         ->database(dbName)
-                        ->log(to_string(id))
+                        ->log(id)
                         ->localStatus()
                         ->participant(serverId)
                         ->str(SkipComponents(
@@ -1401,7 +1401,7 @@ static void writeUpdateReplicatedLogLocal(
       aliases::plan()
           ->replicatedLogs()
           ->database(dbName)
-          ->log(to_string(id))
+          ->log(id)
           ->currentTerm()
           ->term()
           ->str(
@@ -1441,7 +1441,7 @@ static void reportCurrentReplicatedLog(
     auto currentSlice = cur.get(cluster::paths::aliases::current()
                                     ->replicatedLogs()
                                     ->database(dbName)
-                                    ->log(to_string(id))
+                                    ->log(id)
                                     ->vec());
     if (currentSlice.isNone()) {
       return std::nullopt;
