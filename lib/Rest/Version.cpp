@@ -415,12 +415,17 @@ std::string Version::getEndianness() {
   static_assert(sizeof(value) == 8, "unexpected uint64_t size");
 
   unsigned char const* p = reinterpret_cast<unsigned char const*>(&value);
+
+  // cppcheck-suppress objectIndex
   if (p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56 && p[3] == 0x78 &&
+      // cppcheck-suppress objectIndex
       p[4] == 0xab && p[5] == 0xcd && p[6] == 0xef && p[7] == 0x99) {
     return "big";
   }
 
+  // cppcheck-suppress objectIndex
   if (p[0] == 0x99 && p[1] == 0xef && p[2] == 0xcd && p[3] == 0xab &&
+      // cppcheck-suppress objectIndex
       p[4] == 0x78 && p[5] == 0x56 && p[6] == 0x34 && p[7] == 0x12) {
     return "little";
   }
