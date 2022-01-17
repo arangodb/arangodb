@@ -1,19 +1,17 @@
 devel
 -----
 
-<<<<<<< HEAD
-* Fix agency supervision to not spuriously bring back indexes that failed
-  upon their initial creation. When an index creation failed, e.g. due to a 
-  unique constraint violation, and all DB server shards of the collection had
-  reported back the index creation status (success or failure), there was a 
-  small window of time in which the supervision would consider the index valid
-  and enabled it. This is because the supervision only checked for indexes
-  currently in flight and the number of shards that responded to the index
-  creation. It did not check the status of the index creation for each shard.
-=======
 * Updated Enterprise license behavior: now there will be a 48 hour period for
   a new deployment and upgrade to provide the license. After that period, the
   read-only mode will be enforced.
+* Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
+
+* Updated Enterprise license behavior: now there will be a 48 hour period for a
+  new deployment and upgrade decision to provide the license. After that period,
+  the read-only mode will be enforced.
+  Upgrade procedure for a deployment without license will not take upgrade
+  period into account for the read-only mode will enforcement.
+>>>>>>> 28116d65de86298a2f4c3cbfdbf372795f4643e3
 
 * Added agency push-queue operation
 

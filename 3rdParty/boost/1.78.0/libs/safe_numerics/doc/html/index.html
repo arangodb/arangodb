@@ -1,0 +1,113 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Safe Numerics</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="next" href="introduction.html" title="Introduction">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav"><a accesskey="n" href="introduction.html"><img src="images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="safe_numerics"></a>Safe Numerics</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Robert</span> <span class="surname">Ramey</span>
+</h3></div></div>
+<div><p class="copyright">Copyright © 2012-2018 Robert Ramey</p></div>
+<div><div class="legalnotice">
+<a name="idm462689398624"></a><p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="introduction.html">Introduction</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="introduction.html#safe_numerics.introduction.problem">Problem</a></span></dt>
+<dt><span class="section"><a href="introduction.html#safe_numerics.introduction.solution">Solution</a></span></dt>
+<dt><span class="section"><a href="introduction.html#safe_numerics.introduction.implementation">How It Works</a></span></dt>
+<dt><span class="section"><a href="introduction.html#safe_numerics.introduction.additional_features">Additional Features</a></span></dt>
+<dt><span class="section"><a href="introduction.html#safe_numerics.introduction.requirements">Requirements</a></span></dt>
+<dt><span class="section"><a href="introduction.html#safe_numerics.introduction.scope">Scope</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="tutorial.html">Tutorial and Motivating Examples</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="tutorial/1.html">Arithmetic Expressions Can Yield Incorrect Results</a></span></dt>
+<dt><span class="section"><a href="tutorial/2.html">Arithmetic Operations Can Overflow Silently</a></span></dt>
+<dt><span class="section"><a href="tutorial/3.html">Arithmetic on Unsigned Integers Can Yield Incorrect Results</a></span></dt>
+<dt><span class="section"><a href="tutorial/4.html">Implicit Conversions Can Lead to Erroneous Results</a></span></dt>
+<dt><span class="section"><a href="tutorial/5.html">Mixing Data Types Can Create Subtle Errors</a></span></dt>
+<dt><span class="section"><a href="tutorial/6.html">Array Index Value Can Exceed Array Limits</a></span></dt>
+<dt><span class="section"><a href="tutorial/7.html">Checking of Input Values Can Be Easily Overlooked</a></span></dt>
+<dt><span class="section"><a href="tutorial/8.html">Cannot Recover From Arithmetic Errors</a></span></dt>
+<dt><span class="section"><a href="tutorial/9.html">Compile Time Arithmetic is Not Always Correct</a></span></dt>
+<dt><span class="section"><a href="tutorial/10.html">Programming by Contract is Too Slow</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="eliminate_runtime_penalty.html">Eliminating Runtime Penalty</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="eliminate_runtime_penalty/2.html">Using safe_range
+    and safe_literal</a></span></dt>
+<dt><span class="section"><a href="eliminate_runtime_penalty/1.html">Using Automatic Type Promotion</a></span></dt>
+<dt><span class="section"><a href="eliminate_runtime_penalty/3.html">Mixing Approaches</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="case_studies.html">Case Studies</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="composition_with_other_libraries.html">Composition with Other Libraries</a></span></dt>
+<dt><span class="section"><a href="safety_critical_embedded_controller.html">Safety Critical Embedded Controller</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="notes.html">Background</a></span></dt>
+<dt><span class="section"><a href="concepts.html">Type Requirements</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="numeric_concept.html">Numeric&lt;T&gt;</a></span></dt>
+<dt><span class="section"><a href="integer_concept.html">Integer&lt;T&gt;</a></span></dt>
+<dt><span class="section"><a href="promotion_policy.html">PromotionPolicy&lt;PP&gt;</a></span></dt>
+<dt><span class="section"><a href="exception_policy.html">ExceptionPolicy&lt;EP&gt;</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="types.html">Types</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="safe.html">safe&lt;T, PP, EP&gt;</a></span></dt>
+<dt><span class="section"><a href="safe_range.html">safe_signed_range&lt;MIN, MAX, PP, EP&gt; and
+  safe_unsigned_range&lt;MIN, MAX, PP, EP&gt;</a></span></dt>
+<dt><span class="section"><a href="safe_literal.html">safe_signed_literal&lt;Value, PP , EP&gt; and
+  safe_unsigned_literal&lt;Value, PP, EP&gt;</a></span></dt>
+<dt><span class="section"><a href="exception.html">exception</a></span></dt>
+<dt><span class="section"><a href="exception_policies.html">exception_policy&lt;AE, IDB, UB, UV&gt;</a></span></dt>
+<dt><span class="section"><a href="promotion_policies.html">Promotion Policies</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="exception_safety.html">Exception Safety</a></span></dt>
+<dt><span class="section"><a href="library_implementation.html">Library Implementation</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="checked_result.html">checked_result&lt;R&gt;</a></span></dt>
+<dt><span class="section"><a href="checked_arithmetic.html">Checked Arithmetic</a></span></dt>
+<dt><span class="section"><a href="interval.html">interval&lt;R&gt;</a></span></dt>
+<dt><span class="section"><a href="checked_integer_arithmetic.html">safe_compare&lt;T, U&gt;</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="performance_tests.html">Performance Tests</a></span></dt>
+<dt><span class="section"><a href="rationale.html">Rationale and FAQ</a></span></dt>
+<dt><span class="section"><a href="pending_issues.html">Pending Issues</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="pending_issues.html#idm462682896128"><code class="computeroutput">safe_base</code> Only Works for Scalar Types</a></span></dt>
+<dt><span class="section"><a href="pending_issues.html#idm462682856528">Other Pending Issues</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="acknowledgements.html">Acknowledgements</a></span></dt>
+<dt><span class="section"><a href="change_log.html">Release Log</a></span></dt>
+<dt><span class="section"><a href="bibliography.html">Bibliography</a></span></dt>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: $Date</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="introduction.html"><img src="images/next.png" alt="Next"></a></div>
+</body>
+</html>

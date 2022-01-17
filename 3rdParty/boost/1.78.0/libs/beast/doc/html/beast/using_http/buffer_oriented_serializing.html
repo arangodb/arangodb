@@ -1,0 +1,299 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Buffer-Oriented Serializing</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../using_http.html" title="HTTP">
+<link rel="prev" href="parser_stream_operations/read_large_response_body.html" title="Reading large response body 💡">
+<link rel="next" href="buffer_oriented_parsing.html" title="Buffer-Oriented Parsing">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="parser_stream_operations/read_large_response_body.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="buffer_oriented_parsing.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_http.buffer_oriented_serializing"></a><a class="link" href="buffer_oriented_serializing.html" title="Buffer-Oriented Serializing">Buffer-Oriented
+      Serializing</a>
+</h3></div></div></div>
+<p>
+        An instance of <a class="link" href="../ref/boost__beast__http__serializer.html" title="http::serializer"><code class="computeroutput"><span class="identifier">serializer</span></code></a> can be invoked directly,
+        without using the provided stream operations. This could be useful for implementing
+        algorithms on objects whose interface does not conform to <a class="link" href="../concepts/streams.html" title="Streams"><span class="emphasis"><em>Stream</em></span></a>.
+        For example, a <a href="https://github.com/libuv/libuv" target="_top"><span class="bold"><strong>libuv</strong></span>
+        socket</a>. The serializer interface is interactive; the caller invokes
+        it repeatedly to produce buffers until all of the serialized octets have
+        been generated. Then the serializer is destroyed.
+      </p>
+<p>
+        To obtain the serialized next buffer sequence, call <a class="link" href="../ref/boost__beast__http__serializer/next.html" title="http::serializer::next"><code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">next</span></code></a>. Then, call <a class="link" href="../ref/boost__beast__http__serializer/consume.html" title="http::serializer::consume"><code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">consume</span></code></a> to indicate the number of
+        bytes consumed. This updates the next set of buffers to be returned, if any.
+        <code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">next</span></code> takes an error code parameter and
+        invokes a visitor argument with the error code and buffer of unspecified
+        type. In C++14 this is easily expressed with a generic lambda. The function
+        <a class="link" href="../ref/boost__beast__http__serializer/is_done.html" title="http::serializer::is_done"><code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">is_done</span></code></a> will return <code class="computeroutput"><span class="keyword">true</span></code> when all the buffers have been produced.
+        This C++14 example prints the buffers to standard output:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">print_cxx14</span><span class="special">(</span><span class="identifier">message</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">m</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+    <span class="identifier">serializer</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">m</span><span class="special">};</span>
+    <span class="keyword">do</span>
+    <span class="special">{</span>
+        <span class="identifier">sr</span><span class="special">.</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span>
+            <span class="special">[&amp;</span><span class="identifier">sr</span><span class="special">](</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span> <span class="keyword">auto</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">)</span>
+            <span class="special">{</span>
+                <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+                <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">make_printable</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">);</span>
+                <span class="identifier">sr</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">buffer_bytes</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">));</span>
+            <span class="special">});</span>
+    <span class="special">}</span>
+    <span class="keyword">while</span><span class="special">(!</span> <span class="identifier">ec</span> <span class="special">&amp;&amp;</span> <span class="special">!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">is_done</span><span class="special">());</span>
+    <span class="keyword">if</span><span class="special">(!</span> <span class="identifier">ec</span><span class="special">)</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">else</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">message</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Generic lambda expressions are only available in C++14 or later. A functor
+        with a templated function call operator is necessary to use C++11 as shown:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Serializer</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">lambda</span>
+<span class="special">{</span>
+    <span class="identifier">Serializer</span><span class="special">&amp;</span> <span class="identifier">sr</span><span class="special">;</span>
+
+    <span class="identifier">lambda</span><span class="special">(</span><span class="identifier">Serializer</span><span class="special">&amp;</span> <span class="identifier">sr_</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">sr</span><span class="special">(</span><span class="identifier">sr_</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ConstBufferSequence</span><span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">make_printable</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">);</span>
+        <span class="identifier">sr</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">buffer_bytes</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">));</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">print</span><span class="special">(</span><span class="identifier">message</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">m</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+    <span class="identifier">serializer</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">m</span><span class="special">};</span>
+    <span class="keyword">do</span>
+    <span class="special">{</span>
+        <span class="identifier">sr</span><span class="special">.</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">lambda</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">sr</span><span class="special">)&gt;{</span><span class="identifier">sr</span><span class="special">});</span>
+    <span class="special">}</span>
+    <span class="keyword">while</span><span class="special">(!</span> <span class="identifier">ec</span> <span class="special">&amp;&amp;</span> <span class="special">!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">is_done</span><span class="special">());</span>
+    <span class="keyword">if</span><span class="special">(!</span> <span class="identifier">ec</span><span class="special">)</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">else</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">message</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="beast.using_http.buffer_oriented_serializing.h0"></a>
+        <span class="phrase"><a name="beast.using_http.buffer_oriented_serializing.split_serialization"></a></span><a class="link" href="buffer_oriented_serializing.html#beast.using_http.buffer_oriented_serializing.split_serialization">Split
+        Serialization</a>
+      </h5>
+<p>
+        In some cases, such as the handling of the <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1" target="_top">Expect:
+        100-continue</a> field, it may be desired to first serialize the header,
+        perform some other action, and then continue with serialization of the body.
+        This is accomplished by calling <a class="link" href="../ref/boost__beast__http__serializer/split.html" title="http::serializer::split"><code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">split</span></code></a> with a boolean indicating
+        that when buffers are produced, the last buffer containing serialized header
+        octets will not contain any octets corresponding to the body. The function
+        <a class="link" href="../ref/boost__beast__http__serializer/is_header_done.html" title="http::serializer::is_header_done"><code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">is_header_done</span></code></a> informs the caller
+        whether the header been serialized fully. In this C++14 example we print
+        the header first, followed by the body:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">split_print_cxx14</span><span class="special">(</span><span class="identifier">message</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">m</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+    <span class="identifier">serializer</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">m</span><span class="special">};</span>
+    <span class="identifier">sr</span><span class="special">.</span><span class="identifier">split</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Header:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">do</span>
+    <span class="special">{</span>
+        <span class="identifier">sr</span><span class="special">.</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span>
+            <span class="special">[&amp;</span><span class="identifier">sr</span><span class="special">](</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span> <span class="keyword">auto</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">)</span>
+            <span class="special">{</span>
+                <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+                <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">make_printable</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">);</span>
+                <span class="identifier">sr</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">buffer_bytes</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">));</span>
+            <span class="special">});</span>
+    <span class="special">}</span>
+    <span class="keyword">while</span><span class="special">(!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">is_header_done</span><span class="special">());</span>
+    <span class="keyword">if</span><span class="special">(!</span> <span class="identifier">ec</span> <span class="special">&amp;&amp;</span> <span class="special">!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">is_done</span><span class="special">())</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Body:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="keyword">do</span>
+        <span class="special">{</span>
+            <span class="identifier">sr</span><span class="special">.</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span>
+                <span class="special">[&amp;</span><span class="identifier">sr</span><span class="special">](</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span> <span class="keyword">auto</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">)</span>
+                <span class="special">{</span>
+                    <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+                    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">make_printable</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">);</span>
+                    <span class="identifier">sr</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">buffer_bytes</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">));</span>
+                <span class="special">});</span>
+        <span class="special">}</span>
+        <span class="keyword">while</span><span class="special">(!</span> <span class="identifier">ec</span> <span class="special">&amp;&amp;</span> <span class="special">!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">is_done</span><span class="special">());</span>
+    <span class="special">}</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">message</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.using_http.buffer_oriented_serializing.write_to_std_ostream"></a><a class="link" href="buffer_oriented_serializing.html#beast.using_http.buffer_oriented_serializing.write_to_std_ostream" title="Write To std::ostream 💡">Write
+        To std::ostream 💡</a>
+</h4></div></div></div>
+<p>
+          The standard library provides the type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code>
+          for performing high level write operations on character streams. The variable
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span></code> is based on this output stream.
+          This example uses the buffer oriented interface of <a class="link" href="../ref/boost__beast__http__serializer.html" title="http::serializer"><code class="computeroutput"><span class="identifier">serializer</span></code></a> to write an HTTP message
+          to a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code>:
+        </p>
+<pre class="programlisting"><span class="comment">// The detail namespace means "not public"</span>
+<span class="keyword">namespace</span> <span class="identifier">detail</span> <span class="special">{</span>
+
+<span class="comment">// This helper is needed for C++11.</span>
+<span class="comment">// When invoked with a buffer sequence, writes the buffers `to the std::ostream`.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Serializer</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">write_ostream_helper</span>
+<span class="special">{</span>
+    <span class="identifier">Serializer</span><span class="special">&amp;</span> <span class="identifier">sr_</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">os_</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">write_ostream_helper</span><span class="special">(</span><span class="identifier">Serializer</span><span class="special">&amp;</span> <span class="identifier">sr</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">os</span><span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">sr_</span><span class="special">(</span><span class="identifier">sr</span><span class="special">)</span>
+        <span class="special">,</span> <span class="identifier">os_</span><span class="special">(</span><span class="identifier">os</span><span class="special">)</span>
+    <span class="special">{</span>
+    <span class="special">}</span>
+
+    <span class="comment">// This function is called by the serializer</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ConstBufferSequence</span><span class="special">&gt;</span>
+    <span class="keyword">void</span>
+    <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="comment">// Error codes must be cleared on success</span>
+        <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+
+        <span class="comment">// Keep a running total of how much we wrote</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+        <span class="comment">// Loop over the buffer sequence</span>
+        <span class="keyword">for</span><span class="special">(</span><span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer_sequence_begin</span><span class="special">(</span><span class="identifier">buffers</span><span class="special">);</span>
+            <span class="identifier">it</span> <span class="special">!=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer_sequence_end</span><span class="special">(</span><span class="identifier">buffers</span><span class="special">);</span> <span class="special">++</span><span class="identifier">it</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="comment">// This is the next buffer in the sequence</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">const_buffer</span> <span class="keyword">const</span> <span class="identifier">buffer</span> <span class="special">=</span> <span class="special">*</span><span class="identifier">it</span><span class="special">;</span>
+
+            <span class="comment">// Write it to the std::ostream</span>
+            <span class="identifier">os_</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span>
+                <span class="keyword">reinterpret_cast</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*&gt;(</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">data</span><span class="special">()),</span>
+                <span class="identifier">buffer</span><span class="special">.</span><span class="identifier">size</span><span class="special">());</span>
+
+            <span class="comment">// If the std::ostream fails, convert it to an error code</span>
+            <span class="keyword">if</span><span class="special">(</span><span class="identifier">os_</span><span class="special">.</span><span class="identifier">fail</span><span class="special">())</span>
+            <span class="special">{</span>
+                <span class="identifier">ec</span> <span class="special">=</span> <span class="identifier">make_error_code</span><span class="special">(</span><span class="identifier">errc</span><span class="special">::</span><span class="identifier">io_error</span><span class="special">);</span>
+                <span class="keyword">return</span><span class="special">;</span>
+            <span class="special">}</span>
+
+            <span class="comment">// Adjust our running total</span>
+            <span class="identifier">bytes_transferred</span> <span class="special">+=</span> <span class="identifier">buffer_size</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">);</span>
+        <span class="special">}</span>
+
+        <span class="comment">// Inform the serializer of the amount we consumed</span>
+        <span class="identifier">sr_</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">bytes_transferred</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="special">}</span> <span class="comment">// detail</span>
+
+<span class="comment">/** Write a message to a `std::ostream`.
+
+    This function writes the serialized representation of the
+    HTTP/1 message to the sream.
+
+    @param os The `std::ostream` to write to.
+
+    @param msg The message to serialize.
+
+    @param ec Set to the error, if any occurred.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">write_ostream</span><span class="special">(</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">os</span><span class="special">,</span>
+    <span class="identifier">message</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;&amp;</span> <span class="identifier">msg</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Create the serializer instance</span>
+    <span class="identifier">serializer</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">msg</span><span class="special">};</span>
+
+    <span class="comment">// This lambda is used as the "visit" function</span>
+    <span class="identifier">detail</span><span class="special">::</span><span class="identifier">write_ostream_helper</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">sr</span><span class="special">)&gt;</span> <span class="identifier">lambda</span><span class="special">{</span><span class="identifier">sr</span><span class="special">,</span> <span class="identifier">os</span><span class="special">};</span>
+    <span class="keyword">do</span>
+    <span class="special">{</span>
+        <span class="comment">// In C++14 we could use a generic lambda but since we want</span>
+        <span class="comment">// to require only C++11, the lambda is written out by hand.</span>
+        <span class="comment">// This function call retrieves the next serialized buffers.</span>
+        <span class="identifier">sr</span><span class="special">.</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">lambda</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+            <span class="keyword">return</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">while</span><span class="special">(!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">is_done</span><span class="special">());</span>
+<span class="special">}</span>
+</pre>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Serializing to a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code>
+            could be implemented using an alternate strategy: adapt the <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code> interface to a <a href="../../../../../../doc/html/boost_asio/reference/SyncWriteStream.html" target="_top"><span class="emphasis"><em>SyncWriteStream</em></span></a>,
+            enabling use with the library's existing stream algorithms. This is left
+            as an exercise for the reader.
+          </p></td></tr>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="parser_stream_operations/read_large_response_body.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="buffer_oriented_parsing.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

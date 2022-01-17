@@ -69,7 +69,7 @@ struct IResearchLinkHelper {
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(application_features::ApplicationServer& server,
                     velocypack::Slice lhs, velocypack::Slice rhs,
-                    irs::string_ref const& dbname);
+                    irs::string_ref dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
