@@ -352,7 +352,8 @@ Result Indexes::ensureIndexCoordinator(
 }
 
 Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
-                            bool create, VPackBuilder& output) {
+                            bool create, VPackBuilder& output,
+                            std::function<Result(double)> const& progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {

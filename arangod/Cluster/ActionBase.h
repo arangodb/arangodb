@@ -74,6 +74,9 @@ class ActionBase {
   /// expired
   virtual bool done() const;
 
+  /// @brief abort action, if implemented 
+  virtual bool abort();
+
   /// @brief waiting for a worker to grab it and go!
   bool runnable() const { return READY == _state; }
 

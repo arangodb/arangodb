@@ -150,9 +150,16 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
+    double progress;
+    std::function<Result(double)> updateProgress = [&](double p) {
+      progress = p;
+      return Result{_abort ? TRI_ERROR_REQUEST_CANCELED : ERROR_NO_ERROR};
+    };
+      
     VPackBuilder index;
     auto res =
-        methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+      methods::Indexes::ensureIndex(col.get(), body.slice(), true, index, updateProgress);
+
     result(res);
 
     if (res.ok()) {
