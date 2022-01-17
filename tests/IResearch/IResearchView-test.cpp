@@ -1900,7 +1900,7 @@ TEST_F(IResearchViewTest, test_drop) {
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-123"))
-          .string();
+          .u8string();
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 123, \
@@ -1939,7 +1939,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-123"))
-          .string();
+          .u8string();
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \
     \"id\": 123, \
@@ -1982,7 +1982,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
                                   *logicalCollection, *view)
                                   ->id()
                                   .id())))
-                 .string();
+                 .u8string();
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
@@ -4024,7 +4024,7 @@ TEST_F(IResearchViewTest, test_open) {
            std::string("databases")) /=
           (std::string("database-") + std::to_string(vocbase.id()))) /=
          std::string("arangosearch-123"))
-            .string();
+            .u8string();
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
 
