@@ -37,12 +37,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create a profile
-QueryProfile::QueryProfile(Query* query)
-    : _query(query), _lastStamp(query->startTime()), _tracked(false) {
+QueryProfile::QueryProfile(Query& query)
+    : _query(query), _lastStamp(query.startTime()), _tracked(false) {
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
-  TRI_ASSERT(_query != nullptr);
 }
 
 /// @brief destroy a profile
@@ -50,23 +49,20 @@ QueryProfile::~QueryProfile() { unregisterFromQueryList(); }
 
 void QueryProfile::registerInQueryList() {
   TRI_ASSERT(!_tracked);
-  TRI_ASSERT(_query != nullptr);
-  auto queryList = _query->vocbase().queryList();
+  auto queryList = _query.vocbase().queryList();
   if (queryList) {
     _tracked = queryList->insert(_query);
 
     TRI_IF_FAILURE("QueryProfile::directKillAfterQueryGotRegistered") {
-      _query->debugKillQuery();
+      _query.debugKillQuery();
     }
   }
 }
 
 void QueryProfile::unregisterFromQueryList() noexcept {
-  TRI_ASSERT(_query != nullptr);
-
   // only remove from list when the query was inserted into it...
   if (_tracked) {
-    auto queryList = _query->vocbase().queryList();
+    auto queryList = _query.vocbase().queryList();
 
     try {
       queryList->remove(_query);
