@@ -44,7 +44,6 @@
 #include "IResearchTestCompressor.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
-#include "Metrics/MetricKey.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
