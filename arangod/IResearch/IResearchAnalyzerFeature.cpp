@@ -831,13 +831,15 @@ namespace iresearch {
 void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
                                 irs::string_ref const& name) {
   TRI_ASSERT(builder.isOpenObject());
-  addStringRef(builder, StaticStrings::AnalyzerNameField, name);
-  addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
+  addStringRef(builder, irs::string_ref{StaticStrings::AnalyzerNameField},
+               name);
+  addStringRef(builder, irs::string_ref{StaticStrings::AnalyzerTypeField},
+               type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 
   // add features
-  VPackArrayBuilder featuresScope(&builder,
-                                  StaticStrings::AnalyzerFeaturesField);
+  VPackArrayBuilder featuresScope(
+      &builder, std::string{StaticStrings::AnalyzerFeaturesField});
 
   features().visit(
       [&builder](std::string_view feature) { addStringRef(builder, feature); });
@@ -1123,7 +1125,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUseVocbase(
-    irs::string_ref const& vocbaseName, auth::Level const& level) {
+    irs::string_ref vocbaseName, auth::Level const& level) {
   TRI_ASSERT(!vocbaseName.empty());
   auto& ctx = ExecContext::current();
   auto const nameStr = static_cast<std::string>(vocbaseName);
@@ -1138,7 +1140,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   return canUseVocbase(vocbase.name(), level);
 }
 
-/*static*/ bool IResearchAnalyzerFeature::canUse(irs::string_ref const& name,
+/*static*/ bool IResearchAnalyzerFeature::canUse(irs::string_ref name,
                                                  auth::Level const& level) {
   auto& ctx = ExecContext::current();
 
@@ -1163,11 +1165,18 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
                     level));  // can use analyzers
 }
 
+/*static*/ Result IResearchAnalyzerFeature::copyAnalyzerPool(
+    AnalyzerPool::ptr& analyzer, AnalyzerPool const& src, LinkVersion version,
+    bool extendedNames) {
+  return IResearchAnalyzerFeature::createAnalyzerPool(
+      analyzer, src.name(), src.type(), src.properties(), src.revision(),
+      src.features(), version, extendedNames);
+}
+
 /*static*/ Result IResearchAnalyzerFeature::createAnalyzerPool(
-    AnalyzerPool::ptr& pool, irs::string_ref const& name,
-    irs::string_ref const& type, VPackSlice const properties,
-    AnalyzersRevision::Revision revision, Features features,
-    LinkVersion version, bool extendedNames) {
+    AnalyzerPool::ptr& pool, irs::string_ref name, irs::string_ref type,
+    VPackSlice const properties, AnalyzersRevision::Revision revision,
+    Features features, LinkVersion version, bool extendedNames) {
   // check type available
   if (!irs::analysis::analyzers::exists(
           type, irs::type<irs::text_format::vpack>::get(), false)) {
@@ -1351,8 +1360,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
 }
 
 Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
-                                         irs::string_ref const& name,
-                                         irs::string_ref const& type,
+                                         irs::string_ref name,
+                                         irs::string_ref type,
                                          VPackSlice const properties,
                                          Features features /* = {} */) {
   auto const split = splitAnalyzerName(name);
@@ -1718,16 +1727,15 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
 }
 
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
-    irs::string_ref const& normalizedName, AnalyzerName const& name,
+    irs::string_ref normalizedName, AnalyzerName const& name,
     AnalyzersRevision::Revision const revision,
     bool onlyCached) const noexcept {
   try {
     if (!name.first.null()) {  // check if analyzer is static
       if (!onlyCached) {
         // load analyzers for database
-        auto const endTime =
-            TRI_microtime() +
-            5.0;  // arbitrary value - give some time to update plan
+        // arbitrary value - give some time to update plan
+        auto const endTime = TRI_microtime() + 5.0;
         do {
           auto const res =
               const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(
@@ -1746,9 +1754,9 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           }
           {
             READ_LOCKER(lock, _mutex);
-            auto itr = _lastLoad.find(static_cast<std::string>(
-                name.first));  // FIXME: after C++20 remove cast and use
-                               // heterogeneous lookup
+
+            // FIXME: after C++20 remove cast and use heterogeneous lookup
+            auto itr = _lastLoad.find(static_cast<std::string>(name.first));
             if (itr != _lastLoad.end() && itr->second >= revision) {
               break;  // expected or later revision is loaded
             }
@@ -1813,7 +1821,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 }
 
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
-    irs::string_ref const& name, TRI_vocbase_t const& activeVocbase,
+    irs::string_ref name, TRI_vocbase_t const& activeVocbase,
     QueryAnalyzerRevisions const& revision, bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase.name(), true);
 
@@ -1824,14 +1832,16 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     // accessing local analyzer from within another database
     return nullptr;
   }
+
+  // built-in analyzers always has MIN revision
+  constexpr auto kBuiltinRevision{AnalyzersRevision::MIN};
+
   // getVocbaseRevision expects vocbase name and this is ensured by
   // normalize with expandVocbasePrefx = true
   TRI_ASSERT(split.first.null() || !split.first.empty());
   return get(normalizedName, split,
-             split.first.null()
-                 ? AnalyzersRevision::MIN  // built-in analyzers always has MIN
-                                           // revision
-                 : revision.getVocbaseRevision(split.first),
+             split.first.null() ? kBuiltinRevision
+                                : revision.getVocbaseRevision(split.first),
              onlyCached);
 }
 
@@ -2038,7 +2048,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
 }
 
 Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
-    irs::string_ref const& dbName) {
+    irs::string_ref dbName) {
   if (!ServerState::instance()->isCoordinator()) {
     // Single-servers will load analyzers they need in regular get call.
     // DbServer receives analyzers definitions from coordinators in ddl requests
@@ -2061,7 +2071,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
 }
 
 Result IResearchAnalyzerFeature::loadAnalyzers(
-    irs::string_ref const& database /*= irs::string_ref::NIL*/) {
+    irs::string_ref database /*= irs::string_ref::NIL*/) {
   if (!server().hasFeature<DatabaseFeature>()) {
     return {TRI_ERROR_INTERNAL,
             "failure to find feature 'Database' while loading analyzers for "
@@ -2365,8 +2375,8 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 }
 
 /*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
-    irs::string_ref const& dbNameFromAnalyzer,
-    irs::string_ref const& currentDbName, bool forGetters) noexcept {
+    irs::string_ref dbNameFromAnalyzer, irs::string_ref currentDbName,
+    bool forGetters) noexcept {
   TRI_ASSERT(!currentDbName.empty());
   if (dbNameFromAnalyzer
           .null()) {  // NULL means local db name = always reachable
@@ -2411,12 +2421,9 @@ IResearchAnalyzerFeature::splitAnalyzerName(
                         analyzer);  // unprefixed analyzer name
 }
 
-/*static*/ std::string IResearchAnalyzerFeature::normalize(  // normalize name
-    irs::string_ref const& name,                             // analyzer name
-    irs::string_ref const&
-        activeVocbase,  // fallback vocbase if not part of name
-    bool expandVocbasePrefix /*= true*/) {  // use full vocbase name as prefix
-                                            // for active/system v.s. EMPTY/'::'
+/*static*/ std::string IResearchAnalyzerFeature::normalize(
+    irs::string_ref name, irs::string_ref activeVocbase,
+    bool expandVocbasePrefix /*= true*/) {
   auto& staticAnalyzers = getStaticAnalyzers();
 
   if (staticAnalyzers.find(irs::make_hashed_ref(
@@ -2459,8 +2466,7 @@ IResearchAnalyzerFeature::splitAnalyzerName(
 }
 
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
-    const irs::string_ref& vocbaseName,
-    bool forceLoadPlan /* = false */) const {
+    irs::string_ref vocbaseName, bool forceLoadPlan /* = false */) const {
   TRI_vocbase_t* vocbase{nullptr};
   auto& dbFeature = server().getFeature<DatabaseFeature>();
   vocbase = dbFeature.useDatabase(vocbaseName.empty()
@@ -2499,8 +2505,8 @@ void IResearchAnalyzerFeature::prepare() {
   _analyzers = getStaticAnalyzers();
 }
 
-Result IResearchAnalyzerFeature::removeFromCollection(
-    irs::string_ref const& name, irs::string_ref const& vocbase) {
+Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref name,
+                                                      irs::string_ref vocbase) {
   auto& dbFeature = server().getFeature<DatabaseFeature>();
   auto* voc = dbFeature.useDatabase(static_cast<std::string>(
       vocbase));  // FIXME: after C++20 remove cast and use heterogeneous lookup
@@ -2537,8 +2543,8 @@ Result IResearchAnalyzerFeature::removeFromCollection(
   return trx.commit();
 }
 
-Result IResearchAnalyzerFeature::finalizeRemove(
-    irs::string_ref const& name, irs::string_ref const& vocbase) {
+Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref name,
+                                                irs::string_ref vocbase) {
   TRI_IF_FAILURE("FinalizeAnalyzerRemove") { return Result(TRI_ERROR_DEBUG); }
 
   try {
@@ -2988,8 +2994,7 @@ bool IResearchAnalyzerFeature::visit(
   return true;
 }
 
-void IResearchAnalyzerFeature::cleanupAnalyzers(
-    irs::string_ref const& database) {
+void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref database) {
   if (ADB_UNLIKELY(database.empty())) {
     TRI_ASSERT(FALSE);
     return;
