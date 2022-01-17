@@ -58,7 +58,7 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
-    -> LeaderElectionCampaign;
+    -> LogCurrentSupervisionElection;
 
 auto tryLeadershipElection(LogPlanSpecification const& plan,
                            LogCurrent const& current,

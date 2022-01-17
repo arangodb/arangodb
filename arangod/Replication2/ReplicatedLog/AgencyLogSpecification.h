@@ -90,9 +90,13 @@ struct LogCurrentSupervisionElection {
   };
 
   LogTerm term;
+
+  TermIndexPair bestTermIndex;
+
   std::size_t participantsRequired{};
   std::size_t participantsAvailable{};
   std::unordered_map<ParticipantId, ErrorCode> detail;
+  std::vector<ParticipantId> electibleLeaderSet;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
 

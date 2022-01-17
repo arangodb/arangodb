@@ -2608,7 +2608,6 @@ void Supervision::checkReplicatedLogs() {
                       target.supervision->maxActionsTraceLength)
                   .end();
         }
-        LOG_DEVEL << " action to execute: " << *action;
         envelope = action->execute(dbName, std::move(envelope));
       }
     }

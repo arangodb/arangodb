@@ -33,27 +33,7 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-struct LeaderElectionCampaign {
-  enum class Reason { ServerIll, TermNotConfirmed, OK };
-
-  std::unordered_map<ParticipantId, Reason> reasons;
-  size_t numberOKParticipants{0};
-  replication2::TermIndexPair bestTermIndex;
-  std::vector<ParticipantId> electibleLeaderSet;
-
-
-
-  void toVelocyPack(VPackBuilder& builder) const;
-};
-auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view;
-auto operator<<(std::ostream& os, LeaderElectionCampaign::Reason reason)
-    -> std::ostream&;
-
-auto to_string(LeaderElectionCampaign const& campaign) -> std::string;
-auto operator<<(std::ostream& os, LeaderElectionCampaign const& action)
-    -> std::ostream&;
-
 auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   LogTerm term) -> LeaderElectionCampaign::Reason;
+                   LogTerm term) -> LogCurrentSupervisionElection::ErrorCode;
 
 }  // namespace arangodb::replication2::replicated_log

@@ -234,7 +234,8 @@ const replicatedLogSuite = function () {
         // this message. However, the leader sees this message as still in flight and thus will never
         // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
         // is the only server that has received log index 2.
-        log.insert({foo: "bar"});
+        let quorum1 = log.insert({foo: "bar"});
+	console.log("post write ", quorum1);
         let quorum = log.insert({foo: "bar"});
         assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
       }

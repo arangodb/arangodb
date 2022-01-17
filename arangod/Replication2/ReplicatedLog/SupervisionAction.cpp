@@ -204,7 +204,6 @@ auto UpdateTermAction::execute(std::string dbName,
                   ->currentTerm()
                   ->str();
 
-
   return envelope.write()
       .emplace_object(
           path, [&](VPackBuilder& builder) { _newTerm.toVelocyPack(builder); })
@@ -242,19 +241,26 @@ void FailedLeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue(to_string(type())));
 
   builder.add(VPackValue("campaign"));
-  _campaign.toVelocyPack(builder);
+  _election.toVelocyPack(builder);
 }
 
 auto FailedLeaderElectionAction::execute(std::string dbName,
                                          arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
-  auto path = paths::plan()
+  auto path = paths::current()
                   ->replicatedLogs()
                   ->database(dbName)
                   ->log(_id)
-                  ->currentTerm()
+                  ->supervision()
+                  ->election()
                   ->str();
-  return envelope;
+
+  return envelope.write()
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { _election.toVelocyPack(builder); })
+      .inc(paths::current()->version()->str())
+      .precs()
+      .end();
 }
 
 /*
@@ -266,10 +272,7 @@ void SuccessfulLeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue(to_string(type())));
 
   builder.add(VPackValue("campaign"));
-  _campaign.toVelocyPack(builder);
-
-  builder.add(VPackValue("newLeader"));
-  builder.add(VPackValue(_newLeader));
+  _election.toVelocyPack(builder);
 
   builder.add(VPackValue("newTerm"));
   _newTerm.toVelocyPack(builder);

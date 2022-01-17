@@ -1622,6 +1622,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               std::shared_ptr<Actions const> actions() const {
                 return Actions::make_shared(shared_from_this());
               }
+
+              class Election : public StaticComponent<Election, Supervision> {
+               public:
+                constexpr char const* component() const noexcept {
+                  return "election";
+                }
+
+                using BaseType::StaticComponent;
+              };
+
+              std::shared_ptr<Election const> election() const {
+                return Election::make_shared(shared_from_this());
+              }
             };
 
             std::shared_ptr<Supervision const> supervision() const {
@@ -1632,6 +1645,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
           std::shared_ptr<Log const> log(std::string value) const {
             return Log::make_shared(shared_from_this(), std::move(value));
           }
+          std::shared_ptr<Log const> log(replication2::LogId id) const;
         };
 
         std::shared_ptr<Database const> database(DatabaseID name) const {

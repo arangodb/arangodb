@@ -143,7 +143,10 @@ auto operator<<(std::ostream& os, UpdateTermAction const& action)
 struct LeaderElectionCampaign;
 
 struct SuccessfulLeaderElectionAction : Action {
-  SuccessfulLeaderElectionAction(LogId id) : _id(id){};
+  SuccessfulLeaderElectionAction(LogId id,
+                                 LogCurrentSupervisionElection const& election,
+                                 LogPlanTermSpecification newTerm)
+      : _id(id), _election{election}, _newTerm{newTerm} {};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
   ActionType type() const override {
@@ -152,8 +155,7 @@ struct SuccessfulLeaderElectionAction : Action {
   void toVelocyPack(VPackBuilder& builder) const override;
 
   LogId const _id;
-  LeaderElectionCampaign _campaign;
-  ParticipantId _newLeader;
+  LogCurrentSupervisionElection _election;
   LogPlanTermSpecification _newTerm;
 };
 auto to_string(SuccessfulLeaderElectionAction action) -> std::string;
@@ -161,7 +163,9 @@ auto operator<<(std::ostream& os, SuccessfulLeaderElectionAction const& action)
     -> std::ostream&;
 
 struct FailedLeaderElectionAction : Action {
-  FailedLeaderElectionAction(){};
+  FailedLeaderElectionAction(LogId const& id,
+                             LogCurrentSupervisionElection const& election)
+      : _id{id}, _election{election} {};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
   ActionType type() const override {
@@ -170,7 +174,7 @@ struct FailedLeaderElectionAction : Action {
   void toVelocyPack(VPackBuilder& builder) const override;
 
   LogId const _id;
-  LeaderElectionCampaign _campaign;
+  LogCurrentSupervisionElection _election;
 };
 auto to_string(FailedLeaderElectionAction const& action) -> std::string;
 auto operator<<(std::ostream& os, FailedLeaderElectionAction const& action)
