@@ -7,6 +7,7 @@ import { data2 } from './data2';
 import G6 from '@antv/g6';
 import { Card } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
+import EdgeStyleSelector from './EdgeStyleSelector.js';
 import './tooltip.css';
 
 const G6JsGraph = () => {
@@ -189,17 +190,14 @@ const G6JsGraph = () => {
     graph.render();
   }
 
-  const changeEdgeStyle = () => {
+  const changeEdgeStyle = (typeModel) => {
     graph.edge((edge) => {
       return {
         id: edge.id,
-        type: 'cubic-horizontal',
-        style: {
-          stroke: 'green',
-        },
+        ...typeModel
       };
     });
-    
+
     graph.data(data);
     graph.render();
   }
@@ -207,13 +205,13 @@ const G6JsGraph = () => {
   return (
     <div>
         <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
+        <EdgeStyleSelector onEdgeStyleChange={(typeModel) => changeEdgeStyle(typeModel)} />
         <button onClick={() => getNodes()}>Get nodes</button>
         <button onClick={() => getEdges()}>Get edges</button>
         <button onClick={() => changeGraphData()}>Change graph data</button>
         <button onClick={() => addNode()}>Add node</button>
         <button onClick={() => addEdge()}>Add edge</button>
         <button onClick={() => updateNodeModel()}>Update node2</button>
-        <button onClick={() => changeEdgeStyle()}>Change edge style</button>
         <Card
           title="Pure JS G6 Graph"
         >
