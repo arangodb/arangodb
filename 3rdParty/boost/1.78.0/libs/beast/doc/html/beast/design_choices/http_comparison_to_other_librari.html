@@ -1,0 +1,553 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>HTTP Comparison to Other Libraries</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../design_choices.html" title="Design Choices">
+<link rel="prev" href="http_message_container.html" title="HTTP Message Container 🎦">
+<link rel="next" href="comparison_to_zaphoyd_studios_we.html" title="Comparison to Zaphoyd Studios WebSocket++">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_message_container.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_choices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="comparison_to_zaphoyd_studios_we.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.design_choices.http_comparison_to_other_librari"></a><a class="link" href="http_comparison_to_other_librari.html" title="HTTP Comparison to Other Libraries">HTTP
+      Comparison to Other Libraries</a>
+</h3></div></div></div>
+<p>
+        There are a few C++ published libraries which implement some of the HTTP
+        protocol. We analyze the message model chosen by those libraries and discuss
+        the advantages and disadvantages relative to Beast.
+      </p>
+<p>
+        The general strategy used by the author to evaluate external libraries is
+        as follows:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Review the message model. Can it represent a complete request or response?
+            What level of allocator support is present? How much customization is
+            possible?
+          </li>
+<li class="listitem">
+            Review the stream abstraction. This is the type of object, such as a
+            socket, which may be used to parse or serialize (i.e. read and write).
+            Can user defined types be specified? What's the level of conformance
+            to to Asio or Networking-TS concepts?
+          </li>
+<li class="listitem">
+            Check treatment of buffers. Does the library manage the buffers or can
+            users provide their own buffers?
+          </li>
+<li class="listitem">
+            How does the library handle corner cases such as trailers, Expect: 100-continue,
+            or deferred commitment of the body type?
+          </li>
+</ul></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Declarations examples from external libraries have been edited: portions
+          have been removed for simplification.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="beast.design_choices.http_comparison_to_other_librari.h0"></a>
+        <span class="phrase"><a name="beast.design_choices.http_comparison_to_other_librari.cpp_netlib"></a></span><a class="link" href="http_comparison_to_other_librari.html#beast.design_choices.http_comparison_to_other_librari.cpp_netlib">cpp-netlib</a>
+      </h5>
+<p>
+        <a href="https://github.com/cpp-netlib/cpp-netlib/tree/092cd570fb179d029d1865aade9f25aae90d97b9" target="_top"><span class="bold"><strong>cpp-netlib</strong></span></a> is a network programming library
+        previously intended for Boost but not having gone through formal review.
+        As of this writing it still uses the Boost name, namespace, and directory
+        structure although the project states that Boost acceptance is no longer
+        a goal. The library is based on Boost.Asio and bills itself as <span class="emphasis"><em>"a
+        collection of network related routines/implementations geared towards providing
+        a robust cross-platform networking library"</em></span>. It cites <span class="emphasis"><em>"Common
+        Message Type"</em></span> as a feature. As of the branch previous linked,
+        it uses these declarations:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Tag</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">basic_message</span> <span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+  <span class="keyword">typedef</span> <span class="identifier">Tag</span> <span class="identifier">tag</span><span class="special">;</span>
+
+  <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">headers_container</span><span class="special">&lt;</span><span class="identifier">Tag</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">headers_container_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">headers_container_type</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">header_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">string</span><span class="special">&lt;</span><span class="identifier">Tag</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">string_type</span><span class="special">;</span>
+
+  <span class="identifier">headers_container_type</span><span class="special">&amp;</span> <span class="identifier">headers</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">headers_</span><span class="special">;</span> <span class="special">}</span>
+  <span class="identifier">headers_container_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">headers</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">headers_</span><span class="special">;</span> <span class="special">}</span>
+
+  <span class="identifier">string_type</span><span class="special">&amp;</span> <span class="identifier">body</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">body_</span><span class="special">;</span> <span class="special">}</span>
+  <span class="identifier">string_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">body</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">body_</span><span class="special">;</span> <span class="special">}</span>
+
+  <span class="identifier">string_type</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">source_</span><span class="special">;</span> <span class="special">}</span>
+  <span class="identifier">string_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">source</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">source_</span><span class="special">;</span> <span class="special">}</span>
+
+  <span class="identifier">string_type</span><span class="special">&amp;</span> <span class="identifier">destination</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">destination_</span><span class="special">;</span> <span class="special">}</span>
+  <span class="identifier">string_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">destination</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">destination_</span><span class="special">;</span> <span class="special">}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+  <span class="keyword">friend</span> <span class="keyword">struct</span> <span class="identifier">detail</span><span class="special">::</span><span class="identifier">directive_base</span><span class="special">&lt;</span><span class="identifier">Tag</span><span class="special">&gt;;</span>
+  <span class="keyword">friend</span> <span class="keyword">struct</span> <span class="identifier">detail</span><span class="special">::</span><span class="identifier">wrapper_base</span><span class="special">&lt;</span><span class="identifier">Tag</span><span class="special">,</span> <span class="identifier">basic_message</span><span class="special">&lt;</span><span class="identifier">Tag</span><span class="special">&gt;</span> <span class="special">&gt;;</span>
+
+  <span class="keyword">mutable</span> <span class="identifier">headers_container_type</span> <span class="identifier">headers_</span><span class="special">;</span>
+  <span class="keyword">mutable</span> <span class="identifier">string_type</span> <span class="identifier">body_</span><span class="special">;</span>
+  <span class="keyword">mutable</span> <span class="identifier">string_type</span> <span class="identifier">source_</span><span class="special">;</span>
+  <span class="keyword">mutable</span> <span class="identifier">string_type</span> <span class="identifier">destination_</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        This container is the base class template used to represent HTTP messages.
+        It uses a "tag" type style specializations for a variety of trait
+        classes, allowing for customization of the various parts of the message.
+        For example, a user specializes <code class="computeroutput"><span class="identifier">headers_container</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+        to determine what container type holds the header fields. We note some problems
+        with the container declaration:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The header and body containers may only be default-constructed.
+          </li>
+<li class="listitem">
+            No stateful allocator support.
+          </li>
+<li class="listitem">
+            There is no way to defer the commitment of the type for <code class="computeroutput"><span class="identifier">body_</span></code> to after the headers are read
+            in.
+          </li>
+<li class="listitem">
+            The message model includes a "source" and "destination."
+            This is extraneous metadata associated with the connection which is not
+            part of the HTTP protocol specification and belongs elsewhere.
+          </li>
+<li class="listitem">
+            The use of <code class="computeroutput"><span class="identifier">string_type</span></code>
+            (a customization point) for source, destination, and body suggests that
+            <code class="computeroutput"><span class="identifier">string_type</span></code> models a
+            <span class="bold"><strong>ForwardRange</strong></span> whose <code class="computeroutput"><span class="identifier">value_type</span></code>
+            is <code class="computeroutput"><span class="keyword">char</span></code>. This representation
+            is less than ideal, considering that the library is built on Boost.Asio.
+            Adapting a <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+            to the required forward range destroys information conveyed by the <a href="../../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="emphasis"><em>ConstBufferSequence</em></span></a>
+            and <a href="../../../../../../doc/html/boost_asio/reference/MutableBufferSequence.html" target="_top"><span class="emphasis"><em>MutableBufferSequence</em></span></a>
+            used in dynamic buffers. The consequence is that cpp-netlib implementations
+            will be less efficient than an equivalent <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4771.pdf" target="_top">Networking
+            TS</a> conforming implementation.
+          </li>
+<li class="listitem">
+            The library uses specializations of <code class="computeroutput"><span class="identifier">string</span><span class="special">&lt;</span><span class="identifier">Tag</span><span class="special">&gt;</span></code> to change the type of string used
+            everywhere, including the body, field name and value pairs, and extraneous
+            metadata such as source and destination. The user may only choose a single
+            type: field name, field values, and the body container will all use the
+            same string type. This limits utility of the customization point. The
+            library's use of the string trait is limited to selecting between <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">wstring</span></code>.
+            We do not find this use-case compelling given the limitations.
+          </li>
+<li class="listitem">
+            The specialized trait classes generate a proliferation of small additional
+            framework types. To specialize traits, users need to exit their namespace
+            and intrude into the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">network</span><span class="special">::</span><span class="identifier">http</span></code>
+            namespace. The way the traits are used in the library limits the usefulness
+            of the traits to trivial purpose.
+          </li>
+<li class="listitem">
+            The `string&lt;Tag&gt; customization point constrains user defined body
+            types to few possible strategies. There is no way to represent an HTTP
+            message body as a filename with accompanying algorithms to store or retrieve
+            data from the file system.
+          </li>
+</ul></div>
+<p>
+        The design of the message container in this library is cumbersome with its
+        system of customization using trait specializations. The use of these customizations
+        is extremely limited due to the way they are used in the container declaration,
+        making the design overly complex without corresponding benefit.
+      </p>
+<h5>
+<a name="beast.design_choices.http_comparison_to_other_librari.h1"></a>
+        <span class="phrase"><a name="beast.design_choices.http_comparison_to_other_librari.boost_http"></a></span><a class="link" href="http_comparison_to_other_librari.html#beast.design_choices.http_comparison_to_other_librari.boost_http">Boost.HTTP</a>
+      </h5>
+<p>
+        <a href="https://github.com/BoostGSoC14/boost.http/tree/45fc1aa828a9e3810b8d87e669b7f60ec100bff4" target="_top"><span class="bold"><strong>boost.http</strong></span></a> is a library resulting from the
+        2014 Google Summer of Code. It was submitted for a Boost formal review and
+        rejected in 2015. It is based on Boost.Asio, and development on the library
+        has continued to the present. As of the branch previously linked, it uses
+        these message declarations:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Headers</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">basic_message</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">Headers</span> <span class="identifier">headers_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">Body</span> <span class="identifier">body_type</span><span class="special">;</span>
+
+    <span class="identifier">headers_type</span> <span class="special">&amp;</span><span class="identifier">headers</span><span class="special">();</span>
+
+    <span class="keyword">const</span> <span class="identifier">headers_type</span> <span class="special">&amp;</span><span class="identifier">headers</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="identifier">body_type</span> <span class="special">&amp;</span><span class="identifier">body</span><span class="special">();</span>
+
+    <span class="keyword">const</span> <span class="identifier">body_type</span> <span class="special">&amp;</span><span class="identifier">body</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="identifier">headers_type</span> <span class="special">&amp;</span><span class="identifier">trailers</span><span class="special">();</span>
+
+    <span class="keyword">const</span> <span class="identifier">headers_type</span> <span class="special">&amp;</span><span class="identifier">trailers</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">headers_type</span> <span class="identifier">headers_</span><span class="special">;</span>
+    <span class="identifier">body_type</span> <span class="identifier">body_</span><span class="special">;</span>
+    <span class="identifier">headers_type</span> <span class="identifier">trailers_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">typedef</span> <span class="identifier">basic_message</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">headers</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint8_t</span><span class="special">&gt;&gt;</span> <span class="identifier">message</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Headers</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">is_message</span><span class="special">&lt;</span><span class="identifier">basic_message</span><span class="special">&lt;</span><span class="identifier">Headers</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">&gt;&gt;:</span> <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">true_type</span> <span class="special">{};</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+<p class="simpara">
+            This container cannot model a complete message. The <span class="emphasis"><em>start-line</em></span>
+            items (method and target for requests, reason-phrase for responses) are
+            communicated out of band, as is the <span class="emphasis"><em>http-version</em></span>.
+            A function that operates on the message including the start line requires
+            additional parameters. This is evident in one of the <a href="https://github.com/BoostGSoC14/boost.http/blob/45fc1aa828a9e3810b8d87e669b7f60ec100bff4/example/basic_router.cpp#L81" target="_top">example
+            programs</a>. The <code class="computeroutput"><span class="number">500</span></code>
+            and <code class="computeroutput"><span class="string">"OK"</span></code> arguments
+            represent the response <span class="emphasis"><em>status-code</em></span> and <span class="emphasis"><em>reason-phrase</em></span>
+            respectively:
+          </p>
+<pre class="programlisting"><span class="special">...</span>
+<span class="identifier">http</span><span class="special">::</span><span class="identifier">message</span> <span class="identifier">reply</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="identifier">self</span><span class="special">-&gt;</span><span class="identifier">socket</span><span class="special">.</span><span class="identifier">async_write_response</span><span class="special">(</span><span class="number">500</span><span class="special">,</span> <span class="identifier">string_ref</span><span class="special">(</span><span class="string">"OK"</span><span class="special">),</span> <span class="identifier">reply</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">);</span>
+</pre>
+</li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">headers_</span></code>, <code class="computeroutput"><span class="identifier">body_</span></code>, and <code class="computeroutput"><span class="identifier">trailers_</span></code>
+            may only be default-constructed, since there are no explicitly declared
+            constructors.
+          </li>
+<li class="listitem">
+            There is no way to defer the commitment of the <span class="bold"><strong>Body</strong></span>
+            type to after the headers are read in. This is related to the previous
+            limitation on default-construction.
+          </li>
+<li class="listitem">
+            No stateful allocator support. This follows from the previous limitation
+            on default-construction. Buffers for start-line strings must be managed
+            externally from the message object since they are not members.
+          </li>
+<li class="listitem">
+            The trailers are stored in a separate object. Aside from the combinatorial
+            explosion of the number of additional constructors necessary to fully
+            support arbitrary forwarded parameter lists for each of the headers,
+            body, and trailers members, the requirement to know in advance whether
+            a particular HTTP field will be located in the headers or the trailers
+            poses an unnecessary complication for general purpose functions that
+            operate on messages.
+          </li>
+<li class="listitem">
+            The declarations imply that <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code>
+            is a model of <span class="bold"><strong>Body</strong></span>. More formally, that
+            a body is represented by the <span class="bold"><strong>ForwardRange</strong></span>
+            concept whose <code class="computeroutput"><span class="identifier">value_type</span></code>
+            is an 8-bit integer. This representation is less than ideal, considering
+            that the library is built on Boost.Asio. Adapting a <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+            to the required forward range destroys information conveyed by the <a href="../../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="emphasis"><em>ConstBufferSequence</em></span></a>
+            and <a href="../../../../../../doc/html/boost_asio/reference/MutableBufferSequence.html" target="_top"><span class="emphasis"><em>MutableBufferSequence</em></span></a>
+            used in dynamic buffers. The consequence is that Boost.HTTP implementations
+            will be less efficient when dealing with body containers than an equivalent
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4771.pdf" target="_top">Networking
+            TS</a> conforming implementation.
+          </li>
+<li class="listitem">
+            The <span class="bold"><strong>Body</strong></span> customization point constrains
+            user defined types to very limited implementation strategies. For example,
+            there is no way to represent an HTTP message body as a filename with
+            accompanying algorithms to store or retrieve data from the file system.
+          </li>
+</ul></div>
+<p>
+        This representation addresses a narrow range of use cases. It has limited
+        potential for customization and performance. It is more difficult to use
+        because it excludes the start line fields from the model.
+      </p>
+<h5>
+<a name="beast.design_choices.http_comparison_to_other_librari.h2"></a>
+        <span class="phrase"><a name="beast.design_choices.http_comparison_to_other_librari.c_rest_sdk_cpprestsdk"></a></span><a class="link" href="http_comparison_to_other_librari.html#beast.design_choices.http_comparison_to_other_librari.c_rest_sdk_cpprestsdk">C++
+        REST SDK (cpprestsdk)</a>
+      </h5>
+<p>
+        <a href="https://github.com/Microsoft/cpprestsdk/tree/381f5aa92d0dfb59e37c0c47b4d3771d8024e09a" target="_top"><span class="bold"><strong>cpprestsdk</strong></span></a> is a Microsoft project which <span class="emphasis"><em>"...aims
+        to help C++ developers connect to and interact with services"</em></span>.
+        It offers the most functionality of the libraries reviewed here, including
+        support for Websocket services using its websocket++ dependency. It can use
+        native APIs such as HTTP.SYS when building Windows based applications, and
+        it can use Boost.Asio. The WebSocket module uses Boost.Asio exclusively.
+      </p>
+<p>
+        As cpprestsdk is developed by a large corporation, it contains quite a bit
+        of functionality and necessarily has more interfaces. We will break down
+        the interfaces used to model messages into more manageable pieces. This is
+        the container used to store the HTTP header fields:
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">http_headers</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="special">...</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">utility</span><span class="special">::</span><span class="identifier">string_t</span><span class="special">,</span> <span class="identifier">utility</span><span class="special">::</span><span class="identifier">string_t</span><span class="special">,</span> <span class="identifier">_case_insensitive_cmp</span><span class="special">&gt;</span> <span class="identifier">m_headers</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        This declaration is quite bare-bones. We note the typical problems of most
+        field containers:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The container may only be default-constructed.
+          </li>
+<li class="listitem">
+            No support for allocators, stateful or otherwise.
+          </li>
+<li class="listitem">
+            There are no customization points at all.
+          </li>
+</ul></div>
+<p>
+        Now we analyze the structure of the larger message container. The library
+        uses a handle/body idiom. There are two public message container interfaces,
+        one for requests (<code class="computeroutput"><span class="identifier">http_request</span></code>)
+        and one for responses (<code class="computeroutput"><span class="identifier">http_response</span></code>).
+        Each interface maintains a private shared pointer to an implementation class.
+        Public member function calls are routed to the internal implementation. This
+        is the first implementation class, which forms the base class for both the
+        request and response implementations:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">details</span> <span class="special">{</span>
+
+<span class="keyword">class</span> <span class="identifier">http_msg_base</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">http_headers</span> <span class="special">&amp;</span><span class="identifier">headers</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">m_headers</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="identifier">_ASYNCRTIMP</span> <span class="keyword">void</span> <span class="identifier">set_body</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">istream</span> <span class="special">&amp;</span><span class="identifier">instream</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">utf8string</span> <span class="special">&amp;</span><span class="identifier">contentType</span><span class="special">);</span>
+
+    <span class="comment">/// Set the stream through which the message body could be read</span>
+    <span class="keyword">void</span> <span class="identifier">set_instream</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">istream</span> <span class="special">&amp;</span><span class="identifier">instream</span><span class="special">)</span>  <span class="special">{</span> <span class="identifier">m_inStream</span> <span class="special">=</span> <span class="identifier">instream</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="comment">/// Set the stream through which the message body could be written</span>
+    <span class="keyword">void</span> <span class="identifier">set_outstream</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="identifier">outstream</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">is_default</span><span class="special">)</span>  <span class="special">{</span> <span class="identifier">m_outStream</span> <span class="special">=</span> <span class="identifier">outstream</span><span class="special">;</span> <span class="identifier">m_default_outstream</span> <span class="special">=</span> <span class="identifier">is_default</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">const</span> <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">task_completion_event</span><span class="special">&lt;</span><span class="identifier">utility</span><span class="special">::</span><span class="identifier">size64_t</span><span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">_get_data_available</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">m_data_available</span><span class="special">;</span> <span class="special">}</span>
+
+<span class="keyword">protected</span><span class="special">:</span>
+    <span class="comment">/// Stream to read the message body.</span>
+    <span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">istream</span> <span class="identifier">m_inStream</span><span class="special">;</span>
+
+    <span class="comment">/// stream to write the msg body</span>
+    <span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">ostream</span> <span class="identifier">m_outStream</span><span class="special">;</span>
+
+    <span class="identifier">http_headers</span> <span class="identifier">m_headers</span><span class="special">;</span>
+    <span class="keyword">bool</span> <span class="identifier">m_default_outstream</span><span class="special">;</span>
+
+    <span class="comment">/// &lt;summary&gt; The TCE is used to signal the availability of the message body. &lt;/summary&gt;</span>
+    <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">task_completion_event</span><span class="special">&lt;</span><span class="identifier">utility</span><span class="special">::</span><span class="identifier">size64_t</span><span class="special">&gt;</span> <span class="identifier">m_data_available</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        To understand these declarations we need to first understand that cpprestsdk
+        uses the asynchronous model defined by Microsoft's <a href="https://msdn.microsoft.com/en-us/library/dd504870.aspx" target="_top"><span class="bold"><strong>Concurrency Runtime</strong></span></a>. Identifiers from the
+        <a href="https://msdn.microsoft.com/en-us/library/jj987780.aspx" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">pplx</span></code> namespace</strong></span></a>
+        define common asynchronous patterns such as tasks and events. The <code class="computeroutput"><span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">istream</span></code> parameter and <code class="computeroutput"><span class="identifier">m_data_available</span></code>
+        data member indicates a lack of separation of concerns. The representation
+        of HTTP messages should not be conflated with the asynchronous model used
+        to serialize or parse those messages in the message declarations.
+      </p>
+<p>
+        The next declaration forms the complete implementation class referenced by
+        the handle in the public interface (which follows after):
+      </p>
+<pre class="programlisting"><span class="comment">/// Internal representation of an HTTP request message.</span>
+<span class="keyword">class</span> <span class="identifier">_http_request</span> <span class="identifier">final</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">details</span><span class="special">::</span><span class="identifier">http_msg_base</span><span class="special">,</span> <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_shared_from_this</span><span class="special">&lt;</span><span class="identifier">_http_request</span><span class="special">&gt;</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">_ASYNCRTIMP</span> <span class="identifier">_http_request</span><span class="special">(</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">method</span> <span class="identifier">mtd</span><span class="special">);</span>
+
+    <span class="identifier">_ASYNCRTIMP</span> <span class="identifier">_http_request</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_ptr</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">details</span><span class="special">::</span><span class="identifier">_http_server_context</span><span class="special">&gt;</span> <span class="identifier">server_context</span><span class="special">);</span>
+
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">method</span> <span class="special">&amp;</span><span class="identifier">method</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">m_method</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="keyword">const</span> <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">cancellation_token</span> <span class="special">&amp;</span><span class="identifier">cancellation_token</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">m_cancellationToken</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="identifier">_ASYNCRTIMP</span> <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">task</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;</span> <span class="identifier">reply</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">http_response</span> <span class="special">&amp;</span><span class="identifier">response</span><span class="special">);</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+
+    <span class="comment">// Actual initiates sending the response, without checking if a response has already been sent.</span>
+    <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">task</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;</span> <span class="identifier">_reply_impl</span><span class="special">(</span><span class="identifier">http_response</span> <span class="identifier">response</span><span class="special">);</span>
+
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">method</span> <span class="identifier">m_method</span><span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">progress_handler</span><span class="special">&gt;</span> <span class="identifier">m_progress_handler</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}</span> <span class="comment">// namespace details</span>
+</pre>
+<p>
+        As before, we note that the implementation class for HTTP requests concerns
+        itself more with the mechanics of sending the message asynchronously than
+        it does with actually modeling the HTTP message as described in <a href="https://tools.ietf.org/html/rfc7230" target="_top">rfc7230</a>:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The constructor accepting <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_ptr</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">details</span><span class="special">::</span><span class="identifier">_http_server_context</span></code>
+            breaks encapsulation and separation of concerns. This cannot be extended
+            for user defined server contexts.
+          </li>
+<li class="listitem">
+            The "cancellation token" is stored inside the message. This
+            breaks the separation of concerns.
+          </li>
+<li class="listitem">
+            The <code class="computeroutput"><span class="identifier">_reply_impl</span></code> function
+            implies that the message implementation also shares responsibility for
+            the means of sending back an HTTP reply. This would be better if it was
+            completely separate from the message container.
+          </li>
+</ul></div>
+<p>
+        Finally, here is the public class which represents an HTTP request:
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">http_request</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">const</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">method</span> <span class="special">&amp;</span><span class="identifier">method</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">_m_impl</span><span class="special">-&gt;</span><span class="identifier">method</span><span class="special">();</span> <span class="special">}</span>
+
+    <span class="keyword">void</span> <span class="identifier">set_method</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">method</span> <span class="special">&amp;</span><span class="identifier">method</span><span class="special">)</span> <span class="keyword">const</span> <span class="special">{</span> <span class="identifier">_m_impl</span><span class="special">-&gt;</span><span class="identifier">method</span><span class="special">()</span> <span class="special">=</span> <span class="identifier">method</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="comment">/// Extract the body of the request message as a string value, checking that the content type is a MIME text type.</span>
+    <span class="comment">/// A body can only be extracted once because in some cases an optimization is made where the data is 'moved' out.</span>
+    <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">task</span><span class="special">&lt;</span><span class="identifier">utility</span><span class="special">::</span><span class="identifier">string_t</span><span class="special">&gt;</span> <span class="identifier">extract_string</span><span class="special">(</span><span class="keyword">bool</span> <span class="identifier">ignore_content_type</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">auto</span> <span class="identifier">impl</span> <span class="special">=</span> <span class="identifier">_m_impl</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">create_task</span><span class="special">(</span><span class="identifier">_m_impl</span><span class="special">-&gt;</span><span class="identifier">_get_data_available</span><span class="special">()).</span><span class="identifier">then</span><span class="special">([</span><span class="identifier">impl</span><span class="special">,</span> <span class="identifier">ignore_content_type</span><span class="special">](</span><span class="identifier">utility</span><span class="special">::</span><span class="identifier">size64_t</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">impl</span><span class="special">-&gt;</span><span class="identifier">extract_string</span><span class="special">(</span><span class="identifier">ignore_content_type</span><span class="special">);</span> <span class="special">});</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Extracts the body of the request message into a json value, checking that the content type is application/json.</span>
+    <span class="comment">/// A body can only be extracted once because in some cases an optimization is made where the data is 'moved' out.</span>
+    <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">task</span><span class="special">&lt;</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value</span><span class="special">&gt;</span> <span class="identifier">extract_json</span><span class="special">(</span><span class="keyword">bool</span> <span class="identifier">ignore_content_type</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">auto</span> <span class="identifier">impl</span> <span class="special">=</span> <span class="identifier">_m_impl</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">pplx</span><span class="special">::</span><span class="identifier">create_task</span><span class="special">(</span><span class="identifier">_m_impl</span><span class="special">-&gt;</span><span class="identifier">_get_data_available</span><span class="special">()).</span><span class="identifier">then</span><span class="special">([</span><span class="identifier">impl</span><span class="special">,</span> <span class="identifier">ignore_content_type</span><span class="special">](</span><span class="identifier">utility</span><span class="special">::</span><span class="identifier">size64_t</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">impl</span><span class="special">-&gt;</span><span class="identifier">_extract_json</span><span class="special">(</span><span class="identifier">ignore_content_type</span><span class="special">);</span> <span class="special">});</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Sets the body of the message to the contents of a byte vector. If the 'Content-Type'</span>
+    <span class="keyword">void</span> <span class="identifier">set_body</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">char</span><span class="special">&gt;</span> <span class="special">&amp;</span><span class="identifier">body_data</span><span class="special">);</span>
+
+    <span class="comment">/// Defines a stream that will be relied on to provide the body of the HTTP message when it is</span>
+    <span class="comment">/// sent.</span>
+    <span class="keyword">void</span> <span class="identifier">set_body</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">istream</span> <span class="special">&amp;</span><span class="identifier">stream</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">utility</span><span class="special">::</span><span class="identifier">string_t</span> <span class="special">&amp;</span><span class="identifier">content_type</span> <span class="special">=</span> <span class="identifier">_XPLATSTR</span><span class="special">(</span><span class="string">"application/octet-stream"</span><span class="special">));</span>
+
+    <span class="comment">/// Defines a stream that will be relied on to hold the body of the HTTP response message that</span>
+    <span class="comment">/// results from the request.</span>
+    <span class="keyword">void</span> <span class="identifier">set_response_stream</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="identifier">stream</span><span class="special">);</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">_m_impl</span><span class="special">-&gt;</span><span class="identifier">set_response_stream</span><span class="special">(</span><span class="identifier">stream</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Defines a callback function that will be invoked for every chunk of data uploaded or downloaded</span>
+    <span class="comment">/// as part of the request.</span>
+    <span class="keyword">void</span> <span class="identifier">set_progress_handler</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">progress_handler</span> <span class="special">&amp;</span><span class="identifier">handler</span><span class="special">);</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">details</span><span class="special">::</span><span class="identifier">_http_request</span><span class="special">;</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">http_client</span><span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">details</span><span class="special">::</span><span class="identifier">_http_request</span><span class="special">&gt;</span> <span class="identifier">_m_impl</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        It is clear from this declaration that the goal of the message model in this
+        library is driven by its use-case (interacting with REST servers) and not
+        to model HTTP messages generally. We note problems similar to the other declarations:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            There are no compile-time customization points at all. The only customization
+            is in the <code class="computeroutput"><span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">istream</span></code>
+            and <code class="computeroutput"><span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">ostream</span></code> reference parameters. Presumably,
+            these are abstract interfaces which may be subclassed by users to achieve
+            custom behaviors.
+          </li>
+<li class="listitem">
+            The extraction of the body is conflated with the asynchronous model.
+          </li>
+<li class="listitem">
+            No way to define an allocator for the container used when extracting
+            the body.
+          </li>
+<li class="listitem">
+            A body can only be extracted once, limiting the use of this container
+            when using a functional programming style.
+          </li>
+<li class="listitem">
+            Setting the body requires either a vector or a <code class="computeroutput"><span class="identifier">concurrency</span><span class="special">::</span><span class="identifier">streams</span><span class="special">::</span><span class="identifier">istream</span></code>.
+            No user defined types are possible.
+          </li>
+<li class="listitem">
+            The HTTP request container conflates HTTP response behavior (see the
+            <code class="computeroutput"><span class="identifier">set_response_stream</span></code> member).
+            Again this is likely purpose-driven but the lack of separation of concerns
+            limits this library to only the uses explicitly envisioned by the authors.
+          </li>
+</ul></div>
+<p>
+        The general theme of the HTTP message model in cpprestsdk is "no user
+        definable customizations". There is no allocator support, and no separation
+        of concerns. It is designed to perform a specific set of behaviors. In other
+        words, it does not follow the open/closed principle.
+      </p>
+<p>
+        Tasks in the Concurrency Runtime operate in a fashion similar to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span></code>,
+        but with some improvements such as continuations which are not yet in the
+        C++ standard. The costs of using a task based asynchronous interface instead
+        of completion handlers is well documented: synchronization points along the
+        call chain of composed task operations which cannot be optimized away. See:
+        <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3747.pdf" target="_top"><span class="bold"><strong>A Universal Model for Asynchronous Operations</strong></span></a>
+        (Kohlhoff).
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_message_container.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_choices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="comparison_to_zaphoyd_studios_we.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

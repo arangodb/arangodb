@@ -1,6 +1,14 @@
 devel
 -----
 
+* Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
+
+* Updated Enterprise license behavior: now there will be a 48 hour period for a
+  new deployment and upgrade decision to provide the license. After that period,
+  the read-only mode will be enforced.
+  Upgrade procedure for a deployment without license will not take upgrade
+  period into account for the read-only mode will enforcement.
+
 * Added agency push-queue operation
 
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
@@ -54,9 +62,9 @@ devel
   counts and index estimates as part of AQL queries. The cached info is used in
   cluster query execution plans only and is not required to be fully up-to-date.
 
-* When creating a new database the value of the write concern has to be smaller
-  or equal to the replication factor. Otherwise an error message will be displayed
-  and no database will be created.
+* BTS-590: When creating a new database in Web UI the value of the write concern
+  has to be smaller or equal to the replication factor. Otherwise an error
+  message will be displayed and no database will be created.
   
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.

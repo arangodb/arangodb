@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>In use - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/app-map-tidylib.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/conclusion.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">In use</h1></div></div></div>
+  <p>This is how you might now write application code using these three libraries:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">namespace</span> <span class="n">app</span>
+<span class="p">{</span>
+  <span class="c1">// A markup function to indicate when we are ValueOrError converting
+</span><span class="c1"></span>  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="o">&gt;</span> <span class="kr">inline</span> <span class="n">outcome</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">::</span><span class="n">value_type</span><span class="o">&gt;</span> <span class="n">ext</span><span class="p">(</span><span class="n">T</span> <span class="o">&amp;&amp;</span><span class="n">v</span><span class="p">)</span>
+  <span class="p">{</span>  <span class="c1">//
+</span><span class="c1"></span>    <span class="k">return</span> <span class="n">outcome</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">::</span><span class="n">value_type</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">v</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="n">outcome</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">go</span><span class="p">()</span>  <span class="c1">// NOT noexcept, this can throw STL exceptions e.g. bad_alloc
+</span><span class="c1"></span>  <span class="p">{</span>
+    <span class="c1">// Note that explicit construction is required when converting between differing types
+</span><span class="c1"></span>    <span class="c1">// of outcome and result. This makes it explicit what you intend to do as conversion
+</span><span class="c1"></span>    <span class="c1">// may be a lot more expensive than moves.
+</span><span class="c1"></span>
+    <span class="c1">// Try to GET this URL. If an unsuccessful HTTP status is returned, serialise a string
+</span><span class="c1"></span>    <span class="c1">// containing a description of the HTTP status code and the URL which failed, storing
+</span><span class="c1"></span>    <span class="c1">// that into a httplib_error exception type which is stored as an exception ptr. The
+</span><span class="c1"></span>    <span class="c1">// TRY operation below will return that exception ptr to be rethrown in the caller.
+</span><span class="c1"></span>    <span class="c1">// Otherwise the fetched data is returned in a std::string data.
+</span><span class="c1"></span>    <span class="n">BOOST_OUTCOME_TRY</span><span class="p">(</span><span class="k">auto</span> <span class="n">data</span><span class="p">,</span> <span class="n">ext</span><span class="p">(</span><span class="n">httplib</span><span class="o">::</span><span class="n">get</span><span class="p">(</span><span class="s">&#34;http://www.nedproductions.biz/&#34;</span><span class="p">)));</span>
+    <span class="n">string_view</span> <span class="nf">data_view</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
+
+    <span class="c1">// HTML tidy the fetched data. If the C library fails due to an error corresponding to
+</span><span class="c1"></span>    <span class="c1">// a standard library exception type, throw that. Otherwise, synthesise an exception
+</span><span class="c1"></span>    <span class="c1">// ptr of type tidylib_error which stores the error code returned in an error code with
+</span><span class="c1"></span>    <span class="c1">// generic category (i.e. errno domain).
+</span><span class="c1"></span>    <span class="c1">// TRY operation below will return that exception ptr to be rethrown in the caller.
+</span><span class="c1"></span>    <span class="c1">// Otherwise the tidied data is returned into holdmem, with the string view updated to
+</span><span class="c1"></span>    <span class="c1">// point at the tidied data.
+</span><span class="c1"></span>    <span class="n">BOOST_OUTCOME_TRY</span><span class="p">(</span><span class="k">auto</span> <span class="n">holdmem</span><span class="p">,</span> <span class="n">ext</span><span class="p">(</span><span class="n">tidy_html</span><span class="p">(</span><span class="n">data_view</span><span class="p">)));</span>
+
+    <span class="c1">// Write the tidied data to some file. If the write fails, synthesise a filesystem_error
+</span><span class="c1"></span>    <span class="c1">// exception ptr exactly as if one called filelib::write_file(data_view).value().
+</span><span class="c1"></span>    <span class="n">BOOST_OUTCOME_TRY</span><span class="p">(</span><span class="k">auto</span> <span class="n">written</span><span class="p">,</span> <span class="n">ext</span><span class="p">(</span><span class="n">filelib</span><span class="o">::</span><span class="n">write_file</span><span class="p">(</span><span class="n">data_view</span><span class="p">)));</span>
+    <span class="k">return</span> <span class="nf">success</span><span class="p">();</span>
+  <span class="p">}</span>
+<span class="p">}</span>  <span class="c1">// namespace app
+</span><span class="c1"></span></code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/finale.cpp#L377" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>The curiosity will be surely the <code>ext()</code> markup function, which needs
+explaining. It was felt
+important during Outcome&rsquo;s design that <code>value_or_error</code> conversions never
+be implicit, as they almost always represent a transition across an
+ABI or semantic boundary. They are also usually non-trivial to implement
+and compile, and it was felt important that the programmer ought to
+always mark the semantic boundary transition at the point of every use,
+as considerable amounts of code may execute.</p>
+
+<p>How the end user chooses to mark up their code is up to them, however
+above we use a simple <code>ext()</code> function to mark up that the function
+being called is <em>external</em> to the application. This ticks our box of
+requiring the documentation, at the point of use, of every transition
+in failure handling boundaries.</p>
+
+<p>Note that we are able to use <code>TRY</code> as normal throughout this function.
+Everything &ldquo;just works&rdquo;.</p>
+
+<p>And most especially note that we never, <strong>at any stage</strong>, needed to modify
+the source code of <code>httplib</code>, <code>tidylib</code> nor <code>filelib</code>, nor inject
+custom things into their namespaces. This entire worked example was
+achieved solely by <code>app</code> based customisation points, and via <code>convert</code>.</p>
+
+
+        </div><p><small>Last revised: December 15, 2020 at 12:22:39 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/app-map-tidylib.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/conclusion.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

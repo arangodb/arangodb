@@ -1,0 +1,448 @@
+[/
+ / Copyright (c) 2012 Marshall Clow
+ / Copyright (c) 2021, Alan Freitas
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[/===============]
+[section Call Traits]
+[/===============]
+
+[section Introduction]
+
+All of the contents of [@../../../include/boost/call_traits.hpp `<boost/call_traits.hpp>`] are
+defined inside `namespace boost`.
+
+The template class __call_traits_T__ encapsulates the
+"best" method to pass a parameter of some type `T` to or
+from a function, and consists of a collection of `typedef`s defined
+as in the table below. The purpose of __call_traits__ is to ensure
+that problems like [link sec:refs "references to references"]
+never occur, and that parameters are passed in the most efficient
+manner possible, as in the [link sec:examples examples]. In each
+case, if your existing practice is to use the type defined on the
+left, then replace it with the __call_traits__ defined type on the
+right.
+
+Note that for compilers that do not support either partial
+specialization or member templates, no benefit will occur from
+using __call_traits__: the __call_traits__ defined types will always be
+the same as the existing practice in this case. In addition if
+only member templates and not partial template specialisation is
+support by the compiler (for example Visual C++ 6) then
+__call_traits__ cannot be used with array types, although it can still be
+used to solve the reference to reference problem.
+
+[table __call_traits__ types
+    [[Existing practice] [__call_traits__ equivalent] [Description] [Notes]]
+    [
+        [`T`
+
+          (return by value)
+        ]
+        [
+            __call_traits_T__`::value_type`
+        ]
+        [
+            Defines a type that represents the "value" of type `T`.
+
+            Use this for functions that return by value, or possibly for stored values of type `T`.
+        ]
+        [2]
+    ]
+    [
+        [`T&`
+
+          (return value)
+        ]
+        [
+            __call_traits_T__`::reference`
+        ]
+        [
+            Defines a type that represents a reference to type `T`.
+
+            Use for functions that would normally return a `T&`.
+        ]
+        [1]
+    ]
+    [
+        [`const T&`
+
+          (return value)
+        ]
+        [
+            __call_traits_T__`::const_reference`
+        ]
+        [
+            Defines a type that represents a constant reference to type `T`.
+
+            Use for functions that would normally return a `const T&`.
+        ]
+        [1]
+    ]
+    [
+        [`const T&`
+
+          (function parameter)
+        ]
+        [
+            __call_traits_T__`::param_type`
+        ]
+        [
+            Defines a type that represents the "best" way to pass a parameter of type `T` to a function.
+        ]
+        [1,3]
+    ]
+]
+
+Notes:
+
+# If `T` is already reference type, then __call_traits__ is
+        defined such that [link sec:refs "references to references"]
+        do not occur (requires partial specialization).
+# If `T` is an array type, then __call_traits__ defines `value_type`
+        as a "constant pointer to type" rather than an
+        "array of type" (requires partial specialization).
+        Note that if you are using `value_type` as a stored value
+        then this will result in storing a "constant pointer to
+        an array" rather than the array itself. This may or may
+        not be a good thing depending upon what you actually
+        need (in other words take care!).
+# If `T` is a small built in type or a pointer, then `param_type`
+        is defined as `T const`, instead of `T const&`. This can
+        improve the ability of the compiler to optimize loops in
+        the body of the function if they depend upon the passed
+        parameter, the semantics of the passed parameter is
+        otherwise unchanged (requires partial specialization).
+
+
+[endsect]
+[section Copy constructibility]
+
+The following table defines which __call_traits__ types can always
+be copy-constructed from which other types:
+
+[table Which __call_traits__ types can always be copy-constructed from which other types
+    [[]          [To `T`] [To `value_type`] [To `reference`] [To `const_reference`] [To `param_type`]]
+    [[From `T`]    [iff `T` is copy constructible] [iff `T` is copy constructible] [Yes] [Yes] [Yes]]
+    [[From `value_type`]    [iff `T` is copy constructible] [iff `T` is copy constructible] [No] [No] [Yes]]
+    [[From `reference`]    [iff `T` is copy constructible] [iff `T` is copy constructible] [Yes] [Yes] [Yes]]
+    [[From `const_reference`]    [iff `T` is copy constructible] [No] [No] [Yes] [Yes]]
+    [[From `param_type`]    [iff `T` is copy constructible] [iff `T` is copy constructible] [No] [No] [Yes]]
+]
+
+If `T` is an assignable type the following assignments are possible:
+
+[table Which __call_traits__ types are assignable from which other types
+    [[]          [To `T`] [To `value_type`] [To `reference`] [To `const_reference`] [To `param_type`]]
+    [[From `T`]    [Yes] [Yes] [-] [-] [-]]
+    [[From `value_type`]    [Yes] [Yes] [-] [-] [-]]
+    [[From `reference`]    [Yes] [Yes] [-] [-] [-]]
+    [[From `const_reference`]    [Yes] [Yes] [-] [-] [-]]
+    [[From `param_type`]    [Yes] [Yes] [-] [-] [-]]
+]
+[endsect]
+
+[#sec:examples]
+[section Examples]
+
+The following table shows the effect that __call_traits__ has on
+various types.
+
+[table Examples of __call_traits__ types
+    [[]          [__call_traits__::`value_type`] [__call_traits__::`reference`] [__call_traits__::`const_reference`] [__call_traits__::`param_type`] [Applies to:]]
+    [[From `my_class`]    [`my_class`] [`my_class&`] [`const my_class&`] [`my_class const&`] [All user-defined types]]
+    [[From `int`]    [`int`] [`int&`] [`const int&`] [`int const`] [All small built-in types]]
+    [[From `int*`]    [`int*`] [`int*&`] [`int* const &`] [`int* const`] [All pointer types]]
+    [[From `int&`]    [`int&`] [`int&`] [`const int&`] [`int&`] [All reference types]]
+    [[From `const int&`]    [`const int&`] [`const int&`] [`const int&`] [`const int&`] [All constant reference types]]
+    [[From `int[3]`]    [`const int*`] [`int(&)[3]`] [`const int(&)[3]`] [`const int* const`] [All array types]]
+    [[From `const int[3]`]    [`const int*`] [`const int(&)[3]`] [`const int(&)[3]`] [`const int *const`] [All constant array types]]
+]
+
+The table assumes the compiler supports partial
+specialization: if it does not then all types behave in
+the same way as the entry for "`my_class`", and
+__call_traits__ can not be used with reference or array types.
+
+[section Example 1:]
+
+The following class is a trivial class that stores some type `T`
+by value (see the [@../../../test/call_traits_test.cpp `call_traits_test.cpp`]
+file). The aim is to illustrate how each of the available
+__call_traits__ `typedef`s may be used:
+
+```
+template <class T>
+struct contained
+{
+   // define our typedefs first, arrays are stored by value
+   // so value_type is not the same as result_type:
+   typedef typename __boost_call_traits__<T>::param_type       param_type;
+   typedef typename __boost_call_traits__<T>::reference        reference;
+   typedef typename __boost_call_traits__<T>::const_reference  const_reference;
+   typedef T                                                value_type;
+   typedef typename __boost_call_traits__<T>::value_type       result_type;
+
+   // stored value:
+   value_type v_;
+
+   // constructors:
+   contained() {}
+   contained(param_type p) : v_(p){}
+   // return byval:
+   result_type value() { return v_; }
+   // return by_ref:
+   reference get() { return v_; }
+   const_reference const_get()const { return v_; }
+   // pass value:
+   void call(param_type p){}
+
+};
+```
+[endsect]
+
+[#sec:refs]
+[section Example 2 (the reference to reference problem):]
+
+Consider the definition of __std_binder1st__:
+
+```
+template <class Operation>
+class binder1st :
+   public __std_unary_function__<typename Operation::second_argument_type, typename Operation::result_type>
+{
+protected:
+   Operation op;
+   typename Operation::first_argument_type value;
+public:
+   binder1st(const Operation& x, const typename Operation::first_argument_type& y);
+   typename Operation::result_type operator()(const typename Operation::second_argument_type& x) const;
+};
+```
+
+Now consider what happens in the relatively common case that
+the functor takes its second argument as a reference, that
+implies that `Operation::second_argument_type` is a
+reference type, `operator()` will now end up taking a
+reference to a reference as an argument, and that is not
+currently legal. The solution here is to modify `operator()`
+to use __call_traits__:
+
+```
+typename Operation::result_type operator()(typename __call_traits__<typename Operation::second_argument_type>::param_type x) const;
+```
+
+Now in the case that `Operation::second_argument_type`
+is a reference type, the argument is passed as a reference, and
+the no "reference to reference" occurs.
+
+[endsect]
+
+[#sec:example3]
+[section Example 3 (the `make_pair` problem):]
+
+If we pass the name of an array as one (or both) arguments to `__std_make_pair__`,
+then template argument deduction deduces the passed parameter as
+"const reference to array of `T`", this also applies to
+string literals (which are really array literals). Consequently
+instead of returning a pair of pointers, it tries to return a
+pair of arrays, and since an array type is not copy-constructible
+the code fails to compile. One solution is to explicitly cast the
+arguments to __std_make_pair__ to pointers, but __call_traits__ provides a
+better automatic solution that works safely even in generic code where the
+cast might do the wrong thing:
+
+```
+template <class T1, class T2>
+__std_pair__<
+   typename __boost_call_traits__<T1>::value_type,
+   typename __boost_call_traits__<T2>::value_type>
+      make_pair(const T1& t1, const T2& t2)
+{
+   return __std_pair__<
+      typename __boost_call_traits__<T1>::value_type,
+      typename __boost_call_traits__<T2>::value_type>(t1, t2);
+}
+```
+
+Here, the deduced argument types will be automatically
+degraded to pointers if the deduced types are arrays, similar
+situations occur in the standard binders and adapters: in
+principle in any function that "wraps" a temporary
+whose type is deduced. Note that the function arguments to
+__std_make_pair__ are not expressed in terms of __call_traits__: doing so
+would prevent template argument deduction from functioning.
+[endsect]
+
+[#sec:example4]
+[section Example 4 (optimising fill):]
+
+The __call_traits__ template will "optimize" the passing
+of a small built-in type as a function parameter. This mainly has
+an effect when the parameter is used within a loop body.
+
+In the following example (see [@boost:/doc/html/type_traits/examples/fill_example.cpp `fill_example.cpp`]),
+a version of __std_fill__ is optimized in two ways: if the type
+passed is a single byte built-in type then __std_memset__ is used to
+effect the fill, otherwise a conventional C++ implementation is
+used, but with the passed parameter "optimized" using
+__call_traits__:
+
+```
+template <bool opt>
+struct filler
+{
+   template <typename I, typename T>
+   static void do_fill(I first, I last, typename __boost_call_traits__<T>::param_type val)
+   {
+      while(first != last)
+      {
+         *first = val;
+         ++first;
+      }
+   }
+};
+
+template <>
+struct filler<true>
+{
+   template <typename I, typename T>
+   static void do_fill(I first, I last, T val)
+   {
+      __std_memset__(first, val, last-first);
+   }
+};
+
+template <class I, class T>
+inline void fill(I first, I last, const T& val)
+{
+   enum { can_opt = boost::is_pointer<I>::value
+                   && boost::is_arithmetic<T>::value
+                   && (sizeof(T) == 1) };
+   typedef filler<can_opt> filler_t;
+   filler_t::template do_fill<I,T>(first, last, val);
+}
+```
+
+The reason that this is "optimal" for small built-in types is that
+with the value passed as `T const` instead of `const T&` the compiler is
+able to tell both that the value is constant and that it is free
+of aliases. With this information the compiler is able to cache
+the passed value in a register, unroll the loop, or use
+explicitly parallel instructions: if any of these are supported.
+Exactly how much mileage you will get from this depends upon your
+compiler - we could really use some accurate benchmarking
+software as part of boost for cases like this.
+
+Note that the function arguments to fill are not expressed in
+terms of __call_traits__: doing so would prevent template argument
+deduction from functioning. Instead fill acts as a "thin
+wrapper" that is there to perform template argument
+deduction, the compiler will optimise away the call to fill all
+together, replacing it with the call to `filler<>::do_fill`,
+which does use __call_traits__.
+
+[endsect]
+[endsect]
+
+[section Rationale]
+
+The following notes are intended to briefly describe the
+rationale behind choices made in __call_traits__.
+
+All user-defined types follow "existing practice" and need no comment.
+
+Small built-in types, what the standard calls [@https://en.cppreference.com/w/cpp/language/types fundamental
+types], differ from existing practice only in the `param_type`
+`typedef`. In this case passing `T const` is compatible
+with existing practice, but may improve performance in some cases
+(see [link sec:example4 Example 4]). In any case this should never
+be any worse than existing practice.
+
+Pointers follow the same rationale as small built-in types.
+
+For reference types the rationale follows [link sec:refs Example 2]
+- references to references are not allowed, so the __call_traits__
+members must be defined such that these problems do
+not occur. There is a proposal to modify the language such that
+"a reference to a reference is a reference" (issue #106,
+submitted by Bjarne Stroustrup). __call_traits_T__`::value_type`
+and __call_traits_T__`::param_type` both provide the same effect
+as that proposal, without the need for a language change. In
+other words, it's a workaround.
+
+For array types, a function that takes an array as an argument
+will degrade the array type to a pointer type: this means that
+the type of the actual parameter is different from its declared
+type, something that can cause endless problems in template code
+that relies on the declared type of a parameter.
+
+For example:
+
+```
+template <class T>
+struct A
+{
+   void foo(T t);
+};
+```
+
+In this case if we instantiate `A<int[2]>` then the declared type of
+the parameter passed to member function `foo` is `int[2]`, but its
+actual type is `const int*`. If we try to use the type `T` within the
+function body, then there is a strong likelihood that our code will not compile:
+
+```
+template <class T>
+void A<T>::foo(T t)
+{
+   T dup(t); // doesn't compile for case that T is an array.
+}
+```
+
+By using __call_traits__ the degradation from array to pointer is
+explicit, and the type of the parameter is the same as it's
+declared type:
+
+```
+template <class T>
+struct A
+{
+   void foo(typename __call_traits__<T>::value_type t);
+};
+
+template <class T>
+void A<T>::foo(typename __call_traits__<T>::value_type t)
+{
+   typename __call_traits__<T>::value_type dup(t); // OK even if T is an array type.
+}
+```
+
+For `value_type` (return by value), again only a pointer may be
+returned, not a copy of the whole array, and again __call_traits__
+makes the degradation explicit. The `value_type` member is useful
+whenever an array must be explicitly degraded to a pointer -
+[link sec:example3 Example 3] provides the test case.
+
+Footnote: the array specialisation for __call_traits__ is the least
+well understood of all the __call_traits__ specialisations. If the given
+semantics cause specific problems for you, or does not solve a particular
+array-related problem, then I would be interested to hear about
+it. Most people though will probably never need to use this
+specialisation.
+
+[endsect]
+
+[/===============]
+[xinclude tmp/call_traits_reference.xml]
+[/===============]
+
+[endsect]
+
+
+
+
+

@@ -1,0 +1,142 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class template constructor_precondition</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="../../reference.html#header.boost.contract.core.constructor_precondition_hpp" title="Header &lt;boost/contract/core/constructor_precondition.hpp&gt;">
+<link rel="prev" href="../../BOOST_CONTRACT_NO_ALL.html" title="Macro BOOST_CONTRACT_NO_ALL">
+<link rel="next" href="assertion_failure.html" title="Class assertion_failure">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_CONTRACT_NO_ALL.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.constructor_precondition_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="assertion_failure.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.contract.constructor_precondition"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template constructor_precondition</span></h2>
+<p>boost::contract::constructor_precondition — Program preconditions for constructors. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../reference.html#header.boost.contract.core.constructor_precondition_hpp" title="Header &lt;boost/contract/core/constructor_precondition.hpp&gt;">boost/contract/core/constructor_precondition.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="constructor_precondition.html" title="Class template constructor_precondition">constructor_precondition</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="constructor_precondition.html#boost.contract.constructor_preconditionconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="constructor_precondition.html#idm35101-bb"><span class="identifier">constructor_precondition</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> F<span class="special">&gt;</span> <span class="keyword">explicit</span> <a class="link" href="constructor_precondition.html#idm35108-bb"><span class="identifier">constructor_precondition</span></a><span class="special">(</span><span class="identifier">F</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm37899"></a><h2>Description</h2>
+<p>This class must be the very first base of the class declaring the constructor for which preconditions are programmed (that way constructor arguments can be checked by preconditions even before they are used to initialize other base classes):</p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">u</span>
+    <span class="preprocessor">#define</span> <span class="identifier">BASES</span> <span class="keyword">private</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">constructor_precondition</span><span class="special">&lt;</span><span class="identifier">u</span><span class="special">&gt;</span><span class="special">,</span> \
+            <span class="keyword">public</span> <span class="identifier">b</span>
+    <span class="special">:</span> <span class="identifier">BASES</span>
+<span class="special">{</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">access</span><span class="special">;</span>
+
+    <span class="keyword">typedef</span> <span class="identifier">BOOST_CONTRACT_BASE_TYPES</span><span class="special">(</span><span class="identifier">BASES</span><span class="special">)</span> <span class="identifier">base_types</span><span class="special">;</span>
+    <span class="preprocessor">#undef</span> <span class="identifier">BASES</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">u</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">:</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">constructor_precondition</span><span class="special">&lt;</span><span class="identifier">u</span><span class="special">&gt;</span><span class="special">(</span><span class="special">[</span><span class="special">&amp;</span><span class="special">]</span> <span class="special">{</span>
+            <span class="identifier">BOOST_CONTRACT_ASSERT</span><span class="special">(</span><span class="identifier">x</span> <span class="special">!=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+            <span class="special">...</span>
+        <span class="special">}</span><span class="special">)</span><span class="special">,</span>
+        <span class="identifier">b</span><span class="special">(</span><span class="number">1</span><span class="special">.</span><span class="number">0</span> <span class="special">/</span> <span class="keyword">float</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="special">...</span>
+    <span class="special">}</span>
+
+    <span class="special">...</span>
+<span class="special">}</span><span class="special">;</span>
+</pre>
+<p>User-defined classes should inherit privately from this class (to not alter the public interface of user-defined classes). In addition, this class should never be declared as a virtual base (because virtual bases are initialized only once across the entire inheritance hierarchy preventing preconditions of other base classes from being checked).</p>
+<p>This class cannot be used this way in a <code class="computeroutput">union</code> because unions cannot have base classes in C++. Instead, this class is used in a <code class="computeroutput">union</code> to declare a local object within the constructor definition just before <code class="computeroutput"><a class="link" href="constructor.html" title="Function template constructor">boost::contract::constructor</a></code> is used (see <a class="link" href="../../boost_contract/extras.html#boost_contract.extras.unions" title="Unions"> Unions</a>).</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="../../boost_contract/tutorial.html#boost_contract.tutorial.constructors" title="Constructors"> Constructors</a></p>
+<p>
+</p>
+<p>
+
+</p>
+<div class="refsect2">
+<a name="idm38002"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Class</pre>
+<p>The class type of the constructor for which preconditions are being programmed. </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idm38011"></a><h3>
+<a name="boost.contract.constructor_preconditionconstruct-copy-destruct"></a><code class="computeroutput">constructor_precondition</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idm35101-bb"></a><span class="identifier">constructor_precondition</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Construct this object without specifying constructor preconditions. <p>This is implicitly called for those constructors of the contracted class that do not specify preconditions.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The implementation of this library is optimized so that calling this default constructor should amount to negligible compile-time and run-time overheads (likely to be optimized away completely by most compilers). </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> F<span class="special">&gt;</span> <span class="keyword">explicit</span> <a name="idm35108-bb"></a><span class="identifier">constructor_precondition</span><span class="special">(</span><span class="identifier">F</span> <span class="keyword">const</span> <span class="special">&amp;</span> f<span class="special">)</span><span class="special">;</span></pre>Construct this object specifying constructor preconditions. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">f</code></span></p></td>
+<td><p>Nullary functor called by this library to check constructor preconditions <code class="computeroutput">f()</code>. Assertions within this functor call are usually programmed using <code class="computeroutput"><code class="computeroutput"><a class="link" href="../../BOOST_CONTRACT_ASSERT.html" title="Macro BOOST_CONTRACT_ASSERT">BOOST_CONTRACT_ASSERT</a></code></code>, but any exception thrown by a call to this functor indicates a contract failure (and will result in this library calling  <code class="computeroutput"><code class="computeroutput"><a class="link" href="precondition_failure.html" title="Function precondition_failure">boost::contract::precondition_failure</a></code></code>). This functor should capture variables by (constant) value, or better by (constant) reference to avoid extra copies. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_CONTRACT_NO_ALL.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.constructor_precondition_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="assertion_failure.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

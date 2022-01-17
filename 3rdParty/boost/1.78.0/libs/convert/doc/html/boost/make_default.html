@@ -1,0 +1,70 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Function template make_default</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="up" href="../header/boost/make_default_hpp.html" title="Header &lt;boost/make_default.hpp&gt;">
+<link rel="prev" href="../header/boost/make_default_hpp.html" title="Header &lt;boost/make_default.hpp&gt;">
+<link rel="next" href="../index/s18.html" title="Index">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../header/boost/make_default_hpp.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../header/boost/make_default_hpp.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../index/s18.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.make_default"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function template make_default</span></h2>
+<p>boost::make_default</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../header/boost/make_default_hpp.html" title="Header &lt;boost/make_default.hpp&gt;">boost/make_default.hpp</a>&gt;
+
+</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">T</span> <span class="identifier">make_default</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm15658"></a><h2>Description</h2>
+<p>A considerable number of libraries require an instance of a class provided (storage created and initialized). For example, </p>
+<pre class="programlisting"><span class="identifier">Type</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="identifier">istream</span> <span class="special">&gt;&gt;</span> <span class="identifier">result</span><span class="special">;</span>
+</pre>
+<p> In generic code that results in the Default Constructibility requirement imposed on every type 'Type' to be used with the respective code. Inevitably, that requirement a) either excludes all the classes that for various reasons do not meet that requirement or b) imposes certain (not necessarily desirable) design/implementation onto respective classes.</p>
+<p>Deployment of boost::make_default() eliminates the Default Constructibility requirement with </p>
+<pre class="programlisting"><span class="identifier">Type</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_default</span><span class="special">&lt;</span><span class="identifier">Type</span><span class="special">&gt;</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="identifier">istream</span> <span class="special">&gt;&gt;</span> <span class="identifier">result</span><span class="special">;</span>
+</pre>
+<p> Classes with no default constructor can now be included via a boost::make_default() specialization: </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">inline</span> <span class="identifier">Type</span> <span class="identifier">make_default</span><span class="special">&lt;</span><span class="identifier">Type</span><span class="special">&gt;</span><span class="special">(</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">Type</span><span class="special">(</span><span class="identifier">parameters</span><span class="special">)</span><span class="special">;</span> <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p> </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2020 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../header/boost/make_default_hpp.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../header/boost/make_default_hpp.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../index/s18.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
