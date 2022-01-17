@@ -43,7 +43,8 @@ auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
     // action that creates Plan entry for log
     auto const spec = LogPlanSpecification(
         log.target.id, std::nullopt, log.target.config,
-        ParticipantsConfig{.participants = log.target.participants});
+        ParticipantsConfig{.generation = 1,
+                           .participants = log.target.participants});
 
     return std::make_unique<AddLogToPlanAction>(spec);
   }
@@ -79,12 +80,14 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
     newTerm.leader.reset();
     newTerm.term = LogTerm{plan.currentTerm->term.value + 1};
 
-    return std::make_unique<UpdateTermAction>(newTerm);
+    return std::make_unique<UpdateTermAction>(plan.id, newTerm);
   }
 }
 
 auto checkLeaderInTarget(LogTarget const& target,
-                         LogPlanSpecification const& plan)
+                         LogPlanSpecification const& plan,
+                         LogCurrent const& current,
+                         ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   // Someone wishes there to be a particular leader
 
@@ -93,8 +96,36 @@ auto checkLeaderInTarget(LogTarget const& target,
       if (plan.currentTerm->leader) {
         if (target.leader != plan.currentTerm->leader->serverId) {
           // move to new leader
-          return std::make_unique<DictateLeaderAction>(target.id,
-                                                       target.leader.value());
+
+          // Check that current generation is equal to planned generation
+          // Check that target.leader is forced
+          // Check that target.leader is not excluded
+          // Check that target.leader is healthy
+          if (!current.leader || !current.leader->committedParticipantsConfig ||
+              current.leader->committedParticipantsConfig->generation !=
+                  plan.participantsConfig.generation) {
+            return std::make_unique<EmptyAction>();
+          }
+
+          auto const& planLeaderConfig =
+              plan.participantsConfig.participants.at(*target.leader);
+
+          if (planLeaderConfig.forced != true ||
+              planLeaderConfig.excluded == true) {
+            return std::make_unique<EmptyAction>();
+          }
+
+          if (!health.isHealthy(*target.leader)) {
+            return std::make_unique<EmptyAction>();
+          };
+
+          auto const rebootId = health._health.at(*target.leader).rebootId;
+          auto const term = LogTerm{plan.currentTerm->term.value + 1};
+          auto const termSpec = LogPlanTermSpecification(
+              term, plan.currentTerm->config,
+              LogPlanTermSpecification::Leader{*target.leader, rebootId});
+
+          return std::make_unique<DictateLeaderAction>(target.id, termSpec);
         } else {
           // keep the leader
         }
@@ -325,14 +356,18 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     return action;
   }
 
+  if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (!log.current) {
+    return std::make_unique<EmptyAction>();
+  }
   // If someone wishes a specific participant to become leader
   // by putting a ParticipantId into the target
-  /*  if (auto action = checkLeaderInTarget(log.target, *log.plan);
-        !isEmptyAction(action)) {
-      return action;
-    } */
-
-  if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
+  if (auto action =
+          checkLeaderInTarget(log.target, *log.plan, *log.current, health);
       !isEmptyAction(action)) {
     return action;
   }

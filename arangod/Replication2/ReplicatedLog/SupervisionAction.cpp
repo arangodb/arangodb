@@ -168,6 +168,17 @@ auto DictateLeaderAction::execute(std::string dbName,
                   ->currentTerm()
                   ->str();
 
+  return envelope.write()
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { _term.toVelocyPack(builder); })
+      .inc(paths::plan()->version()->str())
+
+      /* TODO: previous term should still be there
+            .precs()
+            .isEmpty(path)
+       */
+      .end();
+
   return envelope;
 }
 

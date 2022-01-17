@@ -109,8 +109,8 @@ struct CreateInitialTermAction : Action {
 };
 
 struct DictateLeaderAction : Action {
-  DictateLeaderAction(LogId const& id, ParticipantId newLeader)
-      : _id(id), _newLeader(newLeader){};
+  DictateLeaderAction(LogId const& id, LogPlanTermSpecification const& newTerm)
+      : _id(id), _term{newTerm} {};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
   ActionType type() const override {
@@ -119,12 +119,12 @@ struct DictateLeaderAction : Action {
   void toVelocyPack(VPackBuilder& builder) const override;
 
   LogId const _id;
-  ParticipantId _newLeader;
+  LogPlanTermSpecification _term;
 };
 
 struct UpdateTermAction : Action {
-  UpdateTermAction(LogPlanTermSpecification const& newTerm)
-      : _newTerm(newTerm){};
+  UpdateTermAction(LogId const& id, LogPlanTermSpecification const& newTerm)
+      : _id{id}, _newTerm(newTerm){};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
   ActionType type() const override {
