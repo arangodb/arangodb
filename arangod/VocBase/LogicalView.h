@@ -110,7 +110,9 @@ class LogicalView : public LogicalDataSource {
 
   using LogicalDataSource::properties;
 
-  ViewType type() const noexcept { return _type; }
+  ViewType type() const noexcept { return _typeInfo.first; }
+
+  std::string_view typeName() const noexcept { return _typeInfo.second; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
@@ -186,7 +188,7 @@ class LogicalView : public LogicalDataSource {
  protected:
   template<typename Impl, typename... Args>
   explicit LogicalView(Impl const& /*self*/, Args&&... args)
-      : LogicalDataSource{Impl::type(), std::forward<Args>(args)...} {}
+      : LogicalView{Impl::typeInfo(), std::forward<Args>(args)...} {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
@@ -207,8 +209,8 @@ class LogicalView : public LogicalDataSource {
   virtual Result renameImpl(std::string const& oldName) = 0;
 
  private:
-  LogicalView(ViewType type, TRI_vocbase_t& vocbase,
-              velocypack::Slice definition);
+  LogicalView(std::pair<ViewType, std::string_view> const& typeInfo,
+              TRI_vocbase_t& vocbase, velocypack::Slice definition);
 
   // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;
@@ -216,7 +218,7 @@ class LogicalView : public LogicalDataSource {
   // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified
   // asynchronously
   mutable basics::ReadWriteLock _lock;
-  ViewType _type;
+  std::pair<ViewType, std::string_view> _typeInfo;
 };  // LogicalView
 
 ////////////////////////////////////////////////////////////////////////////////

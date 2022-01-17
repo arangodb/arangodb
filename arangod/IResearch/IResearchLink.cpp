@@ -1977,8 +1977,9 @@ Result IResearchLink::properties(velocypack::Builder& builder,
 
   builder.add(arangodb::StaticStrings::IndexId,
               velocypack::Value(std::to_string(_id.id())));
-  builder.add(arangodb::StaticStrings::IndexType,
-              velocypack::Value(IResearchLinkHelper::type()));
+  builder.add(
+      arangodb::StaticStrings::IndexType,
+      velocypack::Value(arangodb::iresearch::StaticStrings::DataSourceType));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
 
   return {};
@@ -2145,7 +2146,7 @@ Index::IndexType IResearchLink::type() {
 }
 
 char const* IResearchLink::typeName() {
-  return IResearchLinkHelper::type().c_str();
+  return StaticStrings::DataSourceType.data();
 }
 
 bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {

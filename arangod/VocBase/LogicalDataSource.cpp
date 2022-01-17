@@ -183,10 +183,6 @@ LogicalDataSource::LogicalDataSource(Category category, TRI_vocbase_t& vocbase,
   TRI_ASSERT(!_guid.empty());
 }
 
-LogicalDataSource::Category LogicalDataSource::category() const noexcept {
-  return _category;
-}
-
 Result LogicalDataSource::properties(velocypack::Builder& builder,
                                      Serialization context) const {
   if (!builder.isOpenObject()) {

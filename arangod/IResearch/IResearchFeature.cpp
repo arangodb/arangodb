@@ -696,17 +696,19 @@ void registerUpgradeTasks(application_features::ApplicationServer& server) {
 }
 
 void registerViewFactory(application_features::ApplicationServer& server) {
+  constexpr std::string_view kViewType{
+      arangodb::iresearch::StaticStrings::DataSourceType};
+
   Result res;
 
   // DB server in custer or single-server
   if (auto& viewTypes = server.getFeature<ViewTypesFeature>();
       ServerState::instance()->isCoordinator()) {
-    res = viewTypes.emplace(ViewType::kSearch,
-                            IResearchViewCoordinator::factory());
+    res = viewTypes.emplace(kViewType, IResearchViewCoordinator::factory());
   } else if (ServerState::instance()->isDBServer()) {
-    res = viewTypes.emplace(ViewType::kSearch, IResearchView::factory());
+    res = viewTypes.emplace(kViewType, IResearchView::factory());
   } else if (ServerState::instance()->isSingleServer()) {
-    res = viewTypes.emplace(ViewType::kSearch, IResearchView::factory());
+    res = viewTypes.emplace(kViewType, IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FAILED,

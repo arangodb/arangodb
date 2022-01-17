@@ -24,12 +24,12 @@
 
 #pragma once
 
+#include <atomic>
+#include <string_view>
+
 #include "Basics/Result.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "voc-types.h"
-
-#include <atomic>
-#include <string_view>
 
 struct TRI_vocbase_t;
 
@@ -42,10 +42,8 @@ namespace velocypack {
 class Builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a common ancestor to all database objects proving access to documents
-///        e.g. LogicalCollection / LoigcalView
-////////////////////////////////////////////////////////////////////////////////
+// A common ancestor to all database objects proving access to documents
+// e.g. LogicalCollection / LogicalView
 class LogicalDataSource {
  public:
   enum class Category {
@@ -58,7 +56,7 @@ class LogicalDataSource {
 
   virtual ~LogicalDataSource() = default;
 
-  Category category() const noexcept;
+  Category category() const noexcept { return _category; }
   bool deleted() const noexcept {
     return _deleted.load(std::memory_order_relaxed);
   }

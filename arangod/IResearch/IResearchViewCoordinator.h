@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
 
@@ -48,7 +49,9 @@ class IResearchLink;
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public LogicalView {
  public:
-  static constexpr ViewType type() noexcept { return ViewType::kSearch; }
+  static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
+    return {ViewType::kSearch, StaticStrings::DataSourceType};
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view

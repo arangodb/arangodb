@@ -53,9 +53,9 @@ namespace arangodb {
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
-LogicalView::LogicalView(ViewType type, TRI_vocbase_t& vocbase,
-                         VPackSlice definition)
-    : LogicalDataSource(*this, vocbase, definition), _type{type} {
+LogicalView::LogicalView(std::pair<ViewType, std::string_view> const& typeInfo,
+                         TRI_vocbase_t& vocbase, VPackSlice definition)
+    : LogicalDataSource(*this, vocbase, definition), _typeInfo{typeInfo} {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -88,7 +88,8 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
         std::string("invalid builder provided for LogicalView definition"));
   }
 
-  builder.add(StaticStrings::DataSourceType, velocypack::Value(type().name()));
+  builder.add(StaticStrings::DataSourceType,
+              velocypack::Value(_typeInfo.second));
 
   return appendVelocyPackImpl(builder, context);
 }
