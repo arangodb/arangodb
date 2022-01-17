@@ -22,13 +22,19 @@ const G6JsGraph = () => {
     type: 'delegate',
   });
 
+  // Instantiate the Toolbar
+  const toolbar = new G6.ToolBar({
+    position: { x: 10, y: 70 },
+  });
+
   // Instantiate grid
   const grid = new G6.Grid();
 
   useEffect(() => {
     if (!graph) {
         graph = new G6.Graph({
-          plugins: [minimap], // Configure minimap to the graph
+          plugins: [toolbar, minimap], // Configure toolbar and minimap to the graph
+          enabledStack: true,
           container: ReactDOM.findDOMNode(ref.current),
           width: 1200,
           height: 400,
