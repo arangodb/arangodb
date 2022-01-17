@@ -1,0 +1,216 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Drop-in Caveats</title>
+<link rel="stylesheet" href="../../../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../fp_eg.html" title="Examples">
+<link rel="prev" href="aos.html" title="Area of Circle">
+<link rel="next" href="jel.html" title="Defining a Special Function.">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="aos.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fp_eg.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="jel.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_multiprecision.tut.floats.fp_eg.caveats"></a><a class="link" href="caveats.html" title="Drop-in Caveats">Drop-in
+          Caveats</a>
+</h5></div></div></div>
+<h6>
+<a name="boost_multiprecision.tut.floats.fp_eg.caveats.h0"></a>
+            <span class="phrase"><a name="boost_multiprecision.tut.floats.fp_eg.caveats.using_boost_multiprecision_cpp_f"></a></span><a class="link" href="caveats.html#boost_multiprecision.tut.floats.fp_eg.caveats.using_boost_multiprecision_cpp_f">Using
+            Boost.Multiprecision <code class="computeroutput"><span class="identifier">cpp_float</span></code>
+            types for numerical calculations with higher precision than fundamental
+            (built-in) <code class="computeroutput"><span class="keyword">long</span> <span class="keyword">double</span></code>.</a>
+          </h6>
+<p>
+            The Boost.Multiprecision library can be used for computations requiring
+            precision exceeding that of standard <a href="https://en.cppreference.com/w/cpp/language/types" target="_top">fundamental
+            (built-in)</a> types such as <code class="computeroutput"><span class="keyword">float</span></code>,
+            <code class="computeroutput"><span class="keyword">double</span></code> and <code class="computeroutput"><span class="keyword">long</span> <span class="keyword">double</span></code>.
+            For extended-precision calculations, Boost.Multiprecision supplies several
+            template data types called <code class="computeroutput"><span class="identifier">cpp_bin_float_</span></code>.
+          </p>
+<p>
+            The number of decimal digits of precision is fixed at compile-time via
+            template parameter.
+          </p>
+<p>
+            To use these floating-point types and <a href="https://www.boost.org/doc/libs/release/libs/math/doc/html/constants.html" target="_top">Boost.Math
+            collection of high-precision constants</a>, we need some includes:
+          </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">math</span><span class="special">/</span><span class="identifier">constants</span><span class="special">/</span><span class="identifier">constants</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">cpp_bin_float</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="comment">// that includes some predefined typedefs like:</span>
+<span class="comment">// using boost::multiprecision::cpp_bin_float_quad;</span>
+<span class="comment">// using boost::multiprecision::cpp_bin_float_50;</span>
+<span class="comment">// using boost::multiprecision::cpp_bin_float_100;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">limits</span><span class="special">&gt;</span>
+</pre>
+<p>
+            So now we can demonstrate with some trivial calculations:
+          </p>
+<p>
+            Using a <code class="computeroutput"><span class="keyword">typedef</span></code> like <code class="computeroutput"><span class="identifier">cpp_bin_float_50</span></code> hides the complexity
+            of multiprecision, and allows us to define variables with 50 decimal
+            digit precision just like <a href="https://en.cppreference.com/w/cpp/language/types" target="_top">fundamental
+            (built-in)</a> <code class="computeroutput"><span class="keyword">double</span></code>.
+          </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">cpp_bin_float_50</span><span class="special">;</span>
+
+<span class="identifier">cpp_bin_float_50</span> <span class="identifier">seventh</span> <span class="special">=</span> <span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">/</span> <span class="number">7</span><span class="special">;</span>  <span class="comment">// 1 / 7</span>
+</pre>
+<p>
+            By default, output would only show the standard 6 decimal digits, so
+            set precision to show all 50 significant digits, including any trailing
+            zeros (to show the full implied 50 digit precision).
+          </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;::</span><span class="identifier">digits10</span><span class="special">);</span> <span class="comment">// Show 50 decimal digit precision.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">showpoint</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// Append any trailing zeros.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">seventh</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+            which outputs:
+          </p>
+<pre class="programlisting"><span class="number">0.14285714285714285714285714285714285714285714285714</span>
+</pre>
+<p>
+            We can also use Boost.Math <a href="https://www.boost.org/doc/libs/release/libs/math/doc/html/math_toolkit/constants.html" target="_top">Boost.Math
+            constants</a> like π, guaranteed to be initialized with the very last
+            bit of precision for the floating-point type.
+          </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"pi = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">constants</span><span class="special">::</span><span class="identifier">pi</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="identifier">cpp_bin_float_50</span> <span class="identifier">circumference</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">constants</span><span class="special">::</span><span class="identifier">pi</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;()</span> <span class="special">*</span> <span class="number">2</span> <span class="special">*</span> <span class="identifier">seventh</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"c =  "</span><span class="special">&lt;&lt;</span> <span class="identifier">circumference</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+            which outputs
+          </p>
+<pre class="programlisting"><span class="identifier">pi</span> <span class="special">=</span> <span class="number">3.1415926535897932384626433832795028841971693993751</span>
+
+<span class="identifier">c</span> <span class="special">=</span>  <span class="number">0.89759790102565521098932668093700082405633411410717</span>
+</pre>
+<p>
+            So using <code class="computeroutput"><span class="identifier">cpp_bin_float_50</span></code>
+            looks like a simple 'drop-in' for the <a href="https://en.cppreference.com/w/cpp/language/types" target="_top">fundamental
+            (built-in) type</a> like 'double', but beware of less-than-expected
+            precision from construction or conversion from <code class="computeroutput"><span class="keyword">double</span></code>
+            or other lower precision types. This is a mistake that is very easy to
+            make, and very difficult to detect because the difference in precision
+            is only visible after about the 17th decimal digit.
+          </p>
+<p>
+            We can show this by constructing a fraction one seventh from <code class="computeroutput"><span class="keyword">double</span></code>:
+          </p>
+<pre class="programlisting"><span class="identifier">cpp_bin_float_50</span> <span class="identifier">seventh_0</span> <span class="special">=</span> <span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1</span><span class="special">/</span><span class="number">7</span><span class="special">);</span>  <span class="comment">// Avoid the schoolboy-error `double d7 = 1 / 7;` giving zero!</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"seventh_0 = "</span>  <span class="special">&lt;&lt;</span> <span class="identifier">seventh_0</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="comment">// seventh_double0 = 0.0000000000000000000000000000000000000000000000000</span>
+
+<span class="identifier">cpp_bin_float_50</span> <span class="identifier">seventh_double</span> <span class="special">=</span> <span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1.</span><span class="special">/</span><span class="number">7</span><span class="special">);</span>  <span class="comment">// Construct from double! (0.14285714285714)</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"seventh_double = "</span>  <span class="special">&lt;&lt;</span> <span class="identifier">seventh_double</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// Boost.Multiprecision post-school error!</span>
+<span class="comment">// seventh_double = 0.14285714285714284921269268124888185411691665649414</span>
+</pre>
+<p>
+            Did you spot the probably-unintended difference? After the 17th decimal
+            digit, result is apparently random and not the expected recurring pattern
+            14285714285714...
+          </p>
+<p>
+            The 'random' digits after digit 17 are from the <code class="computeroutput"><span class="identifier">cpp_bin_float_50</span></code>
+            representation of the <code class="computeroutput"><span class="keyword">double</span></code>
+            value 0.14285714285714 which is different from the 'better' <code class="computeroutput"><span class="identifier">cpp_bin_float_50</span></code> representation of
+            the fraction 1/7
+          </p>
+<pre class="programlisting"><span class="identifier">cpp_bin_float_50</span> <span class="identifier">seventh_big</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>  <span class="comment">// 1</span>
+<span class="identifier">seventh_big</span> <span class="special">/=</span> <span class="number">7</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"seventh_big = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">seventh_big</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">//</span>
+<span class="comment">// seventh_big     = 0.14285714285714285714285714285714285714285714285714</span>
+</pre>
+<p>
+            Note the recurring 14285714285714 pattern as expected. We can also construct
+            a <code class="computeroutput"><span class="keyword">const</span></code> version (but not
+            yet <code class="computeroutput"><span class="keyword">constexpr</span></code>) and evaluate
+            in a single expression:
+          </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">cpp_bin_float_50</span> <span class="identifier">seventh_const</span> <span class="special">(</span><span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">/</span> <span class="number">7</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"seventh_const = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">seventh_const</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">//</span>
+<span class="comment">// seventh_const = 0.14285714285714285714285714285714285714285714285714</span>
+</pre>
+<pre class="programlisting"><span class="comment">// Sadly we cannot (yet) write:</span>
+<span class="comment">// constexpr cpp_bin_float_50 any_constexpr(0);</span>
+
+<span class="comment">// constexpr cpp_bin_float_50 seventh_constexpr (cpp_bin_float_50(1) / 7);</span>
+<span class="comment">// std::cout &lt;&lt; "seventh_constexpr = " &lt;&lt; seventh_constexpr &lt;&lt; std::endl; //</span>
+<span class="comment">// nor use the macro constexpr unless it returns `const`</span>
+<span class="comment">// constexpr cpp_bin_float_50 seventh_constexpr(seventh_const);</span>
+</pre>
+<p>
+            For some purposes, this difference in precision may be insignificant,
+            but if one is implementing a formula involving a fraction from integers,
+            including decimal fractions like 1/10, 1/100, then comparison with other
+            computations like <a href="http://www.wolframalpha.com/" target="_top">Wolfram Alpha</a>
+            will reveal differences whose cause may be perplexing.
+          </p>
+<p>
+            To get as precise-as-possible decimal fractions like 1.234, we can write
+          </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">cpp_bin_float_50</span> <span class="identifier">f1</span><span class="special">(</span><span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1234</span><span class="special">)</span> <span class="special">/</span> <span class="number">1000</span><span class="special">);</span>  <span class="comment">// Construct from a fraction.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"cpp_bin_float_50 f1(cpp_bin_float_50(1234) / 1000) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">f1</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// cpp_bin_float_50 f1(cpp_bin_float_50(1234) / 1000) = 1.2340000000000000000000000000000000000000000000000</span>
+</pre>
+<p>
+            or
+          </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">cpp_bin_float_50</span> <span class="identifier">f2</span><span class="special">(</span><span class="string">"1.234"</span><span class="special">);</span>  <span class="comment">// Construct from decimal digit string.</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"cpp_bin_float_50 f2(\"1.234\") = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">f2</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// cpp_bin_float_50 f2("1.234") = 1.2340000000000000000000000000000000000000000000000</span>
+</pre>
+<p>
+            that are different from constructing from a <code class="computeroutput"><span class="keyword">double</span></code>
+            with value 1.234
+          </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">cpp_bin_float_50</span> <span class="identifier">f3</span><span class="special">(</span><span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1.234</span><span class="special">));</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"cpp_bin_float_50 f3(cpp_bin_float_50(1.234)) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">f3</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// 1.2339999999999999857891452847979962825775146484375</span>
+</pre>
+<p>
+            Typical output is:
+          </p>
+<pre class="programlisting"><span class="number">0.14285714285714285714285714285714285714285714285714</span>
+<span class="identifier">pi</span> <span class="special">=</span> <span class="number">3.1415926535897932384626433832795028841971693993751</span>
+<span class="identifier">c</span> <span class="special">=</span>  <span class="number">0.89759790102565521098932668093700082405633411410717</span>
+<span class="identifier">seventh_0</span> <span class="special">=</span> <span class="number">0.0000000000000000000000000000000000000000000000000</span>
+<span class="identifier">seventh_double</span> <span class="special">=</span> <span class="number">0.14285714285714284921269268124888185411691665649414</span>
+<span class="identifier">seventh_big</span> <span class="special">=</span> <span class="number">0.14285714285714285714285714285714285714285714285714</span>
+<span class="identifier">seventh_const</span> <span class="special">=</span> <span class="number">0.14285714285714285714285714285714285714285714285714</span>
+<span class="identifier">cpp_bin_float_50</span> <span class="identifier">f1</span><span class="special">(</span><span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1234</span><span class="special">)</span> <span class="special">/</span> <span class="number">100</span><span class="special">)</span> <span class="special">=</span> <span class="number">12.340000000000000000000000000000000000000000000000</span>
+<span class="identifier">cpp_bin_float_50</span> <span class="identifier">f2</span><span class="special">(</span><span class="string">"1.234"</span><span class="special">)</span> <span class="special">=</span> <span class="number">1.2340000000000000000000000000000000000000000000000</span>
+<span class="identifier">cpp_bin_float_50</span> <span class="identifier">f3</span><span class="special">(</span><span class="identifier">cpp_bin_float_50</span><span class="special">(</span><span class="number">1.234</span><span class="special">))</span> <span class="special">=</span> <span class="number">1.2339999999999999857891452847979962825775146484375</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="aos.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fp_eg.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="jel.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -179,6 +179,9 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
       if (current.leader.term < term) {
         return Error(`Leader has not yet confirmed the term; found = ${current.leader.term}, expected = ${term}`);
       }
+      if (!current.leader.leadershipEstablished) {
+        return Error("Leader has not yet established its leadership");
+      }
     }
     return true;
   };
@@ -294,9 +297,9 @@ const checkRequestResult = function (requestResult) {
     return requestResult;
 };
 
-const getLocalStatus = function(logId, serverId) {
+const getLocalStatus = function(database, logId, serverId) {
     let url = getServerUrl(serverId);
-    const res = request.get(`${url}/_api/log/${logId}/local-status`);
+    const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
     checkRequestResult(res);
     return res.json.result;
 };

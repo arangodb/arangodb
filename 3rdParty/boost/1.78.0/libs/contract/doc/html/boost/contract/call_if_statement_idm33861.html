@@ -1,0 +1,111 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Struct template call_if_statement&lt;true, Then, internal_type&gt;</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="../../reference.html#header.boost.contract.call_if_hpp" title="Header &lt;boost/contract/call_if.hpp&gt;">
+<link rel="prev" href="call_if_statement_idm33758.html" title="Struct template call_if_statement&lt;false, Then, internal_type&gt;">
+<link rel="next" href="call_if_statement_idm33902.html" title="Struct template call_if_statement&lt;true, Then, ThenResult&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="call_if_statement_idm33758.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.call_if_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="call_if_statement_idm33902.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.contract.call_if_statement_idm33861"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template call_if_statement&lt;true, Then, internal_type&gt;</span></h2>
+<p>boost::contract::call_if_statement&lt;true, Then, internal_type&gt; — Template specialization to dispatch between then-branch functor template calls that return void and the ones that return non-void (not needed on C++17 compilers, use <code class="computeroutput">if constexpr</code> instead). </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../reference.html#header.boost.contract.call_if_hpp" title="Header &lt;boost/contract/call_if.hpp&gt;">boost/contract/call_if.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Then<span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="call_if_statement_idm33861.html" title="Struct template call_if_statement&lt;true, Then, internal_type&gt;">call_if_statement</a><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Then</span><span class="special">,</span> <span class="identifier">internal_type</span><span class="special">&gt;</span> <span class="special">:</span> <span class="keyword">public</span> boost::contract::call_if_statement&lt; true, Then, result_of&lt; Then()&gt;::type &gt;
+<span class="special">{</span>
+  <span class="comment">// <a class="link" href="call_if_statement_idm33861.html#boost.contract.call_if_statement_idm33861construct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="call_if_statement_idm33861.html#idm33891-bb"><span class="identifier">call_if_statement</span></a><span class="special">(</span><span class="identifier">Then</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm34924"></a><h2>Description</h2>
+<p>The base class is a call-if statement so the else and else-if statements can be specified if needed. Usually this class template is instantiated only via the return value of  <code class="computeroutput"><a class="link" href="call_if.html" title="Function template call_if">boost::contract::call_if</a></code> and <code class="computeroutput"><a class="link" href="call_if_c.html" title="Function template call_if_c">boost::contract::call_if_c</a></code>.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The <code class="computeroutput">result_of&lt;Then()&gt;::type</code> expression needs be evaluated only when the static predicate is already checked to be <code class="computeroutput">true</code> (because <code class="computeroutput">Then()</code> is required to compile only in that case). Thus, this template specialization introduces an extra level of indirection necessary for proper lazy evaluation of this result-of expression.</p></td></tr>
+</table></div>
+<p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="../../boost_contract/extras.html#boost_contract.extras.assertion_requirements__templates_" title="Assertion Requirements (Templates)">
+        Assertion Requirements</a></p>
+<p>
+</p>
+<p>
+
+</p>
+<div class="refsect2">
+<a name="idm34941"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Then</pre>
+<p>Type of functor template to call when the static predicate is <code class="computeroutput">true</code> (as it is for this template specialization). </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idm34951"></a><h3>
+<a name="boost.contract.call_if_statement_idm33861construct-copy-destruct"></a><code class="computeroutput">call_if_statement</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm33891-bb"></a><span class="identifier">call_if_statement</span><span class="special">(</span><span class="identifier">Then</span> f<span class="special">)</span><span class="special">;</span></pre>Construct this object with the then-branch functor template. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">f</code></span></p></td>
+<td><p>Then-branch nullary functor template. The functor template call <code class="computeroutput">f()</code> is compiled and called for this template specialization (because the if-statement static predicate is <code class="computeroutput">true</code>). The return type of <code class="computeroutput">f()</code> must be the same as (or implicitly convertible to) the return type of all other functor template calls specified for this call-if object. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li></ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="call_if_statement_idm33758.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.call_if_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="call_if_statement_idm33902.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

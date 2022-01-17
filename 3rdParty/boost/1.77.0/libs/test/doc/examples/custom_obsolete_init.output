@@ -1,8 +1,0 @@
-//[example_output
-> custom_obsolete_init
-using obsolete init
-Running 1 test case...
-test.cpp(6): error: in "test1": check false has failed
-
-*** 1 failure is detected in the test module "Master Test Suite"
-//]

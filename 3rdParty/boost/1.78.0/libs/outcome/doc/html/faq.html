@@ -1,0 +1,674 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Frequently asked questions - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="./css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="./images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="./reference/functions/try_throw_std_exception_from_error.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./videos.html"><img src="./images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Frequently asked questions</h1></div></div></div>
+  <div class="toc"><dl class="toc">
+<dt>
+<dd><dl>
+<dt><a href="#is-outcome-safe-to-use-in-extern-apis">Is Outcome safe to use in extern APIs?</a></dt>
+<dt><a href="#does-outcome-implement-over-alignment">Does Outcome implement over-alignment?</a></dt>
+<dt><a href="#does-outcome-implement-the-no-fail-strong-or-basic-exception-guarantee">Does Outcome implement the no-fail, strong or basic exception guarantee?</a></dt>
+<dt><a href="#does-outcome-have-a-stable-abi-and-api">Does Outcome have a stable ABI and API?</a></dt>
+<dt><a href="#can-i-use-result-t-ec-across-dll-shared-object-boundaries">Can I use <code>result&lt;T, EC&gt;</code> across DLL/shared object boundaries?</a></dt>
+<dt><a href="#why-two-types-result-and-outcome-rather-than-just-one">Why two types <code>result&lt;&gt;</code>  and <code>outcome&lt;&gt;</code>, rather than just one?</a></dt>
+<dt><a href="#how-badly-will-including-outcome-in-my-public-interface-affect-compile-times">How badly will including Outcome in my public interface affect compile times?</a></dt>
+<dt><a href="#is-outcome-suitable-for-fixed-latency-predictable-execution-coding-such-as-for-high-frequency-trading-or-audio">Is Outcome suitable for fixed latency/predictable execution coding such as for high frequency trading or audio?</a></dt>
+<dt><a href="#what-kind-of-runtime-performance-impact-will-using-outcome-in-my-code-introduce">What kind of runtime performance impact will using Outcome in my code introduce?</a>
+<dd><dl>
+<dt><a href="#high-end-cpu-intel-skylake-x64">High end CPU: Intel Skylake x64</a></dt>
+<dt><a href="#mid-tier-cpu-arm-cortex-a72">Mid tier CPU: ARM Cortex A72</a></dt>
+<dt><a href="#low-end-cpus-intel-silvermont-x64-and-arm-cortex-a53">Low end CPUs: Intel Silvermont x64 and ARM Cortex A53</a></dt>
+</dl></dd></dt>
+<dt><a href="#why-is-implicit-default-construction-disabled">Why is implicit default construction disabled?</a></dt>
+<dt><a href="#how-far-away-from-the-proposed-std-expected-t-e-is-outcome-s-checked-t-e">How far away from the proposed <code>std::expected&lt;T, E&gt;</code> is Outcome&rsquo;s <code>checked&lt;T, E&gt;</code>?</a></dt>
+<dt><a href="#why-doesn-t-outcome-duplicate-std-expected-t-e-s-design">Why doesn&rsquo;t Outcome duplicate <code>std::expected&lt;T, E&gt;</code>&rsquo;s design?</a></dt>
+<dt><a href="#is-outcome-riddled-with-undefined-behaviour-for-const-const-containing-and-reference-containing-types">Is Outcome riddled with undefined behaviour for const, const-containing and reference-containing types?</a>
+<dd><dl>
+<dt><a href="#more-detail">More detail</a></dt>
+</dl></dd></dt>
+</dl></dd></dt>
+</dl>
+  </div>
+
+
+
+
+<h2 id="is-outcome-safe-to-use-in-extern-apis">Is Outcome safe to use in extern APIs?</h2>
+
+<p>Outcome is specifically designed for use in the public interfaces of multi-million
+line codebases. <code>result</code>&rsquo;s layout is hard coded to:</p>
+<div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">struct</span> <span class="n">trivially_copyable_result_layout</span> <span class="p">{</span>
+  <span class="k">union</span> <span class="p">{</span>
+    <span class="n">value_type</span> <span class="n">value</span><span class="p">;</span>
+    <span class="n">error_type</span> <span class="n">error</span><span class="p">;</span>
+  <span class="p">};</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>&hellip; if both <code>value_type</code> and <code>error_type</code> are <code>TriviallyCopyable</code>, otherwise:</p>
+<div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">struct</span> <span class="n">non_trivially_copyable_result_layout</span> <span class="p">{</span>
+  <span class="n">value_type</span> <span class="n">value</span><span class="p">;</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">;</span>
+  <span class="n">error_type</span> <span class="n">error</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>This is C-compatible if <code>value_type</code> and <code>error_type</code> are C-compatible. 
+<a href="https://en.cppreference.com/w/cpp/error/error_code" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>std::error_code</code></a>
+
+is <em>probably</em> C-compatible, but its layout is not standardised (though there is a
+normative note in the standard about its layout). Hence Outcome cannot provide a
+C macro API for standard Outcome, but we can for <a href="./experimental/c-api.html">Experimental Outcome</a>.</p>
+
+<h2 id="does-outcome-implement-over-alignment">Does Outcome implement over-alignment?</h2>
+
+<p>Outcome propagates any over-alignment of the types you supply to it as according
+to the layout specified above. Therefore the ordinary alignment and padding rules
+for your compiler are used.</p>
+
+<h2 id="does-outcome-implement-the-no-fail-strong-or-basic-exception-guarantee">Does Outcome implement the no-fail, strong or basic exception guarantee?</h2>
+
+<p>(<a href="https://en.cppreference.com/w/cpp/language/exceptions#Exception_safety">You can read about the meaning of these guarantees at cppreference.com</a>)</p>
+
+<p>If for the following operations:</p>
+
+<ul>
+<li>Construction</li>
+<li>Assignment</li>
+<li>Swap</li>
+</ul>
+
+<p>&hellip; the corresponding operation in <strong>all</strong> of <code>value_type</code>, <code>error_type</code> (and
+<code>exception_type</code> for <code>outcome</code>) is <code>noexcept(true)</code>, then <code>result</code> and
+<code>outcome</code>&rsquo;s operation is <code>noexcept(true)</code>. This propagates the no-fail exception
+guarantee of the underlying types. Otherwise the basic guarantee applies for all
+but Swap, under the same rules as for the <code>struct</code> layout type given above e.g.
+value would be constructed first, then the flags, then the error. If the error
+throws, value and status bits would be as if the failure had not occurred, same
+as for aborting the construction of any <code>struct</code> type.</p>
+
+<p>It is recognised that these weak guarantees may be unsuitable for some people,
+so Outcome implements <code>swap()</code> with much stronger guarantees, as one can locally refine,
+without too much work, one&rsquo;s own custom classes from <code>result</code> and <code>outcome</code> implementing
+stronger guarantees for construction and assignment using <code>swap()</code> as the primitive
+building block.</p>
+
+<p>The core ADL discovered implementation of strong guarantee swap is <a href="./reference/functions/strong_swap.html" class="api-reference"><code>strong_swap(bool &amp;all_good, T &amp;a, T &amp;b)</code></a>
+.
+This can be overloaded by third party code with custom strong guarantee swap
+implementations, same as for <code>std::swap()</code>. Because strong guarantee swap may fail
+when trying to restore input state during handling of failure to swap, the
+<code>all_good</code> boolean becomes false if restoration fails, at which point both
+results/outcomes get marked as tainted via <a href="./reference/types/basic_result/has_lost_consistency.html" class="api-reference"><code>has_lost_consistency()</code></a>
+.</p>
+
+<p>It is <strong>up to you</strong> to check this flag to see if known good state has been lost,
+as Outcome never does so on your behalf. The simple solution to avoiding having
+to deal with this situation is to always choose your value, error and exception
+types to have non-throwing move constructors and move assignments. This causes
+the strong swap implementation to no longer be used, as it is no longer required,
+and standard swap is used instead.</p>
+
+<h2 id="does-outcome-have-a-stable-abi-and-api">Does Outcome have a stable ABI and API?</h2>
+
+<p>The layout changed for all trivially copyable types between Outcome v2.1 and v2.2,
+as union based storage was introduced. From v2.2 onwards, the layout is not
+expected to change again.</p>
+
+<p>If v2.2 proves to be unchanging for 24 months, Outcome&rsquo;s ABI and API will be
+formally fixed as <strong>the</strong> v2 interface and written into stone forever. Thereafter
+the <a href="https://lvc.github.io/abi-compliance-checker/">ABI compliance checker</a>
+will be run per-commit to ensure Outcome&rsquo;s ABI and API remains stable. This is
+currently expected to occur in 2022.</p>
+
+<p>Note that the stable ABI and API guarantee will only apply to standalone
+Outcome, not to Boost.Outcome. Boost.Outcome has dependencies on other
+parts of Boost which are not stable across releases.</p>
+
+<p>Note also that the types you configure a <code>result</code> or <code>outcome</code> with also need
+to be ABI stable if <code>result</code> or <code>outcome</code> is to be ABI stable.</p>
+
+<h2 id="can-i-use-result-t-ec-across-dll-shared-object-boundaries">Can I use <code>result&lt;T, EC&gt;</code> across DLL/shared object boundaries?</h2>
+
+<p>A known problem with using Windows DLLs (and to smaller extent POSIX shared libraries) is that global
+objects may get duplicated: one instance in the executable and one in the DLL. This
+behaviour is not incorrect according to the C++ Standard, as the Standard does not
+recognize the existence of DLLs or shared libraries. Therefore, program designs that
+depend on globals having unique addresses may become compromised when used in a program
+using DLLs.</p>
+
+<p>Nothing in Outcome depends on the addresses of globals, plus the guaranteed fixed data
+layout (see answer above) means that different versions of Outcome can be used in
+different DLLs, and it probably will work okay (it is still not advised that you do that
+as that is an ODR violation).
+However, one of the most likely candidate for <code>EC</code> &ndash; <code>std::error_code</code> &ndash; <strong>does</strong> depend
+on the addresses of globals for correct functioning.</p>
+
+<p>The standard library is required to implement globally unique addresses for the standard library
+provided 
+<a href="https://en.cppreference.com/w/cpp/error/error_category" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>std::error_category</code></a>
+ implementations e.g. <code>std::system_category()</code>.
+User defined error code categories may <strong>not</strong> have unique global addresses, and thus
+introduce misoperation.</p>
+
+<p><code>boost::system::error_code</code>, since version 1.69 does offer an <em>opt-in</em> guarantee
+that it does not depend on the addresses of globals <strong>if</strong> the user defined error code
+category <em>opts-in</em> to the 64-bit comparison mechanism. This can be seen in the specification of
+<code>error_category::operator==</code> in
+<a href="https://www.boost.org/doc/libs/1_69_0/libs/system/doc/html/system.html#ref_synopsis">Boost.System synopsis</a>.</p>
+
+<p>Alternatively, the <code>status_code</code> in <a href="(/experimental/differences.html)">Experimental Outcome</a>,
+due to its more modern design, does not suffer from any problems from being used in shared
+libraries in any configuration.</p>
+
+<h2 id="why-two-types-result-and-outcome-rather-than-just-one">Why two types <code>result&lt;&gt;</code>  and <code>outcome&lt;&gt;</code>, rather than just one?</h2>
+
+<p><code>result</code> is the simple, success OR failure type.</p>
+
+<p><code>outcome</code> extends <code>result</code> with a third state to transport, conventionally (but not necessarily) some sort of &ldquo;abort&rdquo; or &ldquo;exceptional&rdquo; state which a function can return to indicate that not only did the operation fail, but it did so <em>catastrophically</em> i.e. please abort any attempt to retry the operation.</p>
+
+<p>A perfect alternative to using <code>outcome</code> is to throw a C++ exception for the abort code path, and indeed most programs ought to do exactly that instead of using <code>outcome</code>. However there are a number of use cases where choosing <code>outcome</code> shines:</p>
+
+<ol>
+<li>Where C++ exceptions or RTTI is not available, but the ability to fail catastrophically without terminating the program is important.</li>
+<li>Where deterministic behaviour is required even in the catastrophic failure situation.</li>
+<li>In unit test suites of code using Outcome it is extremely convenient to accumulate test failures into an <code>outcome</code> for later reporting. A similar convenience applies to RPC situations, where C++ exception throws need to be accumulated for reporting back to the initiating endpoint.</li>
+<li>Where a function is &ldquo;dual use deterministic&rdquo; i.e. it can be used deterministically, in which case one switches control flow based on <code>.error()</code>, or it can be used non-deterministically by throwing an exception perhaps carrying a custom payload.</li>
+</ol>
+
+<h2 id="how-badly-will-including-outcome-in-my-public-interface-affect-compile-times">How badly will including Outcome in my public interface affect compile times?</h2>
+
+<p>The quick answer is that it depends on how much convenience you want.</p>
+
+<p>The convenience header <code>&lt;result.hpp&gt;</code> is dependent on <code>&lt;system_error&gt;</code> or Boost.System, which unfortunately includes <code>&lt;string&gt;</code> and thus
+drags in quite a lot of other slow-to-parse stuff. If your public interface already includes <code>&lt;string&gt;</code>,
+then the impact of additionally including Outcome will be low. If you do not include <code>&lt;string&gt;</code>,
+unfortunately impact may be relatively quite high, depending on the total impact of your
+public interface files.</p>
+
+<p>If you&rsquo;ve been extremely careful to avoid ever including the most of the STL headers
+into your interfaces in order to maximise build performance, then <code>&lt;basic_result.hpp&gt;</code>
+can have as few dependencies as:</p>
+
+<ol>
+<li><code>&lt;cstdint&gt;</code></li>
+<li><code>&lt;initializer_list&gt;</code></li>
+<li><code>&lt;iosfwd&gt;</code></li>
+<li><code>&lt;new&gt;</code></li>
+<li><code>&lt;type_traits&gt;</code></li>
+<li><code>&lt;cstdio&gt;</code></li>
+<li><code>&lt;cstdlib&gt;</code></li>
+<li><code>&lt;cassert&gt;</code></li>
+</ol>
+
+<p>These, apart from <code>&lt;iosfwd&gt;</code>, tend to be very low build time impact in most standard
+library implementations. If you include only <code>&lt;basic_result.hpp&gt;</code>, and manually configure
+<code>basic_result&lt;&gt;</code> by hand, compile time impact will be minimised.</p>
+
+<p>(See reference documentation for <a href="./reference/types/basic_result.html" class="api-reference"><code>basic_result&lt;T, E, NoValuePolicy&gt;</code></a>
+ for more detail.</p>
+
+<h2 id="is-outcome-suitable-for-fixed-latency-predictable-execution-coding-such-as-for-high-frequency-trading-or-audio">Is Outcome suitable for fixed latency/predictable execution coding such as for high frequency trading or audio?</h2>
+
+<p>Great care has been taken to ensure that Outcome never unexpectedly executes anything
+with unbounded execution times such as <code>malloc()</code>, <code>dynamic_cast&lt;&gt;()</code> or <code>throw</code>.
+Outcome works perfectly with C++ exceptions and RTTI globally disabled.</p>
+
+<p>Outcome&rsquo;s entire design premise is that its users are happy to exchange a small, predictable constant overhead
+during successful code paths, in exchange for predictable failure code paths.</p>
+
+<p>In contrast, table-based exception handling gives zero run time overhead for the
+successful code path, and completely unpredictable (and very expensive) overhead
+for failure code paths.</p>
+
+<p>For code where predictability of execution, no matter the code path, is paramount,
+writing all your code to use Outcome is not a bad place to start. Obviously enough,
+do choose a non-throwing policy when configuring <code>outcome</code> or <code>result</code> such as
+<a href="./reference/policies/all_narrow.html" class="api-reference"><code>all_narrow</code></a>
+ to guarantee that exceptions can never be thrown by Outcome
+(or use the convenience typedef for <code>result</code>, <a href="./reference/aliases/unchecked.html" class="api-reference"><code>unchecked&lt;T, E = varies&gt;</code></a>
+ which uses <code>policy::all_narrow</code>).</p>
+
+<h2 id="what-kind-of-runtime-performance-impact-will-using-outcome-in-my-code-introduce">What kind of runtime performance impact will using Outcome in my code introduce?</h2>
+
+<p>It is very hard to say anything definitive about performance impacts in codebases one
+has never seen. Each codebase is unique. However to come up with some form of measure,
+we timed traversing ten stack frames via each of the main mechanisms, including the
+&ldquo;do nothing&rdquo; (null) case.</p>
+
+<p>A stack frame is defined to be something called by the compiler whilst
+unwinding the stack between the point of return in the ultimate callee and the base
+caller, so for example ten stack allocated objects might be destructed, or ten levels
+of stack depth might be unwound. This is not a particularly realistic test, but it
+should at least give one an idea of the performance impact of returning Outcome&rsquo;s
+<code>result</code> or <code>outcome</code> over say returning a plain integer, or throwing an exception.</p>
+
+<p>The following figures are for Outcome v2.1.0 with GCC 7.4, clang 8.0 and Visual
+Studio 2017.9. Figures for newer Outcomes with newer compilers can be found at
+<a href="https://github.com/ned14/outcome/tree/develop/benchmark">https://github.com/ned14/outcome/tree/develop/benchmark</a>.</p>
+
+<h3 id="high-end-cpu-intel-skylake-x64">High end CPU: Intel Skylake x64</h3>
+
+<p>This is a high end CPU with very significant ability to cache, predict, parallelise
+and execute out-of-order such that tight, repeated loops perform very well. It has
+a large μop cache able to wholly contain the test loop, meaning that these results
+are a <strong>best case</strong> performance.</p>
+
+<figure>
+    <img src="./faq/results_skylake_log.png"/> <figcaption>
+            <h4>Log graph comparing GCC 7.4, clang 8.0 and Visual Studio 2017.9 on x64, for exceptions-globally-disabled, ordinary and link-time-optimised build configurations.</h4>
+        </figcaption>
+</figure>
+
+<p>As you can see, throwing and catching an exception is
+expensive on table-based exception handling implementations such as these, anywhere
+between 26,000 and 43,000 CPU cycles. And this is the <em>hot path</em> situation, this
+benchmark is a loop around hot cached code. If the tables are paged out onto storage,
+you are talking about <strong>millions</strong> of CPU cycles.</p>
+
+<p>Simple integer returns (i.e. do nothing null case)
+are always going to be the fastest as they do the least work, and that costs 80 to 90
+CPU cycles on this Intel Skylake CPU.</p>
+
+<p>Note that returning a <code>result&lt;int, std::error_code&gt;</code> with a &ldquo;success (error code)&rdquo;
+is no more than 5% added runtime overhead over returning a naked int on GCC and clang. On MSVC
+it costs an extra 20% or so, mainly due to poor code optimisation in the VS2017.9 compiler. Note that &ldquo;success
+(experimental status code)&rdquo; optimises much better, and has almost no overhead over a
+naked int.</p>
+
+<p>Returning a <code>result&lt;int, std::error_code&gt;</code> with a &ldquo;failure (error code)&rdquo;
+is less than 5% runtime overhead over returning a success on GCC, clang and MSVC.</p>
+
+<p>You might wonder what happens if type <code>E</code> has a non-trivial destructor, thus making the
+<code>result&lt;T, E&gt;</code> have a non-trivial destructor? We tested <code>E = std::exception_ptr</code> and
+found less than a 5% overhead to <code>E = std::error_code</code> for returning success. Returning a failure
+was obviously much slower at anywhere between 300 and 1,100 CPU cycles, due to the
+dynamic memory allocation and free of the exception ptr, plus at least two atomic operations per stack frame, but that is
+still two orders of magnitude better than throwing and catching an exception.</p>
+
+<p>We conclude that if failure is anything but extremely rare in your C++ codebase,
+using Outcome instead of throwing and catching exceptions ought to be quicker overall:</p>
+
+<ul>
+<li>Experimental Outcome is statistically indistinguishable from the null case on this
+high end CPU, for both returning success and failure, on all compilers.</li>
+<li>Standard Outcome is less than 5%
+worse than the null case for returning successes on GCC and clang, and less than 10% worse than
+the null case for returning failures on GCC and clang.</li>
+<li>Standard Outcome optimises
+poorly on VS2017.9, indeed markedly worse than on previous point releases, so let&rsquo;s
+hope that Microsoft fix that soon. It currently has a less than 20% overhead on the null case.</li>
+</ul>
+
+<h3 id="mid-tier-cpu-arm-cortex-a72">Mid tier CPU: ARM Cortex A72</h3>
+
+<p>This is a four year old mid tier CPU used in many high end mobile phones and tablets
+of its day, with good ability to cache, predict, parallelise
+and execute out-of-order such that tight, repeated loops perform very well. It has
+a μop cache able to wholly contain the test loop, meaning that these results
+are a <strong>best case</strong> performance.</p>
+
+<figure>
+    <img src="./faq/results_arm_a72_log.png"/> <figcaption>
+            <h4>Log graph comparing GCC 7.3 and clang 7.3 on ARM64, for exceptions-globally-disabled, ordinary and link-time-optimised build configurations.</h4>
+        </figcaption>
+</figure>
+
+<p>This ARM chip is a very consistent performer &ndash; null case, success, or failure, all take
+almost exactly the same CPU cycles. Choosing Outcome, in any configuration, makes no
+difference to not using Outcome at all. Throwing and catching a C++ exception costs
+about 90,000 CPU cycles, whereas the null case/Outcome costs about 130 - 140 CPU cycles.</p>
+
+<p>There is very little to say about this CPU, other than Outcome is zero overhead on it. The same
+applied to the ARM Cortex A15 incidentally, which I test cased extensively when
+deciding on the Outcome v2 design back after the first peer review. The v2 design
+was chosen partially because of such consistent performance on ARM.</p>
+
+<h3 id="low-end-cpus-intel-silvermont-x64-and-arm-cortex-a53">Low end CPUs: Intel Silvermont x64 and ARM Cortex A53</h3>
+
+<p>These are low end CPUs with a mostly or wholly in-order execution core. They have a small
+or no μop cache, meaning that the CPU must always decode the instruction stream.
+These results represent an execution environment more typical of CPUs two decades
+ago, back when table-based EH created a big performance win if you never threw
+an exception.</p>
+
+<p><figure>
+    <img src="./faq/results_silvermont_log.png"/> <figcaption>
+            <h4>Log graph comparing GCC 7.3 and clang 7.3 on x64, for exceptions-globally-disabled, ordinary and link-time-optimised build configurations.</h4>
+        </figcaption>
+</figure>
+<figure>
+    <img src="./faq/results_arm_a53_log.png"/> <figcaption>
+            <h4>Log graph comparing GCC 7.3 and clang 7.3 on ARM64, for exceptions-globally-disabled, ordinary and link-time-optimised build configurations.</h4>
+        </figcaption>
+</figure></p>
+
+<p>The first thing to mention is that clang generates very high performance code for
+in-order cores, far better than GCC. It is said that this is due to a very large investment by
+Apple in clang/LLVM for their devices sustained over many years. In any case, if you&rsquo;re
+targeting in-order CPUs, don&rsquo;t use GCC if you can use clang instead!</p>
+
+<p>For the null case, Silvermont and Cortex A53 are quite similar in terms of CPU clock cycles. Ditto
+for throwing and catching a C++ exception (approx 150,000 CPU cycles). However the Cortex
+A53 does far better with Outcome than Silvermont, a 15% versus 100% overhead for Standard
+Outcome, and a 4% versus 20% overhead for Experimental Outcome.</p>
+
+<p>Much of this large difference is in fact due to calling convention differences. x64 permits up to 8 bytes
+to be returned from functions by CPU register. <code>result&lt;int&gt;</code> consumes 24 bytes, so on x64
+the compiler writes the return value to the stack. However ARM64 permits up to 64 bytes
+to be returned in registers, so <code>result&lt;int&gt;</code> is returned via CPU registers on ARM64.</p>
+
+<p>On higher end CPUs, memory is read and written in cache lines (32 or 64 bytes), and
+reads and writes are coalesced and batched together by the out-of-order execution core. On these
+low end CPUs, memory is read and written sequentially per assembler instruction,
+so only one load or one store to L1
+cache can occur at a time. This makes writing the stack particularly slow on in-order
+CPUs. Memory operations which &ldquo;disappear&rdquo; on higher end CPUs take considerable time
+on low end CPUs. This particularly punishes Silvermont in a way which does not punish
+the Cortex A53, because of having to write multiple values to the stack to create the
+24 byte object to be returned.</p>
+
+<p>The conclusion to take away from this is that if you are targeting a low end CPU,
+table-based EH still delivers significant performance improvements for the success
+code path. Unless determinism in failure is critically important, you should not
+use Outcome on in-order execution CPUs.</p>
+
+<h2 id="why-is-implicit-default-construction-disabled">Why is implicit default construction disabled?</h2>
+
+<p>This was one of the more interesting points of discussion during the peer review of
+Outcome v1. v1 had a formal empty state. This came with many advantages, but it
+was not felt to be STL idiomatic as <code>std::optional&lt;result&lt;T&gt;&gt;</code> is what was meant, so
+v2 has eliminated any legal possibility of being empty.</p>
+
+<p>The <code>expected&lt;T, E&gt;</code> proposal of that time (May 2017) did permit default construction
+if its <code>T</code> type allowed default construction. This was specifically done to make
+<code>expected&lt;T, E&gt;</code> more useful in STL containers as one can say resize a vector without
+having to supply an <code>expected&lt;T, E&gt;</code> instance to fill the new items with. However
+there was some unease with that design choice, because it may cause programmers to
+use some type <code>T</code> whose default constructed state is overloaded with additional meaning,
+typically &ldquo;to be filled&rdquo; i.e. a de facto empty state via choosing a magic value.</p>
+
+<p>For the v2 redesign, the various arguments during the v1 review were considered.
+Unlike <code>expected&lt;T, E&gt;</code> which is intended to be a general purpose Either monad
+vocabulary type, Outcome&rsquo;s types are meant primarily for returning success or failure
+from functions. The API should therefore encourage the programmer to not overload
+the successful type with additional meaning of &ldquo;to be filled&rdquo; e.g. <code>result&lt;std::optional&lt;T&gt;&gt;</code>.
+The decision was therefore taken to disable <em>implicit</em> default construction, but
+still permit <em>explicit</em> default construction by making the programmer spell out their
+intention with extra typing.</p>
+
+<p>To therefore explicitly default construct a <code>result&lt;T&gt;</code> or <code>outcome&lt;T&gt;</code>, use one
+of these forms as is the most appropriate for the use case:</p>
+
+<ol>
+<li>Construct with just <code>in_place_type&lt;T&gt;</code> e.g. <code>result&lt;T&gt;(in_place_type&lt;T&gt;)</code>.</li>
+<li>Construct via <code>success()</code> e.g. <code>outcome&lt;T&gt;(success())</code>.</li>
+<li>Construct from a <code>void</code> form e.g. <code>result&lt;T&gt;(result&lt;void&gt;(in_place_type&lt;void&gt;))</code>.</li>
+</ol>
+
+<h2 id="how-far-away-from-the-proposed-std-expected-t-e-is-outcome-s-checked-t-e">How far away from the proposed <code>std::expected&lt;T, E&gt;</code> is Outcome&rsquo;s <code>checked&lt;T, E&gt;</code>?</h2>
+
+<p>Not far, in fact after the first Boost.Outcome peer review in May 2017, Expected moved
+much closer to Outcome, and Outcome deliberately provides <a href="./reference/aliases/checked.html" class="api-reference"><code>checked&lt;T, E = varies&gt;</code></a>
+
+as a semantic equivalent.</p>
+
+<p>Here are the remaining differences which represent the
+divergence of consensus opinion between the Boost peer review and WG21 on the proper
+design for this object:</p>
+
+<ol>
+<li><code>checked&lt;T, E&gt;</code> has no default constructor. Expected has a default constructor if
+<code>T</code> has a default constructor.</li>
+<li><code>checked&lt;T, E&gt;</code> uses the same constructor design as <code>std::variant&lt;...&gt;</code>. Expected
+uses the constructor design of <code>std::optional&lt;T&gt;</code>.</li>
+<li><code>checked&lt;T, E&gt;</code> cannot be modified after construction except by assignment.
+Expected provides an <code>.emplace()</code> modifier.</li>
+<li><code>checked&lt;T, E&gt;</code> permits implicit construction from both <code>T</code> and <code>E</code> when
+unambiguous. Expected permits implicit construction from <code>T</code> alone.</li>
+<li><code>checked&lt;T, E&gt;</code> does not permit <code>T</code> and <code>E</code> to be the same, and becomes annoying
+to use if they are constructible into one another (implicit construction self-disables).
+Expected permits <code>T</code> and <code>E</code> to be the same.</li>
+<li><code>checked&lt;T, E&gt;</code> throws <code>bad_result_access_with&lt;E&gt;</code> instead of Expected&rsquo;s
+<code>bad_expected_access&lt;E&gt;</code>.</li>
+<li><code>checked&lt;T, E&gt;</code> models <code>std::variant&lt;...&gt;</code>. Expected models <code>std::optional&lt;T&gt;</code>. Thus:
+
+<ul>
+<li><code>checked&lt;T, E&gt;</code> does not provide <code>operator*()</code> nor <code>operator-&gt;</code></li>
+<li><code>checked&lt;T, E&gt;</code> <code>.error()</code> is wide (i.e. throws on no-value) like <code>.value()</code>.
+Expected&rsquo;s <code>.error()</code> is narrow (UB on no-error). [<code>checked&lt;T, E&gt;</code> provides
+<code>.assume_value()</code> and <code>.assume_error()</code> for narrow (UB causing) observers].</li>
+</ul></li>
+<li><code>checked&lt;T, E&gt;</code> uses <code>success&lt;T&gt;</code> and <code>failure&lt;E&gt;</code> type sugars for disambiguation.
+Expected uses <code>unexpected&lt;E&gt;</code> only.</li>
+<li><code>checked&lt;T, E&gt;</code> does not implement (prone to unintended misoperation) comparison
+operators which permit implicit conversion e.g. <code>checked&lt;T&gt; == T</code> will fail to compile.
+Instead write unambiguous code e.g. <code>checked&lt;T&gt; == success(T)</code> or <code>checked&lt;T&gt; == failure(T)</code>.</li>
+<li><code>checked&lt;T, E&gt;</code> defaults <code>E</code> to <code>std::error_code</code> or <code>boost::system::error_code</code>.
+Expected does not default <code>E</code>.</li>
+</ol>
+
+<p>In fact, the two are sufficiently close in design that a highly conforming <code>expected&lt;T, E&gt;</code>
+can be implemented by wrapping up <code>checked&lt;T, E&gt;</code> with the differing functionality:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="cm">/* Here is a fairly conforming implementation of P0323R3 `expected&lt;T, E&gt;` using `checked&lt;T, E&gt;`.
+</span><span class="cm">It passes the reference test suite for P0323R3 at
+</span><span class="cm">https://github.com/viboes/std-make/blob/master/test/expected/expected_pass.cpp with modifications
+</span><span class="cm">only to move the test much closer to the P0323R3 Expected, as the reference test suite is for a
+</span><span class="cm">much older proposed Expected.
+</span><span class="cm">
+</span><span class="cm">Known differences from P0323R3 in this implementation:
+</span><span class="cm">- `T` and `E` cannot be the same type.
+</span><span class="cm">- `E` must be default constructible.
+</span><span class="cm">- No variant storage is implemented (note the Expected proposal does not actually require this).
+</span><span class="cm">*/</span>
+
+<span class="k">namespace</span> <span class="n">detail</span>
+<span class="p">{</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="p">,</span> <span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="k">using</span> <span class="n">expected_result</span> <span class="o">=</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">checked</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="p">,</span> <span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="nl">enable_default_constructor</span> <span class="p">:</span> <span class="k">public</span> <span class="n">expected_result</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;</span>
+  <span class="p">{</span>
+    <span class="k">using</span> <span class="n">base</span> <span class="o">=</span> <span class="n">expected_result</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">base</span><span class="o">::</span><span class="n">base</span><span class="p">;</span>
+    <span class="k">constexpr</span> <span class="nf">enable_default_constructor</span><span class="p">()</span>
+        <span class="o">:</span> <span class="n">base</span><span class="p">{</span><span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">in_place_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">}</span>
+    <span class="p">{</span>
+    <span class="p">}</span>
+  <span class="p">};</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="p">,</span> <span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="k">using</span> <span class="n">select_expected_base</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">conditional_t</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">is_default_constructible</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">,</span> <span class="n">enable_default_constructor</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">expected_result</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="p">,</span> <span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="k">class</span><span class="err"> </span><span class="nc">expected</span> <span class="o">:</span> <span class="k">public</span> <span class="n">detail</span><span class="o">::</span><span class="n">select_expected_base</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="k">static_assert</span><span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">,</span> <span class="s">&#34;T and E cannot be the same in this expected implementation&#34;</span><span class="p">);</span>
+  <span class="k">using</span> <span class="n">base</span> <span class="o">=</span> <span class="n">detail</span><span class="o">::</span><span class="n">select_expected_base</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+  <span class="c1">// Inherit base&#39;s constructors
+</span><span class="c1"></span>  <span class="k">using</span> <span class="n">base</span><span class="o">::</span><span class="n">base</span><span class="p">;</span>
+  <span class="n">expected</span><span class="p">()</span> <span class="o">=</span> <span class="k">default</span><span class="p">;</span>
+
+  <span class="c1">// Expected takes in_place not in_place_type
+</span><span class="c1"></span>  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err">... </span><span class="nc">Args</span><span class="o">&gt;</span>
+  <span class="k">constexpr</span> <span class="k">explicit</span> <span class="n">expected</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">in_place_t</span> <span class="cm">/*unused*/</span><span class="p">,</span> <span class="n">Args</span> <span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span>
+      <span class="o">:</span> <span class="n">base</span><span class="p">{</span><span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">in_place_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...}</span>
+  <span class="p">{</span>
+  <span class="p">}</span>
+
+  <span class="c1">// Expected always accepts a T even if ambiguous
+</span><span class="c1"></span>  <span class="n">BOOST_OUTCOME_TEMPLATE</span><span class="p">(</span><span class="k">class</span><span class="err"> </span><span class="nc">U</span><span class="p">)</span>
+  <span class="n">BOOST_OUTCOME_TREQUIRES</span><span class="p">(</span><span class="n">BOOST_OUTCOME_TPRED</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">is_constructible</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">U</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">))</span>
+  <span class="k">constexpr</span> <span class="n">expected</span><span class="p">(</span><span class="n">U</span> <span class="o">&amp;&amp;</span><span class="n">v</span><span class="p">)</span>
+      <span class="o">:</span> <span class="n">base</span><span class="p">{</span><span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">in_place_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">U</span><span class="o">&gt;</span><span class="p">(</span><span class="n">v</span><span class="p">)}</span>
+  <span class="p">{</span>
+  <span class="p">}</span>
+
+  <span class="c1">// Expected has an emplace() modifier
+</span><span class="c1"></span>  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err">... </span><span class="nc">Args</span><span class="o">&gt;</span> <span class="kt">void</span> <span class="n">emplace</span><span class="p">(</span><span class="n">Args</span> <span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span> <span class="o">*</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">base</span> <span class="o">*&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">)</span> <span class="o">=</span> <span class="n">base</span><span class="p">{</span><span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">in_place_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...};</span> <span class="p">}</span>
+
+  <span class="c1">// Expected has a narrow operator* and operator-&gt;
+</span><span class="c1"></span>  <span class="k">constexpr</span> <span class="k">const</span> <span class="n">T</span> <span class="o">&amp;</span><span class="k">operator</span><span class="o">*</span><span class="p">()</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="n">T</span> <span class="o">&amp;</span><span class="k">operator</span><span class="o">*</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="k">const</span> <span class="n">T</span> <span class="o">&amp;&amp;</span><span class="k">operator</span><span class="o">*</span><span class="p">()</span> <span class="k">const</span> <span class="o">&amp;&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="n">T</span> <span class="o">&amp;&amp;</span><span class="k">operator</span><span class="o">*</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="k">const</span> <span class="n">T</span> <span class="o">*</span><span class="k">operator</span><span class="o">-&gt;</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="n">T</span> <span class="o">*</span><span class="k">operator</span><span class="o">-&gt;</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="o">&amp;</span><span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+
+  <span class="c1">// Expected has a narrow error() observer
+</span><span class="c1"></span>  <span class="k">constexpr</span> <span class="k">const</span> <span class="n">E</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">()</span> <span class="k">const</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_error</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="n">E</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_error</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="k">const</span> <span class="n">E</span> <span class="o">&amp;&amp;</span><span class="n">error</span><span class="p">()</span> <span class="k">const</span> <span class="o">&amp;&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_error</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="n">E</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="p">{</span> <span class="k">return</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_error</span><span class="p">();</span> <span class="p">}</span>
+<span class="p">};</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="k">class</span><span class="err"> </span><span class="nc">expected</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;</span> <span class="o">:</span> <span class="k">public</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">policy</span><span class="o">::</span><span class="n">throw_bad_result_access</span><span class="o">&lt;</span><span class="n">E</span><span class="p">,</span> <span class="kt">void</span><span class="o">&gt;&gt;</span>
+<span class="p">{</span>
+  <span class="k">using</span> <span class="n">base</span> <span class="o">=</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">policy</span><span class="o">::</span><span class="n">throw_bad_result_access</span><span class="o">&lt;</span><span class="n">E</span><span class="p">,</span> <span class="kt">void</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+  <span class="c1">// Inherit base constructors
+</span><span class="c1"></span>  <span class="k">using</span> <span class="n">base</span><span class="o">::</span><span class="n">base</span><span class="p">;</span>
+
+  <span class="c1">// Expected has a narrow operator* and operator-&gt;
+</span><span class="c1"></span>  <span class="k">constexpr</span> <span class="kt">void</span> <span class="k">operator</span><span class="o">*</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+  <span class="k">constexpr</span> <span class="kt">void</span> <span class="k">operator</span><span class="o">-&gt;</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="n">base</span><span class="o">::</span><span class="n">assume_value</span><span class="p">();</span> <span class="p">}</span>
+<span class="p">};</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="k">using</span> <span class="n">unexpected</span> <span class="o">=</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">failure_type</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="n">unexpected</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">make_unexpected</span><span class="p">(</span><span class="n">E</span> <span class="o">&amp;&amp;</span><span class="n">arg</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">return</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">failure</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span><span class="p">(</span><span class="n">arg</span><span class="p">));</span>
+<span class="p">}</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="p">,</span> <span class="k">class</span><span class="err">... </span><span class="nc">Args</span><span class="o">&gt;</span> <span class="n">unexpected</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">make_unexpected</span><span class="p">(</span><span class="n">Args</span> <span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">return</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">failure</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...);</span>
+<span class="p">}</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">E</span><span class="o">&gt;</span> <span class="k">using</span> <span class="n">bad_expected_access</span> <span class="o">=</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">bad_result_access_with</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span><span class="p">;</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/expected_implementation.cpp#L35" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<h2 id="why-doesn-t-outcome-duplicate-std-expected-t-e-s-design">Why doesn&rsquo;t Outcome duplicate <code>std::expected&lt;T, E&gt;</code>&rsquo;s design?</h2>
+
+<p>There are a number of reasons:</p>
+
+<ol>
+<li><p>Outcome is not aimed at the same audience as Expected. We target developers
+and users who would be happy to use Boost. Expected targets the standard library user.</p></li>
+
+<li><p>Outcome believes that the monadic use case isn&rsquo;t as important as Expected does.
+Specifically, we think that 99% of use of Expected in the real world will be to
+return failure from functions, and not as some sort of enhanced or &ldquo;rich&rdquo; Optional.
+Outcome therefore models a subset of Variant, whereas Expected models an extended Optional.</p></li>
+
+<li><p>Outcome believes that if you are thinking about using something like Outcome,
+then for you writing failure code will be in the same proportion as writing success code,
+and thus in Outcome writing for failure is exactly the same as writing for success.
+Expected assumes that success will be more common than failure, and makes you type
+more when writing for failure.</p></li>
+
+<li><p>Outcome goes to considerable effort to help the end user type fewer characters
+during use. This results in tighter, less verbose, more succinct code. The cost of this is a steeper
+learning curve and more complex mental model than when programming with Expected.</p></li>
+
+<li><p>Outcome has facilities to make easier interoperation between multiple third
+party libraries each using incommensurate Outcome (or Expected) configurations. Expected does
+not do any of this, but subsequent WG21 papers do propose various interoperation
+mechanisms, <a href="https://wg21.link/P0786">one of which</a> Outcome implements so code using Expected will seamlessly
+interoperate with code using Outcome.</p></li>
+
+<li><p>Outcome was designed with the benefit of hindsight after Optional and Expected,
+where how those do implicit conversions have been found to be prone to writing
+unintentionally buggy code. Outcome simultaneously permits more implicit conversions
+for ease of use and convenience, where those are unambigiously safe, and prevents
+other implicit conversions which the Boost peer review reported as dangerous.</p></li>
+</ol>
+
+<h2 id="is-outcome-riddled-with-undefined-behaviour-for-const-const-containing-and-reference-containing-types">Is Outcome riddled with undefined behaviour for const, const-containing and reference-containing types?</h2>
+
+<p>The short answer is not any more in C++ 20 and after, thanks to changes made to
+C++ 20 at the Belfast WG21 meeting in November 2019.</p>
+
+<p>The longer answer is that before C++ 20, use of placement
+new on types containing <code>const</code> member types where the resulting pointer was
+thrown away is undefined behaviour. As of the resolution of a national body
+comment, this is no longer the case, and now Outcome is free of this particular
+UB for C++ 20 onwards.</p>
+
+<p>This still affects C++ before 20, though no major compiler is affected. Still,
+if you wish to avoid UB, don&rsquo;t use <code>const</code> types within Outcome types (or any
+<code>optional&lt;T&gt;</code>, or <code>vector&lt;T&gt;</code> or any STL container type for that matter).</p>
+
+<h3 id="more-detail">More detail</h3>
+
+<p>Before the C++ 14 standard, placement new into storage which used to contain
+a const type was straight out always undefined behaviour, period. Thus all use of
+placement new within a <code>result&lt;const_containing_type&gt;</code>, or indeed an <code>optional&lt;const_containing_type&gt;</code>, is always
+undefined behaviour before C++ 14. From <code>[basic.life]</code> for the C++ 11 standard:</p>
+
+<blockquote>
+<p>Creating a new object at the storage location that a const object with static,
+thread, or automatic storage duration occupies or, at the storage location
+that such a const object used to occupy before its lifetime ended results
+in undefined behavior.</p>
+</blockquote>
+
+<p>This being excessively restrictive, from C++ 14 onwards, <code>[basic_life]</code> now states:</p>
+
+<blockquote>
+<p>If, after the lifetime of an object has ended and before the storage which
+the object occupied is reused or released, a new object is created at the
+storage location which the original object occupied, a pointer that
+pointed to the original object, a reference that referred to the original
+object, or the name of the original object will automatically refer to the
+new object and, once the lifetime of the new object has started, can be
+used to manipulate the new object, if:</p>
+
+<p>— the storage for the new object exactly overlays the storage location which
+    the original object occupied, and</p>
+
+<p>— the new object is of the same type as the original object (ignoring the
+    top-level cv-qualifiers), and</p>
+
+<p>— the type of the original object is not const-qualified, and, if a class type,
+    does not contain any non-static data member whose type is const-qualified
+    or a reference type, and</p>
+
+<p>— neither the original object nor the new object is a potentially-overlapping
+    subobject</p>
+</blockquote>
+
+<p>Leaving aside my personal objections to giving placement new of non-const
+non-reference types magical pointer renaming powers, the upshot is that if
+you want defined behaviour for placement new of types containing const types
+or references, you must store the pointer returned by placement new, and use
+that pointer for all further reference to the newly created object. This
+obviously adds eight bytes of storage to a <code>result&lt;const_containing_type&gt;</code>, which is highly
+undesirable given all the care and attention paid to keeping it small. The alternative
+is to use 
+<a href="https://en.cppreference.com/w/cpp/utility/launder" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>std::launder</code></a>
+, which was added in C++ 17, to &lsquo;launder&rsquo;
+the storage into which we placement new before each and every use of that
+storage. This forces the compiler to reload the object stored by placement
+new on every occasion, and not assume it can be constant propagated, which
+impacts codegen quality.</p>
+
+<p>As mentioned above, this issue (in so far as it applies to types containing
+user supplied <code>T</code> which might be <code>const</code>) has been resolved as of C++ 20 onwards,
+and it is extremely unlikely that any C++ compiler will act on any UB here in
+C++ 17 or 14 given how much of STL containers would break.</p>
+
+
+
+        </div><p><small>Last revised: April 20, 2021 at 11:39:35 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="./reference/functions/try_throw_std_exception_from_error.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./videos.html"><img src="./images/next.png" alt="Next"></a></div></body>
+</html>
