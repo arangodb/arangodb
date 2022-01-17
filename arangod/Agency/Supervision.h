@@ -83,11 +83,7 @@ class Supervision : public arangodb::Thread {
 
   template<TASKS T>
   class Task {
-<<<<<<< HEAD
     explicit Task(VPackSlice config) {}
-=======
-    explicit Task(VPackSlice const& config) {}
->>>>>>> feature/license-secure-upgrade
     ServerID _serverID;
     std::string _endpoint;
   };
@@ -210,14 +206,8 @@ class Supervision : public arangodb::Thread {
       std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   // @brief Action is called if resource should be deleted
-<<<<<<< HEAD
   void resourceCreatorLost(std::shared_ptr<Node> const& resource,
                            std::function<void(ResourceCreatorLostEvent const&)> const& action);
-=======
-  void resourceCreatorLost(
-      std::shared_ptr<Node> const& resource,
-      std::function<void(ResourceCreatorLostEvent const&)> const& action);
->>>>>>> feature/license-secure-upgrade
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
