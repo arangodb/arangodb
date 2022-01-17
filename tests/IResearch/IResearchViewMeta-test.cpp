@@ -116,14 +116,14 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
   defaults._writebufferSizeMax = 12;
   defaults._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(std::string_view("nested")),
-          arangodb::basics::AttributeName(std::string_view("field"))},
+          arangodb::basics::AttributeName(VPackStringRef("nested")),
+          arangodb::basics::AttributeName(VPackStringRef("field"))},
       true);
   defaults._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(std::string_view("another")),
-          arangodb::basics::AttributeName(std::string_view("nested")),
-          arangodb::basics::AttributeName(std::string_view("field"))},
+          arangodb::basics::AttributeName(VPackStringRef("another")),
+          arangodb::basics::AttributeName(VPackStringRef("nested")),
+          arangodb::basics::AttributeName(VPackStringRef("field"))},
       true);
 
   {
@@ -692,14 +692,14 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   meta._writebufferSizeMax = 12;
   meta._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(std::string_view("nested")),
-          arangodb::basics::AttributeName(std::string_view("field"))},
+          arangodb::basics::AttributeName(VPackStringRef("nested")),
+          arangodb::basics::AttributeName(VPackStringRef("field"))},
       true);
   meta._primarySort.emplace_back(
       std::vector<arangodb::basics::AttributeName>{
-          arangodb::basics::AttributeName(std::string_view("another")),
-          arangodb::basics::AttributeName(std::string_view("nested")),
-          arangodb::basics::AttributeName(std::string_view("field"))},
+          arangodb::basics::AttributeName(VPackStringRef("another")),
+          arangodb::basics::AttributeName(VPackStringRef("nested")),
+          arangodb::basics::AttributeName(VPackStringRef("field"))},
       false);
   meta._primarySortCompression = irs::type<irs::compression::none>::id();
   auto storedValuesJSON = arangodb::velocypack::Parser::fromJson(
