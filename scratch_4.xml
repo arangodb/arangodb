@@ -1,0 +1,140 @@
+<?xml version="1.0"?>
+<arango>
+    <Target>
+        <ReplicatedLogs>
+            <log param="replication2::LogId">
+
+            </log>
+        </ReplicatedLogs>
+        <ToDo>
+            <job param="std::uint64_t"/>
+        </ToDo>
+        <Pending>
+            <job param="std::uint64_t"/>
+        </Pending>
+        <Finished>
+            <job param="std::uint64_t"/>
+        </Finished>
+        <Failed>
+            <job param="std::uint64_t"/>
+        </Failed>
+        <CleanedServers></CleanedServers>
+        <NumberOfDBServers></NumberOfDBServers>
+        <NumberOfCoordinators></NumberOfCoordinators>
+
+        <MapUniqueToShortID>
+            <server param="std::string"></server>
+        </MapUniqueToShortID>
+        <RemovedServers>
+            <server param="std::string"></server>
+        </RemovedServers>
+    </Target>
+    <Plan>
+        <ReplicatedLogs>
+            <database param="DatabaseID">
+                <log param="replication2::LogId">
+                    <id/>
+                    <currentTerm>
+                        <term/>
+                        <config>
+                            <writeConcern/>
+                            <softWriteConcern/>
+                            <replicationFactor/>
+                            <waitForSync/>
+                        </config>
+                        <leader>
+                            <serverId/>
+                            <rebootId/>
+                        </leader>
+                    </currentTerm>
+                    <participantsConfig>
+                        <participants>
+                            <server param="std::string">
+                                <excluded/>
+                                <forced/>
+                            </server>
+                        </participants>
+                        <generation/>
+                    </participantsConfig>
+                </log>
+            </database>
+        </ReplicatedLogs>
+        <Databases>
+            <database param="DatabaseID">
+
+            </database>
+        </Databases>
+        <Collections>
+            <database param="DatabaseID">
+                <collection param="std::string">
+                    <isBuilding/>
+                </collection>
+            </database>
+        </Collections>
+        <Version/>
+        <Coordinators>
+            <server param="std::string"></server>
+        </Coordinators>
+        <DBServers>
+            <server param="std::string"></server>
+        </DBServers>
+        <MapUniqueToShortID/>
+        <ServersKnown/>
+        <RemovedServers/>
+    </Plan>
+    <Current>
+        <ReplicatedLogs>
+            <database param="DatabaseID">
+                <log param="replication2::LogId">
+                    <supervision>
+                        <actions>
+
+                        </actions>
+                    </supervision>
+                    <leader>
+
+                    </leader>
+                    <localStatus>
+                        <participant param="std::string">
+
+                        </participant>
+                    </localStatus>
+                </log>
+            </database>
+        </ReplicatedLogs>
+        <Version/>
+        <Coordinators>
+            <server param="std::string"></server>
+        </Coordinators>
+        <DBServers>
+            <server param="std::string"></server>
+        </DBServers>
+        <ServersRegistered>
+            <server param="std::string"></server>
+        </ServersRegistered>
+        <ServersKnown>
+            <server param="std::string"></server>
+        </ServersKnown>
+    </Current>
+    <Supervision>
+        <Health>
+            <server param="std::string">
+                <Status/>
+            </server>
+        </Health>
+        <Maintenance></Maintenance>
+        <State>
+            <Mode></Mode>
+        </State>
+        <DbServers>
+            <server param="std::string">
+            </server>
+        </DbServers>
+    </Supervision>
+    <Sync>
+        <LatestId>
+
+        </LatestId>
+    </Sync>
+    <Cluster/>
+</arango>
