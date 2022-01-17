@@ -48,7 +48,7 @@ class IResearchLink;  // forward declaration
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
-  virtual ~IResearchViewCoordinator() = default;
+  static constexpr ViewType type() noexcept { return ViewType::kSearch; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -110,15 +110,16 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   Result renameImpl(std::string const& oldName) override;
 
  private:
-  struct ViewFactory;  // forward declaration
+  struct ViewFactory;
 
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
 
+  // transient member, not persisted
   std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>>
-      _collections;                  // transient member, not persisted
+      _collections;
   mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
-};  // IResearchViewCoordinator
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

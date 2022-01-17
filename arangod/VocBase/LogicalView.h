@@ -184,7 +184,9 @@ class LogicalView : public LogicalDataSource {
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
  protected:
-  LogicalView(TRI_vocbase_t& vocbase, velocypack::Slice definition);
+  template<typename Impl, typename... Args>
+  explicit LogicalView(Impl const& /*self*/, Args&&... args)
+      : LogicalDataSource{Impl::type(), std::forward<Args>(args)...} {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
@@ -205,6 +207,9 @@ class LogicalView : public LogicalDataSource {
   virtual Result renameImpl(std::string const& oldName) = 0;
 
  private:
+  LogicalView(ViewType type, TRI_vocbase_t& vocbase,
+              velocypack::Slice definition);
+
   // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;
 

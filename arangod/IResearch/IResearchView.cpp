@@ -274,12 +274,13 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
 
-    if (!meta.init(definition, error)  // parse definition
-        || meta._version > static_cast<uint32_t>(
-                               ViewVersion::MAX)  // ensure version is valid
-        || (ServerState::instance()
-                ->isSingleServer()  // init metaState for SingleServer
-            && !metaState.init(definition, error))) {
+    // parse definition
+    if (!meta.init(definition, error)
+        // ensure version is valid
+        || meta._version > static_cast<uint32_t>(ViewVersion::MAX)
+        // init metaState for SingleServer
+        || (ServerState::instance()->isSingleServer() &&
+            !metaState.init(definition, error))) {
       return {TRI_ERROR_BAD_PARAMETER,
               error.empty()
                   ? (std::string("failed to initialize arangosearch View from "
@@ -297,18 +298,17 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     //       for cluster the shards to lock come from coordinator and are not in
     //       the definition
     for (auto cid : metaState._collections) {
-      auto collection = vocbase.lookupCollection(
-          cid);  // always look up in vocbase (single server or cluster
-                 // per-shard collection)
-      auto link = collection
-                      ? IResearchLinkHelper::find(*collection, *impl)
-                      : nullptr;  // add placeholders to links, when the
-                                  // collection comes up it'll bring up the link
+      // always look up in vocbase (single server or cluster per-shard
+      // collection)
+      auto collection = vocbase.lookupCollection(cid);
 
-      impl->_links.try_emplace(
-          cid, link ? link->self()
-                    : nullptr);  // add placeholders to links, when the link
-                                 // comes up it'll call link(...)
+      // add placeholders to links, when the collection comes up it'll bring up
+      // the link
+      auto link =
+          collection ? IResearchLinkHelper::find(*collection, *impl) : nullptr;
+
+      // add placeholders to links, when the link comes up it'll call link(...)
+      impl->_links.try_emplace(cid, link ? link->self() : nullptr);
     }
 
     view = impl;
@@ -320,7 +320,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 IResearchView::IResearchView(TRI_vocbase_t& vocbase,
                              velocypack::Slice const& info,
                              IResearchViewMeta&& meta)
-    : LogicalView(vocbase, info),
+    : LogicalView(*this, vocbase, info),
       _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
       _meta(std::move(meta)),
       _inRecovery(false) {
