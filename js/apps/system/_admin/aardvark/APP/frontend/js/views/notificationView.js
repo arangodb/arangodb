@@ -69,7 +69,6 @@
 
             buttons = [
               Noty.button('Close', 'btn btn-error', function (n) {
-                console.log('button 1 clicked');
                 n.close();
               }, {id: 'button1', 'data-status': 'ok'})
             ];
