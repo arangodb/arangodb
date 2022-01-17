@@ -88,13 +88,12 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
         std::string("invalid builder provided for LogicalView definition"));
   }
 
-  builder.add(StaticStrings::DataSourceType,
-              arangodb::velocypack::Value(type().name()));
+  builder.add(StaticStrings::DataSourceType, velocypack::Value(type().name()));
 
   return appendVelocyPackImpl(builder, context);
 }
 
-bool LogicalView::canUse(arangodb::auth::Level const& level) {
+bool LogicalView::canUse(auth::Level const& level) {
   // as per https://github.com/arangodb/backlog/issues/459
   return ExecContext::current().canUseDatabase(vocbase().name(), level);
 
@@ -252,11 +251,10 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     if (!impl) {
-      return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failure during instantiation while creating "
-                      "arangosearch View in database '") +
-              vocbase.name() + "'");
+      return Result(TRI_ERROR_INTERNAL,
+                    std::string("failure during instantiation while creating "
+                                "arangosearch View in database '") +
+                        vocbase.name() + "'");
     }
 
     velocypack::Builder builder;

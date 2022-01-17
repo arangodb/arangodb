@@ -161,7 +161,7 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
     return Result(e.code(), e.what());
   }
 
-  return arangodb::Result();
+  return Result();
 }
 
 Result createLink(LogicalCollection& collection,
@@ -188,7 +188,7 @@ Result createLink(LogicalCollection& collection,
       velocypack::Value(arangodb::iresearch::StaticStrings::DataSourceType));
   builder.add(arangodb::iresearch::StaticStrings::ViewIdField,
               velocypack::Value(view.guid()));
-  if (!arangodb::iresearch::mergeSliceSkipKeys(builder, definition, acceptor)) {
+  if (!mergeSliceSkipKeys(builder, definition, acceptor)) {
     return {TRI_ERROR_INTERNAL,
             std::string("failed to generate definition while creating link "
                         "between arangosearch view '") +
@@ -215,8 +215,8 @@ Result dropLink(LogicalCollection& collection, IResearchLink const& link) {
 }
 
 template<>
-Result dropLink<arangodb::iresearch::IResearchViewCoordinator>(
-    LogicalCollection& collection, IResearchLink const& link) {
+Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
+                                          IResearchLink const& link) {
   if (ClusterMethods::filterHiddenCollections(collection)) {
     // Enterprise variant, we only need to drop links on non-hidden
     // collections (e.g. in SmartGraph Case)
@@ -785,8 +785,8 @@ namespace iresearch {
   return {};
 }
 
-/*static*/ arangodb::Result IResearchLinkHelper::validateLinks(
-    TRI_vocbase_t& vocbase, velocypack::Slice links) {
+/*static*/ Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
+                                                     velocypack::Slice links) {
   if (!links.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             std::string("while validating arangosearch link definition, error: "
@@ -825,7 +825,7 @@ namespace iresearch {
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (!ExecContext::current().canUseCollection(
-            vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+            vocbase.name(), collection->name(), auth::Level::RO)) {
       return {TRI_ERROR_FORBIDDEN,  // code
               std::string("while validating arangosearch link definition, "
                           "error: collection '") +

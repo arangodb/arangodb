@@ -32,21 +32,21 @@
 
 namespace arangodb {
 
-struct ViewFactory;  // forward declaration
+struct ViewFactory;
 
 }  // namespace arangodb
 
 namespace arangodb {
 namespace iresearch {
 
-class IResearchLink;  // forward declaration
+class IResearchLink;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewCoordinator
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final : public arangodb::LogicalView {
+class IResearchViewCoordinator final : public LogicalView {
  public:
   static constexpr ViewType type() noexcept { return ViewType::kSearch; }
 
@@ -64,8 +64,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result link(IResearchLink const& link);
 
-  void open() override { /* NOOP */
-  }
+  void open() override {}
 
   using LogicalDataSource::properties;
   virtual Result properties(VPackSlice properties, bool isUserRequest,
