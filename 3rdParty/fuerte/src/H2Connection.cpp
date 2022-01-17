@@ -26,14 +26,14 @@
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
 #include <fuerte/types.h>
-#include <velocypack/velocypack-aliases.h>
+
+#include <string_view>
 
 #include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 namespace fu = arangodb::fuerte::v1;
 using arangodb::fuerte::v1::SocketType;
-using arangodb::velocypack::StringRef;
 
 template <SocketType T>
 /*static*/ int H2Connection<T>::on_begin_headers(nghttp2_session* session,
@@ -83,18 +83,19 @@ template <SocketType T>
 
   // handle pseudo headers
   // https://http2.github.io/http2-spec/#rfc.section.8.1.2.3
-  StringRef field(reinterpret_cast<const char*>(name), namelen);
-  StringRef val(reinterpret_cast<const char*>(value), valuelen);
+  std::string_view field(reinterpret_cast<char const*>(name), namelen);
+  std::string_view val(reinterpret_cast<char const*>(value), valuelen);
 
-  if (StringRef(":status") == field) {
-    strm->response->header.responseCode =
-        (StatusCode)std::stoul(val.toString());
+  if (field == ":status") {
+    std::string v(val);
+    strm->response->header.responseCode = (StatusCode)std::stoul(v);
   } else if (field == fu_content_length_key) {
-    size_t len = std::min<size_t>(std::stoul(val.toString()), 1024 * 1024 * 64);
+    std::string v(val);
+    size_t len = std::min<size_t>(std::stoul(v), 1024 * 1024 * 64);
     strm->data.reserve(len);
-    strm->response->header.addMeta(field.toString(), val.toString());
+    strm->response->header.addMeta(std::string(field), std::move(val));
   } else {  // fall through
-    strm->response->header.addMeta(field.toString(), val.toString());
+    strm->response->header.addMeta(std::string(field), std::string(val));
     // TODO limit max header size ??
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,7 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 
-#include "3rdParty/iresearch/core/utils/version_defines.hpp"
+#include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
 using namespace arangodb::rest;
 
@@ -107,7 +107,7 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
-#ifdef ARANGODB_USE_IPO 
+#ifdef ARANGODB_USE_IPO
   Values["ipo"] = "true";
 #else
   Values["ipo"] = "false";
@@ -433,10 +433,8 @@ std::string Version::getEndianness() {
   }
   return "unknown";
 }
-  
-std::string Version::getPlatform() {
-  return TRI_PLATFORM;
-}
+
+std::string Version::getPlatform() { return TRI_PLATFORM; }
 
 // get build date
 std::string Version::getBuildDate() {

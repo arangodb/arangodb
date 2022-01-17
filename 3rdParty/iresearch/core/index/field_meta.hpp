@@ -79,32 +79,6 @@ struct IRESEARCH_API field_meta {
 static_assert(std::is_move_constructible<field_meta>::value,
               "default move constructor expected");
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct column_meta 
-/// @brief represents column metadata
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_meta { 
- public:
-  column_meta() = default;
-  column_meta(const column_meta&) = default;
-  column_meta(column_meta&& rhs) noexcept;
-  column_meta(const string_ref& field, field_id id);
-
-  column_meta& operator=(column_meta&& rhs) noexcept;
-  column_meta& operator=(const column_meta&) = default;
-
-  bool operator==(const column_meta& rhs) const;
-  bool operator!=(const column_meta& rhs) const {
-    return !(*this == rhs);
-  }
-
-  std::string name;
-  field_id id{ field_limits::invalid() };
-}; // column_meta
-
-static_assert(std::is_nothrow_move_constructible<column_meta>::value,
-              "default move constructor expected");
-
 }
 
 #endif

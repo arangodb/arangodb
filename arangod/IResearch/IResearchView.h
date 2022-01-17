@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,8 @@ namespace iresearch {
 
 class IResearchFeature;
 class AsyncLinkHandle;
-template <typename T> class AsyncValue;
+template<typename T>
+class AsyncValue;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -74,11 +75,10 @@ template <typename T> class AsyncValue;
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final: public arangodb::LogicalView {
+class IResearchView final : public arangodb::LogicalView {
   typedef std::shared_ptr<AsyncLinkHandle> AsyncLinkPtr;
 
  public:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the view with ability to query for cid
   //////////////////////////////////////////////////////////////////////////////
@@ -138,8 +138,7 @@ class IResearchView final: public arangodb::LogicalView {
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
   using LogicalDataSource::properties;
-  virtual Result properties(velocypack::Slice properties,
-                            bool isUserRequest,
+  virtual Result properties(velocypack::Slice properties, bool isUserRequest,
                             bool partialUpdate) override final;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -155,9 +154,10 @@ class IResearchView final: public arangodb::LogicalView {
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
-                           containers::HashSet<DataSourceId> const* shards = nullptr,
-                           void const* key = nullptr) const;
+  Snapshot const* snapshot(
+      transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
+      containers::HashSet<DataSourceId> const* shards = nullptr,
+      void const* key = nullptr) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
@@ -194,14 +194,12 @@ class IResearchView final: public arangodb::LogicalView {
   }
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPackImpl(
-      velocypack::Builder& builder,
-      Serialization context) const override;
+  virtual Result appendVelocyPackImpl(velocypack::Builder& builder,
+                                      Serialization context) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -216,20 +214,24 @@ class IResearchView final: public arangodb::LogicalView {
 
  private:
   typedef std::shared_ptr<AsyncValue<IResearchView>> AsyncViewPtr;
-  struct ViewFactory; // forward declaration
+  struct ViewFactory;  // forward declaration
 
-  AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::unordered_map<DataSourceId, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
-  IResearchViewMeta _meta; // the view configuration
-  mutable arangodb::iresearch::kludge::read_write_mutex _mutex; // for use with member '_meta', '_links'
-  std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
-  std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback; // for snapshot(...)
+  AsyncViewPtr _asyncSelf;  // 'this' for the lifetime of the view (for use with
+                            // asynchronous calls)
+  std::unordered_map<DataSourceId, AsyncLinkPtr>
+      _links;  // registered links (value may be nullptr on single-server if
+               // link did not come up yet) FIXME TODO maybe this should be
+               // asyncSelf?
+  IResearchViewMeta _meta;  // the view configuration
+  mutable arangodb::iresearch::kludge::read_write_mutex
+      _mutex;                   // for use with member '_meta', '_links'
+  std::mutex _updateLinksLock;  // prevents simultaneous 'updateLinks'
+  std::function<void(transaction::Methods& trx, transaction::Status status)>
+      _trxCallback;  // for snapshot(...)
   std::atomic<bool> _inRecovery;
 
-  IResearchView(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice const& info,
-    IResearchViewMeta&& meta);
+  IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
+                IResearchViewMeta&& meta);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief persist data store states for all known links to permanent storage
@@ -239,10 +241,8 @@ class IResearchView final: public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   //////////////////////////////////////////////////////////////////////////////
-  Result updateProperties(
-    velocypack::Slice slice,
-    bool isUserRequest,
-    bool partialUpdate);
+  Result updateProperties(velocypack::Slice slice, bool isUserRequest,
+                          bool partialUpdate);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
@@ -250,6 +250,5 @@ class IResearchView final: public arangodb::LogicalView {
   void verifyKnownCollections();
 };
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

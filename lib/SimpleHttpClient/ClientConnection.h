@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,7 +83,8 @@ class ClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(arangodb::basics::StringBuffer&, bool& connectionClosed) override;
+  bool readClientConnection(arangodb::basics::StringBuffer&,
+                            bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -93,4 +94,3 @@ class ClientConnection final : public GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,23 +44,24 @@ class V8Context final : public Context {
   ~V8Context() noexcept;
 
   /// @brief order a custom type handler
-  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler()
+      override final;
 
   /// @brief get transaction state, determine commit responsiblity
-  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
-                                                 bool& responsibleForCommit) override;
-  
+  std::shared_ptr<TransactionState> acquireState(
+      transaction::Options const& options, bool& responsibleForCommit) override;
+
   void enterV8Context();
   void exitV8Context() noexcept;
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;
-  
+
   std::shared_ptr<Context> clone() const override;
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;
-  
+
   virtual bool isV8Context() override { return true; }
 
   /// @brief return parent transaction state or none
@@ -70,12 +71,13 @@ class V8Context final : public Context {
   static bool isEmbedded();
 
   /// @brief create a context
-  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase, bool embeddable);
+  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase,
+                                                        bool embeddable);
 
   /// @brief create a V8 transaction context if we are in a V8 isolate, and a
   /// standlone transaction context otherwise
-  static std::shared_ptr<transaction::Context> CreateWhenRequired(TRI_vocbase_t& vocbase,
-                                                                  bool embeddable);
+  static std::shared_ptr<transaction::Context> CreateWhenRequired(
+      TRI_vocbase_t& vocbase, bool embeddable);
 
  private:
   static TRI_v8_global_t* getV8State() noexcept;
@@ -90,4 +92,3 @@ class V8Context final : public Context {
 
 }  // namespace transaction
 }  // namespace arangodb
-

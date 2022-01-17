@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +71,8 @@ void Mutex::lock() noexcept {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_TOPIC("141bb", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("141bb", ERR, arangodb::Logger::FIXME)
+          << "mutex deadlock detected";
     }
 
     LOG_TOPIC("4732f", FATAL, arangodb::Logger::FIXME)
@@ -96,7 +97,8 @@ bool Mutex::try_lock() noexcept {
     if (rc == EBUSY) {  // lock is already being held
       return false;
     } else if (rc == EDEADLK) {
-      LOG_TOPIC("72989", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("72989", ERR, arangodb::Logger::FIXME)
+          << "mutex deadlock detected";
     }
 
     LOG_TOPIC("1b2a6", FATAL, arangodb::Logger::FIXME)
@@ -146,7 +148,9 @@ Mutex::~Mutex() = default;
 
 void Mutex::lock() noexcept { AcquireSRWLockExclusive(&_mutex); }
 
-bool Mutex::try_lock() noexcept { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
+bool Mutex::try_lock() noexcept {
+  return TryAcquireSRWLockExclusive(&_mutex) != 0;
+}
 
 void Mutex::unlock() noexcept { ReleaseSRWLockExclusive(&_mutex); }
 

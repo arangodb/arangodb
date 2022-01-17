@@ -24,7 +24,7 @@
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -49,7 +49,6 @@ namespace arangodb::replication2::test {
 using namespace replicated_log;
 
 struct ReplicatedLogTest : ::testing::Test {
-
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
     auto persisted = makePersistedLog(id);
     return std::make_unique<LogCore>(persisted);
@@ -67,36 +66,37 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore(id);
-    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
-                                               _optionsMock,
-                                               LoggerContext(Logger::FIXME));
+    return std::make_shared<TestReplicatedLog>(
+        std::move(core), _logMetricsMock, _optionsMock,
+        LoggerContext(Logger::REPLICATION2));
   }
 
-  auto makeReplicatedLogWithAsyncMockLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
+  auto makeReplicatedLogWithAsyncMockLog(LogId id)
+      -> std::shared_ptr<TestReplicatedLog> {
     auto persisted = std::make_shared<AsyncMockLog>(id);
     _persistedLogs[id] = persisted;
     auto core = std::make_unique<LogCore>(persisted);
-    return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
-                                               _optionsMock,
-                                               LoggerContext(Logger::FIXME));
+    return std::make_shared<TestReplicatedLog>(
+        std::move(core), _logMetricsMock, _optionsMock,
+        LoggerContext(Logger::REPLICATION2));
   }
 
-  auto defaultLogger() {
-    return LoggerContext(Logger::REPLICATION2);
-  }
+  auto defaultLogger() { return LoggerContext(Logger::REPLICATION2); }
 
   auto stopAsyncMockLogs() -> void {
     for (auto const& it : _persistedLogs) {
-      if (auto log = std::dynamic_pointer_cast<AsyncMockLog>(it.second); log != nullptr) {
+      if (auto log = std::dynamic_pointer_cast<AsyncMockLog>(it.second);
+          log != nullptr) {
         log->stop();
       }
     }
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
-  std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock = std::make_shared<ReplicatedLogMetricsMock>();
-  std::shared_ptr<ReplicatedLogGlobalSettings> _optionsMock = std::make_shared<ReplicatedLogGlobalSettings>();
+  std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock =
+      std::make_shared<ReplicatedLogMetricsMock>();
+  std::shared_ptr<ReplicatedLogGlobalSettings> _optionsMock =
+      std::make_shared<ReplicatedLogGlobalSettings>();
 };
 
-
-}
+}  // namespace arangodb::replication2::test

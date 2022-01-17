@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "velocypack/Exception.h"
-#include "velocypack/StringRef.h"
 #include "velocypack/Value.h"
 
 using namespace arangodb::velocypack;
@@ -44,6 +43,3 @@ bool Value::unindexed() const {
   }
   return _value.b;
 }
-  
-ValuePair::ValuePair(StringRef const& value, ValueType type) noexcept
-      : ValuePair(value.data(), value.size(), type) {}

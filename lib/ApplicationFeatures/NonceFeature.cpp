@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,8 @@ NonceFeature::NonceFeature(application_features::ApplicationServer& server)
 
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("nonce", "nonces", "", true, true);
-  options->addObsoleteOption("--nonce.size", "the size of the hash array for nonces", true);
+  options->addObsoleteOption("--nonce.size",
+                             "the size of the hash array for nonces", true);
 }
 
 void NonceFeature::prepare() {

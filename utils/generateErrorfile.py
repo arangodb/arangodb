@@ -85,7 +85,7 @@ def genCHeaderFile(errors):
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// \"") + "\"\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "constexpr auto " + errorName(e).ljust(65) + " = ErrorCode{" + e[1] + "};\n"\
+           + "#define " + errorName(e).ljust(65) + " (::ErrorCode{" + e[1] + "})\n"\
            + "\n"
 
   return header

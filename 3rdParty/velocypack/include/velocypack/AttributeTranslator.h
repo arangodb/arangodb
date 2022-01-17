@@ -22,19 +22,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_ATTRIBUTETRANSLATOR_H
-#define VELOCYPACK_ATTRIBUTETRANSLATOR_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
-#include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/StringRef.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 class Builder;
 
 class AttributeTranslator {
@@ -48,14 +45,14 @@ class AttributeTranslator {
 
   std::size_t count() const { return _count; }
 
-  void add(std::string const& key, uint64_t id);
+  void add(std::string_view key, uint64_t id);
 
   void seal();
 
   Builder* builder() const { return _builder.get(); }
   
   // translate from string to id
-  uint8_t const* translate(StringRef const& key) const noexcept {
+  uint8_t const* translate(std::string_view key) const noexcept {
     auto it = _keyToId.find(key);
 
     if (it == _keyToId.end()) {
@@ -64,15 +61,10 @@ class AttributeTranslator {
 
     return (*it).second;
   }
-
-  // translate from string to id
-  inline uint8_t const* translate(std::string const& key) const noexcept {
-    return translate(StringRef(key.data(), key.size()));
-  }
   
   // translate from string to id
-  inline uint8_t const* translate(char const* key, ValueLength length) const noexcept {
-    return translate(StringRef(key, length));
+  [[deprecated]] inline uint8_t const* translate(char const* key, ValueLength length) const noexcept {
+    return translate(std::string_view(key, length));
   }
 
   // translate from id to string
@@ -88,7 +80,7 @@ class AttributeTranslator {
 
  private:
   std::unique_ptr<Builder> _builder;
-  std::unordered_map<StringRef, uint8_t const*> _keyToId;
+  std::unordered_map<std::string_view, uint8_t const*> _keyToId;
   std::unordered_map<uint64_t, uint8_t const*> _idToKey;
   std::size_t _count;
 };
@@ -109,6 +101,5 @@ class AttributeTranslatorScope {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackAttributeTranslator = arangodb::velocypack::AttributeTranslator;

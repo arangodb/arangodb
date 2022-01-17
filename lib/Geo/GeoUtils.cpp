@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,8 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
-                                  std::vector<S2CellId>& cells, S2Point& centroid) {
+                                  std::vector<S2CellId>& cells,
+                                  S2Point& centroid) {
   if (!data.isArray() || data.length() < 2) {
     return TRI_ERROR_BAD_PARAMETER;
   }
@@ -61,8 +62,9 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 }
 
 /// generate intervalls of list of intervals to scan
-void GeoUtils::scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
-                             S2Region const& region, std::vector<Interval>& sortedIntervals) {
+void GeoUtils::scanIntervals(QueryParams const& params,
+                             S2RegionCoverer* coverer, S2Region const& region,
+                             std::vector<Interval>& sortedIntervals) {
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
@@ -73,7 +75,8 @@ void GeoUtils::scanIntervals(QueryParams const& params, S2RegionCoverer* coverer
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void GeoUtils::scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover,
+void GeoUtils::scanIntervals(QueryParams const& params,
+                             std::vector<S2CellId> const& cover,
                              std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(params.cover.worstIndexedLevel > 0);
   if (cover.empty()) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,28 +60,34 @@ struct ModificationExecutorInfos;
 // Only classes that have is_modifier_completion_trait can be used as
 // template parameter for SimpleModifier. This is mainly a safety measure
 // to not run into ridiculous template errors
-template <typename ModifierCompletion, typename _ = void>
+template<typename ModifierCompletion, typename _ = void>
 struct is_modifier_completion_trait : std::false_type {};
 
-template <>
-struct is_modifier_completion_trait<InsertModifierCompletion> : std::true_type {};
-
-template <>
-struct is_modifier_completion_trait<RemoveModifierCompletion> : std::true_type {};
-
-template <>
-struct is_modifier_completion_trait<UpdateReplaceModifierCompletion> : std::true_type {
+template<>
+struct is_modifier_completion_trait<InsertModifierCompletion> : std::true_type {
 };
 
-template <typename ModifierCompletion, typename Enable = typename std::enable_if_t<is_modifier_completion_trait<ModifierCompletion>::value>>
-class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<ModifierCompletion, Enable>> {
+template<>
+struct is_modifier_completion_trait<RemoveModifierCompletion> : std::true_type {
+};
+
+template<>
+struct is_modifier_completion_trait<UpdateReplaceModifierCompletion>
+    : std::true_type {};
+
+template<typename ModifierCompletion,
+         typename Enable = typename std::enable_if_t<
+             is_modifier_completion_trait<ModifierCompletion>::value>>
+class SimpleModifier : public std::enable_shared_from_this<
+                           SimpleModifier<ModifierCompletion, Enable>> {
   friend class InsertModifierCompletion;
   friend class RemoveModifierCompletion;
   friend class UpdateReplaceModifierCompletion;
 
   struct NoResult {};
   struct Waiting {};
-  using ResultType = std::variant<NoResult, Waiting, OperationResult, std::exception_ptr>;
+  using ResultType =
+      std::variant<NoResult, Waiting, OperationResult, std::exception_ptr>;
 
  public:
   using ModOp = std::pair<ModifierOperationType, InputAqlItemRow>;
@@ -90,7 +96,8 @@ class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<Modifi
    public:
     OutputIterator() = delete;
 
-    explicit OutputIterator(SimpleModifier<ModifierCompletion, Enable> const& modifier);
+    explicit OutputIterator(
+        SimpleModifier<ModifierCompletion, Enable> const& modifier);
 
     OutputIterator& operator++();
     bool operator!=(OutputIterator const& other) const noexcept;

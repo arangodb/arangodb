@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,8 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   bool getEdgesForVertex(std::string const& id, DataSourceId cid,
                          std::string const& collectionName,
-                         TRI_edge_direction_e direction, transaction::Methods& trx,
+                         TRI_edge_direction_e direction,
+                         transaction::Methods& trx,
                          std::function<void(LocalDocumentId const&)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -84,4 +85,3 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool validateCollection(std::string const& name);
 };
 }  // namespace arangodb
-

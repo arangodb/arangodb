@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,7 +32,8 @@ using namespace arangodb::aql;
 
 TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, QueryContext& query)
+    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    QueryContext& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
@@ -66,22 +68,25 @@ TraverserEngineShardLists::TraverserEngineShardLists(
       _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
-    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
-                                    col->isSatellite() && node->isSmart());
+    auto shards =
+        getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
+                          col->isSatellite() && node->isSmart());
     _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
-    std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server,
-    std::shared_ptr<std::vector<std::string>> shardIds, bool allowReadFromFollower) {
+    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds,
+    bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
     if (it == shardMapping.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, 
-          "no entry for shard '" + shard + "' in shard mapping table (" + std::to_string(shardMapping.size()) + " entries)");
+          TRI_ERROR_INTERNAL,
+          "no entry for shard '" + shard + "' in shard mapping table (" +
+              std::to_string(shardMapping.size()) + " entries)");
     }
     if (it->second == server) {
       localShards.emplace_back(shard);
@@ -151,5 +156,3 @@ void TraverserEngineShardLists::serializeIntoBuilder(
   infoBuilder.close();  // base
   TRI_ASSERT(infoBuilder.isOpenArray());
 }
-
-

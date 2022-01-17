@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,7 @@ namespace aql {
 class Query;
 class OutputAqlItemRow;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class TraversalExecutorInfos {
@@ -50,11 +50,14 @@ class TraversalExecutorInfos {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  TraversalExecutorInfos(std::unique_ptr<traverser::Traverser>&& traverser,
-                         std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
-                         std::string fixedSource, RegisterId inputRegister,
-                         std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
-                         Ast* ast);
+  TraversalExecutorInfos(
+      std::unique_ptr<traverser::Traverser>&& traverser,
+      std::unordered_map<OutputName, RegisterId, OutputNameHash>
+          registerMapping,
+      std::string fixedSource, RegisterId inputRegister,
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariables,
+      Ast* ast);
 
   TraversalExecutorInfos() = delete;
 
@@ -86,7 +89,8 @@ class TraversalExecutorInfos {
 
   RegisterId getInputRegister() const;
 
-  std::vector<std::pair<Variable const*, RegisterId>> const& filterConditionVariables() const;
+  std::vector<std::pair<Variable const*, RegisterId>> const&
+  filterConditionVariables() const;
 
   Ast* getAst() const;
 
@@ -109,7 +113,8 @@ class TraversalExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -122,7 +127,8 @@ class TraversalExecutor {
   TraversalExecutor(Fetcher& fetcher, Infos&);
   ~TraversalExecutor();
 
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
@@ -142,4 +148,3 @@ class TraversalExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

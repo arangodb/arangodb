@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,8 @@ static ErrorCode Reserve(TRI_string_buffer_t* self, size_t size) {
 }
 
 /// @brief append a string to a string buffer
-static ErrorCode AppendString(TRI_string_buffer_t* self, char const* str, size_t const len) {
+static ErrorCode AppendString(TRI_string_buffer_t* self, char const* str,
+                              size_t const len) {
   if (0 < len) {
     auto res = Reserve(self, len);
 
@@ -86,8 +87,8 @@ static ErrorCode AppendString(TRI_string_buffer_t* self, char const* str, size_t
 
 /// @brief create a new string buffer and initialize it
 TRI_string_buffer_t* TRI_CreateStringBuffer() {
-  auto self =
-      static_cast<TRI_string_buffer_t*>(TRI_Allocate(sizeof(TRI_string_buffer_t)));
+  auto self = static_cast<TRI_string_buffer_t*>(
+      TRI_Allocate(sizeof(TRI_string_buffer_t)));
 
   if (self == nullptr) {
     return nullptr;
@@ -100,8 +101,8 @@ TRI_string_buffer_t* TRI_CreateStringBuffer() {
 
 /// @brief create a new string buffer and initialize it with a specific size
 TRI_string_buffer_t* TRI_CreateSizedStringBuffer(size_t size) {
-  auto self =
-      static_cast<TRI_string_buffer_t*>(TRI_Allocate(sizeof(TRI_string_buffer_t)));
+  auto self = static_cast<TRI_string_buffer_t*>(
+      TRI_Allocate(sizeof(TRI_string_buffer_t)));
 
   if (self == nullptr) {
     return nullptr;
@@ -169,7 +170,8 @@ void TRI_FreeStringBuffer(TRI_string_buffer_t* self) {
 }
 
 /// @brief ensure the string buffer has a specific capacity
-ErrorCode TRI_ReserveStringBuffer(TRI_string_buffer_t* self, size_t const length) {
+ErrorCode TRI_ReserveStringBuffer(TRI_string_buffer_t* self,
+                                  size_t const length) {
   if (length > 0) {
     return Reserve(self, length);
   }
@@ -177,7 +179,8 @@ ErrorCode TRI_ReserveStringBuffer(TRI_string_buffer_t* self, size_t const length
 }
 
 /// @brief swaps content with another string buffer
-void TRI_SwapStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t* other) {
+void TRI_SwapStringBuffer(TRI_string_buffer_t* self,
+                          TRI_string_buffer_t* other) {
   char* otherBuffer = other->_buffer;
   char* otherCurrent = other->_current;
   size_t otherLen = other->_len;
@@ -266,9 +269,10 @@ char* TRI_StealStringBuffer(TRI_string_buffer_t* self) {
 }
 
 /// @brief copies the string buffer
-ErrorCode TRI_CopyStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t const* source) {
-  return TRI_ReplaceStringStringBuffer(self, source->_buffer,
-                                       (size_t)(source->_current - source->_buffer));
+ErrorCode TRI_CopyStringBuffer(TRI_string_buffer_t* self,
+                               TRI_string_buffer_t const* source) {
+  return TRI_ReplaceStringStringBuffer(
+      self, source->_buffer, (size_t)(source->_current - source->_buffer));
 }
 
 /// @brief removes the first characters
@@ -305,7 +309,8 @@ ErrorCode TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr) {
 }
 
 /// @brief appends characters
-ErrorCode TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str) {
+ErrorCode TRI_AppendStringStringBuffer(TRI_string_buffer_t* self,
+                                       char const* str) {
   return AppendString(self, str, strlen(str));
 }
 
@@ -381,8 +386,10 @@ ErrorCode AppendJsonEncoded(TRI_string_buffer_t* self, char const* src,
 
           AppendChar(self, '0');
           AppendChar(self, '0');
-          AppendChar(self, static_cast<char>((i1 < 10) ? ('0' + i1) : ('A' + i1 - 10)));
-          AppendChar(self, static_cast<char>((i2 < 10) ? ('0' + i2) : ('A' + i2 - 10)));
+          AppendChar(self, static_cast<char>((i1 < 10) ? ('0' + i1)
+                                                       : ('A' + i1 - 10)));
+          AppendChar(self, static_cast<char>((i2 < 10) ? ('0' + i2)
+                                                       : ('A' + i2 - 10)));
         }
       } else {
         AppendChar(self, static_cast<char>(c));
@@ -425,7 +432,8 @@ ErrorCode AppendJsonEncoded(TRI_string_buffer_t* self, char const* src,
 
 /// @brief appends characters but json-encode the string
 ErrorCode TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                                  char const* src, size_t length,
+                                                  char const* src,
+                                                  size_t length,
                                                   bool escapeSlash) {
   return AppendJsonEncoded(self, src, length, escapeSlash);
 }
@@ -473,7 +481,8 @@ ErrorCode TRI_AppendInt16StringBuffer(TRI_string_buffer_t* self, int16_t attr) {
 }
 
 /// @brief appends unsigned integer with 32 bits
-ErrorCode TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self, uint16_t attr) {
+ErrorCode TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self,
+                                       uint16_t attr) {
   auto res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -501,7 +510,8 @@ ErrorCode TRI_AppendInt32StringBuffer(TRI_string_buffer_t* self, int32_t attr) {
 }
 
 /// @brief appends unsigned integer with 32 bits
-ErrorCode TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
+ErrorCode TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self,
+                                       uint32_t attr) {
   auto res = Reserve(self, 10);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -529,7 +539,8 @@ ErrorCode TRI_AppendInt64StringBuffer(TRI_string_buffer_t* self, int64_t attr) {
 }
 
 /// @brief appends unsigned integer with 64 bits
-ErrorCode TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
+ErrorCode TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self,
+                                       uint64_t attr) {
   auto res = Reserve(self, 21);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -543,7 +554,8 @@ ErrorCode TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr)
 }
 
 /// @brief appends unsigned integer with 32 bits in hex
-ErrorCode TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
+ErrorCode TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self,
+                                          uint32_t attr) {
   auto res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -557,7 +569,8 @@ ErrorCode TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t at
 }
 
 /// @brief appends unsigned integer with 64 bits in hex
-ErrorCode TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr) {
+ErrorCode TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self,
+                                          uint64_t attr) {
   auto res = Reserve(self, 9);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -614,7 +627,8 @@ ErrorCode TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i) {
 }
 
 /// @brief appends csv unisgned 32-bit integer
-ErrorCode TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t i) {
+ErrorCode TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self,
+                                          uint32_t i) {
   auto res = TRI_AppendUInt32StringBuffer(self, i);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -650,7 +664,8 @@ ErrorCode TRI_AppendCsvInt64StringBuffer(TRI_string_buffer_t* self, int64_t i) {
 }
 
 /// @brief appends csv unsigned 64-bit integer
-ErrorCode TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t i) {
+ErrorCode TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self,
+                                          uint64_t i) {
   auto res = TRI_AppendUInt64StringBuffer(self, i);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -685,7 +700,8 @@ ErrorCode TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d) {
   return TRI_ERROR_NO_ERROR;
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::basics::StringBuffer const& buffer) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::basics::StringBuffer const& buffer) {
   stream.write(buffer.begin(), buffer.length());
   return stream;
 }
@@ -703,8 +719,8 @@ ErrorCode arangodb::basics::StringBuffer::deflate() {
 }
 
 /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-ErrorCode arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer& out,
-                                                  size_t skip) {
+ErrorCode arangodb::basics::StringBuffer::inflate(
+    arangodb::basics::StringBuffer& out, size_t skip) {
   uint8_t const* p = reinterpret_cast<uint8_t const*>(data());
   size_t length = size();
 

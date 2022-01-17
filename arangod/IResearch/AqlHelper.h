@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,7 +112,7 @@ inline bool parseValue(size_t& value, aql::AstNode const& node) {
 ///         specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-template <typename String>
+template<typename String>
 inline bool parseValue(String& value, aql::AstNode const& node) {
   typedef typename String::traits_type traits_t;
 
@@ -123,7 +123,8 @@ inline bool parseValue(String& value, aql::AstNode const& node) {
     case aql::VALUE_TYPE_DOUBLE:
       return false;
     case aql::VALUE_TYPE_STRING:
-      value = String(reinterpret_cast<typename traits_t::char_type const*>(node.getStringValue()),
+      value = String(reinterpret_cast<typename traits_t::char_type const*>(
+                         node.getStringValue()),
                      node.getStringLength());
       return true;
   }
@@ -131,7 +132,7 @@ inline bool parseValue(String& value, aql::AstNode const& node) {
   return false;
 }
 
-template <typename Visitor>
+template<typename Visitor>
 bool visit(aql::SortCondition const& sort, Visitor const& visitor) {
   for (size_t i = 0, size = sort.numAttributes(); i < size; ++i) {
     auto entry = sort.field(i);
@@ -147,14 +148,15 @@ bool visit(aql::SortCondition const& sort, Visitor const& visitor) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visits variables referenced in a specified expression
 ////////////////////////////////////////////////////////////////////////////////
-void visitReferencedVariables(aql::AstNode const& root,
-                              std::function<void(aql::Variable const&)> const& visitor);
+void visitReferencedVariables(
+    aql::AstNode const& root,
+    std::function<void(aql::Variable const&)> const& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visits the specified node using the provided 'visitor' according
 ///        to the specified visiting strategy (preorder/postorder)
 ////////////////////////////////////////////////////////////////////////////////
-template <bool Preorder, typename Visitor>
+template<bool Preorder, typename Visitor>
 bool visit(aql::AstNode const& root, Visitor visitor) {
   if (Preorder && !visitor(root)) {
     return false;
@@ -198,8 +200,8 @@ struct AqlValueTraits {
 
     underlying_t const typeIndex =
         value.isNull(false) + 2 * value.isBoolean() + 3 * value.isNumber() +
-        4 * value.isString() + 5 * value.isArray() +
-        value.isRange() + 7 * value.isObject();  // isArray() returns `true` in case of range too
+        4 * value.isString() + 5 * value.isArray() + value.isRange() +
+        7 * value.isObject();  // isArray() returns `true` in case of range too
 
     return static_cast<ScopedValueType>(typeIndex);
   }
@@ -243,7 +245,7 @@ struct QueryContext {
   irs::index_reader const* index;
   aql::Variable const* ref;
   /// @brief allow optimize away/modify some conditions during filter building
-  FilterOptimization  filterOptimization {FilterOptimization::MAX};
+  FilterOptimization filterOptimization{FilterOptimization::MAX};
 };  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +263,10 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   ScopedAqlValue(ScopedAqlValue&& rhs) noexcept
-      : _value(rhs._value), _node(rhs._node), _type(rhs._type), _executed(rhs._executed) {
+      : _value(rhs._value),
+        _node(rhs._node),
+        _type(rhs._type),
+        _executed(rhs._executed) {
     rhs._node = &INVALID_NODE;
     rhs._type = SCOPED_VALUE_TYPE_INVALID;
     rhs._destroy = false;
@@ -302,8 +307,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
 
   bool getDouble(double_t& value) const {
     bool failed = false;
-    value = _node->isConstant() ? _node->getDoubleValue()
-                                : _value.toDouble(failed);
+    value =
+        _node->isConstant() ? _node->getDoubleValue() : _value.toDouble(failed);
     // cppcheck-suppress knownConditionTrueFalse
     return !failed;
   }
@@ -345,8 +350,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _node->isConstant()
         ? _node->toVelocyPackValue(builder)
         : _value.toVelocyPack(static_cast<velocypack::Options const*>(nullptr),
-                              builder, /*resoveExternals*/false,
-                              /*allowUnindexed*/false);
+                              builder, /*resoveExternals*/ false,
+                              /*allowUnindexed*/ false);
   }
 
  private:
@@ -379,8 +384,9 @@ class ScopedAqlValue : private irs::util::noncopyable {
 ///          bool expansion(AstNode const&)       - expansion
 /// @return success and set head the the starting node of path (reference)
 ////////////////////////////////////////////////////////////////////////////////
-template <typename T>
-bool visitAttributeAccess(aql::AstNode const*& head, aql::AstNode const* node, T& visitor) {
+template<typename T>
+bool visitAttributeAccess(aql::AstNode const*& head, aql::AstNode const* node,
+                          T& visitor) {
   if (!node) {
     return false;
   }
@@ -398,7 +404,8 @@ bool visitAttributeAccess(aql::AstNode const*& head, aql::AstNode const* node, T
 
       auto* offset = node->getMemberUnchecked(1);
 
-      return offset && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor) &&
+      return offset &&
+             visitAttributeAccess(head, node->getMemberUnchecked(0), visitor) &&
              visitor.indexAccess(*offset);
     }
     case aql::NODE_TYPE_EXPANSION: {  // [*]
@@ -468,7 +475,8 @@ inline aql::AstNode const* getNode(aql::AstNode const& node, size_t idx,
 ///        at any level of the hierarchy
 /// @returns true if the specified node contains variable, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-inline bool findReference(aql::AstNode const& root, aql::Variable const& ref) noexcept {
+inline bool findReference(aql::AstNode const& root,
+                          aql::Variable const& ref) noexcept {
   auto visitor = [&ref](aql::AstNode const& node) noexcept {
     return aql::NODE_TYPE_REFERENCE != node.type ||
            reinterpret_cast<void const*>(&ref) != node.getData();
@@ -483,10 +491,9 @@ inline bool findReference(aql::AstNode const& root, aql::Variable const& ref) no
 /// @returns true if the specified 'in' nodes has been successfully normalized,
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool normalizeGeoDistanceCmpNode(
-  aql::AstNode const& in,
-  aql::Variable const& ref,
-  NormalizedCmpNode& out);
+bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
+                                 aql::Variable const& ref,
+                                 NormalizedCmpNode& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes input binary comparison node (==, !=, <, <=, >, >=) and

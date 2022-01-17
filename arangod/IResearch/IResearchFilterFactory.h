@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,19 +54,18 @@ struct FilterFactory {
   /// @brief determine if the 'node' can be converted into an iresearch filter
   ///        if 'filter' != nullptr then also append the iresearch filter there
   ////////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& ctx,
-                     arangodb::aql::AstNode const& node);
+  static arangodb::Result filter(irs::boolean_filter* filter,
+                                 QueryContext const& ctx,
+                                 arangodb::aql::AstNode const& node);
 };  // FilterFactory
-
 
 struct FilterConstants {
   // Defaults
-  static constexpr size_t DefaultScoringTermsLimit { 128 };
-  static constexpr size_t DefaultLevenshteinTermsLimit { 64 };
-  static constexpr double_t DefaultNgramMatchThreshold { 0.7 };
-  static constexpr int64_t DefaultStartsWithMinMatchCount { 1 };
+  static constexpr size_t DefaultScoringTermsLimit{128};
+  static constexpr size_t DefaultLevenshteinTermsLimit{64};
+  static constexpr double_t DefaultNgramMatchThreshold{0.7};
+  static constexpr int64_t DefaultStartsWithMinMatchCount{1};
 };
 
 }  // namespace iresearch
 }  // namespace arangodb
-

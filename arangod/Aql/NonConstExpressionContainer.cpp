@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,7 +30,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb::aql;
 
 constexpr const char expressionKey[] = "expression";
@@ -38,7 +38,8 @@ constexpr const char expressionsKey[] = "expressions";
 constexpr const char varMappingKey[] = "varMapping";
 constexpr const char hasV8ExpressionKey[] = "hasV8Expression";
 
-void NonConstExpressionContainer::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+void NonConstExpressionContainer::toVelocyPack(
+    arangodb::velocypack::Builder& builder) const {
   VPackObjectBuilder containerObject(&builder);
   builder.add(VPackValue(expressionsKey));
   {
@@ -66,19 +67,22 @@ void NonConstExpressionContainer::toVelocyPack(arangodb::velocypack::Builder& bu
   builder.add(hasV8ExpressionKey, VPackValue(_hasV8Expression));
 }
 
-NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const{
+NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const {
   // We need the AST to clone expressions, which are captured in unique_ptrs
   // and hance do not have default copy operators.
   decltype(_expressions) expressions{};
   expressions.reserve(_expressions.size());
   for (auto const& e : _expressions) {
-    expressions.emplace_back(std::make_unique<NonConstExpression>(e->expression->clone(ast), e->indexPath));
+    expressions.emplace_back(std::make_unique<NonConstExpression>(
+        e->expression->clone(ast), e->indexPath));
   }
 
-  return NonConstExpressionContainer{std::move(expressions), _varToRegisterMapping, _hasV8Expression};
+  return NonConstExpressionContainer{std::move(expressions),
+                                     _varToRegisterMapping, _hasV8Expression};
 }
 
-NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast, arangodb::velocypack::Slice slice) {
+NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(
+    Ast* ast, arangodb::velocypack::Slice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.hasKey(expressionsKey));
   TRI_ASSERT(slice.hasKey(varMappingKey));
@@ -102,14 +106,16 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast
       TRI_ASSERT(p.isNumber<size_t>());
       indexPath.emplace_back(p.getNumber<size_t>());
     }
-    result._expressions.emplace_back(std::make_unique<NonConstExpression>(std::make_unique<Expression>(ast, exp), std::move(indexPath)));
+    result._expressions.emplace_back(std::make_unique<NonConstExpression>(
+        std::make_unique<Expression>(ast, exp), std::move(indexPath)));
   }
 
   auto vars = slice.get(varMappingKey);
   TRI_ASSERT(vars.isObject());
   for (auto const& [varId, regId] : VPackObjectIterator(vars)) {
     VariableId variableId = 0;
-    bool converted = basics::StringUtils::toNumber(varId.copyString(), variableId);
+    bool converted =
+        basics::StringUtils::toNumber(varId.copyString(), variableId);
     TRI_ASSERT(converted);
     result._varToRegisterMapping.emplace_back(
         std::make_pair(variableId, regId.getNumber<RegisterId::value_t>()));

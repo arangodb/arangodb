@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void adjustQuickKeysNumDocsLimit();
-#endif  
+#endif
 };
 }  // namespace arangodb
-

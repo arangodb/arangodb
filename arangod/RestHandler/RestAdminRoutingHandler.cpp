@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,14 +30,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminRoutingHandler::RestAdminRoutingHandler(application_features::ApplicationServer& server,
-                                                 GeneralRequest* request,
-                                                 GeneralResponse* response)
+RestAdminRoutingHandler::RestAdminRoutingHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminRoutingHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "JavaScript operations are disabled");
     return RestStatus::DONE;
   }
 

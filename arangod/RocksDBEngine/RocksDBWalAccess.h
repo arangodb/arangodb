@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,8 @@ class RocksDBWalAccess final : public WalAccess {
   virtual ~RocksDBWalAccess() = default;
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-  Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
+  Result tickRange(
+      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
 
   /// {"lastTick":"123",
   ///  "version":"3.2",
@@ -62,4 +63,3 @@ class RocksDBWalAccess final : public WalAccess {
   RocksDBEngine& _engine;
 };
 }  // namespace arangodb
-

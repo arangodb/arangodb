@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +33,9 @@ class QueryRegistry;
 
 class RestSimpleQueryHandler : public RestCursorHandler {
  public:
-  RestSimpleQueryHandler(application_features::ApplicationServer&, GeneralRequest*,
-                         GeneralResponse*, arangodb::aql::QueryRegistry*);
+  RestSimpleQueryHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*,
+                         arangodb::aql::QueryRegistry*);
 
  public:
   RestStatus execute() override final;
@@ -46,4 +47,3 @@ class RestSimpleQueryHandler : public RestCursorHandler {
   RestStatus byExample();
 };
 }  // namespace arangodb
-

@@ -62,43 +62,50 @@ class asserthelper {
   asserthelper() {}
 
  public:
-  static auto AqlValuesAreIdentical(AqlValue const& lhs, AqlValue const& rhs) -> bool;
-
-  static auto RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualRow,
-                               SharedAqlItemBlockPtr expected, size_t expectedRow,
-                               std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+  static auto AqlValuesAreIdentical(AqlValue const& lhs, AqlValue const& rhs)
       -> bool;
 
+  static auto RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualRow,
+                               SharedAqlItemBlockPtr expected,
+                               size_t expectedRow,
+                               std::optional<std::vector<RegisterId>> const&
+                                   onlyCompareRegisters = std::nullopt) -> bool;
+
   static auto ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
-                                        size_t actualRow, RegisterId actualRegister,
-                                        SharedAqlItemBlockPtr expected, size_t expectedRow,
+                                        size_t actualRow,
+                                        RegisterId actualRegister,
+                                        SharedAqlItemBlockPtr expected,
+                                        size_t expectedRow,
                                         RegisterId expectedRegister) -> void;
 
   static auto ValidateBlocksAreEqual(
       SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
-      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
-      -> void;
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters =
+          std::nullopt) -> void;
 
   static auto ValidateBlocksAreEqualUnordered(
       SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
       std::size_t numRowsNotContained = 0,
-      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
-      -> void;
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters =
+          std::nullopt) -> void;
 
   static auto ValidateBlocksAreEqualUnordered(
       SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
-      std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained = 0,
-      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
-      -> void;
+      std::unordered_set<size_t>& matchedRows,
+      std::size_t numRowsNotContained = 0,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters =
+          std::nullopt) -> void;
 };
 
-template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
+template<std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {
-  using SplitType = std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
+  using SplitType =
+      std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
 
   ExecutorTestHelper(ExecutorTestHelper const&) = delete;
   ExecutorTestHelper(ExecutorTestHelper&&) = delete;
-  explicit ExecutorTestHelper(Query& query, AqlItemBlockManager& itemBlockManager)
+  explicit ExecutorTestHelper(Query& query,
+                              AqlItemBlockManager& itemBlockManager)
       : _expectedSkip{},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
@@ -127,7 +134,7 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  template <typename... Ts>
+  template<typename... Ts>
   auto setInputValueList(Ts&&... ts) -> ExecutorTestHelper& {
     _input = MatrixBuilder<inputColumns>{{ts}...};
     return *this;
@@ -142,7 +149,8 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto setInputSplit(std::vector<std::size_t> const& list) -> ExecutorTestHelper& {
+  auto setInputSplit(std::vector<std::size_t> const& list)
+      -> ExecutorTestHelper& {
     _inputSplit = list;
     return *this;
   }
@@ -157,27 +165,30 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  template <typename T>
+  template<typename T>
   auto setOutputSplit(T&& list) -> ExecutorTestHelper& {
     ASSERT_FALSE(true);
     _outputSplit = std::forward<T>(list);
     return *this;
   }
 
-  auto setTesteeNodeType(ExecutionNode::NodeType nodeType) -> ExecutorTestHelper& {
+  auto setTesteeNodeType(ExecutionNode::NodeType nodeType)
+      -> ExecutorTestHelper& {
     _testeeNodeType = nodeType;
     return *this;
   }
 
-  auto setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour waitingBehaviour)
+  auto setWaitingBehaviour(
+      WaitingExecutionBlockMock::WaitingBehaviour waitingBehaviour)
       -> ExecutorTestHelper& {
     _waitingBehaviour = waitingBehaviour;
     return *this;
   }
 
-  auto expectOutput(std::array<RegisterId, outputColumns> const& regs,
-                    MatrixBuilder<outputColumns> const& out,
-                    std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {})
+  auto expectOutput(
+      std::array<RegisterId, outputColumns> const& regs,
+      MatrixBuilder<outputColumns> const& out,
+      std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {})
       -> ExecutorTestHelper& {
     _outputRegisters = regs;
     _output = out;
@@ -185,7 +196,7 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  template <typename... Ts>
+  template<typename... Ts>
   auto expectOutputValueList(Ts&&... ts) -> ExecutorTestHelper& {
     static_assert(outputColumns == 1);
     _outputRegisters[0] = 1;
@@ -197,11 +208,13 @@ struct ExecutorTestHelper {
    * @brief
    *
    * @tparam Ts numeric type, can actually only be size_t
-   * @param skipOnLevel List of skip counters returned per level. subquery skips first, the last entry is the skip on the executor
+   * @param skipOnLevel List of skip counters returned per level. subquery skips
+   * first, the last entry is the skip on the executor
    * @return ExecutorTestHelper& chaining!
    */
-  template <typename T, typename... Ts>
-  auto expectSkipped(T skipFirst, Ts const... skipOnHigherLevel) -> ExecutorTestHelper& {
+  template<typename T, typename... Ts>
+  auto expectSkipped(T skipFirst, Ts const... skipOnHigherLevel)
+      -> ExecutorTestHelper& {
     _expectedSkip = SkipResult{};
     // This is obvious, proof: Homework.
     (_expectedSkip.didSkip(static_cast<size_t>(skipFirst)), ...,
@@ -225,43 +238,49 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
+  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0)
+      -> ExecutorTestHelper& {
     _unorderedOutput = expected;
     _unorderedSkippedRows = skippedRows;
     return *this;
   }
 
   /**
-   * @brief Add a dependency, i.e. add an ExecutionBlock to the *end* of the execution pipeline
+   * @brief Add a dependency, i.e. add an ExecutionBlock to the *end* of the
+   * execution pipeline
    *
    * @tparam E The executor template parameter
    * @param executorInfos to build the executor
-   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @param nodeType The type of executor node, only used for debug printing,
+   * defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
-  template <typename E>
-  auto addDependency(RegisterInfos registerInfos, typename E::Infos executorInfos,
-                     ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+  template<typename E>
+  auto addDependency(
+      RegisterInfos registerInfos, typename E::Infos executorInfos,
+      ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    _pipeline.addDependency(createExecBlock<E>(std::move(registerInfos),
-                                               std::move(executorInfos), nodeType));
+    _pipeline.addDependency(createExecBlock<E>(
+        std::move(registerInfos), std::move(executorInfos), nodeType));
     return *this;
   }
 
   /**
-   * @brief Add a consumer, i.e. add an ExecutionBlock to the *beginning* of the execution pipeline
+   * @brief Add a consumer, i.e. add an ExecutionBlock to the *beginning* of the
+   * execution pipeline
    *
    * @tparam E The executor template parameter
    * @param executorInfos to build the executor
-   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @param nodeType The type of executor node, only used for debug printing,
+   * defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
-  template <typename E>
+  template<typename E>
   auto addConsumer(RegisterInfos registerInfos, typename E::Infos executorInfos,
                    ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    _pipeline.addConsumer(createExecBlock<E>(std::move(registerInfos),
-                                             std::move(executorInfos), nodeType));
+    _pipeline.addConsumer(createExecBlock<E>(
+        std::move(registerInfos), std::move(executorInfos), nodeType));
     return *this;
   }
 
@@ -292,7 +311,8 @@ struct ExecutorTestHelper {
     BlockCollector allResults{&_itemBlockManager};
 
     if (!loop) {
-      auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
+      auto const [state, skipped, result] =
+          _pipeline.get().front()->execute(_callStack);
       skippedTotal.merge(skipped, false);
       finalState = state;
       if (result != nullptr) {
@@ -300,7 +320,8 @@ struct ExecutorTestHelper {
       }
     } else {
       do {
-        auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
+        auto const [state, skipped, result] =
+            _pipeline.get().front()->execute(_callStack);
         finalState = state;
         auto& call = _callStack.modifyTopCall();
         skippedTotal.merge(skipped, false);
@@ -310,9 +331,10 @@ struct ExecutorTestHelper {
           allResults.add(result);
         }
         call.resetSkipCount();
-      } while (finalState != ExecutionState::DONE &&
-               (!_callStack.peek().hasSoftLimit() ||
-                (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
+      } while (
+          finalState != ExecutionState::DONE &&
+          (!_callStack.peek().hasSoftLimit() ||
+           (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
     }
     EXPECT_EQ(skippedTotal, _expectedSkip);
     EXPECT_EQ(finalState, _expectedState);
@@ -322,15 +344,16 @@ struct ExecutorTestHelper {
       EXPECT_EQ(_output.size(), 0)
           << "Executor does not yield output, although it is expected";
     } else {
-      SharedAqlItemBlockPtr expectedOutputBlock =
-          buildBlock<outputColumns>(_itemBlockManager, std::move(_output), _outputShadowRows);
+      SharedAqlItemBlockPtr expectedOutputBlock = buildBlock<outputColumns>(
+          _itemBlockManager, std::move(_output), _outputShadowRows);
       std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
                                            _outputRegisters.end());
       if (_unorderedOutput) {
-        asserthelper::ValidateBlocksAreEqualUnordered(result, expectedOutputBlock,
-                                                      _unorderedSkippedRows, outRegVector);
+        asserthelper::ValidateBlocksAreEqualUnordered(
+            result, expectedOutputBlock, _unorderedSkippedRows, outRegVector);
       } else {
-        asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+        asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock,
+                                             outRegVector);
       }
     }
 
@@ -351,21 +374,22 @@ struct ExecutorTestHelper {
    *
    * @tparam E The executor template parameter
    * @param executorInfos to build the executor
-   * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
+   * @param nodeType The type of executor node, only used for debug printing,
+   * defaults to SINGLETON
    * @return ExecBlock
    *
    * Now private to prevent us from leaking memory
    */
-  template <typename E>
-  auto createExecBlock(RegisterInfos registerInfos, typename E::Infos executorInfos,
-                       ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
+  template<typename E>
+  auto createExecBlock(
+      RegisterInfos registerInfos, typename E::Infos executorInfos,
+      ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
-    auto& testeeNode = _execNodes.emplace_back(
-        std::make_unique<MockTypedNode>(_query.plan(),
-                                        ExecutionNodeId{_execNodes.size()}, nodeType));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(),
-                                                   testeeNode.get(), std::move(registerInfos),
-                                                   std::move(executorInfos));
+    auto& testeeNode = _execNodes.emplace_back(std::make_unique<MockTypedNode>(
+        _query.plan(), ExecutionNodeId{_execNodes.size()}, nodeType));
+    return std::make_unique<ExecutionBlockImpl<E>>(
+        _query.rootEngine(), testeeNode.get(), std::move(registerInfos),
+        std::move(executorInfos));
   }
 
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
@@ -388,20 +412,18 @@ struct ExecutorTestHelper {
 
       TRI_ASSERT(!_inputSplit.valueless_by_exception());
 
-      bool openNewBlock =
-          std::visit(overload{[&](VectorSizeT& list) {
-                                if (*iter != *end && matrix.size() == **iter) {
-                                  iter->operator++();
-                                  return true;
-                                }
+      bool openNewBlock = std::visit(
+          overload{[&](VectorSizeT& list) {
+                     if (*iter != *end && matrix.size() == **iter) {
+                       iter->operator++();
+                       return true;
+                     }
 
-                                return false;
-                              },
-                              [&](std::size_t size) {
-                                return matrix.size() == size;
-                              },
-                              [](auto) { return false; }},
-                     _inputSplit);
+                     return false;
+                   },
+                   [&](std::size_t size) { return matrix.size() == size; },
+                   [](auto) { return false; }},
+          _inputSplit);
       if (openNewBlock) {
         SharedAqlItemBlockPtr inputBlock =
             buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
@@ -419,10 +441,9 @@ struct ExecutorTestHelper {
       blockDeque.emplace_back(nullptr);
     }
 
-    return std::make_unique<WaitingExecutionBlockMock>(_query.rootEngine(),
-                                                       _dummyNode.get(),
-                                                       std::move(blockDeque),
-                                                       _waitingBehaviour);
+    return std::make_unique<WaitingExecutionBlockMock>(
+        _query.rootEngine(), _dummyNode.get(), std::move(blockDeque),
+        _waitingBehaviour);
   }
 
   // Default initialize with a fetchAll call.

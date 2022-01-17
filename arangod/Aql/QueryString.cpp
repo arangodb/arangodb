@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,19 +33,6 @@ void QueryString::append(std::string& out) const {
     return;
   }
   out.append(_queryString);
-}
-
-uint64_t QueryString::hash() const {
-  if (!_hashed) {
-    if (empty()) {
-      return 0;
-    }
-
-    _hash = fasthash64(data(), length(), 0x3123456789abcdef);
-    _hashed = true;
-  }
-
-  return _hash;
 }
 
 std::string QueryString::extract(size_t maxLength) const {
@@ -93,7 +80,8 @@ std::string QueryString::extractRegion(int line, int column) const {
   size_t const n = size();
 
   while ((static_cast<size_t>(p - s) < n) && (c = *p)) {
-    if (currentLine > line || (currentLine >= line && currentColumn >= column)) {
+    if (currentLine > line ||
+        (currentLine >= line && currentColumn >= column)) {
       break;
     }
 
@@ -121,20 +109,28 @@ std::string QueryString::extractRegion(int line, int column) const {
 
   size_t offset = static_cast<size_t>(p - s);
 
-  static int const SNIPPET_LENGTH = 32;
+  constexpr int snippetLength = 32;
 
-  if (size() < offset + SNIPPET_LENGTH) {
+  if (size() < offset + snippetLength) {
     // return a copy of the region
     return std::string(s + offset, n - offset);
   }
 
   // copy query part
   std::string result;
-  result.reserve(SNIPPET_LENGTH + strlen("..."));
-  result.append(s + offset, SNIPPET_LENGTH);
+  result.reserve(snippetLength + 3 /*...*/);
+  result.append(s + offset, snippetLength);
   result.append("...");
 
   return result;
+}
+
+uint64_t QueryString::computeHash() const noexcept {
+  if (empty()) {
+    return 0;
+  }
+
+  return fasthash64(data(), length(), 0x3123456789abcdef);
 }
 
 namespace arangodb {

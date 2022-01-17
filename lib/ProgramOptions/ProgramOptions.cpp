@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,14 +67,16 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
 
 // sets a value translator
 void ProgramOptions::setTranslator(
-    std::function<std::string(std::string const&, char const*)> const& translator) {
+    std::function<std::string(std::string const&, char const*)> const&
+        translator) {
   _translator = translator;
 }
-  
+
 // adds a sub-headline for one option or a group of options
-void ProgramOptions::addHeadline(std::string const& prefix, std::string const& description) {
+void ProgramOptions::addHeadline(std::string const& prefix,
+                                 std::string const& description) {
   checkIfSealed();
-  
+
   auto parts = Option::splitName(prefix);
   if (parts.first.empty()) {
     std::swap(parts.first, parts.second);
@@ -82,9 +84,10 @@ void ProgramOptions::addHeadline(std::string const& prefix, std::string const& d
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-    throw std::logic_error(std::string("section '") + parts.first + "' not found");
+    throw std::logic_error(std::string("section '") + parts.first +
+                           "' not found");
   }
-    
+
   (*it).second.headlines[parts.second] = description;
 }
 
@@ -112,7 +115,8 @@ void ProgramOptions::printHelp(std::string const& search) const {
   printUsage();
 
   if (!showHidden) {
-    std::cout << "Common options (excluding hidden/uncommon options):" << std::endl;
+    std::cout << "Common options (excluding hidden/uncommon options):"
+              << std::endl;
     std::cout << std::endl;
   }
 
@@ -126,7 +130,7 @@ void ProgramOptions::printHelp(std::string const& search) const {
   if (normalized == "*") {
     printSectionsHelp();
   }
-  
+
   std::cout << std::endl;
   if (!showHidden) {
     char const* colorStart = "";
@@ -136,8 +140,9 @@ void ProgramOptions::printHelp(std::string const& search) const {
       colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
       colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
     }
-    std::cout << "More uncommon options are not shown by default. " 
-              << "To show these options, use  " << colorStart << "--help-uncommon" << colorEnd << std::endl;
+    std::cout << "More uncommon options are not shown by default. "
+              << "To show these options, use  " << colorStart
+              << "--help-uncommon" << colorEnd << std::endl;
   }
   std::cout << std::endl;
 }
@@ -155,26 +160,30 @@ void ProgramOptions::printSectionsHelp() const {
   // print names of sections
   std::cout << _more;
   for (auto const& it : _sections) {
-    if (!it.second.name.empty() && it.second.hasOptions() && !it.second.obsolete) {
-      std::cout << "  " << colorStart << "--help-" << it.second.name << colorEnd;
+    if (!it.second.name.empty() && it.second.hasOptions() &&
+        !it.second.obsolete) {
+      std::cout << "  " << colorStart << "--help-" << it.second.name
+                << colorEnd;
     }
   }
   std::cout << std::endl;
 }
 
 // returns a VPack representation of the option values, with optional
-// filters applied to filter out specific options. 
+// filters applied to filter out specific options.
 // the filter function is expected to return true
 // for any options that should become part of the result
-VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
-                                     std::function<bool(std::string const&)> const& filter) const {
+VPackBuilder ProgramOptions::toVPack(
+    bool onlyTouched, bool detailed,
+    std::function<bool(std::string const&)> const& filter) const {
   VPackBuilder builder;
   builder.openObject();
 
   walk(
-      [this, &builder, &filter, &detailed](Section const& section, Option const& option) {
+      [this, &builder, &filter, &detailed](Section const& section,
+                                           Option const& option) {
         std::string full(option.fullName());
-        
+
         if (!filter(full)) {
           return;
         }
@@ -190,20 +199,28 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
             builder.add("link", VPackValue(section.link));
           }
           builder.add("description", VPackValue(option.description));
-          builder.add("category", VPackValue(option.hasFlag(arangodb::options::Flags::Command)
-                                                 ? "command"
-                                                 : "option"));
-          builder.add("hidden", VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
+          builder.add(
+              "category",
+              VPackValue(option.hasFlag(arangodb::options::Flags::Command)
+                             ? "command"
+                             : "option"));
+          builder.add(
+              "hidden",
+              VPackValue(option.hasFlag(arangodb::options::Flags::Hidden)));
           builder.add("type", VPackValue(option.parameter->name()));
           builder.add("experimental",
-                      VPackValue(option.hasFlag(arangodb::options::Flags::Experimental)));
-          builder.add("obsolete",
-                      VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
-          builder.add("enterpriseOnly",
-                      VPackValue(section.enterpriseOnly ||
-                                 option.hasFlag(arangodb::options::Flags::Enterprise)));
-          builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
-         
+                      VPackValue(option.hasFlag(
+                          arangodb::options::Flags::Experimental)));
+          builder.add(
+              "obsolete",
+              VPackValue(option.hasFlag(arangodb::options::Flags::Obsolete)));
+          builder.add(
+              "enterpriseOnly",
+              VPackValue(section.enterpriseOnly ||
+                         option.hasFlag(arangodb::options::Flags::Enterprise)));
+          builder.add("requiresValue",
+                      VPackValue(option.parameter->requiresValue()));
+
           // OS support
           builder.add("os", VPackValue(VPackValueType::Array));
           if (option.hasFlag(arangodb::options::Flags::OsLinux)) {
@@ -216,11 +233,12 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
             builder.add(VPackValue("windows"));
           }
           builder.close();
-          
+
           // component support
           char const* arangod = "arangod";
           if (_progname.size() >= strlen(arangod) &&
-              _progname.compare(_progname.size() - strlen(arangod), strlen(arangod), arangod) == 0) {
+              _progname.compare(_progname.size() - strlen(arangod),
+                                strlen(arangod), arangod) == 0) {
             builder.add("component", VPackValue(VPackValueType::Array));
             if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
               builder.add(VPackValue("coordinator"));
@@ -237,7 +255,8 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
             builder.close();
           }
 
-          // version the option was introduced in (unknown for some older options)
+          // version the option was introduced in (unknown for some older
+          // options)
           builder.add(VPackValue("introducedIn"));
           if (option.hasIntroducedIn()) {
             builder.openArray();
@@ -249,7 +268,8 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
             builder.add(VPackValue(VPackValueType::Null));
           }
 
-          // version the option was deprecated in (not set for still-active options)
+          // version the option was deprecated in (not set for still-active
+          // options)
           builder.add(VPackValue("deprecatedIn"));
           if (option.hasDeprecatedIn()) {
             builder.openArray();
@@ -272,8 +292,9 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
             builder.add(VPackValue("default"));
             option.toVPack(builder);
           }
-          builder.add("dynamic",
-                      VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
+          builder.add(
+              "dynamic",
+              VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
           builder.close();
         } else {
           option.toVPack(builder);
@@ -295,15 +316,17 @@ std::string ProgramOptions::translateShorthand(std::string const& name) const {
   return (*it).second;
 }
 
-void ProgramOptions::walk(std::function<void(Section const&, Option const&)> const& callback,
-                          bool onlyTouched, bool includeObsolete) const {
+void ProgramOptions::walk(
+    std::function<void(Section const&, Option const&)> const& callback,
+    bool onlyTouched, bool includeObsolete) const {
   for (auto const& it : _sections) {
     if (!includeObsolete && it.second.obsolete) {
       // obsolete section. ignore it
       continue;
     }
     for (auto const& it2 : it.second.options) {
-      if (!includeObsolete && it2.second.hasFlag(arangodb::options::Flags::Obsolete)) {
+      if (!includeObsolete &&
+          it2.second.hasFlag(arangodb::options::Flags::Obsolete)) {
         // obsolete option. ignore it
         continue;
       }
@@ -338,7 +361,8 @@ bool ProgramOptions::require(std::string const& name) {
 }
 
 // sets a value for an option
-bool ProgramOptions::setValue(std::string const& name, std::string const& value) {
+bool ProgramOptions::setValue(std::string const& name,
+                              std::string const& value) {
   std::string const& modernized = modernize(name);
 
   if (!_overrideOptions && _processingResult.frozen(modernized)) {
@@ -389,7 +413,9 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
       colorStart2 = ShellColorsFeature::SHELL_COLOR_BOLD_RED;
       colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
     }
-    return fail(std::string("error setting value for option '") + colorStart2 + "--" + modernized + colorEnd + "': " + colorStart1 + result + colorEnd);
+    return fail(std::string("error setting value for option '") + colorStart2 +
+                "--" + modernized + colorEnd + "': " + colorStart1 + result +
+                colorEnd);
   }
 
   _processingResult.touch(modernized);
@@ -407,7 +433,8 @@ void ProgramOptions::endPass() {
   }
 }
 
-std::unordered_map<std::string, std::string> ProgramOptions::modernizedOptions() const {
+std::unordered_map<std::string, std::string> ProgramOptions::modernizedOptions()
+    const {
   std::unordered_map<std::string, std::string> result;
   for (auto const& name : _alreadyModernized) {
     auto it = _oldOptions.find(name);
@@ -417,9 +444,10 @@ std::unordered_map<std::string, std::string> ProgramOptions::modernizedOptions()
   }
   return result;
 }
-  
+
 // sets a single old option and its replacement name
-void ProgramOptions::addOldOption(std::string const& old, std::string const& replacement) {
+void ProgramOptions::addOldOption(std::string const& old,
+                                  std::string const& replacement) {
   _oldOptions[Option::stripPrefix(old)] = Option::stripPrefix(replacement);
 }
 
@@ -503,7 +531,8 @@ bool ProgramOptions::unknownOption(std::string const& name) {
     colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
   }
 
-  fail(std::string(colorStart1) + "unknown option '" + colorStart2 + "--" + name + colorStart1 + "'" + colorEnd);
+  fail(std::string(colorStart1) + "unknown option '" + colorStart2 + "--" +
+       name + colorStart1 + "'" + colorEnd);
 
   auto similarOptions = similar(name, 8, 4);
   if (!similarOptions.empty()) {
@@ -536,7 +565,7 @@ bool ProgramOptions::unknownOption(std::string const& name) {
 // report an error (callback from parser)
 bool ProgramOptions::fail(std::string const& message) {
   _processingResult.failed(true);
-  
+
   char const* colorStart = "";
   char const* colorEnd = "";
 
@@ -576,19 +605,21 @@ void ProgramOptions::addPositional(std::string const& value) {
 // adds an option to the list of options
 void ProgramOptions::addOption(Option const& option) {
   checkIfSealed();
-  std::map<std::string, Section>::iterator sectionIt = addSection(option.section, "");
+  std::map<std::string, Section>::iterator sectionIt =
+      addSection(option.section, "");
 
   if (!option.shorthand.empty()) {
     if (!_shorthands.try_emplace(option.shorthand, option.fullName()).second) {
       throw std::logic_error(
-          std::string("shorthand option already defined for option ") + option.displayName());
+          std::string("shorthand option already defined for option ") +
+          option.displayName());
     }
   }
 
   Section& section = (*sectionIt).second;
   section.options.try_emplace(option.name, option);
 }
- 
+
 // modernize an option name
 std::string const& ProgramOptions::modernize(std::string const& name) {
   auto it = _oldOptions.find(Option::stripPrefix(name));
@@ -620,7 +651,8 @@ void ProgramOptions::checkIfSealed() const {
 
 // get a list of similar options
 std::vector<std::string> ProgramOptions::similar(std::string const& value,
-                                                 int cutOff, size_t maxResults) {
+                                                 int cutOff,
+                                                 size_t maxResults) {
   std::vector<std::string> result;
 
   if (_similarity != nullptr) {
@@ -630,7 +662,8 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value,
     walk(
         [this, &value, &distances](Section const&, Option const& option) {
           if (option.fullName() != value) {
-            distances.emplace(_similarity(value, option.fullName()), option.displayName());
+            distances.emplace(_similarity(value, option.fullName()),
+                              option.displayName());
           }
         },
         false);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,10 +30,12 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class CheckVersionFeature final : public application_features::ApplicationFeature {
+class CheckVersionFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit CheckVersionFeature(application_features::ApplicationServer& server, int* result,
-                               std::vector<std::type_index> const& nonServerFeatures);
+  explicit CheckVersionFeature(
+      application_features::ApplicationServer& server, int* result,
+      std::vector<std::type_index> const& nonServerFeatures);
 
  private:
   bool _checkVersion;
@@ -51,4 +53,3 @@ class CheckVersionFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,4 +66,3 @@ void TRI_LockCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief unlocks the mutex of a condition variable
 void TRI_UnlockCondition(TRI_condition_t* cond) noexcept;
-

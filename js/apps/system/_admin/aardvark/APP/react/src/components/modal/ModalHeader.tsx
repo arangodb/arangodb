@@ -4,11 +4,12 @@ import { Cell, Grid } from "../pure-css/grid";
 interface ModalHeaderProps {
   title: string;
   children?: ReactNode;
+  minWidth?: string;
 }
 
-const ModalHeader = ({ title, children }: ModalHeaderProps) =>
+const ModalHeader = ({ title, children, minWidth = '60vw' }: ModalHeaderProps) =>
   <>
-    <div className="modal-header" style={{ minWidth: '60vw' }}>
+    <div className="modal-header" style={{ minWidth }}>
       <Grid>
         <Cell size={'1-4'}>
           <span className="arangoHeader">{title}</span>

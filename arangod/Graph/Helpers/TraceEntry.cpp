@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +50,8 @@ auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream& {
     out << "not called";
   } else {
     out << "calls: " << entry._count << " min: " << std::setprecision(2)
-        << std::fixed << entry._min * 1000.0 << "ms max: " << entry._max * 1000.0
+        << std::fixed << entry._min * 1000.0
+        << "ms max: " << entry._max * 1000.0
         << "ms avg: " << entry._total / entry._count * 1000.0
         << "ms total: " << entry._total * 1000.0 << "ms";
   }

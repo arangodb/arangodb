@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,8 @@
 using namespace arangodb::basics;
 
 /// @brief converts a V8 object to a string
-std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
+std::string TRI_ObjectToString(v8::Isolate* isolate,
+                               v8::Handle<v8::Value> value) {
   if (value->IsObject() && V8Buffer::hasInstance(isolate, value)) {
     // argument is a buffer
     char const* data = V8Buffer::data(isolate, value.As<v8::Object>());
@@ -49,31 +50,37 @@ std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value> value
 }
 
 /// @brief converts an V8 object to an int64_t
-int64_t TRI_ObjectToInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const value) {
+int64_t TRI_ObjectToInt64(v8::Isolate* isolate,
+                          v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
     return static_cast<int64_t>(
-        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(
+            0.0));
   }
 
   if (value->IsNumberObject()) {
-    return static_cast<int64_t>(
-        v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+    return static_cast<int64_t>(v8::Handle<v8::NumberObject>::Cast(value)
+                                    ->NumberValue(TRI_IGETC)
+                                    .FromMaybe(0.0));
   }
 
   return 0;
 }
 
 /// @brief converts an V8 object to a uint64_t
-uint64_t TRI_ObjectToUInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const value,
+uint64_t TRI_ObjectToUInt64(v8::Isolate* isolate,
+                            v8::Handle<v8::Value> const value,
                             bool allowStringConversion) {
   if (value->IsNumber()) {
     return static_cast<uint64_t>(
-        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(
+            0.0));
   }
 
   if (value->IsNumberObject()) {
-    return static_cast<uint64_t>(
-        v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+    return static_cast<uint64_t>(v8::Handle<v8::NumberObject>::Cast(value)
+                                     ->NumberValue(TRI_IGETC)
+                                     .FromMaybe(0.0));
   }
 
   if (allowStringConversion && value->IsString()) {
@@ -85,13 +92,16 @@ uint64_t TRI_ObjectToUInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const va
 }
 
 /// @brief converts an V8 object to a double
-double TRI_ObjectToDouble(v8::Isolate* isolate, v8::Handle<v8::Value> const value) {
+double TRI_ObjectToDouble(v8::Isolate* isolate,
+                          v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
     return TRI_GET_DOUBLE(value);
   }
 
   if (value->IsNumberObject()) {
-    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0);
+    return v8::Handle<v8::NumberObject>::Cast(value)
+        ->NumberValue(TRI_IGETC)
+        .FromMaybe(0.0);
   }
   return 0.0;
 }
@@ -106,7 +116,9 @@ double TRI_ObjectToDouble(v8::Isolate* isolate,
   }
 
   if (value->IsNumberObject()) {
-    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0);
+    return v8::Handle<v8::NumberObject>::Cast(value)
+        ->NumberValue(TRI_IGETC)
+        .FromMaybe(0.0);
   }
 
   error = true;
@@ -115,7 +127,8 @@ double TRI_ObjectToDouble(v8::Isolate* isolate,
 }
 
 /// @brief converts an V8 object to a boolean
-bool TRI_ObjectToBoolean(v8::Isolate* isolate, v8::Handle<v8::Value> const value) {
+bool TRI_ObjectToBoolean(v8::Isolate* isolate,
+                         v8::Handle<v8::Value> const value) {
   if (value->IsBoolean()) {
     return value->IsTrue();
   }
@@ -128,11 +141,13 @@ bool TRI_ObjectToBoolean(v8::Isolate* isolate, v8::Handle<v8::Value> const value
 }
 
 /// @brief extracts an optional boolean property from a V8 object
-bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate, v8::Handle<v8::Object> const obj,
+bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate,
+                                    v8::Handle<v8::Object> const obj,
                                     const char* property, bool defaultValue) {
   auto value = obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, property));
   if (!value.IsEmpty()) {
-    return TRI_ObjectToBoolean(isolate, value.FromMaybe(v8::Local<v8::Value>()));
+    return TRI_ObjectToBoolean(isolate,
+                               value.FromMaybe(v8::Local<v8::Value>()));
   } else {
     return defaultValue;
   }

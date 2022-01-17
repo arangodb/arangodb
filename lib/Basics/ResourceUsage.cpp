@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,10 +30,7 @@
 using namespace arangodb;
 
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
-    : _current(0),
-      _peak(0),
-      _limit(0),
-      _global(global) {}
+    : _current(0), _peak(0), _limit(0), _global(global) {}
 
 ResourceMonitor::~ResourceMonitor() {
   // this assertion is here to ensure that our memory usage tracking works
@@ -41,25 +38,23 @@ ResourceMonitor::~ResourceMonitor() {
   // down. the assertion will have no effect in production.
   TRI_ASSERT(_current.load(std::memory_order_relaxed) == 0);
 }
-  
+
 /// @brief sets a memory limit
-void ResourceMonitor::memoryLimit(std::uint64_t value) noexcept { 
-  _limit = value; 
+void ResourceMonitor::memoryLimit(std::uint64_t value) noexcept {
+  _limit = value;
 }
 
 /// @brief returns the current memory limit
-std::uint64_t ResourceMonitor::memoryLimit() const noexcept { 
-  return _limit; 
-}
-  
+std::uint64_t ResourceMonitor::memoryLimit() const noexcept { return _limit; }
+
 /// @brief increase memory usage by <value> bytes. may throw!
 /// this function may modify up to 3 atomic variables:
 /// - the current local memory usage
 /// - the peak local memory usage
 /// - the global memory usage
 /// the order in which we update these atomic variables is not important,
-/// as long as everything is eventually consistent. 
-/// in case this function triggers a "resource limit exceeded" error, 
+/// as long as everything is eventually consistent.
+/// in case this function triggers a "resource limit exceeded" error,
 /// the only thing that can have happened is the update of the current local
 /// memory usage, which this function will roll back again.
 /// as this function only adds and subtracts values from the memory usage
@@ -68,61 +63,71 @@ std::uint64_t ResourceMonitor::memoryLimit() const noexcept {
 /// the peak memory usage value is updated with a CAS operation, so again
 /// there will no be lost updates.
 void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
-  std::uint64_t const previous = _current.fetch_add(value, std::memory_order_relaxed);
+  std::uint64_t const previous =
+      _current.fetch_add(value, std::memory_order_relaxed);
   std::uint64_t const current = previous + value;
   TRI_ASSERT(current >= value);
-  
-  // now calculate if the number of chunks used by instance's allocations stays the 
-  // same after the extra allocation. if yes, it was likely a very small allocation, and 
-  // we don't bother with updating the global counter for it. not updating the global
-  // counter on each (small) allocation is an optimization that saves updating a
-  // (potentially highly contended) shared atomic variable on each allocation.
-  // only doing this when there are substantial allocations/deallocations simply
-  // makes many cases of small allocations and deallocations more efficient.
-  // as a consequence, the granularity of allocations tracked in the global counter
-  // is `chunkSize`.
+
+  // now calculate if the number of chunks used by instance's allocations stays
+  // the same after the extra allocation. if yes, it was likely a very small
+  // allocation, and we don't bother with updating the global counter for it.
+  // not updating the global counter on each (small) allocation is an
+  // optimization that saves updating a (potentially highly contended) shared
+  // atomic variable on each allocation. only doing this when there are
+  // substantial allocations/deallocations simply makes many cases of small
+  // allocations and deallocations more efficient. as a consequence, the
+  // granularity of allocations tracked in the global counter is `chunkSize`.
   //
-  // this idea is based on suggestions from @dothebart and @mpoeter for reducing the 
-  // number of updates to the shared global memory usage counter, which very likely
-  // would be a source of contention in case multiple queries execute in parallel.
+  // this idea is based on suggestions from @dothebart and @mpoeter for reducing
+  // the number of updates to the shared global memory usage counter, which very
+  // likely would be a source of contention in case multiple queries execute in
+  // parallel.
   std::int64_t const previousChunks = numChunks(previous);
   std::int64_t const currentChunks = numChunks(current);
   TRI_ASSERT(currentChunks >= previousChunks);
   auto diff = currentChunks - previousChunks;
-  
+
   if (diff != 0) {
     auto rollback = [this, value, diff]() {
-      // When rolling back, we have to consider that our change to the local memory usage
-      // might have affected other threads.
-      // Suppose we have a chunk size of 10 and a global memory limit of 20 (=2 chunks).
-      //   - Thread A increments local memory by 18 (=> exact global=18) and global memory by 1 chunk
-      //   - Thread B increments local memory by 13 (=> exact global=31) and attempts to update global
-      //     memory by 2 chunks, which would exceed the limit, but before we can rollback the update to
-      //     the local memory, Thread A already decreases by 18 again (=> exact global=13), so Thread A
-      //     would decrease global memory by 2 chunks!
-      // Thread A first increases by 1 chunk, but later decreases by 2 chunks - this can cause the
-      // global memory to underflow! The reason for this difference is due to the change to local memory
-      // by Thread B, so any such difference has to be considered during rollback.
-      // 
-      // When Thread B now performs its rollback - decreasing by 13 (=> exact global=0) - we would
-      // decrease global memory by 1 chunk, but our initial attempt to increase was 2 chunks - this is
-      // exactly the difference of 1 chunk that Thread A has decreased more, so we have to take this into
+      // When rolling back, we have to consider that our change to the local
+      // memory usage might have affected other threads. Suppose we have a chunk
+      // size of 10 and a global memory limit of 20 (=2 chunks).
+      //   - Thread A increments local memory by 18 (=> exact global=18) and
+      //   global memory by 1 chunk
+      //   - Thread B increments local memory by 13 (=> exact global=31) and
+      //   attempts to update global
+      //     memory by 2 chunks, which would exceed the limit, but before we can
+      //     rollback the update to the local memory, Thread A already decreases
+      //     by 18 again (=> exact global=13), so Thread A would decrease global
+      //     memory by 2 chunks!
+      // Thread A first increases by 1 chunk, but later decreases by 2 chunks -
+      // this can cause the global memory to underflow! The reason for this
+      // difference is due to the change to local memory by Thread B, so any
+      // such difference has to be considered during rollback.
+      //
+      // When Thread B now performs its rollback - decreasing by 13 (=> exact
+      // global=0) - we would decrease global memory by 1 chunk, but our initial
+      // attempt to increase was 2 chunks - this is exactly the difference of 1
+      // chunk that Thread A has decreased more, so we have to take this into
       // account and increase global memory by 1 chunk to balance this out.
-      std::uint64_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
+      std::uint64_t adjustedPrevious =
+          _current.fetch_sub(value, std::memory_order_relaxed);
       std::uint64_t adjustedCurrent = adjustedPrevious - value;
-  
-      std::int64_t adjustedDiff = diff + (numChunks(adjustedCurrent) - numChunks(adjustedPrevious));
+
+      std::int64_t adjustedDiff =
+          diff + (numChunks(adjustedCurrent) - numChunks(adjustedPrevious));
       if (adjustedDiff != 0) {
         TRI_ASSERT(adjustedDiff == 1 || adjustedDiff == -1);
         // adjustment can be off by at most 1.
-        // forceUpdateMemoryUsage takes a signed int64, so we can increase/decrease
+        // forceUpdateMemoryUsage takes a signed int64, so we can
+        // increase/decrease
         _global.forceUpdateMemoryUsage(adjustedDiff * chunkSize);
       }
     };
-    
-    // number of chunks has changed, so this is either a substantial allocation or
-    // we have piled up changes by lots of small allocations so far.
-    // time for some memory expensive checks now...
+
+    // number of chunks has changed, so this is either a substantial allocation
+    // or we have piled up changes by lots of small allocations so far. time for
+    // some memory expensive checks now...
 
     if (_limit > 0 && ADB_UNLIKELY(current > _limit)) {
       // we would use more memory than dictated by the instance's own limit.
@@ -137,34 +142,38 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
           TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
     }
 
-    // instance's own memory usage counter has been updated successfully once we got here.
+    // instance's own memory usage counter has been updated successfully once we
+    // got here.
 
     // now modify the global counter value, too.
     if (!_global.increaseMemoryUsage(diff * chunkSize)) {
-      // the allocation would exceed the global maximum value, so we need to roll back.
+      // the allocation would exceed the global maximum value, so we need to
+      // roll back.
       rollback();
 
       // track global limit violation
       _global.trackGlobalViolation();
       // now we can safely signal an exception
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "global memory limit exceeded");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+                                     "global memory limit exceeded");
     }
     // increasing the global counter has succeeded!
- 
+
     // update the peak memory usage counter for the local instance. we do this
     // only when there was a change in the number of chunks.
     std::uint64_t peak = _peak.load(std::memory_order_relaxed);
     std::uint64_t const newPeak = currentChunks * chunkSize;
-    // do a CAS here, as concurrent threads may work on the peak memory usage at the
-    // very same time.
+    // do a CAS here, as concurrent threads may work on the peak memory usage at
+    // the very same time.
     while (peak < newPeak) {
-      if (_peak.compare_exchange_weak(peak, newPeak, std::memory_order_release, std::memory_order_relaxed)) {
+      if (_peak.compare_exchange_weak(peak, newPeak, std::memory_order_release,
+                                      std::memory_order_relaxed)) {
         break;
       }
     }
   }
 }
-  
+
 void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
   // this function will always decrease the current local memory usage value,
   // and may in addition lead to a decrease of the global memory usage value.
@@ -172,10 +181,11 @@ void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
   // updates even if there are concurrent threads working on the same counters.
   // note that peak memory usage is not changed here, as this is only relevant
   // when we are _increasing_ memory usage.
-  std::uint64_t const previous = _current.fetch_sub(value, std::memory_order_relaxed);
+  std::uint64_t const previous =
+      _current.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(previous >= value);
   std::uint64_t const current = previous - value;
-  
+
   std::int64_t const diff = numChunks(previous) - numChunks(current);
 
   if (diff != 0) {
@@ -185,9 +195,10 @@ void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
   }
 }
 
-ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept
+ResourceUsageScope::ResourceUsageScope(
+    ResourceMonitor& resourceMonitor) noexcept
     : _resourceMonitor(resourceMonitor), _value(0) {}
-  
+
 std::uint64_t ResourceMonitor::current() const noexcept {
   return _current.load(std::memory_order_relaxed);
 }
@@ -200,25 +211,20 @@ void ResourceMonitor::clear() noexcept {
   _current = 0;
   _peak = 0;
 }
-  
-ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::uint64_t value)
+
+ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor,
+                                       std::uint64_t value)
     : ResourceUsageScope(resourceMonitor) {
   // may throw
   increase(value);
 }
-  
-ResourceUsageScope::~ResourceUsageScope() {
-  revert();
-}
 
-void ResourceUsageScope::steal() noexcept {
-  _value = 0;
-}
+ResourceUsageScope::~ResourceUsageScope() { revert(); }
 
-void ResourceUsageScope::revert() noexcept {
-  decrease(_value);
-}
-  
+void ResourceUsageScope::steal() noexcept { _value = 0; }
+
+void ResourceUsageScope::revert() noexcept { decrease(_value); }
+
 void ResourceUsageScope::increase(std::uint64_t value) {
   if (value > 0) {
     // may throw
@@ -226,7 +232,7 @@ void ResourceUsageScope::increase(std::uint64_t value) {
     _value += value;
   }
 }
-  
+
 void ResourceUsageScope::decrease(std::uint64_t value) noexcept {
   if (value > 0) {
     TRI_ASSERT(_value >= value);

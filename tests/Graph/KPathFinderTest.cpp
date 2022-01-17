@@ -74,8 +74,8 @@ class KPathFinderTest
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
-  arangodb::aql::FixedVarExpressionContext _expressionContext{_trx, *_query.get(),
-                                                              _functionsCache};
+  arangodb::aql::FixedVarExpressionContext _expressionContext{
+      _trx, *_query.get(), _functionsCache};
   KPathFinderTest() {
     if (activateLogging) {
       Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
@@ -168,12 +168,14 @@ class KPathFinderTest
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return KPathFinder{
-        MockGraphProvider(*_query.get(),
-                          MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
-                          resourceMonitor),
-        MockGraphProvider(*_query.get(),
-                          MockGraphProviderOptions{mockGraph, looseEndBehaviour(), true},
-                          resourceMonitor),
+        MockGraphProvider(
+            *_query.get(),
+            MockGraphProviderOptions{mockGraph, looseEndBehaviour(), false},
+            resourceMonitor),
+        MockGraphProvider(
+            *_query.get(),
+            MockGraphProviderOptions{mockGraph, looseEndBehaviour(), true},
+            resourceMonitor),
         std::move(options), std::move(validatorOpts), resourceMonitor};
   }
 
@@ -229,7 +231,8 @@ class KPathFinderTest
     return res;
   }
 
-  auto pathEquals(VPackSlice path, std::vector<size_t> const& vertexIds) -> void {
+  auto pathEquals(VPackSlice path, std::vector<size_t> const& vertexIds)
+      -> void {
     ASSERT_TRUE(path.isObject());
     ASSERT_TRUE(path.hasKey(StaticStrings::GraphQueryVertices));
     auto vertices = path.get(StaticStrings::GraphQueryVertices);
@@ -250,9 +253,10 @@ class KPathFinderTest
   }
 };
 
-INSTANTIATE_TEST_CASE_P(KPathFinderTestRunner, KPathFinderTest,
-                        ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
-                                          MockGraphProvider::LooseEndBehaviour::ALWAYS));
+INSTANTIATE_TEST_CASE_P(
+    KPathFinderTestRunner, KPathFinderTest,
+    ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
+                      MockGraphProvider::LooseEndBehaviour::ALWAYS));
 
 TEST_P(KPathFinderTest, no_path_exists) {
   VPackBuilder result;

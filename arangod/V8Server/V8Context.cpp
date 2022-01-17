@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -150,7 +150,8 @@ void V8Context::handleGlobalContextMethods() {
     std::string const& func = GlobalContextMethods::code(type);
 
     LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
-        << "executing global context method '" << func << "' for context " << _id;
+        << "executing global context method '" << func << "' for context "
+        << _id;
 
     TRI_GET_GLOBALS2(_isolate);
 
@@ -162,11 +163,10 @@ void V8Context::handleGlobalContextMethods() {
     try {
       v8::TryCatch tryCatch(_isolate);
 
-      TRI_ExecuteJavaScriptString(_isolate, _isolate->GetCurrentContext(),
-                                  TRI_V8_STD_STRING(_isolate, func),
-                                  TRI_V8_ASCII_STRING(_isolate,
-                                                      "global context method"),
-                                  false);
+      TRI_ExecuteJavaScriptString(
+          _isolate, _isolate->GetCurrentContext(),
+          TRI_V8_STD_STRING(_isolate, func),
+          TRI_V8_ASCII_STRING(_isolate, "global context method"), false);
 
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {

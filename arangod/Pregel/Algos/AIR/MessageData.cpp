@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,8 @@
 
 using namespace arangodb::pregel::algos::accumulators;
 
-void MessageData::reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender) {
+void MessageData::reset(std::string accumulatorName, VPackSlice const& value,
+                        std::string const& sender) {
   _accumulatorName = accumulatorName;
   _sender = sender;
   _value.clear();
@@ -61,9 +62,5 @@ void MessageData::toVelocyPack(VPackBuilder& builder) const {
 auto MessageData::accumulatorName() const -> std::string const& {
   return _accumulatorName;
 }
-auto MessageData::sender() const -> std::string const& {
-  return _sender;
-}
-auto MessageData::value() const -> VPackBuilder const& {
-  return _value;
-}
+auto MessageData::sender() const -> std::string const& { return _sender; }
+auto MessageData::value() const -> VPackBuilder const& { return _value; }

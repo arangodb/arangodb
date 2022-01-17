@@ -537,7 +537,7 @@ class text_field : public tests::field_base {
                                                    "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
-         throw irs::illegal_state();
+        throw irs::illegal_state{"Failed to reset stream."};
       }
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }
@@ -557,7 +557,7 @@ class text_field : public tests::field_base {
       value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
-        throw irs::illegal_state();
+        throw irs::illegal_state{"Failed to reset stream."};
       }
       pay_stream_.reset(new token_stream_payload(token_stream_.get()));
     }

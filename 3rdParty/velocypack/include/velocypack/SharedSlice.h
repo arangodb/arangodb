@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_SHAREDSLICE_H
-#define VELOCYPACK_SHAREDSLICE_H
+#pragma once
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
@@ -223,25 +222,15 @@ class SharedSlice {
     return alias(slice().get(attributes, resolveExternals));
   }
 
-  [[nodiscard]] SharedSlice get(StringRef const& attribute) const;
+  [[nodiscard]] SharedSlice get(std::string_view attribute) const;
 
-  [[nodiscard]] SharedSlice get(std::string const& attribute) const;
+  [[deprecated]] [[nodiscard]] SharedSlice get(char const* attribute, std::size_t length) const;
 
-  [[nodiscard]] SharedSlice get(char const* attribute) const;
+  [[nodiscard]] SharedSlice operator[](std::string_view attribute) const;
 
-  [[nodiscard]] SharedSlice get(char const* attribute, std::size_t length) const;
+  [[nodiscard]] bool hasKey(std::string_view attribute) const;
 
-  [[nodiscard]] SharedSlice operator[](StringRef const& attribute) const;
-
-  [[nodiscard]] SharedSlice operator[](std::string const& attribute) const;
-
-  [[nodiscard]] bool hasKey(StringRef const& attribute) const;
-
-  [[nodiscard]] bool hasKey(std::string const& attribute) const;
-
-  [[nodiscard]] bool hasKey(char const* attribute) const;
-
-  [[nodiscard]] bool hasKey(char const* attribute, std::size_t length) const;
+  [[deprecated]] [[nodiscard]] bool hasKey(char const* attribute, std::size_t length) const;
 
   [[nodiscard]] bool hasKey(std::vector<std::string> const& attributes) const;
 
@@ -302,27 +291,19 @@ class SharedSlice {
 
   [[nodiscard]] SharedSlice makeKey() const;
 
-  [[nodiscard]] int compareString(StringRef const& value) const;
+  [[nodiscard]] int compareString(std::string_view value) const;
 
-  [[nodiscard]] int compareString(std::string const& value) const;
+  [[deprecated]] [[nodiscard]] int compareString(char const* value, std::size_t length) const;
 
-  [[nodiscard]] int compareString(char const* value, std::size_t length) const;
+  [[nodiscard]] int compareStringUnchecked(std::string_view value) const noexcept;
 
-  [[nodiscard]] int compareStringUnchecked(StringRef const& value) const noexcept;
+  [[deprecated]] [[nodiscard]] int compareStringUnchecked(char const* value, std::size_t length) const noexcept;
 
-  [[nodiscard]] int compareStringUnchecked(std::string const& value) const noexcept;
+  [[nodiscard]] bool isEqualString(std::string_view attribute) const;
 
-  [[nodiscard]] int compareStringUnchecked(char const* value, std::size_t length) const noexcept;
+  [[nodiscard]] bool isEqualStringUnchecked(std::string_view attribute) const noexcept;
 
-  [[nodiscard]] bool isEqualString(StringRef const& attribute) const;
-
-  [[nodiscard]] bool isEqualString(std::string const& attribute) const;
-
-  [[nodiscard]] bool isEqualStringUnchecked(StringRef const& attribute) const noexcept;
-
-  [[nodiscard]] bool isEqualStringUnchecked(std::string const& attribute) const noexcept;
-
-  [[nodiscard]] bool binaryEquals(Slice const& other) const;
+  [[nodiscard]] bool binaryEquals(Slice other) const;
   [[nodiscard]] bool binaryEquals(SharedSlice const& other) const;
 
   bool operator==(SharedSlice const& other) const = delete;
@@ -360,5 +341,3 @@ class SharedSlice {
 };
 
 }  // namespace arangodb::velocypack
-
-#endif  // VELOCYPACK_SHAREDSLICE_H

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -458,9 +458,11 @@ uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
     uint32_t one = *current++ ^ value;
     uint32_t two = *current++;
 
-    value = Crc32Lookup[0][(two >> 24) & 0xFF] ^ Crc32Lookup[1][(two >> 16) & 0xFF] ^
+    value = Crc32Lookup[0][(two >> 24) & 0xFF] ^
+            Crc32Lookup[1][(two >> 16) & 0xFF] ^
             Crc32Lookup[2][(two >> 8) & 0xFF] ^ Crc32Lookup[3][two & 0xFF] ^
-            Crc32Lookup[4][(one >> 24) & 0xFF] ^ Crc32Lookup[5][(one >> 16) & 0xFF] ^
+            Crc32Lookup[4][(one >> 24) & 0xFF] ^
+            Crc32Lookup[5][(one >> 16) & 0xFF] ^
             Crc32Lookup[6][(one >> 8) & 0xFF] ^ Crc32Lookup[7][one & 0xFF];
     length -= 8;
   }
@@ -475,7 +477,8 @@ uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
 }
 
 #if ENABLE_ASM_CRC32 == 1
-static uint32_t TRI_BlockCrc32_Detect(uint32_t hash, char const* data, size_t length) {
+static uint32_t TRI_BlockCrc32_Detect(uint32_t hash, char const* data,
+                                      size_t length) {
   if (HasSSE42()) {
     TRI_BlockCrc32 = TRI_BlockCrc32_SSE42;
   } else {
@@ -484,9 +487,11 @@ static uint32_t TRI_BlockCrc32_Detect(uint32_t hash, char const* data, size_t le
   return (*TRI_BlockCrc32)(hash, data, length);
 }
 
-uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length) = TRI_BlockCrc32_Detect;
+uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data,
+                           size_t length) = TRI_BlockCrc32_Detect;
 #else
-uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length) = TRI_BlockCrc32_C;
+uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data,
+                           size_t length) = TRI_BlockCrc32_C;
 #endif
 
 }  // extern "C"

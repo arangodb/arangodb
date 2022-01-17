@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,15 +25,15 @@
 
 namespace arangodb {
 
-template <typename Base, typename Derived, typename = void>
+template<typename Base, typename Derived, typename = void>
 struct can_static_cast : std::false_type {};
 
-template <typename Base, typename Derived>
-struct can_static_cast<Base, Derived, std::void_t<decltype(static_cast<Derived*>((Base*)nullptr))>>
+template<typename Base, typename Derived>
+struct can_static_cast<
+    Base, Derived, std::void_t<decltype(static_cast<Derived*>((Base*)nullptr))>>
     : std::true_type {};
 
-template <typename Base, typename Derived>
+template<typename Base, typename Derived>
 constexpr bool can_static_cast_v = can_static_cast<Base, Derived>::value;
 
 }  // namespace arangodb
-

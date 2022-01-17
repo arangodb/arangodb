@@ -181,10 +181,10 @@ function createCircle(graphName, numberOfVertices, numberOfShards) {
     graphModule._drop(graphName, true);
   } catch (e) {}
   graphModule._create(
-      graphName,
-      [graphModule._relation(ename, vname, vname)],
-      [],
-      { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    graphName,
+    [graphModule._relation(ename, vname, vname)],
+    [],
+    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -290,10 +290,10 @@ function createStarGraph(graphName, numberOfVertices, numberOfShards) {
     graphModule._drop(graphName, true);
   } catch (e) {}
   graphModule._create(
-      graphName,
-      [graphModule._relation(ename, vname, vname)],
-      [],
-      { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    graphName,
+    [graphModule._relation(ename, vname, vname)],
+    [],
+    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -325,10 +325,10 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
     graphModule._drop(graphName, true);
   } catch (e) {}
   graphModule._create(
-      graphName,
-      [graphModule._relation(ename, vname, vname)],
-      [],
-      { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    graphName,
+    [graphModule._relation(ename, vname, vname)],
+    [],
+    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -336,10 +336,13 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
 
   // vertices data
   let vertices = ['A', 'B', 'C', 'D', 'E'];
+  let smartGraphValue = 0;
   vertices.forEach(function(v) {
     vs.push({
-      name: v
+      name: v,
+      id: smartGraphValue.toString()
     });
+    smartGraphValue++;
   });
   vids = db._collection(vname).save(vs);
 

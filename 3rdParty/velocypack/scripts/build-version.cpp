@@ -68,8 +68,7 @@ int main(int argc, char* argv[]) {
 
   std::string result;
   result.append("// this is an auto-generated file. do not edit!\n\n");
-  result.append("#ifndef VELOCYPACK_VERSION_NUMBER_H\n");
-  result.append("#define VELOCYPACK_VERSION_NUMBER_H 1\n\n");
+  result.append("#pragma once\n");
   result.append("#define VELOCYPACK_VERSION \"" + std::to_string(major) + "." +
                 std::to_string(minor) + "." + std::to_string(patch) + "\"\n\n");
   result.append("#define VELOCYPACK_VERSION_MAJOR " + std::to_string(major) +
@@ -78,7 +77,6 @@ int main(int argc, char* argv[]) {
                 "\n");
   result.append("#define VELOCYPACK_VERSION_PATCH " + std::to_string(patch) +
                 "\n");
-  result.append("\n#endif");
 
   std::string outfile = argv[1];
   std::ofstream ofs(outfile, std::ifstream::out);

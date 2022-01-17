@@ -63,10 +63,13 @@ double distance(double degreesDiffLat, double degreesDiffLng) {
 
 namespace {
 bool pointsEqual(S2Point const& a, S2Point const& b) {
-  bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <= AcceptableDistanceError;
+  bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <=
+               AcceptableDistanceError;
   if (!equal) {
-    // std::cout << "EXPECTING EQUAL POINTS, GOT " << S2LatLng(a).ToStringInDegrees()
-    //           << " AND " << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE "
+    // std::cout << "EXPECTING EQUAL POINTS, GOT " <<
+    // S2LatLng(a).ToStringInDegrees()
+    //           << " AND " << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE
+    //           "
     //           << (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters);
   }
   return equal;
@@ -84,7 +87,7 @@ bool pointsEqual(S2LatLng const& a, S2LatLng const& b) {
 // -----------------------------------------------------------------------------
 
 namespace arangodb {
-namespace geo {  
+namespace geo {
 
 class ShapeContainerTest : public ::testing::Test {
  protected:
@@ -118,12 +121,15 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   ASSERT_FALSE(shape.isAreaType());
 
   // location utilities
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(), shape.centroid()));
-  ASSERT_TRUE(::distance(1.0, 0.0) ==
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-  
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(),
+                            shape.centroid()));
+  ASSERT_TRUE(
+      ::distance(1.0, 0.0) ==
+      shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+
   geo::Ellipsoid const& e = geo::WGS84_ELLIPSOID;
-  double dist = shape.distanceFromCentroid(S2LatLng::FromDegrees(-24.993289, 151.960336).ToPoint(), e);
+  double dist = shape.distanceFromCentroid(
+      S2LatLng::FromDegrees(-24.993289, 151.960336).ToPoint(), e);
   ASSERT_LE(std::fabs(dist - 16004725.0), 0.5);
 
   // equality works
@@ -139,7 +145,7 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   // doesn't contain what it shouldn't
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(e), 0.0);
 
   // query params
@@ -185,12 +191,15 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   ASSERT_FALSE(shape.isAreaType());
 
   // location utilities
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5).ToPoint(), shape.centroid()));
-  ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5).ToPoint(),
+                            shape.centroid()));
+  ASSERT_TRUE(
+      ::AcceptableDistanceError >=
+      shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.5, 0.5) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -210,7 +219,7 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
 
@@ -218,7 +227,8 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   QueryParams qp;
   shape.updateBounds(qp);
   ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5), qp.origin));
-  ASSERT_TRUE(::AcceptableDistanceError >= std::abs(::distance(0.5, 0.5) - qp.maxDistance));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.5, 0.5) - qp.maxDistance));
 }
 
 TEST_F(ShapeContainerTest, valid_linestring_as_region) {
@@ -260,10 +270,12 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint(),
                             shape.centroid()));
   ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint()));
+              shape.distanceFromCentroid(
+                  S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.5, 0.66666667) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -275,7 +287,7 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
 
@@ -352,10 +364,12 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint(),
                             shape.centroid()));
   ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint()));
+              shape.distanceFromCentroid(
+                  S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.5, 0.91666666666) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -365,14 +379,15 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
-  
+
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
 
   // query params
   QueryParams qp;
   shape.updateBounds(qp);
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666), qp.origin));
+  ASSERT_TRUE(
+      ::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666), qp.origin));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(1.5, 1.91666666666) - qp.maxDistance));
 }
@@ -416,13 +431,16 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   ASSERT_TRUE(shape.isAreaType());
 
   // location utilities
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint(),
-                            shape.centroid()));
+  ASSERT_TRUE(
+      ::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint(),
+                    shape.centroid()));
   ASSERT_TRUE(::AcceptableDistanceError >=
-              shape.distanceFromCentroid(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint()));
+              shape.distanceFromCentroid(
+                  S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint()));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.33333333, 0.33333333) -
-                       shape.distanceFromCentroid(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+                       shape.distanceFromCentroid(
+                           S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
 
   // equality works
   ASSERT_TRUE(shape.equals(&shape));
@@ -436,33 +454,36 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   // doesn't contain what it shouldn't
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
   ASSERT_FALSE(shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-  
+
   ASSERT_NEAR(shape.area(geo::SPHERE), 6182469722.73085, 1000);
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 6154854786.72143, 1000);
 
   // query params
   QueryParams qp;
   shape.updateBounds(qp);
-  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333), qp.origin));
+  ASSERT_TRUE(
+      ::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333), qp.origin));
   ASSERT_TRUE(::AcceptableDistanceError >=
               std::abs(::distance(0.66666667, 0.66666667) - qp.maxDistance));
 }
 
 TEST_F(ShapeContainerTest, polygon_area_test) {
   // approx australia
-  const char* json = "{\"type\": \"Polygon\", \"coordinates\": [[[125, -15],[113, -22],[117, -37],[130, -33],"
-                     "[148, -39],[154, -27],[144, -15],[125, -15]]]}";
-  
+  const char* json =
+      "{\"type\": \"Polygon\", \"coordinates\": [[[125, -15],[113, -22],[117, "
+      "-37],[130, -33],"
+      "[148, -39],[154, -27],[144, -15],[125, -15]]]}";
+
   auto builder = VPackParser::fromJson(json);
   VPackSlice vpack = builder->slice();
-  
+
   ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
 
   // tolerance 50.000 km^2 vs 7.692.000 km^2 total
   ASSERT_NEAR(shape.area(geo::SPHERE), 7800367402432, 50000000000);
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 7800367402432, 50000000000);
 }
-  
+
 class ShapeContainerTest2 : public ::testing::Test {
  protected:
   using ShapeType = arangodb::geo::ShapeContainer::Type;
@@ -476,7 +497,7 @@ class ShapeContainerTest2 : public ::testing::Test {
   ShapeContainer rect;
   ShapeContainer line2;
   ShapeContainer rects[4];
-  ShapeContainer nearly[4];   // nearly rects, but not quite
+  ShapeContainer nearly[4];  // nearly rects, but not quite
 
   ShapeContainerTest2() {
     auto builder = VPackParser::fromJson(R"=(
@@ -567,13 +588,13 @@ class ShapeContainerTest2 : public ::testing::Test {
   }
 };
 
-#define NOT_IMPL_EXC(expr) \
-  try { \
-    expr; \
-    ASSERT_TRUE(false); \
-  } catch(arangodb::basics::Exception const& exc) { \
+#define NOT_IMPL_EXC(expr)                            \
+  try {                                               \
+    expr;                                             \
+    ASSERT_TRUE(false);                               \
+  } catch (arangodb::basics::Exception const& exc) {  \
     ASSERT_EQ(exc.code(), TRI_ERROR_NOT_IMPLEMENTED); \
-  } 
+  }
 
 // point      TT--TTT
 // multipoint TT----T
@@ -616,7 +637,6 @@ TEST_F(ShapeContainerTest2, intersections_line) {
   ASSERT_TRUE(line.intersects(&multipoly));
   ASSERT_TRUE(line.intersects(&rect));
 }
-
 
 TEST_F(ShapeContainerTest2, intersections_multiline) {
   // Note that in the S2 geo library intersections of points and lines
@@ -701,5 +721,5 @@ TEST_F(ShapeContainerTest2, intersections_nearly_latlntrects) {
   ASSERT_FALSE(nearly[3].intersects(&rects[0]));
 }
 
-}}
-
+}  // namespace geo
+}  // namespace arangodb

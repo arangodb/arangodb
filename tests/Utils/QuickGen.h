@@ -28,14 +28,13 @@ namespace arangodb::tests::quick {
 
 // TODO generators should pass a random state around, to get deterministic
 //      results per seed
-template <typename T>
+template<typename T>
 auto generate() -> T;
-template <typename T>
+template<typename T>
 auto generate(std::int32_t max) -> T;
 
 struct AlphaNumeric {
   char c;
 };
-
 
 }  // namespace arangodb::tests::quick

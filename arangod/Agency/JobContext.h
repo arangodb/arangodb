@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,8 @@ namespace consensus {
 class JobContext {
  public:
   /// @brief Contextualize arbitrary Job
-  JobContext(JOB_STATUS status, std::string id, Node const& snapshot, AgentInterface* agent);
+  JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+             AgentInterface* agent);
 
   /// @brief Create job
   void create(std::shared_ptr<VPackBuilder> b = nullptr);
@@ -58,4 +59,3 @@ class JobContext {
 
 }  // namespace consensus
 }  // namespace arangodb
-

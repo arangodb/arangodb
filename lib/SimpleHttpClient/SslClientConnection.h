@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,14 +56,15 @@ class SslClientConnection final : public GeneralClientConnection {
                       Endpoint* endpoint, double, double, size_t, uint64_t);
 
   SslClientConnection(application_features::ApplicationServer& server,
-                      std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
+                      std::unique_ptr<Endpoint>& endpoint, double, double,
+                      size_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
   //////////////////////////////////////////////////////////////////////////////
 
   ~SslClientConnection();
-  
+
   uint64_t sslProtocol() const { return _sslProtocol; }
 
  protected:
@@ -95,7 +96,8 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(arangodb::basics::StringBuffer&, bool& connectionClosed) override;
+  bool readClientConnection(arangodb::basics::StringBuffer&,
+                            bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -124,4 +126,3 @@ class SslClientConnection final : public GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

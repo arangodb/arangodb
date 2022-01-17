@@ -32,7 +32,8 @@ namespace arangodb::replication2::streams {
  * @tparam Descriptor Stream Descriptor
  * @tparam StreamInterface Stream<T> or ProducerStream<T>
  */
-template <typename Implementation, typename Descriptor, template <typename> typename StreamInterface>
+template<typename Implementation, typename Descriptor,
+         template<typename> typename StreamInterface>
 struct StreamGenericImplementationBase
     : virtual StreamGenericBase<Descriptor, StreamInterface> {
   static_assert(is_stream_descriptor_v<Descriptor>);
@@ -41,10 +42,12 @@ struct StreamGenericImplementationBase
   using Iterator = TypedLogRangeIterator<StreamEntryView<ValueType>>;
   using WaitForResult = typename StreamInterface<ValueType>::WaitForResult;
 
-  auto waitForIterator(LogIndex index) -> futures::Future<std::unique_ptr<Iterator>> override final {
+  auto waitForIterator(LogIndex index)
+      -> futures::Future<std::unique_ptr<Iterator>> override final {
     return implementation().template waitForIteratorInternal<Descriptor>(index);
   }
-  auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override final {
+  auto waitFor(LogIndex index)
+      -> futures::Future<WaitForResult> override final {
     return implementation().template waitForInternal<Descriptor>(index);
   }
   auto release(LogIndex index) -> void override final {
@@ -55,7 +58,9 @@ struct StreamGenericImplementationBase
   }
 
  private:
-  auto implementation() -> Implementation& { return static_cast<Implementation&>(*this); }
+  auto implementation() -> Implementation& {
+    return static_cast<Implementation&>(*this);
+  }
 };
 
 /**
@@ -65,25 +70,30 @@ struct StreamGenericImplementationBase
  * @tparam Descriptor Stream Descriptor
  * @tparam StreamInterface Stream<T> or ProducerStream<T>
  */
-template <typename Implementation, typename Descriptor, template <typename> typename StreamInterface>
+template<typename Implementation, typename Descriptor,
+         template<typename> typename StreamInterface>
 struct StreamGenericImplementation
-    : StreamGenericImplementationBase<Implementation, Descriptor, StreamInterface> {};
-template <typename Implementation, typename Descriptor>
+    : StreamGenericImplementationBase<Implementation, Descriptor,
+                                      StreamInterface> {};
+template<typename Implementation, typename Descriptor>
 struct StreamGenericImplementation<Implementation, Descriptor, ProducerStream>
-    : StreamGenericImplementationBase<Implementation, Descriptor, ProducerStream> {
+    : StreamGenericImplementationBase<Implementation, Descriptor,
+                                      ProducerStream> {
   using ValueType = stream_descriptor_type_t<Descriptor>;
   auto insert(ValueType const& t) -> LogIndex override {
-    return static_cast<Implementation*>(this)->template insertInternal<Descriptor>(t);
+    return static_cast<Implementation*>(this)
+        ->template insertInternal<Descriptor>(t);
   }
 };
 
-template <typename Implementation, typename Descriptor>
-using StreamImplementation = StreamGenericImplementation<Implementation, Descriptor, Stream>;
-template <typename Implementation, typename Descriptor>
+template<typename Implementation, typename Descriptor>
+using StreamImplementation =
+    StreamGenericImplementation<Implementation, Descriptor, Stream>;
+template<typename Implementation, typename Descriptor>
 using ProducerStreamImplementation =
     StreamGenericImplementation<Implementation, Descriptor, ProducerStream>;
 
-template <typename, typename, template <typename> typename>
+template<typename, typename, template<typename> typename>
 struct ProxyStreamDispatcher;
 
 /**
@@ -92,8 +102,11 @@ struct ProxyStreamDispatcher;
  * @tparam Streams
  * @tparam StreamInterface
  */
-template <typename Implementation, typename... Streams, template <typename> typename StreamInterface>
-struct ProxyStreamDispatcher<Implementation, stream_descriptor_set<Streams...>, StreamInterface>
-    : StreamGenericImplementation<Implementation, Streams, StreamInterface>... {};
+template<typename Implementation, typename... Streams,
+         template<typename> typename StreamInterface>
+struct ProxyStreamDispatcher<Implementation, stream_descriptor_set<Streams...>,
+                             StreamInterface>
+    : StreamGenericImplementation<Implementation, Streams, StreamInterface>... {
+};
 
 }  // namespace arangodb::replication2::streams

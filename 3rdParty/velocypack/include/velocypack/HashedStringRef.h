@@ -21,21 +21,19 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_HASHED_STRINGREF_H
-#define VELOCYPACK_HASHED_STRINGREF_H 1
+#pragma once
 
 #include <cstring>
 #include <functional>
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 class Slice;
-class StringRef;
 
 /// a non-owning string reference with a computed hash value.
 /// it can be used for fast equality comparisons, for example as keys
@@ -135,7 +133,7 @@ class HashedStringRef {
     return std::string(_data, _length);
   }
 
-  StringRef stringRef() const noexcept;
+  std::string_view stringView() const noexcept;
 
   constexpr inline bool empty() const noexcept {
     return (_length == 0);
@@ -200,8 +198,7 @@ class HashedStringRef {
 };
 
 std::ostream& operator<<(std::ostream& stream, HashedStringRef const& ref);
-} // namespace velocypack
-} // namespace arangodb
+} // namespace arangodb::velocypack
 
 inline bool operator==(arangodb::velocypack::HashedStringRef const& lhs, arangodb::velocypack::HashedStringRef const& rhs) noexcept {
   // equal tags imply equal length/size
@@ -247,4 +244,4 @@ struct equal_to<arangodb::velocypack::HashedStringRef> {
 
 }
 
-#endif
+using VPackHashedStringRef = arangodb::velocypack::HashedStringRef;

@@ -22,19 +22,19 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_BUFFER_H
-#define VELOCYPACK_BUFFER_H 1
+#pragma once
 
 #include <cstring>
 #include <cstdlib>
-#include <string>
 #include <new>
+#include <string>
+#include <string_view>
+#include <type_traits>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 template <typename T>
 class Buffer {
@@ -234,20 +234,16 @@ class Buffer {
     reserve(1);
     _buffer[_size++] = c;
   }
-  
-  void append(uint8_t const* p, ValueLength len) {
+ 
+  template <typename C>
+  void append(C const* p, ValueLength len) {
+    static_assert(sizeof(typename std::remove_pointer<C>::type) == 1, "only byte-wise types are supported for appending");
     reserve(len);
     memcpy(_buffer + _size, p, checkOverflow(len));
     _size += len;
   }
 
-  void append(char const* p, ValueLength len) {
-    reserve(len);
-    memcpy(_buffer + _size, p, checkOverflow(len));
-    _size += len;
-  }
-  
-  void append(std::string const& value) {
+  void append(std::string_view value) {
     return append(value.data(), value.size());
   }
   
@@ -342,6 +338,7 @@ struct BufferNonDeleter {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackCharBuffer = arangodb::velocypack::CharBuffer;
+using VPackBufferUInt8 = arangodb::velocypack::UInt8Buffer;
+template<typename T> using VPackBuffer = arangodb::velocypack::Buffer<T>;

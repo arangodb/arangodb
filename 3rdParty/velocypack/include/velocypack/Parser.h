@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_PARSER_H
-#define VELOCYPACK_PARSER_H 1
+#pragma once
 
 #include <string>
 #include <cmath>
@@ -33,8 +32,7 @@
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 class Parser {
   // This class can parse JSON very rapidly, but only from contiguous
@@ -320,6 +318,5 @@ class Parser {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackParser = arangodb::velocypack::Parser;

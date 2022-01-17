@@ -79,14 +79,6 @@ else()
     add_definitions(-Wno-deprecated-declarations)
 endif()
 
-# If OpenSSL is installed in a non-standard location, configure with
-# something like:
-# OPENSSL_ROOT_DIR=/usr/local/opt/openssl cmake ..
-include_directories(
-    ${GFLAGS_INCLUDE_DIRS} ${GLOG_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR}
-    ${PYTHON_INCLUDE_DIRS})
-include_directories(src)
-
 add_library(s2
             src/s2/base/stringprintf.cc
             src/s2/base/strtoint.cc
@@ -204,11 +196,19 @@ target_link_libraries(
     ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES} ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT})
 
+# If OpenSSL is installed in a non-standard location, configure with
+# something like:
+# OPENSSL_ROOT_DIR=/usr/local/opt/openssl cmake ..
+target_include_directories(s2 PRIVATE
+  ${GFLAGS_INCLUDE_DIRS} ${GLOG_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR}
+  ${PYTHON_INCLUDE_DIRS})
+target_include_directories(s2 PRIVATE src)
+
 # Allow other CMake projects to use this one with:
 # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
 # add_subdirectory(<path_to_s2geometry_dir> s2geometry)
 # target_link_libraries(<target_name> s2)
-target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(s2 SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if (INSTALL_HEADERS)
 # We don't need to install all headers, only those

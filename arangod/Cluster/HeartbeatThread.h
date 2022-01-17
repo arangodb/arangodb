@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
@@ -58,8 +58,9 @@ class HeartbeatBackgroundJobThread;
 class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
-                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(application_features::ApplicationServer&,
+                  AgencyCallbackRegistry*, std::chrono::microseconds,
+                  uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -324,8 +325,7 @@ class HeartbeatThread : public Thread,
   /// @brief Sync job
   DBServerAgencySync _agencySync;
 
-  Histogram<log_scale_t<uint64_t>>& _heartbeat_send_time_ms;
-  Counter& _heartbeat_failure_counter;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _heartbeat_send_time_ms;
+  metrics::Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -90,7 +90,8 @@ class KeyGenerator {
   static bool validateKey(char const* key, size_t len);
 
   /// @brief validate a document id (collection name + / + document key)
-  static bool validateId(char const* key, size_t len, bool extendedNames, size_t& split);
+  static bool validateId(char const* key, size_t len, bool extendedNames,
+                         size_t& split);
 
   /// @brief maximum length of a key in a collection
   static constexpr size_t maxKeyLength = 254;
@@ -107,4 +108,3 @@ class KeyGenerator {
 };
 
 }  // namespace arangodb
-

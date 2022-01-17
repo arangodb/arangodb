@@ -28,7 +28,6 @@
 #include "Cluster/AgencyCache.h"
 #include "IResearch/AgencyMock.h"
 #include "IResearch/RestHandlerMock.h"
-#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -57,14 +56,16 @@ std::vector<std::string> SplitPath(std::string const& path) {
 
 class FakeConnection final : public fuerte::Connection {
  public:
-  FakeConnection(std::shared_ptr<std::vector<PreparedRequestResponse>> responses)
+  FakeConnection(
+      std::shared_ptr<std::vector<PreparedRequestResponse>> responses)
       : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
         _responses(responses) {}
 
   std::size_t requestsLeft() const override { return 1; }
   State state() const override { return fuerte::Connection::State::Connected; }
 
-  void sendRequest(std::unique_ptr<fuerte::Request> req, fuerte::RequestCallback cb) override {
+  void sendRequest(std::unique_ptr<fuerte::Request> req,
+                   fuerte::RequestCallback cb) override {
     if (_responses) {
       for (auto const& r : *_responses) {
         if (r == *req) {
@@ -114,8 +115,10 @@ void PreparedRequestResponse::addBody(VPackSlice slice) {
   _payload = builder.steal();
 }
 
-std::unique_ptr<GeneralRequestMock> PreparedRequestResponse::generateRequest() const {
-  auto fakeRequest = std::make_unique<GeneralRequestMock>(_vocbase);  // <-- set body here in fakeRequest
+std::unique_ptr<GeneralRequestMock> PreparedRequestResponse::generateRequest()
+    const {
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(
+      _vocbase);  // <-- set body here in fakeRequest
 
   fakeRequest->setRequestType(_type);
   for (auto const& s : _suffixes) {
@@ -127,7 +130,8 @@ std::unique_ptr<GeneralRequestMock> PreparedRequestResponse::generateRequest() c
   return fakeRequest;
 }
 
-void PreparedRequestResponse::rememberResponse(std::unique_ptr<GeneralResponse> response) {
+void PreparedRequestResponse::rememberResponse(
+    std::unique_ptr<GeneralResponse> response) {
   _response = std::move(response);
 }
 
@@ -159,13 +163,16 @@ bool PreparedRequestResponse::operator==(fuerte::Request const& other) const {
   return basics::VelocyPackHelper::equal(reqBodySlice, myBody, false);
 }
 
-std::unique_ptr<fuerte::Response> PreparedRequestResponse::generateResponse() const {
+std::unique_ptr<fuerte::Response> PreparedRequestResponse::generateResponse()
+    const {
   // TODO what if response is empty;
 
   fuerte::ResponseHeader header{};
-  auto code = _response->responseCode(); // TODO: NOT moved / set in responseMock
+  auto code =
+      _response->responseCode();  // TODO: NOT moved / set in responseMock
   (void)code;
-  auto& payloadBuilder = static_cast<GeneralResponseMock*>(_response.get())->_payload;
+  auto& payloadBuilder =
+      static_cast<GeneralResponseMock*>(_response.get())->_payload;
   // TODO use code
   header.responseCode = arangodb::fuerte::StatusOK;
 
@@ -187,10 +194,12 @@ void PreparedResponseConnectionPool::addPreparedResponses(
                          std::move(responses)));
 }
 
-std::shared_ptr<fuerte::Connection> PreparedResponseConnectionPool::createConnection(
+std::shared_ptr<fuerte::Connection>
+PreparedResponseConnectionPool::createConnection(
     fuerte::ConnectionBuilder& builder) {
   if (IsAgencyEndpoint(builder)) {
-    return std::make_shared<AsyncAgencyStorePoolConnection>(_cache, builder.normalizedEndpoint());
+    return std::make_shared<AsyncAgencyStorePoolConnection>(
+        _cache, builder.normalizedEndpoint());
   }
   auto search = builder.host() + ":" + builder.port();
   return std::make_shared<::FakeConnection>(_responses[search]);

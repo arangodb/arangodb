@@ -61,7 +61,8 @@ TEST_F(OverloadTest, single_overload_one_arg_void_return) {
   auto const call = overload{
       [](int& i) { ++i; },
   };
-  static_assert(std::is_same_v<void, std::invoke_result_t<decltype(call), int&>>);
+  static_assert(
+      std::is_same_v<void, std::invoke_result_t<decltype(call), int&>>);
   ASSERT_EQ(0, i);
   i = 0;
   call(i);
@@ -141,14 +142,14 @@ TEST_F(OverloadTest, overload_heterogenous_return_type_with_default) {
   }
 }
 
-
 TEST_F(OverloadTest, overload_differing_return_type) {
   auto const call = overload{
       [](int i) { return i + 1; },
       [](double d) { return d / 2; },
   };
   static_assert(std::is_same_v<int, std::invoke_result_t<decltype(call), int>>);
-  static_assert(std::is_same_v<double, std::invoke_result_t<decltype(call), double>>);
+  static_assert(
+      std::is_same_v<double, std::invoke_result_t<decltype(call), double>>);
   auto intResult = call(int{1});
   static_assert(std::is_same_v<int, decltype(intResult)>);
   EXPECT_EQ(2, intResult);
@@ -162,8 +163,10 @@ TEST_F(OverloadTest, overload_same_return_type) {
       [](int i) { return static_cast<double>(i + 1); },
       [](double d) { return d / 2; },
   };
-  static_assert(std::is_same_v<double, std::invoke_result_t<decltype(call), int>>);
-  static_assert(std::is_same_v<double, std::invoke_result_t<decltype(call), double>>);
+  static_assert(
+      std::is_same_v<double, std::invoke_result_t<decltype(call), int>>);
+  static_assert(
+      std::is_same_v<double, std::invoke_result_t<decltype(call), double>>);
   auto intResult = call(int{1});
   static_assert(std::is_same_v<double, decltype(intResult)>);
   EXPECT_EQ(2.0, intResult);
@@ -184,8 +187,10 @@ TEST_F(OverloadTest, visit_overload_void_return_type) {
       [](A& x) { x.a += 1; },
       [](B& x) { x.b += 2; },
   };
-  static_assert(std::is_same_v<void, std::invoke_result_t<decltype(visitor), A&>>);
-  static_assert(std::is_same_v<void, std::invoke_result_t<decltype(visitor), B&>>);
+  static_assert(
+      std::is_same_v<void, std::invoke_result_t<decltype(visitor), A&>>);
+  static_assert(
+      std::is_same_v<void, std::invoke_result_t<decltype(visitor), B&>>);
 
   {
     std::variant<A, B> variant = A{1};
@@ -214,8 +219,10 @@ TEST_F(OverloadTest, visit_overload_homogenous_return_type) {
       [](A const& x) { return x.a + 1; },
       [](B const& x) { return x.b + 2; },
   };
-  static_assert(std::is_same_v<int, std::invoke_result_t<decltype(visitor), A>>);
-  static_assert(std::is_same_v<int, std::invoke_result_t<decltype(visitor), B>>);
+  static_assert(
+      std::is_same_v<int, std::invoke_result_t<decltype(visitor), A>>);
+  static_assert(
+      std::is_same_v<int, std::invoke_result_t<decltype(visitor), B>>);
 
   {
     std::variant<A, B> variant = A{1};
@@ -255,10 +262,14 @@ TEST_F(OverloadTest, visit_overload_homogenous_return_type_with_default) {
       [](B const& x) { return x.b + 2; },
       [](auto const& x) { return -1; },
   };
-  static_assert(std::is_same_v<int, std::invoke_result_t<decltype(visitor), A>>);
-  static_assert(std::is_same_v<int, std::invoke_result_t<decltype(visitor), B>>);
-  static_assert(std::is_same_v<int, std::invoke_result_t<decltype(visitor), C>>);
-  static_assert(std::is_same_v<int, std::invoke_result_t<decltype(visitor), D>>);
+  static_assert(
+      std::is_same_v<int, std::invoke_result_t<decltype(visitor), A>>);
+  static_assert(
+      std::is_same_v<int, std::invoke_result_t<decltype(visitor), B>>);
+  static_assert(
+      std::is_same_v<int, std::invoke_result_t<decltype(visitor), C>>);
+  static_assert(
+      std::is_same_v<int, std::invoke_result_t<decltype(visitor), D>>);
 
   {
     std::variant<A, B, C, D> variant = A{1};

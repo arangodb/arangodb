@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,35 +42,33 @@
 namespace arangodb {
 namespace iresearch {
 
-RestAnalyzerHandler::RestAnalyzerHandler(application_features::ApplicationServer& server,
-                                         arangodb::GeneralRequest* request,
-                                         arangodb::GeneralResponse* response)
+RestAnalyzerHandler::RestAnalyzerHandler(
+    application_features::ApplicationServer& server,
+    arangodb::GeneralRequest* request, arangodb::GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-void RestAnalyzerHandler::createAnalyzer( // create
-    IResearchAnalyzerFeature& analyzers
-) {
-  TRI_ASSERT(_request); // ensured by execute()
+void RestAnalyzerHandler::createAnalyzer(  // create
+    IResearchAnalyzerFeature& analyzers) {
+  TRI_ASSERT(_request);  // ensured by execute()
 
   bool success = false;
   auto body = parseVPackBody(success);
 
   if (!success) {
-    return; // parseVPackBody(...) calls generateError(...)
+    return;  // parseVPackBody(...) calls generateError(...)
   }
 
   if (body.isEmptyObject()) {
-    generateError(
-      arangodb::rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON
-    );
+    generateError(arangodb::rest::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
   if (!body.isObject()) {
     generateError(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      "expecting body to be of the form { name: <string>, type: <string>[, properties: <object|string>[, features: <string-array>]] }"
-    ));
+        TRI_ERROR_BAD_PARAMETER,
+        "expecting body to be of the form { name: <string>, type: <string>[, "
+        "properties: <object|string>[, features: <string-array>]] }"));
 
     return;
   }
@@ -78,100 +76,110 @@ void RestAnalyzerHandler::createAnalyzer( // create
   auto nameSlice = body.get(StaticStrings::AnalyzerNameField);
 
   if (!nameSlice.isString()) {
-    generateError(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      "invalid 'name', expecting body to be of the form { name: <string>, type: <string>[, properties: <object|string>[, features: <string-array>]] }"
-    ));
+    generateError(
+        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                         "invalid 'name', expecting body to be of the form { "
+                         "name: <string>, type: <string>[, properties: "
+                         "<object|string>[, features: <string-array>]] }"));
 
     return;
   }
-  auto splittedAnalyzerName = IResearchAnalyzerFeature::splitAnalyzerName(getStringRef(nameSlice));
-  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(splittedAnalyzerName.first, 
-                                                           _vocbase.name())) { 
-      generateError(arangodb::Result(
+  auto splittedAnalyzerName =
+      IResearchAnalyzerFeature::splitAnalyzerName(getStringRef(nameSlice));
+  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(
+          splittedAnalyzerName.first, _vocbase.name())) {
+    generateError(arangodb::Result(
         TRI_ERROR_FORBIDDEN,
         "Database in analyzer name does not match current database"));
-      return;
-  }
-
-  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(extendedNames,
-                                            std::string_view(splittedAnalyzerName.second.c_str(),
-                                                             splittedAnalyzerName.second.size()))) {
-    generateError(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      "invalid characters in analyzer name '" + static_cast<std::string>(splittedAnalyzerName.second) + "'"
-    ));
     return;
   }
 
-  auto name = IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second, _vocbase.name());
+  bool extendedNames =
+      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(
+          extendedNames,
+          std::string_view(splittedAnalyzerName.second.c_str(),
+                           splittedAnalyzerName.second.size()))) {
+    generateError(arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid characters in analyzer name '" +
+            static_cast<std::string>(splittedAnalyzerName.second) + "'"));
+    return;
+  }
+
+  auto name = IResearchAnalyzerFeature::normalize(splittedAnalyzerName.second,
+                                                  _vocbase.name());
 
   irs::string_ref type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
 
   if (!typeSlice.isString()) {
-    generateError(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      "invalid 'type', expecting body to be of the form { name: <string>, type: <string>[, properties: <object|string>[, features: <string-array>]] }"
-    ));
+    generateError(
+        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                         "invalid 'type', expecting body to be of the form { "
+                         "name: <string>, type: <string>[, properties: "
+                         "<object|string>[, features: <string-array>]] }"));
 
     return;
   }
 
   type = getStringRef(typeSlice);
-  
+
   std::shared_ptr<VPackBuilder> propertiesFromStringBuilder;
   auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
-  if (properties.isString()) { // string still could be parsed to an object
+  if (properties.isString()) {  // string still could be parsed to an object
     auto string_ref = getStringRef(properties);
-    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref.c_str(), string_ref.size());
+    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(
+        string_ref.c_str(), string_ref.size());
     properties = propertiesFromStringBuilder->slice();
   }
-  
-  if (!properties.isNone() && !properties.isObject()) { // optional parameter
-    generateError(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      "invalid 'properties', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
-    ));
+
+  if (!properties.isNone() && !properties.isObject()) {  // optional parameter
+    generateError(
+        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                         "invalid 'properties', expecting body to be of the "
+                         "form { name: <string>, type: <string>[, properties: "
+                         "<object>[, features: <string-array>]] }"));
     return;
   }
 
   Features features;
 
-  if (body.hasKey(StaticStrings::AnalyzerFeaturesField)) { // optional parameter
+  if (body.hasKey(
+          StaticStrings::AnalyzerFeaturesField)) {  // optional parameter
     auto featuresSlice = body.get(StaticStrings::AnalyzerFeaturesField);
 
     if (featuresSlice.isArray()) {
-      for (arangodb::velocypack::ArrayIterator itr(featuresSlice);
-           itr.valid();
-           ++itr
-          ) {
+      for (arangodb::velocypack::ArrayIterator itr(featuresSlice); itr.valid();
+           ++itr) {
         auto value = *itr;
 
         if (!value.isString()) {
           generateError(arangodb::Result(
-            TRI_ERROR_BAD_PARAMETER,
-            "invalid value in 'features', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
-          ));
+              TRI_ERROR_BAD_PARAMETER,
+              "invalid value in 'features', expecting body to be of the form { "
+              "name: <string>, type: <string>[, properties: <object>[, "
+              "features: <string-array>]] }"));
 
           return;
         }
 
         if (!features.add(value.stringView())) {
           generateError(arangodb::Result(
-            TRI_ERROR_BAD_PARAMETER,
-            "unknown value in 'features', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
-          ));
+              TRI_ERROR_BAD_PARAMETER,
+              "unknown value in 'features', expecting body to be of the form { "
+              "name: <string>, type: <string>[, properties: <object>[, "
+              "features: <string-array>]] }"));
 
           return;
         }
       }
     } else {
       generateError(arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        "invalid 'features', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
-      ));
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'features', expecting body to be of the form { name: "
+          "<string>, type: <string>[, properties: <object>[, features: "
+          "<string-array>]] }"));
 
       return;
     }
@@ -182,11 +190,9 @@ void RestAnalyzerHandler::createAnalyzer( // create
   // ...........................................................................
 
   if (!IResearchAnalyzerFeature::canUse(name, auth::Level::RW)) {
-    generateError(
-      arangodb::rest::ResponseCode::FORBIDDEN,
-      TRI_ERROR_FORBIDDEN,
-      std::string("insufficient rights while creating analyzer: ") + body.toString()
-    );
+    generateError(arangodb::rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  std::string("insufficient rights while creating analyzer: ") +
+                      body.toString());
     return;
   }
 
@@ -200,10 +206,8 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
   if (!result.first) {
     generateError(
-      arangodb::rest::ResponseCode::BAD,
-      TRI_errno(),
-      std::string("failure while creating analyzer: ") + body.toString()
-    );
+        arangodb::rest::ResponseCode::BAD, TRI_errno(),
+        std::string("failure while creating analyzer: ") + body.toString());
     return;
   }
 
@@ -212,19 +216,17 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
   pool->toVelocyPack(builder, false);
 
-  generateResult(
-    result.second // new analyzer v.s. existing analyzer
-    ? arangodb::rest::ResponseCode::CREATED : arangodb::rest::ResponseCode::OK,
-    builder.slice() // analyzer definition
+  generateResult(result.second  // new analyzer v.s. existing analyzer
+                     ? arangodb::rest::ResponseCode::CREATED
+                     : arangodb::rest::ResponseCode::OK,
+                 builder.slice()  // analyzer definition
   );
 }
 
 arangodb::RestStatus RestAnalyzerHandler::execute() {
   if (!_request) {
-    generateError(
-      arangodb::rest::ResponseCode::METHOD_NOT_ALLOWED,
-      TRI_ERROR_HTTP_BAD_PARAMETER
-    );
+    generateError(arangodb::rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_BAD_PARAMETER);
     return arangodb::RestStatus::DONE;
   }
 
@@ -233,51 +235,47 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
   auto& suffixes = _request->suffixes();
 
   switch (_request->requestType()) {
-   case arangodb::rest::RequestType::DELETE_REQ:
-    if (suffixes.size() == 1) {
-      auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
-      auto force = _request->parsedValue("force", false);
-      removeAnalyzer(analyzers, name, force);
+    case arangodb::rest::RequestType::DELETE_REQ:
+      if (suffixes.size() == 1) {
+        auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+        auto force = _request->parsedValue("force", false);
+        removeAnalyzer(analyzers, name, force);
+        return arangodb::RestStatus::DONE;
+      }
+      generateError(arangodb::rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    std::string("expecting DELETE ")
+                        .append(ANALYZER_PATH)
+                        .append("/<analyzer-name>[?force=true]"));
       return arangodb::RestStatus::DONE;
-    }
-    generateError(
-      arangodb::rest::ResponseCode::BAD,
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("expecting DELETE ").append(ANALYZER_PATH).append("/<analyzer-name>[?force=true]")
-    );
-    return arangodb::RestStatus::DONE;
 
-   case arangodb::rest::RequestType::GET:
-    if (suffixes.empty()) {
-      getAnalyzers(analyzers);
+    case arangodb::rest::RequestType::GET:
+      if (suffixes.empty()) {
+        getAnalyzers(analyzers);
+        return arangodb::RestStatus::DONE;
+      }
+      if (suffixes.size() == 1) {
+        auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+        getAnalyzer(analyzers, name);
+        return arangodb::RestStatus::DONE;
+      }
+      generateError(arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                                     std::string("expecting GET ")
+                                         .append(ANALYZER_PATH)
+                                         .append("[/<analyzer-name>]")));
       return arangodb::RestStatus::DONE;
-    }
-    if (suffixes.size() == 1) {
-      auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
-      getAnalyzer(analyzers, name);
-      return arangodb::RestStatus::DONE;
-    }
-    generateError(arangodb::Result( 
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("expecting GET ").append(ANALYZER_PATH).append("[/<analyzer-name>]")
-    ));
-    return arangodb::RestStatus::DONE;
 
-   case arangodb::rest::RequestType::POST:
-    if (suffixes.empty()) {
-      createAnalyzer(analyzers);
+    case arangodb::rest::RequestType::POST:
+      if (suffixes.empty()) {
+        createAnalyzer(analyzers);
+        return arangodb::RestStatus::DONE;
+      }
+      generateError(arangodb::Result(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("expecting POST ").append(ANALYZER_PATH)));
       return arangodb::RestStatus::DONE;
-    }
-    generateError(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("expecting POST ").append(ANALYZER_PATH)
-    ));
-    return arangodb::RestStatus::DONE;
 
-   default:
-    generateError(arangodb::Result(
-      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED
-    ));
+    default:
+      generateError(arangodb::Result(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED));
   }
   return arangodb::RestStatus::DONE;
 }
@@ -288,38 +286,37 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
       IResearchAnalyzerFeature::normalize(requestedName, _vocbase.name());
 
   // need to check if analyzer is from current database or from system database
-  const auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(normalizedName);
-  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, _vocbase.name(), true)) {
+  const auto analyzerVocbase =
+      IResearchAnalyzerFeature::extractVocbaseName(normalizedName);
+  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(
+          analyzerVocbase, _vocbase.name(), true)) {
     std::string errorMessage("Analyzer '");
     errorMessage.append(normalizedName)
-      .append("' is not accessible. Only analyzers from current database ('")
-      .append(_vocbase.name())
-      .append("')");
+        .append("' is not accessible. Only analyzers from current database ('")
+        .append(_vocbase.name())
+        .append("')");
     if (_vocbase.name() != arangodb::StaticStrings::SystemDatabase) {
       errorMessage.append(" or system database");
     }
     errorMessage.append(" are available");
-    generateError(arangodb::Result( 
-      TRI_ERROR_FORBIDDEN, 
-      errorMessage
-    ));
+    generateError(arangodb::Result(TRI_ERROR_FORBIDDEN, errorMessage));
     return;
   }
 
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RO)) {
-    generateError(arangodb::Result( 
-      TRI_ERROR_FORBIDDEN, 
-      std::string("insufficient rights while getting analyzer: ").append(normalizedName) 
-    ));
+    generateError(arangodb::Result(
+        TRI_ERROR_FORBIDDEN,
+        std::string("insufficient rights while getting analyzer: ")
+            .append(normalizedName)));
     return;
   }
 
-  auto pool = analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST);
+  auto pool =
+      analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST);
   if (!pool) {
     generateError(arangodb::Result(
-      TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-      std::string("unable to find analyzer: ").append(normalizedName)
-    ));
+        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+        std::string("unable to find analyzer: ").append(normalizedName)));
     return;
   }
 
@@ -338,18 +335,18 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
 
   typedef arangodb::iresearch::AnalyzerPool::ptr AnalyzerPoolPtr;
   arangodb::velocypack::Builder builder;
-  auto visitor = [&builder](AnalyzerPoolPtr const& analyzer)->bool {
+  auto visitor = [&builder](AnalyzerPoolPtr const& analyzer) -> bool {
     if (!analyzer) {
-      return true; // continue with next analyzer
+      return true;  // continue with next analyzer
     }
 
     analyzer->toVelocyPack(builder, false);
 
-    return true; // continue with next analyzer
+    return true;  // continue with next analyzer
   };
 
   builder.openArray();
-  analyzers.visit(visitor, nullptr); // include static analyzers
+  analyzers.visit(visitor, nullptr);  // include static analyzers
 
   if (IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)) {
     analyzers.visit(visitor, &_vocbase);
@@ -357,10 +354,11 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
 
   // include analyzers from the system vocbase if possible
   if (server().hasFeature<arangodb::SystemDatabaseFeature>()) {
-    auto sysVocbase = server().getFeature<arangodb::SystemDatabaseFeature>().use();
+    auto sysVocbase =
+        server().getFeature<arangodb::SystemDatabaseFeature>().use();
 
-    if (sysVocbase // have system vocbase
-        && sysVocbase->name() != _vocbase.name() // not same vocbase as current
+    if (sysVocbase                                // have system vocbase
+        && sysVocbase->name() != _vocbase.name()  // not same vocbase as current
         && IResearchAnalyzerFeature::canUse(*sysVocbase, auth::Level::RO)) {
       analyzers.visit(visitor, sysVocbase.get());
     }
@@ -373,40 +371,41 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
   generateOk(arangodb::rest::ResponseCode::OK, builder.slice());
 }
 
-void RestAnalyzerHandler::removeAnalyzer( 
-    IResearchAnalyzerFeature& analyzers, 
-    std::string const& requestedName, 
-    bool force
-) {
-  auto splittedAnalyzerName = IResearchAnalyzerFeature::splitAnalyzerName(requestedName);
+void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
+                                         std::string const& requestedName,
+                                         bool force) {
+  auto splittedAnalyzerName =
+      IResearchAnalyzerFeature::splitAnalyzerName(requestedName);
   auto name = splittedAnalyzerName.second;
 
-  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(extendedNames,
-                                            std::string_view(name.c_str(), name.size()))) {
-    generateError(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("Invalid characters in analyzer name '").append(name)
-        .append("'.")
-    ));
+  bool extendedNames =
+      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  if (!AnalyzerNameValidator::isAllowedName(
+          extendedNames, std::string_view(name.c_str(), name.size()))) {
+    generateError(
+        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                         std::string("Invalid characters in analyzer name '")
+                             .append(name)
+                             .append("'.")));
     return;
   }
 
-  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(splittedAnalyzerName.first,
-                                                          _vocbase.name())) { 
+  if (!IResearchAnalyzerFeature::analyzerReachableFromDb(
+          splittedAnalyzerName.first, _vocbase.name())) {
     generateError(arangodb::Result(
-      TRI_ERROR_FORBIDDEN,
-      "Database in analyzer name does not match current database"));
+        TRI_ERROR_FORBIDDEN,
+        "Database in analyzer name does not match current database"));
     return;
   }
 
-  auto normalizedName = IResearchAnalyzerFeature::normalize(name, _vocbase.name());
+  auto normalizedName =
+      IResearchAnalyzerFeature::normalize(name, _vocbase.name());
 
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RW)) {
-    generateError(arangodb::Result( 
-      TRI_ERROR_FORBIDDEN, 
-      std::string("insufficient rights while removing analyzer: ").append(normalizedName) 
-    ));
+    generateError(arangodb::Result(
+        TRI_ERROR_FORBIDDEN,
+        std::string("insufficient rights while removing analyzer: ")
+            .append(normalizedName)));
     return;
   }
 
@@ -418,7 +417,8 @@ void RestAnalyzerHandler::removeAnalyzer(
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  builder.add(StaticStrings::AnalyzerNameField, arangodb::velocypack::Value(normalizedName));
+  builder.add(StaticStrings::AnalyzerNameField,
+              arangodb::velocypack::Value(normalizedName));
   builder.close();
 
   // generate result + 'error' field + 'code' field
@@ -426,8 +426,8 @@ void RestAnalyzerHandler::removeAnalyzer(
   generateOk(arangodb::rest::ResponseCode::OK, builder);
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

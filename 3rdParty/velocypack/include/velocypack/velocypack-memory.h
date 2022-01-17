@@ -21,8 +21,7 @@
 /// @author Lauri Keel
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_MEMORY_H
-#define VELOCYPACK_MEMORY_H 1
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -44,5 +43,3 @@ extern void velocypack_free(void* ptr);
 #endif
 
 }
-
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,10 +49,7 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-
-void ActionFeature::unprepare() {
-  TRI_CleanupActions();
-}
+void ActionFeature::unprepare() { TRI_CleanupActions(); }
 
 bool ActionFeature::allowUseDatabase() const { return _allowUseDatabase; }
 

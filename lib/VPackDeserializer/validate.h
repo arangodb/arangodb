@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,14 +29,14 @@ namespace arangodb {
 namespace velocypack {
 namespace deserializer {
 
-template <typename D>
+template<typename D>
 struct forwarding_plan {
   using constructed_type = typename D::constructed_type;
 };
 
 namespace validator {
 
-template <typename V, typename C>
+template<typename V, typename C>
 V construct_validator(C&& c) {
   if constexpr (detail::gadgets::is_braces_constructible_v<V, C>) {
     return V{std::forward<C>(c)};
@@ -48,20 +48,20 @@ V construct_validator(C&& c) {
   }
 }
 
-template <typename X, typename C = void>
+template<typename X, typename C = void>
 struct context_type_or_unit {
   using type = unit_type;
 };
 
-template <typename X>
+template<typename X>
 struct context_type_or_unit<X, std::void_t<typename X::context_type>> {
   using type = typename X::context_type;
 };
 
-template <typename X>
+template<typename X>
 using context_type_or_unit_t = typename context_type_or_unit<X>::type;
 
-template <typename F, typename V>
+template<typename F, typename V>
 struct validating_factory {
   using constructed_type = typename F::constructed_type;
   using result_type = result<constructed_type, deserialize_error>;
@@ -69,7 +69,7 @@ struct validating_factory {
 
   context_type ctx;
 
-  template <typename... S>
+  template<typename... S>
   auto operator()(S&&... s) -> result<constructed_type, deserialize_error> {
     F factory = construct_factory<F>(ctx);
 
@@ -78,7 +78,8 @@ struct validating_factory {
 
     if (result) {
       V validator = construct_validator<V>(ctx);
-      std::optional<deserialize_error> validatorResult = validator(result.get());
+      std::optional<deserialize_error> validatorResult =
+          validator(result.get());
 
       if (validatorResult.has_value()) {
         return std::move(validatorResult).value();
@@ -89,35 +90,37 @@ struct validating_factory {
   }
 };
 
-template <typename D, typename V>
+template<typename D, typename V>
 struct validate {
   using plan = validate<D, V>;  // forwarding_plan<D>;
   using constructed_type = typename D::constructed_type;
-  using factory = utilities::identity_factory<constructed_type>;  // validating_factory<typename D::factory, V>;
+  using factory = utilities::identity_factory<
+      constructed_type>;  // validating_factory<typename
+                          // D::factory, V>;
 };
 
 }  // namespace validator
 
-template <typename D, typename V>
+template<typename D, typename V>
 using validate = validator::validate<D, V>;
 
-template <typename D, typename H>
+template<typename D, typename H>
 struct executor::deserialize_plan_executor<forwarding_plan<D>, H> {
-  template <typename ctx>
+  template<typename ctx>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, ctx&& c) {
-    return ::arangodb::velocypack::deserializer::deserialize<D, H, ctx>(s, hints,
-                                                                        std::forward<ctx>(c));
+    return ::arangodb::velocypack::deserializer::deserialize<D, H, ctx>(
+        s, hints, std::forward<ctx>(c));
   }
 };
 
-template <typename D, typename V, typename H>
+template<typename D, typename V, typename H>
 struct executor::deserialize_plan_executor<validate<D, V>, H> {
   using value_type = typename D::constructed_type;
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template <typename ctx>
+  template<typename ctx>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, ctx&& c) -> result_type {
     auto result = deserialize<D, H, ctx>(s, hints, std::forward<ctx>(c));
@@ -127,8 +130,10 @@ struct executor::deserialize_plan_executor<validate<D, V>, H> {
 
       using validator_result_type = std::optional<deserialize_error>;
 
-      static_assert(std::is_invocable_r_v<validator_result_type, V, typename decltype(result)::value_type>,
-                    "validator either not invocable or has wrong return type");
+      static_assert(
+          std::is_invocable_r_v<validator_result_type, V,
+                                typename decltype(result)::value_type>,
+          "validator either not invocable or has wrong return type");
 
       validator_result_type validator_result = validator(result.get());
       if (validator_result.has_value()) {
