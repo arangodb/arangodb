@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed BTS-712. Collation analyzer now always produces valid UTF-8 sequence
+* Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
