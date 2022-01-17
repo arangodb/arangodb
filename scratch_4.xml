@@ -106,15 +106,33 @@
         <Coordinators>
             <server param="std::string"></server>
         </Coordinators>
-        <DBServers>
+        <DbServers>
             <server param="std::string"></server>
-        </DBServers>
+        </DbServers>
         <ServersRegistered>
-            <server param="std::string"></server>
+            <Version/>
+            <server param="std::string">
+                <Timestamp/>
+                <Engine/>
+                <Endpoint/>
+                <Host/>
+                <VersionString/>
+                <AdvertisedEndpoint/>
+                <Version/>
+            </server>
         </ServersRegistered>
         <ServersKnown>
-            <server param="std::string"></server>
+            <server param="std::string">
+                <RebootId></RebootId>
+            </server>
         </ServersKnown>
+        <NewServers></NewServers>
+        <AsyncReplication/>
+        <Lock/>
+        <Singles/>
+        <FoxxmasterQueueupdate></FoxxmasterQueueupdate>
+        <ShardsCopied></ShardsCopied>
+        <Foxxmaster></Foxxmaster>
     </Current>
     <Supervision>
         <Health>

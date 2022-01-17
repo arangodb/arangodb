@@ -91,7 +91,8 @@ def generate_node_header(out, node, prefix, level = 0):
         out(f"std::shared_ptr<{cls} const> {node.get_function_name()}() const;")
     else:
         out(f"std::shared_ptr<{cls} const> {node.get_function_name()}({node.param} const& p) const;")
-        out(f"std::shared_ptr<{cls} const> {node.get_function_name()}(std::string_view p) const;")
+        if node.param != "std::string":
+            out(f"std::shared_ptr<{cls} const> {node.get_function_name()}(std::string_view p) const;")
 
 def generate_node_body(out, node, prefix, level = 0):
     cls = prefix + node.get_recursive_class_name()
@@ -102,9 +103,10 @@ def generate_node_body(out, node, prefix, level = 0):
         out(f"std::shared_ptr<{cls} const> {par}::{node.get_function_name()}() const {{")
         out(f"return {cls}::make_shared(shared_from_this());")
     else:
-        out(f"std::shared_ptr<{cls} const> {par}::{node.get_function_name()}(std::string_view p) const {{")
-        out(f"return {cls}::make_shared(shared_from_this(), std::string{{p}});")
-        out("}")
+        if node.param != "std::string":
+            out(f"std::shared_ptr<{cls} const> {par}::{node.get_function_name()}(std::string_view p) const {{")
+            out(f"return {cls}::make_shared(shared_from_this(), std::string{{p}});")
+            out("}")
         out(f"char const* {cls}::component() const noexcept {{ return value().c_str(); }}")
         out(f"std::shared_ptr<{cls} const> {par}::{node.get_function_name()}({node.param} const& p) const {{")
         out(f"return {cls}::make_shared(shared_from_this(), PathParamConverter<{node.param}>{{}}(p));")
