@@ -22,12 +22,21 @@
         <NumberOfDBServers></NumberOfDBServers>
         <NumberOfCoordinators></NumberOfCoordinators>
 
-        <MapUniqueToShortID>
-            <server param="std::string"></server>
-        </MapUniqueToShortID>
+        <MapUniqueToShortId>
+            <server param="std::string">
+                <ShortName/>
+                <TransactionId/>
+            </server>
+        </MapUniqueToShortId>
         <RemovedServers>
             <server param="std::string"></server>
         </RemovedServers>
+        <ToBeCleanedServers/>
+        <FailedServers/>
+        <LatestDbServerId/>
+        <LatestCoordinatorId/>
+        <Version/>
+        <Lock/>
     </Target>
     <Plan>
         <ReplicatedLogs>
@@ -47,6 +56,11 @@
                             <rebootId/>
                         </leader>
                     </currentTerm>
+                    <targetConfig>
+                        <replicationFactor />
+                        <writeConcern />
+                        <waitForSynch />
+                    </targetConfig>
                     <participantsConfig>
                         <participants>
                             <server param="std::string">
@@ -61,12 +75,40 @@
         </ReplicatedLogs>
         <Databases>
             <database param="DatabaseID">
-
+                <name/>
+                <id/>
             </database>
         </Databases>
         <Collections>
             <database param="DatabaseID">
                 <collection param="std::string">
+                    <waitForSync/>
+                    <type/>
+                    <status/>
+                    <shards>
+                        <shard param="std::string"/>
+                    </shards>
+                    <statusString/>
+                    <shardingStrategy/>
+                    <shardKeys/>
+                    <replicatedLogs>
+                        <shard param="std::string"/>
+                    </replicatedLogs>
+                    <replicationFactor/>
+                    <numberOfShards/>
+                    <keyOptions>
+                        <type/>
+                        <allowUserKeys/>
+                    </keyOptions>
+                    <isSystem/>
+                    <name/>
+                    <indexes/>
+                    <isSmart/>
+                    <id/>
+                    <distributeShardsLike/>
+                    <deleted/>
+                    <writeConcern/>
+                    <cacheEnabled/>
                     <isBuilding/>
                 </collection>
             </database>
@@ -75,12 +117,20 @@
         <Coordinators>
             <server param="std::string"></server>
         </Coordinators>
-        <DBServers>
+        <DbServers>
             <server param="std::string"></server>
-        </DBServers>
+        </DbServers>
         <MapUniqueToShortID/>
         <ServersKnown/>
         <RemovedServers/>
+        <Views>
+            <database param="std::string">
+
+            </database>
+        </Views>
+        <AsyncReplication/>
+        <Lock/>
+        <Singles/>
     </Plan>
     <Current>
         <ReplicatedLogs>
@@ -96,12 +146,38 @@
                     </leader>
                     <localStatus>
                         <participant param="std::string">
-
+                            <term/>
+                            <spearHead/>
                         </participant>
                     </localStatus>
                 </log>
             </database>
         </ReplicatedLogs>
+        <Collections>
+            <database param="std::string">
+                <collection param="std::string">
+                    <shard param="std::string">
+                        <Servers/>
+                        <Indexes/>
+                        <FailoverCandidates/>
+                        <ErrorNum/>
+                        <ErrorMessage/>
+                        <Error/>
+                    </shard>
+                </collection>
+            </database>
+        </Collections>
+        <Databases>
+            <database param="std::string">
+                <server param="std::string">
+                    <Name/>
+                    <ErrorNum/>
+                    <Id/>
+                    <Error/>
+                    <ErrorMessage/>
+                </server>
+            </database>
+        </Databases>
         <Version/>
         <Coordinators>
             <server param="std::string"></server>
@@ -138,21 +214,40 @@
         <Health>
             <server param="std::string">
                 <Status/>
+                <SyncTime/>
+                <Timestamp/>
+                <SyncStatus/>
+                <LastAckedTime/>
+                <Host/>
+                <Engine/>
+                <Version/>
+                <ShortName/>
+                <Endpoint/>
             </server>
         </Health>
         <Maintenance></Maintenance>
         <State>
             <Mode></Mode>
+            <Timestamp/>
         </State>
+        <Shards/>
         <DbServers>
             <server param="std::string">
             </server>
         </DbServers>
     </Supervision>
     <Sync>
-        <LatestId>
-
-        </LatestId>
+        <LatestId/>
+        <UserVersion/>
+        <ServerStates/>
+        <Problems/>
+        <HeartbeatIntervalMs/>
     </Sync>
     <Cluster/>
+    <SystemCollectionsCreated/>
+    <Bootstrap/>
+    <Agency>
+        <Definition/>
+    </Agency>
+    <InitDone/>
 </arango>
