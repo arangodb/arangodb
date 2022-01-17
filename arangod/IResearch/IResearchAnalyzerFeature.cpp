@@ -831,13 +831,15 @@ namespace iresearch {
 void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
                                 irs::string_ref const& name) {
   TRI_ASSERT(builder.isOpenObject());
-  addStringRef(builder, StaticStrings::AnalyzerNameField, name);
-  addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
+  addStringRef(builder, irs::string_ref{StaticStrings::AnalyzerNameField},
+               name);
+  addStringRef(builder, irs::string_ref{StaticStrings::AnalyzerTypeField},
+               type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 
   // add features
-  VPackArrayBuilder featuresScope(&builder,
-                                  StaticStrings::AnalyzerFeaturesField);
+  VPackArrayBuilder featuresScope(
+      &builder, std::string{StaticStrings::AnalyzerFeaturesField});
 
   features().visit(
       [&builder](std::string_view feature) { addStringRef(builder, feature); });

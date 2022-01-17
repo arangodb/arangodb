@@ -77,81 +77,81 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 }
 
 struct StaticStrings {
-  static constexpr std::string_view DataSourceType = "arangosearch";
+  static constexpr velocypack::StringRef DataSourceType{"arangosearch"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        corresponding link definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view LinksField{"links"};
+  static constexpr velocypack::StringRef LinksField{"links"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        corresponding link definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view VersionField{"version"};
+  static constexpr velocypack::StringRef VersionField{"version"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the id of the field in the IResearch Link definition denoting the
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view ViewIdField{"view"};
+  static constexpr velocypack::StringRef ViewIdField{"view"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        referenced analyzer definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view AnalyzerDefinitionsField{
+  static constexpr velocypack::StringRef AnalyzerDefinitionsField{
       "analyzerDefinitions"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer name
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view AnalyzerNameField{"name"};
+  static constexpr velocypack::StringRef AnalyzerNameField{"name"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer type
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view AnalyzerTypeField{"type"};
+  static constexpr velocypack::StringRef AnalyzerTypeField{"type"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer properties
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view AnalyzerPropertiesField{"properties"};
+  static constexpr velocypack::StringRef AnalyzerPropertiesField{"properties"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer features
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view AnalyzerFeaturesField{"features"};
+  static constexpr velocypack::StringRef AnalyzerFeaturesField{"features"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        primary sort
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view PrimarySortField{"primarySort"};
+  static constexpr velocypack::StringRef PrimarySortField{"primarySort"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        primary sort compression
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view PrimarySortCompressionField{
+  static constexpr velocypack::StringRef PrimarySortCompressionField{
       "primarySortCompression"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        stored values
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view StoredValuesField{"storedValues"};
+  static constexpr velocypack::StringRef StoredValuesField{"storedValues"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view CollectionNameField{"collectionName"};
+  static constexpr velocypack::StringRef CollectionNameField{"collectionName"};
 };
 
 }  // namespace iresearch

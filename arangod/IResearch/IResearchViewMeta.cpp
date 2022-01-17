@@ -61,7 +61,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
 
   {
     // optional float
-    constexpr std::string_view kFieldName{"threshold"};
+    constexpr VPackStringRef kFieldName{"threshold"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -100,7 +100,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsBytesFloor"};
+    constexpr VPackStringRef kFieldName{"segmentsBytesFloor"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -117,7 +117,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsBytesMax"};
+    constexpr VPackStringRef kFieldName{"segmentsBytesMax"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -134,7 +134,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsMax"};
+    constexpr VPackStringRef kFieldName{"segmentsMax"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -151,7 +151,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"segmentsMin"};
+    constexpr VPackStringRef kFieldName{"segmentsMin"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -168,7 +168,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
   {
     // optional double
-    constexpr std::string_view kFieldName{"minScore"};
+    constexpr VPackStringRef kFieldName{"minScore"};
 
     if (slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
@@ -347,7 +347,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional uint32_t
-    constexpr std::string_view kFieldName{StaticStrings::VersionField};
+    constexpr VPackStringRef kFieldName{StaticStrings::VersionField};
 
     mask->_version = slice.hasKey(kFieldName);
 
@@ -366,7 +366,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"cleanupIntervalStep"};
+    constexpr VPackStringRef kFieldName{"cleanupIntervalStep"};
 
     mask->_cleanupIntervalStep = slice.hasKey(kFieldName);
 
@@ -385,7 +385,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"commitIntervalMsec"};
+    constexpr VPackStringRef kFieldName{"commitIntervalMsec"};
 
     mask->_commitIntervalMsec = slice.hasKey(kFieldName);
 
@@ -404,7 +404,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"consolidationIntervalMsec"};
+    constexpr VPackStringRef kFieldName{"consolidationIntervalMsec"};
 
     mask->_consolidationIntervalMsec = slice.hasKey(kFieldName);
 
@@ -423,7 +423,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional object
-    constexpr std::string_view kFieldName{"consolidationPolicy"};
+    constexpr VPackStringRef kFieldName{"consolidationPolicy"};
     std::string errorSubField;
 
     mask->_consolidationPolicy = slice.hasKey(kFieldName);
@@ -440,7 +440,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
       }
 
       // required string enum
-      constexpr std::string_view kTypeFieldName("type");
+      constexpr VPackStringRef kTypeFieldName("type");
 
       if (!field.hasKey(kTypeFieldName)) {
         errorField =
@@ -488,7 +488,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName("writebufferActive");
+    constexpr VPackStringRef kFieldName("writebufferActive");
 
     mask->_writebufferActive = slice.hasKey(kFieldName);
 
@@ -507,7 +507,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName("writebufferIdle");
+    constexpr VPackStringRef kFieldName("writebufferIdle");
 
     mask->_writebufferIdle = slice.hasKey(kFieldName);
 
@@ -526,7 +526,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName("writebufferSizeMax");
+    constexpr VPackStringRef kFieldName("writebufferSizeMax");
 
     mask->_writebufferSizeMax = slice.hasKey(kFieldName);
 
@@ -545,7 +545,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional object
-    constexpr std::string_view kFieldName{StaticStrings::PrimarySortField};
+    constexpr VPackStringRef kFieldName{StaticStrings::PrimarySortField};
     std::string errorSubField;
 
     auto const field = slice.get(kFieldName);
@@ -565,7 +565,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional object
-    constexpr std::string_view kFieldName{StaticStrings::StoredValuesField};
+    constexpr VPackStringRef kFieldName{StaticStrings::StoredValuesField};
     std::string errorSubField;
 
     auto const field = slice.get(kFieldName);
@@ -662,8 +662,8 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
 
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) &&
       (!mask || mask->_primarySort)) {
-    velocypack::ArrayBuilder arrayScope(&builder,
-                                        StaticStrings::PrimarySortField);
+    velocypack::ArrayBuilder arrayScope(
+        &builder, std::string{StaticStrings::PrimarySortField});
     if (!_primarySort.toVelocyPack(builder)) {
       return false;
     }
@@ -671,8 +671,8 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
 
   if ((!ignoreEqual || _storedValues != ignoreEqual->_storedValues) &&
       (!mask || mask->_storedValues)) {
-    velocypack::ArrayBuilder arrayScope(&builder,
-                                        StaticStrings::StoredValuesField);
+    velocypack::ArrayBuilder arrayScope(
+        &builder, std::string{StaticStrings::StoredValuesField});
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
@@ -682,7 +682,8 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
        _primarySortCompression != ignoreEqual->_primarySortCompression) &&
       (!mask || mask->_primarySortCompression)) {
     auto compression = columnCompressionToString(_primarySortCompression);
-    addStringRef(builder, StaticStrings::PrimarySortCompressionField,
+    addStringRef(builder,
+                 irs::string_ref{StaticStrings::PrimarySortCompressionField},
                  compression);
   }
 
@@ -755,7 +756,7 @@ bool IResearchViewMetaState::init(VPackSlice slice, std::string& errorField,
 
   {
     // optional uint64 list
-    constexpr std::string_view kFieldName{"collections"};
+    constexpr VPackStringRef kFieldName{"collections"};
 
     mask->_collections = slice.hasKey(kFieldName);
 

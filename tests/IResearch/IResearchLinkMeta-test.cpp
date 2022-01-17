@@ -751,9 +751,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   // initialize with parent
   auto& overrideNone = meta._fields["c"]->_fields["none"] = meta._fields["c"];
   meta._sort.emplace_back(
-      {arangodb::basics::AttributeName(std::string_view("_key"), false)}, true);
+      {arangodb::basics::AttributeName(std::string("_key"), false)}, true);
   meta._sort.emplace_back(
-      {arangodb::basics::AttributeName(std::string_view("_id"), false)}, false);
+      {arangodb::basics::AttributeName(std::string("_id"), false)}, false);
 
   // do not inherit fields to match jSon inheritance
   overrideAll->_fields.clear();
@@ -1042,11 +1042,11 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     EXPECT_EQ(2, sort.size());
     EXPECT_TRUE(sort.direction(0));
     EXPECT_EQ((std::vector<arangodb::basics::AttributeName>{
-                  {std::string_view("_key"), false}}),
+                  {std::string("_key"), false}}),
               sort.field(0));
     EXPECT_FALSE(sort.direction(1));
     EXPECT_EQ((std::vector<arangodb::basics::AttributeName>{
-                  {std::string_view("_id"), false}}),
+                  {std::string("_id"), false}}),
               sort.field(1));
   }
 

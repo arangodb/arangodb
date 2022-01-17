@@ -153,7 +153,7 @@ bool FieldMeta::init(
 
   {
     // optional string list
-    constexpr std::string_view kFieldName("analyzers");
+    constexpr VPackStringRef kFieldName("analyzers");
 
     mask->_analyzers = slice.hasKey(kFieldName);
 
@@ -244,7 +244,8 @@ bool FieldMeta::init(
           _analyzers.emplace_back(analyzer, std::move(shortName));
         }
 
-        TRI_ASSERT(referencedAnalyzers.contains(analyzer));
+        TRI_ASSERT(referencedAnalyzers.end() !=
+                   referencedAnalyzers.find(analyzer));
       }
 
       auto* begin = _analyzers.data();
@@ -267,7 +268,7 @@ bool FieldMeta::init(
 
   {
     // optional bool
-    constexpr std::string_view kFieldName{"includeAllFields"};
+    constexpr VPackStringRef kFieldName{"includeAllFields"};
 
     mask->_includeAllFields = slice.hasKey(kFieldName);
 
@@ -288,7 +289,7 @@ bool FieldMeta::init(
 
   {
     // optional bool
-    constexpr std::string_view kFieldName{"trackListPositions"};
+    constexpr VPackStringRef kFieldName{"trackListPositions"};
 
     mask->_trackListPositions = slice.hasKey(kFieldName);
 
@@ -309,7 +310,7 @@ bool FieldMeta::init(
 
   {
     // optional string enum
-    constexpr std::string_view kFieldName{"storeValues"};
+    constexpr VPackStringRef kFieldName{"storeValues"};
 
     mask->_storeValues = slice.hasKey(kFieldName);
 
@@ -343,7 +344,7 @@ bool FieldMeta::init(
 
   {
     // optional string map<name, overrides>
-    constexpr std::string_view kFieldName{"fields"};
+    constexpr VPackStringRef kFieldName{"fields"};
 
     mask->_fields = slice.hasKey(kFieldName);
 
@@ -612,7 +613,7 @@ bool IResearchLinkMeta::init(
 
   {
     // Optional version
-    constexpr std::string_view kFieldName{StaticStrings::VersionField};
+    constexpr VPackStringRef kFieldName{StaticStrings::VersionField};
 
     auto const field = slice.get(kFieldName);
     mask->_version = field.isNumber<uint32_t>();
@@ -639,7 +640,7 @@ bool IResearchLinkMeta::init(
     _analyzerDefinitions.clear();
 
     // optional object list
-    constexpr std::string_view kFieldName{
+    constexpr VPackStringRef kFieldName{
         StaticStrings::AnalyzerDefinitionsField};
 
     mask->_analyzerDefinitions = slice.hasKey(kFieldName);
@@ -669,7 +670,7 @@ bool IResearchLinkMeta::init(
 
         {
           // required string value
-          constexpr std::string_view kSubFieldName{"name"};
+          constexpr VPackStringRef kSubFieldName{"name"};
 
           if (!value.hasKey(kSubFieldName)  // missing required filed
               || !value.get(kSubFieldName).isString()) {
@@ -690,7 +691,7 @@ bool IResearchLinkMeta::init(
 
         {
           // required string value
-          constexpr std::string_view kSubFieldName{"type"};
+          constexpr VPackStringRef kSubFieldName{"type"};
 
           if (!value.hasKey(kSubFieldName)  // missing required filed
               || !value.get(kSubFieldName).isString()) {
@@ -708,7 +709,7 @@ bool IResearchLinkMeta::init(
 
         {
           // optional string value
-          constexpr std::string_view kSubFieldName{"properties"};
+          constexpr VPackStringRef kSubFieldName{"properties"};
 
           if (value.hasKey(kSubFieldName)) {
             auto subField = value.get(kSubFieldName);
@@ -729,7 +730,7 @@ bool IResearchLinkMeta::init(
 
         {
           // optional string list
-          constexpr std::string_view kSubFieldName("features");
+          constexpr VPackStringRef kSubFieldName("features");
 
           if (value.hasKey(kSubFieldName)) {
             auto subField = value.get(kSubFieldName);
@@ -849,16 +850,16 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
 
   if (writeAnalyzerDefinition &&
       (!ignoreEqual || _sort != ignoreEqual->_sort) && (!mask || mask->_sort)) {
-    velocypack::ArrayBuilder arrayScope(&builder,
-                                        StaticStrings::PrimarySortField);
+    velocypack::ArrayBuilder arrayScope(
+        &builder, std::string{StaticStrings::PrimarySortField});
     if (!_sort.toVelocyPack(builder)) {
       return false;
     }
   }
 
   if (writeAnalyzerDefinition && (!mask || mask->_storedValues)) {
-    velocypack::ArrayBuilder arrayScope(&builder,
-                                        StaticStrings::StoredValuesField);
+    velocypack::ArrayBuilder arrayScope(
+        &builder, std::string{StaticStrings::StoredValuesField});
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
@@ -867,7 +868,8 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
   if (writeAnalyzerDefinition && (!mask || mask->_sortCompression) &&
       _sortCompression &&
       (!ignoreEqual || _sortCompression != ignoreEqual->_sortCompression)) {
-    addStringRef(builder, StaticStrings::PrimarySortCompressionField,
+    addStringRef(builder,
+                 irs::string_ref{StaticStrings::PrimarySortCompressionField},
                  columnCompressionToString(_sortCompression));
   }
 
@@ -878,8 +880,8 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition && (!mask || mask->_analyzerDefinitions)) {
-    VPackArrayBuilder arrayScope(&builder,
-                                 StaticStrings::AnalyzerDefinitionsField);
+    VPackArrayBuilder arrayScope(
+        &builder, std::string{StaticStrings::AnalyzerDefinitionsField});
 
     for (auto& entry : _analyzerDefinitions) {
       TRI_ASSERT(entry);  // ensured by emplace into 'analyzers' above
@@ -891,7 +893,8 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
       (!mask || mask->_collectionName) &&
       !_collectionName.empty()) {  // for old-style link meta do not emit empty
                                    // value to match stored definition
-    addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
+    addStringRef(builder, irs::string_ref{StaticStrings::CollectionNameField},
+                 _collectionName);
   }
 
   return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
