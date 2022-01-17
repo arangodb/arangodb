@@ -696,8 +696,9 @@ void registerUpgradeTasks(application_features::ApplicationServer& server) {
 }
 
 void registerViewFactory(application_features::ApplicationServer& server) {
-  constexpr std::string_view kViewType{
-      arangodb::iresearch::StaticStrings::DataSourceType};
+  static_assert(IResearchView::typeInfo() ==
+                IResearchViewCoordinator::typeInfo());
+  constexpr std::string_view kViewType{IResearchView::typeInfo().second};
 
   Result res;
 

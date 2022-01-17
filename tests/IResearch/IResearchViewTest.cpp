@@ -206,8 +206,9 @@ class IResearchViewTest
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewTest, test_type) {
-  EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(std::string_view(
-                   "arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
+  static_assert(
+      arangodb::iresearch::IResearchView::typeInfo() ==
+      std::pair{arangodb::ViewType::kSearch, std::string_view{"arangosearch"}});
 }
 
 TEST_F(IResearchViewTest, test_defaults) {

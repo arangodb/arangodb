@@ -2562,8 +2562,8 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
                       .factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
-      .emplace(  // required for Indexes::ensureIndex(...)
-          arangodb::iresearch::StaticStrings::DataSourceType, factory);
+      .emplace(std::string{arangodb::iresearch::StaticStrings::DataSourceType},
+               factory);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
