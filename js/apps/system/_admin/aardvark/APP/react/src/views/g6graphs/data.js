@@ -11,7 +11,9 @@ export const data = {
         position: 'bottom',
         offset: 10,
         style: {
-          // ... The style of the label
+          fontSize: 20,
+          fill: '#dee072',
+          fontWeight: 500
         },
       },
     },
@@ -49,7 +51,7 @@ export const data = {
       label: 'node6',
       x: 660,
       y: 100,
-      //size: [60, 30],
+      size: [60, 30],
       type: 'star',
     },
     {
@@ -59,7 +61,7 @@ export const data = {
       y: 100,
       size: 50,
       type: 'image',
-      img: 'https://gw.alipayobjects.com/zos/rmsportal/XuVpGqBFxXplzvLjJBZB.svg',
+      //img: 'https://gw.alipayobjects.com/zos/rmsportal/XuVpGqBFxXplzvLjJBZB.svg',
     },
     {
       id: '8',

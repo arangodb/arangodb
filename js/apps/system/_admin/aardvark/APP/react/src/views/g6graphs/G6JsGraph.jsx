@@ -6,6 +6,7 @@ import { data } from './data';
 import { data2 } from './data2';
 import G6 from '@antv/g6';
 import { Card } from 'antd';
+import NodeStyleSelector from './NodeStyleSelector.js';
 import './tooltip.css';
 
 const G6JsGraph = () => {
@@ -32,8 +33,8 @@ const G6JsGraph = () => {
           height: 400,
           layout: {
             type: 'gForce',
-            //minMovement: 0.01,
-            //maxIteration: 5000,
+            minMovement: 0.01,
+            maxIteration: 100,
             preventOverlap: true,
             damping: 0.99,
             fitView: true,
@@ -48,7 +49,7 @@ const G6JsGraph = () => {
                 type: 'tooltip', // Tooltip
                 formatText(model) {
                   // The content of tooltip
-                  const text = 'label: ' + model.label + '<br/> population: ' + model.population;
+                  const text = 'label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
                   return text;
                 },
               },
@@ -83,6 +84,16 @@ const G6JsGraph = () => {
                 fontFamily: 'sans-serif',
                 fontSize: 12
               },
+            },
+          },
+          nodeStateStyles: {
+          // node style of active state
+            active: {
+              fillOpacity: 0.8,
+            },
+          // node style of selected state
+            selected: {
+              lineWidth: 5,
             },
           },
         });
@@ -154,7 +165,7 @@ const G6JsGraph = () => {
     const model = {
       id: '2',
       label: 'node2',
-      population: '2,950,000',
+      distance: '2,950,000',
       type: 'diamond',
       style: {
         fill: 'red',
@@ -166,21 +177,11 @@ const G6JsGraph = () => {
     graph.updateItem(item, model);
   }
 
-  const changeNodeStyle = () => {
+  const changeNodeStyle = (typeModel) => {
     graph.node((node) => {
       return {
         id: node.id,
-        type: 'rect',
-        style: {
-          fill: 'red',
-        },
-        labelCfg: {
-          position: 'bottom',
-          offset: 5,
-          style: {
-            // ... The style of the label
-          },
-        },
+        ...typeModel
       };
     });
     
@@ -205,13 +206,13 @@ const G6JsGraph = () => {
 
   return (
     <div>
+        <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
         <button onClick={() => getNodes()}>Get nodes</button>
         <button onClick={() => getEdges()}>Get edges</button>
         <button onClick={() => changeGraphData()}>Change graph data</button>
         <button onClick={() => addNode()}>Add node</button>
         <button onClick={() => addEdge()}>Add edge</button>
         <button onClick={() => updateNodeModel()}>Update node2</button>
-        <button onClick={() => changeNodeStyle()}>Change node style</button>
         <button onClick={() => changeEdgeStyle()}>Change edge style</button>
         <Card
           title="Pure JS G6 Graph"
