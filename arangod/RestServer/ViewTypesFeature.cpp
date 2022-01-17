@@ -75,7 +75,8 @@ ViewTypesFeature::ViewTypesFeature(
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
-Result ViewTypesFeature::emplace(ViewType type, ViewFactory const& factory) {
+Result ViewTypesFeature::emplace(std::string_view type,
+                                 ViewFactory const& factory) {
   // ensure new factories are not added at runtime since that would require
   // additional locks
   if (server().hasFeature<BootstrapFeature>()) {
@@ -96,14 +97,16 @@ Result ViewTypesFeature::emplace(ViewType type, ViewFactory const& factory) {
     return {
         TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
         std::string("view factory previously registered during view factory "
-                    "registration for view type '") +
-            type.name() + "'"};
+                    "registration for view type '")
+            .append(type)
+            .append("'")};
   }
 
   return {};
 }
 
-ViewFactory const& ViewTypesFeature::factory(ViewType type) const noexcept {
+ViewFactory const& ViewTypesFeature::factory(
+    std::string_view type) const noexcept {
   auto const itr = _factories.find(type);
 
   // ViewTypesFeature::emplace(...) inserts non-nullptr

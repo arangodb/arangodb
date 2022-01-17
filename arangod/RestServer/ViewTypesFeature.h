@@ -52,16 +52,16 @@ class ViewTypesFeature final : public application_features::ApplicationFeature {
   explicit ViewTypesFeature(application_features::ApplicationServer& server);
 
   // Return 'factory' for 'type' was added successfully
-  Result emplace(ViewType type, ViewFactory const& factory);
+  Result emplace(std::string_view type, ViewFactory const& factory);
 
   // Return factory for the specified type or a failing placeholder if no such
   // type
-  ViewFactory const& factory(ViewType type) const noexcept;
+  ViewFactory const& factory(std::string_view type) const noexcept;
 
   void unprepare() override final;
 
  private:
-  containers::FlatHashMap<ViewType, ViewFactory const*> _factories;
+  containers::FlatHashMap<std::string_view, ViewFactory const*> _factories;
 };
 
 }  // namespace arangodb

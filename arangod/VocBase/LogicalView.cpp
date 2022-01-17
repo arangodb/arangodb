@@ -126,7 +126,7 @@ bool LogicalView::canUse(auth::Level const& level) {
 
   auto type = basics::VelocyPackHelper::getStringView(
       definition, StaticStrings::DataSourceType, std::string_view());
-  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(type);
 
   return factory.create(view, vocbase, definition, isUserRequest);
 }
@@ -200,7 +200,7 @@ Result LogicalView::drop() {
 
   auto type = basics::VelocyPackHelper::getStringView(
       definition, StaticStrings::DataSourceType, std::string_view());
-  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(type);
 
   return factory.instantiate(view, vocbase, definition);
 }
