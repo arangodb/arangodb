@@ -47,9 +47,6 @@ class Slice;
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class LogicalView
-////////////////////////////////////////////////////////////////////////////////
 class LogicalView : public LogicalDataSource {
  public:
   typedef std::shared_ptr<LogicalView> ptr;
@@ -112,6 +109,8 @@ class LogicalView : public LogicalDataSource {
   constexpr static Category category() noexcept { return Category::kView; }
 
   using LogicalDataSource::properties;
+
+  ViewType type() const noexcept { return _type; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
@@ -212,6 +211,7 @@ class LogicalView : public LogicalDataSource {
   // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified
   // asynchronously
   mutable basics::ReadWriteLock _lock;
+  ViewType _type;
 };  // LogicalView
 
 ////////////////////////////////////////////////////////////////////////////////

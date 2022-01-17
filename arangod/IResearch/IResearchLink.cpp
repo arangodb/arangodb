@@ -1261,7 +1261,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+      if (ViewType::kSearch != logicalView->type()) {
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,  // code
                 "error finding view: '" + viewId + "' for link '" +
                     std::to_string(_id.id()) + "' : no such view"};
@@ -1276,8 +1276,8 @@ Result IResearchLink::init(velocypack::Slice definition,
                     std::to_string(_id.id()) + "'"};
       }
 
-      viewId = view->guid();  // ensue that this is a GUID (required by
-                              // operator==(IResearchView))
+      // ensue that this is a GUID (required by operator==(IResearchView))
+      viewId = view->guid();
 
       // required for IResearchViewCoordinator which calls
       // IResearchLink::properties(...)
@@ -1355,7 +1355,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
       // if there is no logicalView present yet then skip this step
       if (logicalView) {
-        if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+        if (ViewType::kSearch != logicalView->type()) {
           unload();  // unlock the data store directory
           return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "error finding view: '" + viewId + "' for link '" +
@@ -1431,7 +1431,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+      if (ViewType::kSearch != logicalView->type()) {
         unload();  // unlock the data store directory
 
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -2352,18 +2352,14 @@ std::string IResearchLink::getCollectionName() const {
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchLink const& link) {
   irs::utf8_path dataPath(dbPathFeature.directory());
-  static constexpr std::string_view kSubPath{"databases"};
-  static constexpr std::string_view kDbPath{"database-"};
 
-  dataPath /= kSubPath;
-  dataPath /= kDbPath;
+  dataPath /= "databases";
+  dataPath /= "database-";
   dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  dataPath /= StaticStrings::DataSourceType;
   dataPath += "-";
-  dataPath += std::to_string(
-      link.collection()
-          .id()
-          .id());  // has to be 'id' since this can be a per-shard collection
+  // has to be 'id' since this can be a per-shard collection
+  dataPath += std::to_string(link.collection().id().id());
   dataPath += "_";
   dataPath += std::to_string(link.id().id());
 
@@ -2372,8 +2368,8 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
 
 void IResearchLink::LinkStats::needName() const { _needName = true; }
 
-void IResearchLink::LinkStats::toPrometheus(std::string& result,       //
-                                            std::string_view globals,  //
+void IResearchLink::LinkStats::toPrometheus(std::string& result,
+                                            std::string_view globals,
                                             std::string_view labels) const {
   auto writeAnnotation = [&] {
     result.push_back('{');
