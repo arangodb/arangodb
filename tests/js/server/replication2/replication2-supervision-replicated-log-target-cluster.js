@@ -114,7 +114,7 @@ const replicatedLogSuite = function () {
     waitForSync: false,
   };
 
-  const {setUpAll, tearDownAll, stopServer, continueServer} = (function () {
+  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} = (function () {
     let previousDatabase, databaseExisted = true;
     let stoppedServers = {};
     return {
@@ -128,10 +128,6 @@ const replicatedLogSuite = function () {
       },
 
       tearDownAll: function () {
-        Object.keys(stoppedServers).forEach(function (key) {
-          continueServer(key);
-        });
-
         db._useDatabase(previousDatabase);
         if (!databaseExisted) {
           db._dropDatabase(database);
@@ -151,6 +147,11 @@ const replicatedLogSuite = function () {
         helper.continueServer(serverId);
         delete stoppedServers[serverId];
       },
+      resumeAll: function() {
+        Object.keys(stoppedServers).forEach(function (key) {
+          continueServer(key);
+        });
+      }
     };
   }());
 
@@ -188,8 +189,8 @@ const replicatedLogSuite = function () {
       id: logId,
       config: targetConfig,
       participants: getParticipantsObjectForServers(servers),
+      supervision: {maxActionsTraceLength: 20},
     });
-
 
     waitFor(replicatedLogLeaderEstablished(database, logId, term, servers));
 
@@ -212,6 +213,7 @@ const replicatedLogSuite = function () {
     setUpAll, tearDownAll,
     setUp: registerAgencyTestBegin,
     tearDown: function (test) {
+      resumeAll();
       waitFor(allServersHealthy());
       registerAgencyTestEnd(test);
     },
