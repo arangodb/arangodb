@@ -147,7 +147,7 @@ const replicatedLogSuite = function () {
         helper.continueServer(serverId);
         delete stoppedServers[serverId];
       },
-      resumeAll: function() {
+      resumeAll: function () {
         Object.keys(stoppedServers).forEach(function (key) {
           continueServer(key);
         });
@@ -279,6 +279,33 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, newLeader);
       waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
 
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newLeader]: {excluded: false, forced: false},
+      }));
+      {
+        const {current} = readReplicatedLogAgency(database, logId);
+        const actions = current.supervision.actions;
+        console.log(actions);
+        // we expect the last three actions to be
+        //  3. update participant flags with leader.forced = true
+        //  2. dictate leadership with new leader
+        //  3. update participant flags with leader.forced = false
+        {
+          const action = _.nth(actions, -3).desc;
+          assertEqual(action.type, 'UpdateParticipantFlags');
+          assertEqual(action.flags[newLeader], {excluded: false, forced: true});
+        }
+        {
+          const action = _.nth(actions, -2).desc;
+          assertEqual(action.type, 'DictateLeaderAction');
+          assertEqual(action.newLeader, newLeader);
+        }
+        {
+          const action = _.nth(actions, -1).desc;
+          assertEqual(action.type, 'UpdateParticipantFlags');
+          assertEqual(action.flags[newLeader], {excluded: false, forced: false});
+        }
+      }
       replicatedLogDeleteTarget(database, logId);
     },
 
