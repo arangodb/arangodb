@@ -3096,18 +3096,15 @@ Result ClusterInfo::createCollectionsCoordinator(
       replication2::LogConfig config(info.writeConcern, info.replicationFactor,
                                      info.replicationFactor, false);
       spec.targetConfig = config;
-      std::unordered_map<
-          replication2::ParticipantId,
-          replication2::agency::LogPlanTermSpecification::Participant>
-          participants;
+      spec.participantsConfig.generation = 1;
       for (auto serverId : VPackArrayIterator(serverIds)) {
-        participants.emplace(
-            serverId.copyString(),
-            replication2::agency::LogPlanTermSpecification::Participant{});
+        spec.participantsConfig.participants.emplace(
+            serverId.copyString(), replication2::ParticipantFlags{});
       }
       auto builder = std::make_shared<VPackBuilder>();
       spec.currentTerm = replication2::agency::LogPlanTermSpecification(
-          replication2::LogTerm(1), config, std::nullopt, participants);
+          replication2::LogTerm(1), config, std::nullopt);
+
       spec.toVelocyPack(*builder);
       opers.emplace_back(
           AgencyOperation("Plan/ReplicatedLogs/" + databaseName + "/" + logId,
