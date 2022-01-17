@@ -1,0 +1,1783 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macros for working with data types</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="up" href="../index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="prev" href="vmd_data_types.html" title="Data types">
+<link rel="next" href="vmd_specific_generic/vmd_generic.html" title="Generic macros for working with data types">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_data_types.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_specific_generic/vmd_generic.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="variadic_macro_data.vmd_specific_generic"></a><a class="link" href="vmd_specific_generic.html" title="Macros for working with data types">Macros for working
+    with data types</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific">Specific
+      macros for working with data types</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty">Emptiness</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_constraints">Macro
+        constraints</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier">Identifiers</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number">Numbers</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type">Types</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types">VMD
+        and Boost PP data types</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifying">Identifying
+        macros and BOOST_VMD_IS_EMPTY</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_sptable">Summing
+        up the specific VMD macros</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="vmd_specific_generic/vmd_generic.html">Generic
+      macros for working with data types</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="vmd_specific_generic/vmd_generic.html#variadic_macro_data.vmd_specific_generic.vmd_generic.vmd_sequence">Parsing
+        sequences</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="vmd_specific_generic/vmd_generic.html#variadic_macro_data.vmd_specific_generic.vmd_generic.vmd_sequence.vmd_sequence_convert">Converting
+          sequences</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic/vmd_generic.html#variadic_macro_data.vmd_specific_generic.vmd_generic.vmd_sequence.vmd_sequence_access">Accessing
+          a sequence element</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="vmd_specific_generic/vmd_generic/vmd_convert_sequence.html">Getting
+        the type of data</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic/vmd_generic/vmd_equality.html">Testing
+        for equality and inequality</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic/vmd_generic/vmd_gnctable.html">Summing
+        up the generic macros</a></span></dt>
+</dl></dd>
+</dl></div>
+<p>
+      VMD macros for working with data types which VMD understands can be divided
+      into specific and generic macros.
+    </p>
+<p>
+      The specific macros ask whether some input data is a particular data type.
+      The generic macros work with input data as any data type while also allowing
+      the programmer to separately query the type of data.
+    </p>
+<p>
+      Both specific and generic macros have their place and the macro programmer
+      can decide which to use for any given situation.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific" title="Specific macros for working with data types">Specific
+      macros for working with data types</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty">Emptiness</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_constraints">Macro
+        constraints</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier">Identifiers</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number">Numbers</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type">Types</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types">VMD
+        and Boost PP data types</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifying">Identifying
+        macros and BOOST_VMD_IS_EMPTY</a></span></dt>
+<dt><span class="section"><a href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_sptable">Summing
+        up the specific VMD macros</a></span></dt>
+</dl></div>
+<p>
+        VMD has a number of specific macros for parsing data types. Each of these
+        macros asks if some input is a particular VMD data type.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty" title="Emptiness">Emptiness</a>
+</h4></div></div></div>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h0"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.passing_empty_arguments"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.passing_empty_arguments">Passing
+          empty arguments</a>
+        </h6>
+<p>
+          It is possible to pass an empty argument to a macro. The official terminology
+          for this in the C++ standard is an argument "consisting of no preprocessing
+          tokens". Passing an empty argument to a macro is officially part of
+          the C++11 standard, but a number of compilers also support passing an empty
+          argument to a macro in C++98/C++03 mode, when not in strict compliance
+          to the standard.
+        </p>
+<p>
+          Let us consider a number of cases without worrying too much what the macro
+          output represents.
+        </p>
+<p>
+          Consider these two function-like macros:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">SMACRO</span><span class="special">()</span> <span class="identifier">someoutput</span>
+<span class="preprocessor">#define</span> <span class="identifier">EMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="identifier">otheroutput</span> <span class="identifier">x</span>
+</pre>
+<p>
+          The first macro takes no parameters so invoking it must always be done
+          by
+        </p>
+<pre class="programlisting"><span class="identifier">SMACRO</span><span class="special">()</span>
+</pre>
+<p>
+          and passing any arguments to it would be invalid.
+        </p>
+<p>
+          The second macro takes a single parameter. it can be evoked as
+        </p>
+<pre class="programlisting"><span class="identifier">EMACRO</span><span class="special">(</span><span class="identifier">somedata</span><span class="special">)</span>
+</pre>
+<p>
+          but it also can be invoked as
+        </p>
+<pre class="programlisting"><span class="identifier">EMACRO</span><span class="special">()</span>
+</pre>
+<p>
+          In the second invocation of EMACRO we are passing an empty argument to
+          the macro. Similarly for any macro having 1 or more parameters, an empty
+          argument can be validly passed for any of the parameters, as in
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">MMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">,</span><span class="identifier">z</span><span class="special">)</span> <span class="identifier">x</span> <span class="identifier">y</span> <span class="identifier">z</span>
+
+<span class="identifier">MMACRO</span><span class="special">(</span><span class="number">1</span><span class="special">,,</span><span class="number">2</span><span class="special">)</span>
+</pre>
+<p>
+          An empty argument is an argument even if we are passing nothing.
+        </p>
+<p>
+          Because an empty argument can be passed for a given parameter of a macro
+          does not mean one should do so. Any given macro will specify what each
+          argument to a macro should represent, and it is has normally been very
+          rare to encounter a macro which specifies that an empty argument can logically
+          be passed for a given argument. But from the perspective of standard C++
+          it is perfectly valid to pass an empty argument for a macro parameter.
+        </p>
+<p>
+          The notion of passing empty arguments can be extended to passing empty
+          data which "consists of no preprocessing tokens" in slightly
+          more complicated situations. It is possible to pass empty data as an argument
+          to a variadic macro in the form of variadic macro data, as in
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">VMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,...)</span> <span class="identifier">x</span> <span class="identifier">__VA_ARGS__</span>
+</pre>
+<p>
+          invoked as
+        </p>
+<pre class="programlisting"><span class="identifier">VMACRO</span><span class="special">(</span><span class="identifier">somedata</span><span class="special">,)</span>
+</pre>
+<p>
+          Here one passes empty data as the variadic macro data and it is perfectly
+          valid C++. Please notice that this different from
+        </p>
+<pre class="programlisting"><span class="identifier">VMACRO</span><span class="special">(</span><span class="identifier">somedata</span><span class="special">)</span>
+</pre>
+<p>
+          which is not valid C++, prior to C++20, since something must be passed
+          for the variadic argument. In C++20 the above invocation is valid and is
+          exactly the same as in our previous example of 'VMACRO(somedata,)' where
+          one passes empty data as the variadic macro data. Similarly one could invoke
+          the macro as
+        </p>
+<pre class="programlisting"><span class="identifier">VMACRO</span><span class="special">(</span><span class="identifier">somedata</span><span class="special">,</span><span class="identifier">vdata1</span><span class="special">,,</span><span class="identifier">vdata3</span><span class="special">)</span>
+</pre>
+<p>
+          where one is passing variadic macro data but an element in the variadic
+          macro data is empty.
+        </p>
+<p>
+          Furthermore if we are invoking a macro which expects a Boost PP data type,
+          such as a tuple, we could also validly pass empty data for all or part
+          of the data in a tuple, as in
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">TMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">atuple</span><span class="special">)</span> <span class="identifier">x</span> <span class="identifier">atuple</span>
+
+<span class="identifier">TMACRO</span><span class="special">(</span><span class="identifier">somedata</span><span class="special">,())</span>
+</pre>
+<p>
+          In this case we are passing a 1 element tuple where the single element
+          itself is empty.
+        </p>
+<p>
+          or
+        </p>
+<pre class="programlisting"><span class="identifier">TMACRO</span><span class="special">(</span><span class="identifier">somedata</span><span class="special">,(</span><span class="identifier">telem1</span><span class="special">,,</span><span class="identifier">telem2</span><span class="special">,</span><span class="identifier">teleem3</span><span class="special">))</span>
+</pre>
+<p>
+          In this case we are passing a 4 element tuple where the second element
+          is empty.
+        </p>
+<p>
+          Again either invocation is valid C++ but it is not necessarily what the
+          designed of the macro has desired, even if in both cases the macro designer
+          has specified that the second parameter must be a tuple for the macro to
+          work properly.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h1"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.returning_emptiness"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.returning_emptiness">Returning
+          emptiness</a>
+        </h6>
+<p>
+          Similar to passing empty arguments in various ways to a macro, the data
+          which a macro returns ( or 'generates' may be a better term ) could be
+          empty, in various ways. Again I am not necessarily promoting this idea
+          as a common occurrence of macro design but merely pointing it out as valid
+          C++ preprocessing.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">RMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">,</span><span class="identifier">z</span><span class="special">)</span>
+
+<span class="identifier">RMACRO</span><span class="special">(</span><span class="identifier">data1</span><span class="special">,</span><span class="identifier">data2</span><span class="special">,</span><span class="identifier">data3</span><span class="special">)</span>
+</pre>
+<p>
+          It is perfectly valid C++ to return "nothing" from a macro invocation.
+          In fact a number of macros in Boost PP do that based on the preprocessor
+          metaprogramming logic of the macro, and are documented as such.
+        </p>
+<p>
+          Similarly one could return nothing as part or all of a Boost PP data type
+          or even as part of variadic macro data.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">TRETMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">,</span><span class="identifier">z</span><span class="special">)</span> <span class="special">()</span>
+<span class="preprocessor">#define</span> <span class="identifier">TRETMACRO1</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">,</span><span class="identifier">z</span><span class="special">)</span> <span class="special">(</span><span class="identifier">x</span><span class="special">,,</span><span class="identifier">y</span><span class="special">,,</span><span class="identifier">z</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">VRETMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">,</span><span class="identifier">z</span><span class="special">)</span> <span class="identifier">x</span><span class="special">,,</span><span class="identifier">y</span><span class="special">,,</span><span class="identifier">z</span>
+</pre>
+<p>
+          Here again we are returning something but in terms of a Boost PP tuple
+          or in terms of variadic data, we have elements which are empty.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h2"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.emptiness_in_preprocessor_metapr"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.emptiness_in_preprocessor_metapr">Emptiness
+          in preprocessor metaprogramming</a>
+        </h6>
+<p>
+          In the examples given above where "emptiness" in one form of
+          another is passed as arguments to a macro or returned from a macro, the
+          examples I have given were created as simplified as possible to illustrate
+          my points. In actual preprocessor metaprogramming, using Boost PP, where
+          complicated logic is used to generate macro output based on the arguments
+          to a macro, it might be useful to allow and work with empty data if one
+          were able to test for the fact that data was indeed empty.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h3"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.testing_for_empty_data"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.testing_for_empty_data">Testing
+          for empty data</a>
+        </h6>
+<p>
+          Currently Boost PP has an undocumented macro for testing whether a parameter
+          is empty of not. The macro is called BOOST_PP_IS_EMPTY. The macro is by
+          its nature flawed, since there is no generalized way of determining whether
+          or not a parameter is empty using the C++ preprocessor prior to C++20.
+          But the macro will work correctly with almost all non-empty input or if
+          the input is actually empty.
+        </p>
+<p>
+          Paul Mensonides, the developer of Boost PP, wrote the code for the BOOST_PP_IS_EMPTY
+          macro, for determining whether or not a parameter is empty or not using
+          variadic macros, which he originally published on the Internet in response
+          to a discussion about emptiness. I have adapted his code for the Boost
+          PP library and for VMD developed my own very slightly different code based
+          on his original example.
+        </p>
+<p>
+          The macro is called <code class="computeroutput"><a class="link" href="../BOOST_VMD_IS_EMPTY.html" title="Macro BOOST_VMD_IS_EMPTY">BOOST_VMD_IS_EMPTY</a></code>
+          and will return 1 if its input is empty or 0 if its input is not empty.
+          The macro is a variadic macro which make take any input <a href="#ftn.variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.f0" class="footnote" name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.f0"><sup class="footnote">[1]</sup></a>.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h4"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.macro_flaw_with_a_standard_c_com"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.macro_flaw_with_a_standard_c_com">Macro
+          Flaw with a standard C++ compiler</a>
+        </h6>
+<p>
+          The one situation prior to C++20 where the macro does not work properly
+          is if its input resolves to a function-like macro name or a sequence of
+          preprocessor tokens ending with a function-like macro name and the function-like
+          macro takes two or more parameters.
+        </p>
+<p>
+          Here is a simple example:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">FMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">)</span> <span class="identifier">any_output</span>
+
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">FMACRO</span><span class="special">)</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">some_input</span> <span class="identifier">FMACRO</span><span class="special">)</span>
+</pre>
+<p>
+          In the first case the name of a function-like macro is being passed to
+          BOOST_VMD_IS_EMPTY while in the second case a sequence of preprocessing
+          tokens is being passed to BOOST_VMD_IS_EMPTY ending with the name of a
+          function-like macro. The function-like macro also has two ( or more ) parameters.
+          In both the cases above a compiler error will result from the use of BOOST_VMD_IS_EMPTY.
+        </p>
+<p>
+          Please note that these two problematical cases are not the same as passing
+          an invocation of a function-like macro name to BOOST_VMD_IS_EMPTY, as in
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">FMACRO</span><span class="special">(</span><span class="identifier">arg1</span><span class="special">,</span><span class="identifier">arg2</span><span class="special">))</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">someinput</span> <span class="identifier">FMACRO</span><span class="special">(</span><span class="identifier">arg1</span><span class="special">,</span><span class="identifier">arg2</span><span class="special">))</span>
+</pre>
+<p>
+          which always works correctly, unless of course a particular function-like
+          macro invocation resolves to either of our two previous situations.
+        </p>
+<p>
+          Another situation where the macro may not work properly is if the previously
+          mentioned function-like macro takes a single parameter but creates an error
+          when the argument passed is empty. An example of this would be:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">FMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="identifier">BOOST_PP_CAT</span><span class="special">(+,</span><span class="identifier">x</span> <span class="identifier">C</span><span class="special">);</span>
+</pre>
+<p>
+          When nothing is passed to FMACRO undefined behavior will occur since attempting
+          to concatenate '+' to ' C' is UB in C++ preprocessor terms.
+        </p>
+<p>
+          So for a standard conforming compiler, prior to C++20, we have essentially
+          two corner cases where the BOOST_VMD_IS_EMPTY does not work and, when it
+          does not work it, produces a compiler error rather than an incorrect result.
+          Essentially what is desired for maximum safety is that we never pass input
+          ending with the name of a function-like macro name when testing for emptiness.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h5"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.macro_flaw_with_visual_c"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.macro_flaw_with_visual_c">Macro
+          Flaw with Visual C++</a>
+        </h6>
+<p>
+          The VC++ default preprocessor is not a standard C++ conforming preprocessor
+          in at least two relevant situations to our discussion of emptiness. These
+          situations combine to create a single corner case which causes the BOOST_VMD_IS_EMPTY
+          macro to not work properly using VC++ with its default preprocessor when
+          the input resolves to a function-like macro name.
+        </p>
+<p>
+          The first situation, related to our discussion of emptiness, where the
+          VC++ default preprocessor is not a standard C++ conforming preprocessor
+          is that if a macro taking 'n' number of parameters is invoked with 0 to
+          'n-1' parameters, the compiler does not give an error, but only a warning.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">FMACRO</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">)</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span>
+
+<span class="identifier">FMACRO</span><span class="special">(</span><span class="number">1</span><span class="special">)</span>
+</pre>
+<p>
+          should give a compiler error, as it does when using a C++ standard-conforming
+          compiler, but when invoked using VC++ with its default preprocessor it
+          only gives a warning and VC++ continues macro substitution with 'y' as
+          a placemarker preprocessing token. This non-standard conforming action
+          actually eliminates the case where BOOST_VMD_IS_EMPTY does not work properly
+          with a standard C++ conforming compiler. But of course it has the potential
+          of producing incorrect output in other macro processing situations unrelated
+          to the BOOST_VMD_IS_EMPTY invocation, where a compiler error should occur.
+        </p>
+<p>
+          A second general situation, related to our discussion of emptiness, where
+          the VC++ default preprocessor is not a standard C++ conforming preprocessor
+          is that the expansion of a macro works incorrectly when the expanded macro
+          is a function-like macro name followed by a function-like macro invocation,
+          in which case the macro re-expansion is erroneously done more than once.
+          This latter case can be seen by this example:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">FMACRO1</span><span class="special">(</span><span class="identifier">parameter</span><span class="special">)</span> <span class="identifier">FMACRO3</span> <span class="identifier">parameter</span><span class="special">()</span>
+<span class="preprocessor">#define</span> <span class="identifier">FMACRO2</span><span class="special">()</span> <span class="special">()</span>
+<span class="preprocessor">#define</span> <span class="identifier">FMACRO3</span><span class="special">()</span> <span class="number">1</span>
+
+<span class="identifier">FMACRO1</span><span class="special">(</span><span class="identifier">FMACRO2</span><span class="special">)</span>
+
+<span class="identifier">should</span> <span class="identifier">expand</span> <span class="identifier">to</span><span class="special">:</span>
+
+<span class="identifier">FMACRO3</span><span class="special">()</span>
+
+<span class="identifier">but</span> <span class="identifier">in</span> <span class="identifier">VC</span><span class="special">++</span> <span class="identifier">with</span> <span class="identifier">its</span> <span class="keyword">default</span> <span class="identifier">preprocessor</span> <span class="identifier">it</span> <span class="identifier">expands</span> <span class="identifier">to</span><span class="special">:</span>
+
+<span class="number">1</span>
+</pre>
+<p>
+          where after initially expanding the macro to:
+        </p>
+<pre class="programlisting"><span class="identifier">FMACRO3</span> <span class="identifier">FMACRO2</span><span class="special">()</span>
+</pre>
+<p>
+          VC++ erroneously rescans the sequence of preprocessing tokens more than
+          once rather than rescan just one more time for more macro names.
+        </p>
+<p>
+          What these two particular preprocessor flaws in the VC++ compiler with
+          its default preprocessor mean is that although BOOST_VMD_IS_EMPTY does
+          not fail with a compiler error in the same case as with a standard C++
+          conforming compiler given previously, it fails by giving the wrong result
+          in another situation.
+        </p>
+<p>
+          The failing situation is:
+        </p>
+<p>
+          when the input to BOOST_VMD_IS_EMPTY resolves to only a function-like macro
+          name, and the function-like macro, when passed a single empty argument,
+          expands to a Boost PP tuple, BOOST_VMD_IS_EMPTY will erroneously return
+          1 when using the Visual C++ compiler rather than either give a preprocessing
+          error or return 0.
+        </p>
+<p>
+          Here is an example of the failure:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">FMACRO4</span><span class="special">()</span> <span class="special">(</span> <span class="identifier">any_number_of_tuple_elements</span> <span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">FMACRO5</span><span class="special">(</span><span class="identifier">param</span><span class="special">)</span> <span class="special">(</span> <span class="identifier">any_number_of_tuple_elements</span> <span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">FMACRO6</span><span class="special">(</span><span class="identifier">param1</span><span class="special">,</span><span class="identifier">param2</span><span class="special">)</span> <span class="special">(</span> <span class="identifier">any_number_of_tuple_elements</span> <span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">FMACRO4</span><span class="special">)</span> <span class="comment">// erroneously returns 1, instead of 0</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">FMACRO5</span><span class="special">)</span> <span class="comment">// erroneously returns 1, instead of 0</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY</span><span class="special">(</span><span class="identifier">FMACRO6</span><span class="special">)</span> <span class="comment">// erroneously returns 1, instead of generating a preprocessing error</span>
+</pre>
+<p>
+          As with a standard C++ conforming compiler prior to C++20, we have a rare
+          corner case where the BOOST_VMD_IS_EMPTY will not work properly, but unfortunately
+          in this very similar but even rarer corner case with VC++ with its default
+          preprocessor, we will silently get an incorrect result rather than a compiler
+          error.
+        </p>
+<p>
+          I want to reiterate that for all compilers prior to C++20 there is no perfect
+          solution in C++ to the detection of emptiness even for a C++ compiler whose
+          preprocessor is completely conformant, which VC++ with its default preprocessor
+          obviously is not.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h6"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.testing_emptiness_in_c_20_mode"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.testing_emptiness_in_c_20_mode">Testing
+          emptiness in C++20 mode</a>
+        </h6>
+<p>
+          A few compilers can currently operate in C++20 mode, by which I mean that
+          you can pass a compiler flag when compiling with such a compiler which
+          enforces the upcoming C++20 standard. One of the features of the C++20
+          standard is the addition of a preprocessor construct called __VA_OPT__.
+          Because of the specification of how the __VA_OPT__ construct works in C++20,
+          it is now possible to have the BOOST_VMD_IS_EMPTY macro work perfectly
+          to test for emptiness without any of the flaws that exist in the macro
+          for levels of the C++ standard before C++20. But the macro will only do
+          a 100% reliable test for emptiness when the compiler is compiling in C++20
+          mode. For all levels of the C++ standard before C++20, such as C++98, C++03,
+          C++11, C++14, and C++17, the testing for emptiness has the corner cases
+          which prevent it from wroking perfectly which have already been discussed.
+        </p>
+<p>
+          Furthermore in C++20 mode it is possible that a compiler still does not
+          yet support the __VA_OPT__ construct, even though it is part of the C++20
+          standard. Luckily it is possible to test whether or not a compiler supports
+          the __VA_OPT__ construct in C++20 mode, and the macro implementation of
+          BOOST_VMD_IS_EMPTY does that before using the construct to provide a perfectly
+          reliable implementation for testing emptiness.
+        </p>
+<p>
+          The result of all this is that when a compiler is compiling source using
+          the C++20 standard, and supports the C++20 __VA_OPT__ preprocessor construct,
+          the implementation provides a completely reliable way of testing for emptiness
+          using the BOOST_VMD_IS_EMPTY macro. Otherwise the BOOST_VMD_IS_EMPTY macro
+          has the corner cases previously discussed which make the macro less than
+          100% reliable in testing for emptiness. The good news of course is that
+          more compilers will be implementaing the C++20 standard and more C++ programmers
+          will be using the C++20 standard to compile their code.
+        </p>
+<p>
+          The programmer may know whether the compiler is being used in C++20 mode
+          from the command line parameters he passes to the compiler, and the programmer
+          may know whether the compiler in C++20 mode supports the __VA_OPT__ construct
+          of C++20 from the compiler's documentation. But from the preprocessor programming
+          perspective it would be good to find out using a macro whether or not C++20
+          mode with the __VA_OPT__ construct is being used so that the BOOST_VMD_IS_EMPTY
+          macro can be considered completely reliable in testing for emptiness. Such
+          a macro does already exist in the Boost Preprocessor library, and it is
+          called BOOST_PP_VARIADIC_HAS_OPT. You can read the documentation for this
+          macro in the Boost Preprocessor library documentation, but I will give
+          a quick rundown of how this works here. The macro is a function-like macro
+          taking no parameters and returns 1 if the compiler is in C++20 mode and
+          __VA_OPT__ is supported, otherwise returns 0. The header file needed to
+          invoke the macro as BOOST_PP_VARIADIC_HAS_OPT() is included as:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">preprocessor</span><span class="special">/</span><span class="identifier">variadic</span><span class="special">/</span><span class="identifier">has_opt</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          The programmer does not have to be compiling in C++20 mode to invoke the
+          BOOST_PP_VARIADIC_HAS_OPT macro. When the programmer is not in C++20 mode
+          invoking the macro always returns 0. When the programmer is in C++20 mode
+          invoking the macro returns 1 when the __VA_OPT__ construct is supported
+          and returns 0 when the __VA_OPT__ construct is not supported. It does this
+          latter step through clever preprocessor programming.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h7"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.macro_flaw_conclusion"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.macro_flaw_conclusion">Macro
+          Flaw conclusion</a>
+        </h6>
+<p>
+          With all of the above mentioned, the cases where BOOST_VMD_IS_EMPTY will
+          work incorrectly are very small, even with the erroneous VC++ default preprocessor,
+          and I consider the macro worthwhile to use since it works correctly with
+          the vast majority of possible preprocessor input, and always works correctly
+          in C++20 mode with __VA_OPT__ preprocessor support.
+        </p>
+<p>
+          The case where it will not work, with both a C++ standard conforming preprocessor
+          or with Visual C++, occurs when the name of a function-like macro is part
+          of the input to BOOST_VMD_IS_EMPTY. Obviously the macro should be used
+          by the preprocessor metaprogrammer when the possible input to it is constrained
+          to eliminate the erroneous case.
+        </p>
+<p>
+          Since emptiness can correctly be tested for in nearly every situation,
+          the BOOST_VMD_IS_EMPTY macro can be used internally when the preprocessor
+          metaprogrammer wants to return data from a macro and all or part of that
+          data could be empty.
+        </p>
+<p>
+          Therefore I believe the BOOST_VMD_IS_EMPTY macro is quite useful, despite
+          the corner case flaws which makes it imperfect. Consequently I believe
+          that the preprocessor metaprogrammer can use the concept of empty preprocessor
+          data in the design of his own macros.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.h8"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.using_the_macro"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.using_the_macro">Using
+          the macro</a>
+        </h6>
+<p>
+          The macro BOOST_VMD_IS_EMPTY is used internally throughout VMD and macro
+          programmers may find this macro useful in their own programming efforts
+          despite the slight flaw in the way that it works in pre C++20 mode.
+        </p>
+<p>
+          You can use the general header file:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          or you can use the individual header file:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          for the BOOST_VMD_IS_EMPTY macro.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_constraints"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_constraints" title="Macro constraints">Macro
+        constraints</a>
+</h4></div></div></div>
+<p>
+          When discussing the BOOST_VMD_IS_EMPTY macro I mentioned constraining input
+          to the macro. Now I will discuss what this means in terms of preprocessor
+          metaprogramming and input to macros in general.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_constraints.h0"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_constraints.constrained_input"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_constraints.constrained_input">Constrained
+          input</a>
+        </h6>
+<p>
+          When a programmer designs any kinds of callables in C++ ( functions, member
+          functions etc. ), he specifies what the types of input and the return value
+          are. The C++ compiler enforces this specification at compile time. Similarly
+          at run-time a callable may check that its input falls within certain documented
+          and defined boundaries and react accordingly if it does not. This is all
+          part of the constraints for any callable in C++ and should be documented
+          by any good programmer.
+        </p>
+<p>
+          The C++ preprocessor is much "dumber" than the C++ compiler and
+          even with the preprocessor metaprogramming constructs which Paul Mensonides
+          has created in Boost PP there is far less the preprocessor metaprogrammer
+          can do at preprocessing time to constrain argument input to a macro than
+          a programmer can do at compile-time and/or at run-time to constrain argument
+          input to a C++ callable. Nevertheless it is perfectly valid to document
+          what a macro expects as its argument input and, if a programmer does not
+          follow the constraint, the macro will fail to work properly. In the ideal
+          case in preprocessor metaprogramming the macro could tell whether or not
+          the constraint was met and could issue some sort of intelligible preprocessing
+          error when this occurred, but even within the reality of preprocessor metaprogramming
+          with Boost PP this is not always possible to do. Nevertheless if the user
+          of a macro does not follow the constraints for a macro parameter, as specified
+          in the documentation of a particular macro being invoked, any error which
+          occurs is the fault of that user. I realize that this may go against the
+          strongly held concept that programming errors must always be met with some
+          sort of compile-time or run-time occurrence which allows the programmer
+          to correct the error, rather than a silent failure which masks the error.
+          Because the preprocessor is "dumber" and cannot provide this
+          occurrence in all cases the error could unfortunately be masked, despite
+          the fact that the documentation specifies the correct input constraint(s).
+          In the case of the already discussed macro BOOST_VMD_IS_EMPTY, this masking
+          of the error could only occur with a preprocessor ( Visual C++ ) which
+          is not C++ standard conformant.
+        </p>
+<p>
+          The Boost PP library does have a way of generating a preprocessing error,
+          without generating preprocessor output, but once again this way does not
+          work with the non-conformant preprocessor of Visual C++. The means to do
+          so using Boost PP is through the BOOST_PP_ASSERT macro. As will be seen
+          and discussed later VMD has an equivalent macro which will work with Visual
+          C++ by producing incorrect C++ output rather than a preprocessing error,
+          but even this is not a complete solution since the incorrect C++ output
+          produced could be hidden.
+        </p>
+<p>
+          Even the effort to produce a preprocessing error, or incorrect output inducing
+          a compile-time error, does not solve the problem of constrained input for
+          preprocessor metaprogramming. Often it is impossible to determine if the
+          input meets the constraints which the preprocessor metaprogrammer places
+          on it and documents. Certain preprocessing tokens cannot be checked reliably
+          for particular values, or a range of values, without the checking mechanism
+          itself creating a preprocessing error or undefined behavior.
+        </p>
+<p>
+          This does not mean that one should give up attempting to check macro input
+          constraints. If it can be done I see the value of such checks and a number
+          of VMD macros, discussed later, are designed as preprocessing input constraint
+          checking macros. But the most important thing when dealing with macro input
+          constraints is that they should be carefully documented, and that the programmer
+          should know that if the constraints are not met either preprocessing errors
+          or incorrect macro results could be the results.
+        </p>
+<p>
+          The VMD library, in order to present more preprocessor programming functionality
+          and flexibility, allows that erroneous results could occur if certain input
+          constraints are not met, whether the erroneous results are preprocessing
+          errors or incorrect output from a VMD macro. At the same time the VMD does
+          everything that the preprocessor is capable of doing to check the input
+          constraints, and carefully documents for each macro in the library what
+          the input for each could be in order to avoid erroneous output.
+        </p>
+<p>
+          Documented macro input constraints are just as valid in the preprocessor
+          as compile-time/run-time constraints are valid in C++, even if the detection
+          of such constraints and/or the handling of constraints that are not met
+          are far more difficult, if not impossible, in the preprocessor than in
+          the compile-time/run-time processing of C++.
+        </p>
+<p>
+          The VMD library uses constraints for most of it macros and the documentation
+          for those macros mentions the constraints that apply in order to use the
+          macro.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier" title="Identifiers">Identifiers</a>
+</h4></div></div></div>
+<p>
+          An identifier in VMD is either of two lower-level preprocessor possibilities:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              a preprocessing token 'identifier', which is essentially a sequence
+              of alphanumeric characters and the underscore character with the first
+              character not being a numeric character.
+            </li>
+<li class="listitem">
+              a preprocessing token 'pp-number' that is an integral literal token.
+            </li>
+</ul></div>
+<p>
+          Here are some examples:
+        </p>
+<pre class="programlisting"><span class="identifier">SOME_NAME</span>
+<span class="identifier">_SOME_NAME</span>
+<span class="identifier">SOME_123_NAME</span>
+<span class="identifier">some_123_name</span>
+<span class="identifier">sOMe_123_NAmE</span>
+<span class="number">2367</span>
+<span class="number">43e11</span>
+<span class="number">0</span>
+<span class="number">22</span>
+<span class="number">654792</span>
+<span class="number">0x1256</span>
+</pre>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.h0"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.problem_testing_any_identifier"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.problem_testing_any_identifier">Problem
+          testing any identifier</a>
+        </h6>
+<p>
+          One of the difficulties with identifiers in preprocessor metaprogramming
+          is safely testing for a particular one. VMD has a means of doing this within
+          a particular constraint for the characters that serve as the input to test.
+        </p>
+<p>
+          The constraint is that the input must either be empty or that the beginning
+          input character, ignoring any whitespace, passed as the input to test must
+          be either:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              an identifier character, ie. an alphanumeric or an underscore
+            </li>
+<li class="listitem">
+              the left parenthesis of a tuple
+            </li>
+</ul></div>
+<p>
+          and if the first character is not the left parenthesis of a tuple the remaining
+          characters must be alphanumeric or an underscore until a space character
+          or end of input occurs
+        </p>
+<p>
+          If this is not the case the behavior is undefined, and most likely a preprocessing
+          error will occur.
+        </p>
+<p>
+          Given the input:
+        </p>
+<pre class="programlisting"><span class="char">'s_anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'S_anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'s_anYthiNg'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'_anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'_Anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'_anytHIng'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'24'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'245e2'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span>
+<span class="char">'(anything)'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span><span class="special">,</span> <span class="identifier">tuple</span>
+<span class="char">'(anything) anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span><span class="special">,</span> <span class="identifier">tuple</span> <span class="keyword">and</span> <span class="identifier">further</span> <span class="identifier">input</span>
+<span class="char">'anything anything'</span> <span class="special">:</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span><span class="special">,</span> <span class="identifier">identifier</span> <span class="identifier">followed</span> <span class="identifier">by</span> <span class="identifier">space</span> <span class="identifier">character</span>
+
+<span class="char">'%_anything'</span> <span class="special">:</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span> <span class="keyword">and</span> <span class="identifier">most</span> <span class="identifier">likely</span> <span class="identifier">a</span> <span class="identifier">preprocessing</span> <span class="identifier">error</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span>
+<span class="char">'(_anything'</span> <span class="special">:</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span> <span class="keyword">and</span> <span class="identifier">most</span> <span class="identifier">likely</span> <span class="identifier">a</span> <span class="identifier">preprocessing</span> <span class="identifier">error</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span><span class="special">,</span> <span class="identifier">since</span> <span class="identifier">a</span> <span class="identifier">single</span> <span class="char">'('</span> <span class="identifier">does</span> <span class="keyword">not</span> <span class="identifier">form</span> <span class="identifier">a</span> <span class="identifier">tuple</span>
+<span class="char">'44.3'</span> <span class="special">:</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span> <span class="keyword">and</span> <span class="identifier">most</span> <span class="identifier">likely</span> <span class="identifier">a</span> <span class="identifier">preprocessing</span> <span class="identifier">error</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span> <span class="identifier">since</span> <span class="char">'.'</span> <span class="identifier">is</span> <span class="keyword">not</span> <span class="identifier">alphanumeric</span>
+</pre>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.h1"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.identifying_an_identifier"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.identifying_an_identifier">Identifying
+          an identifier</a>
+        </h6>
+<p>
+          There are three levels of testing identifiers in VMD.
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              You can test for any general identifier which matches the identifier
+              syntax
+            </li>
+<li class="listitem">
+              You can test for a specific identifier
+            </li>
+<li class="listitem">
+              You can test that a specific identifier is equal to another specific
+              identifier
+            </li>
+</ol></div>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.h2"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.testing_for_any_general_identifi"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.testing_for_any_general_identifi">Testing
+          for any general identifier</a>
+        </h6>
+<p>
+          The macro for testing for any identifier is called BOOST_VMD_IS_GENERAL_IDENTIFIER.
+        </p>
+<p>
+          You invoke it with input which may be an identifier according to the rules
+          given above, and it returns 1 if the input has the form of an identifier
+          and returns 0 if the input does not have the form of an identifier. Be
+          aware that input which does not follow the above constraints will probably
+          lead to undefined behavior. Also the input to BOOST_VMD_IS_GENERAL_IDENTIFIER
+          is meant to be a single identifier and not a VMD sequence of preprocessor
+          tokens, else the return may be incorrect. Sample code:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_generaL_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_GENERAL_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">)</span> <span class="comment">// returns 1 if 'some_input' is in the form of an identifier, else returns 0</span>
+</pre>
+<p>
+          This form of an identifier which follows the identifier syntax is called
+          a "general" identifier. General identifiers can be tested successfully
+          using the VMD specific macros but can not be tested successfully using
+          the VMD generic macros. For the latter you need specific identifiers.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.h3"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.testing_for_a_specific_identifie"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.testing_for_a_specific_identifie">Testing
+          for a specific identifier</a>
+        </h6>
+<p>
+          Although testing whether macro input is in the form of any general identifier
+          given above may be useful sometimes it is valuable to find out whether
+          macro input is one of a number of specific identifiers in which you are
+          particularly interested. In order to do this you first create a user-defined
+          macro which 'registers' specific identifiers. The user-defined macro is
+          an object-like macro whose form is:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_identifier</span> <span class="special">(</span><span class="identifier">identifier</span><span class="special">)</span>
+</pre>
+<p>
+          where 'identifier' is a specific identifier we wish to identify. This is
+          called in VMD a registration macro.
+        </p>
+<p>
+          The macro for testing for a specific identifier is called BOOST_VMD_IS_IDENTIFIER.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_yellow</span> <span class="special">(</span><span class="identifier">yellow</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_green</span>  <span class="special">(</span><span class="identifier">green</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_blue</span>   <span class="special">(</span><span class="identifier">blue</span><span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">)</span> <span class="comment">// returns 1 if 'some_input' is 'yellow','green', or 'blue'</span>
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">some_input</span><span class="special">)</span> <span class="comment">// returns 0 if 'some_input' is 'purple'</span>
+</pre>
+<p>
+          It is recommended that registration macros be created in a header file
+          which can be included before the end-user uses the identifier macros of
+          VMD, but of course you can create registration macros directly in a source
+          file if you wish. If a particular registration macro occurs more than once
+          it is not a preprocessing error, so duplicating a registration macro will
+          not lead to any problems since each registration macro of the same name
+          will have the exact same object-like macro expansion. Within a given translation
+          unit it could potentially happen that registration macros have been included
+          by header files which a particular end-user of VMD has not created. This
+          should also not lead to particular problems since registration is a process
+          for adding specific identifiers for any particular translation unit.
+        </p>
+<p>
+          As we shall see further in the documentation only specific identifiers
+          can be tested for when we work with VMD generic macros and to parse VMD
+          sequences, so having an identifier which is not a specific identifier but
+          only a general identifier has a limited use in VMD.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.h4"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.testing_for_identifier_equality"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.testing_for_identifier_equality">Testing
+          for identifier equality</a>
+        </h6>
+<p>
+          Although registering an identifier allows VMD to recognize the string of
+          characters as a specific VMD identifier when using the BOOST_VMD_IS_IDENTIFIER,
+          the ability to detect whether or not a specific identifier is exactly the
+          same or not than another specific identifier needs the end-user to define
+          another macro:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_identifier_identifier</span>
+</pre>
+<p>
+          where 'identifier' is a specific identifier we wish to detect. This object-like
+          macro must expand to no output.
+        </p>
+<p>
+          Like the registration macro, multiple detection macros of the same identifier
+          in a translation unit does not cause a compiler problem since the exact
+          same object-like macro occurs.
+        </p>
+<p>
+          The term for creating this macro is that we have potentially 'pre-detected'
+          the identifier and I will use the term pre-detected as the process of creating
+          the BOOST_VMD_DETECT macro and the term 'detect' as the ability to find
+          out if a specific identifier is the same as another specific identifier
+          or not.
+        </p>
+<p>
+          The ability to detect that a VMD identifier is a particular specific identifier
+          is used in VMD macros when preprocessor data is compared for equality/inequality
+          using the VMD macros <a class="link" href="vmd_specific_generic/vmd_generic/vmd_equality.html" title="Testing for equality and inequality">BOOST_VMD_EQUAL
+          and BOOST_VMD_NOT_EQUAL</a> as well as when we want to match an identifier
+          against a specific set of other registered identifiers using the macro
+          <a class="link" href="vmd_modifiers/vmd_modifiers_identifier.html#variadic_macro_data.vmd_modifiers.vmd_modifiers_identifier.imid">BOOST_VMD_IS_IDENTIFIER</a>
+          with more than the single variadic argument given above.
+        </p>
+<p>
+          These situations will be explained later in the documentation in other
+          topics discussing VMD macro functionality. If the programmer never uses
+          the functionality which these situations encompass, ie. in which we match
+          a specific identifier against another to see if they are equal or not,
+          there is no need to use pre-detection for a registered identifier. However
+          once you provide a registration macro in order to test for a specific identifier
+          in preprocessor input also providing a pre-detection macro for that identifier
+          costs very little in terms of macro notation and nothing in terms of preprocessor
+          time. So the end-user might want to add a pre-detection macro for a specific
+          identifier to the same place or header file where the corresponding registration
+          macro is created, even if the end-user initially does not think that he
+          might want to test that identifier for equality with another identifier.
+        </p>
+<p>
+          To sum up the three levels of identifier functionality:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              General identifiers can be used with the VMD specific macros and will
+              return the correct result, but can not be used with VMD generic macros.
+            </li>
+<li class="listitem">
+              Specific identifiers, ie. registered identifiers, can be used with
+              VMD specific macros and nearly all VMD generic macros.
+            </li>
+<li class="listitem">
+              Pre-detected specific identifiers can be used with all VMD macros,
+              whether specific or generic.
+            </li>
+</ul></div>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.h5"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.parsing_identifier_constraints_a"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.parsing_identifier_constraints_a">Parsing
+          identifier constraints and undefined behavior</a>
+        </h6>
+<p>
+          The reason that the identifier constraints mentioned above exist is that
+          the technique for parsing identifiers, once it is determined that the input
+          being parsed is not empty or does not begin with a set of parentheses,
+          uses preprocessor concatenation in its parsing. This technique involves
+          the preprocessor '##' operator to concatenate input, and examine the results
+          of that concatenation. When preprocessor concatenation is used the result
+          of the concatenation must be a valid preprocessing token, else the behavior
+          of the preprocessor is undefined. In C++ 'undefined behavior' in general
+          means that anything can happen. In practical use when preprocessor concatenation
+          does not produce a valid preprocessing token, a compiler is most likely
+          to generate a preprocessing error. If the compiler chooses not to issue
+          a preprocessing error when concatenation does not produce a valid preprocessor
+          token the outcome of the VMD macros will always be correct and parsing
+          an identifier will fail. But because the outcome is undefined behavior
+          there is no absolute way that the programmer can determine what the outcome
+          will be when preprocessor concatenation is used and the input being parsed
+          contains does not meet the constraints for parsing an identifier mentioned
+          at the beginning of this topic.
+        </p>
+<p>
+          In this documentation I will be using the abbreviation 'UB' as the shortened
+          form of 'undefined behavior' to denote the particular occurrence where
+          VMD attempts to parse preprocessor input using preprocessor concatenation
+          and undefined behavior will occur.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.h6"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.usage"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifier.usage">Usage</a>
+        </h6>
+<p>
+          To use the BOOST_VMD_IS_GENERAL_IDENTIFIER macro and/or the BOOST_VMD_IS_IDENTIFIER
+          macro you can either include the general header:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          or include the specific headers:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_general_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number" title="Numbers">Numbers</a>
+</h4></div></div></div>
+<p>
+          A number in VMD is a preprocessing 'pp-number', limited to a Boost PP number.
+          This is an integral literal between 0 and BOOST_PP_LIMIT_MAG. The form
+          of the number does not contain leading zeros. Acceptable as numbers are:
+        </p>
+<pre class="programlisting"><span class="number">0</span>
+<span class="number">127</span>
+<span class="number">33</span>
+<span class="number">254</span>
+<span class="number">18</span>
+</pre>
+<p>
+          but not:
+        </p>
+<pre class="programlisting"><span class="number">033</span>
+<span class="number">06</span>
+<span class="number">00</span><span class="number">9</span>
+<span class="number">00</span>
+</pre>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.h0"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.problem_testing_any_number"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.problem_testing_any_number">Problem
+          testing any number</a>
+        </h6>
+<p>
+          As can be seen from the explanation of an identifier, a number is merely
+          a small subset of all possible identifiers, for which VMD internally provides
+          registration macros and pre-detection macros for its use. Therefore the
+          particular constraint on the input to test is exactly the same as for identifiers.
+        </p>
+<p>
+          The constraint is that the beginning input character, ignoring any whitespace,
+          passed as the input to test must be either:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              an identifier character, ie. an alphanumeric or an underscore
+            </li>
+<li class="listitem">
+              the left parenthesis of a tuple
+            </li>
+</ul></div>
+<p>
+          and if the first character is not the left parenthesis of a tuple the remaining
+          characters must be alphanumeric or an underscore until a space character
+          or end of input occurs.
+        </p>
+<p>
+          If this is not the case the behavior is undefined, and most likely a preprocessing
+          error will occur.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.h1"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.testing_for_a_number_macro"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.testing_for_a_number_macro">Testing
+          for a number macro</a>
+        </h6>
+<p>
+          The macro used to test for any number in VMD is called BOOST_VMD_IS_NUMBER.
+          The macro takes a single variadic parameter, the input to test against.
+        </p>
+<p>
+          The macro returns 1 if the parameter is a Boost PP number, otherwise the
+          macro returns 0.
+        </p>
+<p>
+          The Boost PP library has a great amount of functionality for working with
+          numbers, so once you use VMD to parse/test for a number you can use Boost
+          PP to work with that number in various ways. The VMD library makes no attempt
+          to duplicate the functionality of numbers that in the Boost PP library.
+        </p>
+<p>
+          Any number is also an identifier, which has been registered and pre-detected,
+          so you can also use the VMD functionality which works with identifiers
+          to work with a number as an identifier if you like.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.h2"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.example"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.example">Example</a>
+        </h6>
+<p>
+          Let us look at an example of how to use BOOST_VMD_IS_NUMBER.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_number</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_NUMBER</span><span class="special">(</span><span class="identifier">input</span><span class="special">)</span>
+
+<span class="identifier">returns</span><span class="special">:</span>
+
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="number">1</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="number">44</span><span class="special">,</span> <span class="number">1</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="identifier">SQUARE</span><span class="special">,</span> <span class="number">0</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="number">44</span> <span class="identifier">DATA</span><span class="special">,</span> <span class="number">0</span> <span class="identifier">since</span> <span class="identifier">there</span> <span class="identifier">are</span> <span class="identifier">tokens</span> <span class="identifier">after</span> <span class="identifier">the</span> <span class="identifier">number</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="number">044</span><span class="special">,</span> <span class="number">0</span> <span class="identifier">since</span> <span class="identifier">no</span> <span class="identifier">leading</span> <span class="identifier">zeros</span> <span class="identifier">are</span> <span class="identifier">allowed</span> <span class="keyword">for</span> <span class="identifier">our</span> <span class="identifier">Boost</span> <span class="identifier">PP</span> <span class="identifier">numbers</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="number">256</span><span class="special">,</span> <span class="number">1</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="number">1025</span><span class="special">,</span> <span class="number">0</span> <span class="identifier">since</span> <span class="identifier">it</span> <span class="identifier">falls</span> <span class="identifier">outside</span> <span class="identifier">the</span> <span class="identifier">Boost</span> <span class="identifier">PP</span> <span class="identifier">number</span> <span class="identifier">range</span> <span class="identifier">of</span> <span class="number">0</span><span class="special">-</span><span class="identifier">BOOST_PP_LIMIT_MAG</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="special">%</span><span class="number">44</span><span class="special">,</span> <span class="identifier">does</span> <span class="keyword">not</span> <span class="identifier">meet</span> <span class="identifier">the</span> <span class="identifier">constraint</span> <span class="identifier">therefore</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="number">44.0</span><span class="special">,</span> <span class="identifier">does</span> <span class="keyword">not</span> <span class="identifier">meet</span> <span class="identifier">the</span> <span class="identifier">constraint</span> <span class="identifier">therefore</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="special">(</span> <span class="number">44</span> <span class="special">),</span> <span class="number">0</span> <span class="identifier">since</span> <span class="identifier">the</span> <span class="identifier">macro</span> <span class="identifier">begins</span> <span class="identifier">with</span> <span class="identifier">a</span> <span class="identifier">tuple</span> <span class="keyword">and</span> <span class="keyword">this</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span> <span class="keyword">for</span>
+</pre>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.h3"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.usage"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_number.usage">Usage</a>
+        </h6>
+<p>
+          To use the BOOST_VMD_IS_NUMBER macro either include the general header:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          or include the specific header:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_number</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type" title="Types">Types</a>
+</h4></div></div></div>
+<p>
+          A subset of identifiers is VMD types, called a 'v-type'. These are identifiers
+          which represent all of the preprocessor data types which VMD can parse.
+          This subset of identifiers is automatically registered and pre-detected
+          by VMD. Each identifier type begins with the unique prefix 'BOOST_VMD_TYPE_'.
+        </p>
+<p>
+          The actual types are:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              BOOST_VMD_TYPE_EMPTY, represents emptiness, ie. "empty data"
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_ARRAY, a Boost PP array
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_LIST, a Boost PP list
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_SEQ, a Boost PP seq
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_TUPLE, a Boost PP tuple
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_IDENTIFIER, identifier
+            </li>
+<li class="listitem">
+              BOOST_BMD_TYPE_NUMBER, a number
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_TYPE, a type itself
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_SEQUENCE, a sequence
+            </li>
+<li class="listitem">
+              BOOST_VMD_TYPE_UNKNOWN, an unknown type
+            </li>
+</ul></div>
+<p>
+          Since a v-type is itself an identifier the particular constraint on the
+          input to test is exactly the same as for identifiers.
+        </p>
+<p>
+          The constraint is that the beginning input character, ignoring any whitespace,
+          passed as the input to test must be either:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              an identifier character, ie. an alphanumeric or an underscore
+            </li>
+<li class="listitem">
+              the left parenthesis of a tuple
+            </li>
+</ul></div>
+<p>
+          and if the first character is not the left parenthesis of a tuple the remaining
+          characters must be alphanumeric or an underscore until a space character
+          or end of input occurs.
+        </p>
+<p>
+          If this is not the case the behavior is undefined, and most likely a preprocessing
+          error will occur.
+        </p>
+<p>
+          The macro used to test for a particular type in VMD is called BOOST_VMD_IS_TYPE.
+          The macro takes a single variadic parameter, the input to test against.
+        </p>
+<p>
+          The macro returns 1 if the parameter is a v-type, otherwise the macro returns
+          0.
+        </p>
+<p>
+          A v-type is also an identifier, which has been registered and pre-detected,
+          so you can also use the VMD functionality which works with identifiers
+          to work with a v-type as an identifier if you like.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type.h0"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type.example"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type.example">Example</a>
+        </h6>
+<p>
+          Let us look at an example of how to use BOOST_VMD_IS_TYPE.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_type</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_TYPE</span><span class="special">(</span><span class="identifier">input</span><span class="special">)</span>
+
+<span class="identifier">returns</span><span class="special">:</span>
+
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="identifier">BOOST_VMD_TYPE_SEQ</span><span class="special">,</span> <span class="number">1</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="identifier">BOOST_VMD_TYPE_NUMBER</span><span class="special">,</span> <span class="number">1</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="identifier">SQUARE</span><span class="special">,</span> <span class="number">0</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span> <span class="identifier">DATA</span><span class="special">,</span> <span class="number">0</span> <span class="identifier">since</span> <span class="identifier">there</span> <span class="identifier">are</span> <span class="identifier">tokens</span> <span class="identifier">after</span> <span class="identifier">the</span> <span class="identifier">type</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="special">%</span><span class="number">44</span><span class="special">,</span> <span class="identifier">does</span> <span class="keyword">not</span> <span class="identifier">meet</span> <span class="identifier">the</span> <span class="identifier">constraint</span> <span class="identifier">therefore</span> <span class="identifier">undefined</span> <span class="identifier">behavior</span>
+<span class="keyword">if</span> <span class="identifier">input</span> <span class="special">=</span> <span class="special">(</span> <span class="identifier">BOOST_VMD_TYPE_EMPTY</span> <span class="special">),</span> <span class="number">0</span> <span class="identifier">since</span> <span class="identifier">the</span> <span class="identifier">macro</span> <span class="identifier">begins</span> <span class="identifier">with</span> <span class="identifier">a</span> <span class="identifier">tuple</span> <span class="keyword">and</span> <span class="keyword">this</span> <span class="identifier">can</span> <span class="identifier">be</span> <span class="identifier">tested</span> <span class="keyword">for</span>
+</pre>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type.h1"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type.usage"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_type.usage">Usage</a>
+        </h6>
+<p>
+          To use the BOOST_VMD_IS_TYPE macro either include the general header:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          or include the specific header:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_type</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types" title="VMD and Boost PP data types">VMD
+        and Boost PP data types</a>
+</h4></div></div></div>
+<p>
+          VMD is able to determine whether or not preprocessing input is a given
+          Boost PP data type. The VMD macros to do this are:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              BOOST_VMD_IS_ARRAY for an array
+            </li>
+<li class="listitem">
+              BOOST_VMD_IS_LIST for a list
+            </li>
+<li class="listitem">
+              BOOST_VMD_IS_SEQ for a seq
+            </li>
+<li class="listitem">
+              BOOST_VMD_IS_TUPLE for a tuple
+            </li>
+</ul></div>
+<p>
+          Each of these macros take a single variadic parameter as input and return
+          1 if the parameter is the appropriate data type and 0 if it is not.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.h0"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.syntax_anomalies"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.syntax_anomalies">Syntax
+          anomalies</a>
+        </h6>
+<p>
+          Both an array and a non-empty list are also a tuple. So if one has:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">ANARRAY</span> <span class="special">(</span><span class="number">3</span><span class="special">,(</span><span class="identifier">a</span><span class="special">,</span><span class="identifier">b</span><span class="special">,</span><span class="identifier">c</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">ALIST</span> <span class="special">(</span><span class="identifier">a</span><span class="special">,(</span><span class="identifier">b</span><span class="special">,(</span><span class="identifier">c</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)))</span>
+<span class="preprocessor">#define</span> <span class="identifier">ATUPLE</span> <span class="special">(</span><span class="identifier">a</span><span class="special">,</span><span class="identifier">b</span><span class="special">,</span><span class="identifier">c</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">ASEQ</span> <span class="special">(</span><span class="identifier">a</span><span class="special">)(</span><span class="identifier">b</span><span class="special">)(</span><span class="identifier">c</span><span class="special">)</span>
+</pre>
+<p>
+          then
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">ANARRAY</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">ALIST</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">ATUPLE</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">ASEQ</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">0</span>
+</pre>
+<p>
+          A list whose first element is the number 2 and whose second element is
+          not the end-of-list marker BOOST_PP_NIL is also an array. So if one has:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">ALIST</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">ALIST2</span> <span class="special">(</span><span class="number">2</span><span class="special">,(</span><span class="number">3</span><span class="special">,(</span><span class="number">4</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)))</span>
+<span class="preprocessor">#define</span> <span class="identifier">ALIST3</span> <span class="special">(</span><span class="number">2</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_LIST</span><span class="special">(</span><span class="identifier">ALIST</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_LIST</span><span class="special">(</span><span class="identifier">ALIST2</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_LIST</span><span class="special">(</span><span class="identifier">ALIST3</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_ARRAY</span><span class="special">(</span><span class="identifier">ALIST</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_ARRAY</span><span class="special">(</span><span class="identifier">ALIST2</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_ARRAY</span><span class="special">(</span><span class="identifier">ALIST3</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">0</span>
+</pre>
+<p>
+          A single element tuple is also a one element seq. So if one has:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">ASE_TUPLE</span> <span class="special">(</span><span class="identifier">a</span><span class="special">)</span>
+</pre>
+<p>
+          then
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_seq</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">ASE_TUPLE</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_SEQ</span><span class="special">(</span><span class="identifier">ASE_TUPLE</span><span class="special">)</span> <span class="identifier">returns</span> <span class="number">1</span>
+</pre>
+<p>
+          However if our data consists of more than one consecutive tuple of a single
+          element the data is always a seq:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_seq</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">ST_DATA</span> <span class="special">(</span><span class="identifier">somedata</span><span class="special">)(</span><span class="identifier">some_other_data</span><span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_IS_SEQ</span><span class="special">(</span><span class="identifier">ST_DATA</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">ST_DATA</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+</pre>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.h1"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.problem_when_testing_an_array"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.problem_when_testing_an_array">Problem
+          when testing an array</a>
+        </h6>
+<p>
+          The form of an array is a two element tuple, where the first element is
+          a number and the second element is a tuple. The number specifies the size
+          of the tuple. Since when using variadic macros it is never necessary to
+          specify the size of a tuple, an array is largely obsolete. However VMD
+          still supports it.
+        </p>
+<p>
+          The problem when testing for an array is that if the first element does
+          not obey the constraint on testing for a number, you will get UB.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_TUPLE</span> <span class="special">(&amp;</span><span class="identifier">anything</span><span class="special">,(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">))</span>
+
+<span class="identifier">BOOST_VMD_IS_ARRAY</span><span class="special">(</span><span class="identifier">A_TUPLE</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">give</span> <span class="identifier">UB</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span>
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">A_TUPLE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+          When VMD attempts to parse for an array, as it does when the BOOST_VMD_IS_ARRAY
+          is used, if first looks to see if the syntax represents a tuple with two
+          elements. Next it looks to see if the second element itself is a tuple.
+          Finally if it is satisfied that the previous checks are valid it tests
+          whether the first element is a number or not. It is in this final test,
+          that the first element is not a valid number, where the UB could occur
+          as explained in the topic 'Numbers'.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.h2"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.problem_when_testing_a_list"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.problem_when_testing_a_list">Problem
+          when testing a list</a>
+        </h6>
+<p>
+          The form of a non-empty list is a two element tuple, where the first element
+          is the head of the list and can be anything and the second element is itself
+          a list or the end-of-list identifier BOOST_PP_NIL.
+        </p>
+<p>
+          The problem when testing for a list is that if the second element does
+          not obey the constraint on testing for an identifier, since BOOST_PP_NIL
+          is an identifier and is tested as such, you will get UB.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_TUPLE</span> <span class="special">(</span><span class="identifier">element</span><span class="special">,&amp;</span><span class="identifier">anything</span><span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_IS_LIST</span><span class="special">(</span><span class="identifier">A_TUPLE</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">give</span> <span class="identifier">UB</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span>
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">A_TUPLE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+</pre>
+<p>
+          The form of an empty list is the identifier BOOST_PP_NIL. Therefore:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_identifier</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_BAD_EMPTY_LIST</span> <span class="special">&amp;</span><span class="identifier">BOOST_PP_NIL</span>
+
+<span class="identifier">BOOST_VMD_IS_LIST</span><span class="special">(</span><span class="identifier">A_BAD_EMPTY_LIST</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">give</span> <span class="identifier">UB</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span>
+<span class="identifier">BOOST_VMD_IS_IDENTIFIER</span><span class="special">(</span><span class="identifier">A_BAD_EMPTY_LIST</span><span class="special">)</span> <span class="identifier">will</span> <span class="identifier">give</span> <span class="identifier">UB</span> <span class="identifier">due</span> <span class="identifier">to</span> <span class="identifier">the</span> <span class="identifier">constraint</span>
+</pre>
+<p>
+          When VMD attempts to parse for a list, as it does when the BOOST_VMD_IS_LIST
+          is used, if first looks to see if the syntax represents a tuple with two
+          elements. If it is not a tuple with two elements it will check for the
+          end-of-list. If it is a tuple with two elements it looks to see if the
+          second element is a list. In both these paths it must always eventually
+          check for the end-of-list notation BOOST_PP_NIL, which is an identifier
+          in VMD. It is in this final test, that the end-of-list notation exists
+          as a VMD identifier, where the UB could occur as explained in the topic
+          'Identifiers'.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.h3"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.empty_boost_pp_data_types"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.empty_boost_pp_data_types">Empty
+          Boost PP data types</a>
+        </h6>
+<p>
+          An array and a list can be empty.
+        </p>
+<p>
+          An empty array has the form '(0,())', and is a perfectly valid array.
+        </p>
+<p>
+          You can test for an empty array using the macro BOOST_VMD_IS_EMPTY_ARRAY.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">AN_ARRAY</span> <span class="special">(</span><span class="number">1</span><span class="special">,(</span><span class="number">1</span><span class="special">))</span>
+<span class="preprocessor">#define</span> <span class="identifier">AN_EMPTY_ARRAY</span> <span class="special">(</span><span class="number">0</span><span class="special">,())</span>
+
+<span class="identifier">BOOST_VMD_IS_ARRAY</span><span class="special">(</span><span class="identifier">AN_ARRAY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_ARRAY</span><span class="special">(</span><span class="identifier">AN_EMPTY_ARRAY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+
+<span class="identifier">BOOST_VMD_IS_EMPTY_ARRAY</span><span class="special">(</span><span class="identifier">AN_EMPTY_ARRAY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY_ARRAY</span><span class="special">()</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY_ARRAY</span><span class="special">(</span><span class="identifier">AN_ARRAY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+</pre>
+<p>
+          An empty list has the form 'BOOST_PP_NIL', and is a perfectly valid list.
+        </p>
+<p>
+          You can test for an empty list using the macro BOOST_VMD_IS_EMPTY_LIST.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_LIST</span> <span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">BOOST_PP_NIL</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">AN_EMPTY_LIST</span> <span class="identifier">BOOST_PP_NIL</span>
+
+<span class="identifier">BOOST_VMD_IS_LIST</span><span class="special">(</span><span class="identifier">A_LIST</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_LIST</span><span class="special">(</span><span class="identifier">AN_EMPTY_LIST</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+
+<span class="identifier">BOOST_VMD_IS_EMPTY_LIST</span><span class="special">(</span><span class="identifier">AN_EMPTY_LIST</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY_LIST</span><span class="special">()</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_IS_EMPTY_LIST</span><span class="special">(</span><span class="identifier">A_LIST</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+</pre>
+<p>
+          Neither seqs or tuples can be empty when using Boost PP. Because of this
+          if you convert from an empty array or list to a seq or tuple using Boost
+          PP macros to do so you will get undefined behavior.
+        </p>
+<p>
+          The syntax '()', which is called an empty parenthesis, is neither a zero-element
+          seq or a tuple consisting of no elements. Rather it is either a one-element
+          seq whose content is emptiness or a single-element tuple whose content
+          is emptiness.
+        </p>
+<p>
+          VMD supports the syntax of an empty parenthesis. You can test for it using
+          the macro BOOST_VMD_IS_PARENS_EMPTY.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_parens_empty</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_seq</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">EMPTY_PARENS</span> <span class="special">()</span>
+<span class="preprocessor">#define</span> <span class="identifier">TUPLE</span> <span class="special">(</span><span class="number">0</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">SEQ</span> <span class="special">(</span><span class="number">0</span><span class="special">)(</span><span class="number">1</span><span class="special">)</span>
+
+<span class="identifier">BOOST_VMD_IS_TUPLE</span><span class="special">(</span><span class="identifier">EMPTY_PARENS</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_SEQ</span><span class="special">(</span><span class="identifier">EMPTY_PARENS</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+
+<span class="identifier">BOOST_VMD_IS_PARENS_EMPTY</span><span class="special">(</span><span class="identifier">EMPTY_PARENS</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">1</span>
+<span class="identifier">BOOST_VMD_IS_PARENS_EMPTY</span><span class="special">()</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_IS_PARENS_EMPTY</span><span class="special">(</span><span class="identifier">TUPLE</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+<span class="identifier">BOOST_VMD_IS_PARENS_EMPTY</span><span class="special">(</span><span class="identifier">SEQ</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="number">0</span>
+</pre>
+<p>
+          The VC++8 compiler ( Visual Studio 2005 ), which is the oldest VC++ version
+          which VMD supports, has trouble working with the empty parenthesis syntax.
+          Therefore if you have to use VC++8 avoid its use, otherwise you should
+          be fine using it if you desire.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.h4"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.using_a_tuple_instead_of_an_arra"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.using_a_tuple_instead_of_an_arra">Using
+          a tuple instead of an array</a>
+        </h6>
+<p>
+          When using variadic macros, the fact that an array can be empty is its
+          only advantage over a tuple. Otherwise using a tuple is always easier since
+          the syntax is simpler; you never have to notate the tuple's size.
+        </p>
+<p>
+          Since VMD fully supports passing and returning emptiness you could use
+          a tuple instead of an array in all situations and simply pass or return
+          emptiness to represent an "empty" tuple, and as an equivalent
+          to an empty array.
+        </p>
+<p>
+          This notion of using emptiness to represent an "empty" tuple
+          can also be extended to using emptiness to represent an "empty"
+          seq. However functionality in Boost PP will not recognize emptiness as
+          an empty tuple or seq, nor can you work with emptiness to represent an
+          empty tuple or empty seq using the Boost PP functionality for a tuple or
+          a seq. For a solution to using emptiness to represent an "empty"
+          tuple or an "empty" seq VMD has functionality which will be explained
+          when we look at our last area of functionality in VMD, useful variadic
+          macros not in Boost PP.
+        </p>
+<h6>
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.h5"></a>
+          <span class="phrase"><a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.usage"></a></span><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_pp_data_types.usage">Usage</a>
+        </h6>
+<p>
+          You can use the general header file:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          or you can use individual header files for each of these macros. The individual
+          header files are:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">//  for the BOOST_VMD_IS_ARRAY macro</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">//  for the BOOST_VMD_IS_LIST macro</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_seq</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">//  for the BOOST_VMD_IS_SEQ macro</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_tuple</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// for the BOOST_VMD_IS_TUPLE macro.</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty_array</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// for the BOOST_VMD_IS_EMPTY_ARRAY macro.</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_empty_list</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// for the BOOST_VMD_IS_EMPTY_LIST macro.</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">is_parens_empty</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// for the BOOST_VMD_IS_PARENS_EMPTY macro.</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifying"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_identifying" title="Identifying macros and BOOST_VMD_IS_EMPTY">Identifying
+        macros and BOOST_VMD_IS_EMPTY</a>
+</h4></div></div></div>
+<p>
+          The various macros for identifying VMD data types complement the ability
+          to identify emptiness using BOOST_VMD_IS_EMPTY. The general name I will
+          use in this documentation for these specific macros is "identifying
+          macros." The identifying macros also share with BOOST_VMD_IS_EMPTY
+          the inherent flaw mentioned when discussing BOOST_VMD_IS_EMPTY prior to
+          the C++20 standard, since they themselves use BOOST_VMD_IS_EMPTY to determine
+          that the input has ended.
+        </p>
+<p>
+          To recapitulate the flaw with BOOST_VMD_IS_EMPTY prior to C++20:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              using a standard C++ compiler if the input ends with the name of a
+              function-like macro, and that macro takes two or more parameters, a
+              preprocessing error will occur.
+            </li>
+<li class="listitem">
+              using the VC++ compiler with its default preprocessor if the input
+              consists of the name of a function-like macro, and that macro when
+              invoked with no parameters returns a tuple, the macro erroneously returns
+              1, meaning that the input is empty.
+            </li>
+<li class="listitem">
+              even if the function-like macro takes one parameter, passing emptiness
+              to that macro could cause a preprocessing error.
+            </li>
+</ul></div>
+<p>
+          The obvious way to avoid the BOOST_VMD_IS_EMPTY problem with the identifying
+          macros is to design input so that the name of a function-like macro is
+          never passed as a parameter. This can be done, if one uses VMD and has
+          situations where the input could contain a function-like macro name, by
+          having that function-like macro name placed within a Boost PP data type,
+          such as a tuple, without attempting to identify the type of the tuple element
+          using VMD. In other word if the input is:
+        </p>
+<pre class="programlisting"><span class="special">(</span> <span class="identifier">SOME_FUNCTION_MACRO_NAME</span> <span class="special">)</span>
+</pre>
+<p>
+          and we have the macro definition:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#define</span> <span class="identifier">SOME_FUNCTION_MACRO_NAME</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">y</span><span class="special">)</span> <span class="identifier">some_output</span>
+</pre>
+<p>
+          VMD can still parse the input as a tuple, if desired, using BOOST_VMD_IS_TUPLE
+          without encountering the BOOST_VMD_IS_EMPTY problem. However if the input
+          is:
+        </p>
+<pre class="programlisting"><span class="identifier">SOME_FUNCTION_MACRO_NAME</span>
+</pre>
+<p>
+          either directly or through accessing the above tuple's first element, and
+          the programmer attempts to use BOOST_VMD_IS_IDENTIFIER with this input,
+          the BOOST_VMD_IS_EMPTY problem will occur.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_sptable"></a><a class="link" href="vmd_specific_generic.html#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_sptable" title="Summing up the specific VMD macros">Summing
+        up the specific VMD macros</a>
+</h4></div></div></div>
+<p>
+          The VMD specific identifying macros test the input for VMD data types.
+          The macros are represented by this table:
+        </p>
+<div class="table">
+<a name="variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_sptable.tspecm"></a><p class="title"><b>Table 1.2. Specific identifying macros</b></p>
+<div class="table-contents"><table class="table" summary="Specific identifying macros">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Function
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_EMPTY
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is empty
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_GENERAL_IDENTIFIER
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input has the general VMD identifier syntax
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_IDENTIFIER
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a specific VMD identifier
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_NUMBER
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a VMD number
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_TYPE
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a VMD type
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_ARRAY
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a Boost PP array
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_LIST
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a Boost PP list
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_SEQ
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a Boost PP seq
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_TUPLE
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a Boost PP tuple
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_EMPTY_ARRAY
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a Boost PP empty array
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_EMPTY_LIST
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is a Boost PP empty list
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    BOOST_VMD_IS_PARENS_EMPTY
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests if the input is empty parenthesis
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.f0" class="footnote"><p><a href="#variadic_macro_data.vmd_specific_generic.vmd_specific.vmd_test_empty.f0" class="para"><sup class="para">[1] </sup></a>
+            For VC++ 8 the input is not variadic data but a single parameter
+          </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_data_types.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_specific_generic/vmd_generic.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
