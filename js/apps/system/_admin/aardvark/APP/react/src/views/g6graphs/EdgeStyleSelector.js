@@ -7,7 +7,17 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
   const strokeColorInput = React.createRef();
   const lineWidthInput = React.createRef();
 
-  const typeModel = {};
+  const labelModel = {
+      label: {
+        fill: "#fff",
+        fontSize: 12,
+        background: {
+          fill: "lightgreen",
+          radius: 8,
+          stroke: "#000"
+        }
+      }
+  };
 
   const styles = [
     {
@@ -38,9 +48,9 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
 
   const handleChange = type => {
     const typeModelMerged = {
-      ...typeModel,
       type: type,
       style: {
+        ...labelModel,
         stroke: strokeColorInput.current.value,
         lineWidth: (lineWidthInput.current.value ? lineWidthInput.current.value : 2),
         endArrow: true,
@@ -56,7 +66,6 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
           <input name="strokecolor" type="color" style={{ width: '200px', height: '20px' }} ref={strokeColorInput} />
           <label for="linewidth">Line width</label>
           <input name="linewidth" type="input" style={{ width: '200px' }} placeholder="5" ref={lineWidthInput} />
-          <label for="endarrow">End arrow</label>
           <label for="edgetype">Type</label>
           <Select name="edgeType" style={{ width: '200px' }} value={type} onChange={handleChange}>
             {styles.map(style => {
