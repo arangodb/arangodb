@@ -28,6 +28,7 @@
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
 #include "Basics/VelocyPackHelper.h"
+#include "GeoIndex/Covering.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -361,6 +362,198 @@ class RDBNearIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 
+class RDBCoveringIterator final : public IndexIterator {
+ public:
+  /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
+  RDBCoveringIterator(LogicalCollection* collection, transaction::Methods* trx,
+                      RocksDBGeoIndex const* index, geo::QueryParams&& params)
+      : IndexIterator(collection, trx, ReadOwnWrites::no),
+        // geo index never needs to observe own writes since it cannot be used
+        // for an UPSERT subquery
+        _index(index),
+        _covering(std::move(params)) {
+    RocksDBTransactionMethods* mthds =
+        RocksDBTransactionState::toMethods(trx, _collection->id());
+    _iter = mthds->NewIterator(_index->columnFamily(), {});
+    TRI_ASSERT(_index->columnFamily()->GetID() ==
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::GeoIndex)
+                   ->GetID());
+  }
+
+  char const* typeName() const override {
+    return "geo-index-covering-iterator";
+  }
+
+  /// internal retrieval loop
+  template<typename F>
+  inline bool nextToken(F&& cb, size_t limit) {
+    if (_covering.isDone()) {
+      // we already know that no further results will be returned by the index
+      return false;
+    }
+
+    while (limit > 0 && !_covering.isDone()) {
+      while (limit > 0 && _covering.hasNext()) {
+        if (std::forward<F>(cb)(_covering.getNext())) {
+          limit--;
+        }
+        _covering.next();
+      }
+      // need to fetch more geo results
+      if (limit > 0 && !_covering.isDone()) {
+        performScan();
+      }
+    }
+    return !_covering.isDone();
+  }
+
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override {
+    return nextToken(
+        [this, &cb](LocalDocumentId const& docid) -> bool {
+          bool result = true;  // this is updated by the callback
+          if (!_collection->getPhysical()
+                   ->read(
+                       _trx, docid,
+                       [&](LocalDocumentId const&, VPackSlice doc) {
+                         geo::FilterType const ft = _covering.filterType();
+                         geo::ShapeContainer const& filter =
+                             _covering.filterShape();
+                         TRI_ASSERT(filter.type() !=
+                                    geo::ShapeContainer::Type::EMPTY);
+                         geo::ShapeContainer test;
+                         Result res = _index->shape(doc, test);
+                         TRI_ASSERT(res.ok());  // this should never fail here
+                         if (res.fail() ||
+                             (ft == geo::FilterType::CONTAINS &&
+                              !filter.contains(&test)) ||
+                             (ft == geo::FilterType::INTERSECTS &&
+                              !filter.intersects(&test))) {
+                           result = false;
+                           return false;
+                         }
+                         cb(docid, doc);  // return document
+                         result = true;
+                         return true;
+                         // geo index never needs to observe own writes
+                       },
+                       ReadOwnWrites::no)
+                   .ok()) {
+            return false;  // ignore document
+          }
+          return result;
+        },
+        limit);
+  }
+
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+    return nextToken(
+        [this, &cb](LocalDocumentId const& docid) -> bool {
+          geo::FilterType const ft = _covering.filterType();
+          if (ft != geo::FilterType::NONE) {
+            geo::ShapeContainer const& filter = _covering.filterShape();
+            TRI_ASSERT(!filter.empty());
+            bool result = true;  // this is updated by the callback
+            if (!_collection->getPhysical()
+                     ->read(
+                         _trx, docid,
+                         [&](LocalDocumentId const&, VPackSlice doc) {
+                           geo::ShapeContainer test;
+                           Result res = _index->shape(doc, test);
+                           TRI_ASSERT(res.ok());  // this should never fail here
+                           if (res.fail() ||
+                               (ft == geo::FilterType::CONTAINS &&
+                                !filter.contains(&test)) ||
+                               (ft == geo::FilterType::INTERSECTS &&
+                                !filter.intersects(&test))) {
+                             result = false;
+                             return false;
+                           }
+                           return true;
+                           // geo index never needs to observe own writes
+                         },
+                         ReadOwnWrites::no)
+                     .ok()) {
+              return false;
+            }
+            if (!result) {
+              return false;
+            }
+          }
+
+          cb(docid);  // return result
+          return true;
+        },
+        limit);
+  }
+
+  void resetImpl() override { _covering.reset(); }
+
+ private:
+  // we need to get intervals representing areas in a ring (annulus)
+  // around our target point. We need to fetch them ALL and then sort
+  // found results in a priority list according to their distance
+  void performScan() {
+    rocksdb::Comparator const* cmp = _index->comparator();
+    // list of sorted intervals to scan
+    std::vector<geo::Interval> const scan = _covering.intervals();
+    // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " <<
+    // scan.size(); size_t seeks = 0;
+
+    for (size_t i = 0; i < scan.size(); i++) {
+      geo::Interval const& it = scan[i];
+      TRI_ASSERT(it.range_min <= it.range_max);
+      RocksDBKeyBounds bds = RocksDBKeyBounds::GeoIndex(
+          _index->objectId(), it.range_min.id(), it.range_max.id());
+
+      // intervals are sorted and likely consecutive, try to avoid seeks
+      // by checking whether we are in the range already
+      bool seek = true;
+      if (i > 0) {
+        TRI_ASSERT(scan[i - 1].range_max < it.range_min);
+        if (!_iter->Valid()) {  // no more valid keys after this
+          break;
+        } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
+          continue;  // beyond range already
+        } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
+          seek = false;  // already in range: min <= key <= max
+          TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
+        } else {  // cursor is positioned below min range key
+          TRI_ASSERT(cmp->Compare(_iter->key(), bds.start()) < 0);
+          int k = 10;  // try to catch the range
+          while (k > 0 && _iter->Valid() &&
+                 cmp->Compare(_iter->key(), bds.start()) < 0) {
+            _iter->Next();
+            --k;
+          }
+          seek =
+              !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
+        }
+      }
+
+      if (seek) {  // try to avoid seeking at all cost
+        // LOG_TOPIC("0afaa", INFO, Logger::ENGINES) << "[Scan] seeking:" <<
+        // it.min; seeks++;
+        _iter->Seek(bds.start());
+      }
+
+      while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
+        _covering.reportFound(RocksDBKey::indexDocumentId(_iter->key()),
+                              RocksDBValue::centroid(_iter->value()));
+        _iter->Next();
+      }
+
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iter.get());
+    }
+  }
+
+ private:
+  RocksDBGeoIndex const* _index;
+  geo_index::CoveringUtils _covering;
+  std::unique_ptr<rocksdb::Iterator> _iter;
+};
+
 RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info,
                                  std::string const& typeName)
@@ -509,6 +702,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
 
+  LOG_DEVEL << "Query params for geo index: " << params.toString();
+
   if (params.ascending) {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(
         &_collection, trx, this, std::move(params));
@@ -608,3 +803,4 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   }
   return res;
 }
+
