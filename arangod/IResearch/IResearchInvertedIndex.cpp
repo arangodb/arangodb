@@ -142,7 +142,8 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 AnalyzerProvider makeAnalyzerProvider(InvertedIndexFieldMeta const& meta) {
-  static FieldMeta::Analyzer defaultAnalyzer = FieldMeta::Analyzer();
+  static FieldMeta::Analyzer defaultAnalyzer =
+      FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
   AnalyzerProvider analyzerProvider =
       [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
           std::string_view ex) -> FieldMeta::Analyzer const& {

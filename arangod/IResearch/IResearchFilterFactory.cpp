@@ -4393,10 +4393,8 @@ namespace iresearch {
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
-==== BASE ====
-  FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
-  FilterContext const filterCtx(analyzer, irs::no_boost());
-==== BASE ====
+  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+  FilterContext const filterCtx(analyzer, irs::no_boost(), forSearch, provider);
 
   const auto res = ::filter(filter, ctx, filterCtx, node);
 

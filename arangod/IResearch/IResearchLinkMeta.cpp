@@ -337,8 +337,6 @@ bool FieldMeta::init(
     }
   }
 
-  static const std::string fieldsFieldName("fields");
-  mask->_fields = slice.hasKey(fieldsFieldName);
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
@@ -357,35 +355,35 @@ bool FieldMeta::init(
       if (!field.isObject()) {
         errorField = kFieldName;
 
-      return false;
-    }
+        return false;
+      }
 
-    auto subDefaults = *this;
+      auto subDefaults = *this;
 
       // do not inherit fields and overrides from this field
       subDefaults._fields.clear();
       _fields.clear();  // reset to match either defaults or read values exactly
 
-    for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
-      auto key = itr.key();
-      auto value = itr.value();
+      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+        auto key = itr.key();
+        auto value = itr.value();
 
         if (!key.isString()) {
           errorField = std::string{kFieldName} + "[" +
                        basics::StringUtils::itoa(itr.index()) + "]";
 
-        return false;
-      }
+          return false;
+        }
 
-      auto name = key.copyString();
+        auto name = key.copyString();
 
         if (!value.isObject()) {
           errorField = std::string{kFieldName} + "." + name;
 
-        return false;
-      }
+          return false;
+        }
 
-      std::string childErrorField;
+        std::string childErrorField;
 
         if (!_fields[name]->init(server, value, childErrorField, defaultVocbase,
                                  version, subDefaults, referencedAnalyzers,
@@ -393,11 +391,11 @@ bool FieldMeta::init(
           errorField =
               std::string{kFieldName} + "." + name + "." + childErrorField;
 
-        return false;
+          return false;
+        }
       }
     }
   }
-
   return true;
 }
 
