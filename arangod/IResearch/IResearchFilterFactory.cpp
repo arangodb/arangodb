@@ -2304,7 +2304,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
     return rv;
   }
 
-  arangodb::iresearch::FieldMeta::Analyzer analyzerValue;  // default analyzer
+  // default analyzer
+  FieldMeta::Analyzer analyzerValue{IResearchAnalyzerFeature::identity()};
   auto& analyzer = analyzerValue._pool;
   auto& shortName = analyzerValue._shortName;
 
@@ -2330,9 +2331,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
                   .append("'")};
     }
 
-    shortName =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-            analyzerId, ctx.trx->vocbase().name(), false);         // args
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+        analyzerId, ctx.trx->vocbase().name(), false);
   }
 
   FilterContext const subFilterContext(
@@ -4393,8 +4393,10 @@ namespace iresearch {
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
+==== BASE ====
   FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
-  FilterContext const filterCtx(analyzer, irs::no_boost(), forSearch, provider);
+  FilterContext const filterCtx(analyzer, irs::no_boost());
+==== BASE ====
 
   const auto res = ::filter(filter, ctx, filterCtx, node);
 

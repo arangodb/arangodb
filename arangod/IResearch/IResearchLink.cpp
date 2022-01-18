@@ -170,7 +170,7 @@ Result IResearchLink::drop() {
   return deleteDataStore();
 }
 
-Result IResearchLink::init(velocypack::Slice const& definition,
+Result IResearchLink::init(velocypack::Slice definition,
                            InitCallback const& initCallback) {
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {
@@ -181,11 +181,15 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   IResearchLinkMeta meta;
 
   // definition should already be normalized and analyzers created if required
-  if (!meta.init(_collection.vocbase().server(), definition, true, error,
+  if (!meta.init(_collection.vocbase().server(), definition, error,
                  _collection.vocbase().name())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "error parsing view link parameters from json: " + error};
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  checkAnalyzerFeatures(meta);
+#endif
 
   if (!definition.isObject()  // not object
       || !definition.get(StaticStrings::ViewIdField).isString()) {
@@ -465,12 +469,12 @@ bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
   IResearchLinkMeta other;
   std::string errorField;
 
-  return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    _collection.vocbase()
-                        .name())  // for db-server analyzer validation should
-                                  // have already passed on coordinator (missing
-                                  // analyzer == no match)
-         && _meta == other;
+  // for db-server analyzer validation should
+  // have already passed on coordinator (missing
+  // analyzer == no match)
+  return other.init(_collection.vocbase().server(), slice, errorField,
+                    _collection.vocbase().name()) &&
+         _meta == other;
 }
 
 Result IResearchLink::properties(velocypack::Builder& builder,
@@ -491,19 +495,20 @@ Result IResearchLink::properties(velocypack::Builder& builder,
 }
 
 Result IResearchLink::properties(IResearchViewMeta const& meta) {
-  // '_dataStore' can be asynchronously modified
-  auto lock = _asyncSelf->lock();
-
-  if (!_asyncSelf.get()) {
+  if (!_asyncSelf) {
     // the current link is no longer valid (checked after ReadLock acquisition)
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
             "failed to lock arangosearch link while modifying properties "
             "of arangosearch link '" +
                 std::to_string(id().id()) + "'"};
   }
+  // '_dataStore' can be asynchronously modified
+  auto lock = _asyncSelf->lock();
+  return propertiesUnsafe(meta);
+}
 
+Result IResearchLink::propertiesUnsafe(IResearchViewMeta const& meta) {
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
-
   {
     WRITE_LOCKER(writeLock,
                  _dataStore._mutex);  // '_meta' can be asynchronously modified

@@ -1,0 +1,35 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>static void _ub(Impl &amp;&amp;) - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../reference/policies/base.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../reference/policies/base.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../reference/policies/base/has_value.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>static void _ub(Impl &amp;&amp;)</code></h1></div></div></div>
+  <p>This is a special function which does compiler-specific stuff to tell the compiler that this function can never, ever, ever be executed. The compiler&rsquo;s optimiser will <strong>hard assume</strong> that this function can never be executed, and will prune the possibility of it being executed completely. Generally this means that the code path stops dead, and if execution does proceed down this path, it will run off the end of a branch which doesn&rsquo;t go anywhere. Your program will have lost known state, and usually it will trash memory and registers and crash.</p>
+
+<p>This may seem highly undesirable. However, it also means that the optimiser can optimise more strongly, and so long as you never actually do execute this branch, you do get higher quality code generation.</p>
+
+<p>If the <code>NDEBUG</code> macro is not defined, an <code>assert(false)</code> is present. This will cause attempts to execute this function to fail in a very obvious way, but it also generates runtime code to trigger the obvious failure.</p>
+
+<p>If the <code>NDEBUG</code> macro is defined, and the program is compiled with the undefined behaviour sanitiser, attempts to execute this function will trigger an undefined behaviour sanitiser action.</p>
+
+<p><em>Requires</em>: Always available.</p>
+
+<p><em>Complexity</em>: Zero runtime overhead if <code>NDEBUG</code> is defined, guaranteed. If this function returns, your program is now in hard loss of known program state. <em>Usually</em>, but not always, it will crash at some point later. <em>Rarely</em> it will corrupt registers and memory, and keep going.</p>
+
+<p><em>Guarantees</em>: An exception is never thrown.</p>
+
+
+        </div><p><small>Last revised: January 22, 2019 at 01:11:40 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../reference/policies/base.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../reference/policies/base.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../reference/policies/base/has_value.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

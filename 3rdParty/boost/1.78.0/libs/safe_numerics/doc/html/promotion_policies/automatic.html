@@ -1,0 +1,120 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>automatic</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Safe Numerics">
+<link rel="up" href="../promotion_policies.html" title="Promotion Policies">
+<link rel="prev" href="native.html" title="native">
+<link rel="next" href="cpp.html" title="cpp&lt;int C, int S, int I, int L, int LL&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="native.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../promotion_policies.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="cpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="safe_numerics.promotion_policies.automatic"></a>automatic</h4></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="idm462683972928"></a>Description</h5></div></div></div>
+<p>This type contains the meta-functions to return a type with
+    sufficient capacity to hold the result of a given binary arithmetic
+    operation.</p>
+<p>The standard C/C++ procedure for executing arithmetic operations on
+    operands of different types is:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>Convert operands to some common type using a somewhat
+          elaborate elaborate rules defined in the C++ standard.</p></li>
+<li class="listitem"><p>Execute the operation.</p></li>
+<li class="listitem"><p>If the result of the operation cannot fit in the common type
+          of the operands, discard the high order bits.</p></li>
+</ul></div>
+<p>The automatic promotion policy replaces the standard C/C++ procedure
+    for the following one:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+<p>Convert operands to some common type using to the following
+          rules.</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem"><p>For addition. If the operands are both unsigned the
+                common type will be unsigned. Otherwise it will be
+                signed.</p></li>
+<li class="listitem"><p>For subtraction, the common type will be signed.</p></li>
+<li class="listitem"><p>For left/right shift, the sign of the result will be the
+                sign of the left operand.</p></li>
+<li class="listitem"><p>For all other types of operants, if both operands are
+                unsigned the common type will be unsigned. Otherwise, it will
+                be signed.</p></li>
+</ul></div>
+</li>
+<li class="listitem"><p>Determine the smallest size of the signed or unsigned type
+          which can be guaranteed hold the result.</p></li>
+<li class="listitem"><p>If this size exceeds the maximum size supported by the
+          compiler, use the maximum size supported by the compiler.</p></li>
+<li class="listitem">
+<p>Execute the operation.</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem"><p>Convert each operand to the common type.</p></li>
+<li class="listitem"><p>If the result cannot be contained in the result type as
+                above, invoke an error procedure.</p></li>
+<li class="listitem"><p>Otherwise, return the result in the common type</p></li>
+</ul></div>
+</li>
+</ul></div>
+<p>This type promotion policy is applicable only to safe types whose
+    base type is an <a class="link" href="">Integer</a>
+    type.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="idm462683956272"></a>Model of</h5></div></div></div>
+<p><a class="link" href="promotion_policy.html" title="PromotionPolicy&lt;PP&gt;">PromotionPolicy</a></p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="idm462683954592"></a>Example of use</h5></div></div></div>
+<p>The following example illustrates the <code class="computeroutput">automatic</code> type
+    being passed as a template parameter for the type
+    <code class="computeroutput">safe&lt;int&gt;</code>.</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> 
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">automatic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+ 
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="special">)</span><span class="special">{</span>
+    <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">numeric</span><span class="special">;</span>
+    <span class="comment">// use automatic promotion policy where C++ standard arithmetic </span>
+    <span class="comment">// might lead to incorrect results</span>
+    <span class="keyword">using</span> <span class="identifier">safe_t</span> <span class="special">=</span> <span class="identifier">safe</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int8_t</span><span class="special">,</span> <span class="identifier">automatic</span><span class="special">&gt;</span><span class="special">;</span>
+
+    <span class="comment">// In such cases, there is no runtime overhead from using safe types.</span>
+    <span class="identifier">safe_t</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">127</span><span class="special">;</span>
+    <span class="identifier">safe_t</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">2</span><span class="special">;</span>
+    <span class="comment">// z is guaranteed correct without any runtime overhead or exception.</span>
+    <span class="keyword">auto</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> 
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="idm462683912512"></a>Header</h5></div></div></div>
+<p><code class="computeroutput"><a href="../../include/boost/safe_numerics/automatic.hpp" target="_top"><code class="computeroutput">#include
+    &lt;boost/safe_numerics/automatic.hpp&gt; </code></a></code></p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="native.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../promotion_policies.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="cpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

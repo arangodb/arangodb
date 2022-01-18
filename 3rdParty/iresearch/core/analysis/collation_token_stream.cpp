@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "collation_token_stream.hpp"
+#include "collation_token_stream_encoder.hpp"
 
 #include <unicode/locid.h>
 #include <unicode/coll.h>
@@ -224,7 +225,6 @@ constexpr size_t MAX_TOKEN_SIZE = 1 << 15;
 struct collation_token_stream::state_t {
   const options_t options;
   std::unique_ptr<icu::Collator> collator;
-  std::string utf8_buf;
   byte_type term_buf[MAX_TOKEN_SIZE];
 
   explicit state_t(const options_t& opts) :
@@ -269,26 +269,51 @@ bool collation_token_stream::reset(const string_ref& data) {
   const icu::UnicodeString icu_token = icu::UnicodeString::fromUTF8(
     icu::StringPiece(data.c_str(), static_cast<int32_t>(data.size())));
 
+  byte_type raw_term_buf[MAX_TOKEN_SIZE];
+  static_assert(sizeof raw_term_buf == sizeof state_->term_buf);
+
+  auto buf = state_->options.forceUtf8 ? raw_term_buf : state_->term_buf;
   int32_t term_size = state_->collator->getSortKey(
-    icu_token, state_->term_buf, sizeof state_->term_buf);
+    icu_token, buf, sizeof raw_term_buf);
 
   // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/classicu_1_1Collator.html
   // according to ICU docs sort keys are always zero-terminated,
   // there is no reason to store terminal zero in term dictionary
   assert(term_size > 0);
 
-  --term_size;
-  assert(0 == state_->term_buf[term_size]);
+  assert(0 == buf[term_size]);
 
-  if (term_size > static_cast<int32_t>(sizeof state_->term_buf)) {
+  --term_size;
+  if (term_size > static_cast<int32_t>(sizeof raw_term_buf)) {
     IR_FRMT_ERROR(
       "Collated token is %d bytes length which exceeds maximum allowed length of %d bytes",
-      term_size, static_cast<int32_t>(sizeof state_->term_buf));
+      term_size, static_cast<int32_t>(sizeof raw_term_buf));
     return false;
+  }
+  size_t termBufIdx = static_cast<size_t>(term_size);
+  if (state_->options.forceUtf8) {
+    // enforce valid UTF-8 string
+    assert(buf == raw_term_buf);
+    termBufIdx = 0;
+    for (size_t i = 0; i < term_size; ++i) {
+      assert(raw_term_buf[i] < kRecalcMap.size());
+      const auto [offset, size] = kRecalcMap[raw_term_buf[i]];
+      if ((termBufIdx + size) > sizeof state_->term_buf) {
+        IR_FRMT_ERROR(
+            "Collated token is more than %d bytes length after encoding.",
+            static_cast<int32_t>(sizeof state_->term_buf));
+        return false;
+      }
+      assert(size <= 2);
+      state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset];
+      if (size == 2) {
+        state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset + 1];
+      } 
+    }
   }
 
   std::get<term_attribute>(attrs_).value = {
-    state_->term_buf, static_cast<size_t>(term_size) };
+    state_->term_buf, termBufIdx};
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());

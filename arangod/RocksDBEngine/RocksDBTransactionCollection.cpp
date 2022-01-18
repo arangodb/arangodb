@@ -209,10 +209,14 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
     TRI_ASSERT(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
     TRI_ASSERT(_revision.isSet() && commitSeq != 0);
 
-    TRI_IF_FAILURE("RocksDBCommitCounts") { adj = 0; }
+    TRI_IF_FAILURE("RocksDBCommitCounts") {
+      adj = 0;
+      rcoll->meta().setTainted();
+    }
     TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
       if (RandomGenerator::interval(uint16_t(100)) >= 50) {
         adj = 0;
+        rcoll->meta().setTainted();
       }
     }
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);

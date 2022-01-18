@@ -876,8 +876,7 @@ TEST_F(IResearchDocumentTest,
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(
-      linkMeta.init(server.server(), linkMetaJson->slice(), false, error));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -1484,8 +1483,8 @@ TEST_F(IResearchDocumentTest,
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -1899,8 +1898,8 @@ TEST_F(
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -2311,8 +2310,8 @@ TEST_F(IResearchDocumentTest,
   auto sysVocbase = sysDatabase.use();
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(

@@ -99,7 +99,7 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log) {
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
+  spec.participantsConfig.participants[serverId] = {};
 
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
 
@@ -116,7 +116,7 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader) {
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
+  spec.participantsConfig.participants[serverId] = {};
   spec.currentTerm->leader =
       agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
@@ -140,7 +140,7 @@ TEST_F(ReplicationMaintenanceActionTest,
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
+  spec.participantsConfig.participants[serverId] = {};
   spec.currentTerm->leader =
       agency::LogPlanTermSpecification::Leader{serverId, RebootId{18}};
 
@@ -163,8 +163,8 @@ TEST_F(ReplicationMaintenanceActionTest,
   spec.id = logId;
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
-  spec.currentTerm->participants[serverId] = {};
-  spec.currentTerm->participants[followerId] = {};
+  spec.participantsConfig.participants[serverId] = {};
+  spec.participantsConfig.participants[followerId] = {};
   spec.currentTerm->leader =
       agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 

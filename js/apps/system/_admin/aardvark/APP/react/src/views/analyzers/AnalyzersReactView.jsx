@@ -7,7 +7,7 @@ import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { facetedFilter, getChangeHandler, usePermissions } from '../../utils/helpers';
+import { facetedFilter, getChangeHandler, isAdminUser, usePermissions } from '../../utils/helpers';
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
@@ -150,9 +150,13 @@ const AnalyzersReactView = () => {
       <div className={'contentDiv'} id={'analyzersContent'} style={{ paddingTop: 0 }}>
         <Grid>
           <Cell size={'1'}>
-            <div className={'sectionHeader'}>
-              <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
-            </div>
+            {
+              isAdminUser(permissions)
+                ? <div className={'sectionHeader'}>
+                  <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
+                </div>
+                : null
+            }
             <ArangoTable className={'arango-table'}>
               <thead>
               <tr>

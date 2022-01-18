@@ -3,11 +3,13 @@ import ajvErrors from 'ajv-errors';
 import {
   AnalyzerTypeState,
   AqlState,
+  ClassificationState,
   CollationState,
   DelimiterState,
   formSchema,
   GeoJsonState,
   GeoPointState,
+  NearestNeighborsState,
   NGramState,
   NormState,
   PipelineStates,
@@ -30,6 +32,8 @@ import PipelineForm from "./forms/PipelineForm";
 import StopwordsForm from "./forms/StopwordsForm";
 import CollationForm from "./forms/CollationForm";
 import SegmentationForm from "./forms/SegmentationForm";
+import NearestNeighborsForm from "./forms/NearestNeighborsForm";
+import ClassificationForm from "./forms/ClassificationForm";
 
 const ajv = new Ajv({
   allErrors: true,
@@ -101,6 +105,18 @@ export function getForm (formProps: FormProps<AnalyzerTypeState>) {
       const { disabled, dispatch, formState } = getConstrainedFormProps<SegmentationState>(formProps);
 
       return <SegmentationForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
+
+    case 'nearest_neighbors': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<NearestNeighborsState>(formProps);
+
+      return <NearestNeighborsForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
+
+    case 'classification': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<ClassificationState>(formProps);
+
+      return <ClassificationForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
     }
 
     case 'pipeline': {

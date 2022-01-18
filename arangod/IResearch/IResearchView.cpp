@@ -377,12 +377,12 @@ Result IResearchView::appendVelocyPackImpl(velocypack::Builder& builder,
     return {};
   }
 
-  static const std::function<bool(irs::string_ref const& key)>
-      propertiesAcceptor = [](irs::string_ref const& key) -> bool {
-    return key != StaticStrings::VersionField;  // ignored fields
+  std::function<bool(irs::string_ref key)> const propertiesAcceptor =
+      [](std::string_view key) -> bool {
+    return key != StaticStrings::VersionField;
   };
-  static const std::function<bool(irs::string_ref const& key)>
-      persistenceAcceptor = [](irs::string_ref const&) -> bool { return true; };
+  std::function<bool(irs::string_ref key)> const persistenceAcceptor =
+      [](std::string_view) -> bool { return true; };
 
   auto* acceptor = &propertiesAcceptor;
 
@@ -511,10 +511,10 @@ Result IResearchView::appendVelocyPackImpl(velocypack::Builder& builder,
 
       linkBuilder.close();
 
-      static const auto acceptor = [](irs::string_ref const& key) -> bool {
+      auto const acceptor = [](std::string_view key) -> bool {
         return key != arangodb::StaticStrings::IndexId &&
                key != arangodb::StaticStrings::IndexType &&
-               key != StaticStrings::ViewIdField;  // ignored fields
+               key != StaticStrings::ViewIdField;
       };
 
       linksBuilder.add(collection->name(),
@@ -701,13 +701,13 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     _links.try_emplace(cid, link);
   } else if (ServerState::instance()->isSingleServer() && !itr->second) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    linkPtr->propertiesUnsafe(_meta);
 
     return {};  // single-server persisted cid placeholder substituted with
                 // actual link
   } else if (itr->second && itr->second->empty()) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    linkPtr->propertiesUnsafe(_meta);
 
     return {};  // a previous link instance was unload()ed and a new instance is
                 // linking
@@ -729,7 +729,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     return res;
   }
 
-  return linkPtr->properties(_meta);
+  return linkPtr->propertiesUnsafe(_meta);
 }
 
 Result IResearchView::commit() {
