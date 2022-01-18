@@ -123,10 +123,10 @@ struct executor::deserialize_plan_executor<validate<D, V>, H> {
   template<typename ctx>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, ctx&& c) -> result_type {
-    auto result = deserialize<D, H, ctx>(s, hints, std::forward<ctx>(c));
+    auto result = deserialize<D, H, ctx>(s, hints, c);
 
     if (result) {
-      V validator = validator::construct_validator<V>(std::forward<ctx>(c));
+      V validator = validator::construct_validator<V>(c);
 
       using validator_result_type = std::optional<deserialize_error>;
 
