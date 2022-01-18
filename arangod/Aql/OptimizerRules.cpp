@@ -59,7 +59,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
@@ -193,7 +192,7 @@ void replaceGatherNodeVariables(
   using EN = arangodb::aql::ExecutionNode;
 
   std::string cmp;
-  arangodb::basics::StringBuffer buffer(128, false);
+  std::string buffer;
 
   // look for all sort elements in the GatherNode and replace them
   // if they match what we have changed
@@ -219,18 +218,13 @@ void replaceGatherNodeVariables(
         auto* expr = arangodb::aql::ExecutionNode::castTo<
                          arangodb::aql::CalculationNode const*>(setter)
                          ->expression();
-        try {
-          // stringifying an expression may fail with "too long" error
-          buffer.clear();
-          expr->stringify(&buffer);
-          if (cmp.size() == buffer.size() &&
-              cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
-            // finally a match!
-            it.var = it3.second;
-            it.attributePath.clear();
-            break;
-          }
-        } catch (...) {
+        buffer.clear();
+        expr->stringify(buffer);
+        if (cmp == buffer) {
+          // finally a match!
+          it.var = it3.second;
+          it.attributePath.clear();
+          break;
         }
       }
     }
@@ -1215,7 +1209,7 @@ void arangodb::aql::removeRedundantSortsRule(
   }
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
-  arangodb::basics::StringBuffer buffer;
+  std::string buffer;
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -1225,7 +1219,7 @@ void arangodb::aql::removeRedundantSortsRule(
 
     auto const sortNode = ExecutionNode::castTo<SortNode*>(n);
 
-    auto sortInfo = sortNode->getSortInformation(plan.get(), &buffer);
+    auto sortInfo = sortNode->getSortInformation(plan.get(), buffer);
 
     if (sortInfo.isValid && !sortInfo.criteria.empty()) {
       // we found a sort that we can understand
@@ -1244,7 +1238,7 @@ void arangodb::aql::removeRedundantSortsRule(
 
           auto other =
               ExecutionNode::castTo<SortNode*>(current)->getSortInformation(
-                  plan.get(), &buffer);
+                  plan.get(), buffer);
 
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
@@ -2621,7 +2615,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  arangodb::basics::StringBuffer buffer;
+  std::string buffer;
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -2635,16 +2629,15 @@ void arangodb::aql::removeRedundantCalculationsRule(
     arangodb::aql::Variable const* outvar = nn->outVariable();
 
     try {
-      nn->expression()->stringifyIfNotTooLong(&buffer);
+      buffer.clear();
+      nn->expression()->stringifyIfNotTooLong(buffer);
     } catch (...) {
       // expression could not be stringified (maybe because not all node types
       // are supported). this is not an error, we just skip the optimization
-      buffer.reset();
       continue;
     }
 
-    std::string const referenceExpression(buffer.c_str(), buffer.length());
-    buffer.reset();
+    std::string const referenceExpression(std::move(buffer));
 
     std::vector<ExecutionNode*> stack;
     n->dependencies(stack);
@@ -2655,54 +2648,49 @@ void arangodb::aql::removeRedundantCalculationsRule(
 
       if (current->getType() == EN::CALCULATION) {
         try {
+          buffer.clear();
           // ExecutionNode::castTo<CalculationNode*>(current)->expression()->node()->dump(0);
-          ExecutionNode::castTo<CalculationNode*>(current)
+          ExecutionNode::castTo<CalculationNode const*>(current)
               ->expression()
-              ->stringifyIfNotTooLong(&buffer);
+              ->stringifyIfNotTooLong(buffer);
+
+          if (buffer == referenceExpression) {
+            // expressions are identical
+            // check if target variable is already registered as a replacement
+            // this covers the following case:
+            // - replacements is set to B => C
+            // - we're now inserting a replacement A => B
+            // the goal now is to enter a replacement A => C instead of A => B
+            auto target = ExecutionNode::castTo<CalculationNode const*>(current)
+                              ->outVariable();
+            while (target != nullptr) {
+              auto it = replacements.find(target->id);
+
+              if (it != replacements.end()) {
+                target = (*it).second;
+              } else {
+                break;
+              }
+            }
+            replacements.emplace(outvar->id, target);
+
+            // also check if the insertion enables further shortcuts
+            // this covers the following case:
+            // - replacements is set to A => B
+            // - we have just inserted a replacement B => C
+            // the goal now is to change the replacement A => B to A => C
+            for (auto it = replacements.begin(); it != replacements.end();
+                 ++it) {
+              if ((*it).second == outvar) {
+                (*it).second = target;
+              }
+            }
+          }
         } catch (...) {
           // expression could not be stringified (maybe because not all node
           // types are supported). this is not an error, we just skip the
           // optimization
-          buffer.reset();
           continue;
-        }
-
-        bool const isEqual =
-            (buffer.length() == referenceExpression.size() &&
-             memcmp(buffer.c_str(), referenceExpression.c_str(),
-                    buffer.length()) == 0);
-        buffer.reset();
-
-        if (isEqual) {
-          // expressions are identical
-          // check if target variable is already registered as a replacement
-          // this covers the following case:
-          // - replacements is set to B => C
-          // - we're now inserting a replacement A => B
-          // the goal now is to enter a replacement A => C instead of A => B
-          auto target = ExecutionNode::castTo<CalculationNode const*>(current)
-                            ->outVariable();
-          while (target != nullptr) {
-            auto it = replacements.find(target->id);
-
-            if (it != replacements.end()) {
-              target = (*it).second;
-            } else {
-              break;
-            }
-          }
-          replacements.emplace(outvar->id, target);
-
-          // also check if the insertion enables further shortcuts
-          // this covers the following case:
-          // - replacements is set to A => B
-          // - we have just inserted a replacement B => C
-          // the goal now is to change the replacement A => B to A => C
-          for (auto it = replacements.begin(); it != replacements.end(); ++it) {
-            if ((*it).second == outvar) {
-              (*it).second = target;
-            }
-          }
         }
       }
 

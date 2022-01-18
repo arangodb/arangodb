@@ -30,14 +30,17 @@
 #include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 
 namespace aql {
+class AqlFunctionsInternalCache;
 class AqlItemBlock;
 struct AstNode;
 class ExecutionEngine;
 class QueryContext;
-class AqlFunctionsInternalCache;
+struct Variable;
 }  // namespace aql
 
 namespace iresearch {
@@ -102,14 +105,12 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
-  virtual bool isDataFromCollection(
-      aql::Variable const* variable) const override {
-    return variable->isDataFromCollection;
-  }
+  void setVariable(arangodb::aql::Variable const* variable,
+                   arangodb::velocypack::Slice value) override;
+  void clearVariable(arangodb::aql::Variable const* variable) override;
 
-  virtual aql::AqlValue getVariableValue(aql::Variable const* variable,
-                                         bool doCopy,
-                                         bool& mustDestroy) const override;
+  aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
+                                 bool& mustDestroy) const override;
 
   inline aql::Variable const& outVariable() const noexcept { return _outVar; }
   inline VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
@@ -119,6 +120,11 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   aql::Variable const& _outVar;
   VarInfoMap const& _varInfoMap;
   int const _nodeDepth;
+
+  // variables only temporarily valid during execution
+  std::unordered_map<arangodb::aql::Variable const*,
+                     arangodb::velocypack::Slice>
+      _variables;
 };  // ViewExpressionContext
 
 }  // namespace iresearch

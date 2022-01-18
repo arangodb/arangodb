@@ -216,6 +216,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::
   auto tmpVar = _options.getTempVar();
   bool mustDestroy = false;
   auto ctx = _options.getExpressionContext();
+  // TODO: leaks!
   aql::AqlValue tmpVal{value};
   ctx.setVariableValue(tmpVar, tmpVal);
   aql::AqlValue res = expression->execute(&ctx, mustDestroy);

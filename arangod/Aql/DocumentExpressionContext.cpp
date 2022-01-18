@@ -24,6 +24,7 @@
 #include "DocumentExpressionContext.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Variable.h"
 
 using namespace arangodb::aql;
 
@@ -33,13 +34,21 @@ DocumentExpressionContext::DocumentExpressionContext(
     arangodb::velocypack::Slice document) noexcept
     : QueryExpressionContext(trx, query, cache), _document(document) {}
 
-AqlValue DocumentExpressionContext::getVariableValue(Variable const*,
+AqlValue DocumentExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  if (doCopy) {
-    mustDestroy = true;  // as we are copying
-    return AqlValue(AqlValueHintCopy(_document.start()));
+  if (!_variables.empty()) {
+    auto it = _variables.find(variable);
+
+    if (it != _variables.end()) {
+      // copy the slice we found
+      mustDestroy = true;
+      return AqlValue((*it).second);
+    }
   }
-  mustDestroy = false;
-  return AqlValue(AqlValueHintDocumentNoCopy(_document.start()));
+  mustDestroy = doCopy;
+  if (doCopy) {
+    return AqlValue(AqlValueHintSliceCopy(_document));
+  }
+  return AqlValue(AqlValueHintSliceNoCopy(_document));
 }

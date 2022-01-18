@@ -31,22 +31,26 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-bool FixedVarExpressionContext::isDataFromCollection(
-    Variable const* variable) const {
-  return false;
-}
-
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = false;
+  if (!_variables.empty()) {
+    auto it = _variables.find(variable);
+
+    if (it != _variables.end()) {
+      // copy the slice we found
+      mustDestroy = true;
+      return AqlValue((*it).second);
+    }
+  }
+
   auto it = _vars.find(variable);
   if (it == _vars.end()) {
     TRI_ASSERT(false);
     return AqlValue(AqlValueHintNull());
   }
+  mustDestroy = doCopy;
   if (doCopy) {
-    mustDestroy = true;
     return it->second.clone();
   }
   return it->second;
@@ -84,34 +88,11 @@ FixedVarExpressionContext::FixedVarExpressionContext(
 
 SingleVarExpressionContext::SingleVarExpressionContext(
     transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache, Variable* var, AqlValue val)
-    : QueryExpressionContext(trx, context, cache),
-      _variable(var),
-      _value(val) {}
-
-SingleVarExpressionContext::SingleVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
     AqlFunctionsInternalCache& cache)
-    : SingleVarExpressionContext(trx, context, cache, nullptr,
-                                 AqlValue(AqlValueHintNull())) {}
+    : QueryExpressionContext(trx, context, cache) {}
 
-SingleVarExpressionContext::~SingleVarExpressionContext() { _value.destroy(); }
-
-bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
-  return false;
-}
-
-AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
-                                                      bool&) const {
-  if (var == _variable) {
-    return _value;
-  } else {
-    return AqlValue(AqlValueHintNull());
-  }
-}
-
-void SingleVarExpressionContext::setVariableValue(Variable* variable,
-                                                  AqlValue& value) {
-  _variable = variable;
-  _value = value;
+AqlValue SingleVarExpressionContext::getVariableValue(
+    Variable const* /*variable*/, bool /*doCopy*/,
+    bool& /*mustDestroy*/) const {
+  return AqlValue(AqlValueHintNull());
 }

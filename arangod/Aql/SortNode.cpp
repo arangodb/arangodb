@@ -35,7 +35,6 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -123,8 +122,8 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 }
 
 /// @brief returns all sort information
-SortInformation SortNode::getSortInformation(
-    ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
+SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
+                                             std::string& buffer) const {
   SortInformation result;
 
   auto const& elms = elements();
@@ -159,10 +158,10 @@ SortInformation SortNode::getSortInformation(
         result.isValid = false;
         return result;
       }
-      result.criteria.emplace_back(std::make_tuple(
-          const_cast<ExecutionNode const*>(setter),
-          std::string(buffer->c_str(), buffer->length()), (*it).ascending));
-      buffer->reset();
+      result.criteria.emplace_back(
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::move(buffer), (*it).ascending));
+      buffer.clear();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not

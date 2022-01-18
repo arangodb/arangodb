@@ -69,32 +69,27 @@ void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
-bool InAndOutRowExpressionContext::isDataFromCollection(
-    Variable const* variable) const {
-  for (size_t i = 0; i < _vars.size(); ++i) {
-    auto const& v = _vars[i];
-    if (v->id == variable->id) {
-      if (variable->isDataFromCollection) {
-        return true;
-      }
-      TRI_ASSERT(i < _regs.size());
-      if (i == _vertexVarIdx || i == _edgeVarIdx || i == _pathVarIdx) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 AqlValue InAndOutRowExpressionContext::getVariableValue(
     Variable const* variable, bool doCopy, bool& mustDestroy) const {
   TRI_ASSERT(_input.isInitialized());
+
+  if (!_variables.empty()) {
+    TRI_ASSERT(_variables.empty());
+    auto it = _variables.find(variable);
+
+    if (it != _variables.end()) {
+      // copy the slice we found
+      mustDestroy = true;
+      return AqlValue((*it).second);
+    }
+  }
+
   for (size_t i = 0; i < _vars.size(); ++i) {
     auto const& v = _vars[i];
     if (v->id == variable->id) {
       TRI_ASSERT(i < _regs.size());
+      mustDestroy = doCopy;
       if (doCopy) {
-        mustDestroy = true;
         if (i == _vertexVarIdx) {
           return _vertexValue.clone();
         }
@@ -109,7 +104,6 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(
         TRI_ASSERT(regId < _input.getNumRegisters());
         return _input.getValue(regId).clone();
       } else {
-        mustDestroy = false;
         if (i == _vertexVarIdx) {
           return _vertexValue;
         }
@@ -147,13 +141,13 @@ bool InAndOutRowExpressionContext::needsPathValue() const {
 }
 
 void InAndOutRowExpressionContext::setVertexValue(velocypack::Slice v) {
-  _vertexValue = AqlValue(AqlValueHintDocumentNoCopy(v.begin()));
+  _vertexValue = AqlValue(AqlValueHintSliceNoCopy(v));
 }
 
 void InAndOutRowExpressionContext::setEdgeValue(velocypack::Slice e) {
-  _edgeValue = AqlValue(AqlValueHintDocumentNoCopy(e.begin()));
+  _edgeValue = AqlValue(AqlValueHintSliceNoCopy(e));
 }
 
 void InAndOutRowExpressionContext::setPathValue(velocypack::Slice p) {
-  _pathValue = AqlValue(AqlValueHintDocumentNoCopy(p.begin()));
+  _pathValue = AqlValue(AqlValueHintSliceNoCopy(p));
 }

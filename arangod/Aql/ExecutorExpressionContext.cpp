@@ -41,12 +41,21 @@ ExecutorExpressionContext::ExecutorExpressionContext(
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = false;
+  if (!_variables.empty()) {
+    auto it = _variables.find(variable);
+
+    if (it != _variables.end()) {
+      // copy the slice we found
+      mustDestroy = true;
+      return AqlValue((*it).second);
+    }
+  }
+
+  mustDestroy = doCopy;
   auto const searchId = variable->id;
   for (auto const& [varId, regId] : _varsToRegister) {
     if (varId == searchId) {
       if (doCopy) {
-        mustDestroy = true;  // as we are copying
         return _inputRow.getValue(regId).clone();
       }
       return _inputRow.getValue(regId);

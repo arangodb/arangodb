@@ -34,10 +34,9 @@
 
 #include <velocypack/Slice.h>
 
+#include <string>
+
 namespace arangodb {
-namespace basics {
-class StringBuffer;
-}
 
 namespace aql {
 class ExecutionBlock;
@@ -105,8 +104,7 @@ class SortNode : public ExecutionNode {
   SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
-  SortInformation getSortInformation(ExecutionPlan*,
-                                     arangodb::basics::StringBuffer*) const;
+  SortInformation getSortInformation(ExecutionPlan*, std::string& buffer) const;
 
   /// @brief simplifies the expressions of the sort node
   /// this will sort expressions if they are constant
