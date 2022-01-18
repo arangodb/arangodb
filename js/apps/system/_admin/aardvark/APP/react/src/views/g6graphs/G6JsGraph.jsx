@@ -11,6 +11,9 @@ import EdgeStyleSelector from './EdgeStyleSelector.js';
 import './tooltip.css';
 
 const G6JsGraph = () => {
+  const currentUrl = window.location.href;
+  const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
+  console.log('graphName: ', graphName);
   let [graphData, setGraphData] = useState(null);
   const ref = React.useRef(null);
   let graph = null;

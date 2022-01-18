@@ -43,6 +43,7 @@
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
       'g6graphs': 'g6GraphManagement',
+      'g6graphs/:name': 'showG6Graph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -331,8 +332,27 @@
     g6GraphManagement: function () {
       this.checkUser();
 
+      this.init.then(() => {
+        if (this.g6GraphManagementView) {
+          this.g6GraphManagementView.undelegateEvents();
+        }
+        this.g6GraphManagementView =
+          new window.G6GraphManagementView(
+            {
+              collection: new window.GraphCollection(),
+              collectionCollection: this.arangoCollectionsStore
+            }
+          );
+        this.g6GraphManagementView.render();
+      });
+    },
+
+    showG6Graph: function (name) {
+      this.checkUser();
+
       this.init.then(() => ReactDOM.render(React.createElement(window.G6GraphReactView),
-        document.getElementById('content')));
+        document.getElementById('content'))
+      );
     },
 
     cluster: function () {
