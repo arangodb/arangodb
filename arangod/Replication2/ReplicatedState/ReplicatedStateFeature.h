@@ -29,6 +29,7 @@
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
@@ -39,6 +40,8 @@ class LogLeader;
 namespace arangodb::replication2::replicated_state {
 
 struct ReplicatedStateFeature {
+
+
   /**
    * Registers a new State implementation with the given name.
    * @tparam S State Machine
@@ -110,6 +113,12 @@ struct ReplicatedStateFeature::InternalFactory : InternalFactoryBase,
   auto getStateFactory() -> std::shared_ptr<Factory> {
     return {shared_from_this(), static_cast<Factory*>(this)};
   }
+};
+
+struct ReplicatedStateAppFeature : application_features::ApplicationFeature,
+                                   ReplicatedStateFeature {
+  explicit ReplicatedStateAppFeature(
+      application_features::ApplicationServer& server);
 };
 
 }  // namespace arangodb::replication2::replicated_state

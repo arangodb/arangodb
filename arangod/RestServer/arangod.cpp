@@ -107,6 +107,8 @@
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
@@ -278,6 +280,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     // storage engines
     server.addFeature<ClusterEngine>();
     server.addFeature<RocksDBEngine>();
+
+    // add replicated state
+    server.addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
+    server.addFeature<replication2::replicated_state::black_hole::
+                          BlackHoleStateMachineFeature>();
 
     try {
       server.run(argc, argv);
