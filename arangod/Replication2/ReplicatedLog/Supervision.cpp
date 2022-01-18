@@ -298,10 +298,22 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
   auto pps = plan.participantsConfig.participants;
   //
   // Check whether a participant has been removed
-  for (auto const& [planParticipant, _] : pps) {
+  for (auto const& [planParticipant, flags] : pps) {
     if (!tps.contains(planParticipant)) {
-      return std::make_unique<RemoveParticipantFromPlanAction>(
-          plan.id, planParticipant, plan.participantsConfig.generation);
+      if (plan.currentTerm && plan.currentTerm->leader &&
+          plan.currentTerm->leader->serverId == planParticipant) {
+        auto desiredFlags = flags;
+        desiredFlags.excluded = true;
+        auto newTerm = *plan.currentTerm;
+        newTerm.term = LogTerm{newTerm.term.value + 1};
+        newTerm.leader.reset();
+        return std::make_unique<EvictLeaderAction>(
+            plan.id, planParticipant, desiredFlags, newTerm,
+            plan.participantsConfig.generation);
+      } else {
+        return std::make_unique<RemoveParticipantFromPlanAction>(
+            plan.id, planParticipant, plan.participantsConfig.generation);
+      }
     }
   }
   return std::make_unique<EmptyAction>();

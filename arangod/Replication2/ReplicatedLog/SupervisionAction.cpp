@@ -67,6 +67,9 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::UpdateLogConfigAction: {
       return "UpdateLogConfig";
     } break;
+    case Action::ActionType::EvictLeaderAction: {
+      return "EvictLeaderAction";
+    } break;
   }
   return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
          "is-a-bug";
@@ -177,6 +180,31 @@ auto DictateLeaderAction::execute(std::string dbName,
       .end();
 
   return envelope;
+}
+
+void EvictLeaderAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+}
+
+auto EvictLeaderAction::execute(std::string dbName,
+                                arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto path = paths::plan()->replicatedLogs()->database(dbName)->log(_id);
+
+  return envelope.write()
+      .emplace_object(
+          path->participantsConfig()->participants()->server(_leader)->str(),
+          [&](VPackBuilder& builder) { _flags.toVelocyPack(builder); })
+      .emplace_object(
+          path->currentTerm()->str(),
+          [&](VPackBuilder& builder) { _newTerm.toVelocyPack(builder); })
+      .inc(path->participantsConfig()->generation()->str())
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .isEqual(path->participantsConfig()->generation()->str(), _generation)
+      .end();
 }
 
 /*

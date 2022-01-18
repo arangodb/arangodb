@@ -42,6 +42,7 @@ struct Action {
     CreateInitialTermAction,
     UpdateTermAction,
     DictateLeaderAction,
+    EvictLeaderAction,
     LeaderElectionAction,
     UpdateParticipantFlagsAction,
     AddParticipantToPlanAction,
@@ -118,6 +119,30 @@ struct DictateLeaderAction : Action {
 
   LogId const _id;
   LogPlanTermSpecification _term;
+};
+
+struct EvictLeaderAction : Action {
+  EvictLeaderAction(LogId const& id, ParticipantId const& leader,
+                    ParticipantFlags const& flags,
+                    LogPlanTermSpecification const& newTerm,
+                    std::size_t generation)
+      : _id(id),
+        _leader{leader},
+        _flags{flags},
+        _newTerm{newTerm},
+        _generation{generation} {};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+  ActionType type() const override {
+    return Action::ActionType::EvictLeaderAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  LogId const _id;
+  ParticipantId _leader;
+  ParticipantFlags _flags;
+  LogPlanTermSpecification _newTerm;
+  std::size_t _generation;
 };
 
 struct UpdateTermAction : Action {
