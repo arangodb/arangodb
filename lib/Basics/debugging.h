@@ -218,6 +218,7 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
 }
 
 namespace debug {
+
 struct NoOpStream {
   template<typename T>
   auto operator<<(T const&) noexcept -> NoOpStream& {
@@ -233,6 +234,7 @@ struct AssertionLogger {
         file, line, function, expr,
         message.empty() ? nullptr : message.c_str());
   }
+
   // can be removed in C++20 because of LWG 1203
   void operator&(std::ostream const& stream) const {
     operator&(static_cast<std::ostringstream const&>(stream));
@@ -244,14 +246,9 @@ struct AssertionLogger {
   const char* expr;
 #endif
   void operator&(NoOpStream const&) const noexcept {}
-  static auto getOutputStream() -> std::ostringstream&& {
-    static thread_local std::ostringstream stream;
-    return std::move(stream);
-  }
 };
 
 }  // namespace debug
-
 }  // namespace arangodb
 
 /// @brief assert
@@ -264,7 +261,7 @@ struct AssertionLogger {
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \
-            ::arangodb::debug::AssertionLogger::getOutputStream()
+            std::ostringstream {}
 
 #else
 
