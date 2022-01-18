@@ -52,6 +52,7 @@ struct BlackHoleLogEntry {
 struct BlackHoleLeaderState
     : replicated_state::IReplicatedLeaderState<BlackHoleState> {
   auto write(std::string_view) -> LogIndex;
+
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;

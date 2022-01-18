@@ -26,9 +26,11 @@
 
 namespace arangodb::replication2::replicated_state::black_hole {
 
-struct BlackHoleStateMachineFeature : public application_features::ApplicationFeature {
-  explicit BlackHoleStateMachineFeature(application_features::ApplicationServer& server);
+struct BlackHoleStateMachineFeature
+    : public application_features::ApplicationFeature {
+  explicit BlackHoleStateMachineFeature(
+      application_features::ApplicationServer& server);
   void start() override;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_state::black_hole
