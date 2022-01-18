@@ -4,6 +4,9 @@ devel
 * Updated Enterprise license behavior: now there will be a 48 hour period for
   a new deployment and upgrade to provide the license. After that period, the
   read-only mode will be enforced.
+
+* Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
+
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
 * Updated Enterprise license behavior: now there will be a 48 hour period for a
