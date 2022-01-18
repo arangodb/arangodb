@@ -314,7 +314,7 @@ auto checkLogTargetConfig(LogTarget const& target,
     -> std::unique_ptr<Action> {
   if (target.config != plan.targetConfig) {
     // Validity check on config?
-    return std::make_unique<UpdateLogConfigAction>(target.config);
+    return std::make_unique<UpdateLogConfigAction>(plan.id, target.config);
   }
   return std::make_unique<EmptyAction>();
 }

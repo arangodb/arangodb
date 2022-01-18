@@ -371,9 +371,13 @@ auto UpdateLogConfigAction::execute(std::string dbName,
                   ->replicatedLogs()
                   ->database(dbName)
                   ->log(_id)
-                  ->currentTerm()
+                  ->targetConfig()
                   ->str();
-  return envelope;
+  return envelope.write()
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { _config.toVelocyPack(builder); })
+      .inc(paths::plan()->version()->str())
+      .end();
 }
 
 }  // namespace arangodb::replication2::replicated_log

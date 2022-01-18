@@ -222,7 +222,8 @@ struct RemoveParticipantFromPlanAction : Action {
 };
 
 struct UpdateLogConfigAction : Action {
-  UpdateLogConfigAction(LogConfig const& config) : _config(config){};
+  UpdateLogConfigAction(LogId const& id, LogConfig const& config)
+      : _id(id), _config(config){};
   ActionType type() const override {
     return Action::ActionType::UpdateLogConfigAction;
   };
