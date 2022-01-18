@@ -208,33 +208,3 @@ TEST_F(ReplicationMaintenanceActionTest,
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
   EXPECT_EQ(status.activeParticipantsConfig.generation, 2);
 }
-
-TEST_F(ReplicationMaintenanceActionTest,
-       create_replicated_log_excluded_participant) {
-  auto const logId = LogId{12};
-  auto const serverId = ParticipantId{"A"};
-  auto const followerId = ParticipantId{"B"};
-
-  agency::LogPlanSpecification spec;
-  spec.id = logId;
-  spec.currentTerm = agency::LogPlanTermSpecification{};
-  spec.currentTerm->term = LogTerm{8};
-  spec.participantsConfig.generation = 2;
-  spec.participantsConfig.participants[serverId] = {.forced = false, .excluded = false};
-  spec.participantsConfig.participants[followerId] = {.forced = false, .excluded = true};
-  spec.currentTerm->leader =
-      agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
-
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
-
-  ASSERT_EQ(logs.size(), 1);
-  auto& log = logs.at(logId);
-  EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  auto status =
-      std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
-  //EXPECT_EQ(status.follower.size(), 1);
-  EXPECT_EQ(status.follower.find(followerId), status.follower.end());
-  EXPECT_NE(status.follower.find(serverId), status.follower.end());
-  EXPECT_EQ(status.activeParticipantsConfig.generation, 2);
-}
-
