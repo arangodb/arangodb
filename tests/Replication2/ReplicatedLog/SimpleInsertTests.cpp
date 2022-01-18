@@ -45,10 +45,18 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{1}, leaderId);
+
+  auto config = LogConfig{2, 2, 2, false};
+  auto participantsConfig =
+      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+          .generation = 1,
+          .participants = {{leaderId, {}}, {followerId, {}}},
+      });
+
   auto leader = LogLeader::construct(
-      LoggerContext(Logger::REPLICATION2), _logMetricsMock, _optionsMock,
-      leaderId, std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
+      config, std::move(coreA), {follower}, std::move(participantsConfig),
+      leaderId, LogTerm{1}, LoggerContext(Logger::REPLICATION2),
+      _logMetricsMock, _optionsMock);
 
   auto countHistogramEntries = [](auto const& histogram) {
     auto [begin, end] =
@@ -243,10 +251,17 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
+
+  auto config = LogConfig{2, 2, 2, false};
+  auto participantsConfig =
+      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+          .generation = 1,
+          .participants = {{leaderId, {}}, {followerId, {}}},
+      });
+
   auto leader = LogLeader::construct(
-      defaultLogger(), _logMetricsMock, _optionsMock, leaderId,
-      std::move(coreA), LogTerm{3},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
+      config, std::move(coreA), {follower}, std::move(participantsConfig),
+      leaderId, LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
 
   {
     // Leader should know it spearhead, but commitIndex is 0
@@ -327,12 +342,21 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto follower_2 = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId_2, std::move(coreC),
       LogTerm{1}, leaderId);
-  // create leader with write concern 2
+
+  auto config = LogConfig{3, 3, 3, false};
+  auto participantsConfig =
+      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+          .generation = 1,
+          .participants = {{leaderId, {}},
+                           {followerId_1, {}},
+                           {followerId_2, {}}},
+      });
+
+  // create leader with write concern 3
   auto leader = LogLeader::construct(
-      defaultLogger(), _logMetricsMock, _optionsMock, leaderId,
-      std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2},
-      3);
+      config, std::move(coreA), {follower_1, follower_2},
+      std::move(participantsConfig), leaderId, LogTerm{1},
+      LoggerContext(Logger::REPLICATION2), _logMetricsMock, _optionsMock);
 
   auto index = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
@@ -395,7 +419,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 
   // handle append entries on second follower
   follower_2->runAsyncAppendEntries();
-  // now write concern 2 is reached, future is ready
+  // now write concern 3 is reached, future is ready
   // and update of commitIndex on both follower
   {
     ASSERT_TRUE(future.isReady());
@@ -492,11 +516,20 @@ TEST_F(ReplicatedLogTest,
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
+
+  auto config = LogConfig{1, 1, 1, false};
+  auto participantsConfig =
+      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+          .generation = 1,
+          .participants = {{leaderId, {}}, {followerId, {}}},
+      });
+
+  // create leader with write concern 2
   auto leader = LogLeader::construct(
-      defaultLogger(), _logMetricsMock, _optionsMock, leaderId,
-      std::move(coreA), LogTerm{3},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower},
-      1);  // set write concern to one
+      config, std::move(coreA), {follower}, std::move(participantsConfig),
+      leaderId, LogTerm{3}, LoggerContext(Logger::REPLICATION2),
+      _logMetricsMock, _optionsMock);
+
   leader->triggerAsyncReplication();
 
   {

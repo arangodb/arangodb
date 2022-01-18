@@ -45,5 +45,18 @@ auto TestReplicatedLog::becomeLeader(
   config.waitForSync = waitForSync;
   config.softWriteConcern = writeConcern;
   config.replicationFactor = follower.size();
-  return becomeLeader(config, id, term, follower, {});
+
+  auto participants =
+      std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+  for (auto const& participant : follower) {
+    participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+  }
+  auto participantsConfig =
+      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+          .generation = 1,
+          .participants = std::move(participants),
+      });
+
+  return becomeLeader(config, id, term, follower,
+                      std::move(participantsConfig));
 }

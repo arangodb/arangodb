@@ -41,10 +41,18 @@ TEST_F(ReplicatedLogTest, quick_status_compare) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{1}, leaderId);
+
+  auto config = LogConfig{2, 2, 2, false};
+  auto participantsConfig =
+      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+          .generation = 1,
+          .participants = {{leaderId, {}}, {followerId, {}}},
+      });
+
   auto leader = LogLeader::construct(
-      LoggerContext(Logger::REPLICATION2), _logMetricsMock, _optionsMock,
-      leaderId, std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
+      config, std::move(coreA), {follower}, std::move(participantsConfig),
+      leaderId, LogTerm{1}, LoggerContext(Logger::REPLICATION2),
+      _logMetricsMock, _optionsMock);
 
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
