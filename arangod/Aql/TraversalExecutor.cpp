@@ -99,7 +99,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
      */
     if (_traversalEnumerator != nullptr) {
       _traversalEnumerator->clear(false);  // TODO [GraphRefactor]: check -
-                                           // potentially call reset instead
+                                           //  potentially call reset instead
     }
     parseTraversalEnumerator(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,

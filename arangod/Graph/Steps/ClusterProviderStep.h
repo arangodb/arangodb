@@ -13,6 +13,7 @@ class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
   using StepType = EdgeType;
+  friend ClusterProvider<ClusterProviderStep>;
 
   class Vertex {
    public:
@@ -51,9 +52,9 @@ class ClusterProviderStep
   };
 
  private:
-  explicit ClusterProviderStep(const VertexType& v);
   ClusterProviderStep(const VertexType& v, const EdgeType& edge, size_t prev);
   ClusterProviderStep(VertexType v, EdgeType edge, size_t prev, bool fetched);
+  explicit ClusterProviderStep(const VertexType& v);
 
  public:
   ~ClusterProviderStep();

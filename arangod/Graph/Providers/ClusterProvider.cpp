@@ -113,7 +113,7 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  return {_opts.getCache()->persistString(vertex)};
+  return Step{_opts.getCache()->persistString(vertex)};
 }
 
 template<class StepImpl>
@@ -465,3 +465,5 @@ arangodb::aql::TraversalStats ClusterProvider<StepImpl>::stealStats() {
   new (&_stats) aql::TraversalStats{};
   return t;
 }
+
+template class graph::ClusterProvider<ClusterProviderStep>;
