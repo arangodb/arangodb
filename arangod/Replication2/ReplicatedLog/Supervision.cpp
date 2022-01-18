@@ -283,8 +283,9 @@ auto checkLogTargetParticipantAdded(LogTarget const& target,
     if (auto const& planParticipant = pps.find(targetParticipant);
         planParticipant == pps.end()) {
       // Here's a participant that is not in plan yet; we add it
-      return std::make_unique<AddParticipantToPlanAction>(targetParticipant,
-                                                          targetFlags);
+      return std::make_unique<AddParticipantToPlanAction>(
+          plan.id, targetParticipant, targetFlags,
+          plan.participantsConfig.generation);
     }
   }
   return std::make_unique<EmptyAction>();
@@ -299,7 +300,8 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
   // Check whether a participant has been removed
   for (auto const& [planParticipant, _] : pps) {
     if (!tps.contains(planParticipant)) {
-      return std::make_unique<RemoveParticipantFromPlanAction>(planParticipant);
+      return std::make_unique<RemoveParticipantFromPlanAction>(
+          plan.id, planParticipant, plan.participantsConfig.generation);
     }
   }
   return std::make_unique<EmptyAction>();

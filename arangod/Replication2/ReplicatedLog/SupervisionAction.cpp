@@ -313,9 +313,18 @@ auto AddParticipantToPlanAction::execute(std::string dbName,
                   ->replicatedLogs()
                   ->database(dbName)
                   ->log(_id)
-                  ->currentTerm()
-                  ->str();
-  return envelope;
+                  ->participantsConfig();
+
+  return envelope.write()
+      .emplace_object(
+          path->participants()->server(_participant)->str(),
+          [&](VPackBuilder& builder) { _flags.toVelocyPack(builder); })
+      .inc(path->generation()->str())
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .isEmpty(path->participants()->server(_participant)->str())
+      .isEqual(path->generation()->str(), _generation)
+      .end();
 }
 
 /*
@@ -327,6 +336,7 @@ void RemoveParticipantFromPlanAction::toVelocyPack(
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
 }
+
 auto RemoveParticipantFromPlanAction::execute(
     std::string dbName, arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
@@ -334,9 +344,16 @@ auto RemoveParticipantFromPlanAction::execute(
                   ->replicatedLogs()
                   ->database(dbName)
                   ->log(_id)
-                  ->currentTerm()
-                  ->str();
-  return envelope;
+                  ->participantsConfig();
+
+  return envelope.write()
+      .remove(path->participants()->server(_participant)->str())
+      .inc(path->generation()->str())
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .isNotEmpty(path->participants()->server(_participant)->str())
+      .isEqual(path->generation()->str(), _generation)
+      .end();
 }
 
 /*

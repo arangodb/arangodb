@@ -161,7 +161,8 @@ auto operator<<(std::ostream& os, LeaderElectionAction const& action)
 
 struct UpdateParticipantFlagsAction : Action {
   UpdateParticipantFlagsAction(LogId id, ParticipantId const& participant,
-                               ParticipantFlags const& flags, size_t generation)
+                               ParticipantFlags const& flags,
+                               std::size_t generation)
       : _id(id),
         _participant(participant),
         _flags(flags),
@@ -177,13 +178,17 @@ struct UpdateParticipantFlagsAction : Action {
   LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
-  size_t _generation;
+  std::size_t _generation;
 };
 
 struct AddParticipantToPlanAction : Action {
-  AddParticipantToPlanAction(ParticipantId const& participant,
-                             ParticipantFlags const& flags)
-      : _participant(participant), _flags(flags){};
+  AddParticipantToPlanAction(LogId id, ParticipantId const& participant,
+                             ParticipantFlags const& flags,
+                             std::size_t generation)
+      : _id{id},
+        _participant(participant),
+        _flags(flags),
+        _generation{generation} {};
   ActionType type() const override {
     return Action::ActionType::AddParticipantToPlanAction;
   };
@@ -195,11 +200,14 @@ struct AddParticipantToPlanAction : Action {
   LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
+  std::size_t _generation;
 };
 
 struct RemoveParticipantFromPlanAction : Action {
-  RemoveParticipantFromPlanAction(ParticipantId const& participant)
-      : _participant(participant){};
+  RemoveParticipantFromPlanAction(LogId const& id,
+                                  ParticipantId const& participant,
+                                  std::size_t generation)
+      : _id{id}, _participant(participant), _generation{generation} {};
   ActionType type() const override {
     return Action::ActionType::RemoveParticipantFromPlanAction;
   };
@@ -210,6 +218,7 @@ struct RemoveParticipantFromPlanAction : Action {
 
   LogId const _id;
   ParticipantId _participant;
+  std::size_t _generation;
 };
 
 struct UpdateLogConfigAction : Action {

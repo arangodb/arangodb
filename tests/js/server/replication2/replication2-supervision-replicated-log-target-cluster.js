@@ -418,6 +418,23 @@ const replicatedLogSuite = function () {
 
     },
 
+    testReplaceLeaderWithNewFollower: function () {
+      const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      const newServer = _.sample(_.difference(dbservers, servers));
+      {
+        let {target} = readReplicatedLogAgency(database, logId);
+        // delete old leader from target
+        delete target.participants[leader];
+        target.participants[newServer] = {excluded: true};
+        replicatedLogSetTarget(database, logId, target);
+      }
+
+      waitFor(replicatedLogIsReady(database, logId, term, [...followers, newServer]));
+
+    },
+
+
     testLogStatus: function () {
       const {logId, servers, leader, term} = createReplicatedLog(database);
 
