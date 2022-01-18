@@ -35,6 +35,7 @@
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
@@ -421,12 +422,12 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   list.emplace_back(std::move(info));
 }
 
-void BaseOptions::clearVariableValues() {
+void BaseOptions::clearVariableValues() noexcept {
   _expressionCtx.clearVariableValues();
 }
 
 void BaseOptions::setVariableValue(aql::Variable const* var,
-                                   aql::AqlValue const value) {
+                                   aql::AqlValue value) {
   _expressionCtx.setVariableValue(var, value);
 }
 
@@ -480,14 +481,14 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
 
   TRI_ASSERT(value.isObject() || value.isNull());
   _expressionCtx.setVariable(_tmpVar, value);
+  ScopeGuard defer(
+      [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
+  aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
   _expressionCtx.clearVariable(_tmpVar);
-  if (mustDestroy) {
-    res.destroy();
-  }
   if (!result) {
     cache()->increaseFilterCounter();
   }

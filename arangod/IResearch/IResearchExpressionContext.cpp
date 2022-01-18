@@ -89,7 +89,7 @@ void ViewExpressionContext::setVariable(arangodb::aql::Variable const* variable,
 }
 
 void ViewExpressionContext::clearVariable(
-    arangodb::aql::Variable const* variable) {
+    arangodb::aql::Variable const* variable) noexcept {
   _variables.erase(variable);
 }
 

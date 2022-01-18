@@ -59,7 +59,8 @@ struct ExpressionContextMock final
     // do nothing
   }
 
-  void clearVariable(arangodb::aql::Variable const* variable) override {
+  void clearVariable(
+      arangodb::aql::Variable const* variable) noexcept override {
     // do nothing
   }
 

@@ -55,13 +55,13 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
   // @brief This method will only clear the given variable, and keep
   // all others intact. If the variable does not exist, this is a noop.
-  void clearVariableValue(Variable const*);
+  void clearVariableValue(Variable const*) noexcept;
 
   void serializeAllVariables(velocypack::Options const& opts,
                              arangodb::velocypack::Builder&) const;
 
  private:
-  /// @brief temporary storage for expression data context
+  // temporary storage for expression data context
   std::unordered_map<Variable const*, AqlValue> _vars;
 };
 

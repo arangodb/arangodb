@@ -34,6 +34,7 @@ using namespace arangodb::aql;
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
+  // first check temporary variables in QueryExpressionContext.
   if (!_variables.empty()) {
     auto it = _variables.find(variable);
 
@@ -44,6 +45,7 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
     }
   }
 
+  // now check our own temporary variables
   auto it = _vars.find(variable);
   if (it == _vars.end()) {
     TRI_ASSERT(false);
@@ -65,7 +67,8 @@ void FixedVarExpressionContext::setVariableValue(Variable const* var,
   _vars.try_emplace(var, value);
 }
 
-void FixedVarExpressionContext::clearVariableValue(Variable const* var) {
+void FixedVarExpressionContext::clearVariableValue(
+    Variable const* var) noexcept {
   _vars.erase(var);
 }
 

@@ -304,6 +304,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
 
+    // register temporary variables in expression context
     for (auto const& pair : _infos.filterConditionVariables()) {
       opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
     }

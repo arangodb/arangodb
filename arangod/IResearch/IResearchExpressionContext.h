@@ -29,6 +29,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
+#include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
 
@@ -105,9 +106,15 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
+  // register a temporary variable in the ExpressionContext. the
+  // slice used here is not owned by the QueryExpressionContext!
+  // the caller has to make sure the data behind the slice remains
+  // valid until clearVariable() is called or the context is discarded.
   void setVariable(arangodb::aql::Variable const* variable,
                    arangodb::velocypack::Slice value) override;
-  void clearVariable(arangodb::aql::Variable const* variable) override;
+
+  // unregister a temporary variable from the ExpressionContext.
+  void clearVariable(arangodb::aql::Variable const* variable) noexcept override;
 
   aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                  bool& mustDestroy) const override;
@@ -122,8 +129,10 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   int const _nodeDepth;
 
   // variables only temporarily valid during execution
-  std::unordered_map<arangodb::aql::Variable const*,
-                     arangodb::velocypack::Slice>
+  // variables only temporarily valid during execution. Slices stored
+  // here are not owned by the QueryExpressionContext!
+  containers::FlatHashMap<arangodb::aql::Variable const*,
+                          arangodb::velocypack::Slice>
       _variables;
 };  // ViewExpressionContext
 

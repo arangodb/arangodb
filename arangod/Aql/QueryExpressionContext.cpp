@@ -80,6 +80,6 @@ void QueryExpressionContext::setVariable(Variable const* variable,
   _variables.emplace(variable, value);
 }
 
-void QueryExpressionContext::clearVariable(Variable const* variable) {
+void QueryExpressionContext::clearVariable(Variable const* variable) noexcept {
   _variables.erase(variable);
 }

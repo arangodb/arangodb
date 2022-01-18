@@ -25,10 +25,9 @@
 
 #include "ExpressionContext.h"
 #include "Basics/ErrorCode.h"
+#include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
-
-#include <unordered_map>
 
 namespace arangodb {
 struct ValidatorBase;
@@ -66,9 +65,15 @@ class QueryExpressionContext : public ExpressionContext {
   bool killed() const override final;
   QueryContext& query();
 
+  // register a temporary variable in the ExpressionContext. the
+  // slice used here is not owned by the QueryExpressionContext!
+  // the caller has to make sure the data behind the slice remains
+  // valid until clearVariable() is called or the context is discarded.
   void setVariable(Variable const* variable,
                    arangodb::velocypack::Slice value) override;
-  void clearVariable(Variable const* variable) override;
+
+  // unregister a temporary variable from the ExpressionContext.
+  void clearVariable(Variable const* variable) noexcept override;
 
  private:
   transaction::Methods& _trx;
@@ -76,8 +81,10 @@ class QueryExpressionContext : public ExpressionContext {
   AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
 
  protected:
-  // variables only temporarily valid during execution
-  std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;
+  // variables only temporarily valid during execution. Slices stored
+  // here are not owned by the QueryExpressionContext!
+  containers::FlatHashMap<Variable const*, arangodb::velocypack::Slice>
+      _variables;
 };
 }  // namespace aql
 }  // namespace arangodb
