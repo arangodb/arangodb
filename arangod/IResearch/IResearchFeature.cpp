@@ -464,12 +464,9 @@ bool upgradeSingleServerArangoSearchView0_1(
     auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
 
     // original algorithm for computing data-store path
-    constexpr std::string_view subPath{"databases"};
-    constexpr std::string_view dbPath{"database-"};
-
     dataPath = irs::utf8_path(dbPathFeature.directory());
-    dataPath /= subPath;
-    dataPath /= dbPath;
+    dataPath /= "databases";
+    dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
     dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
     dataPath += "-";
