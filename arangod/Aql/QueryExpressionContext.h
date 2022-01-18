@@ -23,8 +23,12 @@
 
 #pragma once
 
-#include <Basics/ErrorCode.h>
 #include "ExpressionContext.h"
+#include "Basics/ErrorCode.h"
+
+#include <velocypack/Slice.h>
+
+#include <unordered_map>
 
 namespace arangodb {
 struct ValidatorBase;
@@ -57,15 +61,23 @@ class QueryExpressionContext : public ExpressionContext {
       arangodb::velocypack::Slice const&) override final;
 
   TRI_vocbase_t& vocbase() const override final;
-  /// may be inaccessible on some platforms
+  // may be inaccessible on some platforms
   transaction::Methods& trx() const override final;
   bool killed() const override final;
   QueryContext& query();
+
+  void setVariable(Variable const* variable,
+                   arangodb::velocypack::Slice value) override;
+  void clearVariable(Variable const* variable) override;
 
  private:
   transaction::Methods& _trx;
   QueryContext& _query;
   AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
+
+ protected:
+  // variables only temporarily valid during execution
+  std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;
 };
 }  // namespace aql
 }  // namespace arangodb

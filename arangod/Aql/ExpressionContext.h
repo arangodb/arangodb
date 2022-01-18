@@ -49,10 +49,6 @@ class ExpressionContext {
 
   virtual ~ExpressionContext() = default;
 
-  /// true if the variable we are referring to is set by
-  /// a collection enumeration/index enumeration
-  virtual bool isDataFromCollection(Variable const* variable) const = 0;
-
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const = 0;
 
@@ -72,6 +68,11 @@ class ExpressionContext {
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
   virtual bool killed() const = 0;
+
+  virtual void setVariable(Variable const* variable,
+                           arangodb::velocypack::Slice value) = 0;
+
+  virtual void clearVariable(Variable const* variable) = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

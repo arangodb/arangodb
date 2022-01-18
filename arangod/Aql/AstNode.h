@@ -40,7 +40,6 @@ class Slice;
 }  // namespace velocypack
 namespace basics {
 struct AttributeName;
-class StringBuffer;
 }  // namespace basics
 
 namespace aql {

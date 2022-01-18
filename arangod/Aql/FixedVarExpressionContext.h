@@ -44,8 +44,6 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
   ~FixedVarExpressionContext() = default;
 
-  bool isDataFromCollection(Variable const* variable) const override;
-
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
@@ -74,8 +72,6 @@ class SingleVarExpressionContext final : public QueryExpressionContext {
                                       AqlFunctionsInternalCache& cache);
 
   ~SingleVarExpressionContext() = default;
-
-  bool isDataFromCollection(Variable const* variable) const override;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

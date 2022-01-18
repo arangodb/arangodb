@@ -23,7 +23,6 @@
 
 #include "TraversalExecutor.h"
 
-#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"

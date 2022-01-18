@@ -30,7 +30,6 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
@@ -480,12 +479,12 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   }
 
   TRI_ASSERT(value.isObject() || value.isNull());
-  expression->setVariable(_tmpVar, value);
+  _expressionCtx.setVariable(_tmpVar, value);
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
-  expression->clearVariable(_tmpVar);
+  _expressionCtx.clearVariable(_tmpVar);
   if (mustDestroy) {
     res.destroy();
   }

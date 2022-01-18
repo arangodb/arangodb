@@ -31,7 +31,6 @@
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
 #include "Basics/FloatingPoint.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"

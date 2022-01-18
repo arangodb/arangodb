@@ -74,3 +74,12 @@ transaction::Methods& QueryExpressionContext::trx() const { return _trx; }
 bool QueryExpressionContext::killed() const { return _query.killed(); }
 
 QueryContext& QueryExpressionContext::query() { return _query; }
+
+void QueryExpressionContext::setVariable(Variable const* variable,
+                                         arangodb::velocypack::Slice value) {
+  _variables.emplace(variable, value);
+}
+
+void QueryExpressionContext::clearVariable(Variable const* variable) {
+  _variables.erase(variable);
+}

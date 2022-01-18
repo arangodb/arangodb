@@ -151,10 +151,6 @@ class Expression {
   void replaceAttributeAccess(Variable const*,
                               std::vector<std::string> const& attribute);
 
-  void setVariable(Variable const* variable, arangodb::velocypack::Slice value);
-
-  void clearVariable(Variable const* variable);
-
   /// @brief reset internal attributes after variables in the expression were
   /// changed
   void invalidateAfterReplacements();
@@ -178,99 +174,108 @@ class Expression {
 
   /// @brief execute an expression of type SIMPLE
   AqlValue executeSimpleExpression(ExpressionContext& ctx, AstNode const*,
-                                   bool& mustDestroy, bool);
+                                   bool& mustDestroy, bool doCopy) const;
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
   AqlValue executeSimpleExpressionAttributeAccess(ExpressionContext& ctx,
                                                   AstNode const*,
                                                   bool& mustDestroy,
-                                                  bool doCopy);
+                                                  bool doCopy) const;
 
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
   AqlValue executeSimpleExpressionIndexedAccess(ExpressionContext& ctx,
                                                 AstNode const*,
-                                                bool& mustDestroy, bool doCopy);
+                                                bool& mustDestroy,
+                                                bool doCopy) const;
 
   /// @brief execute an expression of type SIMPLE with ARRAY
   AqlValue executeSimpleExpressionArray(ExpressionContext& ctx, AstNode const*,
-                                        bool& mustDestroy);
+                                        bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with OBJECT
   AqlValue executeSimpleExpressionObject(ExpressionContext& ctx, AstNode const*,
-                                         bool& mustDestroy);
+                                         bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with VALUE
   AqlValue executeSimpleExpressionValue(ExpressionContext& ctx, AstNode const*,
-                                        bool& mustDestroy);
+                                        bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with REFERENCE
   AqlValue executeSimpleExpressionReference(ExpressionContext& ctx,
                                             AstNode const*, bool& mustDestroy,
-                                            bool doCopy);
+                                            bool doCopy) const;
 
   /// @brief execute an expression of type SIMPLE with FCALL, dispatcher
   AqlValue executeSimpleExpressionFCall(ExpressionContext& ctx, AstNode const*,
-                                        bool& mustDestroy);
+                                        bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with FCALL, CXX variant
   AqlValue executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
-                                           AstNode const*, bool& mustDestroy);
+                                           AstNode const*,
+                                           bool& mustDestroy) const;
   /// @brief execute an expression of type SIMPLE with FCALL, JavaScript variant
   AqlValue executeSimpleExpressionFCallJS(ExpressionContext& ctx,
-                                          AstNode const*, bool& mustDestroy);
+                                          AstNode const*,
+                                          bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with RANGE
   AqlValue executeSimpleExpressionRange(ExpressionContext& ctx, AstNode const*,
-                                        bool& mustDestroy);
+                                        bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with NOT
   AqlValue executeSimpleExpressionNot(ExpressionContext& ctx, AstNode const*,
-                                      bool& mustDestroy);
+                                      bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with +
   AqlValue executeSimpleExpressionPlus(ExpressionContext& ctx, AstNode const*,
-                                       bool& mustDestroy);
+                                       bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with -
   AqlValue executeSimpleExpressionMinus(ExpressionContext& ctx, AstNode const*,
-                                        bool& mustDestroy);
+                                        bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with AND
   AqlValue executeSimpleExpressionAnd(ExpressionContext& ctx, AstNode const*,
-                                      bool& mustDestroy);
+                                      bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with OR
   AqlValue executeSimpleExpressionOr(ExpressionContext& ctx, AstNode const*,
-                                     bool& mustDestroy);
+                                     bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with NARY AND or OR
   AqlValue executeSimpleExpressionNaryAndOr(ExpressionContext& ctx,
-                                            AstNode const*, bool& mustDestroy);
+                                            AstNode const*,
+                                            bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with COMPARISON
   AqlValue executeSimpleExpressionComparison(ExpressionContext& ctx,
-                                             AstNode const*, bool& mustDestroy);
+                                             AstNode const*,
+                                             bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
   AqlValue executeSimpleExpressionArrayComparison(ExpressionContext& ctx,
                                                   AstNode const*,
-                                                  bool& mustDestroy);
+                                                  bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with TERNARY
   AqlValue executeSimpleExpressionTernary(ExpressionContext& ctx,
-                                          AstNode const*, bool& mustDestroy);
+                                          AstNode const*,
+                                          bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with EXPANSION
   AqlValue executeSimpleExpressionExpansion(ExpressionContext& ctx,
-                                            AstNode const*, bool& mustDestroy);
+                                            AstNode const*,
+                                            bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with EXPANSION
   AqlValue executeSimpleExpressionIterator(ExpressionContext& ctx,
-                                           AstNode const*, bool& mustDestroy);
+                                           AstNode const*,
+                                           bool& mustDestroy) const;
 
   /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
   AqlValue executeSimpleExpressionArithmetic(ExpressionContext& ctx,
-                                             AstNode const*, bool& mustDestroy);
+                                             AstNode const*,
+                                             bool& mustDestroy) const;
 
  private:
   /// @brief the AST
@@ -287,9 +292,6 @@ class Expression {
 
   /// @brief type of expression
   ExpressionType _type;
-
-  /// @brief variables only temporarily valid during execution
-  std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;
 };
 
 }  // namespace aql

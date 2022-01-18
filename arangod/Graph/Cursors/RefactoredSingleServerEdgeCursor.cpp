@@ -338,7 +338,8 @@ bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(
 
   TRI_ASSERT(value.isObject() || value.isNull());
 
-  aql::AqlValue edgeVal(aql::AqlValueHintDocumentNoCopy(value.begin()));
+  aql::AqlValueHintSliceNoCopy v(value);
+  aql::AqlValue edgeVal(v);
   _expressionCtx.setVariableValue(_tmpVar, edgeVal);
   ScopeGuard defer([&]() noexcept {
     try {

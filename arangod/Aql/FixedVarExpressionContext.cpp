@@ -31,20 +31,25 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-bool FixedVarExpressionContext::isDataFromCollection(
-    Variable const* variable) const {
-  return false;
-}
-
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = doCopy;
+  if (!_variables.empty()) {
+    auto it = _variables.find(variable);
+
+    if (it != _variables.end()) {
+      // copy the slice we found
+      mustDestroy = true;
+      return AqlValue((*it).second);
+    }
+  }
+
   auto it = _vars.find(variable);
   if (it == _vars.end()) {
     TRI_ASSERT(false);
     return AqlValue(AqlValueHintNull());
   }
+  mustDestroy = doCopy;
   if (doCopy) {
     return it->second.clone();
   }
@@ -85,10 +90,6 @@ SingleVarExpressionContext::SingleVarExpressionContext(
     transaction::Methods& trx, QueryContext& context,
     AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
-
-bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
-  return false;
-}
 
 AqlValue SingleVarExpressionContext::getVariableValue(
     Variable const* /*variable*/, bool /*doCopy*/,

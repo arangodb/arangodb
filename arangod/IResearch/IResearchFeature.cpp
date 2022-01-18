@@ -84,11 +84,6 @@ using namespace std::chrono_literals;
 
 namespace arangodb {
 
-namespace basics {
-
-class VPackStringBufferAdapter;
-}  // namespace basics
-
 namespace aql {
 class Query;
 }  // namespace aql
