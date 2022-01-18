@@ -216,7 +216,7 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
       if (!current.localStatus || !current.localStatus[srv]) {
         return Error(`Participant ${srv} has not yet reported to current.`);
       }
-      if (current.localStatus[srv].term < term) {
+      if (term !== undefined && current.localStatus[srv].term < term) {
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
             `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
