@@ -87,7 +87,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
  public:
   ~LogLeader() override;
 
- [[nodiscard]] static auto construct(
+  [[nodiscard]] static auto construct(
       LogConfig config, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<ParticipantsConfig const> participantsConfig,

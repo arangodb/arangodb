@@ -361,14 +361,12 @@ auto replicated_log::LogLeader::construct(
         << " writeConcern: " << config.writeConcern;
     TRI_ASSERT(leaderDataGuard->_follower.size() ==
                leaderDataGuard->activeParticipantsConfig->participants.size());
-    for (auto const& [participantId, info] : leaderDataGuard->_follower) {
-      TRI_ASSERT(leaderDataGuard->activeParticipantsConfig->participants.find(
-                     participantId) !=
-                 leaderDataGuard->activeParticipantsConfig->participants.end())
-          << " follower " << participantId
-          << " not found in activeParticipantsConfig with size "
-          << leaderDataGuard->activeParticipantsConfig->participants.size();
-    }
+    TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
+                           leaderDataGuard->_follower.end(),
+                           [&](auto const& it) {
+                             return leaderDataGuard->activeParticipantsConfig
+                                 ->participants.contains(it.first);
+                           }));
   }
 
   leader->establishLeadership(std::move(participantsConfig));

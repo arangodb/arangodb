@@ -138,7 +138,8 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
 TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2, true);
+  auto leader =
+      leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2, true);
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), false,
