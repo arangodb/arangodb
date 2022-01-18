@@ -6364,10 +6364,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -6550,10 +6550,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -6642,10 +6642,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -8044,10 +8044,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -8139,10 +8139,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -8324,10 +8324,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((true == key.isString()));
 
         auto expectedItr = expectedLinkMeta.find(key.copyString());
-        EXPECT_TRUE((true == value.isObject() &&
-                     expectedItr != expectedLinkMeta.end() &&
-                     linkMeta.init(server.server(), value, false, error) &&
-                     expectedItr->second == linkMeta));
+        EXPECT_TRUE(value.isObject() && expectedItr != expectedLinkMeta.end() &&
+                    linkMeta.init(server.server(), value, error) &&
+                    expectedItr->second == linkMeta);
         expectedLinkMeta.erase(expectedItr);
       }
     }
@@ -8447,10 +8446,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((true == key.isString()));
 
         auto expectedItr = expectedLinkMeta.find(key.copyString());
-        EXPECT_TRUE((true == value.isObject() &&
-                     expectedItr != expectedLinkMeta.end() &&
-                     linkMeta.init(server.server(), value, false, error) &&
-                     expectedItr->second == linkMeta));
+        EXPECT_TRUE(value.isObject() && expectedItr != expectedLinkMeta.end() &&
+                    linkMeta.init(server.server(), value, error) &&
+                    expectedItr->second == linkMeta);
         expectedLinkMeta.erase(expectedItr);
       }
     }

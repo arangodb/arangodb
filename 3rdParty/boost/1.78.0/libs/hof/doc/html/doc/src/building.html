@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Building &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Getting started" href="gettingstarted.html" />
+    <link rel="prev" title="About" href="index.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="index.html"><img src="../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="intro.html"><img src="../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../index.html"><img src="../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="gettingstarted.html"><img src="../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <!-- Copyright 2018 Paul Fultz II
+     Distributed under the Boost Software License, Version 1.0.
+     (http://www.boost.org/LICENSE_1_0.txt)
+--><div class="section" id="building">
+<h1>Building<a class="headerlink" href="#building" title="Permalink to this headline">¶</a></h1>
+<p>Boost.HigherOrderFunctions library uses cmake to build. To configure with cmake create a build directory, and run cmake:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">mkdir</span> <span class="n">build</span>
+<span class="n">cd</span> <span class="n">build</span>
+<span class="n">cmake</span> <span class="p">..</span>
+</pre></div>
+</div>
+<div class="section" id="installing">
+<h2>Installing<a class="headerlink" href="#installing" title="Permalink to this headline">¶</a></h2>
+<p>To install the library just run the <code class="docutils literal"><span class="pre">install</span></code> target:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">cmake</span> <span class="o">--</span><span class="n">build</span> <span class="p">.</span> <span class="o">--</span><span class="n">target</span> <span class="n">install</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tests">
+<h2>Tests<a class="headerlink" href="#tests" title="Permalink to this headline">¶</a></h2>
+<p>The tests can be built and run by using the <code class="docutils literal"><span class="pre">check</span></code> target:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">cmake</span> <span class="o">--</span><span class="n">build</span> <span class="p">.</span> <span class="o">--</span><span class="n">target</span> <span class="n">check</span>
+</pre></div>
+</div>
+<p>The tests can also be ran using Boost.Build, just copy library to the boost source tree, and then:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">cd</span> <span class="n">test</span>
+<span class="n">b2</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
+<p>The documentation is built using Sphinx. First, install the requirements needed for the documentation using <code class="docutils literal"><span class="pre">pip</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">r</span> <span class="n">doc</span><span class="o">/</span><span class="n">requirements</span><span class="p">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>Then html documentation can be generated using <code class="docutils literal"><span class="pre">sphinx-build</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">sphinx</span><span class="o">-</span><span class="n">build</span> <span class="o">-</span><span class="n">b</span> <span class="n">html</span> <span class="n">doc</span><span class="o">/</span> <span class="n">doc</span><span class="o">/</span><span class="n">html</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>The final docs will be in the <code class="docutils literal"><span class="pre">doc/html</span></code> folder.</p>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>
