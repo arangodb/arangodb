@@ -435,10 +435,7 @@ class LogicalCollection : public LogicalDataSource {
 
   transaction::CountCache _countCache;
 
-  // SECTION: Key Options
-
-  // @brief options for key creation
-  std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;
+  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
 
   std::unique_ptr<PhysicalCollection> _physical;
