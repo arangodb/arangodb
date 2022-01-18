@@ -490,6 +490,22 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term + 2, [...followers, newServer], newServer));
     },
 
+    testChangeLeaderToNonFollower: function () {
+      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+
+      // now change the leader
+      const otherServer = _.sample(_.difference(dbservers, servers));
+      setReplicatedLogLeaderTarget(database, logId, otherServer);
+      // The supervision should complain about the server not being a leader
+
+      sleep(10);
+      // TODO wait for the supervision to complain
+
+      // nothing should have happend
+      waitFor(replicatedLogIsReady(database, logId, term + 2, servers, leader));
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     testLogStatus: function () {
       const {logId, servers, leader, term} = createReplicatedLog(database);
 
