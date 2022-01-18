@@ -28,12 +28,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -44,7 +41,6 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -430,7 +426,7 @@ void RestHandler::runHandlerStateMachine() {
         // Callback may stealStatistics!
         _callback(this);
 
-        shutdownExecute(true);
+        shutdownExecute(false);
         return;
 
       case HandlerState::DONE:
@@ -495,7 +491,6 @@ bool RestHandler::wakeupHandler() {
 void RestHandler::executeEngine(bool isContinue) {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-
   ExecContextScope scope(exec);
 
   try {

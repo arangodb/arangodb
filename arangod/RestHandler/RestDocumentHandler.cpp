@@ -26,11 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogContextKeys.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -85,7 +83,8 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   if (isFinalized) {
     // reset the transaction so it releases all locks as early as possible
     _activeTrx.reset();
-
+    TRI_ASSERT(_request != nullptr);
+    TRI_ASSERT(_response != nullptr);
     try {
       auto const type = _request->requestType();
       auto const result = _response->responseCode();
@@ -179,6 +178,7 @@ RestStatus RestDocumentHandler::insertDocument() {
       }
     }
   }
+
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false) &&
       opOptions.isOverwriteModeUpdateReplace();

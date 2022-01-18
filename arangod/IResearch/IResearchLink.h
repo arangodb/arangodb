@@ -278,7 +278,7 @@ class IResearchLink {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice const& definition,
+  Result init(velocypack::Slice definition,
               InitCallback const& initCallback = {});
 
   ////////////////////////////////////////////////////////////////////////////////

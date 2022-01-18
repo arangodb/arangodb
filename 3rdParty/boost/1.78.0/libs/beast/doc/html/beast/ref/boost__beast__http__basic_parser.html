@@ -1,0 +1,577 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>http::basic_parser</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__basic_multi_buffer/consume.html" title="basic_multi_buffer::consume">
+<link rel="next" href="boost__beast__http__basic_parser/is_request.html" title="http::basic_parser::is_request">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__basic_multi_buffer/consume.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__http__basic_parser/is_request.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__http__basic_parser"></a><a class="link" href="boost__beast__http__basic_parser.html" title="http::basic_parser">http::basic_parser</a>
+</h4></div></div></div>
+<p>
+        A parser for decoding HTTP/1 wire format messages.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_parser.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_parser.synopsis"></a></span><a class="link" href="boost__beast__http__basic_parser.html#beast.ref.boost__beast__http__basic_parser.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/http/basic_parser.hpp" target="_top">boost/beast/http/basic_parser.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">basic_parser</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_parser.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_parser.types"></a></span><a class="link" href="boost__beast__http__basic_parser.html#beast.ref.boost__beast__http__basic_parser.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/is_request.html" title="http::basic_parser::is_request">is_request</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> if this parser
+                  parses requests, <code class="computeroutput"><span class="keyword">false</span></code>
+                  for responses.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_parser.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_parser.member_functions"></a></span><a class="link" href="boost__beast__http__basic_parser.html#beast.ref.boost__beast__http__basic_parser.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/basic_parser.html" title="http::basic_parser::basic_parser">basic_parser</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/body_limit.html" title="http::basic_parser::body_limit">body_limit</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the limit on the payload body.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/chunked.html" title="http::basic_parser::chunked">chunked</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  last value for Transfer-Encoding is "chunked".
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/content_length.html" title="http::basic_parser::content_length">content_length</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the optional value of Content-Length if known.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/content_length_remaining.html" title="http::basic_parser::content_length_remaining">content_length_remaining</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the remaining content length if known.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/eager.html" title="http::basic_parser::eager">eager</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  eager parse option is set. <br> <span class="silver">—</span><br>
+                  Set the eager parse option.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/got_some.html" title="http::basic_parser::got_some">got_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  parser has received at least one byte of input.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/header_limit.html" title="http::basic_parser::header_limit">header_limit</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set a limit on the total size of the header.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/is_done.html" title="http::basic_parser::is_done">is_done</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  message is complete.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/is_header_done.html" title="http::basic_parser::is_header_done">is_header_done</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if a
+                  the parser has produced the full header.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/keep_alive.html" title="http::basic_parser::keep_alive">keep_alive</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  message has keep-alive connection semantics.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/need_eof.html" title="http::basic_parser::need_eof">need_eof</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  message semantics require an end of file.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/operator_eq_.html" title="http::basic_parser::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/put.html" title="http::basic_parser::put">put</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write a buffer sequence to the parser.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/put_eof.html" title="http::basic_parser::put_eof">put_eof</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Inform the parser that the end of stream was reached.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/skip.html" title="http::basic_parser::skip">skip</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  skip parse option is set. <br> <span class="silver">—</span><br>
+                  Set the skip parse option.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/upgrade.html" title="http::basic_parser::upgrade">upgrade</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  message is an upgrade message.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/_dtor_basic_parser.html" title="http::basic_parser::~basic_parser">~basic_parser</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_parser.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_parser.protected_member_functions"></a></span><a class="link" href="boost__beast__http__basic_parser.html#beast.ref.boost__beast__http__basic_parser.protected_member_functions">Protected
+        Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/basic_parser.html" title="http::basic_parser::basic_parser">basic_parser</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Default constructor. <br> <span class="silver">—</span><br>
+                  Move constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_body_impl.html" title="http::basic_parser::on_body_impl">on_body_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called each time additional data is received representing the content
+                  body.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_body_init_impl.html" title="http::basic_parser::on_body_init_impl">on_body_init_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called once before the body is processed.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_chunk_body_impl.html" title="http::basic_parser::on_chunk_body_impl">on_chunk_body_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called each time additional data is received representing part
+                  of a body chunk.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_chunk_header_impl.html" title="http::basic_parser::on_chunk_header_impl">on_chunk_header_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called each time a new chunk header of a chunk encoded body is
+                  received.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_field_impl.html" title="http::basic_parser::on_field_impl">on_field_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called once for each complete field in the HTTP header.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_finish_impl.html" title="http::basic_parser::on_finish_impl">on_finish_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called once when the complete message is received.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_header_impl.html" title="http::basic_parser::on_header_impl">on_header_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called once after the complete HTTP header is received.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_request_impl.html" title="http::basic_parser::on_request_impl">on_request_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called after receiving the request-line.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/on_response_impl.html" title="http::basic_parser::on_response_impl">on_response_impl</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Called after receiving the status-line.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__http__basic_parser/operator_eq_.html" title="http::basic_parser::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_parser.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_parser.description"></a></span><a class="link" href="boost__beast__http__basic_parser.html#beast.ref.boost__beast__http__basic_parser.description">Description</a>
+      </h5>
+<p>
+        This parser is designed to efficiently parse messages in the HTTP/1 wire
+        format. It allocates no memory when input is presented as a single contiguous
+        buffer, and uses minimal state. It will handle chunked encoding and it understands
+        the semantics of the Connection, Content-Length, and Upgrade fields. The
+        parser is optimized for the case where the input buffer sequence consists
+        of a single contiguous buffer. The <a class="link" href="boost__beast__basic_flat_buffer.html" title="basic_flat_buffer"><code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">basic_flat_buffer</span></code></a> class is provided,
+        which guarantees that the input sequence of the stream buffer will be represented
+        by exactly one contiguous buffer. To ensure the optimum performance of the
+        parser, use <a class="link" href="boost__beast__basic_flat_buffer.html" title="basic_flat_buffer"><code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">basic_flat_buffer</span></code></a> with HTTP algorithms
+        such as <a class="link" href="boost__beast__http__read.html" title="http::read"><code class="computeroutput"><span class="identifier">read</span></code></a>, <a class="link" href="boost__beast__http__read_some.html" title="http::read_some"><code class="computeroutput"><span class="identifier">read_some</span></code></a>, <a class="link" href="boost__beast__http__async_read.html" title="http::async_read"><code class="computeroutput"><span class="identifier">async_read</span></code></a>, and <a class="link" href="boost__beast__http__async_read_some.html" title="http::async_read_some"><code class="computeroutput"><span class="identifier">async_read_some</span></code></a>. Alternatively,
+        the caller may use custom techniques to ensure that the structured portion
+        of the HTTP message (header or chunk header) is contained in a linear buffer.
+        The interface to the parser uses virtual member functions. To use this class,
+        derive your type from <a class="link" href="boost__beast__http__basic_parser.html" title="http::basic_parser"><code class="computeroutput"><span class="identifier">basic_parser</span></code></a>. When bytes are presented,
+        the implementation will make a series of zero or more calls to virtual functions,
+        which the derived class must implement. Every virtual function must be provided
+        by the derived class, or else a compilation error will be generated. The
+        implementation will make sure that <code class="computeroutput"><span class="identifier">ec</span></code>
+        is clear before each virtual function is invoked. If a virtual function sets
+        an error, it is propagated out of the parser to the caller.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_parser.h5"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_parser.template_parameters"></a></span><a class="link" href="boost__beast__http__basic_parser.html#beast.ref.boost__beast__http__basic_parser.template_parameters">Template
+        Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">isRequest</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A <code class="computeroutput"><span class="keyword">bool</span></code> indicating
+                  whether the parser will be presented with request or response message.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_parser.h6"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_parser.remarks"></a></span><a class="link" href="boost__beast__http__basic_parser.html#beast.ref.boost__beast__http__basic_parser.remarks">Remarks</a>
+      </h5>
+<p>
+        If the parser encounters a field value with obs-fold longer than 4 kilobytes
+        in length, an error is generated.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__basic_multi_buffer/consume.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__http__basic_parser/is_request.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
