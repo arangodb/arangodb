@@ -206,6 +206,8 @@ auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
     -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
+  builder.add(VPackValue(StaticStrings::Outcome));
+  ::toVelocyPack(outcome, builder);
   builder.add("participantsRequired", VPackValue(participantsRequired));
   builder.add("participantsAvailable", VPackValue(participantsAvailable));
   {
@@ -237,6 +239,29 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
   LOG_TOPIC("7e572", FATAL, arangodb::Logger::REPLICATION2)
       << "Invalid LogCurrentSupervisionElection::ErrorCode "
       << static_cast<std::underlying_type_t<decltype(ec)>>(ec);
+  FATAL_ERROR_ABORT();
+}
+
+auto agency::toVelocyPack(LogCurrentSupervisionElection::Outcome outcome,
+                          VPackBuilder& builder) -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("outcome", VPackValue(static_cast<int>(outcome)));
+  builder.add("message", VPackValue(to_string(outcome)));
+}
+
+auto agency::to_string(LogCurrentSupervisionElection::Outcome outcome) noexcept
+    -> std::string_view {
+  switch (outcome) {
+    case LogCurrentSupervisionElection::Outcome::SUCCESS:
+      return "the election was successful";
+    case LogCurrentSupervisionElection::Outcome::IMPOSSIBLE:
+      return "an election was impossible";
+    case LogCurrentSupervisionElection::Outcome::FAILED:
+      return "the election failed";
+  }
+  LOG_TOPIC("7f572", FATAL, arangodb::Logger::REPLICATION2)
+      << "Invalid LogCurrentSupervisionElection::Outcome "
+      << static_cast<std::underlying_type_t<decltype(outcome)>>(outcome);
   FATAL_ERROR_ABORT();
 }
 
@@ -289,8 +314,10 @@ auto LogTarget::fromVelocyPack(velocypack::Slice s) -> LogTarget {
   if (auto leaderSlice = s.get(StaticStrings::Leader); leaderSlice.isString()) {
     target.leader = leaderSlice.copyString();
   }
-  for (auto const& [pid, flags] : velocypack::ObjectIterator(s.get("participants"))) {
-    target.participants.emplace(pid.copyString(), ParticipantFlags::fromVelocyPack(flags));
+  for (auto const& [pid, flags] :
+       velocypack::ObjectIterator(s.get("participants"))) {
+    target.participants.emplace(pid.copyString(),
+                                ParticipantFlags::fromVelocyPack(flags));
   }
   if (auto propSlice = s.get("properties"); !propSlice.isNone()) {
     target.properties = Properties::fromVelocyPack(propSlice);
@@ -328,7 +355,8 @@ void LogTarget::Properties::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
 }
 
-auto LogTarget::Properties::fromVelocyPack(velocypack::Slice s) -> LogTarget::Properties {
+auto LogTarget::Properties::fromVelocyPack(velocypack::Slice s)
+    -> LogTarget::Properties {
   return {};
 }
 
@@ -341,8 +369,8 @@ auto LogTarget::Supervision::fromVelocyPack(velocypack::Slice s)
   return result;
 }
 
-auto LogTarget::Supervision::toVelocyPack(
-    velocypack::Builder& b) const -> void {
+auto LogTarget::Supervision::toVelocyPack(velocypack::Builder& b) const
+    -> void {
   velocypack::ObjectBuilder ob(&b);
   b.add("maxActionsTraceLength", velocypack::Value(maxActionsTraceLength));
 }

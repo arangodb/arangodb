@@ -144,14 +144,17 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
   auto r = tryLeadershipElection(plan, current, health);
   EXPECT_NE(r, nullptr);
 
-  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
-      << *r;
+  EXPECT_EQ(r->type(), Action::ActionType::LeaderElectionAction) << *r;
 
-  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
+  auto& action = dynamic_cast<LeaderElectionAction&>(*r);
+  EXPECT_EQ(action._election.outcome,
+            LogCurrentSupervisionElection::Outcome::SUCCESS);
 
   auto possibleLeaders = std::set<ParticipantId>{"A", "B", "C"};
-  //  TODO: Fix me
-  //  EXPECT_TRUE(possibleLeaders.contains(action._newLeader));
+  EXPECT_TRUE(bool(action._newTerm));
+  EXPECT_TRUE(bool(action._newTerm->leader));
+  EXPECT_TRUE(possibleLeaders.contains(action._newTerm->leader->serverId));
+  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{1});
 }
 
 TEST_F(LeaderStateMachineTest, test_election_fails) {
@@ -241,10 +244,9 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
 
   ASSERT_NE(r, nullptr);
 
-  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
-      << *r;
+  EXPECT_EQ(r->type(), Action::ActionType::LeaderElectionAction) << *r;
 
-  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
+  auto& action = dynamic_cast<LeaderElectionAction&>(*r);
 
   //  EXPECT_EQ(action._newLeader, "C") << *r;
 }

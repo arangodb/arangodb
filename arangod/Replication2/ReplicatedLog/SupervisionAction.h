@@ -42,9 +42,7 @@ struct Action {
     CreateInitialTermAction,
     UpdateTermAction,
     DictateLeaderAction,
-    SuccessfulLeaderElectionAction,
-    FailedLeaderElectionAction,
-    ImpossibleCampaignAction,
+    LeaderElectionAction,
     UpdateParticipantFlagsAction,
     AddParticipantToPlanAction,
     RemoveParticipantFromPlanAction,
@@ -140,60 +138,25 @@ auto to_string(UpdateTermAction action) -> std::string;
 auto operator<<(std::ostream& os, UpdateTermAction const& action)
     -> std::ostream&;
 
-struct LeaderElectionCampaign;
-
-struct SuccessfulLeaderElectionAction : Action {
-  SuccessfulLeaderElectionAction(LogId id,
-                                 LogCurrentSupervisionElection const& election,
-                                 LogPlanTermSpecification newTerm)
+struct LeaderElectionAction : Action {
+  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election)
+      : _id(id), _election{election}, _newTerm{std::nullopt} {};
+  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election,
+                       LogPlanTermSpecification newTerm)
       : _id(id), _election{election}, _newTerm{newTerm} {};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
   ActionType type() const override {
-    return Action::ActionType::SuccessfulLeaderElectionAction;
+    return Action::ActionType::LeaderElectionAction;
   };
   void toVelocyPack(VPackBuilder& builder) const override;
 
   LogId const _id;
   LogCurrentSupervisionElection _election;
-  LogPlanTermSpecification _newTerm;
+  std::optional<LogPlanTermSpecification> _newTerm;
 };
-auto to_string(SuccessfulLeaderElectionAction action) -> std::string;
-auto operator<<(std::ostream& os, SuccessfulLeaderElectionAction const& action)
-    -> std::ostream&;
-
-struct FailedLeaderElectionAction : Action {
-  FailedLeaderElectionAction(LogId const& id,
-                             LogCurrentSupervisionElection const& election)
-      : _id{id}, _election{election} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::FailedLeaderElectionAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
-  LogCurrentSupervisionElection _election;
-};
-auto to_string(FailedLeaderElectionAction const& action) -> std::string;
-auto operator<<(std::ostream& os, FailedLeaderElectionAction const& action)
-    -> std::ostream&;
-
-struct ImpossibleCampaignAction : Action {
-  ImpossibleCampaignAction(LogId id) : _id(id){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-
-  ActionType type() const override {
-    return Action::ActionType::ImpossibleCampaignAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
-};
-auto to_string(ImpossibleCampaignAction const& action) -> std::string;
-auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action)
+auto to_string(LeaderElectionAction action) -> std::string;
+auto operator<<(std::ostream& os, LeaderElectionAction const& action)
     -> std::ostream&;
 
 struct UpdateParticipantFlagsAction : Action {

@@ -237,6 +237,7 @@ const replicatedLogSuite = function () {
         let quorum1 = log.insert({foo: "bar"});
 	console.log("post write ", quorum1);
         let quorum = log.insert({foo: "bar"});
+	console.log("post write 2", quorum);
         assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
       }
 

@@ -83,12 +83,25 @@ struct LogCurrentLocalState {
 };
 
 struct LogCurrentSupervisionElection {
+  // TODO: I would really like the Election type to be
+  //       a tagged union, but it is such a pain to implement
+  //       so I currently hacked the possible outcomes of an
+  //       election in here.
+  enum class Outcome {
+    SUCCESS = 0,     // A new leader has been selected
+    IMPOSSIBLE = 1,  // Election is impossible because the number of
+                     // participants + 1 is less than writeConcern
+    FAILED = 2,      // The election failed
+  };
+  // This error code applies to participants, not to
+  // the election itself
   enum class ErrorCode {
     OK = 0,
     SERVER_NOT_GOOD = 1,
     TERM_NOT_CONFIRMED = 2,
   };
 
+  Outcome outcome;
   LogTerm term;
 
   TermIndexPair bestTermIndex;
@@ -118,6 +131,11 @@ auto operator==(LogCurrentSupervisionElection const&,
 auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept
     -> std::string_view;
 auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
+    -> void;
+
+auto to_string(LogCurrentSupervisionElection::Outcome) noexcept
+    -> std::string_view;
+auto toVelocyPack(LogCurrentSupervisionElection::Outcome, VPackBuilder&)
     -> void;
 
 struct LogCurrentSupervision {

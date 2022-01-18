@@ -22,6 +22,7 @@
 #include "SupervisionAction.h"
 
 #include "Agency/TransactionBuilder.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
@@ -42,10 +43,7 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::AddLogToPlanAction: {
       return "AddLogToPlan";
     } break;
-    case Action::ActionType::FailedLeaderElectionAction: {
-      return "FailedLeaderElection";
-    } break;
-    case Action::ActionType::SuccessfulLeaderElectionAction: {
+    case Action::ActionType::LeaderElectionAction: {
       return "SuccessfulLeaderElection";
     } break;
     case Action::ActionType::CreateInitialTermAction: {
@@ -56,9 +54,6 @@ auto to_string(Action::ActionType action) -> std::string_view {
     } break;
     case Action::ActionType::UpdateTermAction: {
       return "UpdateTermAction";
-    } break;
-    case Action::ActionType::ImpossibleCampaignAction: {
-      return "ImpossibleCampaignAction";
     } break;
     case Action::ActionType::UpdateParticipantFlagsAction: {
       return "UpdateParticipantFlags";
@@ -212,61 +207,9 @@ auto UpdateTermAction::execute(std::string dbName,
 }
 
 /*
- * ImpossibleCampaignAction
+ * LeaderElectionAction
  */
-void ImpossibleCampaignAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
-}
-
-auto ImpossibleCampaignAction::execute(std::string dbName,
-                                       arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto path = paths::plan()
-                  ->replicatedLogs()
-                  ->database(dbName)
-                  ->log(_id)
-                  ->currentTerm()
-                  ->str();
-  return envelope;
-}
-
-/*
- * FailedLeaderElectionAction
- */
-void FailedLeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
-
-  builder.add(VPackValue("campaign"));
-  _election.toVelocyPack(builder);
-}
-
-auto FailedLeaderElectionAction::execute(std::string dbName,
-                                         arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto path = paths::current()
-                  ->replicatedLogs()
-                  ->database(dbName)
-                  ->log(_id)
-                  ->supervision()
-                  ->election()
-                  ->str();
-
-  return envelope.write()
-      .emplace_object(
-          path, [&](VPackBuilder& builder) { _election.toVelocyPack(builder); })
-      .inc(paths::current()->version()->str())
-      .precs()
-      .end();
-}
-
-/*
- * SuccessfulLeaderElectionAction
- */
-void SuccessfulLeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
+void LeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -274,26 +217,51 @@ void SuccessfulLeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue("campaign"));
   _election.toVelocyPack(builder);
 
-  builder.add(VPackValue("newTerm"));
-  _newTerm.toVelocyPack(builder);
+  if (_newTerm) {
+    builder.add(VPackValue("newTerm"));
+    _newTerm->toVelocyPack(builder);
+  }
 }
 
-auto SuccessfulLeaderElectionAction::execute(
-    std::string dbName, arangodb::agency::envelope envelope)
+auto LeaderElectionAction::execute(std::string dbName,
+                                   arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
-  auto path = paths::plan()
-                  ->replicatedLogs()
-                  ->database(dbName)
-                  ->log(_id)
-                  ->currentTerm()
-                  ->str();
+  auto plan_path = paths::plan()
+                       ->replicatedLogs()
+                       ->database(dbName)
+                       ->log(_id)
+                       ->currentTerm()
+                       ->str();
+  auto current_path = paths::current()
+                          ->replicatedLogs()
+                          ->database(dbName)
+                          ->log(_id)
+                          ->supervision()
+                          ->election()
+                          ->str();
 
-  return envelope.write()
-      .emplace_object(
-          path, [&](VPackBuilder& builder) { _newTerm.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .end();
+  if (_election.outcome == LogCurrentSupervisionElection::Outcome::SUCCESS) {
+    TRI_ASSERT(_newTerm);
+    return envelope.write()
+        .emplace_object(
+            plan_path,
+            [&](VPackBuilder& builder) { _newTerm->toVelocyPack(builder); })
+        .inc(paths::plan()->version()->str())
+        .emplace_object(
+            current_path,
+            [&](VPackBuilder& builder) { _election.toVelocyPack(builder); })
+        .inc(paths::current()->version()->str())
+        .precs()
+        .end();
+  } else {
+    return envelope.write()
+        .emplace_object(
+            current_path,
+            [&](VPackBuilder& builder) { _election.toVelocyPack(builder); })
+        .inc(paths::current()->version()->str())
+        .precs()
+        .end();
+  }
 }
 
 /*

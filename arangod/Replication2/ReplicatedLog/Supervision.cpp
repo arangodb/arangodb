@@ -141,9 +141,12 @@ auto checkLeaderInTarget(LogTarget const& target,
 }
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
-                         ParticipantsHealth const& health, LogTerm term)
+                         ParticipantsHealth const& health, LogTerm term,
+                         size_t requiredNumberOfOKParticipants)
     -> LogCurrentSupervisionElection {
   auto election = LogCurrentSupervisionElection();
+  election.term = term;
+  election.participantsRequired = requiredNumberOfOKParticipants;
 
   for (auto const& [participant, status] : states) {
     auto reason = computeReason(status, health.isHealthy(participant), term);
@@ -169,11 +172,12 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
                            ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   // Check whether there are enough participants to reach a quorum
+
   if (plan.participantsConfig.participants.size() + 1 <=
       plan.currentTerm->config.writeConcern) {
-    return std::make_unique<ImpossibleCampaignAction>(
-        plan.id
-        /* TODO: should we have an error message? */);
+    auto election = LogCurrentSupervisionElection();
+    election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
+    return std::make_unique<LeaderElectionAction>(plan.id, election);
   }
 
   TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
@@ -184,14 +188,15 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
       plan.currentTerm->config.writeConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
-  auto const election =
-      runElectionCampaign(current.localState, health, plan.currentTerm->term);
+  auto election =
+      runElectionCampaign(current.localState, health, plan.currentTerm->term,
+                          requiredNumberOfOKParticipants);
 
   auto const numElectible = election.electibleLeaderSet.size();
 
   if (numElectible == 0 ||
       numElectible > std::numeric_limits<uint16_t>::max()) {
-    return std::make_unique<FailedLeaderElectionAction>(plan.id, election);
+    return std::make_unique<LeaderElectionAction>(plan.id, election);
   }
 
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
@@ -201,7 +206,8 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
     auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
 
-    return std::make_unique<SuccessfulLeaderElectionAction>(
+    election.outcome = LogCurrentSupervisionElection::Outcome::SUCCESS;
+    return std::make_unique<LeaderElectionAction>(
         plan.id, election,
         LogPlanTermSpecification(
             LogTerm{plan.currentTerm->term.value + 1}, plan.currentTerm->config,
@@ -210,7 +216,8 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
-    return std::make_unique<FailedLeaderElectionAction>(plan.id, election);
+    election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
+    return std::make_unique<LeaderElectionAction>(plan.id, election);
   }
 }
 
