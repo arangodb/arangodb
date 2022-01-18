@@ -534,12 +534,12 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.spawn"
+    COMMAND ${PYTHON_EXECUTABLE} -c "import shutil.which"
     RESULT_VARIABLE EXIT_CODE
     OUTPUT_QUIET
     )
 if (NOT "${EXIT_CODE}" EQUAL "0")
-  message(FATAL_ERROR "python distutils package is required! ")
+  message(FATAL_ERROR "python shutil.which package is required! ")
 endif()
 
 # FIXME the build containers seem to have a
