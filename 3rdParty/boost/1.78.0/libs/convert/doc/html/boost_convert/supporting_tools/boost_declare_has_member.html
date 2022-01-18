@@ -1,0 +1,91 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>BOOST_DECLARE_HAS_MEMBER</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="up" href="../supporting_tools.html" title="Supporting Tools">
+<link rel="prev" href="boost__cnv__is_range.html" title="boost::cnv::is_range">
+<link rel="next" href="boost_declare_is_callable.html" title="BOOST_DECLARE_IS_CALLABLE">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__cnv__is_range.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../supporting_tools.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_declare_is_callable.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_convert.supporting_tools.boost_declare_has_member"></a><a class="link" href="boost_declare_has_member.html" title="BOOST_DECLARE_HAS_MEMBER">BOOST_DECLARE_HAS_MEMBER</a>
+</h3></div></div></div>
+<p>
+        The BOOST_DECLARE_HAS_MEMBER macro allows to declare a trait which would
+        then let introspect the existence of a class member (a data member or a member
+        function) with the specified name.
+      </p>
+<p>
+        For example, the following declarations introduce <code class="computeroutput"><span class="identifier">local</span><span class="special">::</span><span class="identifier">has_begin</span></code>
+        and <code class="computeroutput"><span class="identifier">local</span><span class="special">::</span><span class="identifier">has_funop</span></code> traits which then allow to test
+        if the supplied class has respectively <code class="computeroutput"><span class="identifier">begin</span></code>
+        and <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code>
+        members:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">local</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_DECLARE_HAS_MEMBER</span><span class="special">(</span><span class="identifier">has_begin</span><span class="special">,</span> <span class="identifier">begin</span><span class="special">);</span>
+    <span class="identifier">BOOST_DECLARE_HAS_MEMBER</span><span class="special">(</span><span class="identifier">has_funop</span><span class="special">,</span> <span class="keyword">operator</span><span class="special">());</span>
+<span class="special">}}</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now these traits can be used as follows:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">local</span>
+<span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">test01</span> <span class="special">{</span> <span class="keyword">int</span>   <span class="identifier">begin</span><span class="special">;</span> <span class="special">};</span>
+    <span class="keyword">struct</span> <span class="identifier">test02</span> <span class="special">{</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">begin</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span> <span class="special">}</span> <span class="special">};</span>
+    <span class="keyword">struct</span> <span class="identifier">test22</span> <span class="special">{</span> <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()()</span> <span class="special">{}</span> <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">local</span><span class="special">::</span><span class="identifier">has_begin</span><span class="special">&lt;</span><span class="identifier">local</span><span class="special">::</span><span class="identifier">test01</span><span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">==</span> <span class="keyword">true</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">local</span><span class="special">::</span><span class="identifier">has_begin</span><span class="special">&lt;</span><span class="identifier">local</span><span class="special">::</span><span class="identifier">test02</span><span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">==</span> <span class="keyword">true</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">local</span><span class="special">::</span><span class="identifier">has_funop</span><span class="special">&lt;</span><span class="identifier">local</span><span class="special">::</span><span class="identifier">test22</span><span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">==</span> <span class="keyword">true</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        As it can be seen from the example the traits only check for the existence
+        of a member (be that a data member or a member function) with the specified
+        name.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2020 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__cnv__is_range.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../supporting_tools.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_declare_is_callable.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

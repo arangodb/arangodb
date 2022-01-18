@@ -1,0 +1,62 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macro BOOST_VMD_GET_TYPE_D</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="up" href="header/boost/vmd/get_type_hpp.html" title="Header &lt;boost/vmd/get_type.hpp&gt;">
+<link rel="prev" href="BOOST_VMD_GET_TYPE.html" title="Macro BOOST_VMD_GET_TYPE">
+<link rel="next" href="header/boost/vmd/identity_hpp.html" title="Header &lt;boost/vmd/identity.hpp&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_VMD_GET_TYPE.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="header/boost/vmd/get_type_hpp.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="header/boost/vmd/identity_hpp.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_VMD_GET_TYPE_D"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_VMD_GET_TYPE_D</span></h2>
+<p>BOOST_VMD_GET_TYPE_D — Returns the type of a sequence as a VMD type. Re-entrant version. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="header/boost/vmd/get_type_hpp.html" title="Header &lt;boost/vmd/get_type.hpp&gt;">boost/vmd/get_type.hpp</a>&gt;
+
+</span>BOOST_VMD_GET_TYPE_D(d, ...)</pre></div>
+<div class="refsect1">
+<a name="idm14075"></a><h2>Description</h2>
+<p>d = The next available BOOST_PP_WHILE iteration. <br>
+ ... = variadic parameters.</p>
+<p>The first variadic parameter is required and is the sequence whose type we are getting.</p>
+<p>The optional variadic parameters are return type parameters.</p>
+<p>The macro returns the type of a sequence as a VMD type. The type of an empty sequence is always BOOST_VMD_TYPE_EMPTY and the type of a multi-element is always BOOST_VMD_TYPE_SEQUENCE. The type of a single-element sequence is the type of that single element.</p>
+<p>The type returned can be modified by specifying an optional return type parameter.</p>
+<p>If BOOST_VMD_RETURN_TYPE, the default, is specified the specific type of the element is returned.</p>
+<p>If BOOST_VMD_RETURN_TYPE_ARRAY is specified an array type is returned if the element is an array, else a tuple type is returned if the element is a tuple, else the actual type is returned for non-tuple data.</p>
+<p>If BOOST_VMD_RETURN_TYPE_LIST is specified a list type is returned if the element is a list, else a tuple type is returned if the element is a tuple, else the actual type is returned for non-tuple data.</p>
+<p>If BOOST_VMD_RETURN_TYPE_TUPLE is specified a tuple type is returned for all tuple-like data, else the actual type is returned for non-tuple data.</p>
+<p>If BOOST_VMD_RETURN_NO_TYPE is specified it is ignored since the macro always returns the type of the sequence.</p>
+<p>If more than one return type optional parameter is specified the last one specified determines the return type.</p>
+<p>returns = the type of the sequence as a VMD type. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_VMD_GET_TYPE.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="header/boost/vmd/get_type_hpp.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="header/boost/vmd/identity_hpp.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

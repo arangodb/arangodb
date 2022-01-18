@@ -25,9 +25,11 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const _ = require('lodash');
 const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
+const database = "replication2_test_db";
 
 const getLeaderStatus = function(id) {
   let status = db._replicatedLog(id).status();
@@ -64,6 +66,27 @@ const waitForLeader = function (id) {
   }
 };
 
+const {setUpAll, tearDownAll} = (function () {
+  let previousDatabase, databaseExisted = true;
+  return {
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database);
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (!databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
+  };
+}());
+
 function ReplicatedLogsSuite () {
   'use strict';
 
@@ -76,6 +99,7 @@ function ReplicatedLogsSuite () {
   };
 
   return {
+    setUpAll, tearDownAll,
     setUp : function () {},
     tearDown : function () {},
 
@@ -107,6 +131,7 @@ function ReplicatedLogsWriteSuite () {
   };
 
   return {
+    setUpAll, tearDownAll,
     setUp : function () {
       db._createReplicatedLog({id: logId, targetConfig: targetConfig});
       waitForLeader(logId);

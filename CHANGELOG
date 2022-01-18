@@ -1,6 +1,16 @@
 devel
 -----
 
+* Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
+
+* Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
+
+* Updated Enterprise license behavior: now there will be a 48 hour period for a
+  new deployment and upgrade decision to provide the license. After that period,
+  the read-only mode will be enforced.
+  Upgrade procedure for a deployment without license will not take upgrade
+  period into account for the read-only mode will enforcement.
+
 * Added agency push-queue operation
 
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
