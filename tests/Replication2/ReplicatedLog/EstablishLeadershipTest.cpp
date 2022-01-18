@@ -75,14 +75,15 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
 
   auto config = LogConfig{2, 2, 2, false};
-  auto participants =
-      std::unordered_map<ParticipantId, ParticipantFlags>{{"leader", {}}, {"follower", {.excluded = true}}};
+  auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{
+      {"leader", {}}, {"follower", {.excluded = true}}};
   auto participantsConfig =
       std::make_shared<ParticipantsConfig>(ParticipantsConfig{
           .generation = 1,
           .participants = std::move(participants),
       });
-  auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower}, participantsConfig);
+  auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4},
+                                        {follower}, participantsConfig);
 
   auto f = leader->waitForLeadership();
   {
