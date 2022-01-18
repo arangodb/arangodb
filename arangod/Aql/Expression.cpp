@@ -200,8 +200,7 @@ void Expression::invalidateAfterReplacements() {
 /// this performs either a binary search (if the node is sorted) or a
 /// linear search (if the node is not sorted)
 bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
-                             VPackOptions const* vopts,
-                             AstNode const* node) const {
+                             VPackOptions const* vopts, AstNode const* node) {
   TRI_ASSERT(right.isArray());
 
   size_t const n = right.length();
@@ -383,12 +382,11 @@ void Expression::prepareForExecution(ExpressionContext& ctx) {
   }
 }
 
-/// @brief execute an expression of type SIMPLE, the convention is that
-/// the resulting AqlValue will be destroyed outside eventually
+// brief execute an expression of type SIMPLE, the convention is that
+// the resulting AqlValue will be destroyed outside eventually
 AqlValue Expression::executeSimpleExpression(ExpressionContext& ctx,
                                              AstNode const* node,
-                                             bool& mustDestroy,
-                                             bool doCopy) const {
+                                             bool& mustDestroy, bool doCopy) {
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
       return executeSimpleExpressionAttributeAccess(ctx, node, mustDestroy,
@@ -494,11 +492,11 @@ void Expression::stringifyIfNotTooLong(std::string& buffer) const {
   _node->stringify(buffer, true);
 }
 
-/// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
-/// always creates a copy
+// execute an expression of type SIMPLE with ATTRIBUTE ACCESS
+// always creates a copy
 AqlValue Expression::executeSimpleExpressionAttributeAccess(
     ExpressionContext& ctx, AstNode const* node, bool& mustDestroy,
-    bool doCopy) const {
+    bool doCopy) {
   // object lookup, e.g. users.name
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -517,10 +515,10 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
                     mustDestroy, true);
 }
 
-/// @brief execute an expression of type SIMPLE with INDEXED ACCESS
+// execute an expression of type SIMPLE with INDEXED ACCESS
 AqlValue Expression::executeSimpleExpressionIndexedAccess(
     ExpressionContext& ctx, AstNode const* node, bool& mustDestroy,
-    bool doCopy) const {
+    bool doCopy) {
   // array lookup, e.g. users[0]
   // note: it depends on the type of the value whether an array lookup or an
   // object lookup is performed
@@ -593,10 +591,10 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
   return AqlValue(AqlValueHintNull());
 }
 
-/// @brief execute an expression of type SIMPLE with ARRAY
+// execute an expression of type SIMPLE with ARRAY
 AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
                                                   AstNode const* node,
-                                                  bool& mustDestroy) const {
+                                                  bool& mustDestroy) {
   mustDestroy = false;
   if (node->isConstant()) {
     // this will not create a copy
@@ -635,10 +633,10 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
   return AqlValue(builder->slice(), builder->size());
 }
 
-/// @brief execute an expression of type SIMPLE with OBJECT
+// execute an expression of type SIMPLE with OBJECT
 AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
                                                    AstNode const* node,
-                                                   bool& mustDestroy) const {
+                                                   bool& mustDestroy) {
   auto& trx = ctx.trx();
   auto& vopts = trx.vpackOptions();
 
@@ -751,10 +749,10 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   return AqlValue(builder->slice(), builder->size());
 }
 
-/// @brief execute an expression of type SIMPLE with VALUE
+// execute an expression of type SIMPLE with VALUE
 AqlValue Expression::executeSimpleExpressionValue(ExpressionContext& ctx,
                                                   AstNode const* node,
-                                                  bool& mustDestroy) const {
+                                                  bool& mustDestroy) {
   // this will not create a copy
   mustDestroy = false;
   uint8_t const* cv = node->computedValue();
@@ -765,21 +763,21 @@ AqlValue Expression::executeSimpleExpressionValue(ExpressionContext& ctx,
   return AqlValue(node->computeValue(builder.get()).begin());
 }
 
-/// @brief execute an expression of type SIMPLE with REFERENCE
+// execute an expression of type SIMPLE with REFERENCE
 AqlValue Expression::executeSimpleExpressionReference(ExpressionContext& ctx,
                                                       AstNode const* node,
                                                       bool& mustDestroy,
-                                                      bool doCopy) const {
+                                                      bool doCopy) {
   mustDestroy = false;
   auto v = static_cast<Variable const*>(node->getData());
   TRI_ASSERT(v != nullptr);
   return ctx.getVariableValue(v, doCopy, mustDestroy);
 }
 
-/// @brief execute an expression of type SIMPLE with RANGE
+// execute an expression of type SIMPLE with RANGE
 AqlValue Expression::executeSimpleExpressionRange(ExpressionContext& ctx,
                                                   AstNode const* node,
-                                                  bool& mustDestroy) const {
+                                                  bool& mustDestroy) {
   auto low = node->getMember(0);
   auto high = node->getMember(1);
   mustDestroy = false;
@@ -796,10 +794,10 @@ AqlValue Expression::executeSimpleExpressionRange(ExpressionContext& ctx,
   return AqlValue(resultLow.toInt64(), resultHigh.toInt64());
 }
 
-/// @brief execute an expression of type SIMPLE with FCALL, dispatcher
+// execute an expression of type SIMPLE with FCALL, dispatcher
 AqlValue Expression::executeSimpleExpressionFCall(ExpressionContext& ctx,
                                                   AstNode const* node,
-                                                  bool& mustDestroy) const {
+                                                  bool& mustDestroy) {
   // only some functions have C++ handlers
   // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
@@ -810,10 +808,10 @@ AqlValue Expression::executeSimpleExpressionFCall(ExpressionContext& ctx,
   return executeSimpleExpressionFCallJS(ctx, node, mustDestroy);
 }
 
-/// @brief execute an expression of type SIMPLE with FCALL, CXX version
+// execute an expression of type SIMPLE with FCALL, CXX version
 AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
                                                      AstNode const* node,
-                                                     bool& mustDestroy) const {
+                                                     bool& mustDestroy) {
   TRI_ASSERT(node != nullptr);
   mustDestroy = false;
   auto func = static_cast<Function*>(node->getData());
@@ -932,10 +930,10 @@ AqlValue Expression::invokeV8Function(
   return AqlValue(builder->slice(), builder->size());
 }
 
-/// @brief execute an expression of type SIMPLE, JavaScript variant
+// execute an expression of type SIMPLE, JavaScript variant
 AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
                                                     AstNode const* node,
-                                                    bool& mustDestroy) const {
+                                                    bool& mustDestroy) {
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
@@ -1012,10 +1010,10 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
   }
 }
 
-/// @brief execute an expression of type SIMPLE with NOT
+// execute an expression of type SIMPLE with NOT
 AqlValue Expression::executeSimpleExpressionNot(ExpressionContext& ctx,
                                                 AstNode const* node,
-                                                bool& mustDestroy) const {
+                                                bool& mustDestroy) {
   mustDestroy = false;
   AqlValue operand =
       executeSimpleExpression(ctx, node->getMember(0), mustDestroy, false);
@@ -1027,10 +1025,10 @@ AqlValue Expression::executeSimpleExpressionNot(ExpressionContext& ctx,
   return AqlValue(AqlValueHintBool(!operandIsTrue));
 }
 
-/// @brief execute an expression of type SIMPLE with +
+// execute an expression of type SIMPLE with +
 AqlValue Expression::executeSimpleExpressionPlus(ExpressionContext& ctx,
                                                  AstNode const* node,
-                                                 bool& mustDestroy) const {
+                                                 bool& mustDestroy) {
   mustDestroy = false;
   AqlValue operand =
       executeSimpleExpression(ctx, node->getMember(0), mustDestroy, false);
@@ -1061,10 +1059,10 @@ AqlValue Expression::executeSimpleExpressionPlus(ExpressionContext& ctx,
   return AqlValue(AqlValueHintDouble(+value));
 }
 
-/// @brief execute an expression of type SIMPLE with -
+// execute an expression of type SIMPLE with -
 AqlValue Expression::executeSimpleExpressionMinus(ExpressionContext& ctx,
                                                   AstNode const* node,
-                                                  bool& mustDestroy) const {
+                                                  bool& mustDestroy) {
   mustDestroy = false;
   AqlValue operand =
       executeSimpleExpression(ctx, node->getMember(0), mustDestroy, false);
@@ -1103,10 +1101,10 @@ AqlValue Expression::executeSimpleExpressionMinus(ExpressionContext& ctx,
   return AqlValue(AqlValueHintDouble(-value));
 }
 
-/// @brief execute an expression of type SIMPLE with AND
+// execute an expression of type SIMPLE with AND
 AqlValue Expression::executeSimpleExpressionAnd(ExpressionContext& ctx,
                                                 AstNode const* node,
-                                                bool& mustDestroy) const {
+                                                bool& mustDestroy) {
   AqlValue left = executeSimpleExpression(ctx, node->getMemberUnchecked(0),
                                           mustDestroy, true);
 
@@ -1123,10 +1121,10 @@ AqlValue Expression::executeSimpleExpressionAnd(ExpressionContext& ctx,
   return left;
 }
 
-/// @brief execute an expression of type SIMPLE with OR
+// execute an expression of type SIMPLE with OR
 AqlValue Expression::executeSimpleExpressionOr(ExpressionContext& ctx,
                                                AstNode const* node,
-                                               bool& mustDestroy) const {
+                                               bool& mustDestroy) {
   AqlValue left = executeSimpleExpression(ctx, node->getMemberUnchecked(0),
                                           mustDestroy, true);
 
@@ -1143,10 +1141,10 @@ AqlValue Expression::executeSimpleExpressionOr(ExpressionContext& ctx,
                                  true);
 }
 
-/// @brief execute an expression of type SIMPLE with AND or OR
+// execute an expression of type SIMPLE with AND or OR
 AqlValue Expression::executeSimpleExpressionNaryAndOr(ExpressionContext& ctx,
                                                       AstNode const* node,
-                                                      bool& mustDestroy) const {
+                                                      bool& mustDestroy) {
   mustDestroy = false;
   size_t count = node->numMembers();
   if (count == 0) {
@@ -1198,9 +1196,10 @@ AqlValue Expression::executeSimpleExpressionNaryAndOr(ExpressionContext& ctx,
   return AqlValue(AqlValueHintBool(false));
 }
 
-/// @brief execute an expression of type SIMPLE with COMPARISON
-AqlValue Expression::executeSimpleExpressionComparison(
-    ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) const {
+// execute an expression of type SIMPLE with COMPARISON
+AqlValue Expression::executeSimpleExpressionComparison(ExpressionContext& ctx,
+                                                       AstNode const* node,
+                                                       bool& mustDestroy) {
   AqlValue left = executeSimpleExpression(ctx, node->getMemberUnchecked(0),
                                           mustDestroy, false);
   AqlValueGuard guardLeft(left, mustDestroy);
@@ -1260,9 +1259,9 @@ AqlValue Expression::executeSimpleExpressionComparison(
   }
 }
 
-/// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
+// execute an expression of type SIMPLE with ARRAY COMPARISON
 AqlValue Expression::executeSimpleExpressionArrayComparison(
-    ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) const {
+    ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) {
   auto const& vopts = ctx.trx().vpackOptions();
 
   AqlValue left =
@@ -1390,10 +1389,10 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   return AqlValue(AqlValueHintBool(overallResult));
 }
 
-/// @brief execute an expression of type SIMPLE with TERNARY
+// execute an expression of type SIMPLE with TERNARY
 AqlValue Expression::executeSimpleExpressionTernary(ExpressionContext& ctx,
                                                     AstNode const* node,
-                                                    bool& mustDestroy) const {
+                                                    bool& mustDestroy) {
   if (node->numMembers() == 2) {
     AqlValue condition =
         executeSimpleExpression(ctx, node->getMember(0), mustDestroy, true);
@@ -1427,10 +1426,10 @@ AqlValue Expression::executeSimpleExpressionTernary(ExpressionContext& ctx,
                                  mustDestroy, true);
 }
 
-/// @brief execute an expression of type SIMPLE with EXPANSION
+// execute an expression of type SIMPLE with EXPANSION
 AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
                                                       AstNode const* node,
-                                                      bool& mustDestroy) const {
+                                                      bool& mustDestroy) {
   TRI_ASSERT(node->numMembers() == 5);
   mustDestroy = false;
 
@@ -1635,19 +1634,20 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
   return AqlValue(std::move(buffer));  // builder = dynamic data
 }
 
-/// @brief execute an expression of type SIMPLE with ITERATOR
+// execute an expression of type SIMPLE with ITERATOR
 AqlValue Expression::executeSimpleExpressionIterator(ExpressionContext& ctx,
                                                      AstNode const* node,
-                                                     bool& mustDestroy) const {
+                                                     bool& mustDestroy) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
   return executeSimpleExpression(ctx, node->getMember(1), mustDestroy, true);
 }
 
-/// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
-AqlValue Expression::executeSimpleExpressionArithmetic(
-    ExpressionContext& ctx, AstNode const* node, bool& mustDestroy) const {
+// execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
+AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
+                                                       AstNode const* node,
+                                                       bool& mustDestroy) {
   AqlValue lhs = executeSimpleExpression(ctx, node->getMemberUnchecked(0),
                                          mustDestroy, true);
   AqlValueGuard guardLhs(lhs, mustDestroy);
