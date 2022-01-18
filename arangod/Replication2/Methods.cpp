@@ -238,7 +238,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto leaderId = std::move(*leader);
 
     return network::sendRequest(pool, "server:" + leaderId,
-                                fuerte::RestVerb::Get, path)
+                                fuerte::RestVerb::Get, path, {}, opts)
         .thenValue([self = shared_from_this(), id,
                     leaderId](network::Response&& resp) mutable {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {

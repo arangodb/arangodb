@@ -1,0 +1,98 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chapter 2. Building and Testing</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Python">
+<link rel="up" href="index.html" title="Boost.Python">
+<link rel="prev" href="rn.html" title="Chapter 1. Release Notes">
+<link rel="next" href="building/background.html" title="Background">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rn.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="building/background.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h1 class="title">
+<a name="building"></a>Chapter 2. Building and Testing</h1></div>
+<div><div class="authorgroup"><div class="author"><h3 class="author">
+<span class="firstname">David</span> <span class="surname">Abrahams</span>
+</h3></div></div></div>
+<div><p class="copyright">Copyright © 2002-2015 David Abrahams, Stefan Seefeld</p></div>
+</div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="building.html#building.requirements">Requirements</a></span></dt>
+<dt><span class="section"><a href="building/background.html">Background</a></span></dt>
+<dt><span class="section"><a href="building/no_install_quickstart.html">No-Install Quickstart</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="building/no_install_quickstart.html#building.no_install_quickstart.basic_procedure">Basic
+        Procedure</a></span></dt>
+<dt><span class="section"><a href="building/no_install_quickstart.html#building.no_install_quickstart.in_case_of_trouble">In
+        Case of Trouble</a></span></dt>
+<dt><span class="section"><a href="building/no_install_quickstart.html#building.no_install_quickstart.in_case_everything_seemed_to_wor">In
+        Case Everything Seemed to Work</a></span></dt>
+<dt><span class="section"><a href="building/no_install_quickstart.html#building.no_install_quickstart.modifying_the_example_project">Modifying
+        the Example Project</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="building/installing_boost_python_on_your_.html">Installing
+      Boost.Python on your System</a></span></dt>
+<dt><span class="section"><a href="building/configuring_boost_build.html">Configuring Boost.Build</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="building/configuring_boost_build.html#building.configuring_boost_build.python_configuration_parameters">Python
+        Configuration Parameters</a></span></dt>
+<dt><span class="section"><a href="building/configuring_boost_build.html#building.configuring_boost_build.examples">Examples</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="building/choosing_a_boost_python_library_.html">Choosing a
+      Boost.Python Library Binary</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="building/choosing_a_boost_python_library_.html#building.choosing_a_boost_python_library_.the_dynamic_binary">The
+        Dynamic Binary</a></span></dt>
+<dt><span class="section"><a href="building/choosing_a_boost_python_library_.html#building.choosing_a_boost_python_library_.the_static_binary">The
+        Static Binary</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="building/include_issues.html"><code class="computeroutput"><span class="preprocessor">#include</span></code>
+      Issues</a></span></dt>
+<dt><span class="section"><a href="building/python_debugging_builds.html">Python Debugging Builds</a></span></dt>
+<dt><span class="section"><a href="building/testing_boost_python.html">Testing Boost.Python</a></span></dt>
+<dt><span class="section"><a href="building/notes_for_mingw_and_cygwin_with_.html">Notes for
+      MinGW (and Cygwin with -mno-cygwin) GCC Users</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="building.requirements"></a><a class="link" href="building.html#building.requirements" title="Requirements">Requirements</a>
+</h3></div></div></div>
+<p>
+        Boost.Python requires <a href="http://www.python.org/2.2" target="_top">Python 2.2</a>
+        <a href="#ftn.building.requirements.f0" class="footnote" name="building.requirements.f0"><sup class="footnote">[1]</sup></a> <span class="bold"><strong>or</strong></span> <a href="http://www.python.org" target="_top">newer</a>.
+      </p>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.building.requirements.f0" class="footnote"><p><a href="#building.requirements.f0" class="para"><sup class="para">[1] </sup></a>
+          Note that although we tested earlier versions of Boost.Python with Python
+          2.2, and we don't <span class="bold"><strong>think</strong></span> we've done anything
+          to break compatibility, this release of Boost.Python may not have been
+          tested with versions of Python earlier than 2.4, so we're not 100% sure
+          that python 2.2 and 2.3 are supported.
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2015 David
+      Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rn.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="building/background.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

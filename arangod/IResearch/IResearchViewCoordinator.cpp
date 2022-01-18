@@ -178,15 +178,15 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     return {};
   }
 
-  static const std::function<bool(irs::string_ref const&)> propertiesAcceptor =
-      [](irs::string_ref const& key) -> bool {
-    return key != StaticStrings::VersionField;  // ignored fields
+  std::function<bool(irs::string_ref)> const propertiesAcceptor =
+      [](irs::string_ref key) -> bool {
+    return std::string_view{key} != StaticStrings::VersionField;
   };
-  static const std::function<bool(irs::string_ref const&)> persistenceAcceptor =
-      [](irs::string_ref const&) -> bool { return true; };
+  std::function<bool(irs::string_ref)> const persistenceAcceptor =
+      [](irs::string_ref) -> bool { return true; };
 
-  static const std::function<bool(irs::string_ref const&)>
-      linkPropertiesAcceptor = [](irs::string_ref const& key) -> bool {
+  const std::function<bool(irs::string_ref)> linkPropertiesAcceptor =
+      [](std::string_view key) -> bool {
     return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
            key != iresearch::StaticStrings::PrimarySortField &&
            key != iresearch::StaticStrings::PrimarySortCompressionField &&
@@ -281,21 +281,18 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
           link.collection().name())) {
     return TRI_ERROR_NO_ERROR;
   }
-  static const std::function<bool(irs::string_ref const& key)> acceptor =
-      [](                             // acceptor
-          irs::string_ref const& key  // key
-          ) -> bool {
-    return key != arangodb::StaticStrings::IndexId       // ignore index id
-           && key != arangodb::StaticStrings::IndexType  // ignore index type
-           && key != StaticStrings::ViewIdField;         // ignore view id
+  std::function<bool(irs::string_ref key)> const acceptor =
+      [](std::string_view key) -> bool {
+    return key != arangodb::StaticStrings::IndexId &&
+           key != arangodb::StaticStrings::IndexType &&
+           key != StaticStrings::ViewIdField;
   };
   velocypack::Builder builder;
 
   builder.openObject();
 
-  auto res = link.properties(
-      builder,
-      true);  // generate user-visible definition, agency will not see links
+  // generate user-visible definition, agency will not see links
+  auto res = link.properties(builder, true);
 
   if (!res.ok()) {
     return res;
@@ -328,11 +325,10 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
   UNUSED(it);
 
   if (!emplaced) {
-    return Result(                              // result
-        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,  // code
-        std::string("duplicate entry while emplacing collection '") +
-            std::to_string(cid.id()) + "' into arangosearch View '" + name() +
-            "'");
+    return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+            "duplicate entry while emplacing collection '" +
+                std::to_string(cid.id()) + "' into arangosearch View '" +
+                name() + "'"};
   }
 
   return Result();
@@ -370,10 +366,10 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
                                             bool isUserRequest,
                                             bool partialUpdate) {
   if (!vocbase().server().hasFeature<ClusterFeature>()) {
-    return Result(TRI_ERROR_INTERNAL,
-                  std::string("failure to get storage engine while "
-                              "updating arangosearch view '") +
-                      name() + "'");
+    return {TRI_ERROR_INTERNAL,
+            std::string("failure to get storage engine while "
+                        "updating arangosearch view '") +
+                name() + "'"};
   }
   auto& engine = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -559,7 +555,3 @@ Result IResearchViewCoordinator::dropImpl() {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

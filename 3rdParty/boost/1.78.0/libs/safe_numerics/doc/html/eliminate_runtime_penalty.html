@@ -1,0 +1,85 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Eliminating Runtime Penalty</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="index.html" title="Safe Numerics">
+<link rel="prev" href="tutorial/10.html" title="Programming by Contract is Too Slow">
+<link rel="next" href="eliminate_runtime_penalty/2.html" title="Using safe_range and safe_literal">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial/10.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="eliminate_runtime_penalty/2.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="safe_numerics.eliminate_runtime_penalty"></a>Eliminating Runtime Penalty</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="eliminate_runtime_penalty/2.html">Using safe_range
+    and safe_literal</a></span></dt>
+<dt><span class="section"><a href="eliminate_runtime_penalty/1.html">Using Automatic Type Promotion</a></span></dt>
+<dt><span class="section"><a href="eliminate_runtime_penalty/3.html">Mixing Approaches</a></span></dt>
+</dl></div>
+<p>Up until now, we've mostly focused on detecting when incorrect results
+  are produced and handling these occurrences either by throwing an exception
+  or invoking some designated function. We've achieved our goal of detecting
+  and handling arithmetically incorrect behavior - but at cost of checking
+  many arithmetic operations at runtime. It is a fact that many C++
+  programmers will find this trade-off unacceptable. So the question arises as
+  to how we might minimize or eliminate this runtime penalty.</p>
+<p>The first step is to determine what parts of a program might invoke
+  exceptions. The following program is similar to previous examples but uses a
+  special exception policy: <a class="link" href="exception_policies.html#safe_numerics.exception_policies.loose_trap_policy"><code class="computeroutput">loose_trap_policy</code></a>.</p>
+<pre class="programlisting"><span class="comment">//  Copyright (c) 2018 Robert Ramey</span>
+<span class="comment">//</span>
+<span class="comment">// Distributed under the Boost Software License, Version 1.0. (See</span>
+<span class="comment">// accompanying file LICENSE_1_0.txt or copy at</span>
+<span class="comment">// http://www.boost.org/LICENSE_1_0.txt)</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">exception_policies</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// include exception policies</span>
+
+<span class="keyword">using</span> <span class="identifier">safe_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe</span><span class="special">&lt;</span>
+    <span class="keyword">int</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">native</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">loose_trap_policy</span>  <span class="comment">// note use of "loose_trap_exception" policy!</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="special">)</span><span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"example 81:\n"</span><span class="special">;</span>
+    <span class="identifier">safe_t</span> <span class="identifier">x</span><span class="special">(</span><span class="identifier">INT_MAX</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">safe_t</span> <span class="identifier">y</span><span class="special">(</span><span class="number">2</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">safe_t</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// will fail to compile !</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>Now,
+  any expression which <span class="emphasis"><em><span class="bold"><strong>might</strong></span></em></span> fail at runtime is flagged with a
+  compile time error. There is no longer any need for <code class="computeroutput">try/catch</code>
+  blocks. Since this program does not compile, the <span class="bold"><strong>library absolutely <span class="bold"><strong>guarantees that no
+  arithmetic expression</strong></span> will yield incorrect results</strong></span>.
+  Furthermore, it is <span class="bold"><strong>absolutely guaranteed that no
+  exception will ever be thrown</strong></span>. This is our original goal.</p>
+<p>Now all we need to do is make the program compile. There are a couple
+  of ways to achieve this.</p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial/10.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="eliminate_runtime_penalty/2.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

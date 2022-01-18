@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Two phase construction - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/constructors/file_handle.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Two phase construction</h1></div></div></div>
+  <p>The first thing to do is to break your object&rsquo;s construction into two phases:</p>
+
+<ol>
+<li><p>Place the object into a state where it can be legally destructed
+without doing any initialisation which could throw an exception (i.e. everything
+done in phase 1 is <code>constexpr</code>). This phase usually involves initialising member
+variables to various default values, most often using default member initialisers.
+Most standard C++ library objects
+and containers have <code>constexpr</code> constructors, and thus can be initialised
+during phase 1. If you need to initialise a member variable without
+a <code>constexpr</code> constructor, 
+<a href="https://en.cppreference.com/w/cpp/utility/optional" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>std::optional&lt;T&gt;</code></a>
+ is the usual workaround.</p></li>
+
+<li><p>Do the remainder of the construction, the parts which could fail.
+Because phase 1 placed the object into a legally destructible state,
+it is usually the case that one can bail out during phase 2 and the
+destructor will clean things up correctly.</p></li>
+</ol>
+
+<p>The phase 1 construction will be placed into a <em>private</em> <code>constexpr</code>
+constructor so nobody external can call it. The phase 2 construction will be placed into a static
+member initialisation function which returns a <code>result</code> with either
+the successfully constructed object, or the cause of any failure to
+construct the object.</p>
+
+<p>Finally, as a phase 3,
+some simple metaprogramming will implement a <code>make&lt;T&gt;{Args...}()</code>
+free function which will construct any object <code>T</code> by calling its
+static initialisation function with <code>Args...</code> and returning the
+<code>result</code> returned. This isn&rsquo;t as nice as calling <code>T(Args...)</code> directly,
+but it&rsquo;s not too bad in practice. And more importantly, it lets you
+write generic code which can construct any unknown object which
+fails via returning <code>result</code>, completely avoiding C++ exception throws.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/constructors/file_handle.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

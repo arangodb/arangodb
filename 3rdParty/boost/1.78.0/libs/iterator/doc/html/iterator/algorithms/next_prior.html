@@ -1,0 +1,156 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Function templates next() and prior()</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Iterator">
+<link rel="up" href="../algorithms.html" title="Algorithms">
+<link rel="prev" href="distance.html" title="Function template distance()">
+<link rel="next" href="../upgrading.html" title="Upgrading from the old Boost Iterator Adaptor Library">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="distance.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../algorithms.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../upgrading.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.algorithms.next_prior"></a><a class="link" href="next_prior.html" title="Function templates next() and prior()">Function templates <code class="computeroutput"><span class="identifier">next</span><span class="special">()</span></code> and
+      <code class="computeroutput"><span class="identifier">prior</span><span class="special">()</span></code></a>
+</h3></div></div></div>
+<p>
+        Certain data types, such as the C++ Standard Library's forward and bidirectional
+        iterators, do not provide addition and subtraction via <code class="computeroutput"><span class="keyword">operator</span><span class="special">+()</span></code> or <code class="computeroutput"><span class="keyword">operator</span><span class="special">-()</span></code>. This means that non-modifying computation
+        of the next or prior value requires a temporary, even though <code class="computeroutput"><span class="keyword">operator</span><span class="special">++()</span></code>
+        or <code class="computeroutput"><span class="keyword">operator</span><span class="special">--()</span></code>
+        is provided. It also means that writing code like <code class="computeroutput"><span class="identifier">itr</span><span class="special">+</span><span class="number">1</span></code> inside a
+        template restricts the iterator category to random access iterators.
+      </p>
+<p>
+        The <code class="computeroutput"><span class="identifier">next</span><span class="special">()</span></code>
+        and <code class="computeroutput"><span class="identifier">prior</span><span class="special">()</span></code>
+        functions defined in <code class="computeroutput"><span class="identifier">boost</span><span class="special">/</span><span class="identifier">next_prior</span><span class="special">.</span><span class="identifier">hpp</span></code> provide
+        a simple way around these problems.
+      </p>
+<h5>
+<a name="iterator.algorithms.next_prior.h0"></a>
+        <span class="phrase"><a name="iterator.algorithms.next_prior.synopsis"></a></span><a class="link" href="next_prior.html#iterator.algorithms.next_prior.synopsis">Synopsis</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">T</span> <span class="identifier">next</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="special">++</span><span class="identifier">x</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Distance</span><span class="special">&gt;</span>
+<span class="identifier">T</span> <span class="identifier">next</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">Distance</span> <span class="identifier">n</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">advance</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="identifier">n</span><span class="special">);</span>
+    <span class="keyword">return</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">T</span> <span class="identifier">prior</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="special">--</span><span class="identifier">x</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Distance</span><span class="special">&gt;</span>
+<span class="identifier">T</span> <span class="identifier">prior</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">Distance</span> <span class="identifier">n</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">advance</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="special">-</span><span class="identifier">n</span><span class="special">);</span>
+    <span class="keyword">return</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Function implementations above are given for exposition only. The actual
+          implementation has the same effect for iterators, but has different properties,
+          as documented later.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="iterator.algorithms.next_prior.h1"></a>
+        <span class="phrase"><a name="iterator.algorithms.next_prior.usage"></a></span><a class="link" href="next_prior.html#iterator.algorithms.next_prior.usage">Usage</a>
+      </h5>
+<p>
+        Usage is simple:
+      </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">p</span> <span class="special">=</span> <span class="identifier">get_some_iterator</span><span class="special">();</span>
+<span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">prev</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">prior</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span>
+<span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">next</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">prev</span><span class="special">,</span> <span class="number">2</span><span class="special">);</span>
+</pre>
+<p>
+        The distance from the given iterator should be supplied as an absolute value.
+        For example, the iterator four iterators prior to the given iterator <code class="computeroutput"><span class="identifier">p</span></code> may be obtained by <code class="computeroutput"><span class="identifier">prior</span><span class="special">(</span><span class="identifier">p</span><span class="special">,</span>
+        <span class="number">4</span><span class="special">)</span></code>.
+      </p>
+<p>
+        With C++11, the Standard Library provides <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">next</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">prev</span><span class="special">()</span></code> function templates, which serve the same
+        purpose. However, there are advantages to <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">next</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">prior</span><span class="special">()</span></code>.
+      </p>
+<p>
+        First, <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">next</span><span class="special">()</span></code>
+        and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">prior</span><span class="special">()</span></code>
+        are compatible not only with iterators but with any type that provides arithmetic
+        operators <code class="computeroutput"><span class="keyword">operator</span><span class="special">++()</span></code>,
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">--()</span></code>,
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">+()</span></code>,
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">-()</span></code>,
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">+=()</span></code>
+        or <code class="computeroutput"><span class="keyword">operator</span><span class="special">-=()</span></code>.
+        For example, this is possible:
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">10</span><span class="special">;</span>
+<span class="keyword">int</span> <span class="identifier">y</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="number">5</span><span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span><span class="identifier">y</span> <span class="special">==</span> <span class="number">15</span><span class="special">);</span>
+</pre>
+<p>
+        Second, <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">next</span><span class="special">()</span></code>
+        and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">prior</span><span class="special">()</span></code>
+        use <a class="link" href="../concepts/traversal.html" title="Traversal">traversal categories</a>
+        to select the most efficient implementation. For some kinds of iterators,
+        such as <a class="link" href="../specialized/transform.html" title="Transform Iterator">transform iterators</a>,
+        the standard iterator category does not reflect the traversal category correctly
+        and therefore <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">next</span><span class="special">()</span></code>
+        and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">prev</span><span class="special">()</span></code>
+        will fall back to linear complexity.
+      </p>
+<h5>
+<a name="iterator.algorithms.next_prior.h2"></a>
+        <span class="phrase"><a name="iterator.algorithms.next_prior.acknowledgements"></a></span><a class="link" href="next_prior.html#iterator.algorithms.next_prior.acknowledgements">Acknowledgements</a>
+      </h5>
+<p>
+        Contributed by <a href="http://www.boost.org/people/dave_abrahams.htm" target="_top">Dave
+        Abrahams</a>. Two-argument versions by Daniel Walker.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="distance.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../algorithms.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../upgrading.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
