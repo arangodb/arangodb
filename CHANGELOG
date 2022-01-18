@@ -5,7 +5,7 @@ devel
   Higher performance is achieved by not serializing some internal data
   structures when serializing execution plans. Serializing internal data is
   now opt-in and turned off if not needed. Apart from performance, there should 
-  be no end user-visible changes.
+  be no end-user visible changes.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
