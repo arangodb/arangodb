@@ -153,9 +153,52 @@ struct StaticStrings {
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
-==== BASE ====
-  static std::string const CollectionNameField;
-==== BASE ====
+  static constexpr std::string_view CollectionNameField{"collectionName"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running consolidations
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationIntervalMsec{"consolidationIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running commits
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view  CommitIntervalMsec{"commitIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        number of completed consolidtions before cleanup is run
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view  CleanupIntervalStep{"cleanupIntervalStep"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///         consolidation policy properties
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationPolicy{"consolidationPolicy"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of concurrent active writers (segments) that perform
+  ///        a transaction. Other writers (segments) wait till current active
+  ///        writers (segments) finish.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view  WritebufferActive{"writebufferActive"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of writers (segments) cached in the pool.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferIdle{"writebufferIdle"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum memory byte size per writer (segment) before a writer (segment)
+  ///        flush is triggered
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferSizeMax{"writebufferSizeMax"};
 };
 
 }  // namespace iresearch
