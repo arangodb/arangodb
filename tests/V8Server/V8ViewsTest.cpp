@@ -334,7 +334,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(arangodb::ViewType::kSearch, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -1213,7 +1214,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(arangodb::ViewType::kSearch, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -1537,7 +1539,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(arangodb::ViewType::kSearch, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view1 = vocbase.lookupView("testView1");
       EXPECT_FALSE(!view1);
     }
@@ -1576,7 +1579,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(arangodb::ViewType::kSearch, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view1 = vocbase.lookupView("testView1");
       EXPECT_FALSE(!view1);
     }
