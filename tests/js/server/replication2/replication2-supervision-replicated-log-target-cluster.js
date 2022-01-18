@@ -236,9 +236,7 @@ const replicatedLogSuite = function () {
         // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
         // is the only server that has received log index 2.
         let quorum1 = log.insert({foo: "bar"});
-	console.log("post write ", quorum1);
         let quorum = log.insert({foo: "bar"});
-	console.log("post write 2", quorum);
         assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
       }
 
@@ -288,7 +286,6 @@ const replicatedLogSuite = function () {
       {
         const {current} = readReplicatedLogAgency(database, logId);
         const actions = current.supervision.actions;
-        console.log(actions);
         // we expect the last three actions to be
         //  3. update participant flags with leader.forced = true
         //  2. dictate leadership with new leader
