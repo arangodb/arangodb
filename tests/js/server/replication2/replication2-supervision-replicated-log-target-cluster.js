@@ -293,17 +293,19 @@ const replicatedLogSuite = function () {
         {
           const action = _.nth(actions, -3).desc;
           assertEqual(action.type, 'UpdateParticipantFlags');
-          assertEqual(action.flags[newLeader], {excluded: false, forced: true});
+	  assertEqual(action.participant, newLeader);
+          assertEqual(action.flags, {excluded: false, forced: true});
         }
         {
           const action = _.nth(actions, -2).desc;
           assertEqual(action.type, 'DictateLeaderAction');
-          assertEqual(action.newLeader, newLeader);
+          assertEqual(action.newTerm.leader.serverId, newLeader);
         }
         {
           const action = _.nth(actions, -1).desc;
           assertEqual(action.type, 'UpdateParticipantFlags');
-          assertEqual(action.flags[newLeader], {excluded: false, forced: false});
+	  assertEqual(action.participant, newLeader);
+          assertEqual(action.flags, {excluded: false, forced: false});
         }
       }
       replicatedLogDeleteTarget(database, logId);

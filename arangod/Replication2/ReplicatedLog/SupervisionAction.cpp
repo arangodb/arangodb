@@ -151,6 +151,8 @@ void DictateLeaderAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
+  builder.add(VPackValue("newTerm"));
+  _term.toVelocyPack(builder);
 }
 
 auto DictateLeaderAction::execute(std::string dbName,
@@ -271,6 +273,10 @@ void UpdateParticipantFlagsAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
+
+  builder.add("participant", VPackValue(_participant));
+  builder.add(VPackValue("flags"));
+  _flags.toVelocyPack(builder);
 }
 auto UpdateParticipantFlagsAction::execute(std::string dbName,
                                            arangodb::agency::envelope envelope)
