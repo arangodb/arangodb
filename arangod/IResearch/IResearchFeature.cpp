@@ -706,9 +706,8 @@ void registerViewFactory(application_features::ApplicationServer& server) {
   if (auto& viewTypes = server.getFeature<ViewTypesFeature>();
       ServerState::instance()->isCoordinator()) {
     res = viewTypes.emplace(kViewType, IResearchViewCoordinator::factory());
-  } else if (ServerState::instance()->isDBServer()) {
-    res = viewTypes.emplace(kViewType, IResearchView::factory());
-  } else if (ServerState::instance()->isSingleServer()) {
+  } else if (ServerState::instance()->isDBServer() ||
+             ServerState::instance()->isSingleServer()) {
     res = viewTypes.emplace(kViewType, IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
