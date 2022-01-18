@@ -498,7 +498,7 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} -c "import shutil.which"
+    COMMAND ${PYTHON_EXECUTABLE} -c "from shutil import which"
     RESULT_VARIABLE EXIT_CODE
     OUTPUT_QUIET
     )
