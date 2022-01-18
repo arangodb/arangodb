@@ -438,6 +438,7 @@ auto algorithms::updateReplicatedLog(
         }
       }
 
+      TRI_ASSERT(spec->participantsConfig.generation > 0);
       auto newLeader = log->becomeLeader(
           spec->currentTerm->config, myServerId, spec->currentTerm->term,
           followers,

@@ -87,24 +87,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
  public:
   ~LogLeader() override;
 
-  // Used in tests, forwards to overload below
-  [[nodiscard]] static auto construct(
-      LoggerContext const& logContext,
-      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-      std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
-
-  [[nodiscard]] static auto construct(
-      LogConfig config, std::unique_ptr<LogCore> logCore,
-      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-      ParticipantId id, LogTerm term, LoggerContext const& logContext,
-      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-      std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-      -> std::shared_ptr<LogLeader>;
-
-  [[nodiscard]] static auto construct(
+ [[nodiscard]] static auto construct(
       LogConfig config, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<ParticipantsConfig const> participantsConfig,

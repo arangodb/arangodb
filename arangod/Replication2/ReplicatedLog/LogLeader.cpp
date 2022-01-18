@@ -288,27 +288,6 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     LogConfig config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    ParticipantId id, LogTerm const term, LoggerContext const& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-    -> std::shared_ptr<LogLeader> {
-  auto participantsConfig = std::make_shared<ParticipantsConfig>();
-  participantsConfig->generation = 0;
-  std::transform(followers.begin(), followers.end(),
-                 std::inserter(participantsConfig->participants,
-                               participantsConfig->participants.end()),
-                 [](auto& f) {
-                   return std::make_pair(f->getParticipantId(),
-                                         ParticipantFlags{});
-                 });
-  return construct(config, std::move(logCore), followers, participantsConfig,
-                   std::move(id), term, logContext, std::move(logMetrics),
-                   std::move(options));
-}
-
-auto replicated_log::LogLeader::construct(
-    LogConfig config, std::unique_ptr<LogCore> logCore,
-    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -369,19 +348,7 @@ auto replicated_log::LogLeader::construct(
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore), lastIndex);
 
-  if (!participantsConfig) {
-    auto newParticipantsConfig = std::make_shared<ParticipantsConfig>();
-    newParticipantsConfig->generation = 0;
-    std::transform(followers.begin(), followers.end(),
-                   std::inserter(newParticipantsConfig->participants,
-                                 newParticipantsConfig->participants.end()),
-                   [](auto& f) {
-                     return std::make_pair(f->getParticipantId(),
-                                           ParticipantFlags{});
-                   });
-    participantsConfig = newParticipantsConfig;
-  }
-
+  TRI_ASSERT(participantsConfig != nullptr);
   {
     auto leaderDataGuard = leader->acquireMutex();
 
@@ -392,6 +359,16 @@ auto replicated_log::LogLeader::construct(
     TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
         << " writeConcern: " << config.writeConcern;
+    TRI_ASSERT(leaderDataGuard->_follower.size() ==
+               leaderDataGuard->activeParticipantsConfig->participants.size());
+    for (auto const& [participantId, info] : leaderDataGuard->_follower) {
+      TRI_ASSERT(leaderDataGuard->activeParticipantsConfig->participants.find(
+                     participantId) !=
+                 leaderDataGuard->activeParticipantsConfig->participants.end())
+          << " follower " << participantId
+          << " not found in activeParticipantsConfig with size "
+          << leaderDataGuard->activeParticipantsConfig->participants.size();
+    }
   }
 
   leader->establishLeadership(std::move(participantsConfig));
@@ -1120,22 +1097,6 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 
     return std::move(iter);
   });
-}
-
-auto replicated_log::LogLeader::construct(
-    const LoggerContext& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-    const std::vector<std::shared_ptr<AbstractFollower>>& followers,
-    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-  LogConfig config;
-  config.writeConcern = writeConcern;
-  config.softWriteConcern = writeConcern;
-  config.waitForSync = false;
-  return LogLeader::construct(config, std::move(logCore), followers,
-                              std::move(id), term, logContext,
-                              std::move(logMetrics), std::move(options));
 }
 
 auto replicated_log::LogLeader::copyInMemoryLog() const
