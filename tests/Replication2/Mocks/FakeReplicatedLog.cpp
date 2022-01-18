@@ -44,7 +44,7 @@ auto TestReplicatedLog::becomeLeader(
   config.writeConcern = writeConcern;
   config.waitForSync = waitForSync;
   config.softWriteConcern = writeConcern;
-  config.replicationFactor = follower.size();
+  config.replicationFactor = follower.size() + 1;
 
   auto participants =
       std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
