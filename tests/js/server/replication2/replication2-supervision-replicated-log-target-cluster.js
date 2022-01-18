@@ -180,7 +180,7 @@ const replicatedLogSuite = function () {
     }
     const leader = plan.currentTerm.leader.serverId;
     const term = plan.currentTerm.term;
-    return { leader, term };
+    return {leader, term};
   };
 
   const createReplicatedLogAndWaitForLeader = function (database) {
@@ -195,7 +195,7 @@ const replicatedLogSuite = function () {
 
     waitFor(replicatedLogLeaderEstablished(database, logId, undefined, servers));
 
-    const { leader, term } = getReplicatedLogLeaderPlan(database, logId);
+    const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
     const followers = _.difference(servers, [leader]);
     return {logId, servers, leader, term, followers};
   };
@@ -235,7 +235,7 @@ const replicatedLogSuite = function () {
         // this message. However, the leader sees this message as still in flight and thus will never
         // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
         // is the only server that has received log index 2.
-        let quorum1 = log.insert({foo: "bar"});
+        log.insert({foo: "bar"});
         let quorum = log.insert({foo: "bar"});
         assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
       }
@@ -293,7 +293,7 @@ const replicatedLogSuite = function () {
         {
           const action = _.nth(actions, -3).desc;
           assertEqual(action.type, 'UpdateParticipantFlags');
-	  assertEqual(action.participant, newLeader);
+          assertEqual(action.participant, newLeader);
           assertEqual(action.flags, {excluded: false, forced: true});
         }
         {
@@ -304,7 +304,7 @@ const replicatedLogSuite = function () {
         {
           const action = _.nth(actions, -1).desc;
           assertEqual(action.type, 'UpdateParticipantFlags');
-	  assertEqual(action.participant, newLeader);
+          assertEqual(action.participant, newLeader);
           assertEqual(action.flags, {excluded: false, forced: false});
         }
       }
@@ -400,22 +400,36 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
-    testChangeLeaderToNewFollower: function () {
-      const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
+    testReplaceFollowerWithNewFollower: function () {
+      const {logId, servers, term, followers, leader} = createReplicatedLogAndWaitForLeader(database);
 
+      const oldServer = _.sample(followers);
       const newServer = _.sample(_.difference(dbservers, servers));
       {
         let {target} = readReplicatedLogAgency(database, logId);
-        // set new server as leader
-        target.leader = newServer;
-        // delete old leader from target
-        delete target.participants[leader];
+        // delete old server from target
+        delete target.participants[oldServer];
+        // add new server to target
         target.participants[newServer] = {excluded: true};
         replicatedLogSetTarget(database, logId, target);
       }
 
-      waitFor(replicatedLogIsReady(database, logId, term, [...followers, newServer], newServer));
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {excluded: true, forced: false},
+        [oldServer]: null,
+      }));
 
+      // now remove the excluded flag
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [newServer]: {excluded: false},
+      });
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {excluded: false, forced: false},
+        [oldServer]: null,
+      }));
+
+      // we expect still to have the same term and same leader
+      waitFor(replicatedLogIsReady(database, logId, term, [..._.difference(servers, oldServer), newServer], leader));
     },
 
     testReplaceLeaderWithNewFollower: function () {
@@ -429,11 +443,52 @@ const replicatedLogSuite = function () {
         target.participants[newServer] = {excluded: true};
         replicatedLogSetTarget(database, logId, target);
       }
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {excluded: true, forced: false},
+        [leader]: null,
+      }));
+      // now remove the excluded flag
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [newServer]: {excluded: false},
+      });
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {excluded: false, forced: false},
+        [leader]: null,
+      }));
 
-      waitFor(replicatedLogIsReady(database, logId, term, [...followers, newServer]));
-
+      // we expect still to have the same term and same leader
+      waitFor(replicatedLogLeaderEstablished(database, logId, term + 2, [...followers, newServer]));
     },
 
+    testChangeLeaderToNewFollower: function () {
+      const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      const newServer = _.sample(_.difference(dbservers, servers));
+      {
+        let {target} = readReplicatedLogAgency(database, logId);
+        // request this server to become leader
+        target.leader = newServer;
+        // delete old leader from target
+        delete target.participants[leader];
+        target.participants[newServer] = {excluded: true};
+        replicatedLogSetTarget(database, logId, target);
+      }
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {excluded: true, forced: false},
+        [leader]: null,
+      }));
+      // TODO we except the supervision to fail here (like the todo above)
+      sleep(3);
+      // now remove the excluded flag
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [newServer]: {excluded: false},
+      });
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [newServer]: {excluded: false, forced: false},
+        [leader]: null,
+      }));
+      waitFor(replicatedLogIsReady(database, logId, term + 2, [...followers, newServer], newServer));
+    },
 
     testLogStatus: function () {
       const {logId, servers, leader, term} = createReplicatedLog(database);
