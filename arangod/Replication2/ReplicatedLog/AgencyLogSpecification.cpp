@@ -206,8 +206,11 @@ auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
     -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
-  builder.add(VPackValue(StaticStrings::Outcome));
-  ::toVelocyPack(outcome, builder);
+
+  if (outcome) {
+    builder.add(VPackValue(StaticStrings::Outcome));
+    ::toVelocyPack(*outcome, builder);
+  }
   builder.add("participantsRequired", VPackValue(participantsRequired));
   builder.add("participantsAvailable", VPackValue(participantsAvailable));
   {

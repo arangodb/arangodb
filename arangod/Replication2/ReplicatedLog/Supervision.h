@@ -57,7 +57,8 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
     -> std::unique_ptr<Action>;
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
-                         ParticipantsHealth const& health, LogTerm term)
+                         ParticipantsHealth const& health, LogTerm term,
+                         size_t requiredNumberOfOKParticipants)
     -> LogCurrentSupervisionElection;
 
 auto tryLeadershipElection(LogPlanSpecification const& plan,

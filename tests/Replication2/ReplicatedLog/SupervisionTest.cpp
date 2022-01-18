@@ -65,7 +65,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
       {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}},
       {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
 
-  auto campaign = runElectionCampaign(localStates, health, LogTerm{1});
+  auto campaign = runElectionCampaign(localStates, health, LogTerm{1}, 2);
 
   EXPECT_EQ(campaign.participantsAvailable, 3);  // TODO: Fixme
                                                  // << campaign;
@@ -91,7 +91,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
       {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = false}},
       {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
 
-  auto campaign = runElectionCampaign(localStates, health, LogTerm{2});
+  auto campaign = runElectionCampaign(localStates, health, LogTerm{2}, 2);
 
   EXPECT_EQ(campaign.participantsAvailable, 1);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
@@ -247,8 +247,10 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
   EXPECT_EQ(r->type(), Action::ActionType::LeaderElectionAction) << *r;
 
   auto& action = dynamic_cast<LeaderElectionAction&>(*r);
-
-  //  EXPECT_EQ(action._newLeader, "C") << *r;
+  EXPECT_TRUE(bool(action._newTerm));
+  EXPECT_TRUE(bool(action._newTerm->leader));
+  EXPECT_EQ(action._newTerm->leader->serverId, "C");
+  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{1});
 }
 
 TEST_F(LeaderStateMachineTest, test_leader_intact) {

@@ -68,6 +68,7 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
   //       with non std::nullopt currentTerm and leader
   TRI_ASSERT(plan.currentTerm != std::nullopt);
   TRI_ASSERT(plan.currentTerm->leader != std::nullopt);
+
   if (health.isHealthy(plan.currentTerm->leader->serverId) &&
       health.validRebootId(plan.currentTerm->leader->serverId,
                            plan.currentTerm->leader->rebootId)) {
@@ -176,6 +177,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   if (plan.participantsConfig.participants.size() + 1 <=
       plan.currentTerm->config.writeConcern) {
     auto election = LogCurrentSupervisionElection();
+    election.term = plan.currentTerm->term;
     election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
     return std::make_unique<LeaderElectionAction>(plan.id, election);
   }

@@ -44,7 +44,7 @@ auto to_string(Action::ActionType action) -> std::string_view {
       return "AddLogToPlan";
     } break;
     case Action::ActionType::LeaderElectionAction: {
-      return "SuccessfulLeaderElection";
+      return "LeaderElection";
     } break;
     case Action::ActionType::CreateInitialTermAction: {
       return "CreateInitialTermAction";

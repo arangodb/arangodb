@@ -101,7 +101,7 @@ struct LogCurrentSupervisionElection {
     TERM_NOT_CONFIRMED = 2,
   };
 
-  Outcome outcome;
+  std::optional<Outcome> outcome{std::nullopt};
   LogTerm term;
 
   TermIndexPair bestTermIndex;
