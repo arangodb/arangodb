@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for single operation nodes in cluster
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,16 +26,12 @@
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
-var assertQueryError = helper.assertQueryError;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
+const assertQueryError = helper.assertQueryError;
 
 function optimizerClusterSingleDocumentTestSuite () {
   var ruleName = "optimize-cluster-single-document-operations";
@@ -498,6 +492,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "INSERT [] INTO @@cn1 RETURN NEW",
         "INSERT [ {} ] INTO @@cn1 RETURN NEW",
         "INSERT [{ foo: 2 }] INTO @@cn1 RETURN NEW",
+        "INSERT {} INTO @@cn1 OPTIONS { exclusive: true }",
 
         "UPDATE [] IN @@cn1",
         "UPDATE [ {} ] IN @@cn1",
@@ -505,6 +500,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "UPDATE [] IN @@cn1 RETURN OLD",
         "UPDATE [ {} ] IN @@cn1 RETURN OLD",
         "UPDATE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        "UPDATE 'foo' WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: true }",
         
         "REPLACE [] IN @@cn1",
         "REPLACE [ {} ] IN @@cn1",
@@ -512,6 +508,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REPLACE [] IN @@cn1 RETURN OLD",
         "REPLACE [ {} ] IN @@cn1 RETURN OLD",
         "REPLACE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        "REPLACE { _key: 'abc' } WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: true }",
 
         "REMOVE [] IN @@cn1",
         "REMOVE [ {} ] IN @@cn1",
@@ -519,6 +516,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REMOVE [] IN @@cn1 RETURN OLD",
         "REMOVE [ {} ] IN @@cn1 RETURN OLD",
         "REMOVE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: true }",
       ];
 
       queries.forEach(function(query) {
@@ -534,12 +532,17 @@ function optimizerClusterSingleDocumentTestSuite () {
         "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE one WITH { two: 1 } IN @@cn1",
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN @@cn1",
         "INSERT {} INTO @@cn1",
+        "INSERT {} INTO @@cn1 OPTIONS { exclusive: false }",
         "INSERT { _key: 'abc' } INTO @@cn1",
         "INSERT { two: 1 } INTO @@cn1",
         "UPDATE 'foo' WITH { two: 1 } INTO @@cn1",
+        "UPDATE 'foo' WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: false }",
         "UPDATE { _key: 'abc' } WITH { two: 1 } INTO @@cn1",
+        "REPLACE { _key: 'abc' } WITH { two: 1 } INTO @@cn1",
+        "REPLACE { _key: 'abc' } WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: false }",
         "REMOVE 'abc' INTO @@cn1",
         "REMOVE { _key: 'abc' } INTO @@cn1",
+        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: false }",
       ];
 
       queries.forEach(function(query) {
@@ -550,6 +553,6 @@ function optimizerClusterSingleDocumentTestSuite () {
 
   };
 }
-jsunity.run(optimizerClusterSingleDocumentTestSuite);
 
+jsunity.run(optimizerClusterSingleDocumentTestSuite);
 return jsunity.done();
