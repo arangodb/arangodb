@@ -51,6 +51,36 @@ RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
+  
+RequestLane RestDocumentHandler::lane() const {
+  if (ServerState::instance()->isDBServer()) {
+    if (_request->requestType() == rest::RequestType::GET) {
+      if (!_request->header(StaticStrings::AqlDocumentCall).empty()) {
+        // DOCUMENT() function call from inside an AQL query. this will only
+        // read data and does not need to wait on other requests. we will
+        // give this somewhat higher priority because finishing this request
+        // can unblock others.
+        return RequestLane::CONTINUATION;
+      }
+      // fall through for non-DOCUMENT() GET requests
+    } else {
+      // non-GET requests
+      bool isSyncReplication = false;
+      // We do not care for the real value, enough if it is there.
+      std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
+                                    isSyncReplication);
+      if (isSyncReplication) {
+        return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+        // This leads to the high queue, we want replication requests to be
+        // executed with a higher prio than leader requests, even if they
+        // are done from AQL.
+      }
+      
+      // fall through for not-GET, non-replication requests
+    }
+  }
+  return RequestLane::CLIENT_SLOW;
+}
 
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type

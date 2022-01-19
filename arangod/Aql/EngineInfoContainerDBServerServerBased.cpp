@@ -394,6 +394,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
+  TRI_ASSERT(serverToQueryId.empty());
+
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -469,7 +471,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
             // error as we need to abort after.
             // Otherwise we need to report 
-            Result res{TRI_ERROR_NO_ERROR};
+            Result res;
             for (auto const& tryRes : responses) {
               auto response = tryRes.get();
               if (response.fail()) {
