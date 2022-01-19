@@ -45,18 +45,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{1}, leaderId);
-
-  auto config = LogConfig{2, 2, 2, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{leaderId, {}}, {followerId, {}}},
-      });
-
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      leaderId, LogTerm{1}, LoggerContext(Logger::REPLICATION2),
-      _logMetricsMock, _optionsMock);
+  auto leader = createLeader(leaderId, LogTerm{1}, std::move(coreA), {follower}, 2);
 
   auto countHistogramEntries = [](auto const& histogram) {
     auto [begin, end] =
@@ -251,17 +240,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
-
-  auto config = LogConfig{2, 2, 2, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{leaderId, {}}, {followerId, {}}},
-      });
-
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      leaderId, LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
+  auto leader = createLeader(leaderId, LogTerm{3}, std::move(coreA), {follower}, 2);
 
   {
     // Leader should know it spearhead, but commitIndex is 0
@@ -342,21 +321,8 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto follower_2 = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId_2, std::move(coreC),
       LogTerm{1}, leaderId);
-
-  auto config = LogConfig{3, 3, 3, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{leaderId, {}},
-                           {followerId_1, {}},
-                           {followerId_2, {}}},
-      });
-
   // create leader with write concern 3
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower_1, follower_2},
-      std::move(participantsConfig), leaderId, LogTerm{1},
-      LoggerContext(Logger::REPLICATION2), _logMetricsMock, _optionsMock);
+  auto leader = createLeader(leaderId, LogTerm{1}, std::move(coreA), {follower_1, follower_2}, 3);
 
   auto index = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
@@ -516,19 +482,8 @@ TEST_F(ReplicatedLogTest,
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
-
-  auto config = LogConfig{1, 1, 1, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{leaderId, {}}, {followerId, {}}},
-      });
-
-  // create leader with write concern 2
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      leaderId, LogTerm{3}, LoggerContext(Logger::REPLICATION2),
-      _logMetricsMock, _optionsMock);
+  // set write concern to one
+  auto leader = createLeader(leaderId, LogTerm{3}, std::move(coreA), {follower}, 1);
 
   leader->triggerAsyncReplication();
 

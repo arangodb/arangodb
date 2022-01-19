@@ -59,6 +59,27 @@ struct LogMultiplexerTestBase
                                    test::MockLog>(id);
   }
 
+  static auto createLeader(
+      std::shared_ptr<replication2::replicated_log::ReplicatedLog>& log,
+      ParticipantId id, LogTerm term,
+      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+      std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+    auto config =
+        LogConfig{writeConcern, writeConcern, follower.size() + 1, false};
+    auto participants =
+        std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+    for (auto const& participant : follower) {
+      participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+    }
+    auto participantsConfig =
+        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+            .generation = 1,
+            .participants = std::move(participants),
+        });
+    return log->becomeLeader(config, std::move(id), term, follower,
+                             std::move(participantsConfig));
+  }
+
  private:
   template<typename Impl, typename MockLog>
   static auto createReplicatedLogImpl(LogId id) -> std::shared_ptr<Impl> {

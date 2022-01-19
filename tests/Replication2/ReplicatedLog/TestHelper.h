@@ -83,6 +83,29 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto defaultLogger() { return LoggerContext(Logger::REPLICATION2); }
 
+  auto createLeader(
+      ParticipantId id, LogTerm term, std::unique_ptr<LogCore> logCore,
+      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+      std::size_t writeConcern, bool waitForSync = false)
+      -> std::shared_ptr<LogLeader> {
+    auto config =
+        LogConfig{writeConcern, writeConcern, follower.size() + 1, waitForSync};
+    auto participants =
+        std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+    for (auto const& participant : follower) {
+      participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+    }
+    auto participantsConfig =
+        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+            .generation = 1,
+            .participants = std::move(participants),
+        });
+
+    return LogLeader::construct(config, std::move(logCore), {follower},
+                                std::move(participantsConfig), id, term,
+                                defaultLogger(), _logMetricsMock, _optionsMock);
+  }
+
   auto stopAsyncMockLogs() -> void {
     for (auto const& it : _persistedLogs) {
       if (auto log = std::dynamic_pointer_cast<AsyncMockLog>(it.second);

@@ -51,13 +51,7 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries) {
     }
     coreA = std::make_unique<LogCore>(leaderLog);
   }
-
-  auto config = LogConfig{};
-  auto participantsConfig = std::make_shared<ParticipantsConfig>(
-      ParticipantsConfig{.generation = 1, .participants = {{"leader", {}}}});
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {}, std::move(participantsConfig), "leader",
-      LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {}, 1);
 
   leader->triggerAsyncReplication();
   {
@@ -101,13 +95,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto config = LogConfig{};
-  auto participantsConfig = std::make_shared<ParticipantsConfig>(
-      ParticipantsConfig{.generation = 1, .participants = {{"leader", {}}}});
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {}, std::move(participantsConfig), "leader",
-      LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
-
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {}, 1);
   // Note that the leader inserts an empty log entry in LogLeader::construct
   auto fut = leader->waitForIterator(LogIndex{3});
 
@@ -173,13 +161,7 @@ TEST_F(ChangeStreamTests,
     coreA = std::make_unique<LogCore>(leaderLog);
   }
 
-  auto config = LogConfig{};
-  auto participantsConfig = std::make_shared<ParticipantsConfig>(
-      ParticipantsConfig{.generation = 1, .participants = {{"leader", {}}}});
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {}, std::move(participantsConfig), "leader",
-      LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
-
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {}, 1);
   // The forth entry is inserted in LogLeader::construct - wait for it
   auto fut = leader->waitForIterator(LogIndex{4});
 
@@ -237,17 +219,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, "follower", std::move(coreB),
       LogTerm{3}, "leader");
-
-  auto config = LogConfig{2, 2, 2, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      "leader", LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
@@ -309,17 +281,7 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, "follower", std::move(coreB),
       LogTerm{3}, "leader");
-
-  auto config = LogConfig{2, 2, 2, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      "leader", LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
@@ -373,17 +335,7 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
 
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
-
-  auto config = LogConfig{};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      "leader", LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 1);
 
   leader->triggerAsyncReplication();
 
@@ -434,17 +386,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
 
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
-
-  auto config = LogConfig{2, 2, 2, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      "leader", LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
 
@@ -509,17 +451,7 @@ TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
 
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
-
-  auto config = LogConfig{2, 2, 2, false};
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
-  auto leader = LogLeader::construct(
-      config, std::move(coreA), {follower}, std::move(participantsConfig),
-      "leader", LogTerm{3}, defaultLogger(), _logMetricsMock, _optionsMock);
+  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
 

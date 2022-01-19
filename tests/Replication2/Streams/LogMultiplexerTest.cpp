@@ -45,16 +45,8 @@ TEST_F(LogMultiplexerTest, leader_follower_test) {
   auto leaderLog = createReplicatedLog();
   auto followerLog = createReplicatedLog();
 
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1},
-                              {follower}, std::move(participantsConfig));
+  auto leader = createLeader(leaderLog, "leader", LogTerm{1}, {follower}, 2);
 
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
   auto demux = LogDemultiplexer<MyTestSpecification>::construct(follower);
@@ -112,16 +104,8 @@ TEST_F(LogMultiplexerTest, leader_wait_for) {
   auto leaderLog = createReplicatedLog();
   auto followerLog = createFakeReplicatedLog();
 
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1},
-                              {follower}, std::move(participantsConfig));
+  auto leader = createLeader(leaderLog, "leader", LogTerm{1}, {follower}, 2);
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
 
   auto stream = mux->getStreamById<my_int_stream_id>();
@@ -146,16 +130,8 @@ TEST_F(LogMultiplexerTest, leader_wait_for_multiple) {
   auto leaderLog = createReplicatedLog();
   auto followerLog = createFakeReplicatedLog();
 
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1},
-                              {follower}, std::move(participantsConfig));
+  auto leader = createLeader(leaderLog, "leader", LogTerm{1}, {follower}, 2);
 
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
 
@@ -195,16 +171,8 @@ TEST_F(LogMultiplexerTest, follower_wait_for) {
   auto leaderLog = createReplicatedLog(LogId{1});
   auto followerLog = createFakeReplicatedLog(LogId{2});
 
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1},
-                              {follower}, std::move(participantsConfig));
+  auto leader = createLeader(leaderLog, "leader", LogTerm{1}, {follower}, 2);
   // handle first leader log entry (empty)
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
@@ -236,19 +204,11 @@ TEST_F(LogMultiplexerTest, follower_wait_for) {
 TEST_F(LogMultiplexerTest, leader_digest_existing_entries) {
   auto leaderLog = createReplicatedLog(LogId{1});
   auto followerLog = createFakeReplicatedLog(LogId{2});
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
   {
     // create a leader and follower in term 1
     auto follower =
         followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-    auto leader =
-        leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1},
-                                {follower}, participantsConfig);
+    auto leader = createLeader(leaderLog, "leader", LogTerm{1}, {follower}, 2);
     auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
     auto stream = mux->getStreamById<my_int_stream_id>();
 
@@ -268,9 +228,7 @@ TEST_F(LogMultiplexerTest, leader_digest_existing_entries) {
   {
     auto follower =
         followerLog->becomeFollower("follower", LogTerm{2}, "leader");
-    auto leader =
-        leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{2},
-                                {follower}, participantsConfig);
+    auto leader = createLeader(leaderLog, "leader", LogTerm{2}, {follower}, 2);
     // handle first leader log entry (empty)
     leader->triggerAsyncReplication();
     while (follower->hasPendingAppendEntries()) {
@@ -298,16 +256,9 @@ TEST_F(LogMultiplexerTest, leader_resign_stream) {
   auto leaderLog = createReplicatedLog(LogId{1});
   auto followerLog = createFakeReplicatedLog(LogId{2});
 
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = {{"leader", {}}, {"follower", {}}},
-      });
-
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1},
-                              {follower}, participantsConfig);
+  auto leader = createLeader(leaderLog, "leader", LogTerm{1}, {follower}, 2);
+
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
   auto stream = mux->getStreamById<my_int_stream_id>();
   mux->digestAvailableEntries();
@@ -325,8 +276,7 @@ TEST_F(LogMultiplexerTest, leader_resign_stream) {
   ASSERT_FALSE(fs.isReady());
 
   // become leader in new term, this should trigger an exception
-  leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                   LogTerm{2}, {follower}, participantsConfig);
+  leader = createLeader(leaderLog, "leader", LogTerm{2}, {follower}, 2);
 
   // leader should have resolved this promise
   ASSERT_TRUE(f.isReady());
