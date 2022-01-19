@@ -932,15 +932,14 @@ void IResearchInvertedIndex::toVelocyPack(
 std::vector<std::vector<arangodb::basics::AttributeName>>
 IResearchInvertedIndex::fields(InvertedIndexFieldMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
+  res.reserve(meta._fields.size());
   for (auto const& f : meta._fields) {
     std::vector<arangodb::basics::AttributeName> combined;
     combined.reserve(f.attribute.size() + f.expansion.size());
-    for (auto const& a : f.attribute) {
-      combined.push_back(a);
-    }
-    for (auto const& a : f.expansion) {
-      combined.push_back(a);
-    }
+    combined.insert(combined.end(), std::begin(f.attribute),
+                    std::end(f.attribute));
+    combined.insert(combined.end(), std::begin(f.expansion),
+                    std::end(f.expansion));
     res.push_back(std::move(combined));
   }
   return res;
@@ -949,6 +948,7 @@ IResearchInvertedIndex::fields(InvertedIndexFieldMeta const& meta) {
 std::vector<std::vector<arangodb::basics::AttributeName>>
 IResearchInvertedIndex::sortedFields(InvertedIndexFieldMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
+  res.reserve(meta._sort.fields().size());
   for (auto const& f : meta._sort.fields()) {
     res.push_back(f);
   }
@@ -1006,6 +1006,7 @@ bool IResearchInvertedIndex::covers(
     aql::latematerialized::AttributeAndField<
         aql::latematerialized::IndexFieldData>
         af;
+    af.attr.reserve(projections[i].path.path.size());
     for (auto const& a : projections[i].path.path) {
       af.attr.emplace_back(a, false);  // TODO: false?
     }
