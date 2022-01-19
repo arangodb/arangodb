@@ -289,7 +289,9 @@ class Logger {
   static LogTimeFormats::TimeFormat timeFormat() { return _timeFormat; }
 
   // can be called after fork()
-  static void clearCachedPid() { _cachedPid = 0; }
+  static void clearCachedPid() {
+    _cachedPid.store(0, std::memory_order_relaxed);
+  }
 
   static bool translateLogLevel(std::string const& l, bool isGeneral,
                                 LogLevel& level) noexcept;
@@ -340,7 +342,7 @@ class Logger {
   static bool _showIds;
   static bool _useJson;
   static char _role;  // current server role to log
-  static TRI_pid_t _cachedPid;
+  static std::atomic<TRI_pid_t> _cachedPid;
   static std::string _outputPrefix;
   static std::string _hostname;
 
