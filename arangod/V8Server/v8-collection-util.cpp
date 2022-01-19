@@ -91,6 +91,9 @@ v8::Handle<v8::Object> WrapCollection(  // wrap collection
     return scope.Escape<v8::Object>(result);
   }
 
+  LOG_TOPIC("44ea5", TRACE, arangodb::Logger::V8)
+      << "Wrapping Collection " << collection->Name() << " with ptr " << *collection;
+
   auto value = std::shared_ptr<void>(  // persistent value
       collection.get(),                // value
       [collection](

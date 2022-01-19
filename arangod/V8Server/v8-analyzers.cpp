@@ -75,6 +75,9 @@ v8::Handle<v8::Object> WrapAnalyzer(
     return scope.Escape<v8::Object>(result);
   }
 
+  LOG_TOPIC("44ea6", TRACE, arangodb::Logger::V8)
+      << "Wrapping Analyzer " << analyzer->Name() << " with ptr " << *analyzer;
+
   auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, analyzer);
   auto& entry = itr.first;
 

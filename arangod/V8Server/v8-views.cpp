@@ -94,6 +94,9 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
     return scope.Escape<v8::Object>(result);
   }
 
+  LOG_TOPIC("44ea4", TRACE, arangodb::Logger::V8)
+      << "Wrapping View " << view->Name() << " with ptr " << (void*)view.Get();
+
   auto value = std::shared_ptr<void>(  // persistent value
       view.get(),                      // value
       [view](void*) -> void {  // ensure view shared_ptr is not deallocated
