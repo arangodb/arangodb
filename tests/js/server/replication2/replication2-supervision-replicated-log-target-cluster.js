@@ -220,24 +220,24 @@ const replicatedLogSuite = function () {
     },
 
     testCheckSimpleFailover: function () {
-      const {logId, servers, leader, term} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, followers, leader, term} = createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
 
       // now stop one server
-      stopServer(servers[1]);
+      stopServer(followers[0]);
 
       // we should still be able to write
       {
         let log = db._replicatedLog(logId);
         // we have to insert two log entries here, reason:
-        // Even though servers[1] is stopped, it will receive the AppendEntries message for log index 1.
+        // Even though followers[0] is stopped, it will receive the AppendEntries message for log index 1.
         // It will stay in its tcp input queue. So when the server is continued below it will process
         // this message. However, the leader sees this message as still in flight and thus will never
         // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
         // is the only server that has received log index 2.
         log.insert({foo: "bar"});
         let quorum = log.insert({foo: "bar"});
-        assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
+        assertTrue(quorum.result.quorum.quorum.indexOf(followers[0]) === -1);
       }
 
       // now stop the leader
@@ -246,8 +246,8 @@ const replicatedLogSuite = function () {
       // since writeConcern is 2, there is no way a new leader can be elected
       waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
         [leader]: 1,
-        [servers[1]]: 1,
-        [servers[2]]: 0,
+        [followers[0]]: 1,
+        [followers[1]]: 0,
       }));
 
       {
@@ -259,13 +259,13 @@ const replicatedLogSuite = function () {
         assertEqual(election.participantsAvailable, 1);
         const detail = election.details;
         assertEqual(detail[leader].code, 1);
-        assertEqual(detail[servers[1]].code, 1);
-        assertEqual(detail[servers[2]].code, 0);
+        assertEqual(detail[followers[0]].code, 1);
+        assertEqual(detail[followers[1]].code, 0);
       }
 
-      // now resume, servers[2] has to become leader, because it's the only server with log entry 1 available
-      continueServer(servers[1]);
-      waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
+      // now resume, followers[1 has to become leader, because it's the only server with log entry 1 available
+      continueServer(followers[0]);
+      waitFor(replicatedLogIsReady(database, logId, term + 2, [followers[0], followers[1]], followers[1]));
 
       replicatedLogDeleteTarget(database, logId);
 
