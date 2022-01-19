@@ -135,12 +135,8 @@ namespace {
       definition, arangodb::StaticStrings::DataSourceSystem, false);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief create an arangodb::velocypack::ValuePair for a string value
-//////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::ValuePair toValuePair(std::string const& value) {
-  return arangodb::velocypack::ValuePair(
-      &value[0], value.size(), arangodb::velocypack::ValueType::String);
+arangodb::velocypack::ValuePair toValuePair(std::string_view value) {
+  return {value.data(), value.size(), arangodb::velocypack::ValueType::String};
 }
 
 }  // namespace
@@ -152,27 +148,10 @@ static_assert(LogicalDataSource::Category::kCollection ==
 static_assert(LogicalDataSource::Category::kView ==
               arangodb::LogicalView::category());
 
-/*static*/ LogicalDataSource::Type const& LogicalDataSource::Type::emplace(
-    std::string_view name) {
-  static std::mutex mutex;
-  static std::map<std::string_view, LogicalDataSource::Type> types;
-  std::lock_guard<std::mutex> lock(mutex);
-  auto itr = types.try_emplace(name, Type());
-  if (itr.second && name.data()) {
-    const_cast<std::string&>(itr.first->second._name) =
-        std::string(name);  // update '_name'
-    const_cast<std::string_view&>(itr.first->first) =
-        itr.first->second.name();  // point key at value stored in '_name'
-  }
-
-  return itr.first->second;
-}
-
-LogicalDataSource::LogicalDataSource(Category category, Type const& type,
-                                     TRI_vocbase_t& vocbase,
+LogicalDataSource::LogicalDataSource(Category category, TRI_vocbase_t& vocbase,
                                      velocypack::Slice definition)
     : LogicalDataSource(
-          category, type, vocbase,
+          category, vocbase,
           DataSourceId{basics::VelocyPackHelper::extractIdValue(definition)},
           basics::VelocyPackHelper::getStringValue(
               definition, StaticStrings::DataSourceGuid, ""),
@@ -184,13 +163,11 @@ LogicalDataSource::LogicalDataSource(Category category, Type const& type,
           basics::VelocyPackHelper::getBooleanValue(
               definition, StaticStrings::DataSourceDeleted, false)) {}
 
-LogicalDataSource::LogicalDataSource(Category category, Type const& type,
-                                     TRI_vocbase_t& vocbase, DataSourceId id,
-                                     std::string&& guid, DataSourceId planId,
-                                     std::string&& name, bool system,
-                                     bool deleted)
+LogicalDataSource::LogicalDataSource(Category category, TRI_vocbase_t& vocbase,
+                                     DataSourceId id, std::string&& guid,
+                                     DataSourceId planId, std::string&& name,
+                                     bool system, bool deleted)
     : _name(std::move(name)),
-      _type(type),
       _vocbase(vocbase),
       _id(ensureId(vocbase, id)),
       _planId(planId ? planId : _id),
@@ -237,7 +214,3 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
 }
 
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

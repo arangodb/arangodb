@@ -50,13 +50,7 @@ namespace arangodb {
 // The Slice contains the part of the plan that is relevant for this view.
 LogicalView::LogicalView(std::pair<ViewType, std::string_view> const& typeInfo,
                          TRI_vocbase_t& vocbase, VPackSlice definition)
-    : LogicalDataSource(*this,
-                        LogicalDataSource::Type::emplace(
-                            arangodb::basics::VelocyPackHelper::getStringView(
-                                definition, StaticStrings::DataSourceType,
-                                std::string_view())),
-                        vocbase, definition),
-      _typeInfo{typeInfo} {
+    : LogicalDataSource{*this, vocbase, definition}, _typeInfo{typeInfo} {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -64,7 +58,7 @@ LogicalView::LogicalView(std::pair<ViewType, std::string_view> const& typeInfo,
         "got an invalid view definition while constructing LogicalView");
   }
 
-  bool extendedNames =
+  bool const extendedNames =
       vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
   if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
                                         name())) {
