@@ -129,38 +129,33 @@ const generateTestSuite = (collectionWrapper) => {
     }
   };
 
-  function GenericCrudTestSuite() {
-    return {
-      setUpAll: function () {
-        collectionWrapper.tearDown();
-        collectionWrapper.setUp();
-      },
+  return {
+    setUpAll: function () {
+      collectionWrapper.tearDown();
+      collectionWrapper.setUp();
+    },
 
-      setUp: function () {
-        collectionWrapper.clear();
-      },
-      tearDownAll: function () {
-        collectionWrapper.tearDown();
-      },
+    setUp: function () {
+      collectionWrapper.clear();
+    },
+    tearDownAll: function () {
+      collectionWrapper.tearDown();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create document w/ special keys
 ////////////////////////////////////////////////////////////////////////////////
 
-      testValidKeys: function () {
-        // This is some basic tests for easy characters in URLs
-        runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator()));
-      },
+    testValidKeys: function () {
+      // This is some basic tests for easy characters in URLs
+      runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator()));
+    },
 
-      testSpecialKeysInUrls: function () {
-        // This is supposed to test special characters in URLs
-        runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
-      },
-    };
-  }
-
-  return GenericCrudTestSuite;
+    testSpecialKeysInUrls: function () {
+      // This is supposed to test special characters in URLs
+      runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
+    },
+  };
 };
-
 
 exports.generateTestSuite = generateTestSuite;

@@ -37,8 +37,12 @@ const wrap = new CollectionWrapper(cn);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
+function CollectionDocumentKeysSuite() {
+  return generateTestSuite(wrap);
+}
 
-jsunity.run(generateTestSuite(wrap));
+// jsunity.run(generateTestSuite(wrap));
+jsunity.run(CollectionDocumentKeysSuite);
 
 return jsunity.done();
 
