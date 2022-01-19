@@ -24,7 +24,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-const {db} = require("@arnagodb");
+const {db} = require("@arangodb");
 
 function* ValidKeyGenerator() {
   yield "test";
@@ -44,6 +44,15 @@ function* SpecialCharacterKeyGenerator() {
   ];
   for (const k of keys) {
     yield k;
+  }
+}
+
+function* BasicDocumentGenerator(keyGenerator) {
+  for (const key of keyGenerator) {
+    yield {
+      _key: key,
+      value: "test"
+    };
   }
 }
 
@@ -71,18 +80,15 @@ class CollectionWrapper {
   }
 
   validKeyGenerator() {
-    return new ValidKeyGenerator();
+    return ValidKeyGenerator();
   }
 
   specialKeyGenerator() {
-    return new SpecialCharacterKeyGenerator();
+    return SpecialCharacterKeyGenerator();
   }
 
   documentGeneratorWithKeys(keyGenerator) {
-    return {
-      _key: keyGenerator.next().value,
-      value: "test"
-    };
+    return BasicDocumentGenerator(keyGenerator);
   }
 }
 

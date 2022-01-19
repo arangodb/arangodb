@@ -29,7 +29,6 @@ const jsunity = require("jsunity");
 const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util");
 const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, assertNotNull}
   = jsunity.jsUnity.assertions;
-const {POST_RAW, GET_RAW, HEAD_RAW, PATCH_RAW, PUT_RAW, DELETE_RAW} = arango;
 
 
 const generateTestSuite = (collectionWrapper) => {
@@ -42,21 +41,20 @@ const generateTestSuite = (collectionWrapper) => {
     for (const doc of generator) {
       assertTrue(doc.hasOwnProperty("_key"));
       const keyUrl = baseUrl + "/" + encodeURIComponent(doc._key);
-      require("console").warn(keyUrl);
       // create document
-      let result = POST_RAW(baseUrl, doc);
+      let result = arango.POST_RAW(baseUrl, doc);
       assertEqual(202, result.code, `Creating document with key ${doc._key}`);
-      let rev = result.body._rev;
+      let rev = result.parsedBody._rev;
 
       // read document back
-      result = GET_RAW(keyUrl);
+      result = arango.GET_RAW(keyUrl);
       assertEqual(200, result.code, `Reading document with key ${doc._key}`);
 
       // Get cannot modify the revision
-      assertEqual(result.body._rev, rev);
+      assertEqual(result.parsedBody._rev, rev);
 
       // HEAD request
-      result = HEAD_RAW(keyUrl);
+      result = arango.HEAD_RAW(keyUrl);
       assertEqual(200, result.code, `Head document with key ${doc._key}`);
 
       // PATCH request
@@ -69,23 +67,23 @@ const generateTestSuite = (collectionWrapper) => {
         // Existing entries should differ from the target
         assertNotEqual(doc[key], value);
       }
-      result = PATCH_RAW(keyUrl, patch);
+      result = arango.PATCH_RAW(keyUrl, patch);
       assertEqual(202, result.code, `Patching document with key ${doc._key}`);
       // Patch needs to update the revision
-      assertNotEqual(result.body._rev, rev);
+      assertNotEqual(result.parsedBody._rev, rev);
       {
         // Test patch was applied
         // read document back
-        let result = GET_RAW(keyUrl);
+        let result = arango.GET_RAW(keyUrl);
         assertEqual(200, result.code, `Reading document with key ${doc._key}`);
         for (const [key, value] of Object.entries(patch)) {
           // All values in Patch need to be updated
-          assertEqual(result.body[key], value);
+          assertEqual(result.parsedBody[key], value);
         }
         // Patch needs to update the revision
-        assertNotEqual(result.body._rev, rev);
+        assertNotEqual(result.parsedBody._rev, rev);
         // Retain the updated revision for later tests
-        rev = result.body._rev;
+        rev = result.parsedBody._rev;
       }
       // Locally apply the patch from before
       let updatedDoc = {...doc, ...patch};
@@ -99,33 +97,31 @@ const generateTestSuite = (collectionWrapper) => {
       // Locally apply the replace
       updatedDoc = {...updatedDoc, ...replace};
 
-
-      PUT_RAW(keyUrl, updatedDoc);
+      result = arango.PUT_RAW(keyUrl, updatedDoc);
       assertEqual(202, result.code, `Replacing document with key ${doc._key}`);
-
       // Replace needs to update the revision
-      assertNotEqual(result.body._rev, rev);
+      assertNotEqual(result.parsedBody._rev, rev);
 
       {
         // Local Document and DBState now need to be identical
         // read document back
-        let result = GET_RAW(keyUrl);
+        let result = arango.GET_RAW(keyUrl);
         assertEqual(200, result.code, `Reading document with key ${doc._key}`);
         for (const [key, value] of Object.entries(updatedDoc)) {
           // All values in Patch need to be updated
-          assertEqual(result.body[key], value);
+          assertEqual(result.parsedBody[key], value);
         }
         // Patch needs to update the revision
-        assertNotEqual(result.body._rev, rev);
+        assertNotEqual(result.parsedBody._rev, rev);
         // Retain the updated revision for later tests
-        rev = result.body._rev;
+        rev = result.parsedBody._rev;
       }
 
       // Check if count is now 1, we have only inserted Once, afterwards only read
       assertEqual(1, collection.count());
 
       // remove document
-      result = DELETE_RAW(keyUrl);
+      result = arango.DELETE_RAW(keyUrl);
       assertEqual(202, result.code, `Deleting document with key ${doc._key}`);
 
       // No document in collection anymore
@@ -133,32 +129,37 @@ const generateTestSuite = (collectionWrapper) => {
     }
   };
 
-  return {
-    setUpAll: function () {
-      collectionWrapper.tearDown();
-      collectionWrapper.setUp();
-    },
-    setUp: function () {
-      collectionWrapper.clear();
-    },
-    tearDownAll: function () {
-      collectionWrapper.tearDown();
-    },
+  function GenericCrudTestSuite() {
+    return {
+      setUpAll: function () {
+        collectionWrapper.tearDown();
+        collectionWrapper.setUp();
+      },
+
+      setUp: function () {
+        collectionWrapper.clear();
+      },
+      tearDownAll: function () {
+        collectionWrapper.tearDown();
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create document w/ special keys
 ////////////////////////////////////////////////////////////////////////////////
 
-    testValidKeys: function () {
-      // This is some basic tests for easy characters in URLs
-      runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator()));
-    },
+      testValidKeys: function () {
+        // This is some basic tests for easy characters in URLs
+        runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator()));
+      },
 
-    testSpecialKeysInUrls: function () {
-      // This is supposed to test special characters in URLs
-      runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
-    },
-  };
+      testSpecialKeysInUrls: function () {
+        // This is supposed to test special characters in URLs
+        runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
+      },
+    };
+  }
+
+  return GenericCrudTestSuite;
 };
 
 
