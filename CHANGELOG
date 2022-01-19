@@ -1,5 +1,9 @@
 devel
 -----
+  
+* Disable optimizer rule "optimize-cluster-single-document-operations" when a
+  collection is accessed in exclusive mode, because the optimized query would
+  use a slightly different mode of locking then.
 
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 
