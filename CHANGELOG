@@ -17,7 +17,6 @@ devel
   the read-only mode will be enforced.
   Upgrade procedure for a deployment without license will not take upgrade
   period into account for the read-only mode will enforcement.
->>>>>>> 2c185436e101003640f390c93fa138583220a563
 
 * Added agency push-queue operation
 

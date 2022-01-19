@@ -122,8 +122,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestLane determineRequestLane();
 
   virtual void prepareExecute(bool isContinue);
-  // virtual void executeWrapper() = { Scope.... execute()}; ScopeValue
-  // newValues(..............); execute(); }
   virtual RestStatus execute() = 0;
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
   virtual void shutdownExecute(bool isFinalized) noexcept;
@@ -238,8 +236,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
   LogContext::EntryPtr _logContextEntry;
-  static constexpr char UrlName[] = "url";
-  static constexpr char UserName[] = "username";
 
  protected:
   std::atomic<bool> _canceled;

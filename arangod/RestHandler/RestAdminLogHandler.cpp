@@ -118,13 +118,21 @@ RestStatus RestAdminLogHandler::execute() {
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "superfluous suffix, expecting /_admin/log/entries");
+                    "superfluous suffix, expecting /_admin/log/<suffix>, "
+                    "where suffix can be either 'entries', 'level' or 'structured'");
     }
-  } else if (type == rest::RequestType::PUT) {
-    if (suffixes.size() == 1 && suffixes[0] == "level") {
-      handleLogLevel();
-    } else {
-      handleLogStructuredParams();
+  } else if (type == rest::RequestType::PUT && suffixes.size() == 1) {
+    if (!suffixes.empty()) {
+      if (suffixes[0] == "level") {
+        handleLogLevel();
+      } else if (suffixes[0] == "structured") {
+        handleLogStructuredParams();
+      } else {
+        generateError(rest::ResponseCode::BAD,
+                      TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                      "superfluous suffix, expecting /_admin/log/<suffix>, "
+                      "where suffix can be either 'level' or 'structured'");
+      }
     }
   }
 
@@ -480,17 +488,6 @@ void RestAdminLogHandler::handleLogLevel() {
 }
 
 void RestAdminLogHandler::handleLogStructuredParams() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  // was validated earlier
-  TRI_ASSERT(!suffixes.empty());
-
-  if (suffixes[0] != "structured") {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting /_admin/log/structured");
-    return;
-  }
-
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::GET) {
@@ -511,9 +508,7 @@ void RestAdminLogHandler::handleLogStructuredParams() {
       return;  // error message generated in parseVPackBody
     }
 
-    if (slice.isString()) {
-      Logger::setLogStructuredParams({slice.copyString()});
-    } else if (slice.isObject()) {
+    if (slice.isObject()) {
       for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isBoolean()) {
           std::string const l = it.key.copyString() + "=" +

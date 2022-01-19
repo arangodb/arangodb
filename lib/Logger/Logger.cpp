@@ -232,15 +232,9 @@ void Logger::setLogStructuredParam(
   auto const& paramName = paramAndValue.first;
   bool value = paramAndValue.second;
   if (value) {
-    if (auto it = _structuredLogParams.find(paramName);
-        it == _structuredLogParams.end()) {
-      _structuredLogParams.emplace(paramName);
-    }
+    _structuredLogParams.emplace(paramName);
   } else {
-    if (auto it = _structuredLogParams.find(paramName);
-        it != _structuredLogParams.end()) {
-      _structuredLogParams.erase(it);
-    }
+    _structuredLogParams.erase(paramName);
   }
 }
 
@@ -258,12 +252,12 @@ std::unordered_map<std::string, bool> const Logger::filterInvalidParams(
     std::vector<std::string> v = StringUtils::split(l, '=');
     size_t vSize = v.size();
     if (!vSize || vSize > 2) {
-      LOG_TOPIC("4d971", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("4d971", WARN, arangodb::Logger::FIXME)
           << "strange log attribute and value set '" + param + "'";
     } else {
       StringUtils::trimInPlace(v[0]);
       if (!structuredParams::allowList.contains(v[0])) {
-        LOG_TOPIC("c4c17", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("c4c17", WARN, arangodb::Logger::FIXME)
             << "strange log parameter '" + v[0] + "'";
         continue;
       }
@@ -276,7 +270,7 @@ std::unordered_map<std::string, bool> const Logger::filterInvalidParams(
         if (v[1] == "false") {
           validParams[v[0]] = false;
         } else {
-          LOG_TOPIC("5d210", ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC("5d210", WARN, arangodb::Logger::FIXME)
               << "strange value '" + v[1] + "'";
         }
       }
@@ -636,6 +630,9 @@ void Logger::log(char const* logid, char const* function, char const* file,
       LogContext::OverloadVisitor visitor([&out, &dumper](
                                               std::string_view const& key,
                                               auto&& value) {
+        if (!_structuredLogParams.contains(key.data())) {
+          return;
+        }
         out.push_back(',');
         dumper.appendString(key.data(), key.size());
         out.push_back(':');

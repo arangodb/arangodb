@@ -272,8 +272,6 @@ class Logger {
       std::vector<std::string> const&);
   static void setLogStructuredParam(std::pair<std::string, bool> const&);
 
-  //  static void setLogStructuredParam(std::string const&);
-
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
   static void setHostname(std::string const&);

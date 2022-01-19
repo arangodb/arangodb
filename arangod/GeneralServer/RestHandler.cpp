@@ -35,6 +35,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -60,8 +61,8 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
       _logContextScopeValues(LogContext::makeValue()
-                                 .with<UrlName>(_request->fullUrl())
-                                 .with<UserName>(_request->user())
+                                 .with<structuredParams::UrlName>(_request->fullUrl())
+                                 .with<structuredParams::UserName>(_request->user())
                                  .share()),
       _canceled(false) {}
 

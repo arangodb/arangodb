@@ -56,7 +56,6 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include <velocypack/Parser.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::options;

@@ -229,7 +229,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   TRI_vocbase_t& _vocbase;
 
  private:
-  static constexpr char DatabaseName[] = "database";
   std::shared_ptr<LogContext::Values> _scopeVocbaseValues;
   LogContext::EntryPtr _logContextVocbaseEntry;
 };

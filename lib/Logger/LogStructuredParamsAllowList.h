@@ -28,9 +28,14 @@
 
 namespace arangodb {
 namespace structuredParams {
+// the parameters will be converted to lowercase when parsed, so the allow list
+// is in lowercase too
 const std::unordered_set<std::string> allowList = {
     "database", "username", "url",         "collection", "queryid",
-    "viewId",   "indexid",  "replication", "pregelid",   "transactionid"};
+    "viewid",   "indexid",  "replication", "pregelid",   "transactionid"};
+static constexpr char DatabaseName[] = "database";
+static constexpr char UrlName[] = "url";
+static constexpr char UserName[] = "username";
 }
 }  // namespace arangodb
 
