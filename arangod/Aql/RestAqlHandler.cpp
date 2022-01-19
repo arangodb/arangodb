@@ -794,9 +794,10 @@ RequestLane RestAqlHandler::lane() const {
   if (ServerState::instance()->isCoordinator()) {
     // continuation requests on coordinators will get medium priority,
     // so that they don't block query parts elsewhere
-    TRI_ASSERT(
+    static_assert(
         PriorityRequestLane(RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR) ==
-        RequestPriority::MED);
+            RequestPriority::MED,
+        "invalid request lane priority");
     return RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
   }
 
@@ -806,14 +807,16 @@ RequestLane RestAqlHandler::lane() const {
     if (suffixes.size() == 2 && suffixes[0] == "finish") {
       // AQL shutdown requests should have medium priority, so it can release
       // locks etc. and unblock other pending requests
-      TRI_ASSERT(PriorityRequestLane(RequestLane::CONTINUATION) ==
-                 RequestPriority::MED);
-      return RequestLane::CONTINUATION;
+      static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_SHUTDOWN) ==
+                        RequestPriority::MED,
+                    "invalid request lane priority");
+      return RequestLane::CLUSTER_AQL_SHUTDOWN;
     }
   }
 
   // everything else will run with low priority
-  TRI_ASSERT(PriorityRequestLane(RequestLane::CLUSTER_AQL) ==
-             RequestPriority::LOW);
+  static_assert(
+      PriorityRequestLane(RequestLane::CLUSTER_AQL) == RequestPriority::LOW,
+      "invalid request lane priority");
   return RequestLane::CLUSTER_AQL;
 }
