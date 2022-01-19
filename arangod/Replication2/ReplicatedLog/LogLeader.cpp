@@ -1224,7 +1224,10 @@ void replicated_log::LogLeader::establishLeadership(
             result.throwIfFailed();
             self->_guardedLeaderData.doUnderLock([&](auto& data) {
               data._leadershipEstablished = true;
-              data.committedParticipantsConfig = std::move(config);
+              if (data.activeParticipantsConfig->generation ==
+                  config->generation) {
+                data.committedParticipantsConfig = std::move(config);
+              }
             });
             LOG_CTX("536f4", TRACE, self->_logContext)
                 << "leadership established";

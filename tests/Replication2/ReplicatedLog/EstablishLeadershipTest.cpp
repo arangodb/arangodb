@@ -113,4 +113,40 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
   }
 
   EXPECT_FALSE(f.isReady());
+
+  {
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    auto newConfig = std::make_shared<ParticipantsConfig>();
+    newConfig->generation = 2;
+    newConfig->participants["follower"] = replication2::ParticipantFlags{};
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+  }
+
+  {
+    // Leadership is established immediately because the first entry was already
+    // acknowledged by the follower, just not committed. Right after the
+    // follower becomes available, the first entry is committed.
+    EXPECT_TRUE(f.isReady());
+    EXPECT_TRUE(leader->isLeadershipEstablished());
+    auto [active, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(active, 2);
+    // The first entry was not committed by generation 1, because during this
+    // generation the follower was excluded.
+    // Because the active generation is currently 2, 1 can no longer be the
+    // committed generation. The committed generation will become 2 after the
+    // updateParticipantsConfig entry has been committed.
+    EXPECT_EQ(committed, std::nullopt);
+  }
+
+  EXPECT_TRUE(follower->hasPendingAppendEntries());
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  {
+    auto [active, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(active, 2);
+    EXPECT_EQ(committed, 2);
+  }
 }
