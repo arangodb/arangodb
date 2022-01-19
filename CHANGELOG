@@ -10,6 +10,12 @@ devel
   start successfully acquired the exclusive lock, but could not get its 
   follow-up requests through and starve while holding the exclusive lock.
 
+* Improve performance of `db._explain()` for very large query execution plans.
+  Higher performance is achieved by not serializing some internal data
+  structures when serializing execution plans. Serializing internal data is
+  now opt-in and turned off if not needed. Apart from performance, there should 
+  be no end user visible changes.
+
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
@@ -20,7 +26,7 @@ devel
   Upgrade procedure for a deployment without license will not take upgrade
   period into account for the read-only mode will enforcement.
 
-* Added agency push-queue operation
+* Added agency push-queue operation.
 
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
 

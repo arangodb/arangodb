@@ -555,31 +555,40 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
+// build flags for plan serialization
+unsigned ExecutionPlan::buildSerializationFlags(
+    bool verbose, bool includeInternals, bool explainRegisters) noexcept {
+  unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
+  if (verbose) {
+    flags |=
+        ExecutionNode::SERIALIZE_PARENTS | ExecutionNode::SERIALIZE_FUNCTIONS;
+
+    if (includeInternals) {
+      flags |= ExecutionNode::SERIALIZE_DETAILS;
+    }
+  }
+
+  if (explainRegisters) {
+    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
+  }
+
+  return flags;
+}
+
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(
-    Ast* ast, bool verbose, ExplainRegisterPlan explainRegisterPlan) const {
+    Ast* ast, unsigned flags) const {
   VPackOptions options;
   options.checkAttributeUniqueness = false;
   options.buildUnindexedArrays = true;
   auto builder = std::make_shared<VPackBuilder>(&options);
-
-  toVelocyPack(*builder, ast, verbose, explainRegisterPlan);
+  toVelocyPack(*builder, ast, flags);
   return builder;
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(
-    VPackBuilder& builder, Ast* ast, bool verbose,
-    ExplainRegisterPlan explainRegisterPlan) const {
-  unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
-  if (verbose) {
-    flags |= ExecutionNode::SERIALIZE_PARENTS |
-             ExecutionNode::SERIALIZE_DETAILS |
-             ExecutionNode::SERIALIZE_FUNCTIONS;
-  }
-  if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
-    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
-  }
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
+                                 unsigned flags) const {
   builder.openObject();
   builder.add(VPackValue("nodes"));
 
