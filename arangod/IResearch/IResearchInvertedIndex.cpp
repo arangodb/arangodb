@@ -211,7 +211,7 @@ bool supportsFilterNode(
   QueryContext const queryCtx = {nullptr, nullptr, nullptr,
                                  nullptr, nullptr, reference};
 
-  if (!visitAllAttributeAccess(
+  if (!nameFromAttributeAccesses(
           node, *reference, true, queryCtx,
           CheckFieldsAccess(queryCtx, *reference, fields))) {
     LOG_TOPIC("d2beb", TRACE, arangodb::iresearch::TOPIC)

@@ -408,21 +408,6 @@ IndexExecutor::CursorReader::CursorReader(
   }
 }
 
-IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
-    : _trx(other._trx),
-      _infos(other._infos),
-      _condition(other._condition),
-      _index(other._index),
-      _cursor(std::move(other._cursor)),
-      _context(other._context),
-      _type(other._type),
-      _checkUniqueness(other._checkUniqueness),
-      _documentNonProducer(std::move(other._documentNonProducer)),
-      _documentProducer(std::move(other._documentProducer)),
-      _documentSkipper(std::move(other._documentSkipper)),
-      _coveringProducer(std::move(other._coveringProducer)),
-      _coveringSkipper(std::move(other._coveringSkipper)) {}
-
 bool IndexExecutor::CursorReader::hasMore() const { return _cursor->hasMore(); }
 
 bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {

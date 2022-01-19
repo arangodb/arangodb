@@ -197,7 +197,7 @@ class IndexExecutor {
 
     CursorReader(const CursorReader&) = delete;
     CursorReader& operator=(const CursorReader&) = delete;
-    CursorReader(CursorReader&& other) noexcept;
+    CursorReader(CursorReader&& other) noexcept = default;
 
    private:
     enum Type { NoResult, Covering, Document, LateMaterialized, Count };

@@ -726,11 +726,11 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
       (*str_) += NESTING_LIST_OFFSET_SUFFIX;
     }
 
-    bool _expansion;
     ScopedAqlValue value_;
     std::string* str_;
     QueryContext const* ctx_;
     char buf_[21];  // enough to hold all numbers up to 64-bits
+    bool _expansion;
   } builder(allowExpansion);
 
   name.clear();

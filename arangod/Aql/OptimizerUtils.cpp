@@ -727,8 +727,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
   // Give it a try
   for (auto& index : indexes) {
     if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
-        ((hint.type() ==
-              IndexHint::Simple &&  // apply this index only if the hint-а
+        ((hint.type() ==   // apply this index only if hinted
+              IndexHint::Simple &&
           std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
               hint.hint().end()))) {
       auto costs = index.get()->supportsFilterCondition(
