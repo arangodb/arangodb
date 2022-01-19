@@ -68,6 +68,10 @@ struct QuickLogStatus;
 struct PersistedLog;
 struct ReplicatedLog;
 }  // namespace replicated_log
+namespace replicated_state {
+struct ReplicatedStateBase;
+struct StateStatus;
+}
 }  // namespace replication2
 namespace velocypack {
 class Builder;
@@ -182,6 +186,22 @@ struct TRI_vocbase_t {
   auto ensureReplicatedLog(arangodb::replication2::LogId id,
                            std::optional<std::string> const& collectionName)
       -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
+ public:
+  auto createReplicatedState(arangodb::replication2::LogId id,
+                             std::string_view type,
+                             arangodb::velocypack::Slice data)
+      -> arangodb::ResultT<std::shared_ptr<
+          arangodb::replication2::replicated_state::ReplicatedStateBase>>;
+  auto dropReplicatedState(arangodb::replication2::LogId id)
+      -> arangodb::Result;
+  auto ensureReplicatedState(arangodb::replication2::LogId id,
+                             std::string_view type,
+                             arangodb::velocypack::Slice data)
+      -> std::shared_ptr<
+          arangodb::replication2::replicated_state::ReplicatedStateBase>;
+  [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
+      arangodb::replication2::LogId,
+      arangodb::replication2::replicated_state::StateStatus>;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,

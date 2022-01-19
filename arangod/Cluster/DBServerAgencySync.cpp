@@ -49,6 +49,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -71,7 +72,8 @@ void DBServerAgencySync::work() {
 
 Result DBServerAgencySync::getLocalCollections(
     std::unordered_set<std::string> const& dirty,
-    AgencyCache::databases_t& databases, LocalLogsMap& replLogs) {
+    AgencyCache::databases_t& databases, LocalLogsMap& replLogs,
+    LocalStatesMap& replStates) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -106,6 +108,17 @@ Result DBServerAgencySync::getLocalCollections(
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";
+        return Result(
+            TRI_ERROR_INTERNAL,
+            "Failed to emplace new entry in local replicated logs cache");
+      }
+    }
+    {
+      auto [it, created] =
+          replStates.try_emplace(dbname, vocbase.getReplicatedStateStatus());
+      if (!created) {
+        LOG_TOPIC("5d5c8", WARN, Logger::MAINTENANCE)
+            << "Failed to emplace new entry in local replicated state cache";
         return Result(
             TRI_ERROR_INTERNAL,
             "Failed to emplace new entry in local replicated logs cache");
@@ -235,9 +248,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
+  LocalStatesMap localStates;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
       << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(dirty, local, localLogs);
+  Result glc = getLocalCollections(dirty, local, localLogs, localStates);
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE)
       << "After getLocalCollections for phaseOne";
@@ -298,7 +312,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     local.clear();
     localLogs.clear();
-    glc = getLocalCollections(dirty, local, localLogs);
+    localStates.clear();
+    glc = getLocalCollections(dirty, local, localLogs, localStates);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.

@@ -72,8 +72,6 @@ using ReplicatedLogStatusMapByDatabase =
 using ReplicatedLogSpecMap =
     std::unordered_map<arangodb::replication2::LogId,
                        arangodb::replication2::agency::LogPlanSpecification>;
-using ReplicatedLogSpecByDatabase =
-    std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
 
 /**
  * @brief          Diff Plan Replicated Logs and Local Replicated Logs for phase
