@@ -41,7 +41,6 @@ function CollectionDocumentKeysSuite() {
   return generateTestSuite(wrap);
 }
 
-// jsunity.run(generateTestSuite(wrap));
 jsunity.run(CollectionDocumentKeysSuite);
 
 return jsunity.done();

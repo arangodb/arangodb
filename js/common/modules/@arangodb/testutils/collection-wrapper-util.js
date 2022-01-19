@@ -57,8 +57,7 @@ function* BasicDocumentGenerator(keyGenerator) {
 }
 
 class CollectionWrapper {
-
-
+  
   constructor(name) {
     this._collectionName = name;
   }

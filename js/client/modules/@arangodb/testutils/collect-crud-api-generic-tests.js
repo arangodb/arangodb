@@ -30,8 +30,9 @@ const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util
 const {assertEqual, assertTrue, assertNotEqual}
   = jsunity.jsUnity.assertions;
 
-
-const generateTestSuite = (collectionWrapper) => {
+// The post fix is used to make testName unique accross suites in the same file
+// just to make testing-js happy.
+const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
   assertTrue(collectionWrapper instanceof CollectionWrapper);
 
   const runAllCrudOperationsOnDocuments = (generator) => {
@@ -146,12 +147,12 @@ const generateTestSuite = (collectionWrapper) => {
 /// @brief create document w/ special keys
 ////////////////////////////////////////////////////////////////////////////////
 
-    testValidKeys: function () {
+    [`testValidKeys${testNamePostfix}`]: function () {
       // This is some basic tests for easy characters in URLs
       runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator()));
     },
 
-    testSpecialKeysInUrls: function () {
+    [`testSpecialKeysInUrls${testNamePostfix}`]: function () {
       // This is supposed to test special characters in URLs
       runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
     },
