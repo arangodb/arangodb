@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,60 +34,64 @@
 
 namespace arangodb::arangobench {
 
-  struct CustomQueryTest : public Benchmark<CustomQueryTest> {
-    static std::string name() { return "custom-query"; }
+struct CustomQueryTest : public Benchmark<CustomQueryTest> {
+  static std::string name() { return "custom-query"; }
 
-    CustomQueryTest(BenchFeature& arangobench)
+  CustomQueryTest(BenchFeature& arangobench)
       : Benchmark<CustomQueryTest>(arangobench) {}
 
-    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-      _query = _arangobench.customQuery();
-      if (_query.empty()) {
-        auto file = _arangobench.customQueryFile();
-        size_t length;
-        auto* p = TRI_SlurpFile(file.c_str(), &length);
-        if (p != nullptr) {
-          auto guard = scopeGuard([&p]() noexcept { TRI_Free(p); });
-          _query = std::string(p, length);
-        }
+  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+    _query = _arangobench.customQuery();
+    if (_query.empty()) {
+      auto file = _arangobench.customQueryFile();
+      size_t length;
+      auto* p = TRI_SlurpFile(file.c_str(), &length);
+      if (p != nullptr) {
+        auto guard = scopeGuard([&p]() noexcept { TRI_Free(p); });
+        _query = std::string(p, length);
       }
-
-      if (_query.empty()) {
-        LOG_TOPIC("79cce", FATAL, arangodb::Logger::BENCH)
-          << "custom benchmark requires --custom-query or --custom-query-file to "
-          "be specified";
-        return false;
-      }
-      _queryBindVars = _arangobench.customQueryBindVars();
-
-      return true;
     }
 
-    void tearDown() override {}
-
-    void buildRequest(size_t threadNumber, size_t threadCounter,
-                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
-      requestData.url = "/_api/cursor";
-      requestData.type = rest::RequestType::POST;
-      using namespace arangodb::velocypack;
-      requestData.payload.openObject();
-      requestData.payload.add("query", Value(_query));
-      if (_queryBindVars != nullptr) {
-        requestData.payload.add("bindVars", _queryBindVars->slice());
-      }
-      requestData.payload.close();
-    }
-    char const* getDescription() const noexcept override {
-      return "executes a custom AQL query, that can be specified either via the --custom-query option or be read from a file specified via the --custom-query-file option. The query will be executed as many times as the value of --requests. The --complexity parameter is not used.";
-    }
-
-    bool isDeprecated() const noexcept override {
+    if (_query.empty()) {
+      LOG_TOPIC("79cce", FATAL, arangodb::Logger::BENCH)
+          << "custom benchmark requires --custom-query or --custom-query-file "
+             "to "
+             "be specified";
       return false;
     }
+    _queryBindVars = _arangobench.customQueryBindVars();
 
-   private:
-    std::string _query;
-    std::shared_ptr<VPackBuilder> _queryBindVars;
-  };
+    return true;
+  }
+
+  void tearDown() override {}
+
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
+    requestData.url = "/_api/cursor";
+    requestData.type = rest::RequestType::POST;
+    using namespace arangodb::velocypack;
+    requestData.payload.openObject();
+    requestData.payload.add("query", Value(_query));
+    if (_queryBindVars != nullptr) {
+      requestData.payload.add("bindVars", _queryBindVars->slice());
+    }
+    requestData.payload.close();
+  }
+  char const* getDescription() const noexcept override {
+    return "executes a custom AQL query, that can be specified either via the "
+           "--custom-query option or be read from a file specified via the "
+           "--custom-query-file option. The query will be executed as many "
+           "times as the value of --requests. The --complexity parameter is "
+           "not used.";
+  }
+
+  bool isDeprecated() const noexcept override { return false; }
+
+ private:
+  std::string _query;
+  std::shared_ptr<VPackBuilder> _queryBindVars;
+};
 
 }  // namespace arangodb::arangobench

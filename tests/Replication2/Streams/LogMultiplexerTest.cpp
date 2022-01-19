@@ -106,8 +106,8 @@ TEST_F(LogMultiplexerTest, leader_wait_for) {
   auto followerLog = createFakeReplicatedLog();
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
 
   auto stream = mux->getStreamById<my_int_stream_id>();
@@ -281,7 +281,8 @@ TEST_F(LogMultiplexerTest, leader_resign_stream) {
   ASSERT_FALSE(fs.isReady());
 
   // become leader in new term, this should trigger an exception
-  leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{2}, {follower});
+  leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                   LogTerm{2}, {follower});
 
   // leader should have resolved this promise
   ASSERT_TRUE(f.isReady());

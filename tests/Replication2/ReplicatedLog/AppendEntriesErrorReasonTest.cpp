@@ -25,19 +25,19 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include "Replication2/Mocks/FakeFollower.h"
+#include "Replication2/Mocks/FakeAbstractFollower.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 
 struct AppendEntriesErrorReasonTest : ReplicatedLogTest {
   std::shared_ptr<TestReplicatedLog> leaderLog;
-  std::shared_ptr<FakeFollower> follower;
+  std::shared_ptr<FakeAbstractFollower> follower;
   std::shared_ptr<LogLeader> leader;
 
   void SetUp() override {
     leaderLog = makeReplicatedLog(LogId{1});
-    follower = std::make_shared<FakeFollower>("follower");
+    follower = std::make_shared<FakeAbstractFollower>("follower");
     leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
     auto const firstIdx =
@@ -62,29 +62,32 @@ TEST_F(AppendEntriesErrorReasonTest, append_entries_communication_error) {
   auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
   auto followerStatus = status.follower[follower->getParticipantId()];
   EXPECT_EQ(followerStatus.lastErrorReason,
-            (AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kCommunicationError,
-                                      "logic error"}));
+            (AppendEntriesErrorReason{
+                AppendEntriesErrorReason::ErrorType::kCommunicationError,
+                "logic error"}));
 }
 
 TEST_F(AppendEntriesErrorReasonTest, append_entries_with_conflict) {
-  follower->resolveRequest(AppendEntriesResult::withConflict({}, MessageId{1}, {}));
+  follower->resolveRequest(
+      AppendEntriesResult::withConflict({}, MessageId{1}, {}));
 
   auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
   auto followerStatus = status.follower[follower->getParticipantId()];
   EXPECT_EQ(followerStatus.lastErrorReason,
-            AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch});
+            AppendEntriesErrorReason{
+                AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch});
 }
 
 TEST_F(AppendEntriesErrorReasonTest, append_entries_with_persistence_error) {
-  follower->resolveRequest(
-      AppendEntriesResult::withPersistenceError({}, MessageId{1},
-                                                {ErrorCode{3}, "errorCode3"}));
+  follower->resolveRequest(AppendEntriesResult::withPersistenceError(
+      {}, MessageId{1}, {ErrorCode{3}, "errorCode3"}));
 
   auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
   auto followerStatus = status.follower[follower->getParticipantId()];
   EXPECT_EQ(followerStatus.lastErrorReason,
-            (AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kPersistenceFailure,
-                                      "errorCode3"}));
+            (AppendEntriesErrorReason{
+                AppendEntriesErrorReason::ErrorType::kPersistenceFailure,
+                "errorCode3"}));
 }
 
 TEST_F(AppendEntriesErrorReasonTest, append_entries_with_rejection) {
@@ -94,9 +97,10 @@ TEST_F(AppendEntriesErrorReasonTest, append_entries_with_rejection) {
 
   auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
   auto followerStatus = status.follower[follower->getParticipantId()];
-  EXPECT_EQ(followerStatus.lastErrorReason,
-            (AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kWrongTerm,
-                                      "wrong term"}));
+  EXPECT_EQ(
+      followerStatus.lastErrorReason,
+      (AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kWrongTerm,
+                                "wrong term"}));
 }
 
 TEST_F(AppendEntriesErrorReasonTest, append_entries_with_ok) {

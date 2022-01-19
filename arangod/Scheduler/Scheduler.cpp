@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,9 +49,11 @@ namespace arangodb {
 
 class SchedulerThread : virtual public Thread {
  public:
-  explicit SchedulerThread(application_features::ApplicationServer& server, Scheduler& scheduler)
+  explicit SchedulerThread(application_features::ApplicationServer& server,
+                           Scheduler& scheduler)
       : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() = default; // shutdown is called by derived implementation!
+  ~SchedulerThread() =
+      default;  // shutdown is called by derived implementation!
 
  protected:
   Scheduler& _scheduler;
@@ -115,21 +117,24 @@ void Scheduler::runCronThread() {
     clock::duration sleepTime = std::chrono::milliseconds(50);
 
     while (!_cronQueue.empty()) {
-      // top is a reference to a tuple containing the timepoint and a shared_ptr to the work item
+      // top is a reference to a tuple containing the timepoint and a shared_ptr
+      // to the work item
       auto top = _cronQueue.top();
       if (top.first < now) {
         _cronQueue.pop();
         guard.unlock();
 
-        // It is time to schedule this task, try to get the lock and obtain a shared_ptr
-        // If this fails a default DelayedWorkItem is constructed which has disabled == true
+        // It is time to schedule this task, try to get the lock and obtain a
+        // shared_ptr If this fails a default DelayedWorkItem is constructed
+        // which has disabled == true
         try {
           auto item = top.second.lock();
           if (item) {
             item->run();
           }
         } catch (std::exception const& ex) {
-          LOG_TOPIC("6d997", WARN, Logger::THREADS) << "caught exception in runCronThread: " << ex.what();
+          LOG_TOPIC("6d997", WARN, Logger::THREADS)
+              << "caught exception in runCronThread: " << ex.what();
         }
 
         // always lock again, as we are going into the wait_for below
@@ -148,7 +153,8 @@ void Scheduler::runCronThread() {
 }
 
 Scheduler::WorkHandle Scheduler::queueDelayed(
-    RequestLane lane, clock::duration delay, fu2::unique_function<void(bool cancelled)> handler) noexcept {
+    RequestLane lane, clock::duration delay,
+    fu2::unique_function<void(bool cancelled)> handler) noexcept {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {

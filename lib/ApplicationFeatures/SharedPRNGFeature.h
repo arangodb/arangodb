@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,15 +31,15 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class SharedPRNGFeature final : public application_features::ApplicationFeature {
+class SharedPRNGFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit SharedPRNGFeature(application_features::ApplicationServer& server);
   ~SharedPRNGFeature();
 
   void prepare() override final;
-  
+
   uint64_t rand() noexcept;
 };
 
 }  // namespace arangodb
-

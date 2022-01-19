@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Mocks/Servers.h"  // this must be first because windows
 
 #include "src/objects/objects.h"
@@ -86,11 +85,11 @@ struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
-  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+  TestView(TRI_vocbase_t& vocbase,
+           arangodb::velocypack::Slice const& definition)
       : arangodb::LogicalView(vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder,
-      Serialization) const override {
+      arangodb::velocypack::Builder& builder, Serialization) const override {
     builder.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
@@ -106,23 +105,26 @@ struct TestView : public arangodb::LogicalView {
     _properties = arangodb::velocypack::Builder(properties);
     return arangodb::Result();
   }
-  virtual bool visitCollections(CollectionVisitor const& /*visitor*/) const override {
+  virtual bool visitCollections(
+      CollectionVisitor const& /*visitor*/) const override {
     return true;
   }
 };
 
 struct ViewFactory : public arangodb::ViewFactory {
-  virtual arangodb::Result create(arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice definition, bool isUserRequest) const override {
+  virtual arangodb::Result create(arangodb::LogicalView::ptr& view,
+                                  TRI_vocbase_t& vocbase,
+                                  arangodb::velocypack::Slice definition,
+                                  bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
     view = vocbase.createView(definition);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
-                                       TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice definition) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -137,19 +139,21 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 class V8UsersTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
   ViewFactory viewFactory;
   arangodb::SystemDatabaseFeature::ptr system;
 
   V8UsersTest()
-      : server(), system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
+      : server(),
+        system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     arangodb::tests::v8Init();  // on-time initialize V8
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(std::string_view(
-                                 "testViewType")),
+    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(
+                                 std::string_view("testViewType")),
                              viewFactory);
   }
 };
@@ -164,45 +168,67 @@ TEST_F(V8UsersTest, test_collection_auth) {
   static const std::string userName("testUser");
   auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE(databaseFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
+  ASSERT_TRUE(
+      databaseFeature.createDatabase(testDBInfo(server.server()), vocbase)
+          .ok());
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  auto isolate =
-      std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                   [](v8::Isolate* p) -> void { p->Dispose(); });
+  auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p) -> void { p->Dispose(); });
   ASSERT_NE(nullptr, isolate);
-  v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
-  v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
+  v8::Isolate::Scope isolateScope(
+      isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from
+                       // v8::Exception::Error)
+  v8::internal::Isolate::Current()
+      ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will
+                                         // fail (called from
+                                         // v8::Exception::Error)
+  v8::HandleScope handleScope(
+      isolate.get());  // required for v8::Context::New(...),
+                       // v8::ObjectTemplate::New(...) and
+                       // TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
-  v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),
-                                                           isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
+  v8::Context::Scope contextScope(
+      context);  // required for TRI_AddMethodVocbase(...)
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(
+      server.server(), isolate.get(),
+      0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  v8g->ArangoErrorTempl.Reset(
+      isolate.get(),
+      v8::ObjectTemplate::New(
+          isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will
+                            // fail
   v8g->_vocbase = vocbase;
   TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
   auto arangoUsers =
-      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)
+          ->NewInstance(TRI_IGETC)
+          .FromMaybe(v8::Local<v8::Object>());
   auto fn_grantCollection =
-    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "grantCollection")).FromMaybe(v8::Local<v8::Value>());
+      arangoUsers
+          ->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "grantCollection"))
+          .FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_grantCollection->IsFunction());
   auto fn_revokeCollection =
-    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection")).FromMaybe(v8::Local<v8::Value>());
+      arangoUsers
+          ->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection"))
+          .FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_revokeCollection->IsFunction());
   std::vector<v8::Local<v8::Value>> grantArgs = {
       TRI_V8_STD_STRING(isolate.get(), userName),
       TRI_V8_STD_STRING(isolate.get(), vocbase->name()),
       TRI_V8_ASCII_STRING(isolate.get(), "testDataSource"),
-      TRI_V8_STD_STRING(isolate.get(),
-                        arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)),
+      TRI_V8_STD_STRING(isolate.get(), arangodb::auth::convertFromAuthLevel(
+                                           arangodb::auth::Level::RW)),
   };
   std::vector<v8::Local<v8::Value>> grantWildcardArgs = {
       TRI_V8_STD_STRING(isolate.get(), userName),
       TRI_V8_STD_STRING(isolate.get(), vocbase->name()),
       TRI_V8_ASCII_STRING(isolate.get(), "*"),
-      TRI_V8_STD_STRING(isolate.get(),
-                        arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)),
+      TRI_V8_STD_STRING(isolate.get(), arangodb::auth::convertFromAuthLevel(
+                                           arangodb::auth::Level::RW)),
   };
   std::vector<v8::Local<v8::Value>> revokeArgs = {
       TRI_V8_STD_STRING(isolate.get(), userName),
@@ -236,13 +262,16 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
 
     EXPECT_TRUE(
@@ -262,7 +291,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
+                                   .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -277,16 +307,22 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(),
-                             "testDataSource", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...) returns
+                                     // database auth::Level
 
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
@@ -305,10 +341,12 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
+                                   .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));  // not modified from above
+         execContext.collectionAuthLevel(
+             vocbase->name(), "testDataSource")));  // not modified from above
   }
 
   // test auth collection (grant)
@@ -322,13 +360,16 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
@@ -365,16 +406,22 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(),
-                             "testDataSource", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...) returns
+                                     // database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -410,13 +457,16 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
         vocbase->createView(viewJson->slice()).get(),
@@ -442,7 +492,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
+                                   .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -459,16 +510,22 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(),
-                             "testDataSource", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...) returns
+                                     // database auth::Level
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
         vocbase->createView(viewJson->slice()).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
@@ -493,10 +550,12 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
+                                   .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));  // not modified from above
+         execContext.collectionAuthLevel(
+             vocbase->name(), "testDataSource")));  // not modified from above
   }
 
   // test auth wildcard (grant)
@@ -510,13 +569,16 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
@@ -530,10 +592,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)
-                      ->CallAsFunction(context, arangoUsers,
-                                       static_cast<int>(grantWildcardArgs.size()),
-                                       grantWildcardArgs.data());
+    auto result =
+        v8::Function::Cast(*fn_grantCollection)
+            ->CallAsFunction(context, arangoUsers,
+                             static_cast<int>(grantWildcardArgs.size()),
+                             grantWildcardArgs.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
@@ -553,16 +616,22 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
-    userManager->setAuthInfo(userMap);  // insure an empty map is set before UserManager::storeUser(...)
+    userManager->setAuthInfo(userMap);  // insure an empty map is set before
+                                        // UserManager::storeUser(...)
     userManager->storeUser(false, userName, arangodb::StaticStrings::Empty,
                            true, arangodb::velocypack::Slice());
-    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
-      userPtr = const_cast<arangodb::auth::User*>(&user);
-      return arangodb::Result();
-    });
+    userManager->accessUser(
+        userName,
+        [&userPtr](arangodb::auth::User const& user) -> arangodb::Result {
+          userPtr = const_cast<arangodb::auth::User*>(&user);
+          return arangodb::Result();
+        });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(),
-                             "testDataSource", arangodb::auth::Level::RO);  // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...) returns
+                                     // database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -575,15 +644,19 @@ TEST_F(V8UsersTest, test_collection_auth) {
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)
-                      ->CallAsFunction(context, arangoUsers,
-                                       static_cast<int>(revokeWildcardArgs.size()),
-                                       revokeWildcardArgs.data());
+    auto result =
+        v8::Function::Cast(*fn_revokeCollection)
+            ->CallAsFunction(context, arangoUsers,
+                             static_cast<int>(revokeWildcardArgs.size()),
+                             revokeWildcardArgs.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));  // unchanged since revocation is only for exactly matching collection names
+         execContext.collectionAuthLevel(
+             vocbase->name(),
+             "testDataSource")));  // unchanged since revocation is only for
+                                   // exactly matching collection names
   }
 }

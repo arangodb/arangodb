@@ -1,0 +1,73 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Supporting Tools</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="prev" href="design_notes/user_interface_signature.html" title="User Interface Signature">
+<link rel="next" href="supporting_tools/boost__cnv__is_range.html" title="boost::cnv::is_range">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design_notes/user_interface_signature.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="supporting_tools/boost__cnv__is_range.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_convert.supporting_tools"></a><a class="link" href="supporting_tools.html" title="Supporting Tools">Supporting Tools</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="supporting_tools.html#boost_convert.supporting_tools.boost__cnv__range">boost::cnv::range</a></span></dt>
+<dt><span class="section"><a href="supporting_tools/boost__cnv__is_range.html">boost::cnv::is_range</a></span></dt>
+<dt><span class="section"><a href="supporting_tools/boost_declare_has_member.html">BOOST_DECLARE_HAS_MEMBER</a></span></dt>
+<dt><span class="section"><a href="supporting_tools/boost_declare_is_callable.html">BOOST_DECLARE_IS_CALLABLE</a></span></dt>
+<dt><span class="section"><a href="supporting_tools/boost__cnv__is_cnv.html">boost::cnv::is_cnv</a></span></dt>
+</dl></div>
+<p>
+      This section describes a few supporting tools written as part of <span class="emphasis"><em>Boost.Convert</em></span>
+      but which might be useful in their own rights.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_convert.supporting_tools.boost__cnv__range"></a><a class="link" href="supporting_tools.html#boost_convert.supporting_tools.boost__cnv__range" title="boost::cnv::range">boost::cnv::range</a>
+</h3></div></div></div>
+<p>
+        <span class="emphasis"><em>boost::cnv::range</em></span> is a consolidation of the [begin,
+        end)-based ranges (such as <span class="emphasis"><em>std::string</em></span>) and the sentry-based
+        ranges (such as null-terminated C-style strings). It allows universal traversal
+        of both types of ranges with
+      </p>
+<pre class="programlisting"><span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span> <span class="identifier">s</span> <span class="special">=</span> <span class="identifier">range</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span> <span class="identifier">s</span> <span class="special">!=</span> <span class="identifier">range</span><span class="special">.</span><span class="identifier">sentry</span><span class="special">();</span> <span class="special">++</span><span class="identifier">s</span><span class="special">)</span>
+</pre>
+<p>
+        without the penalty or the need for an extra traversal of the sentry-based
+        ranges in order to find the end.
+      </p>
+<p>
+        TODO
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2020 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design_notes/user_interface_signature.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="supporting_tools/boost__cnv__is_range.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -39,14 +39,15 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

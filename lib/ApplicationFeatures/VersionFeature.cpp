@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 VersionFeature::VersionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Version"), 
+    : ApplicationFeature(server, "Version"),
       _printVersion(false),
       _printVersionJson(false) {
   setOptional(false);
@@ -44,14 +44,17 @@ VersionFeature::VersionFeature(application_features::ApplicationServer& server)
 }
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--version", "reports the version and exits",
-                     new BooleanParameter(&_printVersion),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
+  options->addOption(
+      "--version", "reports the version and exits",
+      new BooleanParameter(&_printVersion),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
 
-  options->addOption("--version-json", "reports the version as JSON and exits",
-                     new BooleanParameter(&_printVersionJson),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command))
-    .setIntroducedIn(30900);
+  options
+      ->addOption("--version-json", "reports the version as JSON and exits",
+                  new BooleanParameter(&_printVersionJson),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Command))
+      .setIntroducedIn(30900);
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

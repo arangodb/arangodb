@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,14 +46,15 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
-  template <typename MetricBuilder>
+  template<typename MetricBuilder>
   auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
     return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
   }
-  template <typename MetricBuilder>
+  template<typename MetricBuilder>
   auto addShared(MetricBuilder&& builder)  // TODO(MBkkt) Remove this method
       -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(doAdd(builder));
+    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
+        doAdd(builder));
   }
   Metric* get(MetricKey const& key);
   bool remove(Builder const& builder);
@@ -65,9 +66,11 @@ class MetricsFeature final : public application_features::ApplicationFeature {
  private:
   std::shared_ptr<Metric> doAdd(Builder& builder);
 
-  std::map<MetricKey, std::shared_ptr<Metric>> _registry;  // TODO(MBkkt) abseil btree map?
+  std::map<MetricKey, std::shared_ptr<Metric>>
+      _registry;  // TODO(MBkkt) abseil btree map?
 
-  mutable std::unordered_map<std::string, std::string> _globalLabels;  // TODO(MBkkt) abseil hash map
+  mutable std::unordered_map<std::string, std::string>
+      _globalLabels;  // TODO(MBkkt) abseil hash map
   mutable std::string _globalLabelsStr;
 
   mutable std::recursive_mutex _lock;

@@ -1,0 +1,261 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chapter 1. Concepts</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="index.html" title="Boost.Python Reference Manual">
+<link rel="prev" href="index.html" title="Boost.Python Reference Manual">
+<link rel="next" href="concepts/dereferenceable.html" title="Dereferenceable">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="index.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="concepts/dereferenceable.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div><div><h1 class="title">
+<a name="concepts"></a>Chapter 1. Concepts</h1></div></div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="concepts.html#concepts.callpolicies">CallPolicies</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="concepts.html#concepts.callpolicies.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="concepts.html#concepts.callpolicies.callpolicies_composition">CallPolicies
+        Composition</a></span></dt>
+<dt><span class="section"><a href="concepts.html#concepts.callpolicies.concept_requirements">Concept
+        Requirements</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="concepts/dereferenceable.html">Dereferenceable</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="concepts/dereferenceable.html#concepts.dereferenceable.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="concepts/dereferenceable.html#concepts.dereferenceable.concept_requirements">Concept
+        Requirements</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="concepts/extractor.html">Extractor</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="concepts/extractor.html#concepts.extractor.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="concepts/extractor.html#concepts.extractor.concept_requirements">Concept Requirements</a></span></dt>
+<dt><span class="section"><a href="concepts/extractor.html#concepts.extractor.notes">Notes</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="concepts/holdergenerator.html">HolderGenerator</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="concepts/holdergenerator.html#concepts.holdergenerator.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="concepts/holdergenerator.html#concepts.holdergenerator.concept_requirements">Concept
+        Requirements</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="concepts/resultconverter.html">ResultConverter</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="concepts/resultconverter.html#concepts.resultconverter.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="concepts/resultconverter.html#concepts.resultconverter.resultconverter_concept_requirem">ResultConverter
+        Concept Requirements</a></span></dt>
+<dt><span class="section"><a href="concepts/resultconverter.html#concepts.resultconverter.resultconvertergenerator_concept">ResultConverterGenerator
+        Concept Requirements</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="concepts/objectwrapper.html">ObjectWrapper</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="concepts/objectwrapper.html#concepts.objectwrapper.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="concepts/objectwrapper.html#concepts.objectwrapper.objectwrapper_concept_requiremen">ObjectWrapper
+        Concept Requirements</a></span></dt>
+<dt><span class="section"><a href="concepts/objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements">TypeWrapper
+        Concept Requirements</a></span></dt>
+<dt><span class="section"><a href="concepts/objectwrapper.html#concepts.objectwrapper.caveat">Caveat</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="concepts.callpolicies"></a><a class="link" href="concepts.html#concepts.callpolicies" title="CallPolicies">CallPolicies</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="concepts.html#concepts.callpolicies.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="concepts.html#concepts.callpolicies.callpolicies_composition">CallPolicies
+        Composition</a></span></dt>
+<dt><span class="section"><a href="concepts.html#concepts.callpolicies.concept_requirements">Concept
+        Requirements</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.callpolicies.introduction"></a><a class="link" href="concepts.html#concepts.callpolicies.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Models of the CallPolicies concept are used to specialize the behavior
+          of Python callable objects generated by Boost.Python to wrapped C++ objects
+          like function and member function pointers, providing three behaviors:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">precall</span></code> - Python argument
+              tuple management before the wrapped object is invoked
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">result_converter</span></code> -
+              C++ return value handling
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">postcall</span></code> - Python argument
+              tuple and result management after the wrapped object is invoked
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">extract_return_type</span></code>
+              - metafunction for extracting the return type from a given signature
+              type sequence
+            </li>
+</ol></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.callpolicies.callpolicies_composition"></a><a class="link" href="concepts.html#concepts.callpolicies.callpolicies_composition" title="CallPolicies Composition">CallPolicies
+        Composition</a>
+</h3></div></div></div>
+<p>
+          In order to allow the use of multiple models of CallPolicies in the same
+          callable object, Boost.Python's CallPolicies class templates provide a
+          chaining interface which allows them to be recursively composed. This interface
+          takes the form of an optional template parameter, <code class="computeroutput"><span class="identifier">Base</span></code>,
+          which defaults to <code class="computeroutput"><span class="identifier">default_call_policies</span></code>.
+          By convention, the <code class="computeroutput"><span class="identifier">precall</span></code>
+          function of the <code class="computeroutput"><span class="identifier">Base</span></code> is
+          invoked after the <code class="computeroutput"><span class="identifier">precall</span></code>
+          function supplied by the <code class="computeroutput"><span class="identifier">outer</span></code>
+          template, and the <code class="computeroutput"><span class="identifier">postcall</span></code>
+          function of the <code class="computeroutput"><span class="identifier">Base</span></code> is
+          invoked before the <code class="computeroutput"><span class="identifier">postcall</span></code>
+          function of the <code class="computeroutput"><span class="identifier">outer</span></code> template.
+          If a <code class="computeroutput"><span class="identifier">result_converter</span></code> is
+          supplied by the <code class="computeroutput"><span class="identifier">outer</span></code> template,
+          it replaces any <code class="computeroutput"><span class="identifier">result_converter</span></code>
+          supplied by the <code class="computeroutput"><span class="identifier">Base</span></code>. For
+          an example, see <code class="computeroutput"><span class="identifier">return_internal_reference</span></code>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.callpolicies.concept_requirements"></a><a class="link" href="concepts.html#concepts.callpolicies.concept_requirements" title="Concept Requirements">Concept
+        Requirements</a>
+</h3></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Result/Semantics
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">x</span><span class="special">.</span><span class="identifier">precall</span><span class="special">(</span><span class="identifier">a</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    convertible to <code class="computeroutput"><span class="keyword">bool</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    returns <code class="computeroutput"><span class="keyword">false</span></code> and
+                    <code class="computeroutput"><span class="identifier">PyErr_Occurred</span><span class="special">()</span> <span class="special">!=</span>
+                    <span class="number">0</span></code> upon failure, <code class="computeroutput"><span class="keyword">true</span></code> otherwise.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">P</span><span class="special">::</span><span class="identifier">result_converter</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    A model of <code class="computeroutput"><span class="identifier">ResultConverterGenerator</span></code>.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    An MPL unary Metafunction Class used produce the "preliminary"
+                    result object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">x</span><span class="special">.</span><span class="identifier">postcall</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span>
+                    <span class="identifier">r</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    convertible to <code class="computeroutput"><span class="identifier">PyObject</span><span class="special">*</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="number">0</span></code> and <code class="computeroutput"><span class="identifier">PyErr_Occurred</span><span class="special">()</span>
+                    <span class="special">!=</span> <span class="number">0</span></code>
+                    upon failure. Must "conserve references" even in the
+                    event of an exception. In other words, if <code class="computeroutput"><span class="identifier">r</span></code>
+                    is not returned, its reference count must be decremented; if
+                    another existing object is returned, its reference count must
+                    be incremented.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">P</span><span class="special">::</span><span class="identifier">extract_return_type</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    A model of Metafunction.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    An MPL unary Metafunction used extract the return type from a
+                    given signature. By default it is derived from <code class="computeroutput"><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">front</span></code>.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="index.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="concepts/dereferenceable.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

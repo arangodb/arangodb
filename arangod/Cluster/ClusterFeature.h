@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,12 +78,16 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _createWaitsForSyncReplication;
   }
   std::uint32_t writeConcern() const { return _writeConcern; }
-  std::uint32_t systemReplicationFactor() const { return _systemReplicationFactor; }
-  std::uint32_t defaultReplicationFactor() const { return _defaultReplicationFactor; }
+  std::uint32_t systemReplicationFactor() const {
+    return _systemReplicationFactor;
+  }
+  std::uint32_t defaultReplicationFactor() const {
+    return _defaultReplicationFactor;
+  }
   std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
   std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
   std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
-  std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards;}
+  std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards; }
   bool forceOneShard() const { return _forceOneShard; }
   /// @brief index creation timeout in seconds. note: this used to be
   /// a configurable parameter in previous versions, but is now hard-coded.
@@ -120,8 +124,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
    * @brief Add databases to dirty list
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases, bool callNotify);
-  void addDirty(std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& changeset);
+  void addDirty(std::unordered_set<std::string> const& databases,
+                bool callNotify);
+  void addDirty(
+      std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+          changeset);
   std::unordered_set<std::string> allDatabases() const;
 
   /**
@@ -155,11 +162,15 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
 
-  metrics::Histogram<metrics::LogScale<uint64_t>>& agency_comm_request_time_ms() { return _agency_comm_request_time_ms; }
+  metrics::Histogram<metrics::LogScale<uint64_t>>&
+  agency_comm_request_time_ms() {
+    return _agency_comm_request_time_ms;
+  }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                            uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
+                            uint64_t interval_ms,
+                            uint64_t maxFailsBeforeWarning,
                             std::string const& endpoints);
 
  private:
@@ -171,14 +182,19 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
   std::string _apiJwtPolicy;
-  std::uint32_t _writeConcern = 1;             // write concern
-  std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor
+  std::uint32_t _writeConcern = 1;  // write concern
+  std::uint32_t _defaultReplicationFactor =
+      0;  // a value of 0 means it will use the min replication factor
   std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
-  std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
-  std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
-  std::uint32_t _maxNumberOfMoveShards = 10;     // maximum number of shards to be moved per rebalance operation
-                                                 //if value = 0, no move shards operations will be scheduled
+  std::uint32_t _minReplicationFactor =
+      1;  // minimum replication factor (0 = unrestricted)
+  std::uint32_t _maxReplicationFactor =
+      10;  // maximum replication factor (0 = unrestricted)
+  std::uint32_t _maxNumberOfShards =
+      1000;  // maximum number of shards (0 = unrestricted)
+  std::uint32_t _maxNumberOfMoveShards =
+      10;  // maximum number of shards to be moved per rebalance operation
+           // if value = 0, no move shards operations will be scheduled
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
@@ -208,4 +224,3 @@ class ClusterFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

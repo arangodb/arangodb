@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,11 +44,10 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserDocumentCache::TraverserDocumentCache(aql::QueryContext& query,
-                                               std::shared_ptr<arangodb::cache::Cache> cache,
-                                               BaseOptions* options)
-    : TraverserCache(query, options), 
-      _cache(std::move(cache)) {
+TraverserDocumentCache::TraverserDocumentCache(
+    aql::QueryContext& query, std::shared_ptr<arangodb::cache::Cache> cache,
+    BaseOptions* options)
+    : TraverserCache(query, options), _cache(std::move(cache)) {
   TRI_ASSERT(_cache != nullptr);
 }
 
@@ -70,17 +69,19 @@ TraverserDocumentCache::~TraverserDocumentCache() {
 // for a longer period of time.
 // DO NOT give it to a caller.
 cache::Finding TraverserDocumentCache::lookup(std::string_view idString) {
-  return _cache->find(idString.data(), static_cast<uint32_t>(idString.length()));
+  return _cache->find(idString.data(),
+                      static_cast<uint32_t>(idString.length()));
 }
 
 // These two do not use the cache.
-void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
-                                                  VPackBuilder& builder) {
+void TraverserDocumentCache::insertEdgeIntoResult(
+    EdgeDocumentToken const& idToken, VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   builder.add(lookupToken(idToken));
 }
 
-bool TraverserDocumentCache::appendVertex(std::string_view idString, arangodb::velocypack::Builder& result) {
+bool TraverserDocumentCache::appendVertex(
+    std::string_view idString, arangodb::velocypack::Builder& result) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();
@@ -93,11 +94,13 @@ bool TraverserDocumentCache::appendVertex(std::string_view idString, arangodb::v
   auto const& buffer = result.bufferRef();
   size_t const startPosition = buffer.size();
   bool found = TraverserCache::appendVertex(idString, result);
-  insertIntoCache(idString, arangodb::velocypack::Slice(buffer.data() + startPosition));
+  insertIntoCache(idString,
+                  arangodb::velocypack::Slice(buffer.data() + startPosition));
   return found;
 }
 
-bool TraverserDocumentCache::appendVertex(std::string_view idString, arangodb::aql::AqlValue& result) {
+bool TraverserDocumentCache::appendVertex(std::string_view idString,
+                                          arangodb::aql::AqlValue& result) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();
@@ -112,13 +115,14 @@ bool TraverserDocumentCache::appendVertex(std::string_view idString, arangodb::a
   return found;
 }
 
-aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
+aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(
+    EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return aql::AqlValue(lookupToken(idToken));
 }
 
-void TraverserDocumentCache::insertIntoCache(std::string_view id,
-                                             arangodb::velocypack::Slice const& document) {
+void TraverserDocumentCache::insertIntoCache(
+    std::string_view id, arangodb::velocypack::Slice const& document) {
   void const* key = id.data();
   auto keySize = static_cast<uint32_t>(id.length());
 

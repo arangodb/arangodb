@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,9 +38,9 @@ namespace arangodb::replication2::streams {
  * valid until the iterator is destroyed or next() is called.
  * @tparam T Object Type
  */
-template <typename T>
+template<typename T>
 using StreamEntryView = std::pair<LogIndex, T const&>;
-template <typename T>
+template<typename T>
 using StreamEntry = std::pair<LogIndex, T>;
 
 /**
@@ -47,7 +48,7 @@ using StreamEntry = std::pair<LogIndex, T>;
  * iteraction with the replicated logs stream.
  * @tparam T Object Type
  */
-template <typename T>
+template<typename T>
 struct Stream {
   virtual ~Stream() = default;
 
@@ -66,7 +67,7 @@ struct Stream {
  * methods it additionally provides a insert method.
  * @tparam T Object Type
  */
-template <typename T>
+template<typename T>
 struct ProducerStream : Stream<T> {
   virtual auto insert(T const&) -> LogIndex = 0;
 };
@@ -79,7 +80,8 @@ struct ProducerStream : Stream<T> {
  * @tparam StreamType Either Stream<T> or ProducerStream<T>.
  * @tparam Type Object Type, default is extracted from Descriptor
  */
-template <typename Descriptor, template <typename> typename StreamType, typename Type = stream_descriptor_type_t<Descriptor>>
+template<typename Descriptor, template<typename> typename StreamType,
+         typename Type = stream_descriptor_type_t<Descriptor>>
 struct StreamGenericBase : StreamType<Type> {
   static_assert(is_stream_descriptor_v<Descriptor>,
                 "Descriptor is not a valid stream descriptor");
@@ -93,7 +95,7 @@ using StreamBase = StreamGenericBase<Descriptor, Stream>;
 template<typename Descriptor>
 using ProducerStreamBase = StreamGenericBase<Descriptor, ProducerStream>;
 
-template <typename, template <typename> typename>
+template<typename, template<typename> typename>
 struct StreamDispatcherBase;
 
 /**
@@ -102,7 +104,7 @@ struct StreamDispatcherBase;
  * @tparam Streams
  * @tparam StreamType Either Stream<T> or ProducerStream<T>
  */
-template <typename... Streams, template <typename> typename StreamType>
+template<typename... Streams, template<typename> typename StreamType>
 struct StreamDispatcherBase<stream_descriptor_set<Streams...>, StreamType>
     : virtual StreamGenericBase<Streams, StreamType>... {};
 

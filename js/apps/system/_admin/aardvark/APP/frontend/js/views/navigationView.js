@@ -140,13 +140,13 @@
           if (licenseData.status && licenseData.features && licenseData.features.expires) {
             self.renderLicenseInfo(licenseData.status, licenseData.features.expires, serverTime);
           } else {
-            self.showLicenseError();  
+            self.showLicenseError();
           }
         },
         error: function () {
           self.showLicenseError();
         }
-      }); 
+      });
     },
 
     fetchServerTime: function () {
@@ -157,17 +157,16 @@
         type: "GET",
         url: url,
         success: function (timeData) {
-          console.log("timeData: ", timeData);
           if (!timeData.error && timeData.code === 200 && timeData.time) {
             self.fetchLicenseInfo(timeData.time);
           } else {
-            self.showGetTimeError();  
+            self.showGetTimeError();
           }
         },
         error: function () {
           self.showGetTimeError();
         }
-      }); 
+      });
     },
 
     showLicenseError: function () {
@@ -366,7 +365,7 @@
         });
       } else {
         $(self.subEl + ' .bottom').append(
-          '<li class="subMenuEntry</li>'
+          '<li class="subMenuEntry"></li>'
         );
       }
     },

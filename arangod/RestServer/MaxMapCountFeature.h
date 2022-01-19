@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,13 +28,14 @@
 
 namespace arangodb {
 
-class MaxMapCountFeature final : public application_features::ApplicationFeature {
+class MaxMapCountFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit MaxMapCountFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  static bool needsChecking() { 
+  static bool needsChecking() {
 #ifdef __linux__
     return true;
 #else
@@ -47,4 +48,3 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
 };
 
 }  // namespace arangodb
-

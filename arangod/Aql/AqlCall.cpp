@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
     return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlCall: Expected object, got "s + slice.typeName());
+                  "When deserializating AqlCall: Expected object, got "s +
+                      slice.typeName());
   }
 
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
@@ -57,7 +58,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   auto offset = decltype(AqlCall::offset){0};
   auto fullCount = false;
 
-  auto const readLimit = [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
+  auto const readLimit =
+      [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
     auto const type = slice.type();
     if (type == velocypack::ValueType::String &&
         slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
@@ -86,8 +88,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
   };
 
-  auto const readLimitType =
-      [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall::LimitType>> {
+  auto const readLimitType = [](velocypack::Slice slice)
+      -> ResultT<std::optional<AqlCall::LimitType>> {
     if (slice.isNull()) {
       return {std::nullopt};
     }
@@ -124,7 +126,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     return slice.getBool();
   };
 
-  auto const readOffset = [](velocypack::Slice slice) -> ResultT<decltype(offset)> {
+  auto const readOffset =
+      [](velocypack::Slice slice) -> ResultT<decltype(offset)> {
     if (!slice.isInteger()) {
       auto message = std::string{
           "When deserializating AqlCall: When reading offset: "
@@ -239,14 +242,12 @@ void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
     limit = softLimit;
   }
 
-  auto const limitValue =
-      std::visit(overload{
-                     [](Infinity) {
-                       return Value(StaticStrings::AqlRemoteInfinity);
-                     },
-                     [](std::size_t limit) { return Value(limit); },
-                 },
-                 limit);
+  auto const limitValue = std::visit(
+      overload{
+          [](Infinity) { return Value(StaticStrings::AqlRemoteInfinity); },
+          [](std::size_t limit) { return Value(limit); },
+      },
+      limit);
   auto const limitTypeValue = std::invoke([&]() {
     if (!limitType.has_value()) {
       return Value(ValueType::Null);
@@ -289,13 +290,12 @@ auto AqlCall::requestLessDataThan(AqlCall const& other) const noexcept -> bool {
 
 auto aql::operator<<(std::ostream& out, AqlCall::LimitPrinter const& printer)
     -> std::ostream& {
-  return std::visit(overload{[&out](size_t const& i) -> std::ostream& {
-                               return out << i;
-                             },
-                             [&out](AqlCall::Infinity const&) -> std::ostream& {
-                               return out << "unlimited";
-                             }},
-                    printer._limit);
+  return std::visit(
+      overload{[&out](size_t const& i) -> std::ostream& { return out << i; },
+               [&out](AqlCall::Infinity const&) -> std::ostream& {
+                 return out << "unlimited";
+               }},
+      printer._limit);
 }
 
 auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {

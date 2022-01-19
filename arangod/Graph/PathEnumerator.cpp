@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,19 +46,21 @@ EnumeratedPath::EnumeratedPath(arangodb::ResourceMonitor& resourceMonitor)
 
 EnumeratedPath::~EnumeratedPath() {
   size_t memoryUsage =
-      (_vertices.capacity() * sizeof(typename decltype(_vertices)::value_type)) +
+      (_vertices.capacity() *
+       sizeof(typename decltype(_vertices)::value_type)) +
       (_edges.capacity() * sizeof(typename decltype(_edges)::value_type));
 
   _resourceMonitor.decreaseMemoryUsage(memoryUsage);
 }
 
-template <typename T>
+template<typename T>
 void EnumeratedPath::growStorage(std::vector<T>& data) {
   size_t capacity = arangodb::containers::Helpers::nextCapacity(data, 8);
 
   if (capacity > data.capacity()) {
     // reserve space
-    ResourceUsageScope guard(_resourceMonitor, (capacity - data.capacity()) * sizeof(T));
+    ResourceUsageScope guard(_resourceMonitor,
+                             (capacity - data.capacity()) * sizeof(T));
     // if this fails, we don't have to rollback anything
     data.reserve(capacity);
 
@@ -100,7 +102,8 @@ std::vector<std::string_view> const& EnumeratedPath::vertices() const noexcept {
   return _vertices;
 }
 
-std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges() const noexcept {
+std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges()
+    const noexcept {
   return _edges;
 }
 
@@ -157,8 +160,8 @@ bool PathEnumerator::usePostFilter(aql::PruneExpressionEvaluator* evaluator) {
 
 bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
                               arangodb::velocypack::Slice edge,
-                              std::string_view sourceVertex,
-                              size_t depth, size_t cursorId) {
+                              std::string_view sourceVertex, size_t depth,
+                              size_t cursorId) {
   if (_opts->hasEdgeFilter(depth, cursorId)) {
     VPackSlice e = edge;
     if (edge.isString()) {
@@ -183,7 +186,8 @@ graph::EdgeCursor* PathEnumerator::getCursor(std::string_view nextVertex,
   return cursor;
 }
 
-DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
+DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser,
+                                           TraverserOptions* opts)
     : PathEnumerator(traverser, opts), _activeCursors(0), _pruneNext(false) {}
 
 DepthFirstEnumerator::~DepthFirstEnumerator() = default;
@@ -236,7 +240,8 @@ bool DepthFirstEnumerator::next() {
 
     bool foundPath = false;
 
-    auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge, size_t cursorId) {
+    auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge,
+                        size_t cursorId) {
       if (!keepEdge(eid, edge, _enumeratedPath.lastVertex(),
                     _enumeratedPath.numEdges(), cursorId)) {
         return;
@@ -348,18 +353,21 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.lastEdge());
 }
 
-VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result, bool fromPrune) {
+VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result,
+                                             bool fromPrune) {
   result.clear();
   result.openObject();
   if (fromPrune || _opts->producePathsEdges()) {
-    result.add(StaticStrings::GraphQueryEdges, VPackValue(VPackValueType::Array));
+    result.add(StaticStrings::GraphQueryEdges,
+               VPackValue(VPackValueType::Array));
     for (auto const& it : _enumeratedPath.edges()) {
       _opts->cache()->insertEdgeIntoResult(it, result);
     }
     result.close();
   }
   if (fromPrune || _opts->producePathsVertices()) {
-    result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
+    result.add(StaticStrings::GraphQueryVertices,
+               VPackValue(VPackValueType::Array));
     for (auto const& it : _enumeratedPath.vertices()) {
       _traverser->addVertexToVelocyPack(std::string_view(it), result);
     }
@@ -370,7 +378,8 @@ VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result, bool fromPrun
   return result.slice();
 }
 
-arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(VPackBuilder& result) {
+arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(
+    VPackBuilder& result) {
   return arangodb::aql::AqlValue(pathToSlice(result, false));
 }
 
@@ -405,7 +414,5 @@ bool DepthFirstEnumerator::shouldPrune() {
 }
 
 #ifndef USE_ENTERPRISE
-bool DepthFirstEnumerator::validDisjointPath() const {
-  return true;
-}
+bool DepthFirstEnumerator::validDisjointPath() const { return true; }
 #endif

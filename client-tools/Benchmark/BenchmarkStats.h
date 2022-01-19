@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,15 +30,13 @@
 namespace arangodb::arangobench {
 
 struct BenchmarkStats {
-  constexpr BenchmarkStats() noexcept 
+  constexpr BenchmarkStats() noexcept
       : min(std::numeric_limits<double>::max()),
         max(std::numeric_limits<double>::min()),
         total(0.0),
         count(0) {}
 
-  void reset() noexcept {
-    *this = BenchmarkStats{};
-  }
+  void reset() noexcept { *this = BenchmarkStats{}; }
 
   void track(double time) noexcept {
     min = std::min(min, time);
@@ -54,9 +52,7 @@ struct BenchmarkStats {
     count += other.count;
   }
 
-  double avg() const noexcept {
-    return (count != 0) ? (total / count) : 0.0;
-  }
+  double avg() const noexcept { return (count != 0) ? (total / count) : 0.0; }
 
   double min;
   double max;
@@ -64,4 +60,4 @@ struct BenchmarkStats {
   uint64_t count;
 };
 
-}
+}  // namespace arangodb::arangobench

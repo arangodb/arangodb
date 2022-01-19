@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -162,8 +162,8 @@ class ActionBase {
 
   /// @brief Set the contained result object
   void result(Result const& result);
-  void result(ErrorCode errorNumber, std::string const& errorMessage = std::string());
-
+  void result(ErrorCode errorNumber,
+              std::string const& errorMessage = std::string());
 
   /// @brief When object was constructed
   std::chrono::system_clock::time_point getCreateTime() const {
@@ -193,13 +193,9 @@ class ActionBase {
   /// @brief return priority, inherited from ActionDescription
   int priority() const { return _priority; }
 
-  void setPriority(int prio) {
-    _priority = prio;
-  }
+  void setPriority(int prio) { _priority = prio; }
 
-  bool requeueRequested() const {
-    return _requeueRequested;
-  }
+  bool requeueRequested() const { return _requeueRequested; }
 
   int requeuePriority() const {
     TRI_ASSERT(_requeueRequested);
@@ -245,7 +241,7 @@ class ActionBase {
 
   int _priority;
 
-private: 
+ private:
   mutable std::mutex resLock;
   Result _result;
 
@@ -259,16 +255,12 @@ class ShardDefinition {
   ShardDefinition& operator=(ShardDefinition const&) = delete;
 
   ShardDefinition(std::string const& database, std::string const& shard);
-  
+
   virtual ~ShardDefinition() = default;
 
-  std::string const& getDatabase() const noexcept {
-    return _database;
-  }
-  
-  std::string const& getShard() const noexcept {
-    return _shard;
-  }
+  std::string const& getDatabase() const noexcept { return _database; }
+
+  std::string const& getShard() const noexcept { return _shard; }
 
   bool isValid() const noexcept {
     return !_database.empty() && !_shard.empty();

@@ -25,15 +25,35 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const _ = require('lodash');
 const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
+const database = "replication2_test_db";
+
+const getLeaderStatus = function(id) {
+  let status = db._replicatedLog(id).status();
+  const leaderId = status.leaderId;
+  if (leaderId === undefined) {
+    console.info(`leader not available for replicated log ${id}`);
+    return null;
+  }
+  if (status.participants === undefined || status.participants[leaderId] === undefined) {
+    console.info(`participants status not available for replicated log ${id}`);
+    return null;
+  }
+  if (status.participants[leaderId].role !== "leader") {
+    console.info(`leader not available for replicated log ${id}`);
+    return null;
+  }
+  return status.participants[leaderId];
+};
 
 const waitForLeader = function (id) {
   while (true) {
     try {
-      let status = db._replicatedLog(id).status();
-      if (status.role === "leader") {
+      let status = getLeaderStatus(id);
+      if (status !== null) {
         break;
       }
     } catch (err) {
@@ -45,6 +65,27 @@ const waitForLeader = function (id) {
     internal.sleep(1);
   }
 };
+
+const {setUpAll, tearDownAll} = (function () {
+  let previousDatabase, databaseExisted = true;
+  return {
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database);
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (!databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
+  };
+}());
 
 function ReplicatedLogsSuite () {
   'use strict';
@@ -58,6 +99,7 @@ function ReplicatedLogsSuite () {
   };
 
   return {
+    setUpAll, tearDownAll,
     setUp : function () {},
     tearDown : function () {},
 
@@ -89,12 +131,23 @@ function ReplicatedLogsWriteSuite () {
   };
 
   return {
+    setUpAll, tearDownAll,
     setUp : function () {
       db._createReplicatedLog({id: logId, targetConfig: targetConfig});
       waitForLeader(logId);
     },
     tearDown : function () {
       db._replicatedLog(logId).drop();
+    },
+
+    testStatus : function () {
+      let log = db._replicatedLog(logId);
+      let leaderStatus = getLeaderStatus(logId);
+      assertEqual(leaderStatus.local.commitIndex, 1);
+      assertTrue(leaderStatus.local.commitIndex, 1);
+      let globalStatus = log.globalStatus();
+      let status = log.status();
+      assertEqual(status, globalStatus);
     },
 
     testInsert : function() {
@@ -108,8 +161,8 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let status = log.status();
-      assertTrue(status.local.commitIndex >= index);
+      let leaderStatus = getLeaderStatus(logId);
+      assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
     testMultiInsert : function() {
@@ -127,27 +180,45 @@ function ReplicatedLogsWriteSuite () {
             indexes[1] < indexes[2]);
         index = indexes[indexes.length - 1];
       }
-      let status = log.status();
-      assertTrue(status.local.commitIndex >= index);
+      let leaderStatus = getLeaderStatus(logId);
+      assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
     testHeadTail : function() {
-      let log = db._replicatedLog(logId);
-      let index = 0;
-      for (let i = 0; i < 100; i++) {
-        let next = log.insert({foo: i}).index;
-        assertTrue(next > index);
-        index = next;
-      }
-      let head = log.head(11);  // skip first entry
-      assertEqual(head.length, 11);
-      for (let i = 0; i < 10; i++) {
-        assertEqual(head[i+1].payload.foo, i);
-      }
-      let tail = log.tail(10);
-      assertEqual(tail.length, 10);
-      for (let i = 0; i < 10; i++) {
-        assertEqual(tail[i].payload.foo, 100 + i - 10);
+      const log = db._replicatedLog(logId);
+      try {
+        let index = 0;
+        for (let i = 0; i < 100; i++) {
+          let next = log.insert({foo: i}).index;
+          assertTrue(next > index);
+          index = next;
+        }
+        let head = log.head();
+        assertEqual(head.length, 10);
+        assertEqual(head[9].logIndex, 10);
+        head = log.head(11);  // skip first entry
+        assertEqual(head.length, 11);
+        for (let i = 0; i < 10; i++) {
+          assertEqual(head[i + 1].payload.foo, i);
+        }
+        let tail = log.tail();
+        assertEqual(tail.length, 10);
+        assertEqual(tail[9].logIndex, 101); // !here (see below)
+        tail = log.tail(10);
+        assertEqual(tail.length, 10);
+        for (let i = 0; i < 10; i++) {
+          assertEqual(tail[i].payload.foo, 100 + i - 10);
+        }
+      } catch (e) {
+        // This catch is temporary, to debug the following failure we've seen in Jenkins:
+        //   "testHeadTail" failed: Error: at assertion #115: assertEqual: (101) is not equal to (102)
+        // which happens at the line marked !here above.
+        var console = require('console');
+        console.warn({
+          status: log.status(),
+          head: log.head(200),
+        });
+        throw e;
       }
     },
 
@@ -159,7 +230,11 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let s = log.slice(50, 60);
+      let s = log.slice();
+      assertEqual(s.length, 10);
+      assertEqual(s[0].logIndex, 1);
+      assertEqual(s[9].logIndex, 10);
+      s = log.slice(50, 60);
       assertEqual(s.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);
@@ -179,10 +254,10 @@ function ReplicatedLogsWriteSuite () {
       for (let i = 0; i < 2000; i++) {
         log.insert({foo: i});
       }
-      const s1 = log.status();
+      let s1 = getLeaderStatus(logId);
       assertEqual(s1.local.firstIndex, 1);
       log.release(1500);
-      let s2 = log.status();
+      let s2 = getLeaderStatus(logId);
       assertEqual(s2.local.firstIndex, 1501);
     },
 
@@ -194,7 +269,11 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let s = log.poll(50, 10);
+      let s = log.poll();
+      assertEqual(s.length, 9);
+      assertEqual(s[0].logIndex, 1);
+      assertEqual(s[8].logIndex, 9);
+      s = log.poll(50, 10);
       assertEqual(s.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);

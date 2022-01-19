@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,8 +41,10 @@ using namespace arangodb::geo;
 
 RegionCoverParams::RegionCoverParams()
     : maxNumCoverCells(kMaxNumCoverCellsDefault),
-      worstIndexedLevel(S2::kAvgEdge.GetClosestLevel(S2Earth::KmToRadians(600))),
-      bestIndexedLevel(S2::kAvgEdge.GetClosestLevel(S2Earth::MetersToRadians(100.0))) {
+      worstIndexedLevel(
+          S2::kAvgEdge.GetClosestLevel(S2Earth::KmToRadians(600))),
+      bestIndexedLevel(
+          S2::kAvgEdge.GetClosestLevel(S2Earth::MetersToRadians(100.0))) {
   // optimize levels for buildings, points are converted without S2RegionCoverer
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,8 @@ using namespace arangodb;
 
 Result RocksDBReadOnlyMethods::beginTransaction() {
   TRI_ASSERT(_readOptions.snapshot == nullptr);
-  _readOptions.snapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
+  _readOptions.snapshot =
+      _db->GetSnapshot();  // must call ReleaseSnapshot later
   return {};
 }
 
@@ -66,7 +67,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
   if (readOptionsCallback) {
     readOptionsCallback(opts);
   }
-  
+
   std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

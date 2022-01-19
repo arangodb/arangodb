@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,8 @@ class SenderThread final : public arangodb::Thread {
  public:
   explicit SenderThread(application_features::ApplicationServer& server,
                         std::unique_ptr<httpclient::SimpleHttpClient>,
-                        ImportStatistics* stats, std::function<void()> const& wakeup);
+                        ImportStatistics* stats,
+                        std::function<void()> const& wakeup);
 
   ~SenderThread();
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,7 +87,7 @@ enum TRI_vocbase_col_status_e : int {
 /// @brief Hash function for a vector of VPackSlice
 namespace std {
 
-template <>
+template<>
 struct hash<std::vector<arangodb::velocypack::Slice>> {
   size_t operator()(std::vector<arangodb::velocypack::Slice> const& x) const {
     std::hash<arangodb::velocypack::Slice> sliceHash;
@@ -103,4 +103,3 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 
 /// @brief databases list structure
 struct TRI_vocbase_t;
-

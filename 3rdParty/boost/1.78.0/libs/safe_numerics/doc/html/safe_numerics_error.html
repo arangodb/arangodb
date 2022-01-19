@@ -1,0 +1,106 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>enum class safe_numerics_error</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="exception.html" title="exception">
+<link rel="prev" href="exception.html" title="Description">
+<link rel="next" href="exception.html" title="enum class safe_numerics_actions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="exception.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="exception.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="exception.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="safe_numerics.safe_numerics_error"></a>enum class safe_numerics_error</h4></div></div></div>
+<p>The following values are those which a numeric result might return.
+    They resemble the standard error codes used by C++ standard exceptions.
+    This resemblance is coincidental and they are wholly unrelated to any
+    codes of similar names. The reason for the resemblance is that the library
+    started it's development using the standard library codes. But as
+    development progressed it became clear that the original codes weren't
+    sufficient so now they stand on their own. Here are a list of error codes.
+    The description of what they mean is</p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+</colgroup>
+<thead><tr>
+<th align="left">Symbol</th>
+<th align="left">Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td align="left"><code class="computeroutput">success</code></td>
+<td align="left">successful operation - no error returned</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">positive_overflow_error</code></td>
+<td align="left">A positive number is too large to be represented by the
+              data type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">negative_overflow_error</code></td>
+<td align="left">The absolute value of a negative number is too large to
+              be represented by the data type.</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">underflow_error</code></td>
+<td align="left">A number is too close to zero to be represented by the
+              data type.</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">range_error</code></td>
+<td align="left">an argument to a function or operator is outside the
+              legal range - e.g. sqrt(-1).</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">domain_error</code></td>
+<td align="left">the result of an operation is outside the legal range of
+              the result.</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">implementation_defined_behavior</code></td>
+<td align="left">operation may or may not return the expected
+              result.</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">undefined_behavior</code></td>
+<td align="left">According to the C++ standard, the result is undefined.
+              e.g. 10 &lt;&lt; 80 shifts bits off the left and returns an
+              unexpected result of 0 on most machines.</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">uninitialized_value</code></td>
+<td align="left">According to the C++ standard, the result may be defined
+              by the application. e.g. 16 &gt;&gt; 10 will result the expected
+              result of 0 on most machines.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The above listed codes can be transformed to a instance of type
+    <a href="http://en.cppreference.com/w/cpp/error/error_code" target="_top"><code class="computeroutput">std::error_code</code></a>
+    with the function:</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">make_error_code</span><span class="special">(</span><span class="identifier">safe_numerics_error</span> <span class="identifier">e</span><span class="special">)</span></pre>
+<p>This object can be</p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="exception.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="exception.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="exception.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

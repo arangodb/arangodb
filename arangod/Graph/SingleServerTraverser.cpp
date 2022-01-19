@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,8 @@ void SingleServerTraverser::clear() {
   traverserCache()->clear();
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool SingleServerTraverser::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   return _vertexGetter->getVertex(edge, path);
 }
 
@@ -87,7 +88,8 @@ bool SingleServerTraverser::getSingleVertex(VPackSlice edge,
                                             std::string_view sourceVertexId,
                                             uint64_t depth,
                                             std::string_view& targetVertexId) {
-  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
+  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth,
+                                        targetVertexId);
 }
 
 void SingleServerTraverser::createEnumerator() {

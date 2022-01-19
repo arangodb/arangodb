@@ -43,7 +43,8 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
   {
     auto status = leader->getStatus();
     ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    EXPECT_FALSE(std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
+    EXPECT_FALSE(
+        std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
   }
 
   EXPECT_FALSE(follower->hasPendingAppendEntries());
@@ -60,7 +61,8 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
   {
     auto status = leader->getStatus();
     ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    EXPECT_TRUE(std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
+    EXPECT_TRUE(
+        std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
   }
 
   EXPECT_TRUE(f.isReady());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,6 +44,7 @@ class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
   friend class arangodb::graph::ConstantWeightShortestPathFinder;
   friend class arangodb::graph::KShortestPathsFinder;
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.
@@ -81,7 +82,7 @@ class ShortestPathResult {
 
   void addVertex(std::string_view v);
   void addEdge(arangodb::graph::EdgeDocumentToken e);
-    
+
   static constexpr size_t resultItemMemoryUsage() {
     return sizeof(typename decltype(_vertices)::value_type) +
            sizeof(typename decltype(_edges)::value_type);

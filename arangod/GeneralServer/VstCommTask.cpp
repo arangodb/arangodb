@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,9 +55,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-template <SocketType T>
+template<SocketType T>
 VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
-                            std::unique_ptr<AsioSocket<T>> so, fuerte::vst::VSTVersion v)
+                            std::unique_ptr<AsioSocket<T>> so,
+                            fuerte::vst::VSTVersion v)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _writeLoopActive(false),
       _numProcessing(0),
@@ -70,7 +71,7 @@ VstCommTask<T>::VstCommTask(GeneralServer& server, ConnectionInfo info,
   this->_generalServerFeature.countVstConnection();
 }
 
-template <SocketType T>
+template<SocketType T>
 VstCommTask<T>::~VstCommTask() {
   try {
     ResponseItem* tmp = nullptr;
@@ -81,16 +82,17 @@ VstCommTask<T>::~VstCommTask() {
   }
 }
 
-template <SocketType T>
+template<SocketType T>
 void VstCommTask<T>::start() {
   LOG_TOPIC("7215f", DEBUG, Logger::REQUESTS)
       << "<vst> opened connection \"" << (void*)this << "\"";
-  asio_ns::dispatch(this->_protocol->context.io_context, [self = this->shared_from_this()] {
-    static_cast<VstCommTask<T>&>(*self).asyncReadSome();
-  });
+  asio_ns::dispatch(this->_protocol->context.io_context,
+                    [self = this->shared_from_this()] {
+                      static_cast<VstCommTask<T>&>(*self).asyncReadSome();
+                    });
 }
 
-template <SocketType T>
+template<SocketType T>
 bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   using namespace fuerte;
   if (ec) {
@@ -116,7 +118,8 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 
     if (vst::parser::ChunkState::Incomplete == state) {
       break;
-    } else if (vst::parser::ChunkState::Invalid == state) {  // actually should never happen
+    } else if (vst::parser::ChunkState::Invalid ==
+               state) {  // actually should never happen
       this->close();
       return false;  // stop read loop
     }
@@ -140,7 +143,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   return true;  // continue read loop
 }
 
-template <SocketType T>
+template<SocketType T>
 void VstCommTask<T>::setIOTimeout() {
   double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
@@ -157,7 +160,8 @@ void VstCommTask<T>::setIOTimeout() {
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis);  // cancels old waiters
   this->_protocol->timer.async_wait(
-      withLogContext([=, this, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+      withLogContext([=, this, self = CommTask::weak_from_this()](
+                         asio_ns::error_code const& ec) {
         std::shared_ptr<CommTask> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
@@ -181,7 +185,7 @@ void VstCommTask<T>::setIOTimeout() {
 }
 
 // Process the given incoming chunk.
-template <SocketType T>
+template<SocketType T>
 bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   if (chunk.body.size() > CommTask::MaximalBodySize) {
     LOG_TOPIC("695ef", WARN, Logger::REQUESTS)
@@ -195,7 +199,8 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   if (chunk.header.isFirst()) {
-    this->acquireStatistics(chunk.header.messageID()).SET_READ_START(TRI_microtime());
+    this->acquireStatistics(chunk.header.messageID())
+        .SET_READ_START(TRI_microtime());
 
     // single chunk optimization
     if (chunk.header.numberOfChunks() == 1) {
@@ -224,38 +229,46 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   // this->_proto->timer.cancel();
-  auto guard = scopeGuard([&]() noexcept { _messages.erase(chunk.header.messageID()); });
+  auto guard =
+      scopeGuard([&]() noexcept { _messages.erase(chunk.header.messageID()); });
   processMessage(std::move(msg.buffer), chunk.header.messageID());
   return true;
 }
 
 #ifdef USE_DTRACE
 // Moved here to prevent multiplicity by template
-static void __attribute__((noinline)) DTraceVstCommTaskProcessMessage(size_t th) {
+static void __attribute__((noinline))
+DTraceVstCommTaskProcessMessage(size_t th) {
   DTRACE_PROBE1(arangod, VstCommTaskProcessMessage, th);
 }
 #else
 static void DTraceVstCommTaskProcessMessage(size_t) {}
 #endif
 
-template <SocketType T>
+template<SocketType T>
 std::string VstCommTask<T>::url(VstRequest const* req) const {
   if (req != nullptr) {
-    return std::string((req->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
-      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+    return std::string(
+               (req->databaseName().empty()
+                    ? ""
+                    : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
+           (Logger::logRequestParameters() ? req->fullUrl()
+                                           : req->requestPath());
   }
   return "";
 }
 
 /// process a VST message
-template <SocketType T>
-void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t messageId) {
+template<SocketType T>
+void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
+                                    uint64_t messageId) {
   namespace fu = ::arangodb::fuerte::v1;
 
   DTraceVstCommTaskProcessMessage((size_t)this);
 
   if (this->stopped()) {
-    return;  // we have to ignore this request because the connection has already been closed
+    return;  // we have to ignore this request because the connection has
+             // already been closed
   }
 
   // from here on we will send a response, the connection is not IDLE
@@ -287,9 +300,9 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
       handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
     } else if (mt == fu::MessageType::Request) {  // request
       // the handler will take ownership of this pointer
-      auto req =
-          std::make_unique<VstRequest>(this->_connectionInfo, std::move(buffer),
-                                       /*payloadOffset*/ headerLength, messageId);
+      auto req = std::make_unique<VstRequest>(
+          this->_connectionInfo, std::move(buffer),
+          /*payloadOffset*/ headerLength, messageId);
       req->setAuthenticated(_authToken.authenticated());
       req->setUser(_authToken.username());
       req->setAuthenticationMethod(_authMethod);
@@ -316,25 +329,31 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
       // TODO use different token if authentication header is present
       CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
       if (cont == CommTask::Flow::Continue) {
-        auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
+        auto resp = std::make_unique<VstResponse>(
+            rest::ResponseCode::SERVER_ERROR, messageId);
         this->executeRequest(std::move(req), std::move(resp));
-      }       // abort is handled in prepareExecution  
+      }       // abort is handled in prepareExecution
     } else {  // not supported on server
       LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
-          << "\"vst-request-header\",\"" << (void*)this << "/" << messageId << "\""
+          << "\"vst-request-header\",\"" << (void*)this << "/" << messageId
+          << "\""
           << " is unsupported";
-      this->sendSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
-                              messageId, VPackBuffer<uint8_t>());
+      this->sendSimpleResponse(rest::ResponseCode::BAD,
+                               rest::ContentType::VPACK, messageId,
+                               VPackBuffer<uint8_t>());
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("caf73", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
-      << " " << ex.message();
-    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), rest::ContentType::VPACK,
-                            messageId, ex.code(), ex.message());
+    LOG_TOPIC("caf73", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.code() << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                            rest::ContentType::VPACK, messageId, ex.code(),
+                            ex.message());
   } catch (std::exception const& ex) {
-    LOG_TOPIC("aea49", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
-    this->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::VPACK,
-                            messageId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+    LOG_TOPIC("aea49", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR,
+                            rest::ContentType::VPACK, messageId,
+                            ErrorCode(TRI_ERROR_FAILED), ex.what());
   }
 }
 
@@ -347,7 +366,7 @@ static void __attribute__((noinline)) DTraceVstCommTaskSendResponse(size_t th) {
 static void DTraceVstCommTaskSendResponse(size_t) {}
 #endif
 
-template <SocketType T>
+template<SocketType T>
 void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                   RequestStatistics::Item stat) {
   using namespace fuerte;
@@ -377,7 +396,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
-    payload = asio_ns::buffer(response.payload().data(), response.payload().size());
+    payload =
+        asio_ns::buffer(response.payload().data(), response.payload().size());
   }
   vst::message::prepareForNetwork(_vstVersion, response.messageId(),
                                   resItem->metadata, payload, resItem->buffers);
@@ -393,12 +413,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId()
       << "\",\"" << this->_connectionInfo.clientAddress << "\",\""
-      << url(nullptr) << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
+      << url(nullptr) << "\",\"" << static_cast<int>(response.responseCode())
+      << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
+      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   resItem->stat = std::move(stat);
 
-  // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
+  // this uses a fixed capacity queue, push might fail (unlikely, we limit max
+  // streams)
   unsigned retries = 512;
   try {
     while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()) && --retries > 0)) {
@@ -430,10 +452,12 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
 #ifdef USE_DTRACE
 // Moved out to avoid duplication by templates.
-static void __attribute__((noinline)) DTraceVstCommTaskBeforeAsyncWrite(size_t th) {
+static void __attribute__((noinline))
+DTraceVstCommTaskBeforeAsyncWrite(size_t th) {
   DTRACE_PROBE1(arangod, VstCommTaskBeforeAsyncWrite, th);
 }
-static void __attribute__((noinline)) DTraceVstCommTaskAfterAsyncWrite(size_t th) {
+static void __attribute__((noinline))
+DTraceVstCommTaskAfterAsyncWrite(size_t th) {
   DTRACE_PROBE1(arangod, VstCommTaskAfterAsyncWrite, th);
 }
 #else
@@ -441,7 +465,7 @@ static void DTraceVstCommTaskBeforeAsyncWrite(size_t) {}
 static void DTraceVstCommTaskAfterAsyncWrite(size_t) {}
 #endif
 
-template <SocketType T>
+template<SocketType T>
 void VstCommTask<T>::doWrite() {
   ResponseItem* tmp = nullptr;
   if (!_writeQueue.pop(tmp)) {
@@ -467,26 +491,27 @@ void VstCommTask<T>::doWrite() {
   this->setIOTimeout();
 
   auto& buffers = item->buffers;
-  asio_ns::async_write(this->_protocol->socket, buffers,
-                       withLogContext([self(CommTask::shared_from_this()),
-                        rsp(std::move(item))](asio_ns::error_code const& ec, size_t) {
-                         DTraceVstCommTaskAfterAsyncWrite((size_t)self.get());
+  asio_ns::async_write(
+      this->_protocol->socket, buffers,
+      withLogContext([self(CommTask::shared_from_this()), rsp(std::move(item))](
+                         asio_ns::error_code const& ec, size_t) {
+        DTraceVstCommTaskAfterAsyncWrite((size_t)self.get());
 
-                         auto& me = static_cast<VstCommTask<T>&>(*self);
-                         me._writing = false;
+        auto& me = static_cast<VstCommTask<T>&>(*self);
+        me._writing = false;
 
-                         rsp->stat.SET_WRITE_END();
-                         rsp->stat.ADD_SENT_BYTES(rsp->buffers[0].size() +
-                                                  rsp->buffers[1].size());
-                         if (ec) {
-                           me.close(ec);
-                         } else {
-                           me.doWrite();  // write next one
-                         }
-                       }));
+        rsp->stat.SET_WRITE_END();
+        rsp->stat.ADD_SENT_BYTES(rsp->buffers[0].size() +
+                                 rsp->buffers[1].size());
+        if (ec) {
+          me.close(ec);
+        } else {
+          me.doWrite();  // write next one
+        }
+      }));
 }
 
-template <SocketType T>
+template<SocketType T>
 void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   std::string authString;
   std::string user = "";
@@ -505,13 +530,13 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
     LOG_TOPIC("01f44", WARN, Logger::REQUESTS) << "Unknown VST encryption type";
   }
 
-  _authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authToken =
+      this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
 
   // Separate superuser traffic:
   // Note that currently, velocystream traffic will never come from
   // a forwarding, since we always forward with HTTP.
-  if (_authMethod != AuthenticationMethod::NONE &&
-      _authToken.authenticated() &&
+  if (_authMethod != AuthenticationMethod::NONE && _authToken.authenticated() &&
       _authToken.username().empty()) {
     this->statistics(mId).SET_SUPERUSER();
   }
@@ -522,20 +547,21 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
                             TRI_ERROR_NO_ERROR, "auth successful");
   } else {
     _authToken = auth::TokenCache::Entry::Unauthenticated();
-    this->sendErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
-                            mId, TRI_ERROR_HTTP_UNAUTHORIZED);
+    this->sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                            rest::ContentType::VPACK, mId,
+                            TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 }
 
-template <SocketType T>
-std::unique_ptr<GeneralResponse> VstCommTask<T>::createResponse(rest::ResponseCode responseCode,
-                                                                uint64_t messageId) {
+template<SocketType T>
+std::unique_ptr<GeneralResponse> VstCommTask<T>::createResponse(
+    rest::ResponseCode responseCode, uint64_t messageId) {
   return std::make_unique<VstResponse>(responseCode, messageId);
 }
 
 /// @brief add chunk to this message
 /// @return false if the message size is too big
-template <SocketType T>
+template<SocketType T>
 bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
   if (chunk.header.isFirst()) {
     // only the first chunk has the message length
@@ -567,7 +593,7 @@ bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
 }
 
 /// assemble message, if true result is in _buffer
-template <SocketType T>
+template<SocketType T>
 bool VstCommTask<T>::Message::assemble() {
   if (expectedChunks == 0 || chunks.size() < expectedChunks) {
     return false;

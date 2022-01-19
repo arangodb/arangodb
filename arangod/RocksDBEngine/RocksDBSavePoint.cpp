@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,7 +99,7 @@ Result RocksDBSavePoint::finish(RevisionId rid) {
       // transaction, and the current transaction will not have any
       // savepoint
       _state.rocksdbMethods(_collectionId)->PopSavePoint();
-    
+
       // this will prevent the rollback call in the destructor
       _handled = true;
     } else {
@@ -130,7 +130,7 @@ void RocksDBSavePoint::rollback() {
     // std::string::resize instead of a full rebuild of the WBWI
     // from the WriteBatch)
     s = _rocksMethods.RollbackToWriteBatchSavePoint();
-  }  
+  }
   TRI_ASSERT(s.ok());
 
   _rocksMethods.rollbackOperation(_operationType);
@@ -138,4 +138,4 @@ void RocksDBSavePoint::rollback() {
   _handled = true;  // in order to not roll back again by accident
 }
 
-} // namespace
+}  // namespace arangodb

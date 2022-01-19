@@ -34,7 +34,7 @@ namespace {
 
 typedef std::function<irs::directory::ptr(const std::string&)> factory_f;
 
-const std::unordered_map<std::string, factory_f> FACTORIES {
+const std::unordered_map<std::string, factory_f> kFactories {
   { "mmap",
     [](const std::string& path) {
       return irs::memory::make_unique<irs::mmap_directory>(path); }
@@ -50,9 +50,9 @@ const std::unordered_map<std::string, factory_f> FACTORIES {
 irs::directory::ptr create_directory(
     const std::string& type,
     const std::string& path) {
-  const auto it = FACTORIES.find(type);
+  const auto it = kFactories.find(type);
 
-  return it == FACTORIES.end()
+  return it == kFactories.end()
     ? nullptr
     : it->second(path);
 }

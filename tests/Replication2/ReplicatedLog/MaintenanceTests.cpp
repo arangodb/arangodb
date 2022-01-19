@@ -47,22 +47,25 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
-      {
-          logId,
-          agency::LogPlanTermSpecification{
-              LogTerm{3},
-              defaultConfig,
-              std::nullopt,
-              {
-                  {ParticipantId{"A"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
-          },
-          defaultConfig,
-      },
+      {logId,
+       agency::LogPlanTermSpecification{
+           LogTerm{3},
+           defaultConfig,
+           std::nullopt,
+       },
+       defaultConfig,
+       ParticipantsConfig{
+           .generation = 0,
+           .participants =
+               {
+                   {ParticipantId{"A"}, {}},
+                   {ParticipantId{"leader"}, {}},
+               },
+       }},
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -73,7 +76,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   EXPECT_TRUE(callNotify);
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_we_are_not_participant) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
@@ -87,23 +91,29 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant)
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"B"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"B"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 0);
   EXPECT_TRUE(dirtyset.find(database) == dirtyset.end());
   EXPECT_FALSE(callNotify);
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_but_have_the_log) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_we_are_not_participant_but_have_the_log) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
@@ -121,16 +131,21 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"B"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"B"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -159,16 +174,21 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"A"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"A"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -199,16 +219,21 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"A"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"A"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -219,25 +244,26 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   EXPECT_TRUE(callNotify);
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_generation) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_detect_wrong_generation) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
 
   // Expect updates in case we are leader
-  auto participantsConfig = ParticipantsConfig{
-      1,
-      {
-          {ParticipantId{"A"}, {}},
-          {ParticipantId{"leader"}, {}},
-      }};
+  auto participantsConfig =
+      ParticipantsConfig{1,
+                         {
+                             {ParticipantId{"A"}, {}},
+                             {ParticipantId{"leader"}, {}},
+                         }};
   auto leaderStatus = replicated_log::QuickLogStatus{
       .role = replicated_log::ParticipantRole::kLeader,
       .term = LogTerm{3},
       .local = {},
       .leadershipEstablished = true,
-      .activeParticipantConfig =
+      .activeParticipantsConfig =
           std::make_shared<ParticipantsConfig const>(participantsConfig),
-      .committedParticipantConfig =
+      .committedParticipantsConfig =
           std::make_shared<ParticipantsConfig const>(participantsConfig)};
 
   auto localLogs = ReplicatedLogStatusMap{
@@ -254,15 +280,12 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_generation
            LogTerm{3},
            defaultConfig,
            std::nullopt,
-           {
-               {ParticipantId{"A"}, {}},
-               {ParticipantId{"leader"}, {}},
-           },
        },
        defaultConfig, participantsConfig},
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "leader", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "leader", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -279,7 +302,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_generation
                   .term = LogTerm{3},
                   .local = {}}}};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
   EXPECT_EQ(actions.size(), 1);
   EXPECT_TRUE(dirtyset.find(database) != dirtyset.end());
   EXPECT_TRUE(callNotify);
@@ -295,7 +319,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_no_longer_in_plan) {
                   .local = {}}}};
 
   auto const planLogs = ReplicatedLogSpecMap{};
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();

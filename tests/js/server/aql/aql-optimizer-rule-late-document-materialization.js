@@ -30,7 +30,9 @@
 
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
-let isCluster = require("internal").isCluster();
+const internal = require('internal');
+let isCluster = internal.isCluster();
+
 
 function lateDocumentMaterializationRuleTestSuite () {
   const ruleName = "late-document-materialization";
@@ -668,8 +670,32 @@ function lateDocumentMaterializationRuleTestSuite () {
         result = AQL_EXECUTE(query, {limit: 1}, options);
         assertEqual(1, result.json.length);
         assertEqual(500, result.stats.fullCount);
+        
+        if (!internal.debugCanUseFailAt()) {
+          return;
+        }
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('MaterializeExecutor::all_fail');
+        result = AQL_EXECUTE(query, {limit: 100}, options);
+        assertEqual(0, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+        
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('MaterializeExecutor::only_one');
+        result = AQL_EXECUTE(query, {limit: 100}, options);
+        if (isCluster) {
+          // for cluster it depends on db servers number as each materializer will issue only one document
+          // to not bother with accurate number  - let's check it is not all 100
+          // we anyway want to check it just not breaks in case of materialization failure
+          assertTrue(result.json.length < 100);
+        } else {
+          assertEqual(1, result.json.length);
+        }
+        assertEqual(500, result.stats.fullCount);
+        
       } finally {
         db._drop(withIndexCollectionName);
+        internal.debugClearFailAt();
       }
     },
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,8 @@
 using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
-GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration)
+GlobalReplicationApplier::GlobalReplicationApplier(
+    ReplicationApplierConfiguration const& configuration)
     : ReplicationApplier(configuration, "global database") {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
@@ -73,7 +74,8 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
   StorageEngine& engine =
       _configuration._server.getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+  auto res =
+      engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -95,17 +97,19 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(engine.server(),
-                                                         builder.slice(), std::string());
+  return ReplicationApplierConfiguration::fromVelocyPack(
+      engine.server(), builder.slice(), std::string());
 }
 
-std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
+std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer()
+    const {
   return arangodb::GlobalInitialSyncer::create(_configuration);
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick, useTick);
+  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick,
+                                               useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

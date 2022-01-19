@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,9 +38,7 @@ using namespace arangodb::aql;
 
 /// @brief create a profile
 QueryProfile::QueryProfile(Query* query)
-    : _query(query), 
-      _lastStamp(query->startTime()), 
-      _tracked(false) {
+    : _query(query), _lastStamp(query->startTime()), _tracked(false) {
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
@@ -48,9 +46,7 @@ QueryProfile::QueryProfile(Query* query)
 }
 
 /// @brief destroy a profile
-QueryProfile::~QueryProfile() {
-  unregisterFromQueryList();
-}
+QueryProfile::~QueryProfile() { unregisterFromQueryList(); }
 
 void QueryProfile::registerInQueryList() {
   TRI_ASSERT(!_tracked);
@@ -97,14 +93,16 @@ double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
 }
 
 /// @brief sets the absolute end time for an execution state
-void QueryProfile::setStateEnd(QueryExecutionState::ValueType state, double time) {
+void QueryProfile::setStateEnd(QueryExecutionState::ValueType state,
+                               double time) {
   _timers[static_cast<int>(state)] = time - _lastStamp;
 }
 
 /// @brief convert the profile to VelocyPack
 void QueryProfile::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder, "profile", true);
-  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINALIZATION)) {
+  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType,
+                                  INITIALIZATION, FINALIZATION)) {
     double const value = _timers[static_cast<size_t>(state)];
 
     if (value >= 0.0) {

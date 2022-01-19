@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,14 +42,16 @@ namespace maintenance {
 //  (some require time checks and/or combination tests)
 //
 enum ActionState {
-  READY = 1,        // waiting for a worker on the deque
-  EXECUTING = 2,    // user or worker thread currently executing
-  WAITING = 3,      // initiated a pre-task, waiting for its completion
-  WAITINGPRE = 4,   // parent task created, about to execute on parent's thread - not used
-  WAITINGPOST = 5,  // parent task created, will execute after parent's success - not used
-  PAUSED = 6,       // (not implemented) user paused task - not used
-  COMPLETE = 7,     // task completed successfully
-  FAILED = 8,       // task failed, no longer executing
+  READY = 1,      // waiting for a worker on the deque
+  EXECUTING = 2,  // user or worker thread currently executing
+  WAITING = 3,    // initiated a pre-task, waiting for its completion
+  WAITINGPRE =
+      4,  // parent task created, about to execute on parent's thread - not used
+  WAITINGPOST =
+      5,  // parent task created, will execute after parent's success - not used
+  PAUSED = 6,    // (not implemented) user paused task - not used
+  COMPLETE = 7,  // task completed successfully
+  FAILED = 8,    // task failed, no longer executing
 };
 
 /**
@@ -64,11 +66,10 @@ struct ActionDescription final {
    * @param  desc  Descriminatory properties, which are considered for hash
    * @param  properties  Non discriminatory properties
    */
-  ActionDescription(
-      std::map<std::string, std::string> description,
-      int priority,
-      bool runEvenIfDuplicate,
-      std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
+  ActionDescription(std::map<std::string, std::string> description,
+                    int priority, bool runEvenIfDuplicate,
+                    std::shared_ptr<VPackBuilder> properties =
+                        std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up
@@ -86,7 +87,8 @@ struct ActionDescription final {
    * @param  other  Other descriptor
    */
   std::size_t hash() const noexcept;
-  static std::size_t hash(std::map<std::string, std::string> const& desc) noexcept;
+  static std::size_t hash(
+      std::map<std::string, std::string> const& desc) noexcept;
 
   /// @brief Name of action
   std::string const& name() const noexcept;
@@ -97,9 +99,10 @@ struct ActionDescription final {
    * @return       true if key is found
    */
   bool has(std::string const& key) const noexcept;
-  
+
   /**
-   * @brief Check if key exists in discriminatory container and if it has the specified value
+   * @brief Check if key exists in discriminatory container and if it has the
+   * specified value
    * @param  key   Key to lookup
    * @param  value Value to compare against
    * @return       true if key is found and has the exact same value
@@ -109,7 +112,8 @@ struct ActionDescription final {
   /**
    * @brief Get a string value from description
    * @param  key   Key to get
-   * @exception    std::out_of_range if the we do not have this key in discriminatory container
+   * @exception    std::out_of_range if the we do not have this key in
+   * discriminatory container
    * @return       Value to specified key
    */
   std::string const& get(std::string const& key) const;
@@ -117,7 +121,8 @@ struct ActionDescription final {
   /**
    * @brief Get a string value from description
    * @param  key   Key to get
-   * @exception    std::out_of_range if the we do not have this key in discriminatory container
+   * @exception    std::out_of_range if the we do not have this key in
+   * discriminatory container
    * @return       Value to specified key
    */
   std::string operator()(std::string const& key) const;
@@ -168,18 +173,14 @@ struct ActionDescription final {
    * @brief Get priority, the higher the more priority, 1 is default
    * @return int
    */
-  int priority() const {
-    return _priority;
-  }
+  int priority() const { return _priority; }
 
   /**
-   * @brief Get the fact if it is forced or not. If forced, the MaintenanceFeature
-   * will not sort out duplicates by hashing the description. Rather, the action
-   * will always be submitted.
+   * @brief Get the fact if it is forced or not. If forced, the
+   * MaintenanceFeature will not sort out duplicates by hashing the description.
+   * Rather, the action will always be submitted.
    */
-  bool isRunEvenIfDuplicate() const {
-    return _runEvenIfDuplicate;
-  }
+  bool isRunEvenIfDuplicate() const { return _runEvenIfDuplicate; }
 
  private:
   /** @brief discriminatory properties */
@@ -199,9 +200,10 @@ struct ActionDescription final {
 }  // namespace arangodb
 
 namespace std {
-ostream& operator<<(ostream& o, arangodb::maintenance::ActionDescription const& d);
+ostream& operator<<(ostream& o,
+                    arangodb::maintenance::ActionDescription const& d);
 /// @brief Hash function used by std::unordered_map<ActionDescription,...>
-template <>
+template<>
 struct hash<arangodb::maintenance::ActionDescription> {
   typedef arangodb::maintenance::ActionDescription argument_t;
   typedef std::size_t result_t;
@@ -209,4 +211,3 @@ struct hash<arangodb::maintenance::ActionDescription> {
 };
 
 }  // namespace std
-

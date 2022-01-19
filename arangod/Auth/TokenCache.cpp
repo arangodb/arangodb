@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,16 +47,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
-  
+
 namespace {
 constexpr std::string_view hs256String("HS256");
 constexpr std::string_view jwtString("JWT");
-}
+}  // namespace
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
-    : _userManager(um),
-      _jwtCache(16384),
-      _authTimeout(timeout) {}
+    : _userManager(um), _jwtCache(16384), _authTimeout(timeout) {}
 
 auth::TokenCache::~TokenCache() {
   // properly clear structs while using the appropriate locks
@@ -92,8 +90,8 @@ std::string auth::TokenCache::jwtSecret() const {
 // public called from {H2,Http,Vst}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
-auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
-                                                              std::string const& secret) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
+    AuthenticationMethod authType, std::string const& secret) {
   switch (authType) {
     case AuthenticationMethod::BASIC:
       return checkAuthenticationBasic(secret);
@@ -112,9 +110,11 @@ void auth::TokenCache::invalidateBasicCache() {
 }
 
 // private
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string const& secret) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
+    std::string const& secret) {
   if (_userManager == nullptr) {  // server does not support users
-    LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
+    LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION)
+        << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -174,7 +174,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   return entry;
 }
 
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string const& jwt) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
+    std::string const& jwt) {
   // note that we need the write lock here because it is an LRU
   // cache. reading from it will move the read entry to the start of
   // the cache's linked list. so acquiring just a read-lock is
@@ -187,7 +188,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
       // would have thrown if not found
       if (entry->expired()) {
         _jwtCache.remove(jwt);
-        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION)
+            << "JWT Token expired";
         return auth::TokenCache::Entry::Unauthenticated();
       }
       if (_userManager != nullptr) {
@@ -235,8 +237,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   return newEntry;
 }
 
-std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str,
-                                                          char const* hint) {
+std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
+    std::string const& str, char const* hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
@@ -278,7 +280,7 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   if (!algSlice.isEqualString(::hs256String)) {
     return false;
   }
-  
+
   if (!typSlice.isEqualString(::jwtString)) {
     return false;
   }
@@ -286,7 +288,8 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   return true;
 }
 
-auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& body) {
+auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
+    std::string const& body) {
   std::shared_ptr<VPackBuilder> bodyBuilder =
       parseJson(StringUtils::decodeBase64U(body), "jwt body");
   if (bodyBuilder == nullptr) {
@@ -302,12 +305,14 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
-    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION) << "missing iss value";
+    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "missing iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   if (!issSlice.isEqualString(std::string_view("arangodb"))) {
-    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION) << "invalid iss value";
+    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "invalid iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -318,7 +323,8 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
       return auth::TokenCache::Entry::Unauthenticated();
     }
     authResult._username = usernameSlice.copyString();
-    if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+    if (_userManager == nullptr ||
+        !_userManager->userExists(authResult._username)) {
       return auth::TokenCache::Entry::Unauthenticated();
     }
   } else if (bodySlice.hasKey("server_id")) {
@@ -333,19 +339,19 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   if (!paths.isNone()) {
     if (!paths.isArray()) {
       LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "allowed_paths must be an array";
+          << "allowed_paths must be an array";
       return auth::TokenCache::Entry::Unauthenticated();
     }
     if (paths.length() == 0) {
       LOG_TOPIC("89893", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "allowed_paths may not be empty";
+          << "allowed_paths may not be empty";
       return auth::TokenCache::Entry::Unauthenticated();
     }
     for (auto const& path : VPackArrayIterator(paths)) {
       if (!path.isString()) {
         LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
-          << "allowed_paths may only contain strings";
-      return auth::TokenCache::Entry::Unauthenticated();
+            << "allowed_paths may only contain strings";
+        return auth::TokenCache::Entry::Unauthenticated();
       }
       authResult._allowedPaths.push_back(path.copyString());
     }
@@ -376,14 +382,15 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
 }
 
 #ifndef USE_ENTERPRISE
-bool auth::TokenCache::validateJwtHMAC256Signature(std::string const& message,
-                                                   std::string const& signature) {
+bool auth::TokenCache::validateJwtHMAC256Signature(
+    std::string const& message, std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
   READ_LOCKER(guard, _jwtSecretLock);
-  return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(), message.c_str(),
-                    message.length(), decodedSignature.c_str(),
-                    decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
+  return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(),
+                    message.c_str(), message.length(), decodedSignature.c_str(),
+                    decodedSignature.length(),
+                    SslInterface::Algorithm::ALGORITHM_SHA256);
 }
 #endif
 

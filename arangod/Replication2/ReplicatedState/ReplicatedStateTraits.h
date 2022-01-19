@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,12 +25,12 @@
 
 namespace arangodb::replication2::replicated_state {
 
-template <typename T>
+template<typename T>
 struct EntryDeserializer {};
-template <typename T>
+template<typename T>
 struct EntrySerializer {};
 
-template <typename S>
+template<typename S>
 struct ReplicatedStateTraits {
   using FactoryType = typename S::FactoryType;
   using LeaderType = typename S::LeaderType;
@@ -39,4 +40,4 @@ struct ReplicatedStateTraits {
   using Serializer = EntrySerializer<EntryType>;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_state

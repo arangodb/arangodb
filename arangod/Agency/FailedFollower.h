@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,8 @@ namespace arangodb {
 namespace consensus {
 
 struct FailedFollower : public Job {
-  FailedFollower(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+  FailedFollower(Node const& snapshot, AgentInterface* agent,
+                 std::string const& jobId,
                  std::string const& creator = std::string(),
                  std::string const& database = std::string(),
                  std::string const& collection = std::string(),
@@ -57,4 +58,3 @@ struct FailedFollower : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

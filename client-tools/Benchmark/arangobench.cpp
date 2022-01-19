@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/signals.h"
 #include "Basics/directories.h"
 
 #include <velocypack/Builder.h>
@@ -57,25 +58,30 @@ int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
+    arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(argv[0], "Usage: arangobench [<options>]",
-                                    "For more information use:", BIN_DIRECTORY));
+        new options::ProgramOptions(
+            argv[0], "Usage: arangobench [<options>]",
+            "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
-    int ret;
+    int ret = EXIT_SUCCESS;
 
     server.addFeature<CommunicationFeaturePhase>();
     server.addFeature<BasicFeaturePhaseClient>();
     server.addFeature<GreetingsFeaturePhase>(true);
 
     server.addFeature<BenchFeature>(&ret);
-    server.addFeature<ClientFeature, HttpEndpointProvider>(false, std::numeric_limits<size_t>::max());  // provide max number of endpoints
+    server.addFeature<ClientFeature, HttpEndpointProvider>(
+        false,
+        std::numeric_limits<size_t>::max());  // provide max number of endpoints
     server.addFeature<ConfigFeature>("arangobench");
     server.addFeature<LoggerFeature>(false);
     server.addFeature<RandomFeature>();
     server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
+    server.addFeature<ShutdownFeature>(
+        std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
     server.addFeature<SslFeature>();
     server.addFeature<TempFeature>("arangobench");
     server.addFeature<VersionFeature>();
@@ -88,7 +94,8 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("0a1a9", ERR, arangodb::Logger::BENCH)
-          << "arangobench terminated because of an unhandled exception: " << ex.what();
+          << "arangobench terminated because of an unhandled exception: "
+          << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("61697", ERR, arangodb::Logger::BENCH)

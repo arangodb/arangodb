@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,25 +42,27 @@ namespace methods {
 
 /// Common code for the db._database(),
 struct Databases {
-  
   static std::string normalizeName(std::string const& name);
 
-  static std::vector<std::string> list(application_features::ApplicationServer& server,
-                                       std::string const& user = "");
+  static std::vector<std::string> list(
+      application_features::ApplicationServer& server,
+      std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
-  static arangodb::Result create(application_features::ApplicationServer& server,
-                                 ExecContext const& context, std::string const& dbName,
-                                 VPackSlice const& users, VPackSlice const& options);
-  static arangodb::Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
+  static arangodb::Result create(
+      application_features::ApplicationServer& server,
+      ExecContext const& context, std::string const& dbName,
+      VPackSlice const& users, VPackSlice const& options);
+  static arangodb::Result drop(ExecContext const& context,
+                               TRI_vocbase_t* systemVocbase,
                                std::string const& dbName);
 
  private:
   /// @brief will retry for at most <timeout> seconds
-  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout);
+  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info,
+                                           int64_t timeout);
 
   static arangodb::Result createCoordinator(CreateDatabaseInfo const& info);
   static arangodb::Result createOther(CreateDatabaseInfo const& info);
 };
 }  // namespace methods
 }  // namespace arangodb
-

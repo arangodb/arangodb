@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
 
 namespace arangodb::replication2::test {
 
@@ -48,22 +49,29 @@ struct MyStateBase {
   virtual ~MyStateBase() = default;
   std::unordered_map<std::string, std::string> store;
 
-  void applyIterator(TypedLogRangeIterator<streams::StreamEntryView<MyEntryType>>& iter);
+  void applyIterator(
+      TypedLogRangeIterator<streams::StreamEntryView<MyEntryType>>& iter);
 };
 
-struct MyLeaderState : MyStateBase, replicated_state::ReplicatedLeaderState<MyState> {
+struct MyLeaderState : MyStateBase,
+                       replicated_state::IReplicatedLeaderState<MyState> {
   void set(std::string key, std::string value);
   auto wasRecoveryRun() -> bool { return recoveryRan; }
+
  protected:
-  auto recoverEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override;
+  auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
+      -> futures::Future<Result> override;
 
   bool recoveryRan = false;
 };
 
-struct MyFollowerState : MyStateBase, replicated_state::ReplicatedFollowerState<MyState> {
+struct MyFollowerState : MyStateBase,
+                         replicated_state::IReplicatedFollowerState<MyState> {
  protected:
-  auto acquireSnapshot(ParticipantId const& destination) noexcept -> futures::Future<Result> override;
-  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> override;
+  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+      -> futures::Future<Result> override;
+  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
+      -> futures::Future<Result> override;
 };
 
 struct MyFactory {
@@ -74,13 +82,13 @@ struct MyFactory {
 }  // namespace arangodb::replication2::test
 
 namespace arangodb::replication2 {
-template <>
+template<>
 struct replicated_state::EntryDeserializer<test::MyEntryType> {
-  auto operator()(streams::serializer_tag_t<test::MyEntryType>, velocypack::Slice s) const
-      -> test::MyEntryType;
+  auto operator()(streams::serializer_tag_t<test::MyEntryType>,
+                  velocypack::Slice s) const -> test::MyEntryType;
 };
 
-template <>
+template<>
 struct replicated_state::EntrySerializer<test::MyEntryType> {
   void operator()(streams::serializer_tag_t<test::MyEntryType>,
                   test::MyEntryType const& e, velocypack::Builder& b) const;

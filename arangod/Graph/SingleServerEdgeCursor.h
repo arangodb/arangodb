@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,10 +68,10 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
-  explicit SingleServerEdgeCursor(BaseOptions* options, 
-                                  aql::Variable const* tmpVar,
-                                  std::vector<size_t> const* mapping,
-                                  std::vector<BaseOptions::LookupInfo> const& lookupInfo);
+  explicit SingleServerEdgeCursor(
+      BaseOptions* options, aql::Variable const* tmpVar,
+      std::vector<size_t> const* mapping,
+      std::vector<BaseOptions::LookupInfo> const& lookupInfo);
 
   ~SingleServerEdgeCursor();
 
@@ -81,20 +81,21 @@ class SingleServerEdgeCursor final : public EdgeCursor {
 
   /// @brief number of HTTP requests performed. always 0 in single server
   size_t httpRequests() const override { return 0; }
-  
+
   void rearm(std::string_view vertex, uint64_t depth) override;
-  
+
  private:
   // returns false if cursor can not be further advanced
-  bool advanceCursor(IndexIterator*& cursor, std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
+  bool advanceCursor(IndexIterator*& cursor,
+                     std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
 
-  void getDocAndRunCallback(IndexIterator*, EdgeCursor::Callback const& callback);
+  void getDocAndRunCallback(IndexIterator*,
+                            EdgeCursor::Callback const& callback);
 
-  void buildLookupInfo(std::string_view vertex); 
+  void buildLookupInfo(std::string_view vertex);
 
   void addCursor(BaseOptions::LookupInfo const& info, std::string_view vertex);
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

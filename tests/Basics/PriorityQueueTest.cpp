@@ -45,7 +45,8 @@ struct MyValue {
 };
 
 TEST(CPriorityQueueTest, tst_deque_case) {
-  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int>
+      pq;
 
   EXPECT_EQ(0, (int)pq.size());
   EXPECT_TRUE(pq.empty());
@@ -132,7 +133,8 @@ TEST(CPriorityQueueTest, tst_deque_case) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST(CPriorityQueueTest, tst_heap_case) {
-  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int>
+      pq;
 
   EXPECT_EQ(0, (int)pq.size());
   EXPECT_TRUE(pq.empty());
@@ -218,7 +220,8 @@ TEST(CPriorityQueueTest, tst_heap_case) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST(CPriorityQueueTest, tst_deque_case_with_lowering) {
-  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int>
+      pq;
 
   EXPECT_EQ(0, (int)pq.size());
   EXPECT_TRUE(pq.empty());
@@ -306,7 +309,8 @@ TEST(CPriorityQueueTest, tst_deque_case_with_lowering) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST(CPriorityQueueTest, tst_heap_case_with_lowering) {
-  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
+  arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int>
+      pq;
 
   EXPECT_EQ(0, (int)pq.size());
   EXPECT_TRUE(pq.empty());

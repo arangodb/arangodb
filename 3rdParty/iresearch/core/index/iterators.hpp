@@ -99,13 +99,13 @@ struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
   virtual bool seek(const string_ref& target) = 0;
 }; // field_iterator
 
-struct column_meta;
+struct column_reader;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct column_iterator
 /// @brief an iterator providing sequential and random access to stored columns
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
+struct IRESEARCH_API column_iterator : iterator<const column_reader&> {
   using ptr = memory::managed_ptr<column_iterator>;
 
   ////////////////////////////////////////////////////////////////////////////

@@ -21,7 +21,7 @@ add_subdirectory(highway)
 
 add_library(sse2neon INTERFACE)
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+if (IS_ARM)
   set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
 
   target_include_directories(

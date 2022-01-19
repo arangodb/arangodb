@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,8 +23,9 @@
 
 #include "StateCommon.h"
 
-#include <iostream>
 #include <velocypack/Value.h>
+
+#include "Basics/debugging.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -36,13 +38,43 @@ auto StateGeneration::operator+(std::uint64_t delta) const -> StateGeneration {
   return StateGeneration{value + delta};
 }
 
-auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept -> StateGeneration {
+auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept
+    -> StateGeneration {
   if (value > delta) {
     return StateGeneration{value - delta};
   }
   return StateGeneration{0};
 }
 
-auto replicated_state::operator<<(std::ostream& os, StateGeneration g) -> std::ostream& {
+auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
+    -> std::ostream& {
   return os << g.value;
+}
+
+auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)
+    -> std::ostream& {
+  return os << "[" << to_string(ss.status) << "@" << ss.generation << "]";
+}
+
+void SnapshotStatus::updateStatus(Status s, std::optional<Result> newError) {
+  TRI_ASSERT((s == kFailed) == (error.has_value()));
+  status = s;
+  error = std::move(newError);
+  lastChange = clock::now();
+}
+
+auto replicated_state::to_string(SnapshotStatus::Status s) noexcept
+    -> std::string_view {
+  switch (s) {
+    case SnapshotStatus::kUninitialized:
+      return "Uninitialized";
+    case SnapshotStatus::kInitiated:
+      return "Initiated";
+    case SnapshotStatus::kCompleted:
+      return "Completed";
+    case SnapshotStatus::kFailed:
+      return "Failed";
+    default:
+      return "(unknown snapshot status)";
+  }
 }

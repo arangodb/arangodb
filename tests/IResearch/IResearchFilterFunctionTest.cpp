@@ -81,14 +81,15 @@
 #endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
 class IResearchFilterFunctionTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -101,7 +102,8 @@ class IResearchFilterFunctionTest
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
-    // register fake non-deterministic function in order to suppress optimizations
+    // register fake non-deterministic function in order to suppress
+    // optimizations
     functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
@@ -114,12 +116,14 @@ class IResearchFilterFunctionTest
           return params[0];
         }});
 
-    // register fake non-deterministic function in order to suppress optimizations
+    // register fake non-deterministic function in order to suppress
+    // optimizations
     functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
-            arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
+            arangodb::aql::Function::Flags::Deterministic,
+            arangodb::aql::Function::Flags::Cacheable,
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
@@ -128,19 +132,23 @@ class IResearchFilterFunctionTest
           return params[0];
         }});
 
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature.createDatabase(
+        testDBInfo(server.server()),
+        _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
-    arangodb::methods::Collections::createSystem(*_vocbase, options,
-                                                 arangodb::tests::AnalyzerCollectionName,
-                                                 false, unused);
+    arangodb::methods::Collections::createSystem(
+        *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
+        unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")
+            ->slice());  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -153,8 +161,7 @@ class IResearchFilterFunctionTest
 TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
   // attribute access, non empty object
   {
-    auto obj =
-        VPackParser::fromJson("{ \"a\": { \"b\": \"1\" } }");
+    auto obj = VPackParser::fromJson("{ \"a\": { \"b\": \"1\" } }");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
@@ -169,8 +176,7 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
 
   // attribute access, non empty object, boost
   {
-    auto obj =
-        VPackParser::fromJson("{ \"a\": { \"b\": \"1\" } }");
+    auto obj = VPackParser::fromJson("{ \"a\": { \"b\": \"1\" } }");
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
@@ -180,7 +186,8 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
 
     assertFilterSuccess(
         vocbase(),
-        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 1.5) RETURN d", expected, &ctx);
+        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 1.5) RETURN d",
+        expected, &ctx);
   }
 
   // attribute access, empty object
@@ -210,21 +217,26 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
 
     assertFilterSuccess(
         vocbase(),
-        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 2.5) RETURN d", expected, &ctx);
+        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 2.5) RETURN d",
+        expected, &ctx);
   }
 
-  assertExpressionFilter(vocbase(), "FOR d IN collection FILTER d RETURN d");  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(),
+      "FOR d IN collection FILTER d RETURN d");  // no reference to `d`
   assertExpressionFilter(
       vocbase(),
       "FOR d IN collection FILTER ANALYZER(d, 'test_analyzer') RETURN d", 1,
       wrappedExpressionExtractor);  // no reference to `d`
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN collection FILTER BOOST(d, 1.5) RETURN d", 1.5,
-                         wrappedExpressionExtractor);  // no reference to `d`
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(), "FOR d IN collection FILTER BOOST(d, 1.5) RETURN d", 1.5,
+      wrappedExpressionExtractor);  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(),
+      "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(),
+      "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
   assertExpressionFilter(
       vocbase(), "FOR d IN collection FILTER BOOST(d.a.b.c, 2.5) RETURN d", 2.5,
       wrappedExpressionExtractor);  // no reference to `d`
@@ -258,7 +270,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '1' RETURN d",
+                        expected);
   }
 
   // string reference
@@ -280,7 +293,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '' RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '' RETURN d",
+                        expected);
   }
 
   // empty string reference false
@@ -301,7 +315,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER true RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER true RETURN d",
+                        expected);
   }
 
   // boolean reference
@@ -323,7 +338,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER false RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER false RETURN d",
+                        expected);
   }
 
   // boolean reference
@@ -345,7 +361,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER null RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER null RETURN d",
+                        expected);
   }
 
   // non zero numeric value
@@ -353,7 +370,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1 RETURN d",
+                        expected);
   }
 
   // non zero numeric reference
@@ -375,7 +393,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0 RETURN d",
+                        expected);
   }
 
   // zero numeric reference
@@ -397,7 +416,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.0 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.0 RETURN d",
+                        expected);
   }
 
   // zero floating reference
@@ -419,7 +439,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.1 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.1 RETURN d",
+                        expected);
   }
 
   // non zero floating reference
@@ -441,7 +462,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER [] RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER [] RETURN d",
+                        expected);
   }
 
   // Array reference
@@ -449,7 +471,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     auto obj = VPackParser::fromJson("[]");
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
 
     irs::Or expected;
     expected.add<irs::all>();
@@ -464,13 +487,15 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1..2 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1..2 RETURN d",
+                        expected);
   }
 
   // Range reference
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(1, 1)));
+    ctx.vars.emplace("x",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(1, 1)));
 
     irs::Or expected;
     expected.add<irs::all>();
@@ -485,7 +510,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER {} RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER {} RETURN d",
+                        expected);
   }
 
   // Object reference
@@ -493,7 +519,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     auto obj = VPackParser::fromJson("{}");
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
 
     irs::Or expected;
     expected.add<irs::all>();
@@ -506,7 +533,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // numeric expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     expected.add<irs::empty>();
@@ -519,7 +547,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // boolean expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     expected.add<irs::empty>();
@@ -533,7 +562,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // null expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
@@ -553,7 +583,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     expected.add<irs::all>().boost(2.5);
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER BOOST('1', 2.5) RETURN d", expected);
+                        "FOR d IN collection FILTER BOOST('1', 2.5) RETURN d",
+                        expected);
   }
 
   // string value == true, analyzer
@@ -563,13 +594,15 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER ANALYZER('1', 'test_analyzer') RETURN d", expected);
+        "FOR d IN collection FILTER ANALYZER('1', 'test_analyzer') RETURN d",
+        expected);
   }
 
   // null expression, boost
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
@@ -676,9 +709,12 @@ TEST_F(IResearchFilterFunctionTest, SystemFunctions) {
 
 TEST_F(IResearchFilterFunctionTest, UnsupportedUserFunctions) {
   //  FIXME need V8 context up and running to execute user functions
-  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction() RETURN d", &ExpressionContextMock::EMPTY);
-  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction1(d) RETURN d", &ExpressionContextMock::EMPTY);
-  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction2(d, 'quick') RETURN d", &ExpressionContextMock::EMPTY);
+  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction()
+  //  RETURN d", &ExpressionContextMock::EMPTY); assertFilterFail(vocbase(),"FOR
+  //  d IN myView FILTER ir::unknownFunction1(d) RETURN d",
+  //  &ExpressionContextMock::EMPTY); assertFilterFail(vocbase(),"FOR d IN
+  //  myView FILTER ir::unknownFunction2(d, 'quick') RETURN d",
+  //  &ExpressionContextMock::EMPTY);
 }
 
 TEST_F(IResearchFilterFunctionTest, Boost) {
@@ -711,7 +747,7 @@ TEST_F(IResearchFilterFunctionTest, Boost) {
     irs::Or expected;
     auto& termFilter = expected.add<irs::by_term>();
     *termFilter.mutable_field() = mangleStringIdentity("foo");
-    termFilter.boost(6.0f); // 1.5*4 or 1.5*2*2
+    termFilter.boost(6.0f);  // 1.5*4 or 1.5*2*2
     irs::assign(termFilter.mutable_options()->term,
                 irs::ref_cast<irs::byte_type>(irs::string_ref("abc")));
 
@@ -1083,14 +1119,16 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     *exists.mutable_field() = "name";
     exists.mutable_options()->prefix_match = true;
 
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name) RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER exists(d.name) RETURN d", expected);
+                        "FOR d IN myView FILTER exists(d['name']) RETURN d",
+                        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER eXists(d.name) RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER exists(d['name']) RETURN d", expected);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER eXists(d.name) RETURN d", expected);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER eXists(d['name']) RETURN d", expected);
+                        "FOR d IN myView FILTER eXists(d['name']) RETURN d",
+                        expected);
   }
 
   // field with simple offset
@@ -1100,8 +1138,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     *exists.mutable_field() = "[42]";
     exists.mutable_options()->prefix_match = true;
 
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER exists(d[42]) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d[42]) RETURN d", expected);
   }
 
   // complex field
@@ -1112,14 +1150,18 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop.name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop.name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d['obj']['prop']['name']) RETURN d", expected);
+        "FOR d IN myView FILTER exists(d['obj']['prop']['name']) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop.name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop.name) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d['obj'].prop.name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d['obj'].prop.name) RETURN d",
+        expected);
   }
 
   // complex field with offset
@@ -1130,15 +1172,19 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop[3].name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop[3].name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d",
+        expected);
   }
 
   // complex field with offset
@@ -1174,7 +1220,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // complex field with offset
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("index", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "index", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
@@ -1188,23 +1235,30 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d",
+        expected);
   }
 
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
@@ -1223,10 +1277,13 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1240,12 +1297,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1259,12 +1321,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
+                         false}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1296,13 +1363,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'type') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'type') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'type') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'type') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Type') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Type') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'TYPE') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'TYPE') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER ANALYZER(exists(d.name, 'TYPE'), "
@@ -1341,13 +1412,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'string') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'string') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'string') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'string') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'String') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'String') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'STRING') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'STRING') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(exists(d.name, 'STRING'), "
@@ -1408,14 +1483,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // field + analyzer as invalid expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "anl", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     assertFilterExecutionFail(
         vocbase(),
-        "LET anl='analyz' FOR d IN myView FILTER exists(d.name, anl) RETURN d", &ctx);
+        "LET anl='analyz' FOR d IN myView FILTER exists(d.name, anl) RETURN d",
+        &ctx);
     assertFilterExecutionFail(
         vocbase(),
-        "LET anl='analyz' FOR d IN myView FILTER eXists(d.name, anl) RETURN d", &ctx);
+        "LET anl='analyz' FOR d IN myView FILTER eXists(d.name, anl) RETURN d",
+        &ctx);
   }
 
   // field + analyzer
@@ -1426,9 +1504,11 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(eXists(d.name, 'analyzer'), "
@@ -1440,9 +1520,11 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         "d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'ANALYZER') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'ANALYZER') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1496,16 +1578,20 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d.obj.name, 'numeric') RETURN d", expected);
+        "FOR d IN myView FILTER exists(d.obj.name, 'numeric') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d.obj.name, 'numeric') RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d.obj.name, 'numeric') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d.obj.name, 'Numeric') RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d.obj.name, 'Numeric') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d.obj.name, 'NUMERIC') RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d.obj.name, 'NUMERIC') RETURN d",
+        expected);
 
     // invalid argument
     assertFilterFail(
@@ -1558,13 +1644,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'bool') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'bool') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'bool') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'bool') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Bool') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Bool') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOL') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOL') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1586,18 +1676,22 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'boolean') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'boolean') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'boolean') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'boolean') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(eXists(d.name, 'boolean'), "
         "'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Boolean') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Boolean') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOLEAN') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOLEAN') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1651,13 +1745,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'null') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'null') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'null') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'null') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Null') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Null') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'NULL') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'NULL') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1706,14 +1804,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // field + type + invalid expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("type", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "type", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     assertFilterExecutionFail(
         vocbase(),
-        "LET type=null FOR d IN myView FILTER exists(d.name, type) RETURN d", &ctx);
+        "LET type=null FOR d IN myView FILTER exists(d.name, type) RETURN d",
+        &ctx);
     assertFilterExecutionFail(
         vocbase(),
-        "LET type=null FOR d IN myView FILTER eXists(d.name, type) RETURN d", &ctx);
+        "LET type=null FOR d IN myView FILTER eXists(d.name, type) RETURN d",
+        &ctx);
   }
 
   // invalid 2nd argument
@@ -1744,7 +1845,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         "'identity') RETURN d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER eXists(d.name, 'analyzer', 'identity') RETURN "
@@ -1994,7 +2096,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         "'identity') RETURN d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER eXists(d.name, 'analyzer', 'identity') RETURN "
@@ -2036,17 +2139,22 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleStringIdentity("name");
     auto* opts = phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
     // implicit (by default)
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phrase(d.name, 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phrase(d.name, 'quick') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phrase(d['name'], 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phrase(d['name'], 'quick') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phRase(d.name, 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phRase(d.name, 'quick') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phRase(d['name'], 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phRase(d['name'], 'quick') RETURN d",
+        expected);
 
     // explicit
     assertFilterSuccess(
@@ -2073,7 +2181,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     // overridden
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER phrase(d.name, 'quick', 'identity') RETURN d", expected);
+        "FOR d IN myView FILTER phrase(d.name, 'quick', 'identity') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER phrase(d['name'], 'quick', 'identity') RETURN "
@@ -2081,7 +2190,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER phRase(d.name, 'quick', 'identity') RETURN d", expected);
+        "FOR d IN myView FILTER phRase(d.name, 'quick', 'identity') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER phRase(d['name'], 'quick', 'identity') RETURN "
@@ -2118,11 +2228,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2204,34 +2319,39 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     auto& phraseEmpty = expectedEmpty.add<irs::by_phrase>();
     *phraseEmpty.mutable_field() = mangleString("name", "test_analyzer");
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(phrase(d.name, [ ]), 'test_analyzer') "
-      "RETURN d",
-      expectedEmpty);
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(phrase(d.name, [ ]), 'test_analyzer') "
+        "RETURN d",
+        expectedEmpty);
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(phrase(d['name'], [ ]), "
-      "'test_analyzer') RETURN d",
-      expectedEmpty);
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(phrase(d['name'], [ ]), "
+        "'test_analyzer') RETURN d",
+        expectedEmpty);
 
     // accumulating offsets
     irs::Or expectedAccumulated;
     auto& phraseAccumulated = expectedAccumulated.add<irs::by_phrase>();
     *phraseAccumulated.mutable_field() = mangleString("name", "test_analyzer");
     auto* optsAccumulated = phraseAccumulated.mutable_options();
-    optsAccumulated->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    optsAccumulated->push_back<irs::by_term_options>(7).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    optsAccumulated->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    optsAccumulated->push_back<irs::by_term_options>(4).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    optsAccumulated->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    optsAccumulated->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    optsAccumulated->push_back<irs::by_term_options>(7).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    optsAccumulated->push_back<irs::by_term_options>(3).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    optsAccumulated->push_back<irs::by_term_options>(4).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    optsAccumulated->push_back<irs::by_term_options>(5).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(phrase(d.name, "
-      " 'q', 0, [], 3, [], 4, 'u', 3, [], 0, 'i', 0, [], 4, 'c', 1, [], 1, [], 2, [], 1, 'k'), "
-      " 'test_analyzer') "
-      "RETURN d",
-      expectedAccumulated);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ANALYZER(phrase(d.name, "
+                        " 'q', 0, [], 3, [], 4, 'u', 3, [], 0, 'i', 0, [], 4, "
+                        "'c', 1, [], 1, [], 2, [], 1, 'k'), "
+                        " 'test_analyzer') "
+                        "RETURN d",
+                        expectedAccumulated);
 
     // invalid input
     assertFilterFail(
@@ -2274,22 +2394,32 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    *phrase.mutable_field() = mangleString("a.b.c.e[4].f[5].g[3].g.a", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    *phrase.mutable_field() =
+        mangleString("a.b.c.e[4].f[5].g[3].g.a", "test_analyzer");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2310,10 +2440,13 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2334,12 +2467,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2360,12 +2498,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
+                         false}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2390,12 +2533,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("[42]", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2429,12 +2577,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2539,8 +2692,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("value", arangodb::aql::AqlValue("qui"));
-    ctx.vars.emplace("analyzer",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+    ctx.vars.emplace("analyzer", arangodb::aql::AqlValue(
+                                     arangodb::aql::AqlValueHintBool{false}));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2638,17 +2791,27 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2756,27 +2919,39 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER AnaLYZER(phrase(d.name, [ 'quick', '0', "
-        "'brown' ]), 'test_analyzer') RETURN d", expected);
+        "'brown' ]), 'test_analyzer') RETURN d",
+        expected);
     assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER AnaLYZER(phrase(d.name,  'quick', '0', "
-      "'brown'), 'test_analyzer') RETURN d");
+        vocbase(),
+        "FOR d IN myView FILTER AnaLYZER(phrase(d.name,  'quick', '0', "
+        "'brown'), 'test_analyzer') RETURN d");
   }
 
   // with offset, complex name, custom analyzer
@@ -2785,17 +2960,27 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("obj.name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2926,17 +3111,27 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("obj.name", "test_analyzer");
     phrase.boost(3.0f);
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2976,17 +3171,27 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     *phrase.mutable_field() = mangleString("obj[3].name[1]", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3115,18 +3320,29 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    *phrase.mutable_field() = mangleString("[5].obj.name[100]", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    *phrase.mutable_field() =
+        mangleString("[5].obj.name[100]", "test_analyzer");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3255,26 +3471,45 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
-    opts->push_back<irs::by_term_options>(2).term = irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+    *phrase.mutable_field() =
+        mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(3).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    opts->push_back<irs::by_term_options>(2).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3583,29 +3818,49 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
-    opts->push_back<irs::by_term_options>(2).term = irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+    *phrase.mutable_field() =
+        mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(3).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    opts->push_back<irs::by_term_options>(2).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
 
     assertFilterSuccess(
@@ -3759,95 +4014,129 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
-    opts->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+    *phrase.mutable_field() =
+        mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(3).term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
 
     // implicit zero offsets
     assertFilterSuccess(
-      vocbase(),
-      "LET offset=2 LET input='bro' FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, ['quick', offset+1, "
-      "CONCAT(input, 'wn'), 'fox', 'jumps']), 'test_analyzer') "
-      "RETURN d",
-      expected, &ctx);
+        vocbase(),
+        "LET offset=2 LET input='bro' FOR d IN myView FILTER "
+        "analyzer(phrase(d.obj.properties.id.name, ['quick', offset+1, "
+        "CONCAT(input, 'wn'), 'fox', 'jumps']), 'test_analyzer') "
+        "RETURN d",
+        expected, &ctx);
 
     // explicit zero offsets on top level
     assertFilterSuccess(
-      vocbase(),
-      "LET offset=2 LET input='bro' FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, ['quick'], offset+1, "
-      "CONCAT(input, 'wn'), 0, ['f', 'o', 'x'], 0, ['j', 'u', 'mps']), 'test_analyzer') "
-      "RETURN d",
-      expected, &ctx);
+        vocbase(),
+        "LET offset=2 LET input='bro' FOR d IN myView FILTER "
+        "analyzer(phrase(d.obj.properties.id.name, ['quick'], offset+1, "
+        "CONCAT(input, 'wn'), 0, ['f', 'o', 'x'], 0, ['j', 'u', 'mps']), "
+        "'test_analyzer') "
+        "RETURN d",
+        expected, &ctx);
 
     // recurring arrays not allowed
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, ['quick'], 3, "
-      "'123', 'wn', 0, ['f', 'o', 'x'], 0, [['j', ['u'], 'mps']]), 'test_analyzer') "
-      "RETURN d", &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, ['quick'], 3, "
+                     "'123', 'wn', 0, ['f', 'o', 'x'], 0, [['j', ['u'], "
+                     "'mps']]), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
 
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, ['quick', 3, "
-      "'123', 'wn', 0, 'f', 'o', 'x', 0, [['j']], 'u', 'mps']), 'test_analyzer') "
-      "RETURN d", &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, ['quick', 3, "
+                     "'123', 'wn', 0, 'f', 'o', 'x', 0, [['j']], 'u', 'mps']), "
+                     "'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
   }
 
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
-    auto* opts= phrase.mutable_options();
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    *phrase.mutable_field() =
+        mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
     {
       auto& part = opts->push_back<irs::by_prefix_options>();
       part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      part.scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
     {
       auto& part = opts->push_back<irs::by_wildcard_options>(3);
       part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      part.scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
     {
       auto& part = opts->push_back<irs::by_range_options>();
       part.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
       part.range.min_type = irs::BoundType::EXCLUSIVE;
       part.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
       part.range.max_type = irs::BoundType::EXCLUSIVE;
-      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      part.scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
     {
       auto& part = opts->push_back<irs::by_edit_distance_filter_options>();
       part.max_distance = 1;
@@ -3855,24 +4144,30 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       part.provider = &arangodb::iresearch::getParametricDescription;
       part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
     }
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
     {
       auto& part = opts->push_back<irs::by_terms_options>();
       part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("g")));
       part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("j")));
     }
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
     {
       auto& part = opts->push_back<irs::by_terms_options>();
       part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("b")));
       part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("p")));
     }
-    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+    opts->push_back<irs::by_term_options>().term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input_st", arangodb::aql::AqlValue("q"));
     ctx.vars.emplace("input_pt", arangodb::aql::AqlValue("c"));
     ctx.vars.emplace("input_wt", arangodb::aql::AqlValue("b"));
@@ -3883,506 +4178,654 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
 
     // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS, IN_RANGE
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'um', ['b', 'p'], 's']), 'test_analyzer') "
-      "RETURN d",
-      expected, &ctx);
+        vocbase(),
+        "FOR d IN myView FILTER "
+        "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', "
+        "{starts_with: 'c'}, 'k', 3, "
+        "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', "
+        "{levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, "
+        "'um', ['b', 'p'], 's']), 'test_analyzer') "
+        "RETURN d",
+        expected, &ctx);
 
-    // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS, IN_RANGE with variables
+    // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS, IN_RANGE with
+    // variables
     assertFilterSuccess(
-      vocbase(),
-      "LET offset=2 LET input_st='q' LET input_pt='c' LET input_wt='b' LET input_lt='p' LET input_ct='g' LET input_ct2='b' LET input_rt='n' "
-      "FOR d IN myView FILTER analyzer(phrase(d.obj.properties.id.name, [{term: input_st}, 'ui', {starts_with: input_pt}, 'k', offset+1, "
-        "{'wildcard': input_wt}, 'r', {in_range: [input_rt, 'p', false, false]}, 'wn', {levenshtein_match: [input_lt, 1, true, 0]}, 'ox', "
-        "{terms: [input_ct, 'j']}, 'um', [input_ct2, 'p'], 's']), 'test_analyzer') "
-      "RETURN d",
-      expected, &ctx);
+        vocbase(),
+        "LET offset=2 LET input_st='q' LET input_pt='c' LET input_wt='b' LET "
+        "input_lt='p' LET input_ct='g' LET input_ct2='b' LET input_rt='n' "
+        "FOR d IN myView FILTER analyzer(phrase(d.obj.properties.id.name, "
+        "[{term: input_st}, 'ui', {starts_with: input_pt}, 'k', offset+1, "
+        "{'wildcard': input_wt}, 'r', {in_range: [input_rt, 'p', false, "
+        "false]}, 'wn', {levenshtein_match: [input_lt, 1, true, 0]}, 'ox', "
+        "{terms: [input_ct, 'j']}, 'um', [input_ct2, 'p'], 's']), "
+        "'test_analyzer') "
+        "RETURN d",
+        expected, &ctx);
 
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: {t: 'q'}}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: true}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 1}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 1.2}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: null}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: {t: 'c'}}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: true}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 1}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 1.2}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: null}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: {t: 'b'}}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: true}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 1}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 1.2}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: null}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: [{t: 'p'}, 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: [['p'], 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: [true, 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: [1, 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: [1.2, 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: [null, 1, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', {t: 1}, true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', [1], true, 0]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', true, true]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', '1', true]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', null, true]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, {t: true}]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, [true]]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, 'true']}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, 1]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, 1.2]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, null]}, 'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: [{t: 'g'}, 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: [['g'], 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: [true, 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: [1, 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: [1.2, 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', {terms: [null, 'j']}, 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', [{t: 'g'}, 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', [['g'], 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', [true, 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', [1, 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', [1.2, 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', [null, 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: [{t: 'n'}, 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: [['n'], 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: [1, 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: [1.2, 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: [true, 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: [null, 'p', false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', {t: 'p'}, false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', ['p'], false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 1, false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 1.2, false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', true, false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', null, false, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', {t: false}, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', [false], false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', 'false', false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', 1, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', 1.2, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', null, false]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, {t: false}]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, [false]]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, 'false']}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, 1]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, 1.2]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
-    assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER "
-      "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', {starts_with: 'c'}, 'k', 3, "
-      "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, null]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
-      "RETURN d",
-      &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: {t: "
+                     "'q'}}, 'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: true}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 1}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 1.2}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: null}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: {t: 'c'}}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: true}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 1}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 1.2}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: null}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: {t: 'b'}}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: true}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 1}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 1.2}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: null}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(
+        vocbase(),
+        "FOR d IN myView FILTER "
+        "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', "
+        "{starts_with: 'c'}, 'k', 3, "
+        "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', "
+        "{levenshtein_match: [{t: 'p'}, 1, true, 0]}, 'ox', {terms: ['g', "
+        "'j']}, 'umps']), 'test_analyzer') "
+        "RETURN d",
+        &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: [['p'], 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: [true, 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: [1, 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: [1.2, 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: [null, 1, true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(
+        vocbase(),
+        "FOR d IN myView FILTER "
+        "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', "
+        "{starts_with: 'c'}, 'k', 3, "
+        "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', "
+        "{levenshtein_match: ['p', {t: 1}, true, 0]}, 'ox', {terms: ['g', "
+        "'j']}, 'umps']), 'test_analyzer') "
+        "RETURN d",
+        &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', [1], true, 0]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', true, true]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', '1', true]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', null, true]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, {t: true}]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, [true]]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, 'true']}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, 1]}, 'ox', "
+                     "{terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, 1.2]}, 'ox', "
+                     "{terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, null]}, "
+                     "'ox', {terms: ['g', 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(
+        vocbase(),
+        "FOR d IN myView FILTER "
+        "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, 'ui', "
+        "{starts_with: 'c'}, 'k', 3, "
+        "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, false]}, 'wn', "
+        "{levenshtein_match: ['p', 1, true]}, 'ox', {terms: [{t: 'g'}, 'j']}, "
+        "'umps']), 'test_analyzer') "
+        "RETURN d",
+        &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', {terms: [['g'], 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', {terms: [true, 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', {terms: [1, 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', {terms: [1.2, 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', {terms: [null, 'j']}, 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', [{t: 'g'}, 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', [['g'], 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', [true, 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', [1, 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', [1.2, 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', [null, 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: [{t: 'n'}, 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: [['n'], 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: [1, 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: [1.2, 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: [true, 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: [null, 'p', false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', {t: 'p'}, false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', ['p'], false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 1, false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 1.2, false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', true, false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', null, false, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', {t: false}, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', [false], "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', 'false', "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', 1, false]}, "
+                     "'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', "
+                     "'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', 1.2, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', null, "
+                     "false]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, {t: "
+                     "false}]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "[false]]}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "'false']}, 'wn', {levenshtein_match: ['p', 1, true]}, "
+                     "'ox', ['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, 1]}, "
+                     "'wn', {levenshtein_match: ['p', 1, true]}, 'ox', ['g', "
+                     "'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "1.2]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', "
+                     "['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
+    assertFilterFail(vocbase(),
+                     "FOR d IN myView FILTER "
+                     "analyzer(phrase(d.obj.properties.id.name, [{term: 'q'}, "
+                     "'ui', {starts_with: 'c'}, 'k', 3, "
+                     "{wildcard: 'b'}, 'r', {in_range: ['n', 'p', false, "
+                     "null]}, 'wn', {levenshtein_match: ['p', 1, true]}, 'ox', "
+                     "['g', 'j'], 'umps']), 'test_analyzer') "
+                     "RETURN d",
+                     &ctx);
   }
 
   // multiple offsets, complex name, custom analyzer, invalid expressions
   // quick <...> <...> <...> brown <...> <...> fox jumps
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
 
     assertFilterExecutionFail(
@@ -4516,10 +4959,9 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d['name'], 'quick'), { \"a\": 7, "
       "\"b\": \"c\" }) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
-      "'invalid_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
+                   "'invalid_analyzer') RETURN d");
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d['name'], 'quick'), "
@@ -4652,10 +5094,9 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       vocbase(),
       "FOR d IN myView FILTER phrase(d.name, [ 'quick' ], 'invalid_analyzer') "
       "RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER phrase(d['name'], [ 'quick' ], "
-      "'invalid_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER phrase(d['name'], [ 'quick' ], "
+                   "'invalid_analyzer') RETURN d");
 
   // wrong analylzer
   assertFilterFail(
@@ -4688,10 +5129,9 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), null) RETURN "
       "d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
-      "'invalidAnalyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
+                   "'invalidAnalyzer') RETURN d");
   assertFilterExecutionFail(
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick', 3, 'brown'), d) "
@@ -4976,55 +5416,69 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], 'abc') RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], 'abc') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc') RETURN d",
+        expected);
   }
 
   // without scoring limit via []
   {
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
-    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    orFilter.min_match_count(
+        arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
     auto& prefix0 = orFilter.add<irs::by_prefix>();
     *prefix0.mutable_field() = mangleStringIdentity("name");
     auto* opt0 = prefix0.mutable_options();
     opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt0->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt0->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     auto& prefix1 = orFilter.add<irs::by_prefix>();
     *prefix1.mutable_field() = mangleStringIdentity("name");
     auto* opt1 = prefix1.mutable_options();
     opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
-    opt1->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt1->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER starts_with(d['name'], ['abc', "
+                        "'def']) RETURN d",
+                        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc', 'def']) RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER starts_with(d.name, ['abc', 'def']) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc', 'def']) RETURN d",
+        expected);
   }
 
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5038,10 +5492,13 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5055,12 +5512,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5074,12 +5536,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
+                         false}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5097,14 +5564,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name[1]");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'][1], 'abc') RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'][1], 'abc') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name[1], 'abc') RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name[1], 'abc') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(starts_with(d.name[1], 'abc'), "
@@ -5119,7 +5589,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("obj.properties.name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5152,10 +5623,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    *prefix.mutable_field() =
+        mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5183,10 +5656,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    *prefix.mutable_field() = mangleString("obj[400].properties[3].name", "test_analyzer");
+    *prefix.mutable_field() =
+        mangleString("obj[400].properties[3].name", "test_analyzer");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5221,10 +5696,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    *prefix.mutable_field() =
+        mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5252,25 +5729,31 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, prefix as an expression via []
+  // without scoring limit, complex name with offset, prefix as an expression
+  // via []
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
 
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
-    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    orFilter.min_match_count(
+        arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
     auto& prefix0 = orFilter.add<irs::by_prefix>();
-    *prefix0.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    *prefix0.mutable_field() =
+        mangleStringIdentity("obj[400].properties[3].name");
     auto* opt0 = prefix0.mutable_options();
     opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt0->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt0->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     auto& prefix1 = orFilter.add<irs::by_prefix>();
-    *prefix1.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    *prefix1.mutable_field() =
+        mangleStringIdentity("obj[400].properties[3].name");
     auto* opt1 = prefix1.mutable_options();
     opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
-    opt1->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt1->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5278,31 +5761,32 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         "starts_with(d['obj'][400]['properties'][3]['name'], [CONCAT(prefix, "
         "'c'), 'def']) RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET prefix='ab' FOR d IN myView FILTER "
-        "starts_with(d.obj[400]['properties[3]']['name'], [CONCAT(prefix, 'c'), 'def']) "
-        "RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET prefix='ab' FOR d IN myView FILTER "
-        "starts_with(d.obj[400]['properties[3]'].name, [CONCAT(prefix, 'c'), 'def']) "
-        "RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET prefix='ab' FOR d IN myView FILTER "
-        "starts_with(d.obj[400].properties[3].name, [CONCAT(prefix, 'c'), 'def']) "
-        "RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET prefix='ab' FOR d IN myView FILTER "
+                        "starts_with(d.obj[400]['properties[3]']['name'], "
+                        "[CONCAT(prefix, 'c'), 'def']) "
+                        "RETURN d",
+                        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET prefix='ab' FOR d IN myView FILTER "
+                        "starts_with(d.obj[400]['properties[3]'].name, "
+                        "[CONCAT(prefix, 'c'), 'def']) "
+                        "RETURN d",
+                        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET prefix='ab' FOR d IN myView FILTER "
+                        "starts_with(d.obj[400].properties[3].name, "
+                        "[CONCAT(prefix, 'c'), 'def']) "
+                        "RETURN d",
+                        expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, prefix as an expression of invalid type
+  // without scoring limit, complex name with offset, prefix as an expression of
+  // invalid type
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("prefix",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool(false)));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5326,27 +5810,28 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         &ctx);
   }
 
-  // without scoring limit, complex name with offset, prefix as an expression of invalid type via []
+  // without scoring limit, complex name with offset, prefix as an expression of
+  // invalid type via []
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("prefix",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool(false)));
 
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET prefix=false FOR d IN myView FILTER "
-        "starts_with(d['obj'][400]['properties'][3]['name'], [prefix, 'def']) RETURN d",
-        &ctx);
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET prefix=false FOR d IN myView FILTER "
-        "starts_with(d.obj[400]['properties[3]']['name'], [prefix, 'def']) RETURN d",
-        &ctx);
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET prefix=false FOR d IN myView FILTER "
-        "starts_with(d.obj[400]['properties[3]'].name, [prefix, 'def']) RETURN d",
-        &ctx);
+    assertFilterExecutionFail(vocbase(),
+                              "LET prefix=false FOR d IN myView FILTER "
+                              "starts_with(d['obj'][400]['properties'][3]['"
+                              "name'], [prefix, 'def']) RETURN d",
+                              &ctx);
+    assertFilterExecutionFail(vocbase(),
+                              "LET prefix=false FOR d IN myView FILTER "
+                              "starts_with(d.obj[400]['properties[3]']['name'],"
+                              " [prefix, 'def']) RETURN d",
+                              &ctx);
+    assertFilterExecutionFail(vocbase(),
+                              "LET prefix=false FOR d IN myView FILTER "
+                              "starts_with(d.obj[400]['properties[3]'].name, "
+                              "[prefix, 'def']) RETURN d",
+                              &ctx);
     assertFilterExecutionFail(
         vocbase(),
         "LET prefix=false FOR d IN myView FILTER "
@@ -5358,14 +5843,15 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
-    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    orFilter.min_match_count(
+        arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
 
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], []) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER starts_with(d['name'], []) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, []) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER starts_with(d.name, []) RETURN d",
+        expected);
   }
 
   // with scoring limit (int)
@@ -5379,10 +5865,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 1024) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, 'abc', 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, 'abc', 1024) RETURN d",
+        expected);
   }
 
   // with min match count (int) via[]
@@ -5394,14 +5882,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2) RETURN d",
+        expected);
   }
 
   // with scoring limit with min match count (int) via[]
@@ -5415,12 +5906,14 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     opt->scored_terms_limit = 1024;
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER starts_with(d['name'], "
+                        "['abc'], 2, 1024) RETURN d",
+                        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2, 1024) RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2, 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2, 1024) RETURN d",
+        expected);
   }
 
   // with scoring limit (double)
@@ -5434,10 +5927,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 100.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 100.5) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d",
+        expected);
   }
 
   // with min match count (double) via[]
@@ -5449,14 +5944,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2.5) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2.5) RETURN d",
+        expected);
   }
 
   // with scoring limit with min match count (double) via[]
@@ -5470,12 +5968,14 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     opt->scored_terms_limit = 100;
 
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2.5, 100.5) RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2.5, 100.5) RETURN d", expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER starts_with(d['name'], "
+                        "['abc'], 2.5, 100.5) RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER starts_with(d.name, ['abc'], "
+                        "2.5, 100.5) RETURN d",
+                        expected);
   }
 
   // with scoring limit (double), boost
@@ -5512,28 +6012,30 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     opt->scored_terms_limit = 100;
 
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER boost(starts_with(d['name'], ['abc'], 2, 100.5), "
-        "0.1+3) RETURN d",
-        expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BooST(starts_with(d.name, ['abc'], 2, 100.5), 3.1) "
-        "RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER boost(starts_with(d['name'], "
+                        "['abc'], 2, 100.5), "
+                        "0.1+3) RETURN d",
+                        expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER BooST(starts_with(d.name, "
+                        "['abc'], 2, 100.5), 3.1) "
+                        "RETURN d",
+                        expected);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
-    ctx.vars.emplace("scoringLimit",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(
+                                         arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    *prefix.mutable_field() =
+        mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     opt->scored_terms_limit = 6;
@@ -5564,16 +6066,18 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
-    ctx.vars.emplace("scoringLimit",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(
+                                         arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    *prefix.mutable_field() =
+        mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     opt->scored_terms_limit = 6;
@@ -5604,17 +6108,19 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression, analyzer
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression, analyzer
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
     ctx.vars.emplace("analyzer", arangodb::aql::AqlValue("analyzer"));
-    ctx.vars.emplace("scoringLimit",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(
+                                         arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    *prefix.mutable_field() = mangleString("obj[400].properties[3].name", "test_analyzer");
+    *prefix.mutable_field() =
+        mangleString("obj[400].properties[3].name", "test_analyzer");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     opt->scored_terms_limit = 6;
@@ -5651,7 +6157,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression of invalid type
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression of invalid type
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
@@ -5693,19 +6200,21 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
     opt->scored_terms_limit = 1024;
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER starts_with(d['name'], "
+                        "['abc'], 1, 1024) RETURN d",
+                        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 1, 1024) RETURN d", expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, 1024) RETURN d",
+        expected);
   }
 
   // with min match count as an expression via[]
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("minMatchCount",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("minMatchCount", arangodb::aql::AqlValue(
+                                          arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
@@ -5714,24 +6223,26 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "LET minMatchCount=5 FOR d IN myView FILTER starts_with(d['name'], ['abc'], minMatchCount) RETURN d",
+        "LET minMatchCount=5 FOR d IN myView FILTER starts_with(d['name'], "
+        "['abc'], minMatchCount) RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET minMatchCount=5 FOR d IN myView FILTER starts_with(d.name, ['abc'], minMatchCount) RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET minMatchCount=5 FOR d IN myView FILTER "
+                        "starts_with(d.name, ['abc'], minMatchCount) RETURN d",
+                        expected, &ctx);
   }
 
   // wrong number of arguments
   assertFilterParseFail(vocbase(),
                         "FOR d IN myView FILTER starts_with() RETURN d");
-  assertFilterParseFail(
-      vocbase(),
-      "FOR d IN myView FILTER starts_with(d.name, 'abc', 100, 100, 'abc') RETURN d");
+  assertFilterParseFail(vocbase(),
+                        "FOR d IN myView FILTER starts_with(d.name, 'abc', "
+                        "100, 100, 'abc') RETURN d");
 
   // invalid attribute access
   assertFilterFail(vocbase(),
@@ -5788,7 +6299,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, 'abc', null) RETURN d");
   assertFilterExecutionFail(
-      vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc', d) RETURN d",
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, 'abc', d) RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // invalid min match count
@@ -5805,13 +6317,14 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, ['abc'], null) RETURN d");
   assertFilterExecutionFail(
-      vocbase(), "FOR d IN myView FILTER starts_with(d.name, ['abc'], d) RETURN d",
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], d) RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // invalid scoring limit with min match count
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, '1024') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, "
+                   "'1024') RETURN d");
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, true) RETURN d");
@@ -5822,7 +6335,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, null) RETURN d");
   assertFilterExecutionFail(
-      vocbase(), "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, d) RETURN d",
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, d) RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // non-deterministic arguments
@@ -5842,10 +6356,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, ['abc'], RAND() ? 128 : 10) "
       "RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, RAND() ? 128 : 10) "
-      "RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, "
+                   "RAND() ? 128 : 10) "
+                   "RETURN d");
 }
 
 TEST_F(IResearchFilterFunctionTest, wildcard) {
@@ -5856,24 +6370,21 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     *wildcard.mutable_field() = mangleStringIdentity("name");
     auto* opt = wildcard.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER d.name LIKE 'foo' RETURN d",
+                        expected);
     assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER d.name LIKE 'foo' RETURN d",
+        vocbase(), "FOR d IN myView FILTER LIKE(d['name'], 'foo') RETURN d",
         expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LIKE(d['name'], 'foo') RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+                        expected);
   }
 
   // ANALYZER(d.name.foo LIKE 'foo%', 'test_analyzer')
@@ -5883,30 +6394,33 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     *wildcard.mutable_field() = mangleString("name.foo", "test_analyzer");
     auto* opt = wildcard.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
+    ctx.vars.emplace("x",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ANALYZER(d.name.foo LIKE "
+                        "'foo%', 'test_analyzer') RETURN d",
+                        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LIKE(d.name[_FORWARD_('foo')], "
+        "'foo%'), 'test_analyzer') RETURN d",
+        expected, &ctx);
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER ANALYZER(d.name.foo LIKE 'foo%', 'test_analyzer') RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER ANALYZER(LIKE(d.name[_FORWARD_('foo')], 'foo%'), 'test_analyzer') RETURN d",
+        "LET x = 'foo' FOR d IN myView FILTER ANALYZER(LIKE(d.name[x], "
+        "'foo%'), 'test_analyzer') RETURN d",
         expected, &ctx);
 
-    assertFilterSuccess(
-        vocbase(),
-        "LET x = 'foo' FOR d IN myView FILTER ANALYZER(LIKE(d.name[x], 'foo%'), 'test_analyzer') RETURN d",
-        expected,
-        &ctx);
-
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER ANALYZER(LIKE(d['name'].foo, 'foo%'), 'test_analyzer') RETURN d",
-        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ANALYZER(LIKE(d['name'].foo, "
+                        "'foo%'), 'test_analyzer') RETURN d",
+                        expected, &ctx);
   }
 
   // BOOST(ANALYZER(d.name[4] LIKE '_foo%', 'test_analyzer'), 0.5)
@@ -5917,108 +6431,88 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     wildcard.boost(0.5f);
     auto* opt = wildcard.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("_foo%"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER BOOST(ANALYZER(d.name[4] LIKE "
+                        "'_foo%', 'test_analyzer'), 0.5) RETURN d",
+                        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(d.name[4] LIKE '_foo%', 'test_analyzer'), 0.5) RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][_FORWARD_(4)], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][_FORWARD_(4)], "
+        "'_foo%'), 'test_analyzer'), 0.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "LET x = 4 FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][x], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        "LET x = 4 FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][x], "
+        "'_foo%'), 'test_analyzer'), 0.5) RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d.name[4], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d.name[4], "
+                        "'_foo%'), 'test_analyzer'), 0.5) RETURN d",
+                        expected);
   }
 
   // invalid attribute access
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER [d] LIKE '_foo%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER d[*] LIKE '_foo%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER d.name[*] LIKE '_foo%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
   assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER [d] LIKE '_foo%' RETURN d",
+      vocbase(), "FOR d IN myView FILTER LIKE(d.foo[*].name, '_foo%') RETURN d",
       &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER d[*] LIKE '_foo%' RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER d.name[*] LIKE '_foo%' RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo[*].name, '_foo%') RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER 'foo' LIKE 'f%' RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER [] LIKE 'f%' RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER {} LIKE 'f%' RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER null LIKE 'f%' RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER true LIKE 'f%' RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(), "FOR d IN myView FILTER 'foo' LIKE 'f%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(), "FOR d IN myView FILTER [] LIKE 'f%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(), "FOR d IN myView FILTER {} LIKE 'f%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(), "FOR d IN myView FILTER null LIKE 'f%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(), "FOR d IN myView FILTER true LIKE 'f%' RETURN d",
+                   &ExpressionContextMock::EMPTY);
 
   // non-deterministic attribute access
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(RAND() > 0.5 ? d.foo.name : d.foo.bar, '_foo%') RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LIKE(RAND() > 0.5 ? d.foo.name : "
+                   "d.foo.bar, '_foo%') RETURN d",
+                   &ExpressionContextMock::EMPTY);
 
   // invalid pattern
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo, true) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo, null) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo, 1) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo, []) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo, {}) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LIKE(d.foo, true) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LIKE(d.foo, null) RETURN d");
+  assertFilterFail(vocbase(), "FOR d IN myView FILTER LIKE(d.foo, 1) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LIKE(d.foo, []) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LIKE(d.foo, {}) RETURN d");
   assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo, _FORWARD_({})) RETURN d",
+      vocbase(), "FOR d IN myView FILTER LIKE(d.foo, _FORWARD_({})) RETURN d",
       &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.foo, d) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN myView FILTER LIKE(d.foo, d) RETURN d",
+                            &ExpressionContextMock::EMPTY);
 
   // wrong number of arguments
   assertFilterParseFail(
       vocbase(),
       "FOR d IN myView FILTER LIKE(d.name, 'abc', true, 'z') RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.name, 'abc', true) RETURN d");
-  assertFilterParseFail(
-      vocbase(),
-      "FOR d IN myView FILTER LIKE(d.name) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LIKE(d.name, 'abc', true) RETURN d");
+  assertFilterParseFail(vocbase(),
+                        "FOR d IN myView FILTER LIKE(d.name) RETURN d");
 }
 
 TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
@@ -6031,16 +6525,17 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_distance = 1;
     opts->with_transpositions = true;
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->max_terms = arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
+    opts->max_terms =
+        arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'foo', 1) RETURN d",
         expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], 'foo', 1) RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], "
+                        "'foo', 1) RETURN d",
+                        expected);
   }
 
   // LEVENSHTEIN_MATCH(d.name, 'foo', 1, false, 42)
@@ -6054,14 +6549,14 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
     opts->max_terms = 42;
 
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'foo', 1, false, 42) RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], 'foo', 1, false, 42) RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, "
+                        "'foo', 1, false, 42) RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], "
+                        "'foo', 1, false, 42) RETURN d",
+                        expected);
   }
 
   // LEVENSHTEIN_MATCH(d.name, 'o', 1, false, 42, 'fo') contains prefix
@@ -6076,14 +6571,14 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("fo"));
     opts->max_terms = 42;
 
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'o', 1, false, 42, 'fo') RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], 'o', 1, false, 42, 'fo') RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'o', "
+                        "1, false, 42, 'fo') RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], "
+                        "'o', 1, false, 42, 'fo') RETURN d",
+                        expected);
   }
 
   // LEVENSHTEIN_MATCH(d.name, '', 1, false, 42, 'foo') contains prefix
@@ -6098,14 +6593,14 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
     opts->max_terms = 42;
 
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', 1, false, 42, 'foo') RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], '', 1, false, 42, 'foo') RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', "
+                        "1, false, 42, 'foo') RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], "
+                        "'', 1, false, 42, 'foo') RETURN d",
+                        expected);
   }
 
   // LEVENSHTEIN_MATCH(d.name, '', 0, true, 42, 'foo') contains prefix
@@ -6120,14 +6615,14 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->prefix = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
     opts->max_terms = 42;
 
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', 0, true, 42, 'foo') RETURN d",
-        expected);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], '', 0, true, 42, 'foo') RETURN d",
-        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', "
+                        "0, true, 42, 'foo') RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], "
+                        "'', 0, true, 42, 'foo') RETURN d",
+                        expected);
   }
 
   // ANALYZER(LEVENSHTEIN_MATCH(d.name.foo, 'foo', 0, true), 'test_analyzer')
@@ -6139,39 +6634,50 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_distance = 0;
     opts->with_transpositions = true;
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
-    opts->max_terms = arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
+    opts->max_terms =
+        arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
-    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
-    ctx.vars.emplace("transp", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
+    ctx.vars.emplace("x",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace(
+        "dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool{true}));
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name.foo, 'fooo', 0, true), 'test_analyzer') RETURN d",
+        "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name.foo, 'fooo', "
+        "0, true), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER "
+                        "ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_('foo')], "
+                        "'fooo', 0, true), 'test_analyzer') RETURN d",
+                        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER "
+                        "ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_('foo')], "
+                        "'fooo', 0), 'test_analyzer') RETURN d",
+                        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET y='o' LET transp=true LET dist=1 LET x='foo' FOR d IN myView "
+        "FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), "
+        "dist-1, transp), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_('foo')], 'fooo', 0, true), 'test_analyzer') RETURN d",
+        "LET transp=true LET dist=1 LET x='foo' FOR d IN myView FILTER "
+        "ANALYZER(LEVENSHTEIN_MATCH(d['name'].foo, 'fooo', dist-1, transp), "
+        "'test_analyzer') RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_('foo')], 'fooo', 0), 'test_analyzer') RETURN d",
-        expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET y='o' LET transp=true LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), dist-1, transp), 'test_analyzer') RETURN d",
-        expected,
-        &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET transp=true LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d['name'].foo, 'fooo', dist-1, transp), 'test_analyzer') RETURN d",
-        expected,
-        &ctx);
   }
 
-  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false), 'test_analyzer'), 0.5)
+  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false),
+  // 'test_analyzer'), 0.5)
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
@@ -6181,34 +6687,44 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_distance = 2;
     opts->with_transpositions = false;
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
-    opts->max_terms = arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
+    opts->max_terms =
+        arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
-    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
-    ctx.vars.emplace("transp", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace(
+        "dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool{false}));
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false), 'test_analyzer'), 0.5) RETURN d",
+        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[4], "
+        "'fooo', 2, false), 'test_analyzer'), 0.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false), 0.5), 'test_analyzer') RETURN d",
+        "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], "
+        "'fooo', 2, false), 0.5), 'test_analyzer') RETURN d",
         expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER "
+                        "BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)],"
+                        " 'fooo', 2, false), 'test_analyzer'), 0.5) RETURN d",
+                        expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)], 'fooo', 2, false), 'test_analyzer'), 0.5) RETURN d",
+        "LET y='o' LET transp=false LET dist=1 LET x='foo' FOR d IN myView "
+        "FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), "
+        "dist+1, transp), 0.5), 'test_analyzer') RETURN d",
         expected, &ctx);
-    assertFilterSuccess(
-        vocbase(),
-        "LET y='o' LET transp=false LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), dist+1, transp), 0.5), 'test_analyzer') RETURN d",
-        expected,
-        &ctx);
   }
 
-  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false, 0), 'test_analyzer'), 0.5)
+  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false, 0),
+  // 'test_analyzer'), 0.5)
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
@@ -6221,55 +6737,65 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_terms = 0;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
-    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
-    ctx.vars.emplace("transp", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace(
+        "dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool{false}));
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false, 0), 'test_analyzer'), 0.5) RETURN d",
+        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[4], "
+        "'fooo', 2, false, 0), 'test_analyzer'), 0.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false, _FORWARD_(0)), 0.5), 'test_analyzer') RETURN d",
+        "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], "
+        "'fooo', 2, false, _FORWARD_(0)), 0.5), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)], 'fooo', 2, false, 0), 'test_analyzer'), 0.5) RETURN d",
+        "FOR d IN myView FILTER "
+        "BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)], 'fooo', 2, "
+        "false, 0), 'test_analyzer'), 0.5) RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false, 0.1), 0.5), 'test_analyzer') RETURN d",
+        "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], "
+        "'fooo', 2, false, 0.1), 0.5), 'test_analyzer') RETURN d",
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "LET y='o' LET transp=false LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), dist+1, transp, x*10+2-42), 0.5), 'test_analyzer') RETURN d",
-        expected,
-        &ctx);
+        "LET y='o' LET transp=false LET dist=1 LET x='foo' FOR d IN myView "
+        "FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), "
+        "dist+1, transp, x*10+2-42), 0.5), 'test_analyzer') RETURN d",
+        expected, &ctx);
   }
 
   // invalid attribute access
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH([d], 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d[*], 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name[*], 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo[*].name, 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH('foo', 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH([d], 'fooo', 1, "
+                   "false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d[*], 'fooo', 1, "
+                   "false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name[*], "
+                   "'fooo', 1, false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo[*].name, "
+                   "'fooo', 1, false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH('foo', 'fooo', 1, "
+                   "false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH([], 'fooo', 1, false) RETURN d",
@@ -6278,34 +6804,34 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH({}, 'fooo', 1, false) RETURN d",
       &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(null, 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(true, 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(null, 'fooo', 1, "
+                   "false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(true, 'fooo', 1, "
+                   "false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
 
   // non-deterministic attribute access
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(RAND() > 0.5 ? d.foo.name : d.foo.bar, 'fooo', 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(RAND() > 0.5 ? "
+                   "d.foo.name : d.foo.bar, 'fooo', 1, false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
 
   // invalid prefix
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', 0, true, 42, [1]) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, '', 0, "
+                   "true, 42, [1]) RETURN d",
+                   &ExpressionContextMock::EMPTY);
 
   // invalid target
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, true, 1, false) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, null, 1, false) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, true, 1, "
+                   "false) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, null, 1, "
+                   "false) RETURN d");
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 1, 1, false) RETURN d");
@@ -6315,113 +6841,114 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, {}, 1, false) RETURN d");
-  assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, _FORWARD_({}), 1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, "
+                            "_FORWARD_({}), 1, false) RETURN d",
+                            &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, d, 1, false) RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // invalid distance
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 5, false) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', -1, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 5, "
+                   "false) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', -1, "
+                   "false) RETURN d",
+                   &ExpressionContextMock::EMPTY);
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{-1}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{-1}));
 
     assertFilterExecutionFail(
         vocbase(),
-        "LET x=-1 FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', x, false) RETURN d",
+        "LET x=-1 FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', x, "
+        "false) RETURN d",
         &ExpressionContextMock::EMPTY);
   }
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', null, false) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', true, false) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', '1', false) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', [1], false) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', {}, false) RETURN d");
-  assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', _FORWARD_({}), false) RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', d, false) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', "
+                   "null, false) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', "
+                   "true, false) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', "
+                   "'1', false) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', "
+                   "[1], false) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', {}, "
+                   "false) RETURN d");
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, "
+                            "'foo', _FORWARD_({}), false) RETURN d",
+                            &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, "
+                            "'foo', d, false) RETURN d",
+                            &ExpressionContextMock::EMPTY);
 
   // invalid "with transpositions"
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, 'true') RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, null) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, "
+                   "'true') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, "
+                   "null) RETURN d");
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, 1) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, [false]) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, "
+                   "[false]) RETURN d");
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, {}) RETURN d");
-  assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, _FORWARD_({})) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, "
+                            "'foo', 1, _FORWARD_({})) RETURN d",
+                            &ExpressionContextMock::EMPTY);
   assertFilterExecutionFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, d) RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // invalid "max_terms transpositions"
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, true, '42') RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, true, null) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, true, [42]) RETURN d");
-  assertFilterFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, true, {}) RETURN d");
-  assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, true, _FORWARD_([42])) RETURN d",
-      &ExpressionContextMock::EMPTY);
-  assertFilterExecutionFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, true, d) RETURN d",
-      &ExpressionContextMock::EMPTY);
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, "
+                   "true, '42') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, "
+                   "true, null) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, "
+                   "true, [42]) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, "
+                   "true, {}) RETURN d");
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, "
+                            "'foo', 1, true, _FORWARD_([42])) RETURN d",
+                            &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(vocbase(),
+                            "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, "
+                            "'foo', 1, true, d) RETURN d",
+                            &ExpressionContextMock::EMPTY);
 
   // wrong number of arguments
-  assertFilterParseFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'true', 1, false, 1, 'z', 'x') RETURN d");
+  assertFilterParseFail(vocbase(),
+                        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, "
+                        "'true', 1, false, 1, 'z', 'x') RETURN d");
   assertFilterParseFail(
       vocbase(),
       "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'true') RETURN d");
   assertFilterParseFail(
-      vocbase(),
-      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo) RETURN d");
+      vocbase(), "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo) RETURN d");
 }
 
 TEST_F(IResearchFilterFunctionTest, inRange) {
@@ -6472,7 +6999,8 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
         expected);
   }
 
-  // ANALYZER(BOOST(d.name > 'a' && d.name <= 'z', 1.5), "testVocbase::test_analyzer")
+  // ANALYZER(BOOST(d.name > 'a' && d.name <= 'z', 1.5),
+  // "testVocbase::test_analyzer")
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
@@ -6499,12 +7027,16 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
@@ -6536,12 +7068,17 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6555,16 +7092,19 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // boolean expression in range, boost
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
     *range.mutable_field() = mangleBool("a.b.c.e.f");
     auto* opts = range.mutable_options();
-    opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    opts->range.min =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     opts->range.min_type = irs::BoundType::INCLUSIVE;
-    opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    opts->range.max =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
     opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
@@ -6587,16 +7127,19 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // null expression in range, boost
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
     *range.mutable_field() = mangleNull("a.b.c.e.f");
     auto* opts = range.mutable_options();
-    opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    opts->range.min =
+        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     opts->range.min_type = irs::BoundType::INCLUSIVE;
-    opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    opts->range.max =
+        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
@@ -6626,7 +7169,8 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     maxTerm.reset(40.);
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_granular_range>();
@@ -6788,17 +7332,17 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    irs::bstring ngram;
+    irs::assign(ngram, irs::string_ref("foo"));
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo') RETURN d",
-      expected);
+        vocbase(), "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo') RETURN d",
+        expected);
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo') RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo') RETURN d",
+        expected);
   }
 
   // NGRAM_MATCH with default analyzer default threshold value by var
@@ -6811,17 +7355,18 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    irs::bstring ngram;
+    irs::assign(ngram, irs::string_ref("foo"));
     opts->ngrams.push_back(std::move(ngram));
 
-    assertFilterSuccess(
-      vocbase(),
-      "LET strVal = 'foo' FOR d IN myView FILTER NGRAM_MATCH(d.name, strVal) RETURN d",
-      expected, &ctx);
-    assertFilterSuccess(
-      vocbase(),
-      "LET strVal = 'foo' FOR d IN myView FILTER NGRAM_match(d['name'], strVal) RETURN d",
-      expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET strVal = 'foo' FOR d IN myView FILTER "
+                        "NGRAM_MATCH(d.name, strVal) RETURN d",
+                        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET strVal = 'foo' FOR d IN myView FILTER "
+                        "NGRAM_match(d['name'], strVal) RETURN d",
+                        expected, &ctx);
   }
 
   // NGRAM_MATCH with boost
@@ -6832,17 +7377,18 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.7f;
-    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    irs::bstring ngram;
+    irs::assign(ngram, irs::string_ref("foo"));
     opts->ngrams.push_back(std::move(ngram));
 
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER BOOST(NGRAM_MATCH(d.name, 'foo'), 1.5) RETURN d",
-      expected);
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER BOOST(NGRAM_match(d['name'], 'foo'), 1.5) RETURN d",
-      expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER BOOST(NGRAM_MATCH(d.name, "
+                        "'foo'), 1.5) RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER BOOST(NGRAM_match(d['name'], "
+                        "'foo'), 1.5) RETURN d",
+                        expected);
   }
 
   // NGRAM_MATCH with default analyzer explicit threshold
@@ -6852,40 +7398,43 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.8f;
-    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    irs::bstring ngram;
+    irs::assign(ngram, irs::string_ref("foo"));
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 0.8) RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 0.8) RETURN d",
+        expected);
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 0.8) RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 0.8) RETURN d",
+        expected);
   }
 
   // NGRAM_MATCH with default analyzer explicit threshold via variable
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(0.8)));
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintDouble(0.8)));
 
     irs::Or expected;
     auto& filter = expected.add<irs::by_ngram_similarity>();
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();
     opts->threshold = 0.8f;
-    irs::bstring ngram; irs::assign(ngram, irs::string_ref("foo"));
+    irs::bstring ngram;
+    irs::assign(ngram, irs::string_ref("foo"));
     opts->ngrams.push_back(std::move(ngram));
 
-    assertFilterSuccess(
-      vocbase(),
-      "LET numVal = 0.8 FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', numVal) RETURN d",
-      expected, &ctx);
-    assertFilterSuccess(
-      vocbase(),
-      "LET numVal = 0.8 FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', numVal) RETURN d",
-      expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET numVal = 0.8 FOR d IN myView FILTER "
+                        "NGRAM_MATCH(d.name, 'foo', numVal) RETURN d",
+                        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET numVal = 0.8 FOR d IN myView FILTER "
+                        "NGRAM_match(d['name'], 'foo', numVal) RETURN d",
+                        expected, &ctx);
   }
   // variables + function calls
   {
@@ -6900,21 +7449,23 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{ 0.5 }));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{ "o" }));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.5}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
     ctx.vars.emplace("idx", arangodb::aql::AqlValue("foo"));
 
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name[_FORWARD_('foo')], 'fooo', 0.5), 'test_analyzer') RETURN d",
-      expected, &ctx);
-    assertFilterSuccess(
-      vocbase(),
-      "LET y='o' LET idx='foo' LET x=0.5 FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name[idx], CONCAT('foo', y), x), 'test_analyzer') RETURN d",
-      expected,
-      &ctx);
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name[_FORWARD_('foo')], "
+        "'fooo', 0.5), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(vocbase(),
+                        "LET y='o' LET idx='foo' LET x=0.5 FOR d IN myView "
+                        "FILTER ANALYZER(NGRAM_MATCH(d.name[idx], "
+                        "CONCAT('foo', y), x), 'test_analyzer') RETURN d",
+                        expected, &ctx);
   }
-
 
   // NGRAM_MATCH with explicit analyzer default threshold
   {
@@ -6927,14 +7478,14 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 'test_analyzer') RETURN d",
-      expected);
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 'test_analyzer') RETURN d",
-      expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', "
+                        "'test_analyzer') RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', "
+                        "'test_analyzer') RETURN d",
+                        expected);
   }
 
   // NGRAM_MATCH with explicit analyzer via ANALYZER default threshold
@@ -6948,14 +7499,15 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name, "
+                        "'foo'), 'test_analyzer') RETURN d",
+                        expected);
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name, 'foo'), 'test_analyzer') RETURN d",
-      expected);
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(NGRAM_match(d['name'], 'foo'), 'test_analyzer') RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(NGRAM_match(d['name'], 'foo'), "
+        "'test_analyzer') RETURN d",
+        expected);
   }
 
   // NGRAM_MATCH with explicit analyzer explicit threshold
@@ -6969,14 +7521,14 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 0.25, 'test_analyzer') RETURN d",
-      expected);
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 0.25, 'test_analyzer') RETURN d",
-      expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', "
+                        "0.25, 'test_analyzer') RETURN d",
+                        expected);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', "
+                        "0.25, 'test_analyzer') RETURN d",
+                        expected);
   }
 
   // NGRAM_MATCH with explicit analyzer via ANALYZER explicit threshold
@@ -6990,212 +7542,206 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name, "
+                        "'foo', 0.25), 'test_analyzer') RETURN d",
+                        expected);
     assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d.name, 'foo', 0.25), 'test_analyzer') RETURN d",
-      expected);
-    assertFilterSuccess(
-      vocbase(),
-      "FOR d IN myView FILTER ANALYZER(NGRAM_match(d['name'], 'foo', 0.25), 'test_analyzer') RETURN d",
-      expected);
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(NGRAM_match(d['name'], 'foo', 0.25), "
+        "'test_analyzer') RETURN d",
+        expected);
   }
 
   // wrong number of arguments
+  assertFilterParseFail(vocbase(),
+                        "FOR d IN myView FILTER NGRAM_MATCH(d.name) RETURN d");
   assertFilterParseFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name) RETURN d");
+      vocbase(), "FOR d IN myView FILTER NGRAM_MATCH(d['name']) RETURN d");
   assertFilterParseFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name']) RETURN d");
-  assertFilterParseFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 1, 2, 3, 4) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 1, 2, 3, 4) RETURN d");
 
   // invalid parameter order (overload with default analyzer)
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 0.5, 'foo') RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 0.5, 'foo') RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 0.5, 'foo') RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 0.5, 'foo') RETURN d");
 
   // invalid parameter order (overload with default threshold)
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH('foo', d.name, 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH('foo', d['name'], 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH('foo', d.name, "
+                   "'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH('foo', d['name'], "
+                   "'test_analyzer') RETURN d");
 
   // wrong first arg type
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d[*], 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH('a', 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_match('a', 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(1, 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_match(1, 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(null, 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_match(null, 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(['a'], 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_match(['a'], 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH({a:1}, 'foo', 0.25), 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER ANALYZER(NGRAM_match({a:1}, 'foo', 0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(d[*], 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH('a', 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_match('a', 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(1, 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_match(1, 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(null, 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_match(null, 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH(['a'], 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_match(['a'], 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_MATCH({a:1}, 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER ANALYZER(NGRAM_match({a:1}, 'foo', "
+                   "0.25), 'test_analyzer') RETURN d");
 
   // wrong second arg type
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d.name, 0.5) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 0.5) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 0.5) RETURN d");
+      vocbase(), "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 0.5) RETURN d");
 
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, [1, 2]) RETURN d");
+      vocbase(), "FOR d IN myView FILTER NGRAM_MATCH(d.name, [1, 2]) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], [1, 2]) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], [1, 2]) RETURN d");
 
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, {a: 1 }) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, {a: 1 }) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], {a: 1 }) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], {a: 1 }) RETURN d");
 
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d.name, true) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, true) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], true) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], true) RETURN d");
 
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d.name, null) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, null) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], null) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], null) RETURN d");
 
   // wrong third argument type (may be only string or double)
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', null) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', null) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', null) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', null) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', true) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', true) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', true) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', true) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', [1, 2]) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', [1, 2]) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', [1, 2]) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', [1, 2]) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', {a:1}) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', {a:1}) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', {a:1}) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', {a:1}) RETURN d");
 
   // invalid threshold value
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 1.1) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 1.1) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 1.1) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 1.1) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0) RETURN d");
 
   // invalid analyzer arg type
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, true) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, true) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, "
+                   "true) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, true) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, null) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, "
+                   "null) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, null) RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, 0.5) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, "
+                   "0.5) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, [1, "
+                   "2]) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, "
+                   "[1,2]) RETURN d");
   assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, null) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, 0.5) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, 0.5) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, [1, 2]) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, [1,2]) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, {a:1}) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, {a:1}) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 'test_analyzer', 'test_analyzer') RETURN d");
+      vocbase(),
+      "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5, {a:1}) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, "
+                   "{a:1}) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', "
+                   "'test_analyzer', 'test_analyzer') RETURN d");
 
   // non-deterministic arg
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(RAND() ? d.pui : d.name, 'def') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(RAND() ? d['pui'] : d['name'], 'def') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, RAND() ? 'abc' : 'def') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], RAND() ? 'abc' : 'def') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc',  RAND() ? 0.5 : 0.6) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc',  RAND() ? 0.5 : 0.6) RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5,  RAND() ? 'identity' : 'test_analyzer') RETURN d");
-  assertFilterFail(
-    vocbase(),
-    "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, RAND() ? 'identity' : 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(RAND() ? d.pui : "
+                   "d.name, 'def') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(RAND() ? d['pui'] : "
+                   "d['name'], 'def') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d.name, RAND() ? 'abc' "
+                   ": 'def') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], RAND() ? "
+                   "'abc' : 'def') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc',  RAND() "
+                   "? 0.5 : 0.6) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc',  "
+                   "RAND() ? 0.5 : 0.6) RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'abc', 0.5,  "
+                   "RAND() ? 'identity' : 'test_analyzer') RETURN d");
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER NGRAM_MATCH(d['name'], 'abc', 0.5, "
+                   "RAND() ? 'identity' : 'test_analyzer') RETURN d");
 }

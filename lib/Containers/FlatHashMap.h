@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,12 +28,12 @@
 namespace arangodb {
 namespace containers {
 
-template <typename T, typename V, 
-          typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
-          typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
-          typename Allocator = std::allocator<T>>
+template<typename T, typename V,
+         typename Hash =
+             ::iresearch_absl::container_internal::hash_default_hash<T>,
+         typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
+         typename Allocator = std::allocator<T>>
 using FlatHashMap = ::iresearch_absl::flat_hash_map<T, V, Hash, Eq, Allocator>;
 
 }
-}
-
+}  // namespace arangodb

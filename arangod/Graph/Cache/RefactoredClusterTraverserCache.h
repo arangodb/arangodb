@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,17 +59,20 @@ class RefactoredClusterTraverserCache {
   auto persistString(arangodb::velocypack::HashedStringRef idString)
       -> arangodb::velocypack::HashedStringRef;
 
-  auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
+  auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice)
+      -> void;
   auto isVertexCached(VertexType const& vertexKey) const -> bool;
   auto getCachedVertex(VertexType const& vertex) const -> velocypack::Slice;
 
-/**
- * @brief
- * 
- * Returns: first entry is the vpack that is inside the cache and stays valid during computation
- * The second entry indicates if the caller need to retain the handed in slice buffer.
- */
-  auto persistEdgeData(velocypack::Slice edgeSlice) -> std::pair<velocypack::Slice, bool>;
+  /**
+   * @brief
+   *
+   * Returns: first entry is the vpack that is inside the cache and stays valid
+   * during computation The second entry indicates if the caller need to retain
+   * the handed in slice buffer.
+   */
+  auto persistEdgeData(velocypack::Slice edgeSlice)
+      -> std::pair<velocypack::Slice, bool>;
   auto isEdgeCached(EdgeType const& edge) const -> bool;
   auto getCachedEdge(EdgeType const& edge) const -> velocypack::Slice;
 
@@ -92,7 +95,6 @@ class RefactoredClusterTraverserCache {
 
   /// @brief edge reference to edge data slice
   containers::FlatHashMap<EdgeType, velocypack::Slice> _edgeData;
-
 };
 
 }  // namespace graph

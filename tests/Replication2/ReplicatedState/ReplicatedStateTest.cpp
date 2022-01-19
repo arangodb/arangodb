@@ -37,12 +37,8 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::test;
 
-
-struct ReplicatedStateTest
-    : test::ReplicatedLogTest{
-  ReplicatedStateTest() {
-    feature->registerStateType<MyState>("my-state");
-  }
+struct ReplicatedStateTest : test::ReplicatedLogTest {
+  ReplicatedStateTest() { feature->registerStateType<MyState>("my-state"); }
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
 };
@@ -59,7 +55,8 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                         LogTerm{1}, {follower});
-  auto mux = streams::LogMultiplexer<replicated_state::ReplicatedStateStreamSpec<MyState>>::construct(leader);
+  auto mux = streams::LogMultiplexer<
+      replicated_state::ReplicatedStateStreamSpec<MyState>>::construct(leader);
   auto inputStream = mux->getStreamById<1>();
 
   inputStream->insert({.key = "hello", .value = "world"});
@@ -85,7 +82,9 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                         LogTerm{1}, {follower});
-  auto mux = streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(leader);
+  auto mux =
+      streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(
+          leader);
   auto inputStream = mux->getStreamById<1>();
   inputStream->insert({.key = "hello", .value = "world"});
 
@@ -95,7 +94,8 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
   follower = log->becomeFollower("follower", LogTerm{2}, "leader");
 
   // create a leader in term 2
-  leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{2}, {follower});
+  leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                   LogTerm{2}, {follower});
   leader->triggerAsyncReplication();
 
   while (follower->hasPendingAppendEntries()) {
@@ -114,8 +114,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto log = makeReplicatedLog(LogId{1});
-  auto leader =
-      log->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = log->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                  LogTerm{1}, {follower});
   leader->triggerAsyncReplication();
   auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", log));
@@ -123,9 +123,11 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
   state->flush();
   {
     auto status = state->getStatus();
-    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    ASSERT_TRUE(
+        std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kWaitingForLeadershipEstablished);
+    EXPECT_EQ(s.state.state,
+              LeaderInternalState::kWaitingForLeadershipEstablished);
   }
 
   while (follower->hasPendingAppendEntries()) {
@@ -138,7 +140,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
 
   {
     auto status = state->getStatus();
-    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    ASSERT_TRUE(
+        std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
     EXPECT_EQ(s.state.state, LeaderInternalState::kServiceAvailable);
   }
@@ -158,14 +161,18 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
     state->flush();
     {
       auto status = state->getStatus();
-      ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(status.variant));
+      ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(
+          status.variant));
       auto s = std::get<replicated_state::FollowerStatus>(status.variant);
-      EXPECT_EQ(s.state.state, FollowerInternalState::kWaitForLeaderConfirmation);
+      EXPECT_EQ(s.state.state,
+                FollowerInternalState::kWaitForLeaderConfirmation);
     }
 
     auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                           LogTerm{1}, {follower});
-    auto mux = streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(leader);
+    auto mux =
+        streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(
+            leader);
     auto inputStream = mux->getStreamById<1>();
 
     inputStream->insert({.key = "hello", .value = "world"});
@@ -175,7 +182,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
 
     {
       auto status = state->getStatus();
-      ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(status.variant));
+      ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(
+          status.variant));
       auto s = std::get<replicated_state::FollowerStatus>(status.variant);
       EXPECT_EQ(s.state.state, FollowerInternalState::kNothingToApply);
     }
@@ -185,8 +193,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
   // and check that old entries are recovered.
   {
     auto follower = leaderLog->becomeFollower("follower", LogTerm{2}, "leader");
-    auto leader =
-        log->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{2}, {follower});
+    auto leader = log->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                    LogTerm{2}, {follower});
     leader->triggerAsyncReplication();
     auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
         feature->createReplicatedState("my-state", log));
@@ -202,7 +210,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
     ASSERT_TRUE(leaderState->wasRecoveryRun());
     {
       auto status = state->getStatus();
-      ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+      ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(
+          status.variant));
       auto s = std::get<replicated_state::LeaderStatus>(status.variant);
       EXPECT_EQ(s.state.state, LeaderInternalState::kServiceAvailable);
     }
@@ -216,13 +225,12 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
 }
 
 TEST_F(ReplicatedStateTest, stream_test) {
-
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{1});
 
   auto follower = followerLog->becomeFollower("B", LogTerm{1}, "A");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "A", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "A",
+                                        LogTerm{1}, {follower});
   leader->triggerAsyncReplication();
 
   auto leaderState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
@@ -243,7 +251,8 @@ TEST_F(ReplicatedStateTest, stream_test) {
   ASSERT_NE(leaderMachine, nullptr);
 
   for (int i = 0; i < 200; i++) {
-    leaderMachine->set(std::to_string(i), std::string{"value"} + std::to_string(i));
+    leaderMachine->set(std::to_string(i),
+                       std::string{"value"} + std::to_string(i));
   }
 
   while (follower->hasPendingAppendEntries()) {

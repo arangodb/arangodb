@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,9 +39,9 @@ namespace arangodb {
 
 namespace maintenance {
 
-MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature& feature,
-                                     int minimalPriorityAllowed,
-                                     std::unordered_set<std::string> const& labels)
+MaintenanceWorker::MaintenanceWorker(
+    arangodb::MaintenanceFeature& feature, int minimalPriorityAllowed,
+    std::unordered_set<std::string> const& labels)
     : Thread(feature.server(), "MaintenanceWorker"),
       _feature(feature),
       _curAction(nullptr),
@@ -68,7 +68,8 @@ void MaintenanceWorker::run() {
         try {
           switch (_loopState) {
             case eFIND_ACTION:
-              _curAction = _feature.findReadyAction(_minimalPriorityAllowed, _labels);
+              _curAction =
+                  _feature.findReadyAction(_minimalPriorityAllowed, _labels);
               more = (bool)_curAction;
               break;
 
@@ -78,7 +79,7 @@ void MaintenanceWorker::run() {
               }
               _curAction->startStats();
               LOG_TOPIC("fe241", DEBUG, Logger::MAINTENANCE)
-                << "Maintenance: starting to execute action: " << *_curAction;
+                  << "Maintenance: starting to execute action: " << *_curAction;
               more = _curAction->first();
               break;
 
@@ -89,17 +90,19 @@ void MaintenanceWorker::run() {
             default:
               _loopState = eSTOP;
               LOG_TOPIC("dc389", ERR, Logger::CLUSTER)
-                  << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
+                  << "MaintenanceWorkerRun:  unexpected state (" << _loopState
+                  << ")";
 
           }  // switch
-        
+
           // determine next loop state
           nextState(more);
 
         } catch (std::exception const& ex) {
           if (_curAction) {
             LOG_TOPIC("dd8e8", ERR, Logger::CLUSTER)
-                << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+                << "MaintenanceWorkerRun:  caught exception (" << ex.what()
+                << ")"
                 << " state:" << _loopState << " action:" << *_curAction;
 
             try {
@@ -111,7 +114,8 @@ void MaintenanceWorker::run() {
             }
           } else {
             LOG_TOPIC("16d4c", ERR, Logger::CLUSTER)
-                << "MaintenanceWorkerRun:  caught exception (" << ex.what() << ")"
+                << "MaintenanceWorkerRun:  caught exception (" << ex.what()
+                << ")"
                 << " state:" << _loopState;
           }
         } catch (...) {
@@ -151,7 +155,8 @@ void MaintenanceWorker::run() {
 
 void MaintenanceWorker::nextState(bool actionMore) {
   // bad result code forces actionMore to false
-  if (_curAction && (!_curAction->result().ok() || FAILED == _curAction->getState())) {
+  if (_curAction &&
+      (!_curAction->result().ok() || FAILED == _curAction->getState())) {
     actionMore = false;
   }  // if
 
@@ -173,7 +178,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->setState(WAITING);
         tempPtr = _curAction;
         _curAction = _curAction->getPreAction();
-        _curAction->setPostAction(std::make_shared<ActionDescription>(tempPtr->describe()));
+        _curAction->setPostAction(
+            std::make_shared<ActionDescription>(tempPtr->describe()));
         _loopState = eRUN_FIRST;
       }  // if
     } else {
@@ -194,8 +200,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->setState(COMPLETE);
         if (_curAction->requeueRequested()) {
           LOG_TOPIC("a4352", DEBUG, Logger::MAINTENANCE)
-            << "Requeueing action " << *_curAction << " with new priority "
-            << _curAction->requeuePriority();
+              << "Requeueing action " << *_curAction << " with new priority "
+              << _curAction->requeuePriority();
           _feature.requeueAction(_curAction, _curAction->requeuePriority());
         }
 
@@ -203,7 +209,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
         if (_curAction->getPostAction()) {
           _curAction = _curAction->getPostAction();
           _curAction->clearPreAction();
-          _loopState = (WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
+          _loopState =
+              (WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
           _curAction->setState(EXECUTING);
         } else {
           _curAction.reset();
@@ -218,8 +225,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
           failAction->setState(FAILED);
           if (failAction->requeueRequested()) {
             LOG_TOPIC("a4353", DEBUG, Logger::MAINTENANCE)
-              << "Requeueing action " << *failAction << " with new priority "
-              << failAction->requeuePriority();
+                << "Requeueing action " << *failAction << " with new priority "
+                << failAction->requeuePriority();
             _feature.requeueAction(failAction, failAction->requeuePriority());
           }
           failAction = failAction->getPostAction();
@@ -234,7 +241,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
 }
 
 void MaintenanceWorker::recordJobStats(bool failed) {
-  auto iter = _feature._maintenance_job_metrics_map.find(_curAction->describe().name());
+  auto iter =
+      _feature._maintenance_job_metrics_map.find(_curAction->describe().name());
   if (iter != _feature._maintenance_job_metrics_map.end()) {
     MaintenanceFeature::ActionMetrics& metrics = iter->second;
     auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(

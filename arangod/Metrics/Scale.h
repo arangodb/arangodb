@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class Scale {
  public:
   using Value = T;
@@ -93,7 +93,7 @@ class Scale {
   T _high;
 };
 
-template <typename T>
+template<typename T>
 std::ostream& operator<<(std::ostream& o, Scale<T> const& s) {
   return s.print(o);
 }

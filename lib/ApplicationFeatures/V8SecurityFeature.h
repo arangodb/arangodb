@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,12 +43,10 @@ namespace options {
 class ProgramOptions;
 }
 
-enum class FSAccessType{
-  READ,
-  WRITE
-};
+enum class FSAccessType { READ, WRITE };
 
-class V8SecurityFeature final : public application_features::ApplicationFeature {
+class V8SecurityFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit V8SecurityFeature(application_features::ApplicationServer& server);
 
@@ -74,22 +72,28 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 
   /// @brief tests if the value of the startup option should be exposed to end
   /// users via JavaScript actions. will use _startupOptionsFilter*
-  bool shouldExposeStartupOption(v8::Isolate* isolate, std::string const& name) const;
+  bool shouldExposeStartupOption(v8::Isolate* isolate,
+                                 std::string const& name) const;
 
   /// @brief tests if the value of the environment variable should be exposed to
   /// end users via JavaScript actions. will use _environmentVariablesFilter*
-  bool shouldExposeEnvironmentVariable(v8::Isolate* isolate, std::string const& name) const;
+  bool shouldExposeEnvironmentVariable(v8::Isolate* isolate,
+                                       std::string const& name) const;
 
   /// @brief tests if the IP address or domain/host name given should be
   /// accessible via the JS_Download (internal.download) function in JavaScript
   /// actions the endpoint is passed in via protocol (e.g. tcp://, ssl://,
   /// unix://) and port number (if applicable)
-  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint, std::string const& url) const;
+  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate,
+                                    std::string const& endpoint,
+                                    std::string const& url) const;
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code
-  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path, FSAccessType) const;
-  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path, FSAccessType) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path,
+                             FSAccessType) const;
+  bool isAllowedToAccessPath(v8::Isolate* isolate, char const* path,
+                             FSAccessType) const;
   bool isInternalContext(v8::Isolate* isolate) const;
   bool isAdminScriptContext(v8::Isolate* isolate) const;
 
@@ -145,4 +149,3 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
 };
 
 }  // namespace arangodb
-

@@ -122,33 +122,34 @@ function optimizerRuleZkd2dIndexTestSuite() {
                     if (x === "none" && y === "none" && z === "none" && w === "none") {
                         continue; // does not use the index
                     }
-
-                    testObject[["testCase", x, y, z, w].join("_")] = function () {
-                        const query = `
-                            FOR d IN ${colName}
+                    for (let addLookahead of ["", " OPTIONS {lookahead: 32}"]) {
+                        testObject[["testCase", x, y, z, w].join("_")] = function () {
+                            const query = `
+                            FOR d IN ${colName} ${addLookahead}
                               FILTER ${conditionForVariable(x, "d.x")}
                               FILTER ${conditionForVariable(y, "d.y")}
                               FILTER ${conditionForVariable(z, "d.z")}
                               FILTER ${conditionForVariable(w, "d.a.w")}
                               RETURN [d.x, d.y, d.z, d.a.w]
                           `;
-                        const explainRes = AQL_EXPLAIN(query);
-                        const appliedRules = explainRes.plan.rules;
-                        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-                        assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
-                        assertTrue(appliedRules.includes(useIndexes));
+                            const explainRes = AQL_EXPLAIN(query);
+                            const appliedRules = explainRes.plan.rules;
+                            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+                            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+                            assertTrue(appliedRules.includes(useIndexes));
 
-                        const conds = [x, y, z, w];
-                        if (!conds.includes("lt") && !conds.includes("gt") && !conds.includes("legt")) {
-                            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-                        }
-                        const executeRes = AQL_EXECUTE(query);
-                        const res = executeRes.json;
-                        const expected = productSet(x, y, z, w);
-                        res.sort();
-                        expected.sort();
-                        assertEqual(expected, res, JSON.stringify({query}));
-                    };
+                            const conds = [x, y, z, w];
+                            if (!conds.includes("lt") && !conds.includes("gt") && !conds.includes("legt")) {
+                                assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+                            }
+                            const executeRes = AQL_EXECUTE(query);
+                            const res = executeRes.json;
+                            const expected = productSet(x, y, z, w);
+                            res.sort();
+                            expected.sort();
+                            assertEqual(expected, res, JSON.stringify({query}));
+                        };
+                    }
                 }
             }
         }

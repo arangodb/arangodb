@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -54,7 +55,8 @@ replicated_log::QuorumData::QuorumData(VPackSlice slice) {
   }
 }
 
-void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::QuorumData::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Index, VPackValue(index.value));
   builder.add(StaticStrings::Term, VPackValue(term.value));
@@ -66,7 +68,8 @@ void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) cons
   }
 }
 
-void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::LogStatistics::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add("firstIndex", VPackValue(firstIndex.value));
@@ -74,11 +77,13 @@ void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) c
   spearHead.toVelocyPack(builder);
 }
 
-auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
+auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice)
+    -> LogStatistics {
   LogStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.firstIndex = slice.get("firstIndex").extract<LogIndex>();
-  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
+  stats.spearHead =
+      TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   return stats;
 }
 
@@ -89,13 +94,13 @@ auto replicated_log::operator==(LogStatistics const& left,
          left.firstIndex == right.firstIndex;
 }
 
-auto replicated_log::operator!=(LogStatistics const &left,
+auto replicated_log::operator!=(LogStatistics const& left,
                                 LogStatistics const& right) noexcept -> bool {
   return !(left == right);
 }
 
-auto replicated_log::AppendEntriesErrorReason::getErrorMessage()
-    const noexcept -> std::string_view {
+auto replicated_log::AppendEntriesErrorReason::getErrorMessage() const noexcept
+    -> std::string_view {
   switch (error) {
     case ErrorType::kNone:
       return "None";
@@ -131,8 +136,8 @@ constexpr static std::string_view kPersistenceFailureString =
 constexpr static std::string_view kCommunicationErrorString =
     "CommunicationError";
 
-auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(std::string_view str)
-    -> ErrorType {
+auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(
+    std::string_view str) -> ErrorType {
   if (str == kNoneString) {
     return ErrorType::kNone;
   } else if (str == kInvalidLeaderIdString) {
@@ -151,11 +156,12 @@ auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(std::string_v
     return ErrorType::kCommunicationError;
   }
   THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                "unknown error type %*s", str.size(), str.data());
+                                "unknown error type %*s", str.size(),
+                                str.data());
 }
 
-auto replicated_log::to_string(AppendEntriesErrorReason::ErrorType error) noexcept
-    -> std::string_view {
+auto replicated_log::to_string(
+    AppendEntriesErrorReason::ErrorType error) noexcept -> std::string_view {
   switch (error) {
     case AppendEntriesErrorReason::ErrorType::kNone:
       return kNoneString;
@@ -182,7 +188,8 @@ auto replicated_log::to_string(AppendEntriesErrorReason::ErrorType error) noexce
 
 constexpr static std::string_view kDetailsString = "details";
 
-void replicated_log::AppendEntriesErrorReason::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::AppendEntriesErrorReason::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Error, VPackValue(to_string(error)));
   builder.add(StaticStrings::ErrorMessage, VPackValue(getErrorMessage()));
@@ -191,10 +198,11 @@ void replicated_log::AppendEntriesErrorReason::toVelocyPack(velocypack::Builder&
   }
 }
 
-auto replicated_log::AppendEntriesErrorReason::fromVelocyPack(velocypack::Slice slice)
-    -> AppendEntriesErrorReason {
+auto replicated_log::AppendEntriesErrorReason::fromVelocyPack(
+    velocypack::Slice slice) -> AppendEntriesErrorReason {
   auto errorSlice = slice.get(StaticStrings::Error);
-  TRI_ASSERT(errorSlice.isString()) << "Expected string, found: " << errorSlice.toJson();
+  TRI_ASSERT(errorSlice.isString())
+      << "Expected string, found: " << errorSlice.toJson();
   auto error = errorTypeFromString(errorSlice.copyString());
 
   std::optional<std::string> details;
@@ -208,12 +216,15 @@ auto FollowerState::withUpToDate() noexcept -> FollowerState {
   return FollowerState(std::in_place, UpToDate{});
 }
 
-auto FollowerState::withErrorBackoff(std::chrono::duration<double, std::milli> duration, std::size_t retryCount) noexcept
-    -> FollowerState {
+auto FollowerState::withErrorBackoff(
+    std::chrono::duration<double, std::milli> duration,
+    std::size_t retryCount) noexcept -> FollowerState {
   return FollowerState(std::in_place, ErrorBackoff{duration, retryCount});
 }
 
-auto FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli> duration) noexcept -> FollowerState {
+auto FollowerState::withRequestInFlight(
+    std::chrono::duration<double, std::milli> duration) noexcept
+    -> FollowerState {
   return FollowerState(std::in_place, RequestInFlight{duration});
 }
 
@@ -225,11 +236,13 @@ auto FollowerState::fromVelocyPack(velocypack::Slice slice) -> FollowerState {
   auto state = slice.get("state").extract<std::string_view>();
   if (state == errorBackoffString) {
     return FollowerState::withErrorBackoff(
-        std::chrono::duration<double, std::milli>{slice.get("durationMS").extract<double>()},
+        std::chrono::duration<double, std::milli>{
+            slice.get("durationMS").extract<double>()},
         slice.get("retryCount").extract<std::size_t>());
   } else if (state == requestInFlightString) {
-    return FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli>{
-        slice.get("durationMS").extract<double>()});
+    return FollowerState::withRequestInFlight(
+        std::chrono::duration<double, std::milli>{
+            slice.get("durationMS").extract<double>()});
   } else {
     return FollowerState::withUpToDate();
   }

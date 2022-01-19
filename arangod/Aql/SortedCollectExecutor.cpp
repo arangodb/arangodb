@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,8 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
-    aggregators.emplace_back(Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
+    aggregators.emplace_back(
+        Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
 }
@@ -145,7 +146,8 @@ SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
   _currentGroup.reset(emptyInput);
 }
 
-void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) {
+void SortedCollectExecutor::CollectGroup::addLine(
+    InputAqlItemRow const& input) {
   // remember the last valid row we had
   _lastInputRow = input;
 
@@ -168,18 +170,20 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
-                                                                 /*resolveExternals*/false,
-                                                                 /*allowUnindexed*/false);
+      input.getValue(infos.getExpressionRegister())
+          .toVelocyPack(infos.getVPackOptions(), _builder,
+                        /*resolveExternals*/ false,
+                        /*allowUnindexed*/ false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
       for (auto const& pair : infos.getInputVariables()) {
         _builder.add(VPackValue(pair.first));
-        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder,
-                                                 /*resolveExternals*/false,
-                                                 /*allowUnindexed*/false);
+        input.getValue(pair.second)
+            .toVelocyPack(infos.getVPackOptions(), _builder,
+                          /*resolveExternals*/ false,
+                          /*allowUnindexed*/ false);
       }
       _builder.close();
     }
@@ -189,7 +193,8 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
   }
 }
 
-bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& input) const {
+bool SortedCollectExecutor::CollectGroup::isSameGroup(
+    InputAqlItemRow const& input) const {
   // if we do not have valid input, return false
   if (!input.isInitialized()) {
     return false;
@@ -221,19 +226,20 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
   }
 }
 
-void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& builder) {
+void SortedCollectExecutor::CollectGroup::groupValuesToArray(
+    VPackBuilder& builder) {
   builder.openArray();
   for (auto const& value : groupValues) {
     value.toVelocyPack(infos.getVPackOptions(), builder,
-                       /*resolveExternals*/false,
-                       /*allowUnindexed*/false);
+                       /*resolveExternals*/ false,
+                       /*allowUnindexed*/ false);
   }
 
   builder.close();
 }
 
-void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output,
-                                                        InputAqlItemRow const& input) {
+void SortedCollectExecutor::CollectGroup::writeToOutput(
+    OutputAqlItemRow& output, InputAqlItemRow const& input) {
   // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
 
@@ -257,7 +263,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   for (auto& it : this->aggregators) {
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
-    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow, guard);
+    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
+                         guard);
     ++j;
   }
 
@@ -266,10 +273,10 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
     TRI_ASSERT(_builder.isOpenArray());
     _builder.close();
 
-    AqlValue val(std::move(_buffer)); // _buffer still usable after
+    AqlValue val(std::move(_buffer));  // _buffer still usable after
     AqlValueGuard guard{val, true};
     TRI_ASSERT(_buffer.size() == 0);
-    _builder.clear(); // necessary
+    _builder.clear();  // necessary
 
     output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
   }
@@ -278,7 +285,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
 }
 
 [[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     // Worst case assumption:
     // For every input row we have a new group.
@@ -316,14 +324,16 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     auto [state, input] = inputRange.peekDataRow();
 
     INTERNAL_LOG_SC << "SortedCollectExecutor::produceRows " << state << " "
-                 << input.isInitialized();
+                    << input.isInitialized();
 
-    if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
+    if (state == ExecutorState::DONE &&
+        !(_haveSeenData || input.isInitialized())) {
       // we have never been called with data
       INTERNAL_LOG_SC << "never called with data";
       if (_infos.getGroupRegisters().empty()) {
         // by definition we need to emit one collect row
-        _currentGroup.writeToOutput(output, InputAqlItemRow{CreateInvalidInputRowHint{}});
+        _currentGroup.writeToOutput(
+            output, InputAqlItemRow{CreateInvalidInputRowHint{}});
       }
       break;
     }
@@ -387,13 +397,15 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  auto newState = pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
+  auto newState =
+      pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
 
   INTERNAL_LOG_SC << "reporting state: " << newState;
   return {newState, Stats{}, AqlCall{}};
 }
 
-auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                          AqlCall& clientCall)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -401,13 +413,15 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 
   TRI_ASSERT(clientCall.needSkipMore());
   while (clientCall.needSkipMore()) {
-    INTERNAL_LOG_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
-    INTERNAL_LOG_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
+    INTERNAL_LOG_SC << "clientCall.getSkipCount() == "
+                    << clientCall.getSkipCount();
+    INTERNAL_LOG_SC << "clientCall.needSkipMore() == "
+                    << clientCall.needSkipMore();
 
     auto [state, input] = inputRange.peekDataRow();
 
     INTERNAL_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
-                 << std::boolalpha << input.isInitialized();
+                    << std::boolalpha << input.isInitialized();
 
     if (input.isInitialized()) {
       // we received data
@@ -463,5 +477,6 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
   INTERNAL_LOG_SC << " skipped rows: " << clientCall.getSkipCount();
   INTERNAL_LOG_SC << "reporting state: " << inputRange.upstreamState();
 
-  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(), AqlCall{}};
+  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(),
+          AqlCall{}};
 }

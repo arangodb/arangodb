@@ -75,7 +75,7 @@ void index_file_refs::clear() {
   refs_.visit([](const std::string&, size_t){ return true; }, true);
 
   if (!refs_.empty()) {
-    throw illegal_state(); // cannot clear ref_counter due to live refs
+    throw illegal_state{"Cannot clear ref_counter due to live refs."};
   }
 }
 

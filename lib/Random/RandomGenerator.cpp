@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -218,7 +218,7 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 #ifndef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceDirect : public RandomDevice {
  public:
   explicit RandomDeviceDirect(std::string const& path) : fd(-1), pos(0) {
@@ -288,7 +288,7 @@ class RandomDeviceDirect : public RandomDevice {
 #ifndef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceCombined : public RandomDevice {
  public:
   explicit RandomDeviceCombined(std::string const& path)
@@ -361,7 +361,8 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TOPIC("6a060", TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
+      LOG_TOPIC("6a060", TRACE, arangodb::Logger::FIXME)
+          << "using seed " << rseed;
     }
 
     if (0 < n) {
@@ -412,7 +413,7 @@ class RandomDeviceMersenne : public RandomDevice {
 #ifdef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceWin32 : public RandomDevice {
  public:
   RandomDeviceWin32() : cryptoHandle(0), pos(0) {
@@ -521,17 +522,19 @@ void RandomGenerator::ensureDeviceIsInitialized() {
 
 void RandomGenerator::shutdown() {
   // nothing to do...
-  // thread-local devices will be released when their respective threads terminate.
-  // however, we want to reset the device for testing
+  // thread-local devices will be released when their respective threads
+  // terminate. however, we want to reset the device for testing
   _device.reset();
 }
-  
+
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
-  return static_cast<int16_t>(interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
+  return static_cast<int16_t>(
+      interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
-  return static_cast<int32_t>(interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
+  return static_cast<int32_t>(
+      interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
 }
 
 int64_t RandomGenerator::interval(int64_t left, int64_t right) {
@@ -600,7 +603,8 @@ int32_t RandomGenerator::random(int32_t left, int32_t right) {
 
 void RandomGenerator::seed(uint64_t seed) {
   ensureDeviceIsInitialized();
-  if (RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
+  if (RandomDeviceMersenne* dev =
+          dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
     dev->seed(seed);
     return;
   }

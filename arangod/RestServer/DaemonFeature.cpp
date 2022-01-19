@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,17 +83,28 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
 }
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--daemon", "background the server, running it as daemon",
-                     new BooleanParameter(&_daemon),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--daemon", "background the server, running it as daemon",
+      new BooleanParameter(&_daemon),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsLinux,
+                                   arangodb::options::Flags::OsMac,
+                                   arangodb::options::Flags::Hidden));
 
-  options->addOption("--pid-file", "pid-file in daemon mode",
-                     new StringParameter(&_pidFile),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--pid-file", "pid-file in daemon mode", new StringParameter(&_pidFile),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsLinux,
+                                   arangodb::options::Flags::OsMac,
+                                   arangodb::options::Flags::Hidden));
 
-  options->addOption("--working-directory", "working directory in daemon mode",
-                     new StringParameter(&_workingDirectory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--working-directory", "working directory in daemon mode",
+      new StringParameter(&_workingDirectory),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsLinux,
+                                   arangodb::options::Flags::OsMac,
+                                   arangodb::options::Flags::Hidden));
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -150,7 +161,8 @@ void DaemonFeature::daemonize() {
 
   // child process
   else {
-    LOG_TOPIC("0b126", DEBUG, Logger::STARTUP) << "daemon mode continuing within child";
+    LOG_TOPIC("0b126", DEBUG, Logger::STARTUP)
+        << "daemon mode continuing within child";
   }
 }
 
@@ -170,7 +182,8 @@ void DaemonFeature::checkPidFile() {
   // check if the pid-file exists
   if (!_pidFile.empty()) {
     if (FileUtils::isDirectory(_pidFile)) {
-      LOG_TOPIC("6b3c0", FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile << "' is a directory";
+      LOG_TOPIC("6b3c0", FATAL, arangodb::Logger::FIXME)
+          << "pid-file '" << _pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
     } else if (FileUtils::exists(_pidFile) && FileUtils::size(_pidFile) > 0) {
       LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
@@ -202,7 +215,8 @@ void DaemonFeature::checkPidFile() {
           FATAL_ERROR_EXIT();
         }
 
-        LOG_TOPIC("ecac1", DEBUG, Logger::STARTUP) << "found old pid: " << oldPid;
+        LOG_TOPIC("ecac1", DEBUG, Logger::STARTUP)
+            << "found old pid: " << oldPid;
 
         int r = kill(oldPid, 0);
 
@@ -223,10 +237,12 @@ void DaemonFeature::checkPidFile() {
             FATAL_ERROR_EXIT();
           }
 
-          LOG_TOPIC("1f3e6", INFO, Logger::STARTUP) << "removed stale pid-file '" << _pidFile << "'";
+          LOG_TOPIC("1f3e6", INFO, Logger::STARTUP)
+              << "removed stale pid-file '" << _pidFile << "'";
         } else {
           LOG_TOPIC("180c0", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _pidFile << "' exists and kill " << oldPid << " failed";
+              << "pid-file '" << _pidFile << "' exists and kill " << oldPid
+              << " failed";
           FATAL_ERROR_EXIT();
         }
       }
@@ -239,7 +255,8 @@ void DaemonFeature::checkPidFile() {
       }
     }
 
-    LOG_TOPIC("1589d", DEBUG, Logger::STARTUP) << "using pid-file '" << _pidFile << "'";
+    LOG_TOPIC("1589d", DEBUG, Logger::STARTUP)
+        << "using pid-file '" << _pidFile << "'";
   }
 }
 
@@ -257,7 +274,8 @@ int DaemonFeature::forkProcess() {
 
   // if we got a good PID, then we can exit the parent process
   if (pid > 0) {
-    LOG_TOPIC("89e55", DEBUG, Logger::STARTUP) << "started child process with pid " << pid;
+    LOG_TOPIC("89e55", DEBUG, Logger::STARTUP)
+        << "started child process with pid " << pid;
     return pid;
   }
 
@@ -323,7 +341,8 @@ void DaemonFeature::remapStandardFileDescriptors() {
   int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
 
   if (fd < 0) {
-    LOG_TOPIC("92755", FATAL, arangodb::Logger::FIXME) << "cannot open /dev/null";
+    LOG_TOPIC("92755", FATAL, arangodb::Logger::FIXME)
+        << "cannot open /dev/null";
     FATAL_ERROR_EXIT();
   }
 

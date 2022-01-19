@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,8 @@ Result indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 
 /// generate intervalls of list of intervals to scan
 void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
-                   S2Region const& region, std::vector<Interval>& sortedIntervals) {
+                   S2Region const& region,
+                   std::vector<Interval>& sortedIntervals) {
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
@@ -75,7 +76,8 @@ void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover,
+void scanIntervals(QueryParams const& params,
+                   std::vector<S2CellId> const& cover,
                    std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(params.cover.worstIndexedLevel > 0);
   if (cover.empty()) {
@@ -138,7 +140,8 @@ void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover
 #endif
 }
 
-double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2, geo::Ellipsoid const& e) {
+double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2,
+                        geo::Ellipsoid const& e) {
   // Use Karney's algorithm
   struct geod_geodesic g;
   geod_init(&g, e.equator_radius(), e.flattening());
@@ -157,7 +160,8 @@ S2LatLng geodesicPointAtDist(S2LatLng const& p, double dist, double azimuth,
   geod_init(&g, e.equator_radius(), e.flattening());
 
   double lat, lon;
-  geod_direct(&g, p.lat().degrees(), p.lng().degrees(), azimuth, dist, &lat, &lon, NULL);
+  geod_direct(&g, p.lat().degrees(), p.lng().degrees(), azimuth, dist, &lat,
+              &lon, NULL);
 
   return S2LatLng::FromDegrees(lat, lon);
 }

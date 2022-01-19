@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@ class GeneralServerFeature;
 
 namespace rest {
 
-template <SocketType T>
+template<SocketType T>
 class GeneralCommTask : public CommTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
@@ -43,37 +43,34 @@ class GeneralCommTask : public CommTask {
   virtual ~GeneralCommTask() = default;
 
   void stop() override;
-  
+
   void close(asio_ns::error_code const& err = asio_ns::error_code());
-  
+
  protected:
-  
   /// read from socket
   void asyncReadSome();
-  
+
   bool stopped() const { return _stopped.load(std::memory_order_acquire); }
-    
+
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
-  
+
   /// set / reset connection timeout
   virtual void setIOTimeout() = 0;
-  
+
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
   static constexpr double WriteTimeout = 300.0;
-    
+
   std::unique_ptr<AsioSocket<T>> _protocol;
-          
+
   GeneralServerFeature& _generalServerFeature;
-  
+
   bool _reading;
   bool _writing;
-  
+
  private:
-  
   std::atomic<bool> _stopped;
 };
 }  // namespace rest
 }  // namespace arangodb
-

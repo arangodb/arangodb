@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,44 +31,48 @@
 
 namespace arangodb::arangobench {
 
-  struct DocumentImportTest : public Benchmark<DocumentImportTest> {
-    static std::string name() { return "import-document"; }
+struct DocumentImportTest : public Benchmark<DocumentImportTest> {
+  static std::string name() { return "import-document"; }
 
-    DocumentImportTest(BenchFeature& arangobench)
+  DocumentImportTest(BenchFeature& arangobench)
       : Benchmark<DocumentImportTest>(arangobench) {}
 
-    bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-      return DeleteCollection(client, _arangobench.collection()) &&
-        CreateCollection(client, _arangobench.collection(), 2, _arangobench);
-    }
+  bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
+    return DeleteCollection(client, _arangobench.collection()) &&
+           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
+  }
 
-    void tearDown() override {}
+  void tearDown() override {}
 
-    void buildRequest(size_t threadNumber, size_t threadCounter,
-                      size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
-      requestData.type = rest::RequestType::POST;
-      requestData.url = std::string("/_api/import?collection=" + _arangobench.collection() +
-          "&type=documents");
-      uint64_t const n = _arangobench.complexity();
-      using namespace arangodb::velocypack;
-      requestData.payload.openArray();
-      for (uint64_t i = 0; i < n; ++i) {
-        requestData.payload.openObject();
-        requestData.payload.add("key1", Value(i));
-        requestData.payload.add("key2", Value(i));
-        requestData.payload.close();
-      }
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
+    requestData.type = rest::RequestType::POST;
+    requestData.url =
+        std::string("/_api/import?collection=" + _arangobench.collection() +
+                    "&type=documents");
+    uint64_t const n = _arangobench.complexity();
+    using namespace arangodb::velocypack;
+    requestData.payload.openArray();
+    for (uint64_t i = 0; i < n; ++i) {
+      requestData.payload.openObject();
+      requestData.payload.add("key1", Value(i));
+      requestData.payload.add("key2", Value(i));
       requestData.payload.close();
     }
+    requestData.payload.close();
+  }
 
-    char const* getDescription() const noexcept override {
-      return "performs multi-document imports using the specialized import API (in contrast to performing inserts via generic AQL). Each inserted document will have two attributes. The --complexity parameter controls the number of documents per import request. The total number of documents to be inserted is equal to the value of --requests times the value of --complexity.";
-    }
+  char const* getDescription() const noexcept override {
+    return "performs multi-document imports using the specialized import API "
+           "(in contrast to performing inserts via generic AQL). Each inserted "
+           "document will have two attributes. The --complexity parameter "
+           "controls the number of documents per import request. The total "
+           "number of documents to be inserted is equal to the value of "
+           "--requests times the value of --complexity.";
+  }
 
-    bool isDeprecated() const noexcept override {
-      return false;
-    }
-
-  };
+  bool isDeprecated() const noexcept override { return false; }
+};
 
 }  // namespace arangodb::arangobench

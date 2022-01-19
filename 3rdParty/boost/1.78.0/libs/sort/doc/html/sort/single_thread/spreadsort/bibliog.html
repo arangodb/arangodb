@@ -1,0 +1,123 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Bibliography</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Sort">
+<link rel="up" href="../spreadsort.html" title="2.1.-Spreadsort">
+<link rel="prev" href="acks.html" title="Acknowledgements">
+<link rel="next" href="history.html" title="History">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="acks.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../spreadsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="history.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.single_thread.spreadsort.bibliog"></a><a class="link" href="bibliog.html" title="Bibliography">Bibliography</a>
+</h4></div></div></div>
+<h5>
+<a name="sort.single_thread.spreadsort.bibliog.h0"></a>
+          <span class="phrase"><a name="sort.single_thread.spreadsort.bibliog.standard_template_library_sort_a"></a></span><a class="link" href="bibliog.html#sort.single_thread.spreadsort.bibliog.standard_template_library_sort_a">Standard
+          Template Library Sort Algorithms</a>
+        </h5>
+<p>
+          <a href="http://www.cplusplus.com/reference/algorithm/sort/" target="_top">C++ STL
+          sort algorithms</a>.
+        </p>
+<h5>
+<a name="sort.single_thread.spreadsort.bibliog.h1"></a>
+          <span class="phrase"><a name="sort.single_thread.spreadsort.bibliog.radix_sort"></a></span><a class="link" href="bibliog.html#sort.single_thread.spreadsort.bibliog.radix_sort">Radix
+          Sort</a>
+        </h5>
+<p>
+          A type of algorithm that sorts based upon distribution instead of by comparison.
+          Wikipedia has an article about Radix Sorting. A more detailed description
+          of various Radix Sorting algorithms is provided here:
+        </p>
+<p>
+          Donald Knuth. The Art of Computer Programming, Volume 3: Sorting and Searching,
+          Second Edition. Addison-Wesley, 1998. ISBN 0-201-89685-0. Section 5.2.5:
+          Sorting by Distribution, pp.168-179.
+        </p>
+<h5>
+<a name="sort.single_thread.spreadsort.bibliog.h2"></a>
+          <span class="phrase"><a name="sort.single_thread.spreadsort.bibliog.introsort"></a></span><a class="link" href="bibliog.html#sort.single_thread.spreadsort.bibliog.introsort">Introsort</a>
+        </h5>
+<p>
+          A high-speed comparison-based sorting algorithm that takes <span class="emphasis"><em>𝑶(N
+          * log(N))</em></span> time. See <a href="http://en.wikipedia.org/wiki/Introsort" target="_top">introsort</a>
+          and Musser, David R. (1997). "Introspective Sorting and Selection
+          Algorithms", Software: Practice and Experience (Wiley) 27 (8), pp
+          983-993, available at <a href="http://www.cs.rpi.edu/~musser/gp/introsort.ps" target="_top">Musser
+          Introsort</a>.
+        </p>
+<h5>
+<a name="sort.single_thread.spreadsort.bibliog.h3"></a>
+          <span class="phrase"><a name="sort.single_thread.spreadsort.bibliog.american_flag_sort"></a></span><a class="link" href="bibliog.html#sort.single_thread.spreadsort.bibliog.american_flag_sort">American
+          Flag Sort</a>
+        </h5>
+<p>
+          A high-speed hybrid string sorting algorithm that <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+          is partially based upon. See <a href="http://en.wikipedia.org/wiki/American_flag_sort" target="_top">American
+          flag sort</a> and Peter M. McIlroy, Keith Bostic, M. Douglas McIlroy.
+          Engineering Radix Sort, Computing Systems 1993.
+        </p>
+<h5>
+<a name="sort.single_thread.spreadsort.bibliog.h4"></a>
+          <span class="phrase"><a name="sort.single_thread.spreadsort.bibliog.adaptive_left_radix_arl"></a></span><a class="link" href="bibliog.html#sort.single_thread.spreadsort.bibliog.adaptive_left_radix_arl">Adaptive
+          Left Radix (ARL)</a>
+        </h5>
+<p>
+          ARL (Adaptive Left Radix) is a hybrid cache-friendly integer sorting algorithm
+          with comparable speed on random data to <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/sort/spreadsort/integer_sort_idm1895.html" title="Function template integer_sort">integer_sort</a></code></code>,
+          but does not have the optimizations for worst-case performance, causing
+          it to perform poorly on certain types of unevenly distributed data.
+        </p>
+<p>
+          Arne Maus, <a href="http://www.nik.no/2002/Maus.pdf" target="_top">ARL, a faster in-place,
+          cache friendly sorting algorithm</a>, presented at NIK2002, Norwegian
+          Informatics Conference, Kongsberg, 2002. Tapir, ISBN 82-91116-45-8.
+        </p>
+<h5>
+<a name="sort.single_thread.spreadsort.bibliog.h5"></a>
+          <span class="phrase"><a name="sort.single_thread.spreadsort.bibliog.original_spreadsort"></a></span><a class="link" href="bibliog.html#sort.single_thread.spreadsort.bibliog.original_spreadsort">Original
+          Spreadsort</a>
+        </h5>
+<p>
+          The algorithm that <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/sort/spreadsort/integer_sort_idm1895.html" title="Function template integer_sort">integer_sort</a></code></code>
+          was originally based on. <code class="literal"><code class="computeroutput"><a class="link" href="../../../boost/sort/spreadsort/integer_sort_idm1895.html" title="Function template integer_sort">integer_sort</a></code></code>
+          uses a smaller number of key bits at a time for better cache efficiency
+          than the method described in the paper. The importance of cache efficiency
+          grew as CPU clock speeds increased while main memory latency stagnated.
+          See Steven J. Ross, The Spreadsort High-performance General-case Sorting
+          Algorithm, Parallel and Distributed Processing Techniques and Applications,
+          Volume 3, pp.1100-1106. Las Vegas Nevada. 2002. See <a href="../../../../../doc/papers/original_spreadsort06_2002.pdf" target="_top">Steven
+          Ross spreadsort_2002</a>.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="acks.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../spreadsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="history.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

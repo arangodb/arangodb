@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -148,15 +148,10 @@ std::string const StaticStrings::IndexNamePrimary("primary");
 std::string const StaticStrings::IndexNameTime("time");
 
 // index hint strings
-std::string const StaticStrings::IndexHintAny("any");
-std::string const StaticStrings::IndexHintCollection("collection");
-std::string const StaticStrings::IndexHintHint("hint");
-std::string const StaticStrings::IndexHintDepth("depth");
-std::string const StaticStrings::IndexHintInbound("inbound");
+std::string const StaticStrings::IndexHintDisableIndex("disableIndex");
+std::string const StaticStrings::IndexHintMaxProjections("maxProjections");
 std::string const StaticStrings::IndexHintOption("indexHint");
 std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
-std::string const StaticStrings::IndexHintOutbound("outbound");
-std::string const StaticStrings::IndexHintWildcard("*");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -222,7 +217,8 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
-std::string const StaticStrings::XArangoQueueTimeSeconds("x-arango-queue-time-seconds");
+std::string const StaticStrings::XArangoQueueTimeSeconds(
+    "x-arango-queue-time-seconds");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(

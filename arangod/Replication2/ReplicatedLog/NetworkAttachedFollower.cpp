@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,10 +38,15 @@ using namespace arangodb::replication2::replicated_log;
 
 NetworkAttachedFollower::NetworkAttachedFollower(network::ConnectionPool* pool,
                                                  ParticipantId id,
-                                                 DatabaseID database, LogId logId)
-    : pool(pool), id(std::move(id)), database(std::move(database)), logId(logId) {}
+                                                 DatabaseID database,
+                                                 LogId logId)
+    : pool(pool),
+      id(std::move(id)),
+      database(std::move(database)),
+      logId(logId) {}
 
-auto NetworkAttachedFollower::getParticipantId() const noexcept -> ParticipantId const& {
+auto NetworkAttachedFollower::getParticipantId() const noexcept
+    -> ParticipantId const& {
   return id;
 }
 
@@ -56,14 +62,17 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
                                          logId, "append-entries");
   network::RequestOptions opts;
   opts.database = database;
-  auto f = network::sendRequest(pool, "server:" + id, arangodb::fuerte::RestVerb::Post,
-                                path, std::move(buffer), opts);
+  auto f = network::sendRequest(pool, "server:" + id,
+                                arangodb::fuerte::RestVerb::Post, path,
+                                std::move(buffer), opts);
 
-  return std::move(f).thenValue([](network::Response result) -> AppendEntriesResult {
-    if (result.fail() || !fuerte::statusIsSuccess(result.statusCode())) {
-      THROW_ARANGO_EXCEPTION(result.combinedResult());
-    }
-    TRI_ASSERT(result.slice().get("error").isFalse());
-    return AppendEntriesResult::fromVelocyPack(result.slice().get("result"));
-  });
+  return std::move(f).thenValue(
+      [](network::Response result) -> AppendEntriesResult {
+        if (result.fail() || !fuerte::statusIsSuccess(result.statusCode())) {
+          THROW_ARANGO_EXCEPTION(result.combinedResult());
+        }
+        TRI_ASSERT(result.slice().get("error").isFalse());
+        return AppendEntriesResult::fromVelocyPack(
+            result.slice().get("result"));
+      });
 }

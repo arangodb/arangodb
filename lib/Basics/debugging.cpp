@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,10 +100,10 @@ void TRI_TerminateDebugging(std::string_view message) {
   }
 
 #endif
- 
+
   // intentional crash - no need for a backtrace here
   CrashHandler::disableBacktraces();
-  CrashHandler::crash(message);  
+  CrashHandler::crash(message);
 }
 
 /// @brief check whether we should fail at a specific failure point
@@ -149,7 +149,7 @@ void TRI_ClearFailurePointsDebugging() noexcept {
     numExisting = ::failurePoints.size();
     ::failurePoints.clear();
   }
-    
+
   if (numExisting > 0) {
     LOG_TOPIC("ea4e7", INFO, arangodb::Logger::FIXME)
         << "cleared " << numExisting << " failure point(s)";
@@ -169,7 +169,11 @@ void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
 }
 #endif
 
-template<> char const conpar<true>::open = '{';
-template<> char const conpar<true>::close = '}';
-template<> char const conpar<false>::open = '[';
-template<> char const conpar<false>::close = ']';
+template<>
+char const conpar<true>::open = '{';
+template<>
+char const conpar<true>::close = '}';
+template<>
+char const conpar<false>::open = '[';
+template<>
+char const conpar<false>::close = ']';

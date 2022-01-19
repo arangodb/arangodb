@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,10 +29,11 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class Gauge final : public Metric {
  public:
-  Gauge(T t, std::string_view name, std::string_view help, std::string_view labels)
+  Gauge(T t, std::string_view name, std::string_view help,
+        std::string_view labels)
       : Metric{name, help, labels}, _g{t} {}
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
@@ -57,7 +58,8 @@ class Gauge final : public Metric {
     result.push_back('\n');
   }
 
-  [[nodiscard]] T load(std::memory_order mo = std::memory_order_relaxed) const noexcept {
+  [[nodiscard]] T load(
+      std::memory_order mo = std::memory_order_relaxed) const noexcept {
     return _g.load(mo);
   }
 
@@ -70,7 +72,8 @@ class Gauge final : public Metric {
       return _g.fetch_add(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
-      while (!_g.compare_exchange_weak(tmp, tmp + t, mo, std::memory_order_relaxed)) {
+      while (!_g.compare_exchange_weak(tmp, tmp + t, mo,
+                                       std::memory_order_relaxed)) {
       }
       return tmp;
     }
@@ -81,14 +84,16 @@ class Gauge final : public Metric {
       return _g.fetch_sub(t, mo);
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
-      while (!_g.compare_exchange_weak(tmp, tmp - t, mo, std::memory_order_relaxed)) {
+      while (!_g.compare_exchange_weak(tmp, tmp - t, mo,
+                                       std::memory_order_relaxed)) {
       }
       return tmp;
     }
   }
   T fetch_mul(T t, std::memory_order mo) noexcept {
     T tmp(_g.load(std::memory_order_relaxed));
-    while (!_g.compare_exchange_weak(tmp, tmp * t, mo, std::memory_order_relaxed)) {
+    while (!_g.compare_exchange_weak(tmp, tmp * t, mo,
+                                     std::memory_order_relaxed)) {
     }
     return tmp;
   }
@@ -96,7 +101,8 @@ class Gauge final : public Metric {
   T fetch_div(T t, std::memory_order mo) noexcept {
     TRI_ASSERT(t != T(0));
     T tmp(_g.load(std::memory_order_relaxed));
-    while (!_g.compare_exchange_weak(tmp, tmp / t, mo, std::memory_order_relaxed)) {
+    while (!_g.compare_exchange_weak(tmp, tmp / t, mo,
+                                     std::memory_order_relaxed)) {
     }
     return tmp;
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,39 +39,42 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(application_features::ApplicationServer& server,
-                                 GeneralRequest* request, GeneralResponse* response)
+RestAuthHandler::RestAuthHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     std::string msg = "This server does not support users";
     LOG_TOPIC("2e7d4", WARN, Logger::AUTHENTICATION) << msg;
-    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,
+                  msg);
     return RestStatus::DONE;
   }
-  
+
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() == 1 && suffixes[0] == "renew") {
     // JWT token renew request
-    if (!_request->authenticated() || 
-        _request->user().empty() ||
-        _request->authenticationMethod() != arangodb::rest::AuthenticationMethod::JWT) {
+    if (!_request->authenticated() || _request->user().empty() ||
+        _request->authenticationMethod() !=
+            arangodb::rest::AuthenticationMethod::JWT) {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
     } else {
       VPackBuilder resultBuilder;
       {
         VPackObjectBuilder b(&resultBuilder);
         // only return a new token if the current token is about to expire
-        if (_request->tokenExpiry() > 0.0 && 
+        if (_request->tokenExpiry() > 0.0 &&
             _request->tokenExpiry() - TRI_microtime() < 150.0) {
           resultBuilder.add("jwt", VPackValue(generateJwt(_request->user())));
         }
@@ -86,7 +89,7 @@ RestStatus RestAuthHandler::execute() {
 
   bool parseSuccess = false;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) { // error already set
+  if (!parseSuccess) {  // error already set
     return RestStatus::DONE;
   }
 
@@ -117,7 +120,7 @@ RestStatus RestAuthHandler::execute() {
       // nothing we can do
     }
   });
-  
+
   if (um->checkPassword(username, password)) {
     VPackBuilder resultBuilder;
     {
@@ -139,8 +142,7 @@ std::string RestAuthHandler::generateJwt(std::string const& username) const {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   return fuerte::jwt::generateUserToken(
-      af->tokenCache().jwtSecret(), 
-      username, 
+      af->tokenCache().jwtSecret(), username,
       std::chrono::seconds(uint64_t(af->sessionTimeout())));
 }
 

@@ -151,9 +151,8 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 
   static ptr make(
     directory& dir,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator);
 
   // begin document-write transaction
@@ -290,19 +289,21 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
-        const column_info_provider_t& column_info) noexcept
-      : stream(column_info(string_ref::NIL)) {  // get compression for sorted column
+        const column_info_provider_t& column_info,
+        columnstore_writer::column_finalizer_f finalizer) noexcept
+      : stream(column_info(string_ref::NIL)), // get compression for sorted column
+        finalizer{std::move(finalizer)} {
     }
 
-    irs::sorted_column stream;
     field_id id{ field_limits::invalid() };
+    irs::sorted_column stream;
+    columnstore_writer::column_finalizer_f finalizer;
   }; // sorted_column
 
   segment_writer(
     directory& dir,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator) noexcept;
 
   bool index(
@@ -435,7 +436,6 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   }
 
   size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
-  void flush_column_meta(const segment_meta& meta); // flushes column meta to directory
   void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -450,8 +450,6 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   std::string seg_name_;
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;
-  const field_features_t* field_features_;
-  column_meta_writer::ptr col_meta_writer_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;
   uint64_t tick_{0};

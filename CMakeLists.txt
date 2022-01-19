@@ -640,6 +640,9 @@ endif ()
 # need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilties
 set(CMAKE_CXX_STANDARD 20)
+# turn off compiler language extensions (e.g. don't use -std=gnu++20, but
+# -std=c++20).
+set(CMAKE_CXX_EXTENSIONS OFF)
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
   # remain restricted to /std:c++latest due to WG21's upcoming changes.

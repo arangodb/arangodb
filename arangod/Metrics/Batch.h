@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,19 +28,22 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class Batch final : public Metric {
  public:
-  Batch(T&& metric, std::string_view name, std::string_view help, std::string_view labels)
+  Batch(T&& metric, std::string_view name, std::string_view help,
+        std::string_view labels)
       : Metric{name, help, labels}, _metric{std::move(metric)} {}
 
   [[nodiscard]] std::string_view type() const noexcept final {
     return "untyped";
   }
-  void toPrometheus(std::string& result, std::string_view globals, std::string_view) const final {
+  void toPrometheus(std::string& result, std::string_view globals,
+                    std::string_view) const final {
     load().toPrometheus(result, globals, labels());
   }
-  void toPrometheusBegin(std::string& result, std::string_view name) const final {
+  void toPrometheusBegin(std::string& result,
+                         std::string_view name) const final {
     std::lock_guard guard{_m};
     _metric.needName();
   }

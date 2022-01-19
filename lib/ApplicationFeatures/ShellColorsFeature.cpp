@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,8 @@ char const* ShellColorsFeature::SHELL_COLOR_LINK_START = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_LINK_END = NoColor;
 
-ShellColorsFeature::ShellColorsFeature(application_features::ApplicationServer& server)
+ShellColorsFeature::ShellColorsFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ShellColors"), _initialized(false) {
   setOptional(false);
 
@@ -134,7 +135,7 @@ bool ShellColorsFeature::prepareConsole() {
   if (!SetConsoleMode(hStdout, handleMode)) {
     return false;
   }
-  
+
   // Set the codepage for the console output to UTF-8 so that unicode characters
   // are displayed correctly.
   SetConsoleOutputCP(CP_UTF8);

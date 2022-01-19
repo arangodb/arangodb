@@ -43,7 +43,31 @@
 namespace tests {
 
 class format_test_case : public index_test_base {
- public:  
+ public:
+  irs::column_info lz4_column_info() const noexcept;
+  irs::column_info none_column_info() const noexcept;
+
+  bool supports_encryption() const noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[] { "1_0" };
+
+    const auto it = std::find(std::begin(kOldFormats),
+                              std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
+
+  bool supports_columnstore_headers() const noexcept {
+    // old formats don't support columnstore headers
+    constexpr irs::string_ref kOldFormats[] {
+      "1_0", "1_1", "1_2", "1_3", "1_3simd" };
+
+    const auto it = std::find(std::begin(kOldFormats),
+                              std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
+
   class postings;
 
   class position final : public irs::position {
@@ -117,6 +141,7 @@ class format_test_case : public index_test_base {
         const docs_t::const_iterator& end,
         irs::IndexFeatures features = irs::IndexFeatures::NONE)
       : next_(begin), end_(end), pos_(features) {
+      attrs_[irs::type<irs::document>::id()] = &doc_;
       attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
         freq_.value = 10;
@@ -128,17 +153,17 @@ class format_test_case : public index_test_base {
     }
 
     bool next() override {
-      if (!irs::doc_limits::valid(doc_)) {
+      if (!irs::doc_limits::valid(doc_.value)) {
         callback_(*this);
       }
 
       if (next_ == end_) {
-        doc_ = irs::doc_limits::eof();
+        doc_.value = irs::doc_limits::eof();
         return false;
       }
 
-      doc_ = *next_;
-      pos_.value_ = doc_;
+      doc_.value = *next_;
+      pos_.value_ = doc_.value;
       pos_.end_ = pos_.value_ + 10;
       pos_.clear();
       ++next_;
@@ -147,7 +172,7 @@ class format_test_case : public index_test_base {
     }
 
     irs::doc_id_t value() const override {
-      return doc_;
+      return doc_.value;
     }
 
     irs::doc_id_t seek(irs::doc_id_t target) override {
@@ -167,7 +192,7 @@ class format_test_case : public index_test_base {
     irs::frequency freq_;
     irs::attribute_provider_change callback_;
     tests::format_test_case::position pos_;
-    irs::doc_id_t doc_{ irs::doc_limits::invalid() };
+    irs::document doc_;
   }; // postings 
 
   template<typename Iterator>
@@ -254,7 +279,9 @@ class format_test_case : public index_test_base {
 
     ASSERT_TRUE(index_files.empty());
   }
-}; // format_test_case
+};
+
+class format_test_case_with_encryption : public format_test_case { };
 
 } // tests
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,8 @@ RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level)
     : rocksdb::Logger(level), _enabled(true) {}
 RocksDBLogger::~RocksDBLogger() = default;
 
-void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* format, va_list ap) {
+void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel,
+                         char const* format, va_list ap) {
   if (logLevel < GetInfoLogLevel()) {
     return;
   }
@@ -58,7 +59,7 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
   va_copy(backup, ap);
 
   int length = vsnprintf(&buffer[0] + prefixSize,
-  // cppcheck-suppress va_list_usedBeforeStarted
+                         // cppcheck-suppress va_list_usedBeforeStarted
                          sizeof(buffer) - prefixSize - 1, format, backup);
 
   // cppcheck-suppress va_list_usedBeforeStarted
@@ -84,17 +85,21 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
 
   switch (logLevel) {
     case rocksdb::InfoLogLevel::DEBUG_LEVEL:
-      LOG_TOPIC("299ce", DEBUG, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
+      LOG_TOPIC("299ce", DEBUG, arangodb::Logger::ROCKSDB)
+          << std::string_view(buffer, l);
       break;
     case rocksdb::InfoLogLevel::INFO_LEVEL:
-      LOG_TOPIC("45661", INFO, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
+      LOG_TOPIC("45661", INFO, arangodb::Logger::ROCKSDB)
+          << std::string_view(buffer, l);
       break;
     case rocksdb::InfoLogLevel::WARN_LEVEL:
-      LOG_TOPIC("2bc83", WARN, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
+      LOG_TOPIC("2bc83", WARN, arangodb::Logger::ROCKSDB)
+          << std::string_view(buffer, l);
       break;
     case rocksdb::InfoLogLevel::ERROR_LEVEL:
     case rocksdb::InfoLogLevel::FATAL_LEVEL:
-      LOG_TOPIC("be9ea", ERR, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
+      LOG_TOPIC("be9ea", ERR, arangodb::Logger::ROCKSDB)
+          << std::string_view(buffer, l);
       break;
     default: {
       // ignore other levels
