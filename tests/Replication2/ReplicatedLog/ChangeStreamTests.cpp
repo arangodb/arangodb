@@ -219,7 +219,8 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, "follower", std::move(coreB),
       LogTerm{3}, "leader");
-  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
+  auto leader =
+      createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
@@ -281,7 +282,8 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, "follower", std::move(coreB),
       LogTerm{3}, "leader");
-  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
+  auto leader =
+      createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
@@ -335,7 +337,8 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
 
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
-  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 1);
+  auto leader =
+      createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 1);
 
   leader->triggerAsyncReplication();
 
@@ -386,7 +389,8 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
 
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
-  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
+  auto leader =
+      createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
 
@@ -451,7 +455,8 @@ TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
 
   auto followerLog = makeReplicatedLog(LogId{2});
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
-  auto leader = createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
+  auto leader =
+      createLeader("leader", LogTerm{3}, std::move(coreA), {follower}, 2);
 
   leader->triggerAsyncReplication();
 

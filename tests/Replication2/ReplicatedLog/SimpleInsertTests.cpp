@@ -45,7 +45,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{1}, leaderId);
-  auto leader = createLeader(leaderId, LogTerm{1}, std::move(coreA), {follower}, 2);
+  auto leader =
+      createLeader(leaderId, LogTerm{1}, std::move(coreA), {follower}, 2);
 
   auto countHistogramEntries = [](auto const& histogram) {
     auto [begin, end] =
@@ -240,7 +241,8 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
-  auto leader = createLeader(leaderId, LogTerm{3}, std::move(coreA), {follower}, 2);
+  auto leader =
+      createLeader(leaderId, LogTerm{3}, std::move(coreA), {follower}, 2);
 
   {
     // Leader should know it spearhead, but commitIndex is 0
@@ -322,7 +324,8 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
       defaultLogger(), _logMetricsMock, followerId_2, std::move(coreC),
       LogTerm{1}, leaderId);
   // create leader with write concern 3
-  auto leader = createLeader(leaderId, LogTerm{1}, std::move(coreA), {follower_1, follower_2}, 3);
+  auto leader = createLeader(leaderId, LogTerm{1}, std::move(coreA),
+                             {follower_1, follower_2}, 3);
 
   auto index = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
@@ -483,7 +486,8 @@ TEST_F(ReplicatedLogTest,
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
   // set write concern to one
-  auto leader = createLeader(leaderId, LogTerm{3}, std::move(coreA), {follower}, 1);
+  auto leader =
+      createLeader(leaderId, LogTerm{3}, std::move(coreA), {follower}, 1);
 
   leader->triggerAsyncReplication();
 
