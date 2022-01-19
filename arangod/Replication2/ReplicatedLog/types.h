@@ -78,6 +78,8 @@ auto to_string(FollowerState const&) -> std::string_view;
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 struct AppendEntriesErrorReason {
   enum class ErrorType {
     kNone,
@@ -103,6 +105,7 @@ struct AppendEntriesErrorReason {
                          AppendEntriesErrorReason const& right) noexcept
       -> bool = default;
 };
+#pragma GCC diagnostic pop
 
 [[nodiscard]] auto to_string(AppendEntriesErrorReason::ErrorType error) noexcept
     -> std::string_view;
