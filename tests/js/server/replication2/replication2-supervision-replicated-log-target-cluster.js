@@ -219,6 +219,7 @@ const replicatedLogSuite = function () {
       registerAgencyTestEnd(test);
     },
 
+    // This test stops the leader and a follower, then waits for a failover to happen
     testCheckSimpleFailover: function () {
       const {logId, followers, leader, term} = createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
@@ -272,6 +273,7 @@ const replicatedLogSuite = function () {
       continueServer(leader);
     },
 
+    // This test requests a specific server as leader in Target
     testChangeLeader: function () {
       const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -311,6 +313,8 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This test adds and removes an excluded flag to a server in Target
+    // and waits for the corresponding action in Current
     testAddExcludedFlag: function () {
       const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -336,6 +340,7 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This test adds a new participant to the replicated log
     testAddParticipant: function () {
       const {logId, servers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -352,6 +357,9 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This test first makes a follower excluded and then asks for this follower
+    // to become the leader. It then removed the excluded flag and expects the
+    // leadership to be transferred.
     testChangeLeaderWithExcluded: function () {
       const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -380,6 +388,8 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This test excludes follower A, waits for the flags to be committed and
+    // requests that follower B shall become the leader.
     testChangeLeaderWithExcludedOtherFollower: function () {
       const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -400,6 +410,8 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This tests completely replaces a follower in Target with a different
+    // server
     testReplaceFollowerWithNewFollower: function () {
       const {logId, servers, term, followers, leader} = createReplicatedLogAndWaitForLeader(database);
 
@@ -432,6 +444,9 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term, [..._.difference(servers, oldServer), newServer], leader));
     },
 
+    // This tests replaces the leader in Target with a new server that has the
+    // excluded flag set. It then waits for the replicated log to converge and
+    // then removes the excluded flag.
     testReplaceLeaderWithNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -460,6 +475,9 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogLeaderEstablished(database, logId, term + 1, [...followers, newServer]));
     },
 
+    // This test replaces the old leader in target with a new server that is excluded
+    // and additionally requests that this new server shall become the leader.
+    // It expects the supervision to fail and then removes the excluded flag.
     testChangeLeaderToNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -490,6 +508,8 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term + 2, [...followers, newServer], newServer));
     },
 
+    // This tests requests a non-participant server as leader and expects the
+    // supervision to fail
     testChangeLeaderToNonFollower: function () {
       const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
 

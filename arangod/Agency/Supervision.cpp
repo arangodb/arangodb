@@ -2584,7 +2584,18 @@ void Supervision::checkReplicatedLogs() {
                                                     ->log(idString)
                                                     ->str(SkipComponents(1)));
 
-      auto action = checkReplicatedLog(Log{target, plan, current}, info);
+      auto action = std::invoke([&]() -> std::unique_ptr<Action> {
+        try {
+          return checkReplicatedLog(Log{target, plan, current}, info);
+        } catch (std::exception const& err) {
+          LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
+              << "Supervision caught exception in checkReplicatedLog for "
+                 "replicated log "
+              << dbName << "/" << target.id;
+          return nullptr;
+        }
+      });
+
       if (action != nullptr) {
         if (target.supervision.has_value() &&
             target.supervision->maxActionsTraceLength > 0) {
