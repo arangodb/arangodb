@@ -1003,13 +1003,13 @@ bool InvertedIndexFieldIterator::setValue(
         number_stream->reset(slice.getNumber<double>());
       };
     } break;
-    default:
+    default: {
       iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
       _value._analyzer = std::move(analyzer);
       _value._fieldFeatures = pool->fieldFeatures();
       _value._indexFeatures = pool->indexFeatures();
       _value._name = _nameBuffer;
-      break;
+    } break;
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {

@@ -240,7 +240,7 @@ Result failedToGenerateName(char const* funcName, size_t i) {
 }
 
 Result malformedNode(aql::AstNodeType type) {
-  auto const* typeName = arangodb::iresearch::getNodeTypeName(type);
+  auto const* typeName = getNodeTypeName(type);
 
   std::string message("Can't process malformed AstNode of type '");
   if (typeName) {
@@ -322,12 +322,12 @@ Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
 
     ScopedValueType expectedType = ScopedValueType::SCOPED_VALUE_TYPE_INVALID;
     if constexpr (std::is_same<T, irs::string_ref>::value) {
-      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_STRING;
+      expectedType = SCOPED_VALUE_TYPE_STRING;
     } else if constexpr (std::is_same<T, int64_t>::value ||
                          std::is_same<T, double_t>::value) {
-      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE;
+      expectedType = SCOPED_VALUE_TYPE_DOUBLE;
     } else if constexpr (std::is_same<T, bool>::value) {
-      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL;
+      expectedType = SCOPED_VALUE_TYPE_BOOL;
     }
 
     if (expectedType != value.type()) {
@@ -397,7 +397,7 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
   }
 }
 
-Result getAnalyzerByName(arangodb::iresearch::FieldMeta::Analyzer& out,
+Result getAnalyzerByName(FieldMeta::Analyzer& out,
                          const irs::string_ref& analyzerId,
                          char const* funcName, QueryContext const& ctx) {
   auto& analyzer = out._pool;
@@ -423,14 +423,13 @@ Result getAnalyzerByName(arangodb::iresearch::FieldMeta::Analyzer& out,
                 .append("'")};
   }
 
-  shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+  shortName = IResearchAnalyzerFeature::normalize(
       analyzerId, ctx.trx->vocbase().name(), false);
 
   return {};
 }
 
-Result extractAnalyzerFromArg(arangodb::iresearch::FieldMeta::Analyzer& out,
-                              char const* funcName,
+Result extractAnalyzerFromArg(FieldMeta::Analyzer& out, char const* funcName,
                               irs::boolean_filter const* filter,
                               aql::AstNode const& args, size_t i,
                               QueryContext const& ctx) {
@@ -463,9 +462,8 @@ Result extractAnalyzerFromArg(arangodb::iresearch::FieldMeta::Analyzer& out,
 
 class FilterContext {
  public:
-  FilterContext(arangodb::iresearch::FieldMeta::Analyzer const& analyzer,
-                irs::boost_t boost, bool search,
-                AnalyzerProvider const* provider) noexcept
+  FilterContext(FieldMeta::Analyzer const& analyzer, irs::boost_t boost,
+                bool search, AnalyzerProvider const* provider) noexcept
       : _analyzerProvider(provider),
         _analyzer(analyzer),
         _boost(boost),
@@ -480,12 +478,9 @@ class FilterContext {
 
   irs::boost_t boost() const noexcept { return _boost; }
 
-  arangodb::iresearch::FieldMeta::Analyzer const& analyzer() const noexcept {
-    return _analyzer;
-  }
+  FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzer; }
 
-  arangodb::iresearch::FieldMeta::Analyzer const& fieldAnalyzer(
-      std::string_view name) const {
+  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name) const {
     if (_analyzerProvider == nullptr) {
       return _analyzer;
     }
@@ -496,15 +491,14 @@ class FilterContext {
     return _analyzerProvider;
   }
 
-  arangodb::iresearch::FieldMeta::Analyzer const& contextAnalyzer()
-      const noexcept {
+  FieldMeta::Analyzer const& contextAnalyzer() const noexcept {
     return _analyzer;
   }
 
  private:
   AnalyzerProvider const* _analyzerProvider;
   // need shared_ptr since pool could be deleted from the feature
-  arangodb::iresearch::FieldMeta::Analyzer const& _analyzer;
+  FieldMeta::Analyzer const& _analyzer;
   irs::boost_t _boost;
   bool _isSearchFilter;  // filter is building for SEARCH clause
 };                       // FilterContext
@@ -543,7 +537,7 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
                                    aql::AstNode const& node,
                                    QueryContext const& ctx,
                                    FilterContext const& filterCtx) {
-  auto& exprFilter = filter.add<arangodb::iresearch::ByExpression>();
+  auto& exprFilter = filter.add<ByExpression>();
   exprFilter.init(*ctx.plan, *ctx.ast, const_cast<aql::AstNode&>(node));
   exprFilter.boost(filterCtx.boost());
 }
@@ -552,7 +546,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
               ScopedAqlValue const& value, QueryContext const& /*ctx*/,
               FilterContext const& filterCtx) {
   switch (value.type()) {
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL:
+    case SCOPED_VALUE_TYPE_NULL:
       if (filter) {
         kludge::mangleNull(name);
         *filter->mutable_field() = std::move(name);
@@ -561,7 +555,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
                     irs::null_token_stream::value_null());
       }
       return {};
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL:
+    case SCOPED_VALUE_TYPE_BOOL:
       if (filter) {
         kludge::mangleBool(name);
         *filter->mutable_field() = std::move(name);
@@ -570,7 +564,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
                     irs::boolean_token_stream::value(value.getBoolean()));
       }
       return {};
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE:
+    case SCOPED_VALUE_TYPE_DOUBLE:
       if (filter) {
         double_t dblValue;
 
@@ -593,7 +587,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
         irs::assign(filter->mutable_options()->term, token->value);
       }
       return {};
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING:
+    case SCOPED_VALUE_TYPE_STRING:
       if (filter) {
         irs::string_ref strValue;
 
@@ -621,8 +615,8 @@ Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
               ScopedAqlValue const& value, QueryContext const& ctx,
               FilterContext const& filterCtx) {
   std::string name;
-  if (filter && !arangodb::iresearch::nameFromAttributeAccess(
-                    name, attribute, ctx, !filterCtx.isSearchFilter())) {
+  if (filter && !nameFromAttributeAccess(name, attribute, ctx,
+                                         !filterCtx.isSearchFilter())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -631,8 +625,7 @@ Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
   return byTerm(filter, std::move(name), value, ctx, filterCtx);
 }
 
-Result byTerm(irs::by_term* filter,
-              arangodb::iresearch::NormalizedCmpNode const& node,
+Result byTerm(irs::by_term* filter, NormalizedCmpNode const& node,
               QueryContext const& ctx, FilterContext const& filterCtx) {
   TRI_ASSERT(node.attribute && node.attribute->isDeterministic());
   TRI_ASSERT(node.value && node.value->isDeterministic());
@@ -706,7 +699,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
   }
 
   switch (min.type()) {
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL: {
+    case SCOPED_VALUE_TYPE_NULL: {
       if (filter) {
         kludge::mangleNull(name);
 
@@ -724,7 +717,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 
       return {};
     }
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL: {
+    case SCOPED_VALUE_TYPE_BOOL: {
       if (filter) {
         kludge::mangleBool(name);
 
@@ -744,7 +737,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 
       return {};
     }
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE: {
+    case SCOPED_VALUE_TYPE_DOUBLE: {
       if (filter) {
         double_t minDblValue, maxDblValue;
 
@@ -777,7 +770,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 
       return {};
     }
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING: {
+    case SCOPED_VALUE_TYPE_STRING: {
       if (filter) {
         irs::string_ref minStrValue, maxStrValue;
 
@@ -820,7 +813,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
   // ArangoDB type order
   // null  <  bool  <  number  <  string  <  array/list  <  object/document
   switch (value.type()) {
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL: {
+    case SCOPED_VALUE_TYPE_NULL: {
       if (filter) {
         irs::by_range* range{nullptr};
         if (filterCtx.isSearchFilter() || !Min) {
@@ -828,7 +821,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_range>();
-          // all number, bool and string fields ae greater by data order
+          // all number, bool and string fields are greater by data order
           {
             auto stringName = name;  // intentional copy as mangling is inplace!
             kludge::mangleString(stringName);
@@ -860,7 +853,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
       }
       return {};
     }
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL: {
+    case SCOPED_VALUE_TYPE_BOOL: {
       if (filter) {
         irs::by_range* range{nullptr};
         if (filterCtx.isSearchFilter()) {
@@ -905,7 +898,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
 
       return {};
     }
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE: {
+    case SCOPED_VALUE_TYPE_DOUBLE: {
       if (filter) {
         double_t dblValue;
 
@@ -956,7 +949,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
 
       return {};
     }
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING: {
+    case SCOPED_VALUE_TYPE_STRING: {
       if (filter) {
         irs::string_ref strValue;
 
@@ -1013,8 +1006,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
 }
 
 template<bool Min>
-Result byRange(irs::boolean_filter* filter,
-               arangodb::iresearch::NormalizedCmpNode const& node,
+Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
                bool const incl, QueryContext const& ctx,
                FilterContext const& filterCtx) {
   TRI_ASSERT(node.attribute && node.attribute->isDeterministic());
@@ -1046,8 +1038,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx,
                       aql::AstNode const& node) {
   // non-deterministic condition or self-referenced variable
-  if (!node.isDeterministic() ||
-      arangodb::iresearch::findReference(node, *ctx.ref)) {
+  if (!node.isDeterministic() || findReference(node, *ctx.ref)) {
     // not supported by IResearch, but could be handled by ArangoDB
     if (filterCtx.isSearchFilter()) {
       if (filter) {
@@ -1120,10 +1111,9 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
   size_t fieldNodeIdx = 1;
   size_t centroidNodeIdx = 2;
 
-  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref,
-                                                 !filterCtx.isSearchFilter())) {
-    if (!arangodb::iresearch::checkAttributeAccess(
-            centroidNode, *ctx.ref, !filterCtx.isSearchFilter())) {
+  if (!checkAttributeAccess(fieldNode, *ctx.ref, !filterCtx.isSearchFilter())) {
+    if (!checkAttributeAccess(centroidNode, *ctx.ref,
+                              !filterCtx.isSearchFilter())) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName).append(
                   "' AQL function: Unable to find argument denoting an "
@@ -1231,10 +1221,10 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
 }
 
 // GEO_DISTANCE(.. , ..) <|<=|==|>|>= Distance
-Result fromGeoDistanceInterval(
-    irs::boolean_filter* filter,
-    arangodb::iresearch::NormalizedCmpNode const& node, QueryContext const& ctx,
-    FilterContext const& filterCtx) {
+Result fromGeoDistanceInterval(irs::boolean_filter* filter,
+                               NormalizedCmpNode const& node,
+                               QueryContext const& ctx,
+                               FilterContext const& filterCtx) {
   TRI_ASSERT(
       node.attribute && node.attribute->isDeterministic() &&
       aql::NODE_TYPE_FCALL == node.attribute->type &&
@@ -1255,10 +1245,9 @@ Result fromGeoDistanceInterval(
   size_t fieldNodeIdx = 1;
   size_t centroidNodeIdx = 2;
 
-  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref,
-                                                 !filterCtx.isSearchFilter())) {
-    if (!arangodb::iresearch::checkAttributeAccess(
-            centroidNode, *ctx.ref, !filterCtx.isSearchFilter())) {
+  if (!checkAttributeAccess(fieldNode, *ctx.ref, !filterCtx.isSearchFilter())) {
+    if (!checkAttributeAccess(centroidNode, *ctx.ref,
+                              !filterCtx.isSearchFilter())) {
       return {TRI_ERROR_BAD_PARAMETER};
     }
 
@@ -1267,7 +1256,7 @@ Result fromGeoDistanceInterval(
     fieldNodeIdx = 2;
   }
 
-  if (arangodb::iresearch::findReference(*centroidNode, *ctx.ref)) {
+  if (findReference(*centroidNode, *ctx.ref)) {
     // centroid contains referenced variable
     return {TRI_ERROR_BAD_PARAMETER};
   }
@@ -1369,12 +1358,11 @@ Result fromInterval(irs::boolean_filter* filter, QueryContext const& ctx,
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == node.type ||
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == node.type);
 
-  arangodb::iresearch::NormalizedCmpNode normNode;
+  NormalizedCmpNode normNode;
 
-  if (!arangodb::iresearch::normalizeCmpNode(
-          node, *ctx.ref, !filterCtx.isSearchFilter(), normNode)) {
-    if (arangodb::iresearch::normalizeGeoDistanceCmpNode(node, *ctx.ref,
-                                                         normNode)) {
+  if (!normalizeCmpNode(node, *ctx.ref, !filterCtx.isSearchFilter(),
+                        normNode)) {
+    if (normalizeGeoDistanceCmpNode(node, *ctx.ref, normNode)) {
       if (fromGeoDistanceInterval(filter, normNode, ctx, filterCtx).ok()) {
         return {};
       }
@@ -1398,12 +1386,11 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
   TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.type ||
              aql::NODE_TYPE_OPERATOR_BINARY_NE == node.type);
 
-  arangodb::iresearch::NormalizedCmpNode normalized;
+  NormalizedCmpNode normalized;
 
-  if (!arangodb::iresearch::normalizeCmpNode(
-          node, *ctx.ref, !filterCtx.isSearchFilter(), normalized)) {
-    if (arangodb::iresearch::normalizeGeoDistanceCmpNode(node, *ctx.ref,
-                                                         normalized)) {
+  if (!normalizeCmpNode(node, *ctx.ref, !filterCtx.isSearchFilter(),
+                        normalized)) {
+    if (normalizeGeoDistanceCmpNode(node, *ctx.ref, normalized)) {
       if (fromGeoDistanceInterval(filter, normalized, ctx, filterCtx).ok()) {
         return {};
       }
@@ -1633,10 +1620,10 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
 
 class ByTermSubFilterFactory {
  public:
-  static Result byNodeSubFilter(
-      irs::boolean_filter* filter,
-      arangodb::iresearch::NormalizedCmpNode const& node,
-      QueryContext const& ctx, FilterContext const& filterCtx) {
+  static Result byNodeSubFilter(irs::boolean_filter* filter,
+                                NormalizedCmpNode const& node,
+                                QueryContext const& ctx,
+                                FilterContext const& filterCtx) {
     TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.cmp);
     irs::by_term* termFilter = nullptr;
     if (filter) {
@@ -1662,10 +1649,10 @@ class ByTermSubFilterFactory {
 
 class ByRangeSubFilterFactory {
  public:
-  static Result byNodeSubFilter(
-      irs::boolean_filter* filter,
-      arangodb::iresearch::NormalizedCmpNode const& node,
-      QueryContext const& ctx, FilterContext const& filterCtx) {
+  static Result byNodeSubFilter(irs::boolean_filter* filter,
+                                NormalizedCmpNode const& node,
+                                QueryContext const& ctx,
+                                FilterContext const& filterCtx) {
     bool incl, min;
     std::tie(min, incl) = calcMinInclude(node.cmp);
     return min ? byRange<true>(filter, node, incl, ctx, filterCtx)
@@ -1741,16 +1728,16 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       return fromExpression(filter, ctx, filterCtx, node);
     }
     size_t const n = valueNode->numMembers();
-    if (!arangodb::iresearch::checkAttributeAccess(
-            attributeNode, *ctx.ref, !filterCtx.isSearchFilter())) {
+    if (!checkAttributeAccess(attributeNode, *ctx.ref,
+                              !filterCtx.isSearchFilter())) {
       // no attribute access specified in attribute node, try to
       // find it in value node
       bool attributeAccessFound = false;
       for (size_t i = 0; i < n; ++i) {
         attributeAccessFound |=
-            (nullptr != arangodb::iresearch::checkAttributeAccess(
-                            valueNode->getMemberUnchecked(i), *ctx.ref,
-                            !filterCtx.isSearchFilter()));
+            (nullptr != checkAttributeAccess(valueNode->getMemberUnchecked(i),
+                                             *ctx.ref,
+                                             !filterCtx.isSearchFilter()));
       }
       if (!attributeAccessFound) {
         return fromExpression(filter, ctx, filterCtx, node);
@@ -1777,7 +1764,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
                                      filterCtx.analyzerProvider()};
     // Expand array interval as several binaryInterval nodes ('array' feature is
     // ensured by pre-filter)
-    arangodb::iresearch::NormalizedCmpNode normalized;
+    NormalizedCmpNode normalized;
     aql::AstNode toNormalize(arrayExpansionNodeType);
     toNormalize.reserve(2);
     for (size_t i = 0; i < n; ++i) {
@@ -1790,8 +1777,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       toNormalize.addMember(attributeNode);
       toNormalize.addMember(member);
       toNormalize.flags = member->flags;
-      if (!arangodb::iresearch::normalizeCmpNode(
-              toNormalize, *ctx.ref, !filterCtx.isSearchFilter(), normalized)) {
+      if (!normalizeCmpNode(toNormalize, *ctx.ref, !filterCtx.isSearchFilter(),
+                            normalized)) {
         if (!filter) {
           // can't evaluate non constant filter before the execution
           if (filterCtx.isSearchFilter()) {
@@ -1829,9 +1816,9 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
   }
 
   if (!node.isDeterministic() ||
-      !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref,
-                                                 !filterCtx.isSearchFilter()) ||
-      arangodb::iresearch::findReference(*valueNode, *ctx.ref)) {
+      !checkAttributeAccess(attributeNode, *ctx.ref,
+                            !filterCtx.isSearchFilter()) ||
+      findReference(*valueNode, *ctx.ref)) {
     return fromExpression(filter, ctx, filterCtx, node);
   }
 
@@ -1848,7 +1835,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
   }
 
   switch (value.type()) {
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY: {
+    case SCOPED_VALUE_TYPE_ARRAY: {
       size_t const n = value.size();
       Result buildRes;
       aql::AstNodeType arrayExpansionNodeType;
@@ -1915,17 +1902,17 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
 
   size_t const n = valueNode->numMembers();
 
-  if (!arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref,
-                                                 !filterCtx.isSearchFilter())) {
+  if (!checkAttributeAccess(attributeNode, *ctx.ref,
+                            !filterCtx.isSearchFilter())) {
     // no attribute access specified in attribute node, try to
     // find it in value node
 
     bool attributeAccessFound = false;
     for (size_t i = 0; i < n; ++i) {
       attributeAccessFound |=
-          (nullptr != arangodb::iresearch::checkAttributeAccess(
-                          valueNode->getMemberUnchecked(i), *ctx.ref,
-                          !filterCtx.isSearchFilter()));
+          (nullptr != checkAttributeAccess(valueNode->getMemberUnchecked(i),
+                                           *ctx.ref,
+                                           !filterCtx.isSearchFilter()));
     }
 
     if (!attributeAccessFound) {
@@ -1960,7 +1947,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
                                    filterCtx.isSearchFilter(),
                                    filterCtx.analyzerProvider()};
 
-  arangodb::iresearch::NormalizedCmpNode normalized;
+  NormalizedCmpNode normalized;
   aql::AstNode toNormalize(aql::NODE_TYPE_OPERATOR_BINARY_EQ);
   toNormalize.reserve(2);
 
@@ -1979,8 +1966,8 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     toNormalize.addMember(member);
     toNormalize.flags = member->flags;  // attributeNode is deterministic here
 
-    if (!arangodb::iresearch::normalizeCmpNode(
-            toNormalize, *ctx.ref, !filterCtx.isSearchFilter(), normalized)) {
+    if (!normalizeCmpNode(toNormalize, *ctx.ref, !filterCtx.isSearchFilter(),
+                          normalized)) {
       if (!filter) {
         // can't evaluate non constant filter before the execution
         if (filterCtx.isSearchFilter()) {
@@ -2043,9 +2030,9 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
   TRI_ASSERT(attributeNode);
 
   if (!node.isDeterministic() ||
-      !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref,
-                                                 !filterCtx.isSearchFilter()) ||
-      arangodb::iresearch::findReference(*valueNode, *ctx.ref)) {
+      !checkAttributeAccess(attributeNode, *ctx.ref,
+                            !filterCtx.isSearchFilter()) ||
+      findReference(*valueNode, *ctx.ref)) {
     return fromExpression(filter, ctx, filterCtx, node);
   }
 
@@ -2086,7 +2073,7 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   switch (value.type()) {
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY: {
+    case SCOPED_VALUE_TYPE_ARRAY: {
       size_t const n = value.size();
 
       if (!n) {
@@ -2126,7 +2113,7 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       return {};
     }
-    case arangodb::iresearch::SCOPED_VALUE_TYPE_RANGE: {
+    case SCOPED_VALUE_TYPE_RANGE: {
       // range
       auto const* range = value.getRange();
 
@@ -2195,10 +2182,10 @@ bool rangeFromBinaryAnd(irs::boolean_filter* filter, QueryContext const& ctx,
   auto const* rhsNode = node.getMemberUnchecked(1);
   TRI_ASSERT(rhsNode);
 
-  arangodb::iresearch::NormalizedCmpNode lhsNormNode, rhsNormNode;
+  NormalizedCmpNode lhsNormNode, rhsNormNode;
 
-  if (arangodb::iresearch::normalizeCmpNode(*lhsNode, *ctx.ref, lhsNormNode) &&
-      arangodb::iresearch::normalizeCmpNode(*rhsNode, *ctx.ref, rhsNormNode)) {
+  if (normalizeCmpNode(*lhsNode, *ctx.ref, lhsNormNode) &&
+      normalizeCmpNode(*rhsNode, *ctx.ref, rhsNormNode)) {
     bool const lhsInclude =
         aql::NODE_TYPE_OPERATOR_BINARY_GE == lhsNormNode.cmp;
     bool const rhsInclude =
@@ -2211,7 +2198,7 @@ bool rangeFromBinaryAnd(irs::boolean_filter* filter, QueryContext const& ctx,
       auto const* lhsAttr = lhsNormNode.attribute;
       auto const* rhsAttr = rhsNormNode.attribute;
 
-      if (arangodb::iresearch::attributeAccessEqual(lhsAttr, rhsAttr, filter ?
+      if (attributeAccessEqual(lhsAttr, rhsAttr, filter ?
 &ctx : nullptr)) { auto const* lhsValue = lhsNormNode.value; auto const*
 rhsValue = rhsNormNode.value;
 
@@ -2331,7 +2318,7 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
                   .append("'")};
     }
 
-    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+    shortName = IResearchAnalyzerFeature::normalize(
         analyzerId, ctx.trx->vocbase().name(), false);
   }
 
@@ -2422,7 +2409,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   }
 
   // 1st argument defines a field
-  auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
+  auto const* fieldArg = checkAttributeAccess(
       args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
   if (!fieldArg) {
@@ -2433,8 +2420,8 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   std::string fieldName;
   auto const isIndexFilter = filterCtx.isSearchFilter();
 
-  if (filter && !arangodb::iresearch::nameFromAttributeAccess(
-                    fieldName, *fieldArg, ctx, !filterCtx.isSearchFilter())) {
+  if (filter && !nameFromAttributeAccess(fieldName, *fieldArg, ctx,
+                                         !filterCtx.isSearchFilter())) {
     return error::failedToGenerateName(funcName, 1);
   }
 
@@ -2456,54 +2443,46 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
       basics::StringUtils::tolowerInPlace(strArg);  // normalize user input
       irs::string_ref const TypeAnalyzer("analyzer");
 
-      typedef bool (*TypeHandler)(
-          std::string&, bool isIndexFilter,
-          arangodb::iresearch::FieldMeta::Analyzer const&);
+      typedef bool (*TypeHandler)(std::string&, bool isIndexFilter,
+                                  FieldMeta::Analyzer const&);
 
       static std::map<irs::string_ref, TypeHandler> const TypeHandlers{
           // any string
           {irs::string_ref("string"),
-           [](std::string& name, bool,
-              arangodb::iresearch::FieldMeta::Analyzer const&) -> bool {
+           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
              kludge::mangleAnalyzer(name);
              return true;  // a prefix match
            }},
           // any non-string type
           {irs::string_ref("type"),
-           [](std::string& name, bool,
-              arangodb::iresearch::FieldMeta::Analyzer const&) -> bool {
+           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
              kludge::mangleType(name);
              return true;  // a prefix match
            }},
           // concrete analyzer from the context
           {TypeAnalyzer,
            [](std::string& name, bool isIndexFilter,
-              arangodb::iresearch::FieldMeta::Analyzer const& analyzer)
-               -> bool {
+              FieldMeta::Analyzer const& analyzer) -> bool {
              kludge::mangleField(name, isIndexFilter, analyzer);
              return false;  // not a prefix match
            }},
           {irs::string_ref("numeric"),
-           [](std::string& name, bool,
-              arangodb::iresearch::FieldMeta::Analyzer const&) -> bool {
+           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
              kludge::mangleNumeric(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("bool"),
-           [](std::string& name, bool,
-              arangodb::iresearch::FieldMeta::Analyzer const&) -> bool {
+           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
              kludge::mangleBool(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("boolean"),
-           [](std::string& name, bool,
-              arangodb::iresearch::FieldMeta::Analyzer const&) -> bool {
+           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
              kludge::mangleBool(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("null"),
-           [](std::string& name, bool,
-              arangodb::iresearch::FieldMeta::Analyzer const&) -> bool {
+           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
              kludge::mangleNull(name);
              return false;  // not a prefix match
            }}};
@@ -2947,8 +2926,8 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                   "Only AstNode supported for parsing attribute");
     TRI_ASSERT(field);
     // (0 - First) argument defines a field
-    *field = arangodb::iresearch::checkAttributeAccess(
-        args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
+    *field = checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref,
+                                  !filterCtx.isSearchFilter());
 
     if (!*field) {
       return error::invalidAttribute(funcName, 1);
@@ -3046,7 +3025,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   opts.with_transpositions = withTranspositions;
   opts.max_distance = static_cast<irs::byte_type>(maxDistance);
   opts.max_terms = static_cast<size_t>(maxTerms);
-  opts.provider = &arangodb::iresearch::getParametricDescription;
+  opts.provider = &getParametricDescription;
   irs::assign(opts.prefix, irs::ref_cast<irs::byte_type>(prefix));
 
   return {};
@@ -3210,8 +3189,8 @@ Result getInRangeArguments(
   if constexpr (0 == First) {
     TRI_ASSERT(field);
     // (0 - First) argument defines a field
-    *field = arangodb::iresearch::checkAttributeAccess(
-        args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
+    *field = checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref,
+                                  !filterCtx.isSearchFilter());
 
     if (!*field) {
       return error::invalidAttribute(funcName, 1);
@@ -3301,8 +3280,7 @@ Result fromFuncPhraseInRange(char const* funcName,
   }
 
   if (!min.isString()) {
-    return error::typeMismatch(subFuncName, 1,
-                               arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
+    return error::typeMismatch(subFuncName, 1, SCOPED_VALUE_TYPE_STRING,
                                ArgsTraits<VPackSlice>::scopedType(min))
         .withError(
             [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
@@ -3310,8 +3288,7 @@ Result fromFuncPhraseInRange(char const* funcName,
   irs::string_ref const minStrValue = getStringRef(min);
 
   if (!max.isString()) {
-    return error::typeMismatch(subFuncName, 2,
-                               arangodb::iresearch::SCOPED_VALUE_TYPE_STRING,
+    return error::typeMismatch(subFuncName, 2, SCOPED_VALUE_TYPE_STRING,
                                ArgsTraits<VPackSlice>::scopedType(max))
         .withError(
             [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
@@ -3525,7 +3502,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   // 1st argument defines a field
   // ...........................................................................
 
-  auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
+  auto const* fieldArg = checkAttributeAccess(
       args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
   if (!fieldArg) {
@@ -3536,7 +3513,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   // last odd argument defines an analyzer
   // ...........................................................................
 
-  arangodb::iresearch::FieldMeta::Analyzer analyzerPool(nullptr, "");
+  FieldMeta::Analyzer analyzerPool(nullptr, "");
 
   if (0 != (argc & 1)) {  // override analyzer
     --argc;
@@ -3573,8 +3550,8 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     std::string name;
 
-    if (!arangodb::iresearch::nameFromAttributeAccess(
-            name, *fieldArg, ctx, !filterCtx.isSearchFilter())) {
+    if (!nameFromAttributeAccess(name, *fieldArg, ctx,
+                                 !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(funcName, 1);
     }
 
@@ -3627,8 +3604,8 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   // 1st argument defines a field
-  auto const* field = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
+  auto const* field = checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref,
+                                           !filterCtx.isSearchFilter());
 
   if (!field) {
     return error::invalidAttribute(funcName, 1);
@@ -3646,7 +3623,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   auto threshold = FilterConstants::DefaultNgramMatchThreshold;
-  arangodb::iresearch::FieldMeta::Analyzer analyzerPool{nullptr, ""};
+  FieldMeta::Analyzer analyzerPool{nullptr, ""};
 
   if (argc > 3) {  // 4 args given. 3rd is threshold
     ScopedAqlValue tmpValue;
@@ -3671,12 +3648,10 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
       if (!tmpValue.execute(ctx)) {
         return error::failedToEvaluate(funcName, 3);
       }
-      if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING ==
-          tmpValue.type()) {  // this is analyzer
+      if (SCOPED_VALUE_TYPE_STRING == tmpValue.type()) {  // this is analyzer
         irs::string_ref analyzerId;
         if (!tmpValue.getString(analyzerId)) {
-          return error::failedToParse(
-              funcName, 3, arangodb::iresearch::SCOPED_VALUE_TYPE_STRING);
+          return error::failedToParse(funcName, 3, SCOPED_VALUE_TYPE_STRING);
         }
         if (filter || tmpValue.isConstant()) {
           auto analyzerRes =
@@ -3685,11 +3660,9 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
             return analyzerRes;
           }
         }
-      } else if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE ==
-                 tmpValue.type()) {
+      } else if (SCOPED_VALUE_TYPE_DOUBLE == tmpValue.type()) {
         if (!tmpValue.getDouble(threshold)) {
-          return error::failedToParse(
-              funcName, 3, arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE);
+          return error::failedToParse(funcName, 3, SCOPED_VALUE_TYPE_DOUBLE);
         }
       } else {
         return {TRI_ERROR_BAD_PARAMETER,
@@ -3699,12 +3672,10 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
                     .append("' has invalid type '")
                     .append(ScopedAqlValue::typeString(tmpValue.type()).c_str())
                     .append("' ('")
-                    .append(ScopedAqlValue::typeString(
-                                arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE)
+                    .append(ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_DOUBLE)
                                 .c_str())
                     .append("' or '")
-                    .append(ScopedAqlValue::typeString(
-                                arangodb::iresearch::SCOPED_VALUE_TYPE_STRING)
+                    .append(ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_STRING)
                                 .c_str())
                     .append("' expected)")};
       }
@@ -3746,7 +3717,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
       auto message = "'"s.append(funcName).append(
           "' AQL function: Failed to generate field name from the 1st "
           "argument");
-      LOG_TOPIC("91862", WARN, arangodb::iresearch::TOPIC) << message;
+      LOG_TOPIC("91862", WARN, TOPIC) << message;
       return {TRI_ERROR_BAD_PARAMETER, message};
     }
 
@@ -3804,9 +3775,9 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
   size_t currentArgNum = 0;
 
   // 1st argument defines a field
-  auto const* field = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(currentArgNum), *ctx.ref,
-      !filterCtx.isSearchFilter());
+  auto const* field =
+      checkAttributeAccess(args.getMemberUnchecked(currentArgNum), *ctx.ref,
+                           !filterCtx.isSearchFilter());
 
   if (!field) {
     return error::invalidAttribute(funcName, currentArgNum + 1);
@@ -3914,8 +3885,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     // Try to optimize us away
     if (!isMultiPrefix && !prefixes.empty() &&
         ctx.filterOptimization != FilterOptimization::NONE &&
-        arangodb::iresearch::includeStartsWithInLevenshtein(
-            filter, name, prefixes.back().second)) {
+        includeStartsWithInLevenshtein(filter, name, prefixes.back().second)) {
       return {};
     }
 
@@ -3993,8 +3963,8 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
   }
 
   // 1st argument defines a field
-  auto const* field = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
+  auto const* field = checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref,
+                                           !filterCtx.isSearchFilter());
 
   if (!field) {
     return error::invalidAttribute(funcName, 1);
@@ -4097,10 +4067,9 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   size_t fieldNodeIdx = 1;
   size_t shapeNodeIdx = 2;
 
-  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref,
-                                                 !filterCtx.isSearchFilter())) {
-    if (!arangodb::iresearch::checkAttributeAccess(
-            shapeNode, *ctx.ref, !filterCtx.isSearchFilter())) {
+  if (!checkAttributeAccess(fieldNode, *ctx.ref, !filterCtx.isSearchFilter())) {
+    if (!checkAttributeAccess(shapeNode, *ctx.ref,
+                              !filterCtx.isSearchFilter())) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName).append(
                   "' AQL function: Unable to find argument denoting an "
@@ -4138,21 +4107,20 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
         res = shape.parseCoordinates(slice, /*geoJson*/ true);
       }
     } else {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: argument at position '")
-                  .append(std::to_string(shapeNodeIdx))
-                  .append("' has invalid type '")
-                  .append(ScopedAqlValue::typeString(shapeValue.type()).c_str())
-                  .append("' ('")
-                  .append(ScopedAqlValue::typeString(
-                              arangodb::iresearch::SCOPED_VALUE_TYPE_OBJECT)
-                              .c_str())
-                  .append("' or '")
-                  .append(ScopedAqlValue::typeString(
-                              arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY)
-                              .c_str())
-                  .append("' expected)")};
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName)
+              .append("' AQL function: argument at position '")
+              .append(std::to_string(shapeNodeIdx))
+              .append("' has invalid type '")
+              .append(ScopedAqlValue::typeString(shapeValue.type()).c_str())
+              .append("' ('")
+              .append(
+                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_OBJECT).c_str())
+              .append("' or '")
+              .append(
+                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_ARRAY).c_str())
+              .append("' expected)")};
     }
 
     if (res.fail()) {
@@ -4209,8 +4177,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
     return error::malformedNode(node.type);
   }
 
-  auto const* args =
-      arangodb::iresearch::getNode(node, 0, aql::NODE_TYPE_ARRAY);
+  auto const* args = getNode(node, 0, aql::NODE_TYPE_ARRAY);
 
   if (!args) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -4219,7 +4186,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
 
   irs::string_ref name;
 
-  if (!arangodb::iresearch::parseValue(name, node)) {
+  if (!parseValue(name, node)) {
     return {TRI_ERROR_BAD_PARAMETER, "Unable to parse user function name"};
   }
 
@@ -4269,7 +4236,7 @@ Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
     return error::malformedNode(node.type);
   }
 
-  if (!arangodb::iresearch::isFilter(*fn)) {
+  if (!isFilter(*fn)) {
     // not a filter function
     return fromExpression(filter, ctx, filterCtx, node);
   }
@@ -4280,8 +4247,7 @@ Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
     return fromExpression(filter, ctx, filterCtx, node);
   }
 
-  auto const* args =
-      arangodb::iresearch::getNode(node, 0, aql::NODE_TYPE_ARRAY);
+  auto const* args = getNode(node, 0, aql::NODE_TYPE_ARRAY);
 
   if (!args) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -4399,7 +4365,7 @@ namespace iresearch {
   const auto res = ::filter(filter, ctx, filterCtx, node);
 
   if (res.fail()) {
-    LOG_TOPIC("dfa15", WARN, arangodb::iresearch::TOPIC) << res.errorMessage();
+    LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();
   }
 
   return res;
