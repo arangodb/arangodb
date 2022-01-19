@@ -559,7 +559,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
   Replication2/ReplicatedLog/Supervision.cpp
   Replication2/ReplicatedLog/SupervisionAction.cpp
-  Replication2/ReplicatedLog/SupervisionTypes.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
@@ -568,7 +567,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
-        Replication2/Version.cpp
+  Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
 )
