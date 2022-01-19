@@ -2124,6 +2124,7 @@ function explain(data, options, shouldPrint) {
     options = data.options;
   }
   options = options || {};
+  options.explainInternals = false;
   options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
@@ -2885,6 +2886,7 @@ function explainRegisters(data, options, shouldPrint) {
   }
   options = options || {};
   options.verbosePlans = true;
+  options.explainInternals = true;
   options.explainRegisters = true;
   setColors(options.colors === undefined ? true : options.colors);
 
