@@ -69,14 +69,6 @@ struct Variable {
 
   Variable* clone() const;
 
-  /// @brief registers a constant value for the variable
-  /// this constant value is used for constant propagation while creating the
-  /// AST
-  void setConstAstNode(AstNode* node) { _constAstNode = node; }
-
-  /// @brief returns a constant value registered for this variable
-  AstNode* getConstAstNode() const { return _constAstNode; }
-
   /// @brief whether or not the variable is user-defined
   bool isUserDefined() const;
 
@@ -122,14 +114,9 @@ struct Variable {
   bool isDataFromCollection;
 
  private:
-  /// @brief constant variable value (points to another AstNode)
-  /// Used for constant propagation while creating the AST.
-  AstNode* _constAstNode{nullptr};
-
-  // TODO - we have two kinds of const values here; this should be cleaned up!
-  /// @brief for const variables, this stores the constant value determined
-  /// while initializing the plan. Note: the variable takes ownership of this
-  /// value and destroys it
+  // for const variables, this stores the constant value determined
+  // while initializing the plan. Note: the variable takes ownership of this
+  // value and destroys it
   AqlValue _constantValue;
 };
 }  // namespace aql
