@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed BTS-441: Honour read only mode with disabled authentication
+
 * Upgraded boost to 1.78.0
 
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
