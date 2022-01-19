@@ -1005,21 +1005,21 @@ bool InvertedIndexFieldMeta::init(
                 IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
           }
         }
-        irs::string_ref type;
+        std::string_view type;
 
         {
           // required string value
           static const std::string subFieldName("type");
+          auto typeSlice = value.get(subFieldName);
 
-          if (!value.hasKey(subFieldName)  // missing required filed
-              || !value.get(subFieldName).isString()) {
+          if (!typeSlice.isString()) {
             errorField = fieldName + "[" + std::to_string(itr.index()) + "]." +
                          subFieldName;
 
             return false;
           }
 
-          type = getStringRef(value.get(subFieldName));
+          type = typeSlice.stringView();
         }
 
         VPackSlice properties;
