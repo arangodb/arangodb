@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>The HTTP library - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/value-or-error.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/tidylib.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">The HTTP library</h1></div></div></div>
+  <p>Let us imagine a simple application: it fetches a HTTP page using a HTTP library,
+sends it through HTML tidy via the htmltidy library, and then writes it to disc
+using a filelib library. So three third party libraries, two using Outcome in
+incompatible ways, and the third being a C library just for kicks.</p>
+
+<p>Let us imagine that the HTTP library has the following public interface:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="c1">// This is some standalone library implementing high level HTTP
+</span><span class="c1"></span><span class="k">namespace</span> <span class="n">httplib</span>
+<span class="p">{</span>
+  <span class="c1">// These are the error code that this HTTP library can return
+</span><span class="c1"></span>  <span class="k">enum</span> <span class="k">class</span><span class="err"> </span><span class="nc">status_code</span>
+  <span class="p">{</span>
+    <span class="n">success</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1">// not the HTTP success code of 200
+</span><span class="c1"></span>
+    <span class="c1">// A subset of all HTTP status codes for brevity
+</span><span class="c1"></span>    <span class="n">bad_request</span> <span class="o">=</span> <span class="mi">400</span><span class="p">,</span>
+    <span class="n">access_denied</span> <span class="o">=</span> <span class="mi">401</span><span class="p">,</span>
+    <span class="n">logon_failed</span> <span class="o">=</span> <span class="mi">402</span><span class="p">,</span>
+    <span class="n">forbidden</span> <span class="o">=</span> <span class="mi">403</span><span class="p">,</span>
+    <span class="n">not_found</span> <span class="o">=</span> <span class="mi">404</span><span class="p">,</span>
+    <span class="n">internal_error</span> <span class="o">=</span> <span class="mi">500</span>
+  <span class="p">};</span>
+  <span class="c1">// This is the error type that this HTTP library can return
+</span><span class="c1"></span>  <span class="k">struct</span> <span class="n">failure</span>
+  <span class="p">{</span>
+    <span class="n">status_code</span> <span class="n">status</span><span class="p">{</span><span class="n">status_code</span><span class="o">::</span><span class="n">success</span><span class="p">};</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">url</span><span class="p">{};</span>  <span class="c1">// The failing URL
+</span><span class="c1"></span>  <span class="p">};</span>
+  <span class="c1">// Localise a result implementation to this library, holding
+</span><span class="c1"></span>  <span class="c1">// the logic error of incorrect observation to mean program
+</span><span class="c1"></span>  <span class="c1">// termination.
+</span><span class="c1"></span>  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="o">&gt;</span>
+  <span class="k">using</span> <span class="n">result</span> <span class="o">=</span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">failure</span><span class="p">,</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">policy</span><span class="o">::</span><span class="n">terminate</span><span class="o">&gt;</span><span class="p">;</span>
+
+  <span class="cm">/* Performs a HTTP GET on the url, returning the body if successful,
+</span><span class="cm">  a failure with status_code if unsuccessful at the HTTP level, or a
+</span><span class="cm">  C++ exception throw if something catastrophic happened e.g. bad_alloc
+</span><span class="cm">  */</span>
+  <span class="n">result</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">get</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">url</span><span class="p">);</span>
+<span class="p">}</span>  <span class="c1">// namespace httplib
+</span><span class="c1"></span></code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/finale.cpp#L47" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>The HTTP library is a mixed-failure design. Likely failures (HTTP status codes)
+are returned via <code>httplib::failure</code>, unlikely failures (e.g. out of memory)
+are returned via throw of the usual STL exception types.</p>
+
+<p>The sole API we bother describing is an implementation of HTTP GET. It fetches
+a URL, and either returns the contents or the failure reason why not.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/value-or-error.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/tidylib.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

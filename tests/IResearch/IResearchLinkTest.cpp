@@ -230,8 +230,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
     std::string error;
 
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_EQ(expectedMeta, actualMeta);
     auto slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
@@ -308,8 +307,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
     std::string error;
 
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_EQ(expectedMeta, actualMeta);
     auto slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
@@ -383,9 +381,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      EXPECT_TRUE(
-          (actualMeta.init(server.server(), builder->slice(), false, error) &&
-           expectedMeta == actualMeta));
+      EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error) &&
+                  expectedMeta == actualMeta);
       auto slice = builder->slice();
       EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
                   logicalView->guid() == slice.get("view").copyString());
@@ -2406,13 +2403,11 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
     timeMs = insert(1, 10000, 0);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
     EXPECT_LT(0, commitTime1);
-    EXPECT_EQ(0, cleanupTime1);
-    EXPECT_LE(commitTime1, timeMs);
+    EXPECT_LE(commitTime1 + cleanupTime1, timeMs);
     timeMs += insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_LT(0, commitTime2);
-    EXPECT_EQ(0, cleanupTime1);
-    EXPECT_LE(commitTime2, timeMs / 2.0);
+    EXPECT_LE(commitTime2 + cleanupTime2, timeMs / 2.0);
   }
   {
     auto [numFiles0, indexSize0] = numFiles();

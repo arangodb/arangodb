@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -308,6 +308,7 @@ class ExecutionPlan {
 
   /// @brief registers a warning for an invalid OPTIONS attribute
   static void invalidOptionAttribute(QueryContext& query,
+                                     char const* errorReason,
                                      char const* operationName,
                                      char const* name, size_t length);
 

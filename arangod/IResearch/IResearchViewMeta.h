@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -141,7 +141,7 @@ struct IResearchViewMeta {
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
+  bool init(velocypack::Slice slice, std::string& errorField,
             IResearchViewMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr) noexcept;
 
@@ -152,7 +152,7 @@ struct IResearchViewMeta {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
+  bool json(velocypack::Builder& builder,
             IResearchViewMeta const* ignoreEqual = nullptr,
             Mask const* mask = nullptr) const;
 
@@ -172,9 +172,9 @@ struct IResearchViewMetaState {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<DataSourceId>
-      _collections;  // collection links added to this view via IResearchLink
-                     // creation (may contain no-longer valid cids)
+  // collection links added to this view via IResearchLink
+  // creation (may contain no-longer valid cids)
+  std::unordered_set<DataSourceId> _collections;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -197,19 +197,12 @@ struct IResearchViewMetaState {
   bool operator!=(IResearchViewMetaState const& other) const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief return default IResearchViewMeta values
-  ////////////////////////////////////////////////////////////////////////////////
-  static const IResearchViewMetaState& DEFAULT();
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchViewMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(VPackSlice slice, std::string& errorField,
-            IResearchViewMetaState const& defaults = DEFAULT(),
-            Mask* mask = nullptr);
+  bool init(VPackSlice slice, std::string& errorField, Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object

@@ -1,0 +1,1414 @@
+////
+Copyright 2021 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+[#usage]
+# Usage
+:idprefix: usage_
+
+All of the following code snippets assume that these lines
+```
+#include <boost/system.hpp>
+namespace sys = boost::system;
+```
+are in effect.
+
+## Returning Errors from OS APIs under POSIX
+
+Let's suppose that we're implementing a portable `file` wrapper
+over the OS file APIs. Its general outline is shown below:
+
+```
+class file
+{
+private:
+
+    int fd_;
+
+public:
+
+    // ...
+
+    std::size_t read( void * buffer, std::size_t size, sys::error_code& ec );
+    std::size_t write( void const * buffer, std::size_t size, sys::error_code& ec );
+};
+```
+
+Since we're implementing the POSIX version of `file`, its
+data member is a POSIX file descriptor `int fd_;`, although other
+implementations will differ.
+
+Our `read` and `write` functions return the number of bytes transferred, and signal
+errors via the output parameter `ec`, of type `boost::system::error_code`.
+
+An implementation of `file::read` might look like this:
+
+```
+std::size_t file::read( void * buffer, std::size_t size, sys::error_code& ec )
+{
+    ssize_t r = ::read( fd_, buffer, size );
+
+    if( r < 0 )
+    {
+        ec.assign( errno, sys::system_category() );
+        return 0;
+    }
+
+    ec = {}; // ec.clear(); under C++03
+    return r;
+}
+```
+
+We first call the POSIX API `read`; if it returns an error, we store the `errno`
+value in `ec`, using the system category, and return 0 as bytes transferred.
+Otherwise, we clear `ec` to signal success, and return the result of `::read`.
+
+NOTE: Clearing `ec` on successful returns is an important step; do not omit it.
+
+Under POSIX, the system category corresponds to POSIX `errno` values, which is
+why we use it.
+
+In principle, since the generic category _also_ corresponds to `errno` values
+under all platforms, we could have used it here; however, by convention under
+POSIX, if the `errno` value comes from the OS (the "system"), we use the system
+category for it. That's because the system category values may be a
+platform-specific superset of the generic (platform-independent) values.
+
+The implementation of `file::write` is basically the same. We show it here for
+completeness:
+
+```
+std::size_t file::write( void const * buffer, std::size_t size, sys::error_code& ec )
+{
+    ssize_t r = ::write( fd_, buffer, size );
+
+    if( r < 0 )
+    {
+        ec.assign( errno, sys::system_category() );
+        return 0;
+    }
+
+    ec = {}; // ec.clear(); under C++03
+    return r;
+}
+```
+
+## Returning Errors from OS APIs under Windows
+
+Under Windows, our `file` object will store a `HANDLE` instead of an `int`:
+
+```
+class file
+{
+private:
+
+    HANDLE fh_;
+
+public:
+
+    // as before
+};
+```
+
+and the implementation of `file::read` will look like this:
+
+```
+std::size_t file::read( void * buffer, std::size_t size, sys::error_code& ec )
+{
+    DWORD r = 0;
+
+    if( ::ReadFile( fh_, buffer, size, &r, 0 ) )
+    {
+        // success
+        ec = {}; // ec.clear(); under C++03
+    }
+    else
+    {
+        // failure
+        ec.assign( ::GetLastError(), sys::system_category() );
+    }
+
+    // In both cases, r is bytes transferred
+    return r;
+}
+```
+
+Here, the system category corresponds to the values defined in the system
+header `<winerror.h>` and returned by `GetLastError()`. Since we use the
+Win32 API `ReadFile` to implement `file::read`, and it returns the error
+code via `GetLastError()`, we again store that value in `ec` as belonging
+to the system category.
+
+The implementation of `file::write` is, again, the same.
+
+```
+std::size_t file::write( void const * buffer, std::size_t size, sys::error_code& ec )
+{
+    DWORD r = 0;
+
+    if( ::WriteFile( fh_, buffer, size, &r, 0 ) )
+    {
+        ec = {}; // ec.clear(); under C++03
+    }
+    else
+    {
+        ec.assign( ::GetLastError(), sys::system_category() );
+    }
+
+    return r;
+}
+```
+
+## Returning Specific Errors under POSIX
+
+Our implementation of `file::read` has a problem; it accepts `std::size_t`
+values for `size`, but the behavior of `::read` is unspecified when the
+requested value does not fit in `ssize_t`. To avoid reliance on unspecified
+behavior, let's add a check for this condition and return an error:
+
+```
+std::size_t file::read( void * buffer, std::size_t size, sys::error_code& ec )
+{
+    if( size > SSIZE_MAX )
+    {
+        ec.assign( EINVAL, sys::generic_category() );
+        return 0;
+    }
+
+    ssize_t r = ::read( fd_, buffer, size );
+
+    if( r < 0 )
+    {
+        ec.assign( errno, sys::system_category() );
+        return 0;
+    }
+
+    ec = {}; // ec.clear(); under C++03
+    return r;
+}
+```
+
+In this case, since we're returning the fixed `errno` value `EINVAL`, which
+is part of the portable subset defined by the generic category, we mark the
+error value in `ec` as belonging to the generic category.
+
+It's possible to use system as well, as `EINVAL` is also a system category
+value under POSIX; however, using the generic category for values belonging
+to the portable `errno` subset is slightly preferrable.
+
+Our implementation of `file::write` needs to undergo a similar treatment.
+There, however, we'll apply another change. When there's no space left on
+the disk, `::write` returns a number of bytes written that is lower than
+what we requested with `size`, but our function signals no error. We'll make
+it return `ENOSPC` in this case.
+
+```
+std::size_t file::write( void const * buffer, std::size_t size, sys::error_code& ec )
+{
+    if( size > SSIZE_MAX )
+    {
+        ec.assign( EINVAL, sys::generic_category() );
+        return 0;
+    }
+
+    ssize_t r = ::write( fd_, buffer, size );
+
+    if( r < 0 )
+    {
+        ec.assign( errno, sys::system_category() );
+        return 0;
+    }
+
+    if( r < size )
+    {
+        ec.assign( ENOSPC, sys::system_category() );
+    }
+    else
+    {
+        ec = {}; // ec.clear(); under C++03
+    }
+
+    return r;
+}
+```
+
+We've used the system category to make it appear that the `ENOSPC` value
+has come from the `::write` API, mostly to illustrate that this is also a
+possible approach. Using a generic value would have worked just as well.
+
+## Returning Specific Errors under Windows
+
+Not much to say; the situation under Windows is exactly the same. The only
+difference is that we _must_ use the generic category for returning `errno`
+values. The system category does not work; the integer values in the system
+category are entirely different from those in the generic category.
+
+```
+std::size_t file::read( void * buffer, std::size_t size, sys::error_code& ec )
+{
+    DWORD r = 0;
+
+    if( size > MAXDWORD )
+    {
+        ec.assign( EINVAL, sys::generic_category() );
+    }
+    else if( ::ReadFile( fh_, buffer, size, &r, 0 ) )
+    {
+        ec = {}; // ec.clear(); under C++03
+    }
+    else
+    {
+        ec.assign( ::GetLastError(), sys::system_category() );
+    }
+
+    return r;
+}
+
+std::size_t file::write( void const * buffer, std::size_t size, sys::error_code& ec )
+{
+    DWORD r = 0;
+
+    if( size > MAXDWORD )
+    {
+        ec.assign( EINVAL, sys::generic_category() );
+    }
+    else if( ::WriteFile( fh_, buffer, size, &r, 0 ) )
+    {
+        if( r < size )
+        {
+            ec.assign( ENOSPC, sys::generic_category() );
+        }
+        else
+        {
+            ec = {}; // ec.clear(); under C++03
+        }
+    }
+    else
+    {
+        ec.assign( ::GetLastError(), sys::system_category() );
+    }
+
+    return r;
+}
+```
+
+## Attaching a Source Location to Error Codes
+
+Unlike the standard `<system_error>`, Boost.System allows source locations
+(file/line/function) to be stored in `error_code`, so that functions handling
+the error can display or log the source code location where the error occurred.
+To take advantage of this functionality, our POSIX `file::read` function needs
+to be augmented as follows:
+
+```
+std::size_t file::read( void * buffer, std::size_t size, sys::error_code& ec )
+{
+    if( size > SSIZE_MAX )
+    {
+        static constexpr boost::source_location loc = BOOST_CURRENT_LOCATION;
+        ec.assign( EINVAL, sys::generic_category(), &loc );
+        return 0;
+    }
+
+    ssize_t r = ::read( fd_, buffer, size );
+
+    if( r < 0 )
+    {
+        static constexpr boost::source_location loc = BOOST_CURRENT_LOCATION;
+        ec.assign( errno, sys::system_category(), &loc );
+        return 0;
+    }
+
+    ec = {}; // ec.clear(); under C++03
+    return r;
+}
+```
+
+That is, before every `ec.assign` statement, we need to declare a
+`static constexpr` variable holding the current source location, then pass
+a pointer to it to `assign`. Since `error_code` is small and there's no space
+in it for more than a pointer, we can't just store the `source_location` in it
+by value.
+
+`BOOST_CURRENT_LOCATION` is a macro expanding to the current source location
+(a combination of `++__FILE__++`, `++__LINE__++`, and `BOOST_CURRENT_FUNCTION`.)
+It's defined and documented in link:../../../assert/index.html[Boost.Assert].
+
+Under {cpp}03, instead of `static constexpr`, one needs to use `static const`.
+Another option is `BOOST_STATIC_CONSTEXPR`, a
+link:../../../config/index.html[Boost.Config] macro that expands to either
+`static constexpr` or `static const`, as appropriate.
+
+To avoid repeating this boilerplate each time we do `ec.assign`, we can define
+a macro:
+
+```
+#define ASSIGN(ec, ...) { \
+    BOOST_STATIC_CONSTEXPR boost::source_location loc = BOOST_CURRENT_LOCATION; \
+    (ec).assign(__VA_ARGS__, &loc); }
+```
+
+which we can now use to augment, for example, the POSIX implementation of `file::write`:
+
+```
+std::size_t file::write( void const * buffer, std::size_t size, sys::error_code& ec )
+{
+    if( size > SSIZE_MAX )
+    {
+        ASSIGN( ec, EINVAL, sys::generic_category() );
+        return 0;
+    }
+
+    ssize_t r = ::write( fd_, buffer, size );
+
+    if( r < 0 )
+    {
+        ASSIGN( ec, errno, sys::system_category() );
+        return 0;
+    }
+
+    if( r < size )
+    {
+        ASSIGN( ec, ENOSPC, sys::generic_category() );
+    }
+    else
+    {
+        ec = {}; // ec.clear(); under C++03
+    }
+
+    return r;
+}
+```
+
+## Obtaining Textual Representations of Error Codes for Logging and Display
+
+Assuming that we have an `error_code` instance `ec`, returned to us by some
+function, we have a variety of means to obtain textual representations of the
+error code represented therein.
+
+`ec.to_string()` gives us the result of streaming `ec` into a `std::ostream`,
+e.g. if `std::cout << ec << std::endl;` outputs `system:6`, this is what
+`ec.to_string()` will return. (`system:6` under Windows is `ERROR_INVALID_HANDLE`
+from `<winerror.h>`.)
+
+To obtain a human-readable error message corresponding to this code, we can
+use `ec.message()`. For `ERROR_INVALID_HANDLE`, it would give us "The handle is
+invalid" - possibly localized.
+
+If `ec` contains a source location, we can obtain its textual representation
+via `ec.location().to_string()`. This will give us something like
+
+```text
+C:\Projects\testbed2019\testbed2019.cpp:98 in function 'unsigned __int64 __cdecl file::read(void *,unsigned __int64,class boost::system::error_code &)'
+```
+
+if there is a location in `ec`, and
+
+```text
+(unknown source location)
+```
+
+if there isn't. (`ec.has_location()` is `true` when `ec` contains a location.)
+
+Finally, `ec.what()` will give us a string that contains all of the above,
+something like
+
+```text
+The handle is invalid [system:6 at C:\Projects\testbed2019\testbed2019.cpp:98 in function 'unsigned __int64 __cdecl file::read(void *,unsigned __int64,class boost::system::error_code &)']
+```
+
+Most logging and diagnostic output that is not intended for the end user would
+probably end up using `what()`. (`ec.what()`, augmented with the prefix
+supplied at construction, is also what `boost::system::system_error::what()`
+would return.)
+
+## Composing Functions Returning Error Codes
+
+Let's suppose that we need to implement a file copy function, with the following
+interface:
+
+```
+std::size_t file_copy( file& src, file& dest, sys::error_code& ec );
+```
+
+`file_copy` uses `src.read` to read bytes from `src`, then writes these bytes
+to `dest` using `dest.write`. This continues until one of these operations signals
+an error, or until end of file is reached. It returns the number of bytes written,
+and uses `ec` to signal an error.
+
+Here is one possible implementation:
+
+```
+std::size_t file_copy( file& src, file& dest, sys::error_code& ec )
+{
+    std::size_t r = 0;
+
+    for( ;; )
+    {
+        unsigned char buffer[ 1024 ];
+
+        std::size_t n = src.read( buffer, sizeof( buffer ), ec );
+
+        // read failed, leave the error in ec and return
+        if( ec.failed() ) return r;
+
+        // end of file has been reached, exit loop
+        if( n == 0 ) return r;
+
+        r += dest.write( buffer, n, ec );
+
+        // write failed, leave the error in ec and return
+        if( ec.failed() ) return r;
+    }
+}
+```
+
+Note that there is no longer any difference between POSIX and Windows
+implementations; their differences are contained in `file::read` and
+`file::write`. `file_copy` is portable and works under any platform.
+
+The general pattern in writing such higher-level functions is that
+they pass the output `error_code` parameter `ec` they received from
+the caller directly as the output parameter to the lower-level functions
+they are built upon. This way, when they detect a failure in an intermediate
+operation (by testing `ec.failed()`), they can immediately return to the
+caller, because the error code is already in its proper place.
+
+Note that `file_copy` doesn't even need to clear `ec` on success, by
+using `ec = {};`. Since we've already tested `ec.failed()`, we know that
+`ec` contains a value that means success.
+
+## Providing Dual (Throwing and Nonthrowing) Overloads
+
+Functions that signal errors via an output `error_code& ec` parameter
+require that the caller check `ec` after calling them, and take appropriate
+action (such as return immediately, as above.) Forgetting to check `ec`
+results in logic errors.
+
+While this is a preferred coding style for some, others prefer exceptions,
+which one cannot forget to check.
+
+An approach that has been introduced by
+link:../../../filesystem/index.html[Boost.Filesystem] (which later turned
+into `std::filesystem`) is to provide both alternatives: a nonthrowing
+function taking `error_code& ec`, as `file_copy` above, and a throwing
+function that does not take an `error_code` output parameter, and throws
+exceptions on failure.
+
+This is how this second throwing function is typically implemented:
+
+```
+std::size_t file_copy( file& src, file& dest )
+{
+    sys::error_code ec;
+    std::size_t r = file_copy( src, dest, ec );
+
+    if( ec.failed() ) throw sys::system_error( ec, __func__ );
+
+    return r;
+}
+```
+
+That is, we simply call the nonthrowing overload of `file_copy`, and if
+it signals failure in `ec`, throw a `system_error` exception.
+
+We use our function name `++__func__++` (`"file_copy"`) as the prefix,
+although that's a matter of taste.
+
+Note that typically under this style the overloads taking `error_code& ec`
+are decorated with `noexcept`, so that it's clear that they don't throw
+exceptions (although we haven't done so in the preceding examples in order
+to keep the code {cpp}03-friendly.)
+
+## result<T> as an Alternative to Dual APIs
+
+Instead of providing two functions for every operation, an alternative
+approach is to make the function return `sys::result<T>` instead of `T`.
+`result<T>` is a class holding either `T` or `error_code`, similar to
+link:../../../variant2/index.html[`variant<T, error_code>`].
+
+Clients that prefer to check for errors and not rely on exceptions can
+test whether a `result<T> r` contains a value via `if( r )` or its more
+verbose equivalent `if( r.has_value() )`, then obtain the value via
+`*r` or `r.value()`. If `r` doesn't contain a value, the `error_code`
+it holds can be obtained with `r.error()`.
+
+Those who prefer exceptions just call `r.value()` directly, without
+checking. In the no-value case, this will automatically throw a
+`system_error` corresponding to the `error_code` in `r`.
+
+Assuming our base `file` API is unchanged, this variation of `file_copy`
+would look like this:
+
+```
+sys::result<std::size_t> file_copy( file& src, file& dest )
+{
+    std::size_t r = 0;
+    sys::error_code ec;
+
+    for( ;; )
+    {
+        unsigned char buffer[ 1024 ];
+
+        std::size_t n = src.read( buffer, sizeof( buffer ), ec );
+
+        if( ec.failed() ) return ec;
+        if( n == 0 ) return r;
+
+        r += dest.write( buffer, n, ec );
+
+        if( ec.failed() ) return ec;
+    }
+}
+```
+
+The only difference here is that we return `ec` on error, instead of
+`r`.
+
+Note, however, that we can no longer return both an error code and a
+number of transferred bytes; that is, we can no longer signal _partial
+success_. This is often not an issue at higher levels, but lower-level
+primitives such as `file::read` and `file::write` might be better off
+written using the old style.
+
+Nevertheless, to demonstrate how `result` returning APIs are composed,
+we'll show how `file_copy` would look if `file::read` and `file::write`
+returned `result<size_t>`:
+
+```
+class file
+{
+public:
+
+    // ...
+
+    sys::result<std::size_t> read( void * buffer, std::size_t size );
+    sys::result<std::size_t> write( void const * buffer, std::size_t size );
+};
+
+sys::result<std::size_t> file_copy( file& src, file& dest )
+{
+    std::size_t m = 0;
+
+    for( ;; )
+    {
+        unsigned char buffer[ 1024 ];
+
+        auto r = src.read( buffer, sizeof( buffer ) );
+        if( !r ) return r;
+
+        std::size_t n = *r;
+        if( n == 0 ) return m;
+
+        auto r2 = dest.write( buffer, n );
+        if( !r2 ) return r2;
+
+        std::size_t n2 = *r2;
+        m += n2;
+    }
+}
+```
+
+## Testing for Specific Error Conditions
+
+Let's suppose that we have called a function that signals failure
+using `error_code`, we have passed it an `error_code` variable `ec`,
+and now for some reason want to check whether the function has
+failed with an error code of `EINVAL`, "invalid argument".
+
+Since `error_code` can be compared for equality, our first instict
+might be `if( ec == error_code( EINVAL, generic_category() )`.
+
+This is wrong, and we should never do it.
+
+First, under POSIX, the function might have returned `EINVAL` from
+the system category (because the error might have been returned by
+an OS API, and not by the function itself, as was the case in our
+`read` and `write` implementations.)
+
+Since `error_code` comparisons are exact, `EINVAL` from the generic
+category does not compare equal to `EINVAL` from the system category.
+
+(And before you start thinking about just comparing `ec.value()` to
+`EINVAL`, read on.)
+
+Second, under Windows, the function might have returned `error_code(
+ERROR_INVALID_PARAMETER, system_category() )`. As we have already
+mentioned, the integer error values in the system category under
+Windows are completely unrelated to the integer `errno` values.
+
+The correct approach is to compare `ec` not to specific error codes,
+but to `error_condition( EINVAL, generic_category() )`. Error
+conditions are a platform-independent way to represent the meaning
+of the concrete error codes. In our case, all error codes, under
+both POSIX and Windows, that represent `EINVAL` will compare equal
+to `error_condition( EINVAL, generic_category() )`.
+
+In short, you should never compare error codes to error codes, and
+should compare them to error conditions instead. This is the purpose
+of the `error_condition` class, which is very frequently misunderstood.
+
+Since
+
+```
+if( ec == sys::error_condition( EINVAL, sys::generic_category() ) )
+{
+    // handle EINVAL
+}
+```
+
+is a bit verbose, Boost.System provides enumerator values for the
+`errno` values against which an error code can be compared directly.
+
+These enumerators are defined in <<#ref_errc,`<boost/system/errc.hpp>`>>,
+and enable the above test to be written
+
+```
+if( ec == sys::errc::invalid_argument )
+{
+    // handle EINVAL
+}
+```
+
+which is what one should generally use for testing for a specific error
+condition, as a best practice.
+
+## Adapting Existing Integer Error Values
+
+Libraries with C (or `extern "C"`) APIs often signal failure by returning
+a library-specific integer error code (with zero typically being reserved
+for "no error".) When writing portable {cpp} wrappers, we need to decide
+how to expose these error codes, and using `error_code` is a good way to
+do it.
+
+Because the integer error codes are library specific, and in general match
+neither `errno` values or system category values, we need to define a
+library-specific error category.
+
+### Adapting SQLite Errors
+
+We'll take SQLite as an example. The general outline of a custom error
+category is as follows:
+
+```
+class sqlite3_category_impl: public sys::error_category
+{
+    // TODO add whatever's needed here
+};
+
+sys::error_category const& sqlite3_category()
+{
+    static const sqlite3_category_impl instance;
+    return instance;
+}
+```
+
+which can then be used similarly to the predefined generic and system
+categories:
+
+```
+int r = some_sqlite3_function( ... );
+ec.assign( r, sqlite3_category() );
+```
+
+If we try to compile the above category definition as-is, it will complain
+about our not implementing two pure virtual member functions, `name` and
+`message`, so at minimum, we'll need to add these. In addition, we'll also
+implement the non-allocating overload of `message`. It's not pure virtual,
+but its default implementation calls the `std::string`-returning overload,
+and that's almost never what one wants. (This default implementation is only
+provided for backward compatibility, in order to not break existing
+user-defined categories that were written before this overload was added.)
+
+So, the minimum we need to implement is this:
+
+```
+class sqlite3_category_impl: public sys::error_category
+{
+public:
+
+    const char * name() const noexcept;
+    std::string message( int ev ) const;
+    char const * message( int ev, char * buffer, std::size_t len ) const noexcept;
+};
+```
+
+`name` is easy, it just returns the category name:
+
+```
+const char * sqlite3_category_impl::name() const noexcept
+{
+    return "sqlite3";
+}
+```
+
+`message` is used to obtain an error message given an integer error code.
+SQLite provides the function `sqlite3_errstr` for this, so we don't need
+to do any work:
+
+```
+std::string sqlite3_category_impl::message( int ev ) const
+{
+    return sqlite3_errstr( ev );
+}
+
+char const * sqlite3_category_impl::message( int ev, char * buffer, std::size_t len ) const noexcept
+{
+    std::snprintf( buffer, len, "%s", sqlite3_errstr( ev ) );
+    return buffer;
+}
+```
+
+and we're done. `sqlite3_category()` can now be used like the predefined
+categories, and we can put an SQLite error code `int r` into a Boost.System
+`error_code ec` by means of `ec.assign( r, sqlite3_category() )`.
+
+### Adapting ZLib Errors
+
+Another widely used C library is ZLib, and the portion of `zlib.h` that
+defines its error codes is shown below:
+
+```
+#define Z_OK            0
+#define Z_STREAM_END    1
+#define Z_NEED_DICT     2
+#define Z_ERRNO        (-1)
+#define Z_STREAM_ERROR (-2)
+#define Z_DATA_ERROR   (-3)
+#define Z_MEM_ERROR    (-4)
+#define Z_BUF_ERROR    (-5)
+#define Z_VERSION_ERROR (-6)
+/* Return codes for the compression/decompression functions. Negative values
+ * are errors, positive values are used for special but normal events.
+ */
+```
+
+There are three relevant differences with the previous case of SQLite:
+
+* While for SQLite all non-zero values were errors, as is the typical case,
+  here negative values are errors, but positive values are "special but normal",
+  that is, they represent success, not failure;
+* ZLib does not provide a function that returns the error message corresponding
+  to a specific error code;
+* When `Z_ERRNO` is returned, the error code should be retrieved from `errno`.
+
+Our category implementation will look like this:
+
+```
+class zlib_category_impl: public sys::error_category
+{
+public:
+
+    const char * name() const noexcept;
+
+    std::string message( int ev ) const;
+    char const * message( int ev, char * buffer, std::size_t len ) const noexcept;
+
+    bool failed( int ev ) const noexcept;
+};
+
+sys::error_category const& zlib_category()
+{
+    static const zlib_category_impl instance;
+    return instance;
+}
+```
+
+As usual, the implementation of `name` is trivial:
+
+```
+const char * zlib_category_impl::name() const noexcept
+{
+    return "zlib";
+}
+```
+
+We'll need to work a bit harder to implement `message` this time, as there's
+no preexisting function to lean on:
+
+```
+char const * zlib_category_impl::message( int ev, char * buffer, std::size_t len ) const noexcept
+{
+    switch( ev )
+    {
+    case Z_OK:            return "No error";
+    case Z_STREAM_END:    return "End of stream";
+    case Z_NEED_DICT:     return "A dictionary is needed";
+    case Z_ERRNO:         return "OS API error";
+    case Z_STREAM_ERROR:  return "Inconsistent stream state or invalid argument";
+    case Z_DATA_ERROR:    return "Data error";
+    case Z_MEM_ERROR:     return "Out of memory";
+    case Z_BUF_ERROR:     return "Insufficient buffer space";
+    case Z_VERSION_ERROR: return "Library version mismatch";
+    }
+
+    std::snprintf( buffer, len, "Unknown zlib error %d", ev );
+    return buffer;
+}
+```
+
+This is a typical implementation of the non-throwing `message` overload. Note
+that `message` is allowed to return something different from `buffer`, which
+means that we can return character literals directly, without copying them
+into the supplied buffer first. This allows our function to return the correct
+message text even when the buffer is too small.
+
+The `std::string` overload of `message` is now trivial:
+
+```
+std::string zlib_category_impl::message( int ev ) const
+{
+    char buffer[ 64 ];
+    return this->message( ev, buffer, sizeof( buffer ) );
+}
+```
+
+Finally, we need to implement `failed`, in order to override its default
+behavior of returning `true` for all nonzero values:
+
+```
+bool zlib_category_impl::failed( int ev ) const noexcept
+{
+    return ev < 0;
+}
+```
+
+This completes the implementation of `zlib_category()` and takes care of the
+first two bullets above, but we still haven't addressed the third one; namely,
+that we need to retrieve the error from `errno` in the `Z_ERRNO` case.
+
+To do that, we'll define a helper function that would be used to assign a ZLib
+error code to an `error_code`:
+
+```
+void assign_zlib_error( sys::error_code & ec, int r )
+{
+    if( r != Z_ERRNO )
+    {
+        ec.assign( r, zlib_category() );
+    }
+    else
+    {
+        ec.assign( errno, sys::generic_category() );
+    }
+}
+```
+
+so that, instead of using `ec.assign( r, zlib_category() )` directly, code
+would do
+
+```
+int r = some_zlib_function( ... );
+assign_zlib_error( ec, r );
+```
+
+We can stop here, as this covers everything we set out to do, but we can take
+an extra step and enable source locations for our error codes. For that, we'll
+need to change `assign_zlib_error` to take a `source_location`:
+
+```
+void assign_zlib_error( sys::error_code & ec, int r, boost::source_location const* loc )
+{
+    if( r != Z_ERRNO )
+    {
+        ec.assign( r, zlib_category(), loc );
+    }
+    else
+    {
+        ec.assign( errno, sys::generic_category(), loc );
+    }
+}
+```
+
+Define a helper macro to avoid the boilerplate of defining the `static
+constexpr` source location object each time:
+
+```
+#define ASSIGN_ZLIB_ERROR(ec, r) { \
+    BOOST_STATIC_CONSTEXPR boost::source_location loc = BOOST_CURRENT_LOCATION; \
+    assign_zlib_error( ec, r, &loc ); }
+```
+
+And then use the macro instead of the function:
+
+```
+int r = some_zlib_function( ... );
+ASSIGN_ZLIB_ERROR( ec, r );
+```
+
+### Supporting Comparisons against Conditions
+
+We notice that some of the ZLib error codes correspond to portable `errno`
+conditions. `Z_STREAM_ERROR`, for instance, is returned in cases where
+POSIX functions would have returned `EINVAL`; `Z_MEM_ERROR` is `ENOMEM`;
+and `Z_BUF_ERROR`, insufficient space in the output buffer to store the
+result, roughly corresponds to `ERANGE`, result out of range.
+
+To encode this relationship, we need to implement either
+`default_error_condition` or `equivalent` in our category. Since we have
+a simple one to one mapping, the former will suffice:
+
+```
+class zlib_category_impl: public sys::error_category
+{
+public:
+
+    const char * name() const noexcept;
+
+    std::string message( int ev ) const;
+    char const * message( int ev, char * buffer, std::size_t len ) const noexcept;
+
+    bool failed( int ev ) const noexcept;
+
+    sys::error_condition default_error_condition( int ev ) const noexcept;
+};
+```
+
+The implementation is straightforward:
+
+```
+sys::error_condition zlib_category_impl::default_error_condition( int ev ) const noexcept
+{
+    switch( ev )
+    {
+    case Z_OK:            return sys::error_condition();
+    case Z_STREAM_ERROR:  return sys::errc::invalid_argument;
+    case Z_MEM_ERROR:     return sys::errc::not_enough_memory;
+    case Z_BUF_ERROR:     return sys::errc::result_out_of_range;
+    }
+
+    return sys::error_condition( ev, *this );
+}
+```
+
+Once this is added, we will be able to compare a ZLib `error_code ec` against
+`errc` enumerators:
+
+```
+if( ec == sys::errc::not_enough_memory )
+{
+    // Z_MEM_ERROR, or ENOMEM
+}
+```
+
+## Defining Library-Specific Error Codes
+
+Let's suppose that we are writing a library `libmyimg` for reading some
+hypothetical image format, and that we have defined the following API
+function for that:
+
+```
+namespace libmyimg
+{
+
+struct image;
+
+void load_image( file& f, image& im, sys::error_code& ec );
+
+} // namespace libmyimg
+```
+
+(using our portable `file` class from the preceding examples.)
+
+Our hypothetical image format is simple, consisting of a fixed header,
+followed by the image data, so an implementation of `load_image` might
+have the following structure:
+
+```
+namespace libmyimg
+{
+
+struct image_header
+{
+    uint32_t signature;
+    uint32_t width;
+    uint32_t height;
+    uint32_t bits_per_pixel;
+    uint32_t channels;
+};
+
+void load_image_header( file& f, image_header& im, sys::error_code& ec );
+
+struct image;
+
+void load_image( file& f, image& im, sys::error_code& ec )
+{
+    image_header ih = {};
+    load_image_header( f, ih, ec );
+
+    if( ec.failed() ) return;
+
+    if( ih.signature != 0xFF0AD71A )
+    {
+        // return an "invalid signature" error
+    }
+
+    if( ih.width == 0 )
+    {
+        // return an "invalid width" error
+    }
+
+    if( ih.height == 0 )
+    {
+        // return an "invalid height" error
+    }
+
+    if( ih.bits_per_pixel != 8 )
+    {
+        // return an "unsupported bit depth" error
+    }
+
+    if( ih.channels != 1 && ih.channels != 3 && ih.channels != 4 )
+    {
+        // return an "unsupported channel count" error
+    }
+
+    // initialize `im` and read image data
+
+    // ...
+}
+
+} // namespace libmyimg
+```
+
+We can see that we need to define five error codes of our own. (Our function
+can also return other kinds of failures in `ec` -- those will come from
+`file::read` which `load_image_header` will use to read the header.)
+
+To define these errors, we'll use a scoped enumeration type. (This example
+will take advantage of {cpp}11 features.)
+
+```
+namespace libmyimg
+{
+
+enum class error
+{
+    success = 0,
+
+    invalid_signature,
+    invalid_width,
+    invalid_height,
+    unsupported_bit_depth,
+    unsupported_channel_count
+};
+
+} // namespace libmyimg
+```
+
+Boost.System supports being told that an enumeration type represents an error
+code, which enables implicit conversions between the enumeration type and
+`error_code`. It's done by specializing the `is_error_code_enum` type trait,
+which resides in `namespace boost::system` like the rest of the library:
+
+```
+namespace boost
+{
+namespace system
+{
+
+template<> struct is_error_code_enum< ::libmyimg::error >: std::true_type
+{
+};
+
+} // namespace system
+} // namespace boost
+```
+
+Once this is in place, we can now assign values of `libmyimg::error` to
+`sys::error_code`, which enables the implementation of `load_image` to be
+written as follows:
+
+```
+void load_image( file& f, image& im, sys::error_code& ec )
+{
+    image_header ih = {};
+    load_image_header( f, ih, ec );
+
+    if( ec.failed() ) return;
+
+    if( ih.signature != 0xFF0AD71A )
+    {
+        ec = error::invalid_signature;
+        return;
+    }
+
+    if( ih.width == 0 )
+    {
+        ec = error::invalid_width;
+        return;
+    }
+
+    if( ih.height == 0 )
+    {
+        ec = error::invalid_height;
+        return;
+    }
+
+    if( ih.bits_per_pixel != 8 )
+    {
+        ec = error::unsupported_bit_depth;
+        return;
+    }
+
+    if( ih.channels != 1 && ih.channels != 3 && ih.channels != 4 )
+    {
+        ec = error::unsupported_channel_count;
+        return;
+    }
+
+    // initialize `image` and read image data
+
+    // ...
+}
+```
+
+This is however not enough; we still need to define the error category
+for our enumerators, and associate them with it.
+
+The first step follows our previous two examples very closely:
+
+```
+namespace libmyimg
+{
+
+class myimg_category_impl: public sys::error_category
+{
+public:
+
+    const char * name() const noexcept;
+
+    std::string message( int ev ) const;
+    char const * message( int ev, char * buffer, std::size_t len ) const noexcept;
+};
+
+const char * myimg_category_impl::name() const noexcept
+{
+    return "libmyimg";
+}
+
+std::string myimg_category_impl::message( int ev ) const
+{
+    char buffer[ 64 ];
+    return this->message( ev, buffer, sizeof( buffer ) );
+}
+
+char const * myimg_category_impl::message( int ev, char * buffer, std::size_t len ) const noexcept
+{
+    switch( static_cast<error>( ev ) )
+    {
+    case error::success:                   return "No error";
+    case error::invalid_signature:         return "Invalid image signature";
+    case error::invalid_width:             return "Invalid image width";
+    case error::invalid_height:            return "Invalid image height";
+    case error::unsupported_bit_depth:     return "Unsupported bit depth";
+    case error::unsupported_channel_count: return "Unsupported number of channels";
+    }
+
+    std::snprintf( buffer, len, "Unknown libmyimg error %d", ev );
+    return buffer;
+}
+
+sys::error_category const& myimg_category()
+{
+    static const myimg_category_impl instance;
+    return instance;
+}
+
+} // namespace libmyimg
+```
+
+The second step involves implementing a function `make_error_code` in
+the namespace of our enumeration type `error` that takes `error` and
+returns `boost::system::error_code`:
+
+```
+namespace libmyimg
+{
+
+sys::error_code make_error_code( error e )
+{
+    return sys::error_code( static_cast<int>( e ), myimg_category() );
+}
+
+} // namespace libmyimg
+```
+
+Now `load_image` will compile, and we just need to fill the rest of its
+implementation with code that uses `file::read` to read the image data.
+
+There's one additional embellishment we can make. As we know, Boost.System
+was proposed for, and accepted into, the {cpp}11 standard, and now there's
+a standard implementation of it in `<system_error>`. We can make our
+error enumeration type compatible with `std::error_code` as well, by
+specializing the standard type trait `std::is_error_code_enum`:
+
+```
+namespace std
+{
+
+template<> struct is_error_code_enum< ::libmyimg::error >: std::true_type
+{
+};
+
+} // namespace std
+```
+
+This makes our enumerators convertible to `std::error_code`.
+
+(The reason this works is that `boost::system::error_code` is convertible
+to `std::error_code`, so the return value of our `make_error_code` overload
+can be used to initialize a `std::error_code`.)
+
+## Defining Library-Specific Error Conditions
+
+All of the `libmyimg::error` error codes we have so far represent the same
+error condition - invalid or unsupported image format. It might make sense to
+enable testing for this condition without the need to enumerate all five
+specific codes. To do this, we can define an error condition enumeration type:
+
+```
+namespace libmyimg
+{
+
+enum class condition
+{
+    invalid_format = 1
+};
+
+} // namespace libmyimg
+```
+
+which we can tag as representing an error condition by specializing
+`is_error_condition_enum`:
+
+```
+namespace boost
+{
+namespace system
+{
+
+template<> struct is_error_condition_enum< ::libmyimg::condition >: std::true_type
+{
+};
+
+} // namespace system
+} // namespace boost
+
+namespace std
+{
+
+template<> struct is_error_condition_enum< ::libmyimg::condition >: std::true_type
+{
+};
+
+} // namespace std
+```
+
+Similarly to the error code enumeration type, which needed a `make_error_code`
+overload, this one will need to have a `make_error_condition` overload, and a
+category.
+
+It's in principle possible to reuse the category we already defined for our
+error codes, by making the condition values start from, say, 10000 instead of
+1. This saves some typing, but a better practice is to use a separate category
+for the error conditions. So that's what we'll do:
+
+```
+namespace libmyimg
+{
+
+class myimg_condition_category_impl: public sys::error_category
+{
+public:
+
+    const char * name() const noexcept;
+
+    std::string message( int ev ) const;
+    char const * message( int ev, char * buffer, std::size_t len ) const noexcept;
+};
+
+const char * myimg_condition_category_impl::name() const noexcept
+{
+    return "libmyimg_condition";
+}
+
+std::string myimg_condition_category_impl::message( int ev ) const
+{
+    char buffer[ 64 ];
+    return this->message( ev, buffer, sizeof( buffer ) );
+}
+
+char const * myimg_condition_category_impl::message( int ev, char * buffer, std::size_t len ) const noexcept
+{
+    switch( static_cast<condition>( ev ) )
+    {
+    case condition::invalid_format: return "Invalid or unsupported image format";
+    }
+
+    std::snprintf( buffer, len, "Unknown libmyimg condition %d", ev );
+    return buffer;
+}
+
+sys::error_category const& myimg_condition_category()
+{
+    static const myimg_condition_category_impl instance;
+    return instance;
+}
+
+sys::error_condition make_error_condition( condition e )
+{
+    return sys::error_condition( static_cast<int>( e ), myimg_condition_category() );
+}
+
+} // namespace libmyimg
+```
+
+We have our condition, but it doesn't do anything yet. To enable
+`libmyimg::condition::invalid_format` to compare equal to our error codes,
+we need to implement `default_error_condition` in the error code category:
+
+```
+namespace libmyimg
+{
+
+class myimg_category_impl: public sys::error_category
+{
+public:
+
+    const char * name() const noexcept;
+
+    std::string message( int ev ) const;
+    char const * message( int ev, char * buffer, std::size_t len ) const noexcept;
+
+    sys::error_condition default_error_condition( int ev ) const noexcept;
+};
+
+sys::error_condition myimg_category_impl::default_error_condition( int ev ) const noexcept
+{
+    switch( static_cast<error>( ev ) )
+    {
+    case error::success:
+
+        return {};
+
+    case error::invalid_signature:
+    case error::invalid_width:
+    case error::invalid_height:
+    case error::unsupported_bit_depth:
+    case error::unsupported_channel_count:
+
+        return condition::invalid_format;
+    }
+
+    return sys::error_condition( ev, *this );
+}
+
+} // namespace libmyimg
+```
+
+That's it; now `ec == libmyimg::condition::invalid_format` can be used to test
+whether `ec` contains one of our error codes corresponding to the "invalid
+image format" condition.

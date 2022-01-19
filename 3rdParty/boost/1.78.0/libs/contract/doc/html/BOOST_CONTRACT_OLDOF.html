@@ -1,0 +1,72 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macro BOOST_CONTRACT_OLDOF</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="reference.html#header.boost.contract.old_hpp" title="Header &lt;boost/contract/old.hpp&gt;">
+<link rel="prev" href="boost/contract/copy_old_idm36570.html" title="Function copy_old">
+<link rel="next" href="BOOST_CONTRACT_NA_idm36634.html" title="Macro BOOST_CONTRACT_NAMED_OVERRIDE">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost/contract/copy_old_idm36570.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.old_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_NA_idm36634.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_CONTRACT_OLDOF"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_CONTRACT_OLDOF</span></h2>
+<p>BOOST_CONTRACT_OLDOF — Macro typically used to copy an old value expression and assign it to an old value pointer. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="reference.html#header.boost.contract.old_hpp" title="Header &lt;boost/contract/old.hpp&gt;">boost/contract/old.hpp</a>&gt;
+
+</span>BOOST_CONTRACT_OLDOF(...)</pre></div>
+<div class="refsect1">
+<a name="idm42655"></a><h2>Description</h2>
+<p>The expression expanded by this macro should be assigned to an old value pointer of type <code class="computeroutput"><a class="link" href="boost/contract/old_ptr.html" title="Class template old_ptr">boost::contract::old_ptr</a></code> or  <code class="computeroutput"><a class="link" href="boost/contract/old_ptr_if_copyable.html" title="Class template old_ptr_if_copyable">boost::contract::old_ptr_if_copyable</a></code>. This is an overloaded variadic macro and it can be used in the following different ways.</p>
+<p>1. From within virtual public functions and public functions overrides:</p>
+<pre class="programlisting"><span class="identifier">BOOST_CONTRACT_OLDOF</span><span class="special">(</span><span class="identifier">v</span><span class="special">,</span> <span class="identifier">old_expr</span><span class="special">)</span>
+</pre>
+<p>2. From all other operations:</p>
+<pre class="programlisting"><span class="identifier">BOOST_CONTRACT_OLDOF</span><span class="special">(</span><span class="identifier">old_expr</span><span class="special">)</span>
+</pre>
+<p>Where:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><code class="computeroutput"><span class="bold"><strong>v</strong></span></code> is the extra parameter of type  <code class="computeroutput"><a class="link" href="boost/contract/virtual_.html" title="Class virtual_">boost::contract::virtual_</a></code><code class="computeroutput">*</code> and default value <code class="computeroutput">0</code> from the enclosing virtual public function or public function overrides declaring the contract. </p></li>
+<li class="listitem"><p><code class="computeroutput"><span class="bold"><strong>old_expr</strong></span></code> is the expression to be evaluated and copied into the old value pointer. (This is not a variadic macro parameter so any comma it might contain must be protected by round parenthesis and <code class="computeroutput">BOOST_CONTRACT_OLDOF(v, (old_expr))</code> will always work.)</p></li>
+</ul></div>
+<p>
+On compilers that do not support variadic macros, programmers can manually copy old value expressions without using this macro (see  <a class="link" href="boost_contract/extras.html#boost_contract.extras.no_macros__and_no_variadic_macros_" title="No Macros (and No Variadic Macros)"> No Macros</a>).</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="boost_contract/tutorial.html#boost_contract.tutorial.old_values" title="Old Values"> Old Values</a> </p>
+<p>
+</p>
+<p>
+</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost/contract/copy_old_idm36570.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.old_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_NA_idm36634.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

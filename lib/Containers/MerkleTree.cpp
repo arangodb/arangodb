@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1123,9 +1123,8 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::string_view buffer) {
 }
 
 template<typename Hasher, std::uint64_t const BranchingBits>
-MerkleTree<Hasher, BranchingBits>::MerkleTree(Data&& data) {
-  _data = std::move(data);
-}
+MerkleTree<Hasher, BranchingBits>::MerkleTree(Data&& data)
+    : _data{std::move(data)} {}
 
 template<typename Hasher, std::uint64_t const BranchingBits>
 MerkleTree<Hasher, BranchingBits>::MerkleTree(

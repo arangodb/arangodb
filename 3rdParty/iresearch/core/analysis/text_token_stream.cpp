@@ -33,7 +33,6 @@
 #include <cctype> // for std::isspace(...)
 #include <fstream>
 #include <mutex>
-#include <string_view>
 
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
@@ -431,16 +430,16 @@ bool process_term(
   return true;
 }
 
-constexpr std::string_view LOCALE_PARAM_NAME            {"locale"};
-constexpr std::string_view CASE_CONVERT_PARAM_NAME      {"case"};
-constexpr std::string_view STOPWORDS_PARAM_NAME         {"stopwords"};
-constexpr std::string_view STOPWORDS_PATH_PARAM_NAME    {"stopwordsPath"};
-constexpr std::string_view ACCENT_PARAM_NAME            {"accent"};
-constexpr std::string_view STEMMING_PARAM_NAME          {"stemming"};
-constexpr std::string_view EDGE_NGRAM_PARAM_NAME        {"edgeNgram"};
-constexpr std::string_view MIN_PARAM_NAME               {"min"};
-constexpr std::string_view MAX_PARAM_NAME               {"max"};
-constexpr std::string_view PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
+constexpr VPackStringRef LOCALE_PARAM_NAME            {"locale"};
+constexpr VPackStringRef CASE_CONVERT_PARAM_NAME      {"case"};
+constexpr VPackStringRef STOPWORDS_PARAM_NAME         {"stopwords"};
+constexpr VPackStringRef STOPWORDS_PATH_PARAM_NAME    {"stopwordsPath"};
+constexpr VPackStringRef ACCENT_PARAM_NAME            {"accent"};
+constexpr VPackStringRef STEMMING_PARAM_NAME          {"stemming"};
+constexpr VPackStringRef EDGE_NGRAM_PARAM_NAME        {"edgeNgram"};
+constexpr VPackStringRef MIN_PARAM_NAME               {"min"};
+constexpr VPackStringRef MAX_PARAM_NAME               {"max"};
+constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
 
 const frozen::unordered_map<
     string_ref,

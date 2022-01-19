@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +33,8 @@ using namespace arangodb::pregel::algos::accumulators;
 
 CustomAccumulator<VPackSlice>::CustomAccumulator(
     AccumulatorOptions const& options, CustomAccumulatorDefinitions const& defs)
-    : Accumulator<VPackSlice>(options, defs) {
-  _definition = defs.at(options.customType.value());
+    : Accumulator<VPackSlice>(options, defs),
+      _definition{defs.at(options.customType.value())} {
   greenspun::InitMachine(_machine);
   SetupFunctions();
   if (options.parameters) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,7 @@ struct IResearchLinkHelper {
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(application_features::ApplicationServer& server,
                     velocypack::Slice lhs, velocypack::Slice rhs,
-                    irs::string_ref const& dbname);
+                    irs::string_ref dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id

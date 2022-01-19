@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -225,6 +225,12 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   Result properties(IResearchViewMeta const& meta);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief update runtime data processing properties (not persisted)
+  /// @return success
+  //////////////////////////////////////////////////////////////////////////////
+  Result propertiesUnsafe(IResearchViewMeta const& meta);
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
@@ -272,7 +278,7 @@ class IResearchLink {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice const& definition,
+  Result init(velocypack::Slice definition,
               InitCallback const& initCallback = {});
 
   ////////////////////////////////////////////////////////////////////////////////

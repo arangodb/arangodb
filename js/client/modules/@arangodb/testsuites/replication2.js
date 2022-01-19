@@ -60,7 +60,13 @@ function replication2Server(options) {
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 5);
 
-  return tu.performTests(opts, testCases, 'replication2_server', tu.runThere);
+  return tu.performTests(opts, testCases, 'replication2_server', tu.runThere, {
+        'javascript.allow-external-process-control': 'true',
+        'javascript.allow-port-testing': 'true',
+        'javascript.allow-admin-execute': 'true',
+        'agency.supervision-grace-period': '3.0',
+        'agency.supervision-ok-threshold': '1.5',
+      });
 }
 
 
@@ -71,6 +77,8 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   for (const [key, value] of Object.entries(functionsDocumentation)) {
     fnDocs[key] = value;
   }
+  defaultFns.push('replication2_client');
+  defaultFns.push('replication2_server');
   for (let i = 0; i < optionsDocumentation.length; i++) {
     optionsDoc.push(optionsDocumentation[i]);
   }

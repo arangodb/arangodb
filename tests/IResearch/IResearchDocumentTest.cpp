@@ -860,8 +860,7 @@ TEST_F(IResearchDocumentTest,
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(
-      linkMeta.init(server.server(), linkMetaJson->slice(), false, error));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -1468,8 +1467,8 @@ TEST_F(IResearchDocumentTest,
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -1883,8 +1882,8 @@ TEST_F(
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -2295,8 +2294,8 @@ TEST_F(IResearchDocumentTest,
   auto sysVocbase = sysDatabase.use();
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -2628,18 +2627,20 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
         EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-        auto column = segment.column_reader(
-            arangodb::iresearch::DocumentPrimaryKey::PK());
+        auto column =
+            segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
         ASSERT_TRUE(column);
 
-        auto values = column->values();
-        ASSERT_TRUE(values);
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, value);
 
-        irs::bytes_ref pkValue;
-        EXPECT_TRUE(values(id, pkValue));
+        EXPECT_EQ(id, values->seek(id));
 
         arangodb::LocalDocumentId pk;
-        EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+        EXPECT_TRUE(
+            arangodb::iresearch::DocumentPrimaryKey::read(pk, value->value));
         EXPECT_EQ(rid, pk.id());
       }
     }
@@ -2810,18 +2811,20 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
         EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-        auto column = segment.column_reader(
-            arangodb::iresearch::DocumentPrimaryKey::PK());
+        auto column =
+            segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
         ASSERT_TRUE(column);
 
-        auto values = column->values();
-        ASSERT_TRUE(values);
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, value);
 
-        irs::bytes_ref pkValue;
-        EXPECT_TRUE(values(id, pkValue));
+        EXPECT_EQ(id, values->seek(id));
 
         arangodb::LocalDocumentId pk;
-        EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+        EXPECT_TRUE(
+            arangodb::iresearch::DocumentPrimaryKey::read(pk, value->value));
         EXPECT_EQ(rid, pk.id());
       }
     }
@@ -2918,19 +2921,20 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           EXPECT_FALSE(docs->next());
           EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-          auto column = segment.column_reader(
-              arangodb::iresearch::DocumentPrimaryKey::PK());
+          auto column =
+              segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
           ASSERT_TRUE(column);
 
-          auto values = column->values();
-          ASSERT_TRUE(values);
+          auto values = column->iterator(false);
+          ASSERT_NE(nullptr, values);
+          auto* value = irs::get<irs::payload>(*values);
+          ASSERT_NE(nullptr, value);
 
-          irs::bytes_ref pkValue;
-          EXPECT_TRUE(values(id, pkValue));
+          EXPECT_EQ(id, values->seek(id));
 
           arangodb::LocalDocumentId pk;
           EXPECT_TRUE(
-              arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+              arangodb::iresearch::DocumentPrimaryKey::read(pk, value->value));
           EXPECT_EQ(rid, pk.id());
         }
       }
@@ -3028,19 +3032,20 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           EXPECT_FALSE(docs->next());
           EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-          auto column = segment.column_reader(
-              arangodb::iresearch::DocumentPrimaryKey::PK());
+          auto column =
+              segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
           ASSERT_TRUE(column);
 
-          auto values = column->values();
-          ASSERT_TRUE(values);
+          auto values = column->iterator(false);
+          ASSERT_NE(nullptr, values);
+          auto* value = irs::get<irs::payload>(*values);
+          ASSERT_NE(nullptr, value);
 
-          irs::bytes_ref pkValue;
-          EXPECT_TRUE(values(id, pkValue));
+          EXPECT_EQ(id, values->seek(id));
 
           arangodb::LocalDocumentId pk;
           EXPECT_TRUE(
-              arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+              arangodb::iresearch::DocumentPrimaryKey::read(pk, value->value));
           EXPECT_EQ(rid, pk.id());
         }
       }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -939,6 +939,9 @@ TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length) {
         TRI_READ(fd, ptr, static_cast<TRI_read_t>(remainLength));
 
     if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("c9c0c", ERR, arangodb::Logger::FIXME)
           << "cannot read: " << TRI_LAST_ERROR_STR;

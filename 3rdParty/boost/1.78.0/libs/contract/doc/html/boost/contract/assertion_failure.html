@@ -1,0 +1,208 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class assertion_failure</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="../../reference.html#header.boost.contract.core.exception_hpp" title="Header &lt;boost/contract/core/exception.hpp&gt;">
+<link rel="prev" href="constructor_precondition.html" title="Class template constructor_precondition">
+<link rel="next" href="bad_virtual_result_cast.html" title="Class bad_virtual_result_cast">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="constructor_precondition.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.exception_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="bad_virtual_result_cast.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.contract.assertion_failure"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class assertion_failure</span></h2>
+<p>boost::contract::assertion_failure — Exception typically used to report a contract assertion failure. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../reference.html#header.boost.contract.core.exception_hpp" title="Header &lt;boost/contract/core/exception.hpp&gt;">boost/contract/core/exception.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="assertion_failure.html" title="Class assertion_failure">assertion_failure</a> <span class="special">:</span>
+  <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span>, <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">exception</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="assertion_failure.html#boost.contract.assertion_failureconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="assertion_failure.html#idm35182-bb"><span class="identifier">assertion_failure</span></a><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> <span class="special">=</span> <span class="string">""</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> 
+                             <span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> <span class="special">=</span> <span class="string">""</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="assertion_failure.html#idm35204-bb"><span class="identifier">assertion_failure</span></a><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="assertion_failure.html#idm35212-bb"><span class="special">~</span><span class="identifier">assertion_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="assertion_failure.html#idm35145-bb">public member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a class="link" href="assertion_failure.html#idm35146-bb"><span class="identifier">what</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a class="link" href="assertion_failure.html#idm35158-bb"><span class="identifier">file</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">unsigned</span> <span class="keyword">long</span> <a class="link" href="assertion_failure.html#idm35166-bb"><span class="identifier">line</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a class="link" href="assertion_failure.html#idm35174-bb"><span class="identifier">code</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm38396"></a><h2>Description</h2>
+<p>This exception is thrown by code expanded by <code class="computeroutput"><a class="link" href="../../BOOST_CONTRACT_ASSERT.html" title="Macro BOOST_CONTRACT_ASSERT">BOOST_CONTRACT_ASSERT</a></code> (but it can also be thrown by user code programmed manually without that macro). This exception is typically used to report contract assertion failures because it contains detailed information about the file name, line number, and source code of the asserted condition (so it can be used by this library to provide detailed error messages when handling contract assertion failures).</p>
+<p>However, any other exception can be used to report a contract assertion failure (including user-defined exceptions). This library will call the appropriate contract failure handler function ( <code class="computeroutput"><a class="link" href="precondition_failure.html" title="Function precondition_failure">boost::contract::precondition_failure</a></code>, etc.) when this or any other exception is thrown while checking contracts (by default, these failure handler functions print an error message to <code class="computeroutput">std::cerr</code> and terminate the program, but they can be customized to take any other action).</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="../../boost_contract/advanced.html#boost_contract.advanced.throw_on_failures__and__noexcept__" title="Throw on Failures (and noexcept)"> Throw on Failure</a>,  <a class="link" href="../../boost_contract/extras.html#boost_contract.extras.no_macros__and_no_variadic_macros_" title="No Macros (and No Variadic Macros)"> No Macros</a> </p>
+<p>
+</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm38411"></a><h3>
+<a name="boost.contract.assertion_failureconstruct-copy-destruct"></a><code class="computeroutput">assertion_failure</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm35182-bb"></a><span class="identifier">assertion_failure</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> file <span class="special">=</span> <span class="string">""</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="keyword">long</span> line <span class="special">=</span> <span class="number">0</span><span class="special">,</span> 
+                           <span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> code <span class="special">=</span> <span class="string">""</span><span class="special">)</span><span class="special">;</span></pre>Construct this object with file name, line number, and source code text of an assertion condition (all optional). <p>This constructor can also be used to specify no information (default constructor), or to specify only file name and line number but not source code text (because of the parameter default values).</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">code</code></span></p></td>
+<td><p>Text listing the source code of the assertion condition. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">file</code></span></p></td>
+<td><p>Name of the file containing the assertion (usually set using <code class="computeroutput">__FILE__</code>). </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">line</code></span></p></td>
+<td><p>Number of the line containing the assertion (usually set using <code class="computeroutput">__LINE__</code>). </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm35204-bb"></a><span class="identifier">assertion_failure</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> code<span class="special">)</span><span class="special">;</span></pre>Construct this object only with the source code text of the assertion condition. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">code</code></span></p></td>
+<td><p>Text listing the source code of the assertion condition. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm35212-bb"></a><span class="special">~</span><span class="identifier">assertion_failure</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Destruct this object. <p><span class="bold"><strong>Throws:</strong></span> This is declared <code class="computeroutput">noexcept</code> (or <code class="computeroutput">throw()</code> before C++11). </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm38501"></a><h3>
+<a name="idm35145-bb"></a><code class="computeroutput">assertion_failure</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a name="idm35146-bb"></a><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>String describing the failed assertion. <p><span class="bold"><strong>Throws:</strong></span> This is declared <code class="computeroutput">noexcept</code> (or <code class="computeroutput">throw()</code> before C++11).</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A string formatted similarly to the following: <code class="computeroutput">assertion "`code()`" failed: file "`file()`", line `line()`</code> (where `` indicate execution quotes). File, line, and code will be omitted from this string if they were not specified when constructing this object. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a name="idm35158-bb"></a><span class="identifier">file</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Name of the file containing the assertion. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>File name as specified at construction (or <code class="computeroutput">""</code> if no file was specified). </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">unsigned</span> <span class="keyword">long</span> <a name="idm35166-bb"></a><span class="identifier">line</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Number of the line containing the assertion. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Line number as specified at construction (or <code class="computeroutput">0</code> if no line number was specified). </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a name="idm35174-bb"></a><span class="identifier">code</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Text listing the source code of the assertion condition. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Assertion condition source code as specified at construction (or <code class="computeroutput">""</code> if no source code text was specified). </p></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="constructor_precondition.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.exception_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="bad_virtual_result_cast.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

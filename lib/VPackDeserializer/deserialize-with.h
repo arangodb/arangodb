@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -177,9 +177,8 @@ template<typename D, typename H = hints::hint_list_empty,
 auto deserialize(::arangodb::velocypack::deserializer::slice_type slice,
                  typename H::state_type hints = {}, C&& c = {}) {
   using factory_type = typename D::factory;
-  factory_type factory = construct_factory<factory_type>(std::forward<C>(c));
-  return deserialize_with<D, factory_type, H, C>(factory, slice, hints,
-                                                 std::forward<C>(c));
+  factory_type factory = construct_factory<factory_type>(c);
+  return deserialize_with<D, factory_type, H>(factory, slice, hints, c);
 }
 
 template<typename D, typename C>

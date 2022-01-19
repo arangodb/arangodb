@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,6 +85,10 @@ class LogicalCollection : public LogicalDataSource {
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
+  constexpr static Category category() noexcept {
+    return Category::kCollection;
+  }
+
   /*
    * @brief Available types of internal validators. These validators
    * are managed by the database, and bound to features of collections.
@@ -103,9 +107,6 @@ class LogicalCollection : public LogicalDataSource {
     SmartToSatEdge = 8,
     SatToSmartEdge = 16,
   };
-
-  /// @brief the category representing a logical collection
-  static Category const& category() noexcept;
 
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }

@@ -1,0 +1,97 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Boost.Convert C++ Reference</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="up" href="index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="prev" href="boost_convert/acknowledgements.html" title="Acknowledgements">
+<link rel="next" href="boost/cnv/reference.html" title="Struct template reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_convert/acknowledgements.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost/cnv/reference.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_convert_c___reference"></a>Boost.Convert C++ Reference</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_convert_c___reference.html#header.boost.convert_hpp">Header &lt;boost/convert.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+<dt><span class="section"><a href="header/boost/convert/base_hpp.html">Header &lt;boost/convert/base.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+<dt><span class="section"><a href="header/boost/convert/lexical_cast_hpp.html">Header &lt;boost/convert/lexical_cast.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+<dt><span class="section"><a href="header/boost/convert/parameters_hpp.html">Header &lt;boost/convert/parameters.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="header/boost/convert/printf_hpp.html">Header &lt;boost/convert/printf.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+<dt><span class="section"><a href="header/boost/convert/spirit_hpp.html">Header &lt;boost/convert/spirit.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+<dt><span class="section"><a href="header/boost/convert/stream_hpp.html">Header &lt;boost/convert/stream.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+<dt><span class="section"><a href="header/boost/convert/strtol_hpp.html">Header &lt;boost/convert/strtol.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+<dt><span class="section"><a href="header/boost/make_default_hpp.html">Header &lt;boost/make_default.hpp&gt;</a></span></dt>
+<dd><dl></dl></dd>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.convert_hpp"></a>Header &lt;<a href="../../../../boost/convert.hpp" target="_top">boost/convert.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="boost/throw_on_failure.html" title="Global throw_on_failure">throw_on_failure</a><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">,</span> <span class="keyword">typename</span> Converter<span class="special">&gt;</span> 
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">TypeOut</span> <span class="special">&gt;</span> <a class="link" href="boost/convert_idm10641.html" title="Function template convert"><span class="identifier">convert</span></a><span class="special">(</span><span class="identifier">TypeIn</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Converter</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">&gt;</span> 
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">TypeOut</span> <span class="special">&gt;</span> <a class="link" href="boost/convert_idm10661.html" title="Function template convert"><span class="identifier">convert</span></a><span class="special">(</span><span class="identifier">TypeIn</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// Boost.Convert non-optional deployment interface. </span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">,</span> <span class="keyword">typename</span> Converter<span class="special">&gt;</span> 
+    <span class="identifier">TypeOut</span> <a name="boost.convert_idm10672"></a><span class="identifier">convert</span><span class="special">(</span><span class="identifier">TypeIn</span> <span class="keyword">const</span> <span class="special">&amp;</span> value_in<span class="special">,</span> <span class="identifier">Converter</span> <span class="keyword">const</span> <span class="special">&amp;</span> converter<span class="special">,</span> 
+                    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">,</span> <span class="keyword">typename</span> Converter<span class="special">,</span> 
+           <span class="keyword">typename</span> Fallback<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">is_convertible</span><span class="special">&lt;</span> <span class="identifier">Fallback</span><span class="special">,</span> <span class="identifier">TypeOut</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <span class="identifier">TypeOut</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> 
+    <a name="boost.convert_idm10686"></a><span class="identifier">convert</span><span class="special">(</span><span class="identifier">TypeIn</span> <span class="keyword">const</span> <span class="special">&amp;</span> value_in<span class="special">,</span> <span class="identifier">Converter</span> <span class="keyword">const</span> <span class="special">&amp;</span> converter<span class="special">,</span> 
+            <span class="identifier">Fallback</span> <span class="keyword">const</span> <span class="special">&amp;</span> fallback<span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">,</span> <span class="keyword">typename</span> Converter<span class="special">,</span> 
+           <span class="keyword">typename</span> Fallback<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span> <span class="identifier">cnv</span><span class="special">::</span><span class="identifier">is_fun</span><span class="special">&lt;</span> <span class="identifier">Fallback</span><span class="special">,</span> <span class="identifier">TypeOut</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <span class="identifier">TypeOut</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> 
+    <a name="boost.convert_idm10699"></a><span class="identifier">convert</span><span class="special">(</span><span class="identifier">TypeIn</span> <span class="keyword">const</span> <span class="special">&amp;</span> value_in<span class="special">,</span> <span class="identifier">Converter</span> <span class="keyword">const</span> <span class="special">&amp;</span> converter<span class="special">,</span> 
+            <span class="identifier">Fallback</span> fallback<span class="special">)</span><span class="special">;</span>
+  <span class="keyword">namespace</span> <span class="identifier">cnv</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Converter<span class="special">,</span> <span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="boost/cnv/reference.html" title="Struct template reference">reference</a><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Converter<span class="special">,</span> <span class="keyword">typename</span> TypeOut<span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="boost/cnv/reference_Convert_idm10586.html" title="Struct template reference&lt;Converter, TypeOut, void&gt;">reference</a><span class="special">&lt;</span><span class="identifier">Converter</span><span class="special">,</span> <span class="identifier">TypeOut</span><span class="special">,</span> <span class="keyword">void</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">,</span> <span class="keyword">typename</span> Converter<span class="special">&gt;</span> 
+      <a class="link" href="boost/cnv/reference.html" title="Struct template reference">reference</a><span class="special">&lt;</span> <span class="identifier">Converter</span><span class="special">,</span> <span class="identifier">TypeOut</span><span class="special">,</span> <span class="identifier">TypeIn</span> <span class="special">&gt;</span> <a class="link" href="boost/cnv/apply_idm10615.html" title="Function template apply"><span class="identifier">apply</span></a><span class="special">(</span><span class="identifier">Converter</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> Converter<span class="special">&gt;</span> 
+      <a class="link" href="boost/cnv/reference.html" title="Struct template reference">reference</a><span class="special">&lt;</span> <span class="identifier">Converter</span><span class="special">,</span> <span class="identifier">TypeOut</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">&gt;</span> <a name="boost.cnv.apply_idm10628"></a><span class="identifier">apply</span><span class="special">(</span><span class="identifier">Converter</span> <span class="keyword">const</span> <span class="special">&amp;</span> cnv<span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2020 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_convert/acknowledgements.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost/cnv/reference.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Reference</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="prev" href="boost_contract/examples.html" title="Examples">
+<link rel="next" href="BOOST_CONTRACT_ASSERT.html" title="Macro BOOST_CONTRACT_ASSERT">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_contract/examples.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_ASSERT.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="reference"></a>Reference</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="reference.html#header.boost.contract_hpp">Header &lt;boost/contract.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.assert_hpp">Header &lt;boost/contract/assert.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.base_types_hpp">Header &lt;boost/contract/base_types.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.call_if_hpp">Header &lt;boost/contract/call_if.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.check_hpp">Header &lt;boost/contract/check.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.constructor_hpp">Header &lt;boost/contract/constructor.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.core.access_hpp">Header &lt;boost/contract/core/access.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.core.check_macro_hpp">Header &lt;boost/contract/core/check_macro.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.core.config_hpp">Header &lt;boost/contract/core/config.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.core.constructor_precondition_hpp">Header &lt;boost/contract/core/constructor_precondition.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.core.exception_hpp">Header &lt;boost/contract/core/exception.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.core.specify_hpp">Header &lt;boost/contract/core/specify.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.core.virtual_hpp">Header &lt;boost/contract/core/virtual.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.destructor_hpp">Header &lt;boost/contract/destructor.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.function_hpp">Header &lt;boost/contract/function.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.old_hpp">Header &lt;boost/contract/old.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.override_hpp">Header &lt;boost/contract/override.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract.public_function_hpp">Header &lt;boost/contract/public_function.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.contract_macro_hpp">Header &lt;boost/contract_macro.hpp&gt;</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract_hpp"></a>Header &lt;<a href="../../../../boost/contract.hpp" target="_top">boost/contract.hpp</a>&gt;</h3></div></div></div>
+<p>Include all header files required by this library at once (for convenience). </p>
+<p>All header files <code class="computeroutput">boost/contract/*.hpp</code> are independent from one another and can be included one-by-one to reduce the amount of code to compile from this library in user code (but this was measured to not make an appreciable difference in compile-time so <code class="computeroutput">boost/contract.hpp</code> can be included directly in most cases). Instead the headers <code class="computeroutput">boost/contract/core/*.hpp</code> are not independent from other library headers and they are automatically included by the <code class="computeroutput">boost/contract/*.hpp</code> headers (so the <code class="computeroutput">boost/contract/core/*.hpp</code> headers are usually not directly included by programmers).</p>
+<p>All files under the <code class="computeroutput">boost/contract/detail/</code> directory, names within the <code class="computeroutput">boost::contract::detail</code> namespace, names prefixed by <code class="computeroutput">boost_contract_detail</code>... and <code class="computeroutput">BOOST_CONTRACT_DETAIL</code>... (in any namesapce, including user's code) are reserved for internal use of this library and should never be used directly by programmers.</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="boost_contract/getting_started.html" title="Getting Started"> Getting Started</a> </p>
+<p>
+</p>
+<p>
+</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.assert_hpp"></a>Header &lt;<a href="../../../../boost/contract/assert.hpp" target="_top">boost/contract/assert.hpp</a>&gt;</h3></div></div></div>
+<p>Assert contract conditions. </p>
+<pre class="synopsis">
+
+<a class="link" href="BOOST_CONTRACT_ASSERT.html" title="Macro BOOST_CONTRACT_ASSERT">BOOST_CONTRACT_ASSERT</a>(cond)
+<a class="link" href="BOOST_CONTRACT_AS_idm33640.html" title="Macro BOOST_CONTRACT_ASSERT_AUDIT">BOOST_CONTRACT_ASSERT_AUDIT</a>(cond)
+<a class="link" href="BOOST_CONTRACT_AS_idm33665.html" title="Macro BOOST_CONTRACT_ASSERT_AXIOM">BOOST_CONTRACT_ASSERT_AXIOM</a>(cond)</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.base_types_hpp"></a>Header &lt;<a href="../../../../boost/contract/base_types.hpp" target="_top">boost/contract/base_types.hpp</a>&gt;</h3></div></div></div>
+<p>Specify inheritance form base classes (for subcontracting). </p>
+<pre class="synopsis">
+
+<a class="link" href="BOOST_CONTRACT_BASE_TYPES.html" title="Macro BOOST_CONTRACT_BASE_TYPES">BOOST_CONTRACT_BASE_TYPES</a>(...)</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.call_if_hpp"></a>Header &lt;<a href="../../../../boost/contract/call_if.hpp" target="_top">boost/contract/call_if.hpp</a>&gt;</h3></div></div></div>
+<p>Statically disable compilation and execution of functor calls. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>These facilities allow to emulate C++17 <code class="computeroutput">if constexpr</code> statements when used together with functor templates (and C++14 generic lambdas). Therefore, they are not useful on C++17 compilers where <code class="computeroutput"> if constexpr</code> can be directly used instead. </p></td></tr>
+</table></div>
+<p>
+</p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> Pred<span class="special">,</span> <span class="keyword">typename</span> Then<span class="special">,</span> <span class="keyword">typename</span> ThenResult <span class="special">=</span> <span class="identifier">internal_type</span><span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="boost/contract/call_if_statement.html" title="Struct template call_if_statement">call_if_statement</a><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Then<span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="boost/contract/call_if_statement_idm33758.html" title="Struct template call_if_statement&lt;false, Then, internal_type&gt;">call_if_statement</a><span class="special">&lt;</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">Then</span><span class="special">,</span> <span class="identifier">internal_type</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Then<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="boost/contract/call_if_statement_idm33861.html" title="Struct template call_if_statement&lt;true, Then, internal_type&gt;">call_if_statement</a><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Then</span><span class="special">,</span> <span class="identifier">internal_type</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Then<span class="special">,</span> <span class="keyword">typename</span> ThenResult<span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="boost/contract/call_if_statement_idm33902.html" title="Struct template call_if_statement&lt;true, Then, ThenResult&gt;">call_if_statement</a><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Then</span><span class="special">,</span> <span class="identifier">ThenResult</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Then<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="boost/contract/call_if_statement_idm34007.html" title="Struct template call_if_statement&lt;true, Then, void&gt;">call_if_statement</a><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Then</span><span class="special">,</span> <span class="keyword">void</span><span class="special">&gt;</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> Pred<span class="special">,</span> <span class="keyword">typename</span> Then<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/call_if_statement.html" title="Struct template call_if_statement">call_if_statement</a><span class="special">&lt;</span> <span class="identifier">Pred</span><span class="special">,</span> <span class="identifier">Then</span> <span class="special">&gt;</span> <a class="link" href="boost/contract/call_if_c.html" title="Function template call_if_c"><span class="identifier">call_if_c</span></a><span class="special">(</span><span class="identifier">Then</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Pred<span class="special">,</span> <span class="keyword">typename</span> Then<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/call_if_statement.html" title="Struct template call_if_statement">call_if_statement</a><span class="special">&lt;</span> <span class="identifier">Pred</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <span class="identifier">Then</span> <span class="special">&gt;</span> <a class="link" href="boost/contract/call_if.html" title="Function template call_if"><span class="identifier">call_if</span></a><span class="special">(</span><span class="identifier">Then</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> Pred<span class="special">,</span> <span class="keyword">typename</span> Then<span class="special">&gt;</span> <span class="keyword">bool</span> <a class="link" href="boost/contract/condition_if_c.html" title="Function template condition_if_c"><span class="identifier">condition_if_c</span></a><span class="special">(</span><span class="identifier">Then</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Pred<span class="special">,</span> <span class="keyword">typename</span> Then<span class="special">&gt;</span> 
+      <span class="keyword">bool</span> <a class="link" href="boost/contract/condition_if.html" title="Function template condition_if"><span class="identifier">condition_if</span></a><span class="special">(</span><span class="identifier">Then</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.check_hpp"></a>Header &lt;<a href="../../../../boost/contract/check.hpp" target="_top">boost/contract/check.hpp</a>&gt;</h3></div></div></div>
+<p>RAII object that checks contracts. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/check.html" title="Class check">check</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.constructor_hpp"></a>Header &lt;<a href="../../../../boost/contract/constructor.hpp" target="_top">boost/contract/constructor.hpp</a>&gt;</h3></div></div></div>
+<p>Program contracts for constructors. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_old_postc_idm35810.html" title="Class template specify_old_postcondition_except">specify_old_postcondition_except</a> <a class="link" href="boost/contract/constructor.html" title="Function template constructor"><span class="identifier">constructor</span></a><span class="special">(</span><span class="identifier">Class</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.core.access_hpp"></a>Header &lt;<a href="../../../../boost/contract/core/access.hpp" target="_top">boost/contract/core/access.hpp</a>&gt;</h3></div></div></div>
+<p>Allow to declare invariants, base types, etc all as private members. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/access.html" title="Class access">access</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.core.check_macro_hpp"></a>Header &lt;<a href="../../../../boost/contract/core/check_macro.hpp" target="_top">boost/contract/core/check_macro.hpp</a>&gt;</h3></div></div></div>
+<p>Macros for implementation checks. </p>
+<pre class="synopsis">
+
+<a class="link" href="BOOST_CONTRACT_CHECK.html" title="Macro BOOST_CONTRACT_CHECK">BOOST_CONTRACT_CHECK</a>(cond)
+<a class="link" href="BOOST_CONTRACT_CHECK_AUDIT.html" title="Macro BOOST_CONTRACT_CHECK_AUDIT">BOOST_CONTRACT_CHECK_AUDIT</a>(cond)
+<a class="link" href="BOOST_CONTRACT_CHECK_AXIOM.html" title="Macro BOOST_CONTRACT_CHECK_AXIOM">BOOST_CONTRACT_CHECK_AXIOM</a>(cond)</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.core.config_hpp"></a>Header &lt;<a href="../../../../boost/contract/core/config.hpp" target="_top">boost/contract/core/config.hpp</a>&gt;</h3></div></div></div>
+<p>Configure this library compile-time and run-time behaviours. </p>
+<pre class="synopsis">
+
+<a class="link" href="BOOST_CONTRACT_DYN_LINK.html" title="Macro BOOST_CONTRACT_DYN_LINK">BOOST_CONTRACT_DYN_LINK</a>
+<a class="link" href="BOOST_CONTRACT_STATIC_LINK.html" title="Macro BOOST_CONTRACT_STATIC_LINK">BOOST_CONTRACT_STATIC_LINK</a>
+<a class="link" href="BOOST_CONTRACT_HEADER_ONLY.html" title="Macro BOOST_CONTRACT_HEADER_ONLY">BOOST_CONTRACT_HEADER_ONLY</a>
+<a class="link" href="BOOST_CONTRACT_DI_idm34640.html" title="Macro BOOST_CONTRACT_DISABLE_THREADS">BOOST_CONTRACT_DISABLE_THREADS</a>
+<a class="link" href="BOOST_CONTRACT_MAX_ARGS.html" title="Macro BOOST_CONTRACT_MAX_ARGS">BOOST_CONTRACT_MAX_ARGS</a>
+<a class="link" href="BOOST_CONTRACT_BA_idm34666.html" title="Macro BOOST_CONTRACT_BASES_TYPEDEF">BOOST_CONTRACT_BASES_TYPEDEF</a>
+<a class="link" href="BOOST_CONTRACT_IN_idm34685.html" title="Macro BOOST_CONTRACT_INVARIANT_FUNC">BOOST_CONTRACT_INVARIANT_FUNC</a>
+<a class="link" href="BOOST_CONTRACT_ST_idm34707.html" title="Macro BOOST_CONTRACT_STATIC_INVARIANT_FUNC">BOOST_CONTRACT_STATIC_INVARIANT_FUNC</a>
+<a class="link" href="BOOST_CONTRACT_PERMISSIVE.html" title="Macro BOOST_CONTRACT_PERMISSIVE">BOOST_CONTRACT_PERMISSIVE</a>
+<a class="link" href="BOOST_CONTRACT_ON_idm34756.html" title="Macro BOOST_CONTRACT_ON_MISSING_CHECK_DECL">BOOST_CONTRACT_ON_MISSING_CHECK_DECL</a>
+<a class="link" href="BOOST_CONTRACT_PR_idm34776.html" title="Macro BOOST_CONTRACT_PRECONDITIONS_DISABLE_NO_ASSERTION">BOOST_CONTRACT_PRECONDITIONS_DISABLE_NO_ASSERTION</a>
+<a class="link" href="BOOST_CONTRACT_AL_idm34788.html" title="Macro BOOST_CONTRACT_ALL_DISABLE_NO_ASSERTION">BOOST_CONTRACT_ALL_DISABLE_NO_ASSERTION</a>
+<a class="link" href="BOOST_CONTRACT_AUDITS.html" title="Macro BOOST_CONTRACT_AUDITS">BOOST_CONTRACT_AUDITS</a>
+<a class="link" href="BOOST_CONTRACT_NO_CHECKS.html" title="Macro BOOST_CONTRACT_NO_CHECKS">BOOST_CONTRACT_NO_CHECKS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34826.html" title="Macro BOOST_CONTRACT_NO_PRECONDITIONS">BOOST_CONTRACT_NO_PRECONDITIONS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34839.html" title="Macro BOOST_CONTRACT_NO_POSTCONDITIONS">BOOST_CONTRACT_NO_POSTCONDITIONS</a>
+<a class="link" href="BOOST_CONTRACT_NO_EXCEPTS.html" title="Macro BOOST_CONTRACT_NO_EXCEPTS">BOOST_CONTRACT_NO_EXCEPTS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34879.html" title="Macro BOOST_CONTRACT_NO_ENTRY_INVARIANTS">BOOST_CONTRACT_NO_ENTRY_INVARIANTS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34895.html" title="Macro BOOST_CONTRACT_NO_EXIT_INVARIANTS">BOOST_CONTRACT_NO_EXIT_INVARIANTS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34911.html" title="Macro BOOST_CONTRACT_NO_INVARIANTS">BOOST_CONTRACT_NO_INVARIANTS</a>
+<a class="link" href="BOOST_CONTRACT_NO_OLDS.html" title="Macro BOOST_CONTRACT_NO_OLDS">BOOST_CONTRACT_NO_OLDS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34946.html" title="Macro BOOST_CONTRACT_NO_CONSTRUCTORS">BOOST_CONTRACT_NO_CONSTRUCTORS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34970.html" title="Macro BOOST_CONTRACT_NO_DESTRUCTORS">BOOST_CONTRACT_NO_DESTRUCTORS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm34988.html" title="Macro BOOST_CONTRACT_NO_PUBLIC_FUNCTIONS">BOOST_CONTRACT_NO_PUBLIC_FUNCTIONS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm35008.html" title="Macro BOOST_CONTRACT_NO_FUNCTIONS">BOOST_CONTRACT_NO_FUNCTIONS</a>
+<a class="link" href="BOOST_CONTRACT_NO_idm35029.html" title="Macro BOOST_CONTRACT_NO_CONDITIONS">BOOST_CONTRACT_NO_CONDITIONS</a>
+<a class="link" href="BOOST_CONTRACT_NO_ALL.html" title="Macro BOOST_CONTRACT_NO_ALL">BOOST_CONTRACT_NO_ALL</a></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.core.constructor_precondition_hpp"></a>Header &lt;<a href="../../../../boost/contract/core/constructor_precondition.hpp" target="_top">boost/contract/core/constructor_precondition.hpp</a>&gt;</h3></div></div></div>
+<p>Program preconditions for constructors. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="boost/contract/constructor_precondition.html" title="Class template constructor_precondition">constructor_precondition</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.core.exception_hpp"></a>Header &lt;<a href="../../../../boost/contract/core/exception.hpp" target="_top">boost/contract/core/exception.hpp</a>&gt;</h3></div></div></div>
+<p>Handle contract assertion failures. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/assertion_failure.html" title="Class assertion_failure">assertion_failure</a><span class="special">;</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/bad_virtual_result_cast.html" title="Class bad_virtual_result_cast">bad_virtual_result_cast</a><span class="special">;</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/exception.html" title="Class exception">exception</a><span class="special">;</span>
+
+    <span class="keyword">enum</span> <a class="link" href="boost/contract/from.html" title="Type from">from</a><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span> <span class="keyword">void</span><span class="special">(</span><span class="identifier">from</span><span class="special">)</span><span class="special">&gt;</span> <a class="link" href="boost/contract/from_failure_handler.html" title="Type definition from_failure_handler"><span class="identifier">from_failure_handler</span></a><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span> <span class="keyword">void</span><span class="special">(</span><span class="special">)</span><span class="special">&gt;</span> <a class="link" href="boost/contract/failure_handler.html" title="Type definition failure_handler"><span class="identifier">failure_handler</span></a><span class="special">;</span>
+    <span class="identifier">failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> <a class="link" href="boost/contract/set_check_failure.html" title="Function set_check_failure"><span class="identifier">set_check_failure</span></a><span class="special">(</span><span class="identifier">failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">failure_handler</span> <a class="link" href="boost/contract/get_check_failure.html" title="Function get_check_failure"><span class="identifier">get_check_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="boost/contract/check_failure.html" title="Function check_failure"><span class="identifier">check_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> 
+    <a class="link" href="boost/contract/set_precondition_failure.html" title="Function set_precondition_failure"><span class="identifier">set_precondition_failure</span></a><span class="special">(</span><span class="identifier">from_failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <a class="link" href="boost/contract/get_precondition_failure.html" title="Function get_precondition_failure"><span class="identifier">get_precondition_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="boost/contract/precondition_failure.html" title="Function precondition_failure"><span class="identifier">precondition_failure</span></a><span class="special">(</span><span class="identifier">from</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> 
+    <a class="link" href="boost/contract/set_postcondition_failure.html" title="Function set_postcondition_failure"><span class="identifier">set_postcondition_failure</span></a><span class="special">(</span><span class="identifier">from_failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <a class="link" href="boost/contract/get_postcondition_failure.html" title="Function get_postcondition_failure"><span class="identifier">get_postcondition_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="boost/contract/postcondition_failure.html" title="Function postcondition_failure"><span class="identifier">postcondition_failure</span></a><span class="special">(</span><span class="identifier">from</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> 
+    <a class="link" href="boost/contract/set_except_failure.html" title="Function set_except_failure"><span class="identifier">set_except_failure</span></a><span class="special">(</span><span class="identifier">from_failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <a class="link" href="boost/contract/get_except_failure.html" title="Function get_except_failure"><span class="identifier">get_except_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="boost/contract/except_failure.html" title="Function except_failure"><span class="identifier">except_failure</span></a><span class="special">(</span><span class="identifier">from</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> 
+    <a class="link" href="boost/contract/set_old_failure.html" title="Function set_old_failure"><span class="identifier">set_old_failure</span></a><span class="special">(</span><span class="identifier">from_failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <a class="link" href="boost/contract/get_old_failure.html" title="Function get_old_failure"><span class="identifier">get_old_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="boost/contract/old_failure.html" title="Function old_failure"><span class="identifier">old_failure</span></a><span class="special">(</span><span class="identifier">from</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> 
+    <a class="link" href="boost/contract/set_entry_invaria_idm35602.html" title="Function set_entry_invariant_failure"><span class="identifier">set_entry_invariant_failure</span></a><span class="special">(</span><span class="identifier">from_failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <a class="link" href="boost/contract/get_entry_invaria_idm35625.html" title="Function get_entry_invariant_failure"><span class="identifier">get_entry_invariant_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="boost/contract/entry_invariant_failure.html" title="Function entry_invariant_failure"><span class="identifier">entry_invariant_failure</span></a><span class="special">(</span><span class="identifier">from</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> 
+    <a class="link" href="boost/contract/set_exit_invariant_failure.html" title="Function set_exit_invariant_failure"><span class="identifier">set_exit_invariant_failure</span></a><span class="special">(</span><span class="identifier">from_failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <a class="link" href="boost/contract/get_exit_invariant_failure.html" title="Function get_exit_invariant_failure"><span class="identifier">get_exit_invariant_failure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">void</span> <a class="link" href="boost/contract/exit_invariant_failure.html" title="Function exit_invariant_failure"><span class="identifier">exit_invariant_failure</span></a><span class="special">(</span><span class="identifier">from</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">from_failure_handler</span> <span class="keyword">const</span>  <span class="special">&amp;</span> 
+    <a class="link" href="boost/contract/set_invariant_failure.html" title="Function set_invariant_failure"><span class="identifier">set_invariant_failure</span></a><span class="special">(</span><span class="identifier">from_failure_handler</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.core.specify_hpp"></a>Header &lt;<a href="../../../../boost/contract/core/specify.hpp" target="_top">boost/contract/core/specify.hpp</a>&gt;</h3></div></div></div>
+<p>Specify preconditions, old values copied at body, postconditions, and exception guarantees. </p>
+<p>Preconditions, old values copied at body, postconditions, and exception guarantees are all optionals but, when they are specified, they need to be specified in that order. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/specify_except.html" title="Class specify_except">specify_except</a><span class="special">;</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/specify_nothing.html" title="Class specify_nothing">specify_nothing</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> VirtualResult <span class="special">=</span> <span class="keyword">void</span><span class="special">&gt;</span> 
+      <span class="keyword">class</span> <a class="link" href="boost/contract/specify_old_postc_idm35810.html" title="Class template specify_old_postcondition_except">specify_old_postcondition_except</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> VirtualResult <span class="special">=</span> <span class="keyword">void</span><span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="boost/contract/specify_postcondi_idm35905.html" title="Class template specify_postcondition_except">specify_postcondition_except</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> VirtualResult <span class="special">=</span> <span class="keyword">void</span><span class="special">&gt;</span> 
+      <span class="keyword">class</span> <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.core.virtual_hpp"></a>Header &lt;<a href="../../../../boost/contract/core/virtual.hpp" target="_top">boost/contract/core/virtual.hpp</a>&gt;</h3></div></div></div>
+<p>Handle virtual public functions with contracts (for subcontracting). </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/virtual_.html" title="Class virtual_">virtual_</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.destructor_hpp"></a>Header &lt;<a href="../../../../boost/contract/destructor.hpp" target="_top">boost/contract/destructor.hpp</a>&gt;</h3></div></div></div>
+<p>Program contracts for destructors. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_old_postc_idm35810.html" title="Class template specify_old_postcondition_except">specify_old_postcondition_except</a> <a class="link" href="boost/contract/destructor.html" title="Function template destructor"><span class="identifier">destructor</span></a><span class="special">(</span><span class="identifier">Class</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.function_hpp"></a>Header &lt;<a href="../../../../boost/contract/function.hpp" target="_top">boost/contract/function.hpp</a>&gt;</h3></div></div></div>
+<p>Program contracts for (non-public) functions. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a> <a class="link" href="boost/contract/function.html" title="Function function"><span class="identifier">function</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.old_hpp"></a>Header &lt;<a href="../../../../boost/contract/old.hpp" target="_top">boost/contract/old.hpp</a>&gt;</h3></div></div></div>
+<p>Handle old values. </p>
+<pre class="synopsis">
+
+<a class="link" href="BOOST_CONTRACT_OLDOF.html" title="Macro BOOST_CONTRACT_OLDOF">BOOST_CONTRACT_OLDOF</a>(...)</pre>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="boost/contract/is_old_value_copyable.html" title="Struct template is_old_value_copyable">is_old_value_copyable</a><span class="special">;</span>
+
+    <span class="keyword">class</span> <a class="link" href="boost/contract/old_pointer.html" title="Class old_pointer">old_pointer</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="boost/contract/old_ptr.html" title="Class template old_ptr">old_ptr</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="boost/contract/old_ptr_if_copyable.html" title="Class template old_ptr_if_copyable">old_ptr_if_copyable</a><span class="special">;</span>
+    <span class="keyword">class</span> <a class="link" href="boost/contract/old_value.html" title="Class old_value">old_value</a><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="boost/contract/old_value_copy.html" title="Struct template old_value_copy">old_value_copy</a><span class="special">;</span>
+    <a class="link" href="boost/contract/old_value.html" title="Class old_value">old_value</a> <a class="link" href="boost/contract/null_old.html" title="Function null_old"><span class="identifier">null_old</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <a class="link" href="boost/contract/old_pointer.html" title="Class old_pointer">old_pointer</a> <a class="link" href="boost/contract/make_old_idm36489.html" title="Function make_old"><span class="identifier">make_old</span></a><span class="special">(</span><a class="link" href="boost/contract/old_value.html" title="Class old_value">old_value</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <a class="link" href="boost/contract/old_pointer.html" title="Class old_pointer">old_pointer</a> <a class="link" href="boost/contract/make_old_idm36517.html" title="Function make_old"><span class="identifier">make_old</span></a><span class="special">(</span><a class="link" href="boost/contract/virtual_.html" title="Class virtual_">virtual_</a> <span class="special">*</span><span class="special">,</span> <a class="link" href="boost/contract/old_value.html" title="Class old_value">old_value</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">bool</span> <a class="link" href="boost/contract/copy_old_idm36554.html" title="Function copy_old"><span class="identifier">copy_old</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">bool</span> <a class="link" href="boost/contract/copy_old_idm36570.html" title="Function copy_old"><span class="identifier">copy_old</span></a><span class="special">(</span><a class="link" href="boost/contract/virtual_.html" title="Class virtual_">virtual_</a> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.override_hpp"></a>Header &lt;<a href="../../../../boost/contract/override.hpp" target="_top">boost/contract/override.hpp</a>&gt;</h3></div></div></div>
+<p>Handle public function overrides (for subcontracting). </p>
+<pre class="synopsis">
+
+<a class="link" href="BOOST_CONTRACT_NA_idm36634.html" title="Macro BOOST_CONTRACT_NAMED_OVERRIDE">BOOST_CONTRACT_NAMED_OVERRIDE</a>(type_name, func_name)
+<a class="link" href="BOOST_CONTRACT_OVERRIDE.html" title="Macro BOOST_CONTRACT_OVERRIDE">BOOST_CONTRACT_OVERRIDE</a>(func_name)
+<a class="link" href="BOOST_CONTRACT_OVERRIDES.html" title="Macro BOOST_CONTRACT_OVERRIDES">BOOST_CONTRACT_OVERRIDES</a>(...)</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract.public_function_hpp"></a>Header &lt;<a href="../../../../boost/contract/public_function.hpp" target="_top">boost/contract/public_function.hpp</a>&gt;</h3></div></div></div>
+<p>Program contracts for public functions (including subcontracting). </p>
+<p>The different overloads handle public functions that are static, virtual void, virtual non-void, overriding void, and overriding non-void. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">contract</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a> <a class="link" href="boost/contract/public_function_idm36700.html" title="Function template public_function"><span class="identifier">public_function</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a> <a class="link" href="boost/contract/public_function_idm36726.html" title="Function template public_function"><span class="identifier">public_function</span></a><span class="special">(</span><span class="identifier">Class</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Class<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a> 
+      <a class="link" href="boost/contract/public_function_idm36760.html" title="Function template public_function"><span class="identifier">public_function</span></a><span class="special">(</span><a class="link" href="boost/contract/virtual_.html" title="Class virtual_">virtual_</a> <span class="special">*</span><span class="special">,</span> <span class="identifier">Class</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> VirtualResult<span class="special">,</span> <span class="keyword">typename</span> Class<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a><span class="special">&lt;</span> <span class="identifier">VirtualResult</span> <span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/public_function_idm36806.html" title="Function template public_function"><span class="identifier">public_function</span></a><span class="special">(</span><a class="link" href="boost/contract/virtual_.html" title="Class virtual_">virtual_</a> <span class="special">*</span><span class="special">,</span> <span class="identifier">VirtualResult</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Class</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Override<span class="special">,</span> <span class="keyword">typename</span> F<span class="special">,</span> <span class="keyword">typename</span> Class<span class="special">,</span> <span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a> 
+      <a class="link" href="boost/contract/public_function_idm36863.html" title="Function template public_function"><span class="identifier">public_function</span></a><span class="special">(</span><a class="link" href="boost/contract/virtual_.html" title="Class virtual_">virtual_</a> <span class="special">*</span><span class="special">,</span> <span class="identifier">F</span><span class="special">,</span> <span class="identifier">Class</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Override<span class="special">,</span> <span class="keyword">typename</span> VirtualResult<span class="special">,</span> <span class="keyword">typename</span> F<span class="special">,</span> 
+             <span class="keyword">typename</span> Class<span class="special">,</span> <span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/specify_precondit_idm35978.html" title="Class template specify_precondition_old_postcondition_except">specify_precondition_old_postcondition_except</a><span class="special">&lt;</span> <span class="identifier">VirtualResult</span> <span class="special">&gt;</span> 
+      <a class="link" href="boost/contract/public_function_idm36937.html" title="Function template public_function"><span class="identifier">public_function</span></a><span class="special">(</span><a class="link" href="boost/contract/virtual_.html" title="Class virtual_">virtual_</a> <span class="special">*</span><span class="special">,</span> <span class="identifier">VirtualResult</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">F</span><span class="special">,</span> <span class="identifier">Class</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.contract_macro_hpp"></a>Header &lt;<a href="../../../../boost/contract_macro.hpp" target="_top">boost/contract_macro.hpp</a>&gt;</h3></div></div></div>
+<p>Allow to disable contracts to completely remove their compile-time and run-time overhead. </p>
+<p>This header automatically includes all header files <code class="computeroutput">boost/contract/*.hpp</code> necessary to use its macros.</p>
+<p>Almost all the macros defined in this header file are variadic macros. On compilers that do not support variadic macros, programmers can manually code <code class="computeroutput">#ifndef BOOST_CONTRACT_NO_...</code> statements instead (see  <a class="link" href="boost_contract/extras.html#boost_contract.extras.disable_contract_compilation__macro_interface_" title="Disable Contract Compilation (Macro Interface)">
+Disable Contract Compilation</a>). </p>
+<pre class="synopsis">
+
+<a class="link" href="BOOST_CONTRACT_PR_idm37029.html" title="Macro BOOST_CONTRACT_PRECONDITION">BOOST_CONTRACT_PRECONDITION</a>(...)
+<a class="link" href="BOOST_CONTRACT_PO_idm37056.html" title="Macro BOOST_CONTRACT_POSTCONDITION">BOOST_CONTRACT_POSTCONDITION</a>(...)
+<a class="link" href="BOOST_CONTRACT_EXCEPT.html" title="Macro BOOST_CONTRACT_EXCEPT">BOOST_CONTRACT_EXCEPT</a>(...)
+<a class="link" href="BOOST_CONTRACT_OLD.html" title="Macro BOOST_CONTRACT_OLD">BOOST_CONTRACT_OLD</a>(...)
+<a class="link" href="BOOST_CONTRACT_OLD_PTR.html" title="Macro BOOST_CONTRACT_OLD_PTR">BOOST_CONTRACT_OLD_PTR</a>(...)
+<a class="link" href="BOOST_CONTRACT_OL_idm37198.html" title="Macro BOOST_CONTRACT_OLD_PTR_IF_COPYABLE">BOOST_CONTRACT_OLD_PTR_IF_COPYABLE</a>(...)
+<a class="link" href="BOOST_CONTRACT_INVARIANT.html" title="Macro BOOST_CONTRACT_INVARIANT">BOOST_CONTRACT_INVARIANT</a>(...)
+<a class="link" href="BOOST_CONTRACT_IN_idm37284.html" title="Macro BOOST_CONTRACT_INVARIANT_VOLATILE">BOOST_CONTRACT_INVARIANT_VOLATILE</a>(...)
+<a class="link" href="BOOST_CONTRACT_ST_idm37315.html" title="Macro BOOST_CONTRACT_STATIC_INVARIANT">BOOST_CONTRACT_STATIC_INVARIANT</a>(...)
+<a class="link" href="BOOST_CONTRACT_CONSTRUCTOR.html" title="Macro BOOST_CONTRACT_CONSTRUCTOR">BOOST_CONTRACT_CONSTRUCTOR</a>(...)
+<a class="link" href="BOOST_CONTRACT_CO_idm37391.html" title="Macro BOOST_CONTRACT_CONSTRUCTOR_PRECONDITION">BOOST_CONTRACT_CONSTRUCTOR_PRECONDITION</a>(...)
+<a class="link" href="BOOST_CONTRACT_DESTRUCTOR.html" title="Macro BOOST_CONTRACT_DESTRUCTOR">BOOST_CONTRACT_DESTRUCTOR</a>(...)
+<a class="link" href="BOOST_CONTRACT_FUNCTION.html" title="Macro BOOST_CONTRACT_FUNCTION">BOOST_CONTRACT_FUNCTION</a>()
+<a class="link" href="BOOST_CONTRACT_ST_idm37505.html" title="Macro BOOST_CONTRACT_STATIC_PUBLIC_FUNCTION">BOOST_CONTRACT_STATIC_PUBLIC_FUNCTION</a>(...)
+<a class="link" href="BOOST_CONTRACT_PU_idm37543.html" title="Macro BOOST_CONTRACT_PUBLIC_FUNCTION">BOOST_CONTRACT_PUBLIC_FUNCTION</a>(...)
+<a class="link" href="BOOST_CONTRACT_PU_idm37611.html" title="Macro BOOST_CONTRACT_PUBLIC_FUNCTION_OVERRIDE">BOOST_CONTRACT_PUBLIC_FUNCTION_OVERRIDE</a>(...)</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_contract/examples.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_ASSERT.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

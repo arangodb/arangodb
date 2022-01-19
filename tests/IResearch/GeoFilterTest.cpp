@@ -424,9 +424,12 @@ TEST(GeoFilterTest, query) {
     EXPECT_NE(nullptr, prepared);
     auto expectedCost = costs.begin();
     for (auto& segment : *reader) {
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       EXPECT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator(false);
+      EXPECT_NE(nullptr, values);
+      auto* value = irs::get<irs::payload>(*values);
+      EXPECT_NE(nullptr, value);
       auto it = prepared->execute(segment);
       EXPECT_NE(nullptr, it);
       auto seek_it = prepared->execute(segment);
@@ -455,11 +458,11 @@ TEST(GeoFilterTest, query) {
         EXPECT_EQ(docId, seek_it->seek(docId));
         EXPECT_EQ(docId, seek_it->seek(docId));
         EXPECT_EQ(docId, doc->value);
-        irs::bytes_ref value;
-        EXPECT_TRUE(values(docId, value));
-        EXPECT_FALSE(value.null());
+        EXPECT_EQ(docId, values->seek(docId));
+        EXPECT_FALSE(value->value.null());
 
-        actualResults.emplace(irs::to_string<std::string>(value.c_str()));
+        actualResults.emplace(
+            irs::to_string<std::string>(value->value.c_str()));
       }
       EXPECT_TRUE(irs::doc_limits::eof(it->value()));
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
@@ -472,7 +475,7 @@ TEST(GeoFilterTest, query) {
           auto const docId = it->value();
           auto seek_it = prepared->execute(segment);
           EXPECT_NE(nullptr, seek_it);
-          auto column_it = column->iterator();
+          auto column_it = column->iterator(false);
           EXPECT_NE(nullptr, column_it);
           auto* payload = irs::get<irs::payload>(*column_it);
           EXPECT_NE(nullptr, payload);
@@ -774,9 +777,9 @@ TEST(GeoFilterTest, checkScorer) {
     auto prepared = q.prepare(*reader, ord);
     EXPECT_NE(nullptr, prepared);
     for (auto& segment : *reader) {
-      auto column = segment.column_reader("name");
+      auto column = segment.column("name");
       EXPECT_NE(nullptr, column);
-      auto column_it = column->iterator();
+      auto column_it = column->iterator(false);
       EXPECT_NE(nullptr, column_it);
       auto* payload = irs::get<irs::payload>(*column_it);
       EXPECT_NE(nullptr, payload);
@@ -822,7 +825,7 @@ TEST(GeoFilterTest, checkScorer) {
           auto const docId = it->value();
           auto seek_it = prepared->execute(segment);
           EXPECT_NE(nullptr, seek_it);
-          auto column_it = column->iterator();
+          auto column_it = column->iterator(false);
           EXPECT_NE(nullptr, column_it);
           auto* payload = irs::get<irs::payload>(*column_it);
           EXPECT_NE(nullptr, payload);

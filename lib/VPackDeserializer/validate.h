@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,10 +123,10 @@ struct executor::deserialize_plan_executor<validate<D, V>, H> {
   template<typename ctx>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, ctx&& c) -> result_type {
-    auto result = deserialize<D, H, ctx>(s, hints, std::forward<ctx>(c));
+    auto result = deserialize<D, H, ctx>(s, hints, c);
 
     if (result) {
-      V validator = validator::construct_validator<V>(std::forward<ctx>(c));
+      V validator = validator::construct_validator<V>(c);
 
       using validator_result_type = std::optional<deserialize_error>;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,65 +75,53 @@ VPackSlice slice(std::basic_string<Char> const& ref) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON arrays)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addBytesRef(  // add a value
-    arangodb::velocypack::Builder& builder,  // builder
-    irs::bytes_ref const& value              // value
-);
+velocypack::Builder& addBytesRef(velocypack::Builder& builder,
+                                 irs::bytes_ref value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addBytesRef(  // add a value
-    arangodb::velocypack::Builder& builder,  // builder
-    irs::string_ref const& key,              // key
-    irs::bytes_ref const& value              // value
-);
+velocypack::Builder& addBytesRef(velocypack::Builder& builder,
+                                 irs::string_ref key, irs::bytes_ref value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON arrays)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addStringRef(  // add a value
-    arangodb::velocypack::Builder& builder,   // builder
-    irs::string_ref const& value              // value
-);
+velocypack::Builder& addStringRef(velocypack::Builder& builder,
+                                  irs::string_ref value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps bytes ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
-inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
+inline velocypack::ValuePair toValuePair(irs::bytes_ref ref) {
   TRI_ASSERT(!ref.null());  // consumers of ValuePair usually use memcpy(...)
                             // which cannot handle nullptr
-  return arangodb::velocypack::ValuePair(  // value pair
-      ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary  // args
-  );
+  return velocypack::ValuePair(ref.c_str(), ref.size(),
+                               velocypack::ValueType::Binary);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps string ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
-inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
+inline velocypack::ValuePair toValuePair(irs::string_ref ref) {
   TRI_ASSERT(!ref.null());  // consumers of ValuePair usually use memcpy(...)
                             // which cannot handle nullptr
-  return arangodb::velocypack::ValuePair(  // value pair
-      ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String  // args
-  );
+  return velocypack::ValuePair(ref.c_str(), ref.size(),
+                               velocypack::ValueType::String);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addStringRef(  // add a value
-    arangodb::velocypack::Builder& builder,   // builder
-    irs::string_ref const& key,               // key
-    irs::string_ref const& value              // value
-);
+velocypack::Builder& addStringRef(velocypack::Builder& builder,
+                                  irs::string_ref key, irs::string_ref value);
 
-inline bool isArrayOrObject(VPackSlice const& slice) {
+inline bool isArrayOrObject(VPackSlice slice) {
   auto const type = slice.type();
   return VPackValueType::Array == type || VPackValueType::Object == type;
 }
 
-inline bool isCompactArrayOrObject(VPackSlice const& slice) {
+inline bool isCompactArrayOrObject(VPackSlice slice) {
   TRI_ASSERT(isArrayOrObject(slice));
 
   auto const head = slice.head();
@@ -145,17 +133,17 @@ inline bool isCompactArrayOrObject(VPackSlice const& slice) {
 ///        must be a string
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::string_ref getStringRef(VPackSlice const& slice) {
+inline irs::string_ref getStringRef(VPackSlice slice) {
   if (slice.isNull()) {
     return irs::string_ref::NIL;
   }
 
   TRI_ASSERT(slice.isString());
 
-  arangodb::velocypack::ValueLength size;
+  velocypack::ValueLength size;
   auto const* str = slice.getString(size);
 
-  static_assert(sizeof(arangodb::velocypack::ValueLength) == sizeof(size_t),
+  static_assert(sizeof(velocypack::ValueLength) == sizeof(size_t),
                 "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
 
   return irs::string_ref(str, size);
@@ -169,10 +157,10 @@ inline irs::string_ref getStringRef(VPackSlice const& slice) {
 inline irs::bytes_ref getBytesRef(VPackSlice const& slice) {
   TRI_ASSERT(slice.isString());
 
-  arangodb::velocypack::ValueLength size;
+  velocypack::ValueLength size;
   auto const* str = slice.getString(size);
 
-  static_assert(sizeof(arangodb::velocypack::ValueLength) == sizeof(size_t),
+  static_assert(sizeof(velocypack::ValueLength) == sizeof(size_t),
                 "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
 
   return irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(str), size);
@@ -183,8 +171,7 @@ inline irs::bytes_ref getBytesRef(VPackSlice const& slice) {
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
-inline bool getNumber(T& buf,
-                      arangodb::velocypack::Slice const& slice) noexcept {
+inline bool getNumber(T& buf, velocypack::Slice const& slice) noexcept {
   if (!slice.isNumber()) {
     return false;
   }
@@ -210,7 +197,7 @@ inline bool getNumber(T& buf,
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
-inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
+inline bool getNumber(T& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
                       T fallback) noexcept {
   seen = slice.hasKey(fieldName.data(), fieldName.length());
@@ -228,8 +215,7 @@ inline bool getNumber(T& buf, arangodb::velocypack::Slice const& slice,
 /// @brief parses a string sub-element, or uses a default if it does not exist
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
-inline bool getString(std::string& buf,
-                      arangodb::velocypack::Slice const& slice,
+inline bool getString(std::string& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
                       std::string const& fallback) noexcept {
   seen = slice.hasKey(fieldName.data(), fieldName.length());
@@ -255,8 +241,7 @@ inline bool getString(std::string& buf,
 /// @brief parses a string sub-element, or uses a default if it does not exist
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
-inline bool getString(irs::string_ref& buf,
-                      arangodb::velocypack::Slice const& slice,
+inline bool getString(irs::string_ref& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
                       irs::string_ref const& fallback) noexcept {
   seen = slice.hasKey(fieldName.data(), fieldName.length());
@@ -304,24 +289,22 @@ VPackSlice get(VPackSlice slice, const T& attributePath,
 /// @brief append the contents of the slice to the builder
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
-bool mergeSlice(arangodb::velocypack::Builder& builder,
-                arangodb::velocypack::Slice const& slice);
+bool mergeSlice(velocypack::Builder& builder, velocypack::Slice slice);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief append the contents of the slice to the builder skipping keys
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
 bool mergeSliceSkipKeys(
-    arangodb::velocypack::Builder& builder,
-    arangodb::velocypack::Slice const& slice,
-    std::function<bool(irs::string_ref const& key)> const& acceptor);
+    velocypack::Builder& builder, velocypack::Slice slice,
+    std::function<bool(irs::string_ref key)> const& acceptor);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief append the contents of the slice to the builder skipping offsets
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
-bool mergeSliceSkipOffsets(arangodb::velocypack::Builder& builder,
-                           arangodb::velocypack::Slice const& slice,
+bool mergeSliceSkipOffsets(velocypack::Builder& builder,
+                           velocypack::Slice slice,
                            std::function<bool(size_t offset)> const& acceptor);
 
 ////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -4615,7 +4615,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
           VPackObjectBuilder o(&finishedPlanIndex);
           for (auto const& entry :
                VPackObjectIterator(newIndexBuilder.slice())) {
-            auto const key = entry.key.copyString();
+            auto const key = entry.key.stringView();
             if (key != StaticStrings::IndexIsBuilding &&
                 key != "isNewlyCreated") {
               finishedPlanIndex.add(entry.key.copyString(), entry.value);

@@ -1,10 +1,8 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, fail, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
-///
-/// @file
 ///
 /// DISCLAIMER
 ///
@@ -28,8 +26,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require("jsunity");
-let db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const errors = require("internal").errors;
+
 const ruleName = "reduce-extraction-to-projection";
 
 function optimizerRuleTestSuite () {
@@ -54,7 +54,7 @@ function optimizerRuleTestSuite () {
     },
 
     testNotActive : function () {
-      var queries = [
+      const queries = [
         "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 && doc.value3 == 1 && doc.value4 == 1 && doc.value5 == 1 && doc.value6 == 1 RETURN doc",
         "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc",
@@ -75,12 +75,7 @@ function optimizerRuleTestSuite () {
     testNotActiveBecauseIndexHint : function () {
       // these queries may actually use projections, but they must not use the primary
       // index for scanning
-      var queries = [
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN 1",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value1",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value2",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc._key",
+      const queries = [
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value2",
@@ -92,9 +87,28 @@ function optimizerRuleTestSuite () {
         assertEqual(-1, nodeTypes.indexOf("IndexNode"));
       });
     },
+    
+    testFailBecauseIndexHint : function () {
+      const queries = [
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN 1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value2",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc._key",
+      ];
+
+      queries.forEach(function(query) {
+        try {
+          AQL_EXPLAIN(query, { "@cn" : cn }).plan;
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE.code, err.errorNum, query);
+        }
+      });
+    },
 
     testActive : function () {
-      let queries = [
+      const queries = [
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN 1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc._key",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",

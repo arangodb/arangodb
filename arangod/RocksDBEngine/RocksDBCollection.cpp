@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -678,7 +678,9 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
                       _logicalCollection.name(), std::to_string(iid.id()),
                       TRI_ERROR_NO_ERROR);
 
-    cindex->compact();  // trigger compaction before deleting the object
+    if (meta().numberDocuments() >= 32 * 1024) {
+      cindex->compact();  // trigger compaction to reclaim disk space
+    }
   }
 
   return res.ok();

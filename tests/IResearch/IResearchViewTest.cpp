@@ -3386,7 +3386,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto* view =
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() == arangodb::LogicalView::category());
+    EXPECT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
@@ -3440,7 +3441,8 @@ TEST_F(IResearchViewTest, test_insert) {
     auto* view =
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() == arangodb::LogicalView::category());
+    EXPECT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
@@ -3819,7 +3821,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto* view =
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() == arangodb::LogicalView::category());
+    EXPECT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
@@ -3873,7 +3876,8 @@ TEST_F(IResearchViewTest, test_remove) {
     auto* view =
         dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() == arangodb::LogicalView::category());
+    EXPECT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
@@ -6041,7 +6045,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -6122,7 +6127,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
                           testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -6211,7 +6217,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -6301,7 +6308,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
 
     // initial link creation
@@ -6356,10 +6364,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -6486,7 +6494,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((nullptr != logicalCollection1));
     auto view = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !view));
-    ASSERT_TRUE(view->category() == arangodb::LogicalView::category());
+    ASSERT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
     EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
 
@@ -6541,10 +6550,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -6633,10 +6642,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -6686,7 +6695,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !view));
-    ASSERT_TRUE(view->category() == arangodb::LogicalView::category());
+    ASSERT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
 
     // initial add of link
     {
@@ -7648,7 +7658,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
                     testDBInfo(server.server()));
     auto view = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !view));
-    ASSERT_TRUE(view->category() == arangodb::LogicalView::category());
+    ASSERT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -7726,7 +7737,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -7803,7 +7815,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
                           testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -7888,7 +7901,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -7974,7 +7988,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !logicalView));
-    ASSERT_TRUE((logicalView->category() == arangodb::LogicalView::category()));
+    ASSERT_TRUE((logicalView->category() ==
+                 arangodb::LogicalDataSource::Category::kView));
     EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
 
     // initial link creation
@@ -8029,10 +8044,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -8124,10 +8139,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
           EXPECT_TRUE((true == key.isString()));
 
           auto expectedItr = expectedLinkMeta.find(key.copyString());
-          EXPECT_TRUE((true == value.isObject() &&
-                       expectedItr != expectedLinkMeta.end() &&
-                       linkMeta.init(server.server(), value, false, error) &&
-                       expectedItr->second == linkMeta));
+          EXPECT_TRUE(value.isObject() &&
+                      expectedItr != expectedLinkMeta.end() &&
+                      linkMeta.init(server.server(), value, error) &&
+                      expectedItr->second == linkMeta);
           expectedLinkMeta.erase(expectedItr);
         }
       }
@@ -8176,7 +8191,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !view));
-    ASSERT_TRUE(view->category() == arangodb::LogicalView::category());
+    ASSERT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": {} } }");
@@ -8308,10 +8324,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((true == key.isString()));
 
         auto expectedItr = expectedLinkMeta.find(key.copyString());
-        EXPECT_TRUE((true == value.isObject() &&
-                     expectedItr != expectedLinkMeta.end() &&
-                     linkMeta.init(server.server(), value, false, error) &&
-                     expectedItr->second == linkMeta));
+        EXPECT_TRUE(value.isObject() && expectedItr != expectedLinkMeta.end() &&
+                    linkMeta.init(server.server(), value, error) &&
+                    expectedItr->second == linkMeta);
         expectedLinkMeta.erase(expectedItr);
       }
     }
@@ -8358,7 +8373,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !view));
-    ASSERT_TRUE(view->category() == arangodb::LogicalView::category());
+    ASSERT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
 
     {
       static std::vector<std::string> const EMPTY;
@@ -8430,10 +8446,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_TRUE((true == key.isString()));
 
         auto expectedItr = expectedLinkMeta.find(key.copyString());
-        EXPECT_TRUE((true == value.isObject() &&
-                     expectedItr != expectedLinkMeta.end() &&
-                     linkMeta.init(server.server(), value, false, error) &&
-                     expectedItr->second == linkMeta));
+        EXPECT_TRUE(value.isObject() && expectedItr != expectedLinkMeta.end() &&
+                    linkMeta.init(server.server(), value, error) &&
+                    expectedItr->second == linkMeta);
         expectedLinkMeta.erase(expectedItr);
       }
     }
@@ -8476,7 +8491,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
                     testDBInfo(server.server()));
     auto view = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !view));
-    ASSERT_TRUE(view->category() == arangodb::LogicalView::category());
+    ASSERT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -8560,7 +8576,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     ASSERT_TRUE((false == !view));
-    ASSERT_TRUE(view->category() == arangodb::LogicalView::category());
+    ASSERT_TRUE(view->category() ==
+                arangodb::LogicalDataSource::Category::kView);
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
