@@ -792,8 +792,28 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
 RequestLane RestAqlHandler::lane() const {
   if (ServerState::instance()->isCoordinator()) {
+    // continuation requests on coordinators will get medium priority,
+    // so that they don't block query parts elsewhere
+    TRI_ASSERT(
+        PriorityRequestLane(RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR) ==
+        RequestPriority::MED);
     return RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
-  } else {
-    return RequestLane::CLUSTER_AQL;
   }
+
+  if (ServerState::instance()->isDBServer()) {
+    std::vector<std::string> const& suffixes = _request->suffixes();
+
+    if (suffixes.size() == 2 && suffixes[0] == "finish") {
+      // AQL shutdown requests should have medium priority, so it can release
+      // locks etc. and unblock other pending requests
+      TRI_ASSERT(PriorityRequestLane(RequestLane::CONTINUATION) ==
+                 RequestPriority::MED);
+      return RequestLane::CONTINUATION;
+    }
+  }
+
+  // everything else will run with low priority
+  TRI_ASSERT(PriorityRequestLane(RequestLane::CLUSTER_AQL) ==
+             RequestPriority::LOW);
+  return RequestLane::CLUSTER_AQL;
 }

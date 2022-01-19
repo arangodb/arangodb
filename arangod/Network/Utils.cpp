@@ -283,7 +283,9 @@ ErrorCode fuerteToArangoErrorCode(network::Response const& res) {
   LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION,
                res.error != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(res.error)
-      << "' from destination '" << res.destination << "'";
+      << "' from destination '" << res.destination << "'"
+      << ", url: " << to_string(res.request().header.restVerb) << " "
+      << res.request().header.path;
   return toArangoErrorCodeInternal(res.error);
 }
 
