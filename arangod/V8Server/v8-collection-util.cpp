@@ -92,7 +92,7 @@ v8::Handle<v8::Object> WrapCollection(  // wrap collection
   }
 
   LOG_TOPIC("44ea5", TRACE, arangodb::Logger::V8)
-      << "Wrapping Collection " << collection->Name() << " with ptr "
+      << "Wrapping Collection " << collection->name() << " with ptr "
       << (void*)collection.get();
 
   auto value = std::shared_ptr<void>(  // persistent value
