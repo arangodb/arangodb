@@ -60,7 +60,10 @@ RequestLane RestDocumentHandler::lane() const {
         // read data and does not need to wait on other requests. we will
         // give this somewhat higher priority because finishing this request
         // can unblock others.
-        return RequestLane::CONTINUATION;
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_DOCUMENT) ==
+                          RequestPriority::MED,
+                      "invalid request lane priority");
+        return RequestLane::CLUSTER_AQL_DOCUMENT;
       }
       // fall through for non-DOCUMENT() GET requests
     } else {
