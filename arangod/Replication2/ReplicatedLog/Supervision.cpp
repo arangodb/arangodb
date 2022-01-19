@@ -166,6 +166,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 
   for (auto const& [participant, status] : states) {
     auto const excluded =
+        participantsConfig.participants.contains(participant) and
         participantsConfig.participants.at(participant).excluded;
     auto const healthy = health.isHealthy(participant);
     auto reason = computeReason(status, healthy, excluded, term);
