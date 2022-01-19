@@ -36,8 +36,7 @@ struct ViewFactory;  // forward declaration
 
 }  // namespace arangodb
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 class IResearchLink;  // forward declaration
 
@@ -48,7 +47,7 @@ class IResearchLink;  // forward declaration
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
-  virtual ~IResearchViewCoordinator() = default;
+  ~IResearchViewCoordinator() final = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -64,12 +63,12 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result link(IResearchLink const& link);
 
-  void open() override { /* NOOP */
+  void open() final { /* NOOP */
   }
 
   using LogicalDataSource::properties;
-  virtual Result properties(VPackSlice properties, bool isUserRequest,
-                            bool partialUpdate) override;
+  Result properties(VPackSlice properties, bool isUserRequest,
+                    bool partialUpdate) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
@@ -78,7 +77,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result unlink(DataSourceId cid) noexcept;
 
-  bool visitCollections(CollectionVisitor const& visitor) const override;
+  bool visitCollections(CollectionVisitor const& visitor) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
@@ -102,12 +101,12 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   }
 
  protected:
-  virtual Result appendVelocyPackImpl(VPackBuilder& builder,
-                                      Serialization context) const override;
+  Result appendVelocyPackImpl(VPackBuilder& builder,
+                              Serialization context) const final;
 
-  virtual Result dropImpl() override;
+  Result dropImpl() final;
 
-  Result renameImpl(std::string const& oldName) override;
+  Result renameImpl(std::string const& oldName) final;
 
  private:
   struct ViewFactory;  // forward declaration
@@ -120,5 +119,4 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   IResearchViewMeta _meta;
 };  // IResearchViewCoordinator
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
