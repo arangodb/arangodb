@@ -61,8 +61,7 @@ auto computeReason(LogCurrentLocalState const& status, bool healthy,
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsConfig const& participantsConfig,
-                         ParticipantsHealth const& health, LogTerm term,
-                         size_t requiredNumberOfOKParticipants)
+                         ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection;
 
 auto tryLeadershipElection(LogPlanSpecification const& plan,

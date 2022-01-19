@@ -77,8 +77,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
           {"B", ParticipantFlags{.forced = false, .excluded = false}},
           {"C", ParticipantFlags{.forced = false, .excluded = false}}}};
 
-  auto campaign =
-      runElectionCampaign(localStates, config, health, LogTerm{1}, 2);
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1});
 
   EXPECT_EQ(campaign.participantsAvailable, 3);  // TODO: Fixme
                                                  // << campaign;
@@ -111,8 +110,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
           {"B", ParticipantFlags{.forced = false, .excluded = false}},
           {"C", ParticipantFlags{.forced = false, .excluded = false}}}};
 
-  auto campaign =
-      runElectionCampaign(localStates, config, health, LogTerm{2}, 2);
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{2});
 
   EXPECT_EQ(campaign.participantsAvailable, 1);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));

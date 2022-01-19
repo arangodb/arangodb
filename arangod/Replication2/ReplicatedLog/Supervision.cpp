@@ -85,6 +85,80 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
   }
 }
 
+/*
+ * If the currentleader is not present in target, this means
+ * that the user removed that leader (rather forcefully)
+ *
+ * This in turn means we have to gracefully remove the leader
+ * from its position;
+ *
+ * To not end up in a state where we have a) no leader and b)
+ * not even a way to elect a new one we want to replace the leader
+ * with a new one (gracefully); this is as opposed to just
+ * rip out the old leader and waiting for failover to occur
+ *
+ * */
+auto checkLeaderRemovedFromTarget(LogTarget const& target,
+                                  LogPlanSpecification const& plan,
+                                  LogCurrent const& current,
+                                  ParticipantsHealth const& health)
+    -> std::unique_ptr<Action> {
+  // TODO: integrate
+  if (!current.leader || !current.leader->committedParticipantsConfig ||
+      current.leader->committedParticipantsConfig->generation !=
+          plan.participantsConfig.generation) {
+    return std::make_unique<EmptyAction>();
+  }
+
+  if (plan.currentTerm && plan.currentTerm->leader &&
+      !target.participants.contains(plan.currentTerm->leader->serverId)) {
+    // run Election to determine whether there is a participant that could
+    // become leader
+    auto election =
+        runElectionCampaign(current.localState, plan.participantsConfig, health,
+                            plan.currentTerm->term);
+
+    // Check whether we already have a participant that is
+    //  * electable
+    //  * forced
+    //  * *not* the current leader
+    //
+    //  if so, do make them leader
+    for (auto const& participant : election.electibleLeaderSet) {
+      auto const& flags =
+          current.leader->committedParticipantsConfig->participants.at(
+              participant);
+
+      if (participant != current.leader->serverId and flags.forced) {
+        auto const rebootId = health._health.at(participant).rebootId;
+        auto const term = LogTerm{plan.currentTerm->term.value + 1};
+        auto const termSpec = LogPlanTermSpecification(
+            term, plan.currentTerm->config,
+            LogPlanTermSpecification::Leader{participant, rebootId});
+
+        return std::make_unique<DictateLeaderAction>(target.id, termSpec);
+      }
+    }
+
+    // Did not find a  participant above, so pick one at random
+    // and force them.
+    auto const numElectible = election.electibleLeaderSet.size();
+    auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+    auto const& chosenOne =
+        election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+
+    auto flags =
+        current.leader->committedParticipantsConfig->participants.at(chosenOne);
+
+    flags.forced = true;
+
+    return std::make_unique<UpdateParticipantFlagsAction>(
+        target.id, chosenOne, flags, plan.participantsConfig.generation);
+  }
+
+  return std::make_unique<EmptyAction>();
+}
+
 auto checkLeaderInTarget(LogTarget const& target,
                          LogPlanSpecification const& plan,
                          LogCurrent const& current,
@@ -157,12 +231,10 @@ auto computeReason(LogCurrentLocalState const& status, bool healthy,
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsConfig const& participantsConfig,
-                         ParticipantsHealth const& health, LogTerm term,
-                         size_t requiredNumberOfOKParticipants)
+                         ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection {
   auto election = LogCurrentSupervisionElection();
   election.term = term;
-  election.participantsRequired = requiredNumberOfOKParticipants;
 
   for (auto const& [participant, status] : states) {
     auto const excluded =
@@ -209,9 +281,10 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
       plan.currentTerm->config.writeConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
-  auto election = runElectionCampaign(
-      current.localState, plan.participantsConfig, health,
-      plan.currentTerm->term, requiredNumberOfOKParticipants);
+  auto election =
+      runElectionCampaign(current.localState, plan.participantsConfig, health,
+                          plan.currentTerm->term);
+  election.participantsRequired = requiredNumberOfOKParticipants;
 
   auto const numElectible = election.electibleLeaderSet.size();
 
@@ -315,7 +388,7 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
     -> std::unique_ptr<Action> {
   auto tps = target.participants;
   auto pps = plan.participantsConfig.participants;
-  //
+
   // Check whether a participant has been removed
   for (auto const& [planParticipant, flags] : pps) {
     if (!tps.contains(planParticipant)) {
@@ -395,14 +468,17 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     return action;
   }
 
+  if (auto action = checkLeaderRemovedFromTarget(log.target, *log.plan,
+                                                 *log.current, health);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
   if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
       !isEmptyAction(action)) {
     return action;
   }
 
-  if (!log.current) {
-    return std::make_unique<EmptyAction>();
-  }
   // If someone wishes a specific participant to become leader
   // by putting a ParticipantId into the target
   if (auto action =

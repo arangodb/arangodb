@@ -456,8 +456,8 @@ const replicatedLogSuite = function () {
         [leader]: null,
       }));
 
-      // we expect still to have the same term and same leader
-      waitFor(replicatedLogLeaderEstablished(database, logId, term + 2, [...followers, newServer]));
+      // we expect to have a new leader and the new follower
+      waitFor(replicatedLogLeaderEstablished(database, logId, term + 1, [...followers, newServer]));
     },
 
     testChangeLeaderToNewFollower: function () {
