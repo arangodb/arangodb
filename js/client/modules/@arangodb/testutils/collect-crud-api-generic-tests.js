@@ -27,7 +27,7 @@
 
 const jsunity = require("jsunity");
 const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util");
-const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, assertNotNull}
+const {assertEqual, assertTrue, assertNotEqual}
   = jsunity.jsUnity.assertions;
 
 
