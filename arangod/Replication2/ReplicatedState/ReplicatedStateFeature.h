@@ -40,8 +40,6 @@ class LogLeader;
 namespace arangodb::replication2::replicated_state {
 
 struct ReplicatedStateFeature {
-
-
   /**
    * Registers a new State implementation with the given name.
    * @tparam S State Machine

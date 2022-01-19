@@ -282,7 +282,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<RocksDBEngine>();
 
     // add replicated state
-    server.addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
+    server.addFeature<
+        replication2::replicated_state::ReplicatedStateAppFeature>();
     server.addFeature<replication2::replicated_state::black_hole::
                           BlackHoleStateMachineFeature>();
 
