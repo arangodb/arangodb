@@ -51,7 +51,7 @@ DEFINE_FACTORY_DEFAULT(proxy_filter);
 bool lazy_filter_bitset_iterator::next() {
   while (!word_) {
     if (bitset_.get(word_idx_, &word_)) {
-      word_idx_++;  // move only if ok. Or we could be overflowed!
+      ++word_idx_;  // move only if ok. Or we could be overflowed!
       base_ += irs::bits_required<lazy_bitset::word_t>();
       doc_.value = base_ - 1;
       continue;
@@ -63,7 +63,7 @@ bool lazy_filter_bitset_iterator::next() {
   const irs::doc_id_t delta =
       irs::doc_id_t(irs::math::math_traits<lazy_bitset::word_t>::ctz(word_));
   assert(delta < irs::bits_required<lazy_bitset::word_t>());
-  word_ = (word_ >> delta) >> 1;
+  word_ >>= (delta + 1);
   doc_.value += 1 + delta;
   return true;
 }
@@ -74,9 +74,9 @@ irs::doc_id_t lazy_filter_bitset_iterator::seek(irs::doc_id_t target) {
     const irs::doc_id_t bit_idx =
         target % irs::bits_required<lazy_bitset::word_t>();
     base_ = word_idx_ * irs::bits_required<lazy_bitset::word_t>();
-    word_ = word_ >> bit_idx;
+    word_ >>= bit_idx;
     doc_.value = base_ - 1 + bit_idx;
-    word_idx_++;  // mark this word as consumed
+    ++word_idx_;  // mark this word as consumed
     // FIXME consider inlining to speedup
     next();
     return doc_.value;
@@ -302,6 +302,7 @@ class CoveringVector final : public IndexIterator::CoveringData {
  public:
   explicit CoveringVector(InvertedIndexFieldMeta const& meta) {
     size_t fields{meta._sort.fields().size()};
+    _coverage.reserve(meta._sort.size() + meta._storedValues.columns().size());
     if (!meta._sort.empty()) {
       _coverage.emplace_back(fields, CoveringValue(irs::string_ref::EMPTY));
     }

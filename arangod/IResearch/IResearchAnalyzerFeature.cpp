@@ -725,8 +725,8 @@ bool analyzerInUse(application_features::ApplicationServer& server,
 
       for (auto const& index : collection->getIndexes()) {
         if (!index ||
-            (arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
-             arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
+            (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
+             Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
           continue;  // not an IResearchLink
         }
 
