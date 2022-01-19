@@ -25,15 +25,4 @@
 
 namespace arangodb::replication2::replicated_log {
 
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   LogTerm term) -> LogCurrentSupervisionElection::ErrorCode {
-  if (!healthy) {
-    return LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
-  } else if (term != status.term) {
-    return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
-  } else {
-    return LogCurrentSupervisionElection::ErrorCode::OK;
-  }
-}
-
 }  // namespace arangodb::replication2::replicated_log

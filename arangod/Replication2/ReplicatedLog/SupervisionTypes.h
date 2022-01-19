@@ -33,7 +33,4 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   LogTerm term) -> LogCurrentSupervisionElection::ErrorCode;
-
 }  // namespace arangodb::replication2::replicated_log

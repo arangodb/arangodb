@@ -238,6 +238,8 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
       return "the server is not reported as good in Supervision/Health";
     case LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED:
       return "the server has not (yet) confirmed the current term";
+    case LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED:
+      return "the server is configured as excluded";
   }
   LOG_TOPIC("7e572", FATAL, arangodb::Logger::REPLICATION2)
       << "Invalid LogCurrentSupervisionElection::ErrorCode "

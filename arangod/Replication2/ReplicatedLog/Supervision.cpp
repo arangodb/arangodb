@@ -141,7 +141,22 @@ auto checkLeaderInTarget(LogTarget const& target,
   return std::make_unique<EmptyAction>();
 }
 
+auto computeReason(LogCurrentLocalState const& status, bool healthy,
+                   bool excluded, LogTerm term)
+    -> LogCurrentSupervisionElection::ErrorCode {
+  if (!healthy) {
+    return LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
+  } else if (excluded) {
+    return LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED;
+  } else if (term != status.term) {
+    return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
+  } else {
+    return LogCurrentSupervisionElection::ErrorCode::OK;
+  }
+}
+
 auto runElectionCampaign(LogCurrentLocalStates const& states,
+                         ParticipantsConfig const& participantsConfig,
                          ParticipantsHealth const& health, LogTerm term,
                          size_t requiredNumberOfOKParticipants)
     -> LogCurrentSupervisionElection {
@@ -150,7 +165,10 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
   election.participantsRequired = requiredNumberOfOKParticipants;
 
   for (auto const& [participant, status] : states) {
-    auto reason = computeReason(status, health.isHealthy(participant), term);
+    auto const excluded =
+        participantsConfig.participants.at(participant).excluded;
+    auto const healthy = health.isHealthy(participant);
+    auto reason = computeReason(status, healthy, excluded, term);
     election.detail.emplace(participant, reason);
 
     if (reason == LogCurrentSupervisionElection::ErrorCode::OK) {
@@ -190,9 +208,9 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
       plan.currentTerm->config.writeConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
-  auto election =
-      runElectionCampaign(current.localState, health, plan.currentTerm->term,
-                          requiredNumberOfOKParticipants);
+  auto election = runElectionCampaign(
+      current.localState, plan.participantsConfig, health,
+      plan.currentTerm->term, requiredNumberOfOKParticipants);
 
   auto const numElectible = election.electibleLeaderSet.size();
 
