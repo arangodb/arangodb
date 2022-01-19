@@ -182,23 +182,23 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Queues/QueueTracer.cpp
   Graph/PathManagement/PathResult.cpp
   Graph/PathManagement/SingleProviderPathResult.cpp
-        Graph/PathManagement/PathStore.cpp
-        Graph/PathManagement/PathStoreTracer.cpp
-        Graph/PathManagement/PathValidator.cpp
-        Graph/PathManagement/PathValidatorOptions.cpp
-        Graph/Options/OneSidedEnumeratorOptions.cpp
-        Graph/Options/TwoSidedEnumeratorOptions.cpp
-        Graph/Providers/ClusterProvider.cpp
-        Graph/Providers/SingleServerProvider.cpp
-        Graph/Providers/BaseProviderOptions.cpp
-        Graph/Providers/ProviderTracer.cpp
-        Graph/Steps/ClusterProviderStep.cpp
-        Graph/Steps/SingleServerProviderStep.cpp
-        Graph/Types/UniquenessLevel.cpp
-        Graph/Types/ValidationResult.cpp
-        InternalRestHandler/InternalRestTraverserHandler.cpp
-        RestHandler/RestGraphHandler.cpp
-        )
+  Graph/PathManagement/PathStore.cpp
+  Graph/PathManagement/PathStoreTracer.cpp
+  Graph/PathManagement/PathValidator.cpp
+  Graph/PathManagement/PathValidatorOptions.cpp
+  Graph/Options/OneSidedEnumeratorOptions.cpp
+  Graph/Options/TwoSidedEnumeratorOptions.cpp
+  Graph/Providers/ClusterProvider.cpp
+  Graph/Providers/SingleServerProvider.cpp
+  Graph/Providers/BaseProviderOptions.cpp
+  Graph/Providers/ProviderTracer.cpp
+  Graph/Steps/ClusterProviderStep.cpp
+  Graph/Steps/SingleServerProviderStep.cpp
+  Graph/Types/UniquenessLevel.cpp
+  Graph/Types/ValidationResult.cpp
+  InternalRestHandler/InternalRestTraverserHandler.cpp
+  RestHandler/RestGraphHandler.cpp
+)
 
 set(LIB_ARANGO_PREGEL_AIR_SOURCES
   Pregel/Algos/AIR/AIR.cpp
