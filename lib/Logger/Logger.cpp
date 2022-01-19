@@ -775,7 +775,6 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
     {
       READ_LOCKER(guard, _structuredParamsLock);
-      // JULIA
       //  meta data from log
       LogContext::OverloadVisitor visitor([&out](std::string_view const& key,
                                                  auto&& value) {
