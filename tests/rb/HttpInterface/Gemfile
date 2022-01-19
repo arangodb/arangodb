@@ -3,3 +3,4 @@ source :rubygems
 gem "persistent_httparty"
 gem "rspec", "~> 2.14.0"
 gem "rspec-core", "~> 2.14.0"
+gem "zlib", "~> 2.1.1"
