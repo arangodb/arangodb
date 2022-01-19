@@ -580,16 +580,12 @@ void MerkleTree<Hasher, BranchingBits>::prepareInsertMinMax(
     std::uint64_t maxKey) {
   if (minKey < meta().rangeMin) {
     // unlock so we can get exclusive access to grow the range
-    guard.unlock();
     growLeft(minKey);
-    guard.lock();
   }
 
   if (maxKey >= meta().rangeMax) {
     // unlock so we can get exclusive access to grow the range
-    guard.unlock();
     growRight(maxKey);
-    guard.lock();
   }
 }
 
@@ -740,15 +736,11 @@ MerkleTree<Hasher, BranchingBits>::diff(
     if (width < widthOther) {
       // grow this times 2:
       std::uint64_t rangeMax = this->meta().rangeMax;
-      guard1.unlock();
       this->growRight(rangeMax);
-      guard1.lock();
     } else {
       // grow other times 2:
       std::uint64_t rangeMax = other.meta().rangeMax;
-      guard2.unlock();
       other.growRight(rangeMax);
-      guard2.lock();
     }
     // loop to repeat, this also helps to make sure someone else didn't
     // grow while we switched between shared/exclusive locks
@@ -1424,7 +1416,7 @@ void MerkleTree<Hasher, BranchingBits>::leftCombine(bool withShift) {
 
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
-  std::unique_lock<std::shared_mutex> guard(_dataLock);
+  // not thread-safe, lock buffer from outside
 
   std::uint64_t depth = meta().depth;
   std::uint64_t rangeMin = meta().rangeMin;
@@ -1557,7 +1549,7 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine(bool withShift) {
 
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::growLeft(std::uint64_t key) {
-  std::unique_lock<std::shared_mutex> guard(_dataLock);
+  // not thread-safe, lock buffer from outside
 
   std::uint64_t depth = meta().depth;
   std::uint64_t rangeMin = meta().rangeMin;
