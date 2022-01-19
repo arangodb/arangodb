@@ -2,19 +2,22 @@
 
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { GraphView } from './GraphView';
 import { data } from './data';
 import { data2 } from './data2';
 import G6 from '@antv/g6';
 import { Card } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
+import AddCollectionNameSelector from './AddCollectionNameSelector.js';
+import NodeLabelContentSelector from './NodeLabelContentSelector.js';
 import './tooltip.css';
 
 const G6JsGraph = () => {
   const currentUrl = window.location.href;
   const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
   console.log('graphName: ', graphName);
-  let [graphData, setGraphData] = useState(null);
+  let [graphData, setGraphData] = useState(data);
   const ref = React.useRef(null);
   let graph = null;
 
@@ -26,17 +29,20 @@ const G6JsGraph = () => {
   });
 
   // Instantiate the Toolbar
+  /*
   const toolbar = new G6.ToolBar({
     position: { x: 10, y: 70 },
   });
+  */
 
   // Instantiate grid
   const grid = new G6.Grid();
 
+  /*
   useEffect(() => {
     if (!graph) {
         graph = new G6.Graph({
-          plugins: [toolbar, minimap], // Configure toolbar and minimap to the graph
+          plugins: [minimap], // Configure toolbar and minimap to the graph
           enabledStack: true,
           container: ReactDOM.findDOMNode(ref.current),
           width: 1200,
@@ -109,8 +115,10 @@ const G6JsGraph = () => {
         });
     }
     graph.data(data);
+    //graph.data(graphData);
     graph.render();
-  }, [graphData]);
+  }, []);
+  */
 
   const getNodes = () => {
     const nodes = graph.getNodes();
@@ -123,7 +131,8 @@ const G6JsGraph = () => {
   }
 
   const changeGraphData = () => {
-    graph.changeData(data2);
+    //graph.changeData(data2);
+    setGraphData(data2);
   }
 
   const addNode = () => {
@@ -211,22 +220,57 @@ const G6JsGraph = () => {
     graph.render();
   }
 
-  return (
-    <div>
-        <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
+  const changeNodeLabelContent = (typeModel) => {
+    console.log('changeNodeLabelContent (typeModel: ', typeModel);
+    graph.node((node) => {
+      return {
+        id: node.id,
+        ...typeModel
+      };
+    });
+
+    graph.data(data);
+    graph.render();
+  }
+
+  const changeCollectionName = (typeModel) => {
+    console.log('changeCollectionName (typeModel: ', typeModel);
+    graph.node((node) => {
+      return {
+        id: node.id,
+        ...typeModel
+      };
+    });
+
+    graph.data(data);
+    graph.render();
+  }
+
+  const returnGraph = () => {
+    console.log('graph is: ', graph);
+  }
+
+  /*
+  <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
         <EdgeStyleSelector onEdgeStyleChange={(typeModel) => changeEdgeStyle(typeModel)} />
+        <AddCollectionNameSelector onAddCollectionNameChange={(typeModel) => changeCollectionName(typeModel)} />
+        <NodeLabelContentSelector onNodeLabelContentChange={(typeModel) => changeNodeLabelContent(typeModel)} />
         <button onClick={() => getNodes()}>Get nodes</button>
         <button onClick={() => getEdges()}>Get edges</button>
         <button onClick={() => changeGraphData()}>Change graph data</button>
         <button onClick={() => addNode()}>Add node</button>
         <button onClick={() => addEdge()}>Add edge</button>
         <button onClick={() => updateNodeModel()}>Update node2</button>
-        <Card
-          title="Pure JS G6 Graph"
-        >
-          <div ref={ref}></div>
-        </Card>
-      </div>
+        <button onClick={() => returnGraph()}>What is graph?</button>
+  */
+
+  return (
+    <div>
+      <button onClick={() => changeGraphData()}>Change graph data (parent)</button>
+        <GraphView
+            data={graphData}
+        />
+    </div>
   );
 }
 

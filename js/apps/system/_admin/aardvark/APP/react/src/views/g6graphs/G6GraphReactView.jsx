@@ -90,9 +90,12 @@ function G6Graph() {
   );
 }
 
+/*
+<DataGraph />
+*/
 const G6GraphReactView = () => {
     return <div>
-        <DataGraph />
+        <G6JsGraph />
     </div>;
 };
 
