@@ -158,7 +158,7 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
     IResearchViewMeta indexMeta;
     std::string errField;
     if (!indexMeta.init(definition, errField)) {
-      LOG_TOPIC("a9cce", ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("a9cce", ERR, TOPIC)
           << (errField.empty()
                   ? ("failed to initialize index meta from definition: " +
                      definition.toString())
@@ -170,7 +170,7 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
     InvertedIndexFieldMeta fieldsMeta;
     if (!fieldsMeta.init(_server, definition, true, errField,
                          collection.vocbase().name())) {
-      LOG_TOPIC("18c18", ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("18c18", ERR, TOPIC)
           << (errField.empty()
                   ? ("failed to initialize index fields from "
                      "definition: " +

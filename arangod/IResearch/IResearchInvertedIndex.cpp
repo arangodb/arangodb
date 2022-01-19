@@ -349,13 +349,12 @@ class CoveringVector final : public IndexIterator::CoveringData {
   VPackSlice get(size_t i) {
     TRI_ASSERT(irs::doc_limits::valid(_doc));
     size_t column{0};
-    size_t prev{0};
     // FIXME: check for the performance bottleneck!
     while (column < _coverage.size() && _coverage[column].first <= i) {
-      prev = _coverage[column].first;
       ++column;
     }
     if (column < _coverage.size()) {
+      size_t const prev = column ? _coverage[column - 1].first : 0;
       TRI_ASSERT(i >= prev);
       return _coverage[column].second.get(_doc, i - prev);
     }
@@ -1246,7 +1245,7 @@ bool IResearchInvertedClusterIndex::matchesDefinition(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  std::string_view typeStr = typeSlice.stringView();
+  auto typeStr = typeSlice.stringView();
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = other.get(arangodb::StaticStrings::IndexId);
