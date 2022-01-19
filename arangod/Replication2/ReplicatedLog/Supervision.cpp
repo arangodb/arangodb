@@ -372,8 +372,13 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     return action;
   }
 
-  // TODO do we access current here? if so, check it must be present at this
-  // point
+  // As long as we don't  have current, we cannot progress with establishing
+  // leadership
+  // TODO: Action that reports we're waiting for Current
+  if (!log.current) {
+    return std::make_unique<EmptyAction>();
+  }
+
   if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
       !isEmptyAction(action)) {
     return action;
