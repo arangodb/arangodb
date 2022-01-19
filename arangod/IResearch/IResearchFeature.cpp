@@ -98,6 +98,7 @@ class Query;
 namespace {
 
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         ArangoSearc AQL functions
@@ -470,14 +471,11 @@ bool upgradeSingleServerArangoSearchView0_1(
     auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
 
     // original algorithm for computing data-store path
-    static const std::string subPath("databases");
-    static const std::string dbPath("database-");
-
     dataPath = irs::utf8_path(dbPathFeature.directory());
-    dataPath /= subPath;
-    dataPath /= dbPath;
+    dataPath /= "databases";
+    dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
     dataPath += "-";
     dataPath += std::to_string(view->id().id());
 
@@ -582,7 +580,8 @@ void registerSingleFactory(
     application_features::ApplicationServer& server) {
   TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
   IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
-  auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  std::string const indexType{
+      arangodb::iresearch::StaticStrings::DataSourceType};
   if (server.hasFeature<T>()) {
     auto& engine = server.getFeature<T>();
     auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
@@ -707,21 +706,21 @@ void registerUpgradeTasks(application_features::ApplicationServer& server) {
 }
 
 void registerViewFactory(application_features::ApplicationServer& server) {
-  auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto& viewTypes = server.getFeature<ViewTypesFeature>();
+  static_assert(IResearchView::typeInfo() ==
+                IResearchViewCoordinator::typeInfo());
+
+  constexpr std::string_view kViewType{IResearchView::typeInfo().second};
 
   Result res;
 
   // DB server in custer or single-server
-  if (ServerState::instance()->isCoordinator()) {
-    res = viewTypes.emplace(
-        viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
+  if (auto& viewTypes = server.getFeature<ViewTypesFeature>();
+      ServerState::instance()->isCoordinator()) {
+    res = viewTypes.emplace(kViewType, IResearchViewCoordinator::factory());
   } else if (ServerState::instance()->isDBServer()) {
-    res = viewTypes.emplace(viewType,
-                            arangodb::iresearch::IResearchView::factory());
+    res = viewTypes.emplace(kViewType, IResearchView::factory());
   } else if (ServerState::instance()->isSingleServer()) {
-    res = viewTypes.emplace(viewType,
-                            arangodb::iresearch::IResearchView::factory());
+    res = viewTypes.emplace(kViewType, IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FAILED,
@@ -739,8 +738,8 @@ void registerViewFactory(application_features::ApplicationServer& server) {
 
 Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
                                                  transaction::Methods& trx) {
-  if (arangodb::iresearch::DATA_SOURCE_TYPE != dataSource.type()) {
-    return {};  // not an IResearchView (noop)
+  if (LogicalView::category() != dataSource.category()) {
+    return {};  // not a view
   }
 
 // TODO FIXME find a better way to look up a LogicalView
@@ -759,10 +758,14 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
     return {TRI_ERROR_INTERNAL};
   }
 
+  if (ViewType::kSearch == view->type()) {
+    return {};  // not a search view
+  }
+
   // TODO FIXME find a better way to look up an IResearch View
   auto& impl = LogicalView::cast<arangodb::iresearch::IResearchView>(*view);
 
-  return Result(impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL);
+  return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
 }
 
 void registerTransactionDataSourceRegistrationCallback() {

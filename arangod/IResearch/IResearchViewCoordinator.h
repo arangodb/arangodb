@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
 
@@ -48,6 +49,10 @@ class IResearchLink;  // forward declaration
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
+  static constexpr auto typeInfo() {
+    return std::pair{ViewType::kSearch, StaticStrings::DataSourceType};
+  }
+
   virtual ~IResearchViewCoordinator() = default;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -64,8 +69,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result link(IResearchLink const& link);
 
-  void open() override { /* NOOP */
-  }
+  void open() override {}
 
   using LogicalDataSource::properties;
   virtual Result properties(VPackSlice properties, bool isUserRequest,

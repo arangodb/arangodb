@@ -33,10 +33,6 @@
 namespace arangodb {
 namespace iresearch {
 
-LogicalDataSource::Type const& dataSourceType();
-LogTopic& logTopic();
-
-ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
 ADB_IGNORE_UNUSED extern LogTopic TOPIC;
 
 ////////////////////////////////////////////////////////////////////////////////

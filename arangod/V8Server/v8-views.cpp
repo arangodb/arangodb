@@ -752,7 +752,7 @@ static void JS_TypeViewVocbase(
                                    "insufficient rights to get view");
   }
 
-  auto& type = view->type().name();
+  auto type = std::string{view->typeName()};  // FIXME(gnusi)
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, type));
   TRI_V8_TRY_CATCH_END
 }

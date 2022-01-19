@@ -344,7 +344,7 @@ Result IResearchViewCoordinator::unlink(DataSourceId) noexcept {
 
 IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
                                                    velocypack::Slice info)
-    : LogicalView(vocbase, info) {
+    : LogicalView{*this, vocbase, info} {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 

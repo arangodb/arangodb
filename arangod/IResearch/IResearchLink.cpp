@@ -277,7 +277,8 @@ struct ThreadGroupStats : std::tuple<size_t, size_t, size_t> {
       : std::tuple<size_t, size_t, size_t>{std::move(stats)} {}
 };
 
-std::ostream& operator<<(std::ostream& out, const ThreadGroupStats& stats) {
+[[maybe_unused]] std::ostream& operator<<(std::ostream& out,
+                                          const ThreadGroupStats& stats) {
   out << "Active=" << std::get<0>(stats) << ", Pending=" << std::get<1>(stats)
       << ", Threads=" << std::get<2>(stats);
   return out;
@@ -1261,7 +1262,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+      if (ViewType::kSearch != logicalView->type()) {
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,  // code
                 "error finding view: '" + viewId + "' for link '" +
                     std::to_string(_id.id()) + "' : no such view"};
@@ -1355,7 +1356,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
       // if there is no logicalView present yet then skip this step
       if (logicalView) {
-        if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+        if (ViewType::kSearch != logicalView->type()) {
           unload();  // unlock the data store directory
           return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "error finding view: '" + viewId + "' for link '" +
@@ -1431,7 +1432,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+      if (ViewType::kSearch != logicalView->type()) {
         unload();  // unlock the data store directory
 
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -1978,7 +1979,7 @@ Result IResearchLink::properties(velocypack::Builder& builder,
   builder.add(arangodb::StaticStrings::IndexId,
               velocypack::Value(std::to_string(_id.id())));
   builder.add(arangodb::StaticStrings::IndexType,
-              velocypack::Value(IResearchLinkHelper::type()));
+              velocypack::Value(StaticStrings::DataSourceType));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
 
   return {};
@@ -2028,7 +2029,7 @@ Result IResearchLink::propertiesUnsafe(IResearchViewMeta const& meta) {
 
 Result IResearchLink::remove(transaction::Methods& trx,
                              LocalDocumentId documentId,
-                             velocypack::Slice doc) {
+                             velocypack::Slice /*doc*/) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -2145,7 +2146,7 @@ Index::IndexType IResearchLink::type() {
 }
 
 char const* IResearchLink::typeName() {
-  return IResearchLinkHelper::type().c_str();
+  return StaticStrings::DataSourceType.data();
 }
 
 bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
@@ -2352,18 +2353,13 @@ std::string IResearchLink::getCollectionName() const {
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchLink const& link) {
   irs::utf8_path dataPath(dbPathFeature.directory());
-  static constexpr std::string_view kSubPath{"databases"};
-  static constexpr std::string_view kDbPath{"database-"};
-
-  dataPath /= kSubPath;
-  dataPath /= kDbPath;
+  dataPath /= "databases";
+  dataPath /= "database-";
   dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
   dataPath += "-";
-  dataPath += std::to_string(
-      link.collection()
-          .id()
-          .id());  // has to be 'id' since this can be a per-shard collection
+  // has to be 'id' since this can be a per-shard collection
+  dataPath += std::to_string(link.collection().id().id());
   dataPath += "_";
   dataPath += std::to_string(link.id().id());
 

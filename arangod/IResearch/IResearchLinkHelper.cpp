@@ -96,11 +96,6 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the link type
-////////////////////////////////////////////////////////////////////////////////
-std::string const& LINK_TYPE = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-
 Result canUseAnalyzers(IResearchLinkMeta const& meta,
                        TRI_vocbase_t const& defaultVocbase) {
   for (auto& pool : meta._analyzerDefinitions) {
@@ -188,7 +183,9 @@ Result createLink(LogicalCollection& collection,
 
   velocypack::Builder builder;
   builder.openObject();
-  builder.add(arangodb::StaticStrings::IndexType, velocypack::Value(LINK_TYPE));
+  builder.add(
+      arangodb::StaticStrings::IndexType,
+      velocypack::Value(arangodb::iresearch::StaticStrings::DataSourceType));
   builder.add(arangodb::iresearch::StaticStrings::ViewIdField,
               velocypack::Value(view.guid()));
   if (!arangodb::iresearch::mergeSliceSkipKeys(builder, definition, acceptor)) {
@@ -330,8 +327,9 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
 
     velocypack::Builder namedJson;
     namedJson.openObject();
-    namedJson.add(arangodb::StaticStrings::IndexType,
-                  velocypack::Value(LINK_TYPE));
+    namedJson.add(
+        arangodb::StaticStrings::IndexType,
+        velocypack::Value(arangodb::iresearch::StaticStrings::DataSourceType));
     namedJson.add(arangodb::iresearch::StaticStrings::ViewIdField,
                   velocypack::Value(view.guid()));
     if (!mergeSliceSkipKeys(namedJson, link, acceptor)) {
@@ -612,8 +610,9 @@ namespace iresearch {
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
 
-  builder.add(arangodb::StaticStrings::IndexType,
-              arangodb::velocypack::Value(LINK_TYPE));
+  builder.add(
+      arangodb::StaticStrings::IndexType,
+      velocypack::Value(arangodb::iresearch::StaticStrings::DataSourceType));
   builder.close();
   return builder;
 }
@@ -730,7 +729,9 @@ namespace iresearch {
     return res;
   }
 
-  normalized.add(arangodb::StaticStrings::IndexType, VPackValue(LINK_TYPE));
+  normalized.add(
+      arangodb::StaticStrings::IndexType,
+      velocypack::Value(arangodb::iresearch::StaticStrings::DataSourceType));
 
   if (ServerState::instance()->isClusterRole() && isCreation &&
       !collectionName.empty() && meta._collectionName.empty()) {
@@ -783,10 +784,6 @@ namespace iresearch {
   }
 
   return {};
-}
-
-/*static*/ std::string const& IResearchLinkHelper::type() noexcept {
-  return LINK_TYPE;
 }
 
 /*static*/ arangodb::Result IResearchLinkHelper::validateLinks(

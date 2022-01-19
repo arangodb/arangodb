@@ -28,24 +28,18 @@
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief LogicalView factory for both end-user and internal instantiation
-////////////////////////////////////////////////////////////////////////////////
+// LogicalView factory for both end-user and internal instantiation
 struct ViewFactory {
-  virtual ~ViewFactory() = default;  // define to silence warning
+  virtual ~ViewFactory() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief LogicalView factory for end-user validation instantiation and
-  ///        persistence
-  /// @return if success then 'view' is set, else 'view' state is undefined
-  //////////////////////////////////////////////////////////////////////////////
+  // LogicalView factory for end-user validation instantiation and
+  // persistence. Return if success then 'view' is set, else 'view' state is
+  // undefined.
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                         velocypack::Slice definition,
                         bool isUserRequest) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief LogicalView factory for internal instantiation only
-  //////////////////////////////////////////////////////////////////////////////
+  // LogicalView factory for internal instantiation only.
   virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                              velocypack::Slice definition) const = 0;
 };
@@ -54,22 +48,19 @@ class ViewTypesFeature final : public application_features::ApplicationFeature {
  public:
   explicit ViewTypesFeature(application_features::ApplicationServer& server);
 
-  /// @return 'factory' for 'type' was added successfully
-  Result emplace(LogicalDataSource::Type const& type,
-                 ViewFactory const& factory);
+  // Return 'factory' for 'type' was added successfully
+  Result emplace(std::string_view type, ViewFactory const& factory);
 
-  /// @return factory for the specified type or a failing placeholder if no such
-  /// type
-  ViewFactory const& factory(
-      LogicalDataSource::Type const& type) const noexcept;
+  // Return factory for the specified type or a failing placeholder if no such
+  // type
+  ViewFactory const& factory(std::string_view) const noexcept;
 
   static std::string const& name();
   void prepare() override final;
   void unprepare() override final;
 
  private:
-  std::unordered_map<LogicalDataSource::Type const*, ViewFactory const*>
-      _factories;
+  std::unordered_map<std::string_view, ViewFactory const*> _factories;
 };
 
 }  // namespace arangodb

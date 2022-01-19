@@ -50,11 +50,6 @@
 
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief surrogate root for all queries without a filter
-////////////////////////////////////////////////////////////////////////////////
-arangodb::aql::AstNode ALL(arangodb::aql::AstNodeValue(true));
-
 using arangodb::iresearch::kludge::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,7 +315,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 IResearchView::IResearchView(TRI_vocbase_t& vocbase,
                              velocypack::Slice const& info,
                              IResearchViewMeta&& meta)
-    : LogicalView(vocbase, info),
+    : LogicalView(*this, vocbase, info),
       _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
       _meta(std::move(meta)),
       _inRecovery(false) {
