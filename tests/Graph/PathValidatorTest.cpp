@@ -103,13 +103,18 @@ class PathValidatorTest : public ::testing::Test {
 
  protected:
   VertexUniquenessLevel
-  getVertexUniquness() {  // TODO [GraphRefactor]: Also integrate
-                          // getEdgeUniqueness here.
+  getVertexUniqueness() {  // TODO [GraphRefactor]: (R done) Also integrate
+                           //  getEdgeUniqueness here.
     if constexpr (std::is_same_v<
                       ValidatorType,
                       PathValidator<graph::MockGraphProvider, PathStore<Step>,
                                     VertexUniquenessLevel::NONE,
-                                    EdgeUniquenessLevel::NONE>>) {
+                                    EdgeUniquenessLevel::NONE>> ||
+                  std::is_same_v<
+                      ValidatorType,
+                      PathValidator<graph::MockGraphProvider, PathStore<Step>,
+                                    VertexUniquenessLevel::NONE,
+                                    EdgeUniquenessLevel::PATH>>) {
       return VertexUniquenessLevel::NONE;
     } else if constexpr (std::is_same_v<
                              ValidatorType,
@@ -120,6 +125,18 @@ class PathValidatorTest : public ::testing::Test {
       return VertexUniquenessLevel::PATH;
     } else {
       return VertexUniquenessLevel::GLOBAL;
+    }
+  }
+
+  EdgeUniquenessLevel getEdgeUniquness() {
+    if constexpr (std::is_same_v<
+                      ValidatorType,
+                      PathValidator<graph::MockGraphProvider, PathStore<Step>,
+                                    VertexUniquenessLevel::NONE,
+                                    EdgeUniquenessLevel::NONE>>) {
+      return EdgeUniquenessLevel::NONE;
+    } else {
+      return EdgeUniquenessLevel::GLOBAL;
     }
   }
 
@@ -227,7 +244,7 @@ TYPED_TEST(PathValidatorTest,
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
 
-    if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
+    if (this->getVertexUniqueness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
@@ -270,7 +287,7 @@ TYPED_TEST(PathValidatorTest,
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
 
-    if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
+    if (this->getVertexUniqueness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
@@ -313,7 +330,7 @@ TYPED_TEST(PathValidatorTest,
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
 
-    if (this->getVertexUniquness() == VertexUniquenessLevel::NONE) {
+    if (this->getVertexUniqueness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
@@ -389,7 +406,7 @@ TYPED_TEST(PathValidatorTest,
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
 
-      if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
+      if (this->getVertexUniqueness() != VertexUniquenessLevel::GLOBAL) {
         // The vertex is visited twice, but not on same path.
         // As long as we are not GLOBAL this is okay.
         // No uniqueness check, take the vertex
@@ -470,7 +487,178 @@ TYPED_TEST(PathValidatorTest,
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
 
-      if (this->getVertexUniquness() != VertexUniquenessLevel::GLOBAL) {
+      if (this->getVertexUniqueness() != VertexUniquenessLevel::GLOBAL) {
+        // The vertex is visited twice, but not on same path.
+        // As long as we are not GLOBAL this is okay.
+        // No uniqueness check, take the vertex
+        EXPECT_FALSE(res.isFiltered());
+        EXPECT_FALSE(res.isPruned());
+      } else {
+        // With GLOBAL uniqueness this vertex is illegal
+        EXPECT_TRUE(res.isFiltered());
+        EXPECT_TRUE(res.isPruned());
+      }
+    }
+  }
+}
+
+TYPED_TEST(PathValidatorTest,
+           it_should_honor_edge_uniqueness_on_one_path_interior_duplicate) {
+  // We add a path with a duplicate edge (4)
+  this->addPath({0, 1, 2, 1, 2});
+
+  auto validator = this->testee();
+
+  Step s = this->startPath(0);
+  {
+    auto res = validator.validatePath(s);
+    // The start vertex is always valid
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
+  }
+
+  auto branch = this->expandPath(s);
+  ASSERT_EQ(branch.size(), 2);
+  {
+    // until the first 2 it's safe
+    for (size_t i = 0; i < 1; ++i) {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+
+    // extend to the second 1; pruning and filtering
+    // depends only on VertexUniqueness, the edge (2,1) is new
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1)
+        << "Not enough connections after step " << s.getVertexIdentifier();
+    auto res = validator.validatePath(s);
+    if (this->getVertexUniqueness() == VertexUniquenessLevel::PATH ||
+        this->getVertexUniqueness() == VertexUniquenessLevel::GLOBAL) {
+      EXPECT_TRUE(res.isFiltered());
+      EXPECT_TRUE(res.isPruned());
+    } else {
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+      // extend to the second 2, the edge repeats
+      s = neighbors.at(0);
+      neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      res = validator.validatePath(s);
+      if (this->getEdgeUniquness() == EdgeUniquenessLevel::NONE) {
+        EXPECT_FALSE(res.isFiltered());
+        EXPECT_FALSE(res.isPruned());
+      } else {
+        // PATH (or GLOBAL, but the combination  VertexUniquenessLevel::NONE,
+        // EdgeUniquenessLevel::GLOBAL cannot happen.
+        EXPECT_TRUE(res.isFiltered());
+        EXPECT_TRUE(res.isPruned());
+      }
+    }
+  }
+}
+
+TYPED_TEST(PathValidatorTest,
+           it_should_honor_edge_uniqueness_on_global_paths_interior_duplicate) {
+  // We add a two paths, that diverge, then immediately converge and
+  // then have the same edge  (5)
+  // 0 -> 1 -> 2 -> 3
+  //   -> 4 -> |
+  this->addPath({0, 1, 2, 3});
+  this->addPath({0, 4, 2, 3});
+
+  auto validator = this->testee();
+
+  Step s = this->startPath(0);
+  {
+    auto res = validator.validatePath(s);
+    // The start vertex is always valid
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
+  }
+
+  auto branch = this->expandPath(s);
+  // 1 and 4, we do need to care on the ordering, this is right now guaranteed.
+  // If this test fails at any point in time, we can add some code here that
+  // ensures that we first visit Vertex 1, then Vertex 4
+  ASSERT_EQ(branch.size(), 2);
+  {
+    // The first branch is good until the end
+    {
+      // Test the branch vertex itself
+      s = branch.at(0);  // vertex 1
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+    for (size_t i = 0; i < 2; ++i) {  // vertices 2 and 3
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+  }
+  {
+    // The second branch is good until vertex 2
+    {
+      // Test the branch vertex itself
+      s = branch.at(1);  // vertex 4
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+
+      // extend to vertex 2
+      auto neighbors = this->expandPath(s);
+      res = validator.validatePath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      if (this->getVertexUniqueness() == VertexUniquenessLevel::GLOBAL) {
+        EXPECT_TRUE(res.isFiltered());
+        EXPECT_TRUE(res.isPruned());
+      } else {  // VertexUniquenessLevel NONE or PATH, edge (4,2) is new anyway
+        EXPECT_FALSE(res.isFiltered());
+        EXPECT_FALSE(res.isPruned());
+        // extend to vertex 3
+        neighbors = this->expandPath(s);
+        res = validator.validatePath(s);
+        ASSERT_EQ(neighbors.size(), 1)
+            << "Not enough connections after step " << s.getVertexIdentifier();
+        if (this->getEdgeUniquness() == EdgeUniquenessLevel::NONE ||
+            this->getEdgeUniquness() == EdgeUniquenessLevel::PATH) {
+          EXPECT_FALSE(res.isFiltered());
+          EXPECT_FALSE(res.isPruned());
+        } else {  // EdgeUniquenessLevel::GLOBAL
+          EXPECT_TRUE(res.isFiltered());
+          EXPECT_TRUE(res.isPruned());
+        }
+      }
+    }
+    for (size_t i = 0; i < 1; ++i) {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1)
+          << "Not enough connections after step " << s.getVertexIdentifier();
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+
+    // Now we move to the duplicate vertex
+    {
+      auto neighbors = this->expandPath(s);
+      ASSERT_EQ(neighbors.size(), 1);
+      s = neighbors.at(0);
+      auto res = validator.validatePath(s);
+
+      if (this->getVertexUniqueness() != VertexUniquenessLevel::GLOBAL) {
         // The vertex is visited twice, but not on same path.
         // As long as we are not GLOBAL this is okay.
         // No uniqueness check, take the vertex
