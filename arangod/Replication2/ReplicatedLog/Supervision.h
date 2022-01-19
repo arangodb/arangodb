@@ -34,7 +34,6 @@
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ReplicatedLog/SupervisionTypes.h"
 
 using namespace arangodb::replication2::agency;
 
@@ -61,6 +60,7 @@ auto computeReason(LogCurrentLocalState const& status, bool healthy,
     -> LogCurrentSupervisionElection::ErrorCode;
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
+                         ParticipantsConfig const& participantsConfig,
                          ParticipantsHealth const& health, LogTerm term,
                          size_t requiredNumberOfOKParticipants)
     -> LogCurrentSupervisionElection;

@@ -26,7 +26,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
-#include "Replication2/ReplicatedLog/SupervisionTypes.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -37,20 +36,26 @@ struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
   {
     auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, LogTerm{1});
+                           true, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::OK);
   }
 
   {
     auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           false, LogTerm{1});
+                           false, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD);
   }
 
   {
     auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, LogTerm{3});
+                           true, false, LogTerm{3});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  }
+
+  {
+    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
+                           true, true, LogTerm{3});
+    EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED);
   }
 }
 
@@ -65,7 +70,15 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
       {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}},
       {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
 
-  auto campaign = runElectionCampaign(localStates, health, LogTerm{1}, 2);
+  auto config = ParticipantsConfig{
+      .generation = 0,
+      .participants = {
+          {"A", ParticipantFlags{.forced = false, .excluded = false}},
+          {"B", ParticipantFlags{.forced = false, .excluded = false}},
+          {"C", ParticipantFlags{.forced = false, .excluded = false}}}};
+
+  auto campaign =
+      runElectionCampaign(localStates, config, health, LogTerm{1}, 2);
 
   EXPECT_EQ(campaign.participantsAvailable, 3);  // TODO: Fixme
                                                  // << campaign;
@@ -91,7 +104,15 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
       {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = false}},
       {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
 
-  auto campaign = runElectionCampaign(localStates, health, LogTerm{2}, 2);
+  auto config = ParticipantsConfig{
+      .generation = 0,
+      .participants = {
+          {"A", ParticipantFlags{.forced = false, .excluded = false}},
+          {"B", ParticipantFlags{.forced = false, .excluded = false}},
+          {"C", ParticipantFlags{.forced = false, .excluded = false}}}};
+
+  auto campaign =
+      runElectionCampaign(localStates, config, health, LogTerm{2}, 2);
 
   EXPECT_EQ(campaign.participantsAvailable, 1);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
@@ -250,7 +271,7 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
   EXPECT_TRUE(bool(action._newTerm));
   EXPECT_TRUE(bool(action._newTerm->leader));
   EXPECT_EQ(action._newTerm->leader->serverId, "C");
-  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{1});
+  EXPECT_EQ(action._newTerm->leader->rebootId, RebootId{14});
 }
 
 TEST_F(LeaderStateMachineTest, test_leader_intact) {
