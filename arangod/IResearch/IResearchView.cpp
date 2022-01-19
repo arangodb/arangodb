@@ -90,8 +90,7 @@ class ViewTrxState final : public TransactionState::Cookie,
 
   template<typename Collections>
   bool equalCollections(Collections const& collections) {
-    size_t const size = _collections.size();
-    if (collections.size() != size) {
+    if (collections.size() != _collections.size()) {
       return false;
     }  // TODO better iterate for smaller capacity
     for (auto const& cid : _collections) {
@@ -133,17 +132,6 @@ void ViewTrxState::add(DataSourceId cid, IResearchLink::Snapshot&& snapshot) {
   _live_docs_count += reader.live_docs_count();
   _collections.emplace(cid);
   _snapshots.emplace_back(std::move(snapshot));
-}
-
-void ensureImmutableProperties(IResearchViewMeta& dst,
-                               IResearchViewMeta const& src) {
-  dst._version = src._version;
-  dst._writebufferActive = src._writebufferActive;
-  dst._writebufferIdle = src._writebufferIdle;
-  dst._writebufferSizeMax = src._writebufferSizeMax;
-  dst._primarySort = src._primarySort;
-  dst._storedValues = src._storedValues;
-  dst._primarySortCompression = src._primarySortCompression;
 }
 
 }  // namespace
@@ -296,9 +284,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
       // when the collection comes up it'll bring up the link
       auto [it, was] = impl->_collections.try_emplace(cid, impl->_links.end());
       if (was && link) {
-        auto [it2, was2] = impl->_links.try_emplace(link->id(), link->self());
-        TRI_ASSERT(was2);
-        it->second = it2;
+        it->second = impl->_links.emplace(link->id(), link->self());
       }
       // add placeholders to links, when the link comes up it'll call link(...)
     }
@@ -314,7 +300,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase,
                              IResearchViewMeta&& meta)
     : LogicalView(vocbase, info),
       _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
-      _meta(std::move(meta)),
+      _meta(IResearchViewMeta::SafeTag{}, std::move(meta)),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
   if (vocbase.server().hasFeature<DatabaseFeature>()) {
@@ -607,15 +593,13 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
   std::lock_guard lock{mutex};
   auto it = _collections.find(cid);
   if (it == _collections.end()) {
-    auto [it_link, was] = _links.try_emplace(linkLock->id(), link);
-    TRI_ASSERT(was);
+    auto it_link = _links.emplace(linkLock->id(), link);
+    bool was{false};
     std::tie(it, was) = _collections.try_emplace(cid, it_link);
     TRI_ASSERT(was);
   } else if (ServerState::instance()->isSingleServer() &&
              it->second == _links.end()) {
-    auto [it_link, was] = _links.try_emplace(linkLock->id(), link);
-    TRI_ASSERT(was);
-    it->second = it_link;
+    it->second = _links.emplace(linkLock->id(), link);
     IResearchLink::properties(std::move(linkLock), _meta);
     // single-server persisted cid placeholder substituted with actual link
     return {};
@@ -838,9 +822,7 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
           << cid << "' from arangosearch view '" << name()
           << "': " << res.errorMessage();  // noexcept
       if (link) {
-        auto r = _links.insert(move(link));  // noexcept
-        TRI_ASSERT(r.inserted);
-        it->second = r.position;  // noexcept
+        it->second = _links.insert(move(link));  // noexcept
       }
       return res;
     }
@@ -895,10 +877,11 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
         }
       }
     }
+    // TODO read necessary members from slice in single call
     std::string error;
     IResearchViewMeta meta;
-    auto& initialMeta = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
-    if (!meta.init(slice, error, initialMeta)) {
+    auto& defaults = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
+    if (!meta.init(slice, error, defaults)) {
       return {TRI_ERROR_BAD_PARAMETER,
               "failed to update arangosearch view '" + name() +
                   "' from definition" +
@@ -906,9 +889,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
                                  : (", error in attribute '" + error + "': ")) +
                   slice.toString()};
     }
-    // reset non-updatable values to match current meta
-    ensureImmutableProperties(meta, _meta);
-    _meta = std::move(meta);
+    _meta.storePartial(std::move(meta));
     mutex.unlock(true);  // downgrade to a read-lock
     // update properties of links
     for (auto& entry : _links) {

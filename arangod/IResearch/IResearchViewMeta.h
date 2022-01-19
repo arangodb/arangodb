@@ -91,24 +91,24 @@ struct IResearchViewMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  size_t _cleanupIntervalStep;  // issue cleanup after <count> commits (0 ==
-                                // disable)
-  size_t _commitIntervalMsec;   // issue commit after <interval> milliseconds (0
-                                // == disable)
-  size_t _consolidationIntervalMsec;  // issue consolidation after <interval>
-                                      // milliseconds (0 == disable)
+  size_t _cleanupIntervalStep{};
+  // issue cleanup after <count> commits (0 == disable)
+  size_t _commitIntervalMsec{};
+  // issue commit after <interval> milliseconds (0 == disable)
+  size_t _consolidationIntervalMsec{};
+  // issue consolidation after <interval> milliseconds (0 == disable)
   ConsolidationPolicy _consolidationPolicy;  // the consolidation policy to use
-  uint32_t _version;  // the version of the iresearch interface e.g. which how
-                      // data is stored in iresearch (default == latest)
-  size_t _writebufferActive;   // maximum number of concurrent segments before
-                               // segment aquisition blocks, e.g. max number of
-                               // concurrent transacitons) (0 == unlimited)
-  size_t _writebufferIdle;     // maximum number of segments cached in the pool
-  size_t _writebufferSizeMax;  // maximum memory byte size per segment before a
-                               // segment flush is triggered (0 == unlimited)
+  uint32_t _version{};  // the version of the iresearch interface e.g. which
+                        // how data is stored in iresearch (default == latest)
+  size_t _writebufferActive{};  // maximum number of concurrent segments
+  // before segment acquisition blocks,
+  // e.g. max number of concurrent transactions (0 == unlimited)
+  size_t _writebufferIdle{};  // maximum number of segments cached in the pool
+  size_t _writebufferSizeMax{};  // maximum memory byte size per segment
+  // before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
-  irs::type_info::type_id _primarySortCompression;
+  irs::type_info::type_id _primarySortCompression{};
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -120,12 +120,21 @@ struct IResearchViewMeta {
   // function !!! NOTE: if adding fields don't forget to modify the memory()
   // function !!!
 
+  IResearchViewMeta(IResearchViewMeta&& other) noexcept = delete;
+  IResearchViewMeta& operator=(IResearchViewMeta&& other) noexcept = delete;
+  IResearchViewMeta& operator=(IResearchViewMeta const& other) = delete;
+
   IResearchViewMeta();
   IResearchViewMeta(IResearchViewMeta const& other);
-  IResearchViewMeta(IResearchViewMeta&& other) noexcept;
 
-  IResearchViewMeta& operator=(IResearchViewMeta&& other) noexcept;
-  IResearchViewMeta& operator=(IResearchViewMeta const& other);
+  struct SafeTag {};
+  IResearchViewMeta(SafeTag, IResearchViewMeta&& other) noexcept;
+  struct PartialTag {};
+  IResearchViewMeta(PartialTag, IResearchViewMeta&& other) noexcept;
+
+  void storeSafe(IResearchViewMeta const& other);
+  void storeSafe(IResearchViewMeta&& other) noexcept;
+  void storePartial(IResearchViewMeta&& other) noexcept;
 
   bool operator==(IResearchViewMeta const& other) const noexcept;
   bool operator!=(IResearchViewMeta const& other) const noexcept;

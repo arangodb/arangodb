@@ -219,12 +219,13 @@ class IResearchView final : public LogicalView {
 
   AsyncViewPtr _asyncSelf;
   // 'this' for the lifetime of the view (for use with asynchronous calls)
-  using Links = std::map<IndexId, AsyncLinkPtr>;
+  using Links = std::multimap<IndexId, AsyncLinkPtr>;
   containers::FlatHashMap<DataSourceId, Links::iterator> _collections;
   Links _links;
   // (AsyncLinkPtr may be nullptr on single-server if link did not come up yet)
   // map because we want same order for acquire locks (IResearchLink::snapshot)
   // as PhysicalCollection::_indexes (IResearchLink::insert)
+  // multi because in Cluster DBServer we have same IndexId for different link
   IResearchViewMeta _meta;  // the view configuration
   mutable kludge::read_write_mutex _mutex;
   // for use with member '_meta', '_links'
