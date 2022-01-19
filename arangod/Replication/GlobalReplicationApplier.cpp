@@ -24,6 +24,8 @@
 #include "GlobalReplicationApplier.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -40,7 +42,9 @@ using namespace arangodb;
 /// @brief server-global replication applier for all databases
 GlobalReplicationApplier::GlobalReplicationApplier(
     ReplicationApplierConfiguration const& configuration)
-    : ReplicationApplier(configuration, "global database") {}
+    : ReplicationApplier(configuration, "global database"),
+      _engine(
+          configuration._server.getFeature<EngineSelectorFeature>().engine()) {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
   try {
@@ -55,9 +59,8 @@ void GlobalReplicationApplier::forget() {
 
   removeState();
 
-  StorageEngine& engine =
-      configuration()._server.getFeature<EngineSelectorFeature>().engine();
-  engine.removeReplicationApplierConfiguration();
+  _engine.removeReplicationApplierConfiguration();
+  WRITE_LOCKER(writeLocker, _statusLock);
   _configuration.reset();
 }
 
@@ -65,17 +68,15 @@ void GlobalReplicationApplier::forget() {
 void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   VPackBuilder builder;
   builder.openObject();
-  _configuration.toVelocyPack(builder, true, true);
+  configuration().toVelocyPack(builder, true, true);
   builder.close();
 
   LOG_TOPIC("f270b", DEBUG, Logger::REPLICATION)
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
-  StorageEngine& engine =
-      _configuration._server.getFeature<EngineSelectorFeature>().engine();
   auto res =
-      engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+      _engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -103,23 +104,21 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 
 std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer()
     const {
-  return arangodb::GlobalInitialSyncer::create(_configuration);
+  return arangodb::GlobalInitialSyncer::create(configuration());
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick,
+  return arangodb::GlobalTailingSyncer::create(configuration(), initialTick,
                                                useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {
-  StorageEngine& engine =
-      _configuration._server.getFeature<EngineSelectorFeature>().engine();
   auto& sysDbFeature =
       _configuration._server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
 
-  std::string const path = engine.databasePath(vocbase.get());
+  std::string const path = _engine.databasePath(vocbase.get());
   if (path.empty()) {
     return std::string();
   }
