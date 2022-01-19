@@ -65,7 +65,7 @@ struct TraversalState {
 template<bool indexDataOnly, typename Fields, typename Slot, typename Node>
 bool findMatchedField(Fields const& fields, Slot& tmpSlot, Node& nodeAttr) {
   size_t fieldNum = 0;
-  typename arangodb::aql::latematerialized::ColumnVariant<
+  typename latematerialized::ColumnVariant<
       indexDataOnly>::PostfixType postfix{};
   for (auto const& field : fields) {
     std::vector<arangodb::basics::AttributeName> const* fieldValue;
@@ -76,8 +76,7 @@ bool findMatchedField(Fields const& fields, Slot& tmpSlot, Node& nodeAttr) {
     } else {
       fieldValue = &field.second;
     }
-    TRI_ASSERT(fieldValue);
-    if (arangodb::aql::latematerialized::isPrefix<indexDataOnly>(
+    if (latematerialized::isPrefix<indexDataOnly>(
             *fieldValue, nodeAttr.attr, false, postfix)) {
       tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, fieldValue,
                            std::move(postfix));
@@ -113,7 +112,7 @@ bool getReferencedAttributes(AstNode* node, Variable const* variable,
           afData.childNumber = childNumber;
           state.nodeAttrs.attrs.emplace_back(
               AttributeAndField<typename T::DataType>{
-                  std::vector<arangodb::basics::AttributeName>{
+                  std::vector<basics::AttributeName>{
                       {std::string(node->getStringValue(),
                                    node->getStringLength()),
                        false}},
@@ -183,11 +182,10 @@ bool attributesMatch(
     found |= findMatchedField<indexDataOnly>(
         primarySort.fields(), tmpUsedColumnsCounter.front(), nodeAttr);
     // try to find in other columns
-    ptrdiff_t columnNum = 1;
+    size_t columnNum = 1;
     for (auto const& column : storedValues.columns()) {
       fieldNum = 0;
-      TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >=
-                 columnNum);
+      TRI_ASSERT(tmpUsedColumnsCounter.size() >= columnNum);
       found |= findMatchedField<indexDataOnly>(
           column.fields, tmpUsedColumnsCounter[columnNum], nodeAttr);
       ++columnNum;
@@ -205,8 +203,10 @@ bool attributesMatch(
   size_t current = 0;
   for (auto it = tmpUsedColumnsCounter.begin();
        it != tmpUsedColumnsCounter.end(); ++it) {
-    std::move(it->begin(), it->end(),
-              irs::irstd::back_emplacer(usedColumnsCounter[current++]));
+    usedColumnsCounter[current].insert(usedColumnsCounter[current].end(),
+                                       std::make_move_iterator(it->begin()),
+                                       std::make_move_iterator(it->end()));
+    ++current;
   }
   return true;
 }
@@ -262,8 +262,8 @@ void setAttributesMaxMatchedColumns(
 }
 
 template<bool indexDataOnly>
-bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
-              std::vector<arangodb::basics::AttributeName> const& attrs,
+bool isPrefix(std::vector<basics::AttributeName> const& prefix,
+              std::vector<basics::AttributeName> const& attrs,
               bool ignoreExpansionInLast,
               typename ColumnVariant<indexDataOnly>::PostfixType& postfix) {
   if constexpr (!indexDataOnly) {

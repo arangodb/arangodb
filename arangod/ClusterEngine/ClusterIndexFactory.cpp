@@ -151,7 +151,7 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
   explicit IResearchInvertedIndexFactory(
       application_features::ApplicationServer& server)
       : DefaultIndexFactory(
-            server, arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data()) {
+            server, IRESEARCH_INVERTED_INDEX_TYPE.data()) {
   }
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -162,12 +162,10 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
     if (!indexMeta.init(definition, errField)) {
       LOG_TOPIC("a9cce", ERR, arangodb::iresearch::TOPIC)
           << (errField.empty()
-                  ? (std::string(
-                         "failed to initialize index meta from definition: ") +
+                  ? ("failed to initialize index meta from definition: " +
                      definition.toString())
-                  : (std::string(
-                         "failed to initialize index meta from definition, "
-                         "error in attribute '") +
+                  : ("failed to initialize index meta from definition, "
+                     "error in attribute '" +
                      errField + "': " + definition.toString()));
       return nullptr;
     }
@@ -176,12 +174,11 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
                          collection.vocbase().name())) {
       LOG_TOPIC("18c18", ERR, arangodb::iresearch::TOPIC)
           << (errField.empty()
-                  ? (std::string("failed to initialize index fields from "
-                                 "definition: ") +
+                  ? ("failed to initialize index fields from "
+                     "definition: " +
                      definition.toString())
-                  : (std::string(
-                         "failed to initialize index fields from definition, "
-                         "error in attribute '") +
+                  : ("failed to initialize index fields from definition, "
+                     "error in attribute '" +
                      errField + "': " + definition.toString()));
       return nullptr;
     }
@@ -189,7 +186,7 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
     std::string indexName;
     if (!nameSlice.isNone()) {
       if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
-        LOG_TOPIC("91ebe", ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("91ebe", ERR, TOPIC)
             << "failed to initialize index from definition, error in attribute "
                "'" +
                    arangodb::StaticStrings::IndexName +

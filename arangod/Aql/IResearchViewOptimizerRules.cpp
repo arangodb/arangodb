@@ -489,6 +489,7 @@ bool noDocumentMaterialization(
 namespace arangodb {
 
 namespace iresearch {
+
 void lateDocumentMaterializationArangoSearchRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {

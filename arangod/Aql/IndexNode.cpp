@@ -436,10 +436,10 @@ CostEstimate IndexNode::estimateCost() const {
         Index::FilterCosts::defaultCosts(itemsInCollection);
 
     if (root != nullptr && root->numMembers() > i) {
-      arangodb::aql::AstNode const* condition =
+      auto const* condition =
           _allCoveredByOneIndex ? root : root->getMember(i);
       costs = _indexes[i]->supportsFilterCondition(
-          std::vector<std::shared_ptr<Index>>(), condition, _outVariable,
+          {}, condition, _outVariable,
           itemsInCollection);
     }
 
