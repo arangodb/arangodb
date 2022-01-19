@@ -6,8 +6,8 @@ v3.9.0 (XXXX-XX-XX)
   for a query and the query also uses the DOCUMENT() AQL function. In this
   case, when there were more concurrent requests to the underlying collection
   than available scheduler threads for the low priority queue, the query
-  start successfully acquired the exclusive lock could not get its follow-up
-  requests through and starve while holding the exclusive lock.
+  start successfully acquired the exclusive lock, but could not get its 
+  follow-up requests through and starve while holding the exclusive lock.
 
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 

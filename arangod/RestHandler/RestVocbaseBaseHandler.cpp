@@ -639,10 +639,9 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     if (isSideUser) {
       // this is a call from the DOCUMENT() AQL function into an existing AQL
       // query. locks are already acquired by the AQL transaction.
-      TRI_ASSERT(type == AccessMode::Type::READ);
       if (type != AccessMode::Type::READ) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid access mode for request");
+        basics::abortOrThrow(TRI_ERROR_INTERNAL,
+                             "invalid access mode for request", ADB_HERE);
       }
     }
   }
