@@ -5,6 +5,8 @@ devel
   collection is accessed in exclusive mode, because the optimized query would
   use a slightly different mode of locking then.
 
+* Upgraded boost to 1.78.0.
+
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
