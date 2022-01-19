@@ -56,6 +56,10 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
                        ParticipantsHealth const& health)
     -> std::unique_ptr<Action>;
 
+auto computeReason(LogCurrentLocalState const& status, bool healthy,
+                   bool excluded, LogTerm term)
+    -> LogCurrentSupervisionElection::ErrorCode;
+
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term,
                          size_t requiredNumberOfOKParticipants)

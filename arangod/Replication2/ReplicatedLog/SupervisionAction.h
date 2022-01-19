@@ -29,7 +29,6 @@
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/SupervisionTypes.h"
 
 using namespace arangodb::replication2::agency;
 
