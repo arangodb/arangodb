@@ -114,28 +114,6 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   return arangodb::StaticStrings::Empty;
 }
 
-arangodb::LogicalDataSource::Type const& readType(
-    arangodb::velocypack::Slice info, std::string const& key,
-    TRI_col_type_e def) {
-  static const auto& document =
-      arangodb::LogicalDataSource::Type::emplace(std::string_view("document"));
-  static const auto& edge =
-      arangodb::LogicalDataSource::Type::emplace(std::string_view("edge"));
-
-  // arbitrary system-global value for unknown
-  static const auto& unknown =
-      arangodb::LogicalDataSource::Type::emplace(std::string_view());
-
-  switch (Helper::getNumericValue<TRI_col_type_e, int>(info, key, def)) {
-    case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
-      return document;
-    case TRI_col_type_e::TRI_COL_TYPE_EDGE:
-      return edge;
-    default:
-      return unknown;
-  }
-}
-
 }  // namespace
 
 // The Slice contains the part of the plan that
@@ -143,9 +121,7 @@ arangodb::LogicalDataSource::Type const& readType(
 LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                      bool isAStub)
     : LogicalDataSource(
-          *this,
-          ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, DataSourceId{Helper::extractIdValue(info)},
+          *this, vocbase, DataSourceId{Helper::extractIdValue(info)},
           ::readGloballyUniqueId(info),
           DataSourceId{
               Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
