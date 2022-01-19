@@ -436,11 +436,9 @@ CostEstimate IndexNode::estimateCost() const {
         Index::FilterCosts::defaultCosts(itemsInCollection);
 
     if (root != nullptr && root->numMembers() > i) {
-      auto const* condition =
-          _allCoveredByOneIndex ? root : root->getMember(i);
-      costs = _indexes[i]->supportsFilterCondition(
-          {}, condition, _outVariable,
-          itemsInCollection);
+      auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
+      costs = _indexes[i]->supportsFilterCondition({}, condition, _outVariable,
+                                                   itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;

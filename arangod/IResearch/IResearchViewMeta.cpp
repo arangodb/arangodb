@@ -404,7 +404,8 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{StaticStrings::ConsolidationIntervalMsec};
+    constexpr std::string_view kFieldName{
+        StaticStrings::ConsolidationIntervalMsec};
 
     mask->_consolidationIntervalMsec = slice.hasKey(kFieldName);
 

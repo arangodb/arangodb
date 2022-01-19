@@ -622,16 +622,18 @@ std::string mangleString(std::string name, std::string_view suffix) {
 
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleField(
-      name, true, arangodb::iresearch::FieldMeta::Analyzer{
-                arangodb::iresearch::IResearchAnalyzerFeature::identity()});
+      name, true,
+      arangodb::iresearch::FieldMeta::Analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()});
 
   return name;
 }
 
 std::string mangleInvertedIndexStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleField(
-      name, false, arangodb::iresearch::FieldMeta::Analyzer{
-      arangodb::iresearch::IResearchAnalyzerFeature::identity()});
+      name, false,
+      arangodb::iresearch::FieldMeta::Analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()});
 
   return name;
 }

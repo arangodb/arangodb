@@ -724,9 +724,8 @@ bool analyzerInUse(application_features::ApplicationServer& server,
       }
 
       for (auto const& index : collection->getIndexes()) {
-        if (!index ||
-            (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
-             Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
+        if (!index || (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
+                       Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
           continue;  // not an IResearchLink
         }
 

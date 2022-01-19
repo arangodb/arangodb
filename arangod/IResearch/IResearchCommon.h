@@ -159,19 +159,20 @@ struct StaticStrings {
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        time in Ms between running consolidations
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view ConsolidationIntervalMsec{"consolidationIntervalMsec"};
+  static constexpr std::string_view ConsolidationIntervalMsec{
+      "consolidationIntervalMsec"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        time in Ms between running commits
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view  CommitIntervalMsec{"commitIntervalMsec"};
+  static constexpr std::string_view CommitIntervalMsec{"commitIntervalMsec"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        number of completed consolidtions before cleanup is run
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view  CleanupIntervalStep{"cleanupIntervalStep"};
+  static constexpr std::string_view CleanupIntervalStep{"cleanupIntervalStep"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
@@ -185,7 +186,7 @@ struct StaticStrings {
   ///        a transaction. Other writers (segments) wait till current active
   ///        writers (segments) finish.
   ////////////////////////////////////////////////////////////////////////////////
-  static constexpr std::string_view  WritebufferActive{"writebufferActive"};
+  static constexpr std::string_view WritebufferActive{"writebufferActive"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
@@ -195,8 +196,8 @@ struct StaticStrings {
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
-  ///        maximum memory byte size per writer (segment) before a writer (segment)
-  ///        flush is triggered
+  ///        maximum memory byte size per writer (segment) before a writer
+  ///        (segment) flush is triggered
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view WritebufferSizeMax{"writebufferSizeMax"};
 };

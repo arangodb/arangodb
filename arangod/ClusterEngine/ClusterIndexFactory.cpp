@@ -150,9 +150,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
   explicit IResearchInvertedIndexFactory(
       application_features::ApplicationServer& server)
-      : DefaultIndexFactory(
-            server, IRESEARCH_INVERTED_INDEX_TYPE.data()) {
-  }
+      : DefaultIndexFactory(server, IRESEARCH_INVERTED_INDEX_TYPE.data()) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,

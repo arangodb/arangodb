@@ -561,9 +561,10 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 /// false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-bool nameFromAttributeAccesses(aql::AstNode const* node, aql::Variable const& ref,
-                             bool allowExpansion, QueryContext const& ctx,
-                             Visitor const& visitor) {
+bool nameFromAttributeAccesses(aql::AstNode const* node,
+                               aql::Variable const& ref, bool allowExpansion,
+                               QueryContext const& ctx,
+                               Visitor const& visitor) {
   if (!node) {
     return false;
   }
@@ -588,7 +589,7 @@ bool nameFromAttributeAccesses(aql::AstNode const* node, aql::Variable const& re
         auto const* member = node->getMemberUnchecked(i);
         TRI_ASSERT(member);
         if (!nameFromAttributeAccesses(member, ref, allowExpansion, ctx,
-                                     visitor)) {
+                                       visitor)) {
           return false;
         }
       }

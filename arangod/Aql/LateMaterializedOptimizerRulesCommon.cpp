@@ -65,8 +65,8 @@ struct TraversalState {
 template<bool indexDataOnly, typename Fields, typename Slot, typename Node>
 bool findMatchedField(Fields const& fields, Slot& tmpSlot, Node& nodeAttr) {
   size_t fieldNum = 0;
-  typename latematerialized::ColumnVariant<
-      indexDataOnly>::PostfixType postfix{};
+  typename latematerialized::ColumnVariant<indexDataOnly>::PostfixType
+      postfix{};
   for (auto const& field : fields) {
     std::vector<arangodb::basics::AttributeName> const* fieldValue;
     if constexpr (std::is_same_v<
@@ -76,8 +76,8 @@ bool findMatchedField(Fields const& fields, Slot& tmpSlot, Node& nodeAttr) {
     } else {
       fieldValue = &field.second;
     }
-    if (latematerialized::isPrefix<indexDataOnly>(
-            *fieldValue, nodeAttr.attr, false, postfix)) {
+    if (latematerialized::isPrefix<indexDataOnly>(*fieldValue, nodeAttr.attr,
+                                                  false, postfix)) {
       tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, fieldValue,
                            std::move(postfix));
       return true;
