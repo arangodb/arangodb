@@ -83,7 +83,7 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto defaultLogger() { return LoggerContext(Logger::REPLICATION2); }
 
-  auto createLeader(
+  auto createLeaderWithDefaultFlags(
       ParticipantId id, LogTerm term, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::size_t writeConcern, bool waitForSync = false)

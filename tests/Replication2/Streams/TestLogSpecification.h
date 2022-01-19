@@ -59,7 +59,7 @@ struct LogMultiplexerTestBase
                                    test::MockLog>(id);
   }
 
-  static auto createLeader(
+  static auto createLeaderWithDefaultFlags(
       std::shared_ptr<replication2::replicated_log::ReplicatedLog>& log,
       ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
