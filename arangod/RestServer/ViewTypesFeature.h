@@ -61,7 +61,7 @@ class ViewTypesFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
  private:
-  containers::FlatHashMap<std::string, ViewFactory const*> _factories;
+  containers::FlatHashMap<std::string_view, ViewFactory const*> _factories;
 };
 
 }  // namespace arangodb
