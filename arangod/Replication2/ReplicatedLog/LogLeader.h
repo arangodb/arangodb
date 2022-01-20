@@ -291,7 +291,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto checkCommitIndex() -> ResolvedPromiseSet;
 
-    [[nodiscard]] auto collectEligibleFollowerIndexes() const
+    [[nodiscard]] auto collectFollowerIndexes() const
         -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>>;
     [[nodiscard]] auto checkCompaction() -> Result;
 

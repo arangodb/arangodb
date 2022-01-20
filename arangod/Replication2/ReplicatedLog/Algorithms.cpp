@@ -467,7 +467,7 @@ auto algorithms::updateReplicatedLog(
 auto algorithms::operator<<(std::ostream& os,
                             ParticipantStateTuple const& p) noexcept
     -> std::ostream& {
-  os << '{' << p.id << ':' << p.index << ", ";
+  os << '{' << p.id << ':' << p.lastAckedEntry.index << ", ";
   os << "failed = " << std::boolalpha << p.failed;
   os << ", flags = " << p.flags;
   os << '}';
@@ -490,7 +490,8 @@ auto operator<=>(ParticipantStateTuple const& left,
                  ParticipantStateTuple const& right) noexcept {
   // return std::tie(left.index, left.id) <=> std::tie(right.index, right.id);
   // -- not supported by apple clang
-  if (auto c = left.index <=> right.index; c != 0) {
+  if (auto c = left.lastAckedEntry.index <=> right.lastAckedEntry.index;
+      c != nullptr) {
     return c;
   }
   return left.id.compare(right.id) <=> 0;
@@ -533,8 +534,8 @@ auto algorithms::calculateCommitIndex(
   auto minForcedParticipantId = std::optional<ParticipantId>{};
   for (auto const& pt : indexes) {
     if (pt.isForced()) {
-      if (pt.index < minForcedCommitIndex) {
-        minForcedCommitIndex = pt.index;
+      if (pt.lastAckedEntry.index < minForcedCommitIndex) {
+        minForcedCommitIndex = pt.lastAckedEntry.index;
         minForcedParticipantId = pt.id;
       }
     }
@@ -554,10 +555,12 @@ auto algorithms::calculateCommitIndex(
     // because of the check above
     TRI_ASSERT(nth != std::end(eligible));
 
-    std::nth_element(
-        std::begin(eligible), nth, std::end(eligible),
-        [](auto& left, auto& right) { return left.index > right.index; });
-    auto const minNonExcludedCommitIndex = nth->index;
+    std::nth_element(std::begin(eligible), nth, std::end(eligible),
+                     [](auto& left, auto& right) {
+                       return left.lastAckedEntry.index >
+                              right.lastAckedEntry.index;
+                     });
+    auto const minNonExcludedCommitIndex = nth->lastAckedEntry.index;
 
     auto commitIndex =
         std::min(minForcedCommitIndex, minNonExcludedCommitIndex);

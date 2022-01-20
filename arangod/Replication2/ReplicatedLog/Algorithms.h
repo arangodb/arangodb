@@ -84,7 +84,7 @@ auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
     -> futures::Future<arangodb::Result>;
 
 struct ParticipantStateTuple {
-  LogIndex index;
+  TermIndexPair lastAckedEntry;
   ParticipantId id;
   bool failed = false;
   ParticipantFlags flags{};

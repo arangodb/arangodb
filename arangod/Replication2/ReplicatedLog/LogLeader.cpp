@@ -880,49 +880,27 @@ auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(
   return _inMemoryLog.getIteratorRange(firstIndex, _commitIndex + 1);
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::
-    collectEligibleFollowerIndexes() const
+auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
+    const
     -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>> {
   auto largestCommonIndex = _commitIndex;
   std::vector<algorithms::ParticipantStateTuple> indexes;
   indexes.reserve(_follower.size());
   for (auto const& [pid, follower] : _follower) {
-    // The lastAckedEntry is the last index/term pair that we sent that this
-    // follower acknowledged - means we sent it. And we must not have entries
-    // in our log with a term newer than currentTerm, which could have been
-    // sent to a follower.
-    auto const& lastAckedEntry = follower->lastAckedEntry;
-    TRI_ASSERT(lastAckedEntry.term <= this->_self._currentTerm);
-    // We must never commit log entries for older terms, as these could still be
-    // overwritten later if a leader takes over that holds an entry with the
-    // same index, but with a newer term than that entry has.
-    // For more details and an example see the Raft paper, specifically on
-    // page 9 both subsection "5.4.2 Committing entries from previous terms" and
-    // figure 8.
-    // We may only commit these if we've written an entry in our current term.
-    // This also includes log entries persisted on this server, i.e. our
-    // LocalFollower is no exception.
-    if (lastAckedEntry.term == this->_self._currentTerm) {
-      auto flags = std::invoke([&, &pid = pid] {
-        if (auto f = activeParticipantsConfig->participants.find(pid);
-            f != std::end(activeParticipantsConfig->participants)) {
-          return f->second;
-        }
-        return ParticipantFlags{};
-      });
-      indexes.emplace_back(algorithms::ParticipantStateTuple{
-          .index = lastAckedEntry.index,
-          .id = follower->_impl->getParticipantId(),
-          .failed = false,
-          .flags = flags});
-    } else {
-      LOG_CTX("54869", TRACE, _self._logContext)
-          << "Will ignore follower " << follower->_impl->getParticipantId()
-          << " in the following commit index check, as its last log entry "
-             "(index "
-          << lastAckedEntry.index << ") is of term " << lastAckedEntry.term
-          << ", but we're in term " << _self._currentTerm << ".";
-    }
+    // auto flags = activeParticipantsConfig->participants.find(pid);
+    // TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
+    auto flags = std::invoke([&, &pid = pid] {
+      if (auto f = activeParticipantsConfig->participants.find(pid);
+          f != std::end(activeParticipantsConfig->participants)) {
+        return f->second;
+      }
+      return ParticipantFlags{};
+    });
+    indexes.emplace_back(algorithms::ParticipantStateTuple{
+        .lastAckedEntry = follower->lastAckedEntry,
+        .id = follower->_impl->getParticipantId(),
+        .failed = false,
+        .flags = flags});
 
     largestCommonIndex =
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);
@@ -941,7 +919,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     return {};
   }
 
-  auto [newLargestCommonIndex, indexes] = collectEligibleFollowerIndexes();
+  auto [newLargestCommonIndex, indexes] = collectFollowerIndexes();
 
   LOG_CTX("a2d04", TRACE, _self._logContext)
       << "checking commit index on set " << indexes;
