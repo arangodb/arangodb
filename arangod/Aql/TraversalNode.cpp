@@ -1009,8 +1009,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
       // III. Depth-based prune expressions
       for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
-        // TODO [GraphRefactor]: Seems that this is not supported right now at
-        // all?
         auto depth = vertexExpressionPerDepth.first;
         auto expression =
             vertexExpressionPerDepth.second->clone(_plan->getAst());
