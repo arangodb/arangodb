@@ -1,4 +1,4 @@
-v3.8.5 (XXXX-XX-XX)
+v3.8.5 (2022-01-20)
 -------------------
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
