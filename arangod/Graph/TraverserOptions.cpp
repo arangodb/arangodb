@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -792,7 +792,6 @@ auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
   return from.stringView();
 }
 
-// TODO [GraphRefactor]: Check initialize index expressions
 void TraverserOptions::initializeIndexConditions(
     aql::Ast* ast,
     std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
@@ -805,7 +804,6 @@ void TraverserOptions::initializeIndexConditions(
   }
 }
 
-// TODO [GraphRefactor]: Check calculate index expressions
 void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
   BaseOptions::calculateIndexExpressions(ast);
   for (auto& [unused, infos] : _depthLookupInfo) {

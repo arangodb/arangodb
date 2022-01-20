@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +31,7 @@
 #include <velocypack/Slice.h>
 
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb::replication2::replicated_log {
 
@@ -44,6 +46,7 @@ struct QuickLogStatus {
   std::optional<LogTerm> term{};
   std::optional<LogStatistics> local{};
   bool leadershipEstablished{false};
+  std::optional<CommitFailReason> commitFailReason{};
 
   // The following make sense only for a leader.
   std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig{};
@@ -131,6 +134,18 @@ struct LogStatus {
 
  private:
   VariantType _variant;
+};
+
+/**
+ * @brief Provides a more general view of what's currently going on, without
+ * completely relying on the leader.
+ */
+struct GlobalStatus {
+  agency::LogCurrentSupervision supervision;
+  std::unordered_map<ParticipantId, LogStatus> participants;
+  std::optional<ParticipantId> leaderId;
+  static auto fromVelocyPack(velocypack::Slice slice) -> GlobalStatus;
+  void toVelocyPack(velocypack::Builder& builder) const;
 };
 
 }  // namespace arangodb::replication2::replicated_log

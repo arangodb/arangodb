@@ -82,7 +82,7 @@ var createBaseGraph = function () {
  * This TestSuite is used for development. We might want to remove it after feature is done and existing tests
  * are adjusted.
  */
-function dfsSingleServerDevelopmedgeNametSuite() {
+function dfsSingleServerDevelopmentEdgeNameSuite() {
   const refactorDisabled = `OPTIONS {"refactor": false}`;
   const refactorEnabled = `OPTIONS {"refactor": true} `;
   return {
@@ -226,9 +226,10 @@ function dfsSingleServerDevelopmedgeNametSuite() {
     },
 
 
-
   };
 }
 
-jsunity.run(dfsSingleServerDevelopmedgeNametSuite);
+if (!internal.isCluster()) {
+  jsunity.run(dfsSingleServerDevelopmentEdgeNameSuite);
+}
 return jsunity.done();

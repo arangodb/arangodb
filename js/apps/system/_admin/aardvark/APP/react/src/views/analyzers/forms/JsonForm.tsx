@@ -1,10 +1,10 @@
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import React, { useCallback, useEffect, useState } from 'react';
-import Ajv, { ErrorObject } from 'ajv';
-import { FormProps, formSchema, FormState, State } from "../constants";
+import React, { useState } from 'react';
+import Ajv from 'ajv';
+import { formSchema, FormState } from "../constants";
+import { FormProps, State } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import { usePrevious } from "../../../utils/helpers";
-import { has, isEqual } from 'lodash';
+import { useJsonFormErrorHandler, useJsonFormUpdateEffect } from "../../../utils/helpers";
 import ajvErrors from 'ajv-errors';
 
 const ajv = new Ajv({
@@ -16,31 +16,15 @@ const ajv = new Ajv({
 ajvErrors(ajv);
 const validate = ajv.compile(formSchema);
 
-type JsonFormProps = Pick<FormProps, 'formState' | 'dispatch'> & Pick<State, 'renderKey'>;
+type JsonFormProps =
+  Pick<FormProps<FormState>, 'formState' | 'dispatch'>
+  & Pick<State<FormState>, 'renderKey'>;
 
 const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
-  const prevFormState = usePrevious(formState);
+  const raiseError = useJsonFormErrorHandler(dispatch, setFormErrors);
 
-  const raiseError = useCallback((errors: ErrorObject[] | null | undefined) => {
-    if (Array.isArray(errors)) {
-      dispatch({ type: 'lockJsonForm' });
-
-      setFormErrors(errors.map(error => {
-          if (has(error.params, 'errors')) {
-            return `
-              ${error.params.errors[0].keyword} error: ${error.instancePath}${error.message}.
-            `;
-          } else {
-            return `
-              ${error.keyword} error: ${error.instancePath} ${error.message}.
-              Schema: ${JSON.stringify(error.params)}
-            `;
-          }
-        }
-      ));
-    }
-  }, [dispatch]);
+  useJsonFormUpdateEffect(validate, formState, raiseError, setFormErrors);
 
   const changeHandler = (json: FormState) => {
     if (validate(json)) {
@@ -54,12 +38,6 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
       raiseError(validate.errors);
     }
   };
-
-  useEffect(() => {
-    if (!isEqual(prevFormState, formState) && !validate(formState)) {
-      raiseError(validate.errors);
-    }
-  }, [formState, prevFormState, raiseError]);
 
   return <Grid>
     <Cell size={'1'}>

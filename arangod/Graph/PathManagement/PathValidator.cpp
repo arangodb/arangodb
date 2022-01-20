@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -108,9 +108,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
                 edgeUniqueness == EdgeUniquenessLevel::PATH) {
-    _uniqueEdges.clear();
+    if (step.getDepth() > 1) {
+      _uniqueEdges.clear();
 
-    if (!step.isFirst()) {
       bool edgeSuccess = _store.visitReversePath(
           step, [&](typename PathStore::Step const& step) -> bool {
             auto const& [unusedE, addedEdge] =
@@ -220,14 +220,18 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   // evaluate if vertex collection is allowed
   bool isAllowed = evaluateVertexRestriction(step);
   if (!isAllowed) {
+    if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
+      return ValidationResult{ValidationResult::Type::PRUNE};
+    }
     return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
+  VPackBuilder vertexBuilder, edgeBuilder;
+
   // evaluate if vertex needs to be pruned
+  ValidationResult res{ValidationResult::Type::TAKE};
   if (_options.usesPrune()) {
-    // TODO [GraphRefactor]: Possible performance optimization. Please double
-    // check if we can do better then using three different types of builders
-    VPackBuilder vertexBuilder, edgeBuilder, pathBuilder;
+    VPackBuilder pathBuilder;
 
     auto& evaluator = _options.getPruneEvaluator();
 
@@ -262,48 +266,62 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       }
     }
     if (evaluator->evaluate()) {
-      return ValidationResult{ValidationResult::Type::PRUNE};
+      res.combine(ValidationResult::Type::PRUNE);
     }
   }
 
-  // TODO [GraphRefactor]: Check how this is actually supposed to work.
-  // Somehow existent old code in DepthFirstEnumerator::next() is a little bit
-  // confusing.
-  if (_options.usesPostFilter()) {
-    VPackBuilder vertexBuilder, edgeBuilder;
-
-    auto& evaluator = _options.getPostFilterEvaluator();
-
-    if (evaluator->needsVertex()) {
-      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
-      evaluator->injectVertex(vertexBuilder.slice());
-    }
-    if (evaluator->needsEdge()) {
-      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
-      evaluator->injectEdge(edgeBuilder.slice());
-    }
-
-    TRI_ASSERT(!evaluator->needsPath());
-
-    if (!evaluator->evaluate()) {
-      return ValidationResult{ValidationResult::Type::FILTER};
-    }
+  if (res.isPruned() && res.isFiltered()) {
+    return res;
   }
 
   // Evaluate depth-based vertex expressions
   auto vertexExpr = _options.getVertexExpression(step.getDepth());
   if (vertexExpr != nullptr) {
-    _tmpObjectBuilder.clear();
-    _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
+    if (vertexBuilder.isEmpty()) {
+      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+    }
 
     // evaluate expression
     bool satifiesCondition =
-        evaluateVertexExpression(vertexExpr, _tmpObjectBuilder.slice());
+        evaluateVertexExpression(vertexExpr, vertexBuilder.slice());
     if (!satifiesCondition) {
-      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+      if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
+        res.combine(ValidationResult::Type::PRUNE);
+      } else {
+        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+      }
     }
   }
-  return ValidationResult{ValidationResult::Type::TAKE};
+
+  if (res.isPruned() && res.isFiltered()) {
+    return res;
+  }
+
+  if (_options.usesPostFilter()) {
+    auto& evaluator = _options.getPostFilterEvaluator();
+
+    if (evaluator->needsVertex()) {
+      if (vertexBuilder.isEmpty()) { // already added a vertex in case _options.usesPrune() == true
+        _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+      }
+      evaluator->injectVertex(vertexBuilder.slice());
+    }
+    if (evaluator->needsEdge()) {
+      if(edgeBuilder.isEmpty()){  // already added an edge in case _options.usesPrune() == true
+        _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      }
+      evaluator->injectEdge(edgeBuilder.slice());
+    }
+
+    TRI_ASSERT(!evaluator->needsPath());
+    if (!evaluator->evaluate()) {
+      if (!_options.bfsResultHasToIncludeFirstVertex() || !step.isFirst()) {
+        res.combine(ValidationResult::Type::FILTER);
+      }
+    }
+  }
+
+  return res;
 }
 
 template<class ProviderType, class PathStore,
@@ -335,10 +353,10 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::reset() {
   if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
     _uniqueVertices.clear();
+  }
 
-    if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
-      _uniqueEdges.clear();
-    }
+  if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
+    _uniqueEdges.clear();
   }
 }
 

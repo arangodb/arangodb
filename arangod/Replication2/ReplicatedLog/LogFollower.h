@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -60,6 +61,8 @@ class LogFollower final : public ILogFollower,
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
   [[nodiscard]] auto
   resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+  [[nodiscard]] auto getLeader() const noexcept
+      -> std::optional<ParticipantId> const& override;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index)
@@ -70,8 +73,8 @@ class LogFollower final : public ILogFollower,
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
       -> std::unique_ptr<LogIterator>;
-
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
+
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
   /// @brief Resolved when the leader has committed at least one entry.

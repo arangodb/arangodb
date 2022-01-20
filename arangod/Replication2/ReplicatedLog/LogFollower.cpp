@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -79,7 +80,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     // hard to find out. Thus we increase the log level for this message to make
     // this more visible.
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-#define LOST_LOG_CORE_LOGLEVEL WARN
+#define LOST_LOG_CORE_LOGLEVEL INFO
 #else
 #define LOST_LOG_CORE_LOGLEVEL DEBUG
 #endif
@@ -556,6 +557,11 @@ auto LogFollower::release(LogIndex doneWithIdx) -> Result {
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
   return waitFor(LogIndex{1});
+}
+
+auto LogFollower::getLeader() const noexcept
+    -> std::optional<ParticipantId> const& {
+  return _leaderId;
 }
 
 auto LogFollower::getCommitIndex() const noexcept -> LogIndex {

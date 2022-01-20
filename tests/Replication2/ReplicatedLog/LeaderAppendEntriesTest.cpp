@@ -28,7 +28,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include "Replication2/Mocks/FakeFollower.h"
+#include "Replication2/Mocks/FakeAbstractFollower.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -39,7 +39,7 @@ struct LeaderAppendEntriesTest : ReplicatedLogTest {};
 
 TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
   auto const firstIdx =
@@ -90,7 +90,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
 
 TEST_F(LeaderAppendEntriesTest, response_exception) {
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
   auto const firstIdx =
@@ -137,7 +137,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
 
 TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
 
   auto config = LogConfig{};
   config.waitForSync = true;
@@ -171,7 +171,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
 // implemented.
 TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
 
   auto config = LogConfig{};
   config.waitForSync = false;
@@ -203,7 +203,7 @@ TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
 
 TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
   // The first entry written by the leader has always set the waitForSync flag
@@ -248,8 +248,8 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
 
 TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower1 = std::make_shared<FakeFollower>("follower1");
-  auto follower2 = std::make_shared<FakeFollower>("follower2");
+  auto follower1 = std::make_shared<FakeAbstractFollower>("follower1");
+  auto follower2 = std::make_shared<FakeAbstractFollower>("follower2");
   auto leader =
       leaderLog->becomeLeader("leader", LogTerm{4}, {follower1, follower2}, 2);
 

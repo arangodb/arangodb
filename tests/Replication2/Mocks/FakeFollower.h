@@ -22,64 +22,71 @@
 
 #pragma once
 
-#include "Basics/voc-errors.h"
-
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/Helper/WaitForQueue.h"
+#include "Basics/UnshackledMutex.h"
+#include "Basics/Guarded.h"
+#include "Replication2/Streams/MultiplexedValues.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
 
 namespace arangodb::replication2::test {
 
-struct FakeFollower : AbstractFollower {
-  FakeFollower(ParticipantId id) : participantId(std::move(id)) {}
+struct FakeFollower final : replicated_log::ILogFollower,
+                            std::enable_shared_from_this<FakeFollower> {
+  FakeFollower(ParticipantId id, std::optional<ParticipantId> leader,
+               LogTerm term);
 
-  [[nodiscard]] auto getParticipantId() const noexcept
-      -> ParticipantId const& override {
-    return participantId;
+  auto getStatus() const -> replicated_log::LogStatus override;
+  auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
+  auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
+                                 DeferredAction> override;
+  void resign() &;
+  auto waitFor(LogIndex index) -> WaitForFuture override;
+  auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+  auto getCommitIndex() const noexcept -> LogIndex override;
+
+  auto release(LogIndex doneWithIdx) -> Result override;
+
+  auto waitForLeaderAcked() -> WaitForFuture override;
+
+  auto getLeader() const noexcept
+      -> std::optional<ParticipantId> const& override;
+
+  auto getParticipantId() const noexcept -> ParticipantId const& override;
+
+  auto appendEntries(replicated_log::AppendEntriesRequest request)
+      -> futures::Future<replicated_log::AppendEntriesResult> override;
+
+  void updateCommitIndex(LogIndex index);
+  auto addEntry(LogPayload) -> LogIndex;
+  void triggerLeaderAcked();
+
+  template<typename State>
+  auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
+    using streamSpec =
+        typename replicated_state::ReplicatedStateStreamSpec<State>;
+    velocypack::UInt8Buffer buffer;
+    velocypack::Builder builder(buffer);
+    using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;
+    streams::MultiplexedValues::toVelocyPack<descriptor>(t, builder);
+    return addEntry(LogPayload(std::move(buffer)));
+  }
+
+ private:
+  struct GuardedFollowerData {
+    LogIndex commitIndex{0};
+    LogIndex doneWithIdx{0};
+    replicated_log::InMemoryLog log;
   };
 
-  virtual auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override {
-    return requests.emplace_back(std::move(request)).promise.getFuture();
-  }
-
-  void resolveRequest(AppendEntriesResult result) {
-    requests.front().promise.setValue(std::move(result));
-    requests.pop_front();
-  }
-
-  void resolveWithOk() {
-    resolveRequest(AppendEntriesResult{
-        LogTerm{4}, TRI_ERROR_NO_ERROR, {}, currentRequest().messageId});
-  }
-
-  template<typename E>
-  void resolveRequestWithException(E&& e) {
-    requests.front().promise.setException(std::forward<E>(e));
-    requests.pop_front();
-  }
-
-  auto currentRequest() const -> AppendEntriesRequest const& {
-    return requests.front().request;
-  }
-
-  auto hasPendingRequests() const -> bool { return !requests.empty(); }
-
-  void handleAllRequestsWithOk() {
-    while (hasPendingRequests()) {
-      resolveWithOk();
-    }
-  }
-
-  struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
-        : request(std::move(request)) {}
-    AppendEntriesRequest request;
-    futures::Promise<AppendEntriesResult> promise;
-  };
-
-  std::deque<AsyncRequest> requests;
-  ParticipantId participantId;
+  test::WaitForQueue<LogIndex, replicated_log::WaitForResult> waitForQueue;
+  test::SimpleWaitForQueue<replicated_log::WaitForResult>
+      waitForLeaderAckedQueue;
+  Guarded<GuardedFollowerData, basics::UnshackledMutex> guarded;
+  ParticipantId const id;
+  std::optional<ParticipantId> const leaderId;
+  LogTerm const term;
 };
+
 }  // namespace arangodb::replication2::test
