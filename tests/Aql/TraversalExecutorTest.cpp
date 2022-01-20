@@ -310,7 +310,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
   TraversalExecutorInfos
       executorInfos;  // TODO [GraphRefactor]: We need to test all variants of
-                      // graph refactor here as well
+                      // graph refactor here as well.
 
   TraversalExecutorTestInputStartVertex()
       : fakedQuery(server.createFakeQuery()),

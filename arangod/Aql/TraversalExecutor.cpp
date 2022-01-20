@@ -97,10 +97,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
      * In the refactored variant we need to parse the correct enumerator type
      * here, before we're allowed to use it.
      */
-    if (_traversalEnumerator != nullptr) {
-      _traversalEnumerator->clear(false);  // TODO [GraphRefactor]: check -
-                                           //  potentially call reset instead
-    }
+    TRI_ASSERT(_traversalEnumerator == nullptr);
+
     parseTraversalEnumerator(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
         _weightAttribute, query, std::move(baseProviderOptions),
