@@ -114,28 +114,6 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   return arangodb::StaticStrings::Empty;
 }
 
-arangodb::LogicalDataSource::Type const& readType(
-    arangodb::velocypack::Slice info, std::string const& key,
-    TRI_col_type_e def) {
-  static const auto& document =
-      arangodb::LogicalDataSource::Type::emplace(std::string_view("document"));
-  static const auto& edge =
-      arangodb::LogicalDataSource::Type::emplace(std::string_view("edge"));
-
-  // arbitrary system-global value for unknown
-  static const auto& unknown =
-      arangodb::LogicalDataSource::Type::emplace(std::string_view());
-
-  switch (Helper::getNumericValue<TRI_col_type_e, int>(info, key, def)) {
-    case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
-      return document;
-    case TRI_col_type_e::TRI_COL_TYPE_EDGE:
-      return edge;
-    default:
-      return unknown;
-  }
-}
-
 }  // namespace
 
 // The Slice contains the part of the plan that
@@ -143,9 +121,7 @@ arangodb::LogicalDataSource::Type const& readType(
 LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                      bool isAStub)
     : LogicalDataSource(
-          *this,
-          ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, DataSourceId{Helper::extractIdValue(info)},
+          *this, vocbase, DataSourceId{Helper::extractIdValue(info)},
           ::readGloballyUniqueId(info),
           DataSourceId{
               Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId))},
@@ -225,11 +201,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   TRI_UpdateTickServer(id().id());
 
   // add keyOptions from slice
-  VPackSlice keyOpts = info.get("keyOptions");
-  _keyGenerator.reset(KeyGenerator::factory(vocbase.server(), keyOpts));
-  if (!keyOpts.isNone()) {
-    _keyOptions = VPackBuilder::clone(keyOpts).steal();
-  }
+  _keyGenerator.reset(
+      KeyGenerator::factory(vocbase.server(), info.get("keyOptions")));
 
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
@@ -288,7 +261,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
-    _followers.reset(new FollowerInfo(this));
+    _followers = std::make_unique<FollowerInfo>(this);
   }
 
   TRI_ASSERT(_physical != nullptr);

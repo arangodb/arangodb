@@ -552,7 +552,8 @@ void MockClusterServer::startFeatures() {
       const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
   auto& factory = getFeature<arangodb::iresearch::IResearchFeature>()
                       .factory<arangodb::ClusterEngine>();
-  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
+  indexFactory.emplace(
+      std::string{arangodb::iresearch::StaticStrings::DataSourceType}, factory);
   _server.getFeature<arangodb::ClusterFeature>().clusterInfo().startSyncers();
 }
 

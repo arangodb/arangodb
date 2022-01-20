@@ -1,6 +1,11 @@
 devel
 -----
-* Upgraded boost to 1.78.0
+  
+* Disable optimizer rule "optimize-cluster-single-document-operations" when a
+  collection is accessed in exclusive mode, because the optimized query would
+  use a slightly different mode of locking then.
+
+* Upgraded boost to 1.78.0.
 
 * Improve performance of `db._explain()` for very large query execution plans.
   Higher performance is achieved by not serializing some internal data
