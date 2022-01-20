@@ -63,6 +63,10 @@ export class GraphView extends React.Component {
               return text;
             },
           },
+          {
+            type: 'create-edge',
+            key: 'shift', // undefined by default, options: 'shift', 'control', 'ctrl', 'meta', 'alt'
+          },
         ],
       },
       defaultNode: {
@@ -88,6 +92,17 @@ export class GraphView extends React.Component {
 
     this.graph.data(this.props.data);
     this.graph.render();
+
+    this.graph.on('aftercreateedge', (e) => {
+      const edges = this.graph.save().edges;
+      G6.Util.processParallelEdges(edges);
+      this.graph.getEdges().forEach((edge, i) => {
+        this.graph.updateItem(edge, {
+          curveOffset: edges[i].curveOffset,
+          curvePosition: edges[i].curvePosition,
+        });
+      });
+    });
   }
 
   componentDidUpdate() {
