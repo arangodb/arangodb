@@ -27,6 +27,9 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "Graph/ShortestPathType.h"
+#include "Graph/Providers/BaseProviderOptions.h"
+#include "Graph/Options/TwoSidedEnumeratorOptions.h"
+#include "Graph/PathManagement/PathValidatorOptions.h"
 
 namespace arangodb {
 
@@ -184,6 +187,17 @@ class KShortestPathsNode : public virtual GraphNode {
 
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
+
+  template<typename KPathRefactored, typename Provider,
+           typename ProviderOptions>
+  std::unique_ptr<ExecutionBlock> _makeExecutionBlockImpl(
+      graph::ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
+      ProviderOptions backwardProviderOptions,
+      arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
+      arangodb::graph::PathValidatorOptions validatorOptions,
+      const RegisterId& outputRegister, ExecutionEngine& engine,
+      InputVertex sourceInput, InputVertex targetInput,
+      RegisterInfos registerInfos) const;
 };
 
 }  // namespace aql
