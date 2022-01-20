@@ -1,6 +1,8 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fix creation of satellite graphs with a `numberOfShards` value != 1.
+
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 
 * Updated Enterprise license behavior: now there will be a 48 hour period for a
