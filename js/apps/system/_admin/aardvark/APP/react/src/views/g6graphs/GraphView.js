@@ -37,7 +37,19 @@ export class GraphView extends React.Component {
         linkDistance: 100
       },
       modes: {
-        default: ['drag-canvas', 'zoom-canvas', 'drag-node'], // Allow users to drag canvas, zoom canvas, and drag nodes
+        default: [
+          'drag-canvas',
+          'zoom-canvas',
+          'drag-node',
+          {
+            type: 'tooltip', // Tooltip
+            formatText(model) {
+              // The content of tooltip
+              const text = 'label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
+              return text;
+            },
+          }
+        ],
       },
       defaultNode: {
         type: 'circle', // 'bubble'
