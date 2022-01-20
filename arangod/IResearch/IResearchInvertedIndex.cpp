@@ -141,7 +141,7 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-AnalyzerProvider makeAnalyzerProvider(InvertedIndexFieldMeta const& meta) {
+AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   static FieldMeta::Analyzer defaultAnalyzer =
       FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
   AnalyzerProvider analyzerProvider =
@@ -300,7 +300,7 @@ struct CoveringValue {
 /// @brief Represents virtual "vector" of stored values in the irsesearch index
 class CoveringVector final : public IndexIterator::CoveringData {
  public:
-  explicit CoveringVector(InvertedIndexFieldMeta const& meta) {
+  explicit CoveringVector(IResearchInvertedIndexMeta const& meta) {
     size_t fields{meta._sort.fields().size()};
     _coverage.reserve(meta._sort.size() + meta._storedValues.columns().size());
     if (!meta._sort.empty()) {
@@ -592,7 +592,7 @@ class IResearchInvertedIndexIterator final
                                  aql::AstNode const* condition,
                                  IResearchInvertedIndex* index,
                                  aql::Variable const* variable,
-                                 int64_t mutableConditionIdx,
+                                 int mutableConditionIdx,
                                  std::string_view extraFieldName)
       : IResearchInvertedIndexIteratorBase(collection, trx, condition, index,
                                            variable, mutableConditionIdx,
@@ -721,7 +721,7 @@ class IResearchInvertedIndexMergeIterator final
                                       aql::AstNode const* condition,
                                       IResearchInvertedIndex* index,
                                       aql::Variable const* variable,
-                                      int64_t mutableConditionIdx,
+                                      int mutableConditionIdx,
                                       std::string_view extraFieldName)
       : IResearchInvertedIndexIteratorBase(collection, trx, condition, index,
                                            variable, mutableConditionIdx,
@@ -905,7 +905,7 @@ namespace iresearch {
 
 IResearchInvertedIndex::IResearchInvertedIndex(IndexId iid,
                                                LogicalCollection& collection,
-                                               InvertedIndexFieldMeta&& meta)
+                                               IResearchInvertedIndexMeta&& meta)
     : IResearchDataStore(iid, collection), _meta(std::move(meta)) {}
 
 // Analyzer names storing
@@ -929,7 +929,7 @@ void IResearchInvertedIndex::toVelocyPack(
 }
 
 std::vector<std::vector<arangodb::basics::AttributeName>>
-IResearchInvertedIndex::fields(InvertedIndexFieldMeta const& meta) {
+IResearchInvertedIndex::fields(IResearchInvertedIndexMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
   res.reserve(meta._fields.size());
   for (auto const& f : meta._fields) {
@@ -945,7 +945,7 @@ IResearchInvertedIndex::fields(InvertedIndexFieldMeta const& meta) {
 }
 
 std::vector<std::vector<arangodb::basics::AttributeName>>
-IResearchInvertedIndex::sortedFields(InvertedIndexFieldMeta const& meta) {
+IResearchInvertedIndex::sortedFields(IResearchInvertedIndexMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
   res.reserve(meta._sort.fields().size());
   for (auto const& f : meta._sort.fields()) {
@@ -1048,7 +1048,7 @@ bool IResearchInvertedIndex::covers(
 }
 
 bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
-  return InvertedIndexFieldMeta::matchesFieldsDefinition(_meta, other);
+  return IResearchInvertedIndexMeta::matchesFieldsDefinition(_meta, other);
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(

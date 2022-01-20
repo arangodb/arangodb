@@ -39,7 +39,7 @@ IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
 bool IResearchRocksDBInvertedIndexFactory::equal(
     velocypack::Slice lhs, velocypack::Slice rhs,
     std::string const& dbname) const {
-  InvertedIndexFieldMeta lhsFieldsMeta;
+  IResearchInvertedIndexMeta lhsFieldsMeta;
   std::string errField;
   if (!lhsFieldsMeta.init(_server, lhs, true, errField, dbname)) {
     LOG_TOPIC("79384", ERR, iresearch::TOPIC)
@@ -53,7 +53,7 @@ bool IResearchRocksDBInvertedIndexFactory::equal(
     return false;
   }
 
-  InvertedIndexFieldMeta rhsFieldsMeta;
+  IResearchInvertedIndexMeta rhsFieldsMeta;
   if (!rhsFieldsMeta.init(_server, rhs, true, errField, dbname)) {
     LOG_TOPIC("31eaf", ERR, iresearch::TOPIC)
         << (errField.empty()
@@ -87,7 +87,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
                    errField + "': " + definition.toString()));
     return nullptr;
   }
-  InvertedIndexFieldMeta fieldsMeta;
+  IResearchInvertedIndexMeta fieldsMeta;
   if (!fieldsMeta.init(_server, definition, true, errField,
                        collection.vocbase().name())) {
     LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
@@ -182,7 +182,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
         std::string("failed to write normalized index meta from definition: ") +
             definition.toString());
   }
-  InvertedIndexFieldMeta tmpLinkMeta;
+  IResearchInvertedIndexMeta tmpLinkMeta;
   if (!tmpLinkMeta.init(_server, definition,
                         arangodb::ServerState::instance()->isDBServer(),
                         errField, vocbase.name())) {
@@ -237,9 +237,9 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
     IndexId id, LogicalCollection& collection, uint64_t objectId,
-    std::string const& name, InvertedIndexFieldMeta&& m)
+    std::string const& name, IResearchInvertedIndexMeta&& m)
     : IResearchInvertedIndex(id, collection,
-                             std::forward<InvertedIndexFieldMeta>(m)),
+                             std::forward<IResearchInvertedIndexMeta>(m)),
       RocksDBIndex(id, collection, name, IResearchInvertedIndex::fields(meta()),
                    false, true,
                    RocksDBColumnFamilyManager::get(

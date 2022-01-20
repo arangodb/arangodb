@@ -1732,9 +1732,9 @@ template Result IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
     velocypack::Slice const doc, IResearchLinkMeta const& meta);
 
 template Result
-IResearchDataStore::insert<InvertedIndexFieldIterator, InvertedIndexFieldMeta>(
+IResearchDataStore::insert<InvertedIndexFieldIterator, IResearchInvertedIndexMeta>(
     transaction::Methods& trx, LocalDocumentId const& documentId,
-    velocypack::Slice const doc, InvertedIndexFieldMeta const& meta);
+    velocypack::Slice const doc, IResearchInvertedIndexMeta const& meta);
 
 }  // namespace iresearch
 }  // namespace arangodb

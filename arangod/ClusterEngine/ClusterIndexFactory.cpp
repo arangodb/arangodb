@@ -167,7 +167,7 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
                      errField + "': " + definition.toString()));
       return nullptr;
     }
-    InvertedIndexFieldMeta fieldsMeta;
+    IResearchInvertedIndexMeta fieldsMeta;
     if (!fieldsMeta.init(_server, definition, true, errField,
                          collection.vocbase().name())) {
       LOG_TOPIC("18c18", ERR, TOPIC)

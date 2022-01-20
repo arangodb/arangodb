@@ -67,6 +67,7 @@ add_library(arango_iresearch
   IResearch/IResearchFilterOptimization.cpp IResearch/IResearchFilterOptimization.h
   IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
   IResearch/IResearchInvertedIndex.h IResearch/IResearchInvertedIndex.cpp
+  IResearch/IResearchInvertedIndexMeta.h IResearch/IResearchInvertedIndexMeta.cpp
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h

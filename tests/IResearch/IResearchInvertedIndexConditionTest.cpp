@@ -83,7 +83,7 @@ class IResearchInvertedIndexConditionTest
       Projections const& expected) {
     Projections projections(attributes);
     arangodb::IndexId id(1);
-    arangodb::iresearch::InvertedIndexFieldMeta meta;
+    arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorField;
     std::vector<std::string> fields = {"a"};
     ASSERT_TRUE(meta.init(
@@ -113,7 +113,7 @@ class IResearchInvertedIndexConditionTest
                  << queryString
                  << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::InvertedIndexFieldMeta meta;
+    arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorField;
     if (!meta.init(server.server(),
                    getInvertedIndexPropertiesSlice(id, fields).slice(), false,
@@ -195,7 +195,7 @@ class IResearchInvertedIndexConditionTest
                  << queryString
                  << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::InvertedIndexFieldMeta meta;
+    arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorField;
     std::vector<std::string> indexFields;
     for (auto const& f : fields) {

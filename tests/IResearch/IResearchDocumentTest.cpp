@@ -3314,7 +3314,7 @@ TEST_F(
 
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
@@ -3382,7 +3382,7 @@ TEST_F(
 
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
@@ -3510,7 +3510,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
 
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
@@ -3635,7 +3635,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
 
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
@@ -3666,7 +3666,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
 
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
@@ -3696,7 +3696,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
 
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
@@ -3726,7 +3726,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
 
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));

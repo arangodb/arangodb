@@ -34,7 +34,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
                                 uint64_t objectId, std::string const& name,
-                                InvertedIndexFieldMeta&& meta);
+                                IResearchInvertedIndexMeta&& meta);
 
   virtual ~IResearchRocksDBInvertedIndex();
 
@@ -115,7 +115,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
     return IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                      InvertedIndexFieldMeta>(trx, documentId,
+                                      IResearchInvertedIndexMeta>(trx, documentId,
                                                               doc, meta());
   }
 

@@ -150,7 +150,7 @@ class IResearchInvertedIndexIteratorTestBase
     _collection = vocbase().createCollection(createCollection->slice());
     EXPECT_TRUE(_collection);
     arangodb::IndexId id(1);
-    arangodb::iresearch::InvertedIndexFieldMeta meta;
+    arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorField;
     auto storedFields = Provider::storedFields();
     auto sortedFields = Provider::sortFields();
@@ -179,7 +179,7 @@ class IResearchInvertedIndexIteratorTestBase
         auto res =
             _index
                 ->insert<arangodb::iresearch::InvertedIndexFieldIterator,
-                         arangodb::iresearch::InvertedIndexFieldMeta>(
+                         arangodb::iresearch::IResearchInvertedIndexMeta>(
                     trx, doc->first, doc->second->slice(), _index->meta())
                 .ok();
         EXPECT_TRUE(res);
@@ -197,7 +197,7 @@ class IResearchInvertedIndexIteratorTestBase
       // MSVC fails to compile if EXPECT_TRUE  is called directly
       auto res = _index
                      ->insert<arangodb::iresearch::InvertedIndexFieldIterator,
-                              arangodb::iresearch::InvertedIndexFieldMeta>(
+                              arangodb::iresearch::IResearchInvertedIndexMeta>(
                          trx, doc->first, doc->second->slice(), _index->meta())
                      .ok();
       EXPECT_TRUE(res);

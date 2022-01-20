@@ -28,6 +28,7 @@
 
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 #include "IResearchVPackTermAttribute.h"
 #include "VelocyPackHelper.h"
 
@@ -236,7 +237,7 @@ class InvertedIndexFieldIterator {
   bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
 
   void reset(velocypack::Slice slice,
-             InvertedIndexFieldMeta const& fieldsMeta) {
+             IResearchInvertedIndexMeta const& fieldsMeta) {
     _slice = slice;
     _fieldsMeta = &fieldsMeta;
     TRI_ASSERT(!_fieldsMeta->_fields.empty());
@@ -258,9 +259,9 @@ class InvertedIndexFieldIterator {
                                          VPackSlice slice);
 
   size_t _prefixLength{};
-  InvertedIndexFieldMeta::FieldRecord const* _begin{nullptr};
-  InvertedIndexFieldMeta::FieldRecord const* _end{nullptr};
-  InvertedIndexFieldMeta const* _fieldsMeta{nullptr};
+  IResearchInvertedIndexMeta::FieldRecord const* _begin{nullptr};
+  IResearchInvertedIndexMeta::FieldRecord const* _end{nullptr};
+  IResearchInvertedIndexMeta const* _fieldsMeta{nullptr};
   Field _value;       // iterator's value
   VPackSlice _slice;  // input slice
   VPackSlice _valueSlice;

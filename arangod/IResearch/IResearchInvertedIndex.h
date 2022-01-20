@@ -29,8 +29,7 @@
 #include "Indexes/IndexFactory.h"
 #include "IResearchCommon.h"
 #include "IResearchDataStore.h"
-#include "IResearchViewMeta.h"
-#include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 
 #include "search/boolean_filter.hpp"
 #include "search/bitset_doc_iterator.hpp"
@@ -164,7 +163,7 @@ namespace iresearch {
 class IResearchInvertedIndex : public IResearchDataStore {
  public:
   explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection,
-                                  InvertedIndexFieldMeta&& meta);
+                                  IResearchInvertedIndexMeta&& meta);
 
   void toVelocyPack(application_features::ApplicationServer& server,
                     TRI_vocbase_t const* defaultVocbase,
@@ -175,9 +174,9 @@ class IResearchInvertedIndex : public IResearchDataStore {
   Result init(InitCallback const& initCallback = {});
 
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(
-      InvertedIndexFieldMeta const& meta);
+      IResearchInvertedIndexMeta const& meta);
   static std::vector<std::vector<arangodb::basics::AttributeName>> sortedFields(
-      InvertedIndexFieldMeta const& meta);
+      IResearchInvertedIndexMeta const& meta);
 
   bool matchesFieldsDefinition(VPackSlice other) const;
 
@@ -206,13 +205,13 @@ class IResearchInvertedIndex : public IResearchDataStore {
   aql::AstNode* specializeCondition(aql::AstNode* node,
                                     aql::Variable const* reference) const;
 
-  InvertedIndexFieldMeta const& meta() const noexcept { return _meta; }
+  IResearchInvertedIndexMeta const& meta() const noexcept { return _meta; }
 
  protected:
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
  private:
-  InvertedIndexFieldMeta _meta;
+  IResearchInvertedIndexMeta _meta;
 };
 
 class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
@@ -221,9 +220,9 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
   IResearchInvertedClusterIndex(IndexId iid, uint64_t objectId,
                                 LogicalCollection& collection,
                                 std::string const& name,
-                                InvertedIndexFieldMeta&& m)
+                                IResearchInvertedIndexMeta&& m)
       : IResearchInvertedIndex(iid, collection,
-                               std::forward<InvertedIndexFieldMeta>(m)),
+                               std::forward<IResearchInvertedIndexMeta>(m)),
         Index(iid, collection, name, IResearchInvertedIndex::fields(meta()),
               false, true),
         _objectId(objectId) {
