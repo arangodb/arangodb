@@ -82,14 +82,6 @@ if (USE_JEMALLOC)
   add_dependencies(arangobench jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangobench PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
-
 ################################################################################
 ## arangobackup
 ################################################################################
@@ -142,14 +134,6 @@ if (USE_ENTERPRISE)
 
   if (USE_JEMALLOC)
     add_dependencies(arangobackup jemalloc_build)
-  endif ()
-
-  if (USE_FAIL_ON_WARNINGS)
-   if (MSVC)
-     target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-   else ()
-     target_compile_options(arangobackup PRIVATE -Werror -Wno-error=deprecated-declarations)
-   endif ()
   endif ()
 
 endif () # USE_ENTERPRISE
@@ -205,14 +189,6 @@ if (USE_JEMALLOC)
   add_dependencies(arangodump jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangodump PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
-
 ################################################################################
 ## arangoexport
 ################################################################################
@@ -260,14 +236,6 @@ endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangoexport jemalloc_build)
-endif ()
-
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangoexport PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
 endif ()
 
 ################################################################################
@@ -330,14 +298,6 @@ install_command_alias(arangoimport
   arangoimp
 )
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangoimport PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
-
 ################################################################################
 ## arangorestore
 ################################################################################
@@ -394,14 +354,6 @@ endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangorestore jemalloc_build)
-endif ()
-
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangorestore PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
 endif ()
 
 ################################################################################
@@ -462,14 +414,6 @@ if (USE_JEMALLOC)
   add_dependencies(arangosh jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangosh PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
-
 ################################################################################
 ## arangovpack
 ################################################################################
@@ -518,13 +462,37 @@ if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangovpack PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
+################################################################################
+## common target compile options
+################################################################################
+SET(TARGETS
+  arangobench
+  arangodump
+  arangoexport
+  arangoimport
+  arangorestore
+  arangosh
+  arangovpack)
+if (USE_ENTERPRISE)
+  LIST(APPEND TARGETS arangobackup)
+endif()
+
+message("TARGETS=${TARGETS}")
+
+foreach (TARGET IN LISTS TARGETS)
+  message("TARGET=${TARGET}")
+  if (USE_FAIL_ON_WARNINGS)
+    if (MSVC)
+      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
+      endif()
+    else ()
+      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
+    endif ()
+  endif ()
+endforeach ()
 
 ################################################################################
 ## foxx-manager

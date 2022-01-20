@@ -1208,6 +1208,10 @@ foreach(TARGET
   if (USE_FAIL_ON_WARNINGS)
     if (MSVC)
       target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
+      endif()
     else ()
       target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
     endif ()

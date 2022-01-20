@@ -580,10 +580,10 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 endif ()
 
-if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
+if (MSVC)
+  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"                 CACHE STRING "base flags")
+  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}"                             CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus" CACHE STRING "base C++flags")
   # Increase the reserved stack size for all threads to 4MB
   # Note: this is only _reserved_ memory, not necessarily _committed_ memory
   set(BASE_LD_FLAGS  "/STACK:4194304"             CACHE STRING "base linker flags")
@@ -739,11 +739,15 @@ set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
 # iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-if (NOT MSVC)
+if (NOT WIN32)
   find_package(Backtrace)
 endif()
 
-set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+if (Backtrace_LIBRARY)
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+else()
+  set(BT_LIBS "" CACHE PATH "Debug Helper libraries")
+endif()
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
