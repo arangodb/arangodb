@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -97,6 +98,10 @@ struct FollowerStatus {
 
 struct StateStatus {
   std::variant<LeaderStatus, FollowerStatus> variant;
+
+  auto asFollowerStatus() const noexcept -> FollowerStatus const* {
+    return std::get_if<FollowerStatus>(&variant);
+  }
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> StateStatus;

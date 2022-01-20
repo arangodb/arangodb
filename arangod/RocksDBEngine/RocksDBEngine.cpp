@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1869,6 +1869,7 @@ void RocksDBEngine::processCompactions() {
         // compactions
         return;
       }
+
       // set it to running already, so that concurrent callers of this method
       // will not kick off additional jobs
       ++_runningCompactions;
@@ -1884,10 +1885,11 @@ void RocksDBEngine::processCompactions() {
       } else {
         LOG_TOPIC("9485b", TRACE, Logger::ENGINES)
             << "executing compaction for range " << bounds;
-
         double start = TRI_microtime();
         try {
           rocksdb::CompactRangeOptions opts;
+          opts.exclusive_manual_compaction = false;
+          opts.allow_write_stall = true;
           opts.canceled = &::cancelCompactions;
           rocksdb::Slice b = bounds.start(), e = bounds.end();
           _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
@@ -1904,7 +1906,6 @@ void RocksDBEngine::processCompactions() {
             << "finished compaction for range " << bounds
             << ", took: " << Logger::FIXED(TRI_microtime() - start);
       }
-
       // always count down _runningCompactions!
       WRITE_LOCKER(locker, _pendingCompactionsLock);
       TRI_ASSERT(_runningCompactions > 0);
@@ -3552,7 +3553,11 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
     // unfortunately there is not much we can do except waiting for
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  } while (true);
+    // wait up to 2 minutes, and then give up
+  } while (iterations <= 2400);
+
+  LOG_TOPIC("c537b", WARN, Logger::ENGINES)
+      << "giving up waiting for pending compaction job(s)";
 }
 
 auto RocksDBEngine::dropReplicatedLog(

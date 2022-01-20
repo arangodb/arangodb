@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,8 @@ class SingleServerProvider;
 class SingleServerProviderStep
     : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
-  using StepType = EdgeDocumentToken;
+  using StepType =
+      EdgeDocumentToken;  // TODO [GraphRefactor]: Rename that to EdgeType
 
  public:
   class Vertex {
@@ -101,6 +102,11 @@ class SingleServerProviderStep
   StepType getEdgeIdentifier() const { return _edge.getID(); }
 
   std::string getCollectionName() const {
+    /*
+     * Future optimization: When re-implementing the documentFastPathLocal
+     * method to support string refs or either string views, we can improve this
+     * section here as well.
+     */
     auto collectionNameResult = extractCollectionName(_vertex.getID());
     if (collectionNameResult.fail()) {
       THROW_ARANGO_EXCEPTION(collectionNameResult.result());
@@ -108,7 +114,7 @@ class SingleServerProviderStep
     return collectionNameResult.get().first;
   };
 
-  bool isResponsible(transaction::Methods* trx) const;
+  bool isResponsible(transaction::Methods*) const;
 
   friend auto operator<<(std::ostream& out,
                          SingleServerProviderStep const& step) -> std::ostream&;

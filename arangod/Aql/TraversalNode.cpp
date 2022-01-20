@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -952,11 +952,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * Default SingleServer Traverser
      */
 
-    // TODO [GraphRefactor]: Remove me!
-    opts->setRefactor(true);
-    LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
-              << opts->refactor();
-
     // We need to prepare the variable accesses before we ask the index nodes.
     initializeIndexConditions();
 
@@ -1014,8 +1009,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
       // III. Depth-based prune expressions
       for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
-        // TODO [GraphRefactor]: Seems that this is not supported right now at
-        // all?
         auto depth = vertexExpressionPerDepth.first;
         auto expression =
             vertexExpressionPerDepth.second->clone(_plan->getAst());
@@ -1196,8 +1189,6 @@ void TraversalNode::prepareOptions() {
   Ast* ast = _plan->getAst();
 
   // Compute Edge Indexes. First default indexes:
-  LOG_DEVEL << "Prepare options.";
-
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
     switch (dir) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <atomic>
 
 #include <rocksdb/types.h>
 
@@ -52,6 +53,9 @@ class RocksDBRecoveryManager;
 struct RocksDBMetadata final {
   friend class RocksDBRecoveryManager;
 
+  RocksDBMetadata(RocksDBMetadata const&) = delete;
+  RocksDBMetadata operator=(RocksDBMetadata const&) = delete;
+
   /// @brief collection count
   struct DocCount {
     rocksdb::SequenceNumber
@@ -60,6 +64,12 @@ struct RocksDBMetadata final {
     uint64_t _removed;       /// number of removed documents
     RevisionId _revisionId;  /// @brief last used revision id
 
+    DocCount()
+        : _committedSeq{0},
+          _added{0},
+          _removed{0},
+          _revisionId{RevisionId::none()} {}
+
     DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed,
              RevisionId rid)
         : _committedSeq(sq),
@@ -67,12 +77,36 @@ struct RocksDBMetadata final {
           _removed(removed),
           _revisionId(rid) {}
 
-    explicit DocCount(arangodb::velocypack::Slice const&);
-    void toVelocyPack(arangodb::velocypack::Builder&) const;
+    explicit DocCount(velocypack::Slice slice);
+    void toVelocyPack(velocypack::Builder& b) const;
   };
 
  public:
   RocksDBMetadata();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // marks document counts as tainted during testing
+  void setTainted() { _tainted = true; }
+#else
+  static constexpr void setTainted() noexcept {}
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool tainted() const noexcept {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    // if we use failure tests, the document counts may have been intentionally
+    // corrupted. the tainted state is set by the failure points that corrupt
+    // the counters.
+    return _tainted;
+#else
+    // if we don't use failure tests, the document counts are never tainted.
+    return false;
+#endif
+  }
+#else
+  // non-maintainer mode...
+  static constexpr bool tainted() noexcept { return false; }
+#endif
 
   /**
    * @brief Place a blocker to allow proper commit/serialize semantics
@@ -144,7 +178,8 @@ struct RocksDBMetadata final {
     return _numberDocuments.load(std::memory_order_acquire);
   }
 
-  rocksdb::SequenceNumber countCommitted() const noexcept {
+  rocksdb::SequenceNumber countCommitted() const {
+    std::lock_guard lock{_bufferLock};
     return _count._committedSeq;
   }
 
@@ -193,6 +228,11 @@ struct RocksDBMetadata final {
   // below values are updated immediately, but are not serialized
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<RevisionId> _revisionId;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // whether document counts are tainted during testing
+  bool _tainted = false;
+#endif
 };
 
 /// helper class for acquiring and releasing a blocker.
