@@ -2663,7 +2663,7 @@ void ExecutionPlan::findCollectionAccessVariables() {
         variable->isFullDocumentFromCollection = true;
       }
     }
-    // TODO: maybe add more node types here, e.g. materialize nodes?
+    // TODO: maybe add more node types here?
   });
 }
 
