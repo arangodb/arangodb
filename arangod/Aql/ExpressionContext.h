@@ -49,10 +49,6 @@ class ExpressionContext {
 
   virtual ~ExpressionContext() = default;
 
-  /// true if the variable we are referring to is set by
-  /// a collection enumeration/index enumeration
-  virtual bool isDataFromCollection(Variable const* variable) const = 0;
-
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const = 0;
 
@@ -72,6 +68,16 @@ class ExpressionContext {
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
   virtual bool killed() const = 0;
+
+  // register a temporary variable in the ExpressionContext. the
+  // slice used here is not owned by the QueryExpressionContext!
+  // the caller has to make sure the data behind the slice remains
+  // valid until clearVariable() is called or the context is discarded.
+  virtual void setVariable(Variable const* variable,
+                           arangodb::velocypack::Slice value) = 0;
+
+  // unregister a temporary variable from the ExpressionContext.
+  virtual void clearVariable(Variable const* variable) noexcept = 0;
 };
 }  // namespace aql
 }  // namespace arangodb
