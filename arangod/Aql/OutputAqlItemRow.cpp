@@ -608,11 +608,8 @@ OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintEmptyObject const>(
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, AqlValueGuard>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow,
     AqlValueGuard& guard);
-template void
-OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice const>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    VPackSlice const& guard);
-template void
-OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice const>(
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
+    RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice& value);
+template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow,
-    VPackSlice const& guard);
+    VPackSlice& value);

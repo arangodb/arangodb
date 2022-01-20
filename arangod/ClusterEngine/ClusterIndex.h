@@ -39,7 +39,7 @@ class ClusterIndex : public Index {
  public:
   ClusterIndex(IndexId id, LogicalCollection& collection,
                ClusterEngineType engineType, Index::IndexType type,
-               arangodb::velocypack::Slice const& info);
+               arangodb::velocypack::Slice info);
 
   ~ClusterIndex();
 

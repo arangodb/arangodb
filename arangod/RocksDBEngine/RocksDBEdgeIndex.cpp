@@ -142,7 +142,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           coveringBuilder->add(_lastKey);
           coveringBuilder->add(fromTo);
           coveringBuilder->close();
-          cb(docId, coveringBuilder->slice());
+          cb(docId, coveringBuilder->slice(), VPackSlice::emptyArraySlice());
         },
         limit);
   }
@@ -516,7 +516,6 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   // always invalidate cache entry for all edges with same _from / _to
   invalidateCacheEntry(fromToRef);
 
-  // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
   if (s.ok()) {

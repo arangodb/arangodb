@@ -63,8 +63,8 @@ class Methods;
 
 struct IndexIteratorOptions;
 
-/// @brief a base class to iterate over the index. An iterator is requested
-/// at the index itself
+// a base class to iterate over the index. An iterator is requested
+// at the index itself
 class IndexIterator {
   friend class MultiIndexIterator;
 
@@ -72,7 +72,7 @@ class IndexIterator {
   typedef std::function<bool(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
   typedef std::function<bool(LocalDocumentId const& token,
-                             velocypack::Slice doc)>
+                             velocypack::Slice doc, velocypack::Slice extra)>
       DocumentCallback;
   typedef std::function<bool(LocalDocumentId const& token,
                              velocypack::Slice extra)>

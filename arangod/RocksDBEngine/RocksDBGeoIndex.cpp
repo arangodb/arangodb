@@ -99,7 +99,8 @@ class RDBNearIterator final : public IndexIterator {
           if (!_collection->getPhysical()
                    ->read(
                        _trx, gdoc.token,
-                       [&](LocalDocumentId const&, VPackSlice doc) {
+                       [&](LocalDocumentId const&, VPackSlice doc,
+                           VPackSlice extra) {
                          geo::FilterType const ft = _near.filterType();
                          if (ft != geo::FilterType::NONE) {  // expensive test
                            geo::ShapeContainer const& filter =
@@ -118,7 +119,7 @@ class RDBNearIterator final : public IndexIterator {
                              return false;
                            }
                          }
-                         cb(gdoc.token, doc);  // return document
+                         cb(gdoc.token, doc, extra);  // return document
                          result = true;
                          return true;
                          // geo index never needs to observe own writes
@@ -143,7 +144,8 @@ class RDBNearIterator final : public IndexIterator {
             if (!_collection->getPhysical()
                      ->read(
                          _trx, gdoc.token,
-                         [&](LocalDocumentId const&, VPackSlice doc) {
+                         [&](LocalDocumentId const&, VPackSlice doc,
+                             VPackSlice extra) {
                            geo::ShapeContainer test;
                            Result res = _index->shape(doc, test);
                            TRI_ASSERT(res.ok());  // this should never fail here

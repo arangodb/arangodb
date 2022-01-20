@@ -613,7 +613,8 @@ OperationResult transaction::Methods::anyLocal(
       collectionName, transaction::Methods::CursorType::ANY, ReadOwnWrites::no);
 
   iterator->nextDocument(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
+      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice,
+                       VPackSlice /*extra*/) {
         resultBuilder.add(slice);
         return true;
       },
@@ -760,7 +761,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   return collection->getPhysical()->read(
       this, key,
-      [&](LocalDocumentId const&, VPackSlice const& doc) {
+      [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
         result.add(doc);
         return true;
       },
@@ -878,7 +879,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
       bool conflict = false;
       res = collection->getPhysical()->read(
           this, key,
-          [&](LocalDocumentId const&, VPackSlice const& doc) {
+          [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
             if (!options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);
               if (expectedRevision.isSet()) {
@@ -1808,7 +1809,8 @@ OperationResult transaction::Methods::allLocal(
       collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
+      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice,
+                       VPackSlice /*extra*/) {
         resultBuilder.add(slice);
         return true;
       },

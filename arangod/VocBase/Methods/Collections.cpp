@@ -1030,8 +1030,8 @@ futures::Future<OperationResult> Collections::revisionId(
                                   ReadOwnWrites::no);
 
     iterator->allDocuments(
-        [&](LocalDocumentId const&, VPackSlice doc) {
-          cb(doc.resolveExternal());
+        [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
+          cb(doc);
           return true;
         },
         1000);
@@ -1075,7 +1075,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
                     ReadOwnWrites::no);
 
   iterator->allDocuments(
-      [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
+      [&](LocalDocumentId const& /*token*/, VPackSlice slice,
+          VPackSlice /*extra*/) {
         uint64_t localHash =
             transaction::helpers::extractKeyFromDocument(slice).hashString();
 

@@ -125,6 +125,7 @@
       var indexType = $('#newIndexType').val();
       var postParameter = {};
       var fields;
+      var storedValues;
       var unique;
       var sparse;
       var deduplicate;
@@ -175,6 +176,10 @@
           break;
         case 'Persistent':
           fields = $('#newPersistentFields').val();
+          storedValues = self.stringToArray($('#newPersistentStoredValues').val());
+          if (!storedValues.length) {
+            storedValues = undefined;
+          }
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
@@ -184,6 +189,7 @@
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
+            storedValues: storedValues,
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
@@ -375,6 +381,7 @@
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
     },
+
     renderIndex: function (data, id, rerender) {
       this.index = data;
 
@@ -425,7 +432,8 @@
 
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
-        var fieldString = '';
+        var fieldsString = '';
+        var storedValuesString = '';
         var actionString = '';
 
         if (rerender) {
@@ -442,7 +450,15 @@
           }
 
           if (v.fields !== undefined) {
-            fieldString = v.fields.join(', ');
+            fieldsString = v.fields.join(', ');
+          } else {
+            fieldsString = '';
+          }
+          
+          if (v.storedValues !== undefined) {
+            storedValuesString = v.storedValues.join(', ');
+          } else {
+            storedValuesString = '';
           }
 
           // cut index id
@@ -469,7 +485,8 @@
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(sparse) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(extras.join(", ")) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(selectivity) + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldString) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldsString) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(storedValuesString) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.name) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'
@@ -521,9 +538,9 @@
       arangoHelper.createTooltips('.index-tooltip');
     },
 
-    stringToArray: function (fieldString) {
+    stringToArray: function (fieldsString) {
       var fields = [];
-      fieldString.split(',').forEach(function (field) {
+      fieldsString.split(',').forEach(function (field) {
         field = field.replace(/(^\s+|\s+$)/g, '');
         if (field !== '') {
           fields.push(field);

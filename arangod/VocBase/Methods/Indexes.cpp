@@ -305,7 +305,7 @@ arangodb::Result Indexes::getAll(
 ////////////////////////////////////////////////////////////////////////////////
 
 static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
-                               VPackSlice const& definition, bool create,
+                               VPackSlice definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
 

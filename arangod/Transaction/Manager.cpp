@@ -70,7 +70,6 @@ bool authorized(std::string const& user) {
 }
 
 std::string currentUser() { return arangodb::ExecContext::current().user(); }
-
 }  // namespace
 
 namespace arangodb {

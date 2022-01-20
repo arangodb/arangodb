@@ -162,7 +162,7 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
 
     Result res = _trx->documentFastPathLocal(
         collectionName, id.substr(pos + 1),
-        [&](LocalDocumentId const&, VPackSlice doc) {
+        [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
           ++_insertedDocuments;
           // copying...
           result.add(doc);
@@ -235,7 +235,7 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
 
     Result res = _trx->documentFastPathLocal(
         collectionName, id.substr(pos + 1),
-        [&](LocalDocumentId const&, VPackSlice doc) {
+        [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
           ++_insertedDocuments;
           // copying...
           result = arangodb::aql::AqlValue(doc);

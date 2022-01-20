@@ -56,9 +56,12 @@ class RocksDBValue {
   static RocksDBValue EdgeIndexValue(
       arangodb::velocypack::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
+  static RocksDBValue VPackIndexValue(VPackSlice data);
   static RocksDBValue ZkdIndexValue();
   static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId,
+                                            VPackSlice data);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
@@ -106,6 +109,9 @@ class RocksDBValue {
   static VPackSlice data(rocksdb::Slice const&);
   static VPackSlice data(std::string const&);
 
+  static VPackSlice uniqueIndexStoredValues(rocksdb::Slice const&);
+  static VPackSlice indexStoredValues(rocksdb::Slice const&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
@@ -142,6 +148,8 @@ class RocksDBValue {
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
                RevisionId revision);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+               VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type,
                arangodb::velocypack::StringRef const& data);

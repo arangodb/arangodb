@@ -435,16 +435,15 @@ void RocksDBIndexFactory::prepareIndexes(
   IndexId last = IndexId::primary();
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
+    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX)
+             .ok()) {
       continue;
     }
 
     // check for combined edge index from MMFiles; must split!
     auto typeSlice = v.get(StaticStrings::IndexType);
     if (typeSlice.isString()) {
-      VPackValueLength len;
-      const char* tmp = typeSlice.getStringUnchecked(len);
-      Index::IndexType const type = Index::type(tmp, len);
+      Index::IndexType const type = Index::type(typeSlice.stringView());
 
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         VPackSlice fields = v.get(StaticStrings::IndexFields);
