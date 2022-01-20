@@ -99,7 +99,6 @@ class QueryExpressionContext : public ExpressionContext {
   QueryContext& _query;
   AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
 
- protected:
   // variables only temporarily valid during execution. Slices stored
   // here are not owned by the QueryExpressionContext!
   containers::FlatHashMap<Variable const*, arangodb::velocypack::Slice>
