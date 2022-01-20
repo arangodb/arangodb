@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -893,7 +893,7 @@ void SimpleHttpClient::processChunkedHeader() {
   }
 
   // empty lines are an error
-  if (line[0] == '\r' || line.empty()) {
+  if (line.empty() || line[0] == '\r') {
     setErrorMessage("found invalid Content-Length", true);
     // reset connection
     this->close();

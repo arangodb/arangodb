@@ -3,12 +3,15 @@ import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/mod
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { mutate } from "swr";
 import { noop, pick } from 'lodash';
-import { FormState, State } from "./constants";
+import { FormState } from "./constants";
+import { State } from '../../utils/constants';
+import {isAdminUser as userIsAdmin} from "../../utils/helpers";
 import { Cell, Grid } from "../../components/pure-css/grid";
 import BaseForm from "./forms/BaseForm";
 import FeatureForm from "./forms/FeatureForm";
 import { getForm } from "./helpers";
 import Textarea from "../../components/pure-css/form/Textarea";
+import { IconButton } from "../../components/arango/buttons";
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -42,10 +45,7 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
   };
 
   return <>
-    <button className={'pure-button'} onClick={() => setShow(true)}
-            style={{ background: 'transparent' }}>
-      <i className={'fa fa-trash-o'}/>
-    </button>
+    <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)}/>
     <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={`Delete Analyzer ${analyzer.name}?`}/>
       <ModalBody>
@@ -64,9 +64,7 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
       </ModalBody>
       <ModalFooter>
         <button className="button-close" onClick={() => setShow(false)}>Close</button>
-        <button className="button-danger" style={{ float: 'right' }}
-                onClick={handleDelete}>Delete
-        </button>
+        <button className="button-danger" style={{ float: 'right' }} onClick={handleDelete}>Delete</button>
       </ModalFooter>
     </Modal>
   </>;
@@ -76,11 +74,11 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [showJsonForm, setShowJsonForm] = useState(false);
 
-  const state: State = {
+  const state: State<FormState> = {
     formState: pick(analyzer, 'name', 'type', 'features', 'properties') as FormState,
     formCache: {},
     show: false,
-    showJsonForm: false,
+    showJsonForm,
     lockJsonForm: false,
     renderKey: ''
   };
@@ -103,9 +101,7 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
   }
 
   return <>
-    <button className={'pure-button'} onClick={handleClick} style={{ background: 'transparent' }}>
-      <i className={'fa fa-eye'}/>
-    </button>
+    <IconButton icon={'eye'} onClick={handleClick} style={{ background: 'transparent' }}/>
     <Modal show={show} setShow={setShow} cid={modalCid}>
       <ModalHeader title={formState.name}>
         <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}>
@@ -142,7 +138,8 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
                         {getForm({
                           formState,
-                          dispatch: noop
+                          dispatch: noop,
+                          disabled: true
                         })}
                       </fieldset>
                     </Cell>
@@ -169,7 +166,7 @@ const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
   const isSameDB = isUserDefined
     ? analyzer.name.split('::')[0] === frontendConfig.db
     : frontendConfig.db === '_system';
-  const isAdminUser = permission === 'rw' || !frontendConfig.authenticationEnabled;
+  const isAdminUser = userIsAdmin(permission);
   const canDelete = isUserDefined && isSameDB && isAdminUser;
 
   return <>

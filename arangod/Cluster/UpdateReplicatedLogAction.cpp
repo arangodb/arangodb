@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
@@ -100,6 +102,11 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
             << logId << "; " << result.errorMessage();
       }
       feature.addDirty(desc.get(DATABASE));
+    } catch (
+        replication2::replicated_log::ParticipantResignedException const& e) {
+      LOG_TOPIC("4e010", DEBUG, Logger::REPLICATION2)
+          << "participant resigned during update of replicated log "
+          << desc.get(DATABASE) << '/' << logId << "; " << e.what();
     } catch (std::exception const& e) {
       LOG_TOPIC("f824f", ERR, Logger::REPLICATION2)
           << "exception during update of replicated log " << desc.get(DATABASE)
