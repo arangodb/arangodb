@@ -226,7 +226,7 @@ bool supportsFilterNode(
   return rv.ok();
 }
 
-constexpr irs::payload NoPayload;
+const irs::payload NoPayload;
 
 inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());

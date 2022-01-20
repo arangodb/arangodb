@@ -501,7 +501,7 @@ class FilterContext {
   FieldMeta::Analyzer const& _analyzer;
   irs::boost_t _boost;
   bool _isSearchFilter;  // filter is building for SEARCH clause
-};                       // FilterContext
+};
 
 using ConvertionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
                                      QueryContext const&, FilterContext const&,
@@ -1923,8 +1923,8 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
   if (!n) {
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
-        filter->add<irs::all>().boost(
-            filterCtx.boost());  // not in [] means 'all'
+        // not in [] means 'all'
+        filter->add<irs::all>().boost(filterCtx.boost());
       } else {
         filter->add<irs::empty>();
       }

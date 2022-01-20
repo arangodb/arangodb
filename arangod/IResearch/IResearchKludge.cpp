@@ -34,6 +34,14 @@ namespace {
 
 constexpr auto RW_MUTEX_WAIT_TIMEOUT = 50ms;
 
+inline void normalizeExpansion(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
+}
+
 }
 
 namespace arangodb {
@@ -43,72 +51,45 @@ namespace kludge {
 const char TYPE_DELIMITER = '\0';
 const char ANALYZER_DELIMITER = '\1';
 
-irs::string_ref const NULL_SUFFIX("\0_n", 3);
-irs::string_ref const BOOL_SUFFIX("\0_b", 3);
-irs::string_ref const NUMERIC_SUFFIX("\0_d", 3);
-irs::string_ref const STRING_SUFFIX("\0_s", 3);
+std::string_view constexpr NULL_SUFFIX("\0_n", 3);
+std::string_view constexpr BOOL_SUFFIX("\0_b", 3);
+std::string_view constexpr NUMERIC_SUFFIX("\0_d", 3);
+std::string_view constexpr STRING_SUFFIX("\0_s", 3);
+
 
 void mangleType(std::string& name) {
-  // remove the last expansion as it could be omitted accodring to our
-  // indicies behaviour
-  if (name.ends_with("[*]")) {
-    name.resize(name.size() - 3);
-  }
+
   name += TYPE_DELIMITER;
 }
 
 void mangleAnalyzer(std::string& name) {
-  // remove the last expansion as it could be omitted accodring to our
-  // indicies behaviour
-  if (name.ends_with("[*]")) {
-    name.resize(name.size() - 3);
-  }
+  normalizeExpansion(name);
   name += ANALYZER_DELIMITER;
 }
 
 void mangleNull(std::string& name) {
-  // remove the last expansion as it could be omitted accodring to our
-  // indicies behaviour
-  if (name.ends_with("[*]")) {
-    name.resize(name.size() - 3);
-  }
-  name.append(NULL_SUFFIX.c_str(), NULL_SUFFIX.size());
+  normalizeExpansion(name);
+  name.append(NULL_SUFFIX);
 }
 
 void mangleBool(std::string& name) {
-  // remove the last expansion as it could be omitted accodring to our
-  // indicies behaviour
-  if (name.ends_with("[*]")) {
-    name.resize(name.size() - 3);
-  }
-  name.append(BOOL_SUFFIX.c_str(), BOOL_SUFFIX.size());
+  normalizeExpansion(name);
+  name.append(BOOL_SUFFIX);
 }
 
 void mangleNumeric(std::string& name) {
-  // remove the last expansion as it could be omitted accodring to our
-  // indicies behaviour
-  if (name.ends_with("[*]")) {
-    name.resize(name.size() - 3);
-  }
-  name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
+  normalizeExpansion(name);
+  name.append(NUMERIC_SUFFIX);
 }
 
 void mangleString(std::string& name) {
-  // remove the last expansion as it could be omitted accodring to our
-  // indicies behaviour
-  if (name.ends_with("[*]")) {
-    name.resize(name.size() - 3);
-  }
-  name.append(STRING_SUFFIX.c_str(), STRING_SUFFIX.size());
+  normalizeExpansion(name);
+  name.append(STRING_SUFFIX);
 }
 
 void mangleField(std::string& name, bool isSearchFilter,
                  iresearch::FieldMeta::Analyzer const& analyzer) {
-  // remove the last expansion as it could be omitted accodring to our
-  // indicies behaviour
-  if (name.ends_with("[*]")) {
-    name.resize(name.size() - 3);
-  }
+  normalizeExpansion(name);
   if (isSearchFilter || analyzer._pool->requireMangled()) {
     name += ANALYZER_DELIMITER;
     name += analyzer._shortName;
