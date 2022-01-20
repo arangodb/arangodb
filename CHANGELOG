@@ -1,6 +1,8 @@
 v3.7.17 (XXXX-XX-XX)
 --------------------
 
+* Fix creation of satellite graphs with a `numberOfShards` value != 1.
+
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
 * BTS-590: When creating a new database in Web UI the value of the write concern
