@@ -1146,6 +1146,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
   try {
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
+      VPackSlice options = input.get("options");
       if (input.get(StaticStrings::IsSmart).isTrue() && isSatellite(options)) {
         // the combination of isSmart and replicationFactor == 'satellite' is
         // invalid
