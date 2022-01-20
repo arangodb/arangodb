@@ -1635,6 +1635,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               std::shared_ptr<Election const> election() const {
                 return Election::make_shared(shared_from_this());
               }
+
+              class Error : public StaticComponent<Error, Supervision> {
+               public:
+                constexpr char const* component() const noexcept {
+                  return "error";
+                }
+
+                using BaseType::StaticComponent;
+              };
+
+              std::shared_ptr<Error const> error() const {
+                return Error::make_shared(shared_from_this());
+              }
             };
 
             std::shared_ptr<Supervision const> supervision() const {

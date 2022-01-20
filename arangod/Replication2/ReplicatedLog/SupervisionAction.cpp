@@ -40,6 +40,9 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::EmptyAction: {
       return "Empty";
     } break;
+    case Action::ActionType::ErrorAction: {
+      return "Error";
+    } break;
     case Action::ActionType::AddLogToPlanAction: {
       return "AddLogToPlan";
     } break;
@@ -99,6 +102,37 @@ void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
 
   builder.add(VPackValue("message"));
   builder.add(VPackValue(_message));
+}
+
+void ErrorAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+
+  builder.add(VPackValue("message"));
+  builder.add(VPackValue(_message));
+}
+
+auto ErrorAction::execute(std::string dbName,
+                          arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto current_path = paths::current()
+                          ->replicatedLogs()
+                          ->database(dbName)
+                          ->log(_id)
+                          ->supervision()
+                          ->error()
+                          ->str();
+  return envelope.write()
+      .emplace_object(current_path,
+                      [&](VPackBuilder& builder) {
+                        auto ob = VPackObjectBuilder(&builder);
+                        builder.add(VPackValue("message"));
+                        builder.add(VPackValue(_message));
+                      })
+      .inc(paths::current()->version()->str())
+      .precs()
+      .end();
 }
 
 /*

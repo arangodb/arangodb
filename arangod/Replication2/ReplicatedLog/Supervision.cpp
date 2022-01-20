@@ -193,17 +193,27 @@ auto checkLeaderInTarget(LogTarget const& target,
             return std::make_unique<EmptyAction>();
           }
 
+          auto election =
+              runElectionCampaign(current.localState, plan.participantsConfig,
+                                  health, plan.currentTerm->term);
+
+          if (!plan.participantsConfig.participants.contains(*target.leader)) {
+            return std::make_unique<ErrorAction>(
+                plan.id, "The leader requested in Target is not a participant");
+          }
           auto const& planLeaderConfig =
               plan.participantsConfig.participants.at(*target.leader);
 
           if (planLeaderConfig.forced != true ||
               planLeaderConfig.excluded == true) {
-            // here error feedpack?
-            return std::make_unique<EmptyAction>();
+            election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
+            return std::make_unique<LeaderElectionAction>(plan.id, election);
           }
 
           if (!health.isHealthy(*target.leader)) {
+            election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
             return std::make_unique<EmptyAction>();
+            // problem:
           };
 
           auto const rebootId = health._health.at(*target.leader).rebootId;
@@ -346,7 +356,9 @@ auto desiredParticipantFlags(LogTarget const& target,
   if (participant == target.leader and
       participant != plan.currentTerm->leader->serverId) {
     auto flags = target.participants.at(participant);
-    flags.forced = true;
+    if (!flags.excluded) {
+      flags.forced = true;
+    }
     return flags;
   }
   return target.participants.at(participant);

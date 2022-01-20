@@ -37,6 +37,7 @@ namespace arangodb::replication2::replicated_log {
 struct Action {
   enum class ActionType {
     EmptyAction,
+    ErrorAction,
     AddLogToPlanAction,
     CreateInitialTermAction,
     UpdateTermAction,
@@ -46,7 +47,7 @@ struct Action {
     UpdateParticipantFlagsAction,
     AddParticipantToPlanAction,
     RemoveParticipantFromPlanAction,
-    UpdateLogConfigAction
+    UpdateLogConfigAction,
   };
   virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope = 0;
@@ -78,6 +79,21 @@ struct EmptyAction : Action {
 };
 auto to_string(EmptyAction action) -> std::string;
 auto operator<<(std::ostream& os, EmptyAction const& action) -> std::ostream&;
+
+struct ErrorAction : Action {
+  ErrorAction(LogId const& id) : _id{id}, _message(""){};
+  ErrorAction(LogId const& id, std::string_view message)
+      : _id{id}, _message(message){};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+  ActionType type() const override { return Action::ActionType::ErrorAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  LogId _id;
+  std::string _message;
+};
+auto to_string(ErrorAction action) -> std::string;
+auto operator<<(std::ostream& os, ErrorAction const& action) -> std::ostream&;
 
 // AddLogToPlanAction
 struct AddLogToPlanAction : Action {

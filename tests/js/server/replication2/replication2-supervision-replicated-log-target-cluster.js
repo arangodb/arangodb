@@ -493,7 +493,7 @@ const replicatedLogSuite = function () {
       }
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: true, forced: false},
-        [leader]: null,
+      //  [leader]: null,
       }));
 
       // TODO we except the supervision to fail here (like the todo above)

@@ -2592,7 +2592,7 @@ void Supervision::checkReplicatedLogs() {
               LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
                   << "Supervision caught exception in checkReplicatedLog for "
                      "replicated log "
-                  << dbName << "/" << target.id;
+                  << dbName << "/" << target.id << ": " << err.what();
               return nullptr;
             }
           });
