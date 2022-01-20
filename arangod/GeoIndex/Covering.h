@@ -62,6 +62,8 @@ class CoveringUtils {
   /// @brief has buffered results
   inline bool hasNext() const { return !_buffer.empty(); }
 
+  inline size_t bufferSize() const { return _buffer.size(); }
+
   LocalDocumentId const& getNext() const {
     TRI_ASSERT(hasNext());
     return _buffer.front();
@@ -76,8 +78,6 @@ class CoveringUtils {
   void reset();
 
   /// Call only when current scan intervals contain no more results
-  /// will internally track already returned intervals and not return
-  /// new ones without calling updateBounds
   std::vector<geo::Interval> intervals();
 
   /// buffer and sort results

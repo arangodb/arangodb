@@ -451,19 +451,22 @@ class RDBCoveringIterator final : public IndexIterator {
       return false;
     }
 
-    while (limit > 0 && !_covering.isDone()) {
+    // We keep going, until either we have reached our limit or we have
+    // scanned all intervals delivered by _covering:
+    while (limit > 0 &&
+           (!_covering.isDone() || _scanningInterval < _scan.size())) {
+      if (!_covering.hasNext()) {
+        performScan();
+      }
+
       while (limit > 0 && _covering.hasNext()) {
         if (std::forward<F>(cb)(_covering.getNext())) {
           limit--;
         }
         _covering.next();
       }
-      // need to fetch more geo results
-      if (limit > 0 && !_covering.isDone()) {
-        performScan();
-      }
     }
-    return !_covering.isDone();
+    return !_covering.isDone() || _scanningInterval < _scan.size();
   }
 
   bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override {
@@ -548,18 +551,19 @@ class RDBCoveringIterator final : public IndexIterator {
   void resetImpl() override { _covering.reset(); }
 
  private:
-  // we need to get intervals representing areas in a ring (annulus)
-  // around our target point. We need to fetch them ALL and then sort
-  // found results in a priority list according to their distance
   void performScan() {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
-    std::vector<geo::Interval> const scan = _covering.intervals();
+    if (_gotIntervals) {
+      _scan = _covering.intervals();
+      _gotIntervals = true;
+      _scanningInterval = 0;
+    }
     // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " <<
     // scan.size(); size_t seeks = 0;
 
-    for (size_t i = 0; i < scan.size(); i++) {
-      geo::Interval const& it = scan[i];
+    while (_scanningInterval < _scan.size()) {
+      geo::Interval const& it = _scan[_scanningInterval];
       TRI_ASSERT(it.range_min <= it.range_max);
       RocksDBKeyBounds bds = RocksDBKeyBounds::GeoIndex(
           _index->objectId(), it.range_min.id(), it.range_max.id());
@@ -567,8 +571,8 @@ class RDBCoveringIterator final : public IndexIterator {
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
-      if (i > 0) {
-        TRI_ASSERT(scan[i - 1].range_max < it.range_min);
+      if (_scanningInterval > 0) {
+        TRI_ASSERT(_scan[_scanningInterval - 1].range_max < it.range_min);
         if (!_iter->Valid()) {  // no more valid keys after this
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
@@ -603,6 +607,11 @@ class RDBCoveringIterator final : public IndexIterator {
 
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iter.get());
+
+      ++_scanningInterval;
+      if (_covering.bufferSize() > 1024) {
+        break;  // will be called later again
+      }
     }
   }
 
@@ -610,6 +619,9 @@ class RDBCoveringIterator final : public IndexIterator {
   RocksDBGeoIndex const* _index;
   geo_index::CoveringUtils _covering;
   std::unique_ptr<rocksdb::Iterator> _iter;
+  std::vector<geo::Interval> _scan;
+  bool _gotIntervals = false;
+  size_t _scanningInterval = 0;
 };
 
 RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
@@ -734,8 +746,6 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
-  LOG_DEVEL << "First step query params for geo index: " << params.toString();
-
   // First check if we can use the simpler method with a covering of the
   // target object:
   // If we have a `GEO_CONTAINS` or `GEO_INTERSECTS` clause but no
@@ -775,8 +785,6 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
-
-  LOG_DEVEL << "Query params for geo index: " << params.toString();
 
   if (params.ascending) {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(

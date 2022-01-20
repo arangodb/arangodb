@@ -64,8 +64,6 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
   TRI_ASSERT(!isAscending() || _params.ascending);
   TRI_ASSERT(!isDescending() || !_params.ascending);
 
-  LOG_DEVEL << _params.toString();
-
   /*LOG_TOPIC("f2eed", ERR, Logger::FIXME)
       << "--------------------------------------------------------";
   LOG_TOPIC("f71a1", INFO, Logger::FIXME) << "[Near] origin target: "

@@ -43,7 +43,6 @@ CoveringUtils::CoveringUtils(geo::QueryParams&& qp) noexcept
       _coverer(_params.cover.regionCovererOpts()) {
   reset();
   // Level 15 == 474.142m (start with 15 essentially)
-  LOG_DEVEL << _params.toString();
 }
 
 CoveringUtils::~CoveringUtils() {

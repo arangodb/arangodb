@@ -461,7 +461,7 @@ function geoSuite () {
       // Centroid will be at approx. [7,10]
       waitForArangoSearch();
       for (let dist = 1000; dist <= 100000; dist += 100) {
-        print("Distance", dist);
+        //print("Distance", dist);
         let c = compare(
           `FILTER GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}`,
           `SEARCH ANALYZER(GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}, "geo_json")`
@@ -488,7 +488,7 @@ function geoSuite () {
         for (let lon = 9; lon <= 11; lon += 0.4) {
           let p = {type:"Polygon", coordinates:[[[lon-d, lat-d],
             [lon+d, lat-d], [lon+d, lat+d], [lon-d, lat+d], [lon-d, lat-d]]]};
-          print("Polygon:", JSON.stringify(p));
+          //print("Polygon:", JSON.stringify(p));
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
@@ -520,7 +520,7 @@ function geoSuite () {
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
           [15,15+d], [15-d,15]]]};
-        print("d=", d, JSON.stringify(p));
+        //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
@@ -552,7 +552,7 @@ function geoSuite () {
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
           [15,15-d], [15-d,15]]]};
-        print("d=", d, JSON.stringify(p));
+        //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
@@ -579,7 +579,7 @@ function geoSuite () {
         for (let lon = 9; lon <= 11; lon += 0.4) {
           let p = {type:"Polygon", coordinates:[[[lon-d, lat-d],
             [lon+d, lat-d], [lon+d, lat+d], [lon-d, lat+d], [lon-d, lat-d]]]};
-          print("Polygon:", JSON.stringify(p));
+          //print("Polygon:", JSON.stringify(p));
           let c = compare(
             `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
@@ -611,7 +611,7 @@ function geoSuite () {
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
           [15,15+d], [15-d,15]]]};
-        print("d=", d, JSON.stringify(p));
+        //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
@@ -643,7 +643,7 @@ function geoSuite () {
       for (let d = 1; d <= 5; d += 1) {
         let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
           [15,15-d], [15-d,15]]]};
-        print("d=", d, JSON.stringify(p));
+        //print("d=", d, JSON.stringify(p));
         let c = compare(
           `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
