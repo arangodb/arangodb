@@ -278,7 +278,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           }
         } else if (name == StaticStrings::GraphRefactorFlag &&
                    value->isBoolValue()) {
-          options->setRefactor(value);
+          options->setRefactor(value->getBoolValue());
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());

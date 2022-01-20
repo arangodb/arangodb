@@ -226,12 +226,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
+  VPackBuilder vertexBuilder, edgeBuilder;
+
   // evaluate if vertex needs to be pruned
   ValidationResult res{ValidationResult::Type::TAKE};
   if (_options.usesPrune()) {
-    // TODO [GraphRefactor]: Possible performance optimization. Please double
-    // check if we can do better then using three different types of builders
-    VPackBuilder vertexBuilder, edgeBuilder, pathBuilder;
+    VPackBuilder pathBuilder;
 
     auto& evaluator = _options.getPruneEvaluator();
 
@@ -277,31 +277,39 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   // Evaluate depth-based vertex expressions
   auto vertexExpr = _options.getVertexExpression(step.getDepth());
   if (vertexExpr != nullptr) {
-    _tmpObjectBuilder.clear();
-    _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
+    if (vertexBuilder.isEmpty()) {
+      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+    }
 
     // evaluate expression
     bool satifiesCondition =
-        evaluateVertexExpression(vertexExpr, _tmpObjectBuilder.slice());
+        evaluateVertexExpression(vertexExpr, vertexBuilder.slice());
     if (!satifiesCondition) {
       if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
-        return ValidationResult{ValidationResult::Type::PRUNE};
+        res.combine(ValidationResult::Type::PRUNE);
+      } else {
+        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
       }
-      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
   }
 
-  if (_options.usesPostFilter()) {
-    VPackBuilder vertexBuilder, edgeBuilder;
+  if (res.isPruned() && res.isFiltered()) {
+    return res;
+  }
 
+  if (_options.usesPostFilter()) {
     auto& evaluator = _options.getPostFilterEvaluator();
 
     if (evaluator->needsVertex()) {
-      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+      if (vertexBuilder.isEmpty()) { // already added a vertex in case _options.usesPrune() == true
+        _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+      }
       evaluator->injectVertex(vertexBuilder.slice());
     }
     if (evaluator->needsEdge()) {
-      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      if(edgeBuilder.isEmpty()){  // already added an edge in case _options.usesPrune() == true
+        _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      }
       evaluator->injectEdge(edgeBuilder.slice());
     }
 

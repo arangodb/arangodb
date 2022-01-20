@@ -97,10 +97,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
      * In the refactored variant we need to parse the correct enumerator type
      * here, before we're allowed to use it.
      */
-    if (_traversalEnumerator != nullptr) {
-      _traversalEnumerator->clear(false);  // TODO [GraphRefactor]: check -
-                                           // potentially call reset instead
-    }
+    TRI_ASSERT(_traversalEnumerator == nullptr);
+
     parseTraversalEnumerator(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
         _weightAttribute, query, std::move(baseProviderOptions),
@@ -228,8 +226,8 @@ arangodb::aql::QueryWarnings& TraversalExecutorInfos::getWarnings() {
 std::pair<arangodb::graph::VertexUniquenessLevel,
           arangodb::graph::EdgeUniquenessLevel>
 TraversalExecutorInfos::convertUniquenessLevels() const {
-  // TODO [GraphRefactor]: This should be a temoporary function as we remove
-  // TraverserOptions in total after the graph refactor is done.
+  // TODO [GraphRefactor]: This should be a temporary function as we remove
+  //  TraverserOptions in total after the graph refactor is done.
   auto vertexUniquenessLevel = graph::VertexUniquenessLevel::NONE;
   auto edgeUniquenessLevel = graph::EdgeUniquenessLevel::NONE;
 
@@ -250,8 +248,8 @@ TraversalExecutorInfos::convertUniquenessLevels() const {
   return std::make_pair(vertexUniquenessLevel, edgeUniquenessLevel);
 }
 
-// TODO [GraphRefactor]: Add a parameter to toggle tracing variants of
-// enumerators.
+// TODO [GraphRefactor]: (R) Add a parameter to toggle tracing variants of
+//  enumerators. See KPathEnumerators.
 auto TraversalExecutorInfos::parseTraversalEnumerator(
     TraverserOptions::Order order,
     TraverserOptions::UniquenessLevel uniqueVertices,
@@ -513,7 +511,7 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
   // infos contain the traverser which might contain state from a previous run.
   if (infos.isRefactor()) {
     _traversalEnumerator.clear(
-        false);  // TODO [GraphRefactor]: check - potentially call reset instead
+        false);
   } else {
     _traverser.done();
   }
@@ -872,8 +870,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         _traversalEnumerator.prepareIndexExpressions(_infos.getAst());
 
         // start actual search
-        _traversalEnumerator.reset(toHashedStringRef(
-            sourceString));  // TODO [GraphRefactor]: check sourceString memory
+        // reset will take a copy of the underlying string of sourceString
+        _traversalEnumerator.reset(toHashedStringRef(sourceString));
         TRI_ASSERT(_inputRow.isInitialized());
         return true;
       }
