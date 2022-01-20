@@ -78,7 +78,6 @@ auto to_string(FollowerState const&) -> std::string_view;
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
 
-
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
