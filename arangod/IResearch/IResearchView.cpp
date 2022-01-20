@@ -35,6 +35,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -49,13 +50,14 @@
 #include "IResearchView.h"
 
 namespace {
-
+using namespace arangodb;
+using namespace arangodb::iresearch;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::aql::AstNode ALL(arangodb::aql::AstNodeValue(true));
+aql::AstNode ALL(aql::AstNodeValue(true));
 
-using arangodb::iresearch::kludge::read_write_mutex;
+using kludge::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple irs::index_reader
@@ -64,8 +66,8 @@ using arangodb::iresearch::kludge::read_write_mutex;
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held by the DBServer CompoundReader
 ////////////////////////////////////////////////////////////////////////////////
-class ViewTrxState final : public arangodb::TransactionState::Cookie,
-                           public arangodb::iresearch::IResearchView::Snapshot {
+class ViewTrxState final : public TransactionState::Cookie,
+                           public IResearchView::Snapshot {
  public:
   irs::sub_reader const& operator[](
       size_t subReaderId) const noexcept override {
@@ -73,12 +75,11 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
     return *(_subReaders[subReaderId].second);
   }
 
-  void add(arangodb::DataSourceId cid,
-           arangodb::iresearch::IResearchDataStore::Snapshot&& snapshot);
+  void add(DataSourceId cid, IResearchDataStore::Snapshot&& snapshot);
 
-  arangodb::DataSourceId cid(size_t offset) const noexcept override {
+  DataSourceId cid(size_t offset) const noexcept override {
     return offset < _subReaders.size() ? _subReaders[offset].first
-                                       : arangodb::DataSourceId::none();
+                                       : DataSourceId::none();
   }
 
   void clear() noexcept {
@@ -112,16 +113,13 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
  private:
   size_t _docs_count{};
   size_t _live_docs_count{};
-  std::unordered_set<arangodb::DataSourceId> _collections;
-  std::vector<arangodb::iresearch::IResearchDataStore::Snapshot>
-      _snapshots;  // prevent data-store deallocation (lock @ AsyncSelf)
-  std::vector<std::pair<arangodb::DataSourceId, irs::sub_reader const*>>
-      _subReaders;
+  containers::FlatHashSet<DataSourceId> _collections;
+  // prevent data-store deallocation (lock @ AsyncSelf)
+  std::vector<IResearchDataStore::Snapshot> _snapshots;
+  std::vector<std::pair<DataSourceId, irs::sub_reader const*>> _subReaders;
 };
 
-void ViewTrxState::add(
-    arangodb::DataSourceId cid,
-    arangodb::iresearch::IResearchLink::Snapshot&& snapshot) {
+void ViewTrxState::add(DataSourceId cid, IResearchLink::Snapshot&& snapshot) {
   auto& reader = snapshot.getDirectoryReader();
   for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct,
@@ -135,9 +133,8 @@ void ViewTrxState::add(
   _snapshots.emplace_back(std::move(snapshot));
 }
 
-void ensureImmutableProperties(
-    arangodb::iresearch::IResearchViewMeta& dst,
-    arangodb::iresearch::IResearchViewMeta const& src) {
+void ensureImmutableProperties(IResearchViewMeta& dst,
+                               IResearchViewMeta const& src) {
   dst._version = src._version;
   dst._writebufferActive = src._writebufferActive;
   dst._writebufferIdle = src._writebufferIdle;
