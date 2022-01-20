@@ -36,7 +36,6 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"

@@ -37,7 +37,6 @@
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/SmallVector.h"

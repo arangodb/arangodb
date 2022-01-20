@@ -18,32 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/QueryExpressionContext.h"
+#include "Basics/Result.h"
 
-#include <velocypack/Slice.h>
+#include <memory>
+#include <string_view>
 
-namespace arangodb {
-namespace aql {
+struct TRI_vocbase_t;
 
-class DocumentExpressionContext final : public QueryExpressionContext {
+namespace arangodb::aql {
+class QueryContext;
+
+class StandaloneCalculation {
  public:
-  DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
-                            AqlFunctionsInternalCache& cache,
-                            arangodb::velocypack::Slice document) noexcept;
+  static std::unique_ptr<QueryContext> buildQueryContext(
+      TRI_vocbase_t& vocbase);
 
-  ~DocumentExpressionContext() = default;
-
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
-
- private:
-  /// @brief temporary storage for expression data context
-  arangodb::velocypack::Slice _document;
+  static arangodb::Result validateQuery(TRI_vocbase_t& vocbase,
+                                        std::string_view queryString,
+                                        std::string_view parameterName,
+                                        char const* errorContext);
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql
