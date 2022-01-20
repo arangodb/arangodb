@@ -64,7 +64,7 @@ router.get('/index.html', (req, res) => {
   res.set('X-Frame-Options', 'DENY');
   res.set('X-XSS-Protection', '1; mode=block');
 })
-.response(['text/html']);
+  .response(['text/html']);
 
 router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
@@ -103,13 +103,13 @@ router.get('/config.js', function (req, res) {
     })}`
   );
 })
-.response(['text/javascript']);
+  .response(['text/javascript']);
 
 router.get('/whoAmI', function (req, res) {
-  res.json({user: req.arangoUser || null});
+  res.json({ user: req.arangoUser || null });
 })
-.summary('Return the current user')
-.description(dd`
+  .summary('Return the current user')
+  .description(dd`
   Returns the current user or "null" if the user is not authenticated.
   Returns "false" if authentication is disabled.
 `);
@@ -127,14 +127,14 @@ authRouter.use((req, res, next) => {
 });
 
 router.get('/api/*', module.context.apiDocumentation({
-  swaggerJson (req, res) {
+  swaggerJson(req, res) {
     const API_DOCS = require(module.context.fileName('api-docs.json'));
     API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
     res.json(API_DOCS);
   }
 }))
-.summary('System API documentation')
-.description(dd`
+  .summary('System API documentation')
+  .description(dd`
   Mounts the system API documentation.
 `);
 
@@ -145,7 +145,7 @@ authRouter.post('/query/profile', function (req, res) {
 
   try {
     msg = explainer.profileQuery({
-      query, 
+      query,
       bindVars: bindVars || {},
       options: {
         colors: false,
@@ -153,17 +153,17 @@ authRouter.post('/query/profile', function (req, res) {
       }
     }, false);
   } catch (e) {
-    res.throw('bad request', e.message, {cause: e});
+    res.throw('bad request', e.message, { cause: e });
   }
 
-  res.json({msg});
+  res.json({ msg });
 })
-.body(joi.object({
-  query: joi.string().required(),
-  bindVars: joi.object().optional()
-}).required(), 'Query and bindVars to profile.')
-.summary('Explains a query')
-.description(dd`
+  .body(joi.object({
+    query: joi.string().required(),
+    bindVars: joi.object().optional()
+  }).required(), 'Query and bindVars to profile.')
+  .summary('Explains a query')
+  .description(dd`
   Profiles a query in a more user-friendly
 `);
 
@@ -178,21 +178,21 @@ authRouter.post('/query/explain', function (req, res) {
       query: query,
       bindVars: bindVars,
       id: id
-    }, {colors: false}, false);
+    }, { colors: false }, false);
   } catch (e) {
-    res.throw('bad request', e.message, {cause: e});
+    res.throw('bad request', e.message, { cause: e });
   }
 
-  res.json({msg});
+  res.json({ msg });
 })
-.body(joi.object({
-  query: joi.string().required(),
-  bindVars: joi.object().optional(),
-  batchSize: joi.number().optional(),
-  id: joi.string().optional()
-}).required(), 'Query and bindVars to explain.')
-.summary('Explains a query')
-.description(dd`
+  .body(joi.object({
+    query: joi.string().required(),
+    bindVars: joi.object().optional(),
+    batchSize: joi.number().optional(),
+    id: joi.string().optional()
+  }).required(), 'Query and bindVars to explain.')
+  .summary('Explains a query')
+  .description(dd`
   Explains a query in a more user-friendly way than the query_api/explain
 `);
 
@@ -207,7 +207,7 @@ authRouter.post('/query/debugDump', function (req, res) {
     fs.makeDirectory(tmpDebugFolder);
   } catch (e) {
     require('console').error(e);
-    res.throw('Server error, failed to create temp directory', e.message, {cause: e});
+    res.throw('Server error, failed to create temp directory', e.message, { cause: e });
   }
   let options = {};
   if (req.body.examples) {
@@ -218,24 +218,24 @@ authRouter.post('/query/debugDump', function (req, res) {
   try {
     explainer.debugDump(tmpDebugFileName, query, bindVars, options);
   } catch (e) {
-    res.throw('bad request', e.message, {cause: e});
+    res.throw('bad request', e.message, { cause: e });
   }
   try {
     fs.zipFile(tmpDebugZipFileName, tmpDebugFolder, ['debugDump.json']);
   } catch (e) {
     require('console').error(e);
-    res.throw('Server error, failed to create zip file', e.message, {cause: e});
+    res.throw('Server error, failed to create zip file', e.message, { cause: e });
   }
 
   res.download(tmpDebugZipFileName, 'debugDump.zip');
 })
-.body(joi.object({
-  query: joi.string().required(),
-  bindVars: joi.object().optional(),
-  examples: joi.bool().optional()
-}).required(), 'Query and bindVars to generate debug dump output')
-.summary('Generate Debug Output for Query')
-.description(dd`
+  .body(joi.object({
+    query: joi.string().required(),
+    bindVars: joi.object().optional(),
+    examples: joi.bool().optional()
+  }).required(), 'Query and bindVars to generate debug dump output')
+  .summary('Generate Debug Output for Query')
+  .description(dd`
   Creates a debug output for the query in a zip file.
   This file includes the query plan and anonymized test data as
   well es collection information required for this query.
@@ -261,7 +261,7 @@ authRouter.post('/query/upload/:user', function (req, res) {
   }
 
   const existingQueries = user.extra.queries
-  .map(query => query.name);
+    .map(query => query.name);
 
   for (const query of req.body) {
     if (existingQueries.indexOf(query.name) === -1) {
@@ -273,15 +273,15 @@ authRouter.post('/query/upload/:user', function (req, res) {
   users.update(user.user, undefined, undefined, user.extra);
   res.json(user.extra.queries);
 })
-.pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
-.body(joi.array().items(joi.object({
-  name: joi.string().required(),
-  parameter: joi.any().optional(),
-  value: joi.any().optional()
-}).required()).required(), 'User query array to import.')
-.error('not found', 'User does not exist.')
-.summary('Upload user queries')
-.description(dd`
+  .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
+  .body(joi.array().items(joi.object({
+    name: joi.string().required(),
+    parameter: joi.any().optional(),
+    value: joi.any().optional()
+  }).required()).required(), 'User query array to import.')
+  .error('not found', 'User does not exist.')
+  .summary('Upload user queries')
+  .description(dd`
   This function uploads all given user queries.
 `);
 
@@ -301,10 +301,10 @@ authRouter.get('/query/download/:user', function (req, res) {
   res.attachment(`queries-${namePart}.json`);
   res.json(user.extra.queries || []);
 })
-.pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
-.error('not found', 'User does not exist.')
-.summary('Download stored queries')
-.description(dd`
+  .pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
+  .error('not found', 'User does not exist.')
+  .summary('Download stored queries')
+  .description(dd`
   Download and export all queries from the given username.
 `);
 
@@ -314,7 +314,7 @@ authRouter.get('/query/result/download/:query', function (req, res) {
     query = internal.base64Decode(req.pathParams.query);
     query = JSON.parse(query);
   } catch (e) {
-    res.throw('bad request', e.message, {cause: e});
+    res.throw('bad request', e.message, { cause: e });
   }
 
   const result = db._query(query.query, query.bindVars).toArray();
@@ -322,10 +322,10 @@ authRouter.get('/query/result/download/:query', function (req, res) {
   res.attachment(`results-${namePart}.json`);
   res.json(result);
 })
-.pathParam('query', joi.string().required(), 'Base64 encoded query.')
-.error('bad request', 'The query is invalid or malformed.')
-.summary('Download the result of a query')
-.description(dd`
+  .pathParam('query', joi.string().required(), 'Base64 encoded query.')
+  .error('bad request', 'The query is invalid or malformed.')
+  .summary('Download the result of a query')
+  .description(dd`
   This function downloads the result of a user query.
 `);
 
@@ -336,37 +336,37 @@ authRouter.post('/graph-examples/create/:name', function (req, res) {
     res.throw('not found');
   }
   if (generalGraph._list().indexOf(name) !== -1) {
-    const error = new ArangoError({errorNum: errors.ERROR_GRAPH_DUPLICATE.code, errorMessage: errors.ERROR_GRAPH_DUPLICATE.message});
+    const error = new ArangoError({ errorNum: errors.ERROR_GRAPH_DUPLICATE.code, errorMessage: errors.ERROR_GRAPH_DUPLICATE.message });
     res.throw(409, error);
   }
   let g = false;
   try {
     g = examples.loadGraph(name);
   } catch (e) {
-    const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+    const error = new ArangoError({ errorNum: e.errorNum, errorMessage: e.errorMessage });
     res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
   }
-  res.json({error: !g});
+  res.json({ error: !g });
 })
-.pathParam('name', joi.string().required(), 'Name of the example graph.')
-.summary('Create example graphs')
-.description(dd`
+  .pathParam('name', joi.string().required(), 'Name of the example graph.')
+  .summary('Create example graphs')
+  .description(dd`
   Create one of the given example graphs.
 `);
 
 authRouter.post('/job', function (req, res) {
   let frontend = db._collection('_frontend');
-  frontend.save(Object.assign(req.body, {model: 'job'}));
+  frontend.save(Object.assign(req.body, { model: 'job' }));
   res.json(true);
 })
-.body(joi.object({
-  id: joi.any().required(),
-  collection: joi.any().required(),
-  type: joi.any().required(),
-  desc: joi.any().required()
-}).required())
-.summary('Store job id of a running job')
-.description(dd`
+  .body(joi.object({
+    id: joi.any().required(),
+    collection: joi.any().required(),
+    type: joi.any().required(),
+    desc: joi.any().required()
+  }).required())
+  .summary('Store job id of a running job')
+  .description(dd`
   Create a new job id entry in a specific system database with a given id.
 `);
 
@@ -391,12 +391,12 @@ authRouter.delete('/job', function (req, res) {
     });
 
     // actual deletion
-    frontend.removeByExample({model: 'job'}, false);
+    frontend.removeByExample({ model: 'job' }, false);
   }
-  res.json({result: arr});
+  res.json({ result: arr });
 })
-.summary('Delete all jobs')
-.description(dd`
+  .summary('Delete all jobs')
+  .description(dd`
   Delete all jobs in a specific system database with a given id.
 `);
 
@@ -418,12 +418,12 @@ authRouter.delete('/job/:id', function (req, res) {
     }
 
     // actual deletion
-    frontend.removeByExample({id: req.pathParams.id}, false);
+    frontend.removeByExample({ id: req.pathParams.id }, false);
   }
   res.json(toReturn);
 })
-.summary('Delete a job id')
-.description(dd`
+  .summary('Delete a job id')
+  .description(dd`
   Delete an existing job id entry in a specific system database with a given id.
 `);
 
@@ -436,8 +436,8 @@ authRouter.get('/job', function (req, res) {
     res.json([]);
   }
 })
-.summary('Return all job ids.')
-.description(dd`
+  .summary('Return all job ids.')
+  .description(dd`
   This function returns the job ids of all currently running jobs.
 `);
 
@@ -521,8 +521,8 @@ authRouter.get('/replication/mode', function (req, res) {
   };
   res.json(result);
 })
-.summary('Return the replication mode.')
-.description(dd`
+  .summary('Return the replication mode.')
+  .description(dd`
   This function returns the job ids of all currently running jobs.
 `);
 
@@ -596,7 +596,7 @@ authRouter.get('/graph/:name', function (req, res) {
   try {
     config = req.queryParams;
   } catch (e) {
-    res.throw('bad request', e.message, {cause: e});
+    res.throw('bad request', e.message, { cause: e });
   }
 
   var getPseudoRandomStartVertex = function () {
@@ -640,7 +640,7 @@ authRouter.get('/graph/:name', function (req, res) {
       try {
         startVertex = db._document(config.nodeStart);
       } catch (e) {
-        res.throw('bad request', e.message, {cause: e});
+        res.throw('bad request', e.message, { cause: e });
       }
       if (!startVertex) {
         startVertex = getPseudoRandomStartVertex();
@@ -735,7 +735,6 @@ authRouter.get('/graph/:name', function (req, res) {
           edges: []
         }]
       };
-
       // get all nodes
       _.each(graph._vertexCollections(), function (node) {
         if (insertedNodes < limit || limit === 0) {
@@ -772,7 +771,7 @@ authRouter.get('/graph/:name', function (req, res) {
           }
         }
       } catch (e) {
-        const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+        const error = new ArangoError({ errorNum: e.errorNum, errorMessage: e.errorMessage });
         res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
       }
     }
@@ -966,6 +965,7 @@ authRouter.get('/graph/:name', function (req, res) {
     toReturn = {
       nodes: nodesArr,
       edges: edgesArr,
+      cursor: cursor,
       settings: {
         vertexCollections: vertexCollections,
         startVertex: startVertex
@@ -981,7 +981,7 @@ authRouter.get('/graph/:name', function (req, res) {
 
   res.json(toReturn);
 })
-.summary('Return vertices and edges of a graph.')
-.description(dd`
+  .summary('Return vertices and edges of a graph.')
+  .description(dd`
   This function returns vertices and edges for a specific graph.
 `);

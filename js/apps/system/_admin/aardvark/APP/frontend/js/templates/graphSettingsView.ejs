@@ -7,10 +7,10 @@
   <% }; %>
 
   <div id="graphSettingsView" class="innerContent">
-    
+
     <div class="pure-g" style="margin-top: -13px">
       <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
-    
+
         <div class="pure-g pure-table pure-table-body">
 
           <% _.each(general, function(val, key) { %>
@@ -59,7 +59,7 @@
       </div>
 
       <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
-    
+
         <div class="pure-g pure-table pure-table-body">
           <% _.each(specific, function(val, key) { %>
 
@@ -79,6 +79,7 @@
                   <% } else { %>
                     <% VALUE = val.default %>
                   <% } %>
+
 
                   <% if (val.type === 'string') { %>
                     <input id="g_<%=key%>" type="text" placeholder="attribute"></input>
@@ -103,6 +104,22 @@
                         <% if (option.name) { %>
                           <option value="<%=option.val%>"> <%=option.name%> </option>
                         <% } %>
+                      <% }); %>
+                    </select>
+                  <% } %>
+
+                  <% if (val.type === 'egdeLabels') { %>
+                    <select id="g_<%=key%>">
+                      <% _.each(edgeLabels[0], function(e, optKey) { %>
+                          <option value="<%=e%>"> <%= e.replace(/-/g, "") %> </option>
+                      <% }); %>
+                    </select>
+                  <% } %>
+
+                  <% if (val.type === 'nodeLabels') { %>
+                    <select id="g_<%=key%>">
+                      <% _.each(nodeLabels[0], function(n, optKey) { %>
+                          <option value="<%=n%>"> <%= n.replace(/-/g, "") %> </option>
                       <% }); %>
                     </select>
                   <% } %>

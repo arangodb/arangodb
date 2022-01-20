@@ -13,6 +13,8 @@
       return this;
     },
 
+    nodeLabels: {},
+    edgeLabels: {},
     general: {
       'graph': {
         type: 'divider',
@@ -74,11 +76,11 @@
         name: 'Nodes'
       },
       'nodeLabel': {
-        type: 'string',
+        type: 'nodeLabels',
         name: 'Label',
         desc: 'Node label. Please choose a valid and available node attribute.',
-        default: '_key'
       },
+
       'nodeLabelByCollection': {
         type: 'select',
         name: 'Add Collection Name',
@@ -139,7 +141,7 @@
         name: 'Edges'
       },
       'edgeLabel': {
-        type: 'string',
+        type: 'egdeLabels',
         name: 'Label',
         desc: 'Default edge label.'
       },
@@ -265,6 +267,68 @@
       }
     },
 
+    getLabels: function () {
+      var data;
+      var edges = [];
+      var vertices = [];
+
+      // let countIdex = function (arr, n) {
+      //   let cnt = 0;
+      //   let max = 0;
+
+      //   for (let i = 0; i < arr.length; i++) {
+      //     if (max < arr[i]) {
+      //       max = arr[i];
+      //       cnt++
+      //     }
+      //   }
+      //   return cnt;
+      // }
+
+      let getAllKeys = (obj) => {
+        return Object.keys(obj);
+      }
+
+
+      $.ajax({
+        type: 'GET',
+        url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(this.name)),
+        contentType: 'application/json',
+        data: data,
+
+        success: function (data) {
+
+          var result = data.cursor;
+          _.each(result.json, function (obj) {
+            for (let i = 0; i < obj.edges.length; i++) {
+              if (edges.length == 0) {
+                edges.push(getAllKeys(obj.edges[i]));
+                if (edges[i]._key === obj.edges[i]._key) {
+                  continue;
+                }
+              }
+            }
+
+            for (let v = 0; v < obj.vertices.length; v++) {
+              if (vertices.length == 0) {
+                vertices.push(getAllKeys(obj.vertices[v]));
+                if (vertices[v]._key === obj.vertices[v]._key) {
+                  continue;
+                }
+              }
+            }
+          });
+        },
+        error: function (e) {
+          arangoHelper.arangoError('Graph', 'Could not load full graph.');
+        }
+      });
+
+
+      this.nodeLabels = vertices;
+      this.edgeLabels = edges;
+    },
+
     checkEnterKey: function (e) {
       if (e.keyCode === 13) {
         this.saveGraphSettings(e);
@@ -315,7 +379,6 @@
         // communication is needed
         self.lastSaved = new Date();
         var combinedName = frontendConfig.db + '_' + this.name;
-
         var config = {};
 
         if (overwrite) {
@@ -381,7 +444,6 @@
                 return;
               }
             }
-
             if (color !== '' && color !== undefined) {
               updateCols();
             } else {
@@ -397,7 +459,6 @@
             userCallback();
           }
         }.bind(this);
-
         this.userConfig.setItem('graphs', config, callback);
       } else {
         // aql mode - only visual
@@ -436,6 +497,7 @@
     },
 
     setDefaults: function (saveOnly, silent, callback) {
+      this.getLabels();
       var obj = {
         layout: 'force',
         renderer: 'canvas',
@@ -448,7 +510,7 @@
         edgeColorAttribute: '',
         edgeColorByCollection: 'false',
         nodeLabel: '_key',
-        edgeLabel: '',
+        edgeLabel: '_key',
         edgeType: 'arrow',
         nodeSize: '',
         nodeSizeByEdges: 'true',
@@ -481,11 +543,11 @@
     },
 
     show: function () {
-      $(this.el).show('slide', {direction: 'right'}, 250);
+      $(this.el).show('slide', { direction: 'right' }, 250);
     },
 
     hide: function () {
-      $(this.el).hide('slide', {direction: 'right'}, 250);
+      $(this.el).hide('slide', { direction: 'right' }, 250);
     },
 
     render: function () {
@@ -541,7 +603,9 @@
     continueRender: function () {
       $(this.el).html(this.template.render({
         general: this.general,
-        specific: this.specific
+        specific: this.specific,
+        nodeLabels: this.nodeLabels,
+        edgeLabels: this.edgeLabels,
       }));
 
       arangoHelper.fixTooltips('.gv-tooltips', 'top');
