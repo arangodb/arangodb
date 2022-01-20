@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -380,6 +381,13 @@ auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(
                           ForcedParticipantNotInQuorum{std::move(who)});
 }
 
+auto replicated_log::CommitFailReason::withNonEligibleServerRequiredForQuorum(
+    NonEligibleServerRequiredForQuorum::CandidateMap candidates) noexcept
+    -> CommitFailReason {
+  return CommitFailReason(
+      std::in_place, NonEligibleServerRequiredForQuorum{std::move(candidates)});
+}
+
 namespace {
 inline constexpr std::string_view ReasonFieldName = "reason";
 inline constexpr std::string_view NothingToCommitEnum = "NothingToCommit";
@@ -387,7 +395,12 @@ inline constexpr std::string_view QuorumSizeNotReachedEnum =
     "QuorumSizeNotReached";
 inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
     "ForcedParticipantNotInQuorum";
+inline constexpr std::string_view NonEligibleServerRequiredForQuorumEnum =
+    "NonEligibleServerRequiredForQuorum";
 inline constexpr std::string_view WhoFieldName = "who";
+inline constexpr std::string_view CandidatesFieldName = "candidates";
+inline constexpr std::string_view NonEligibleFailed = "failed";
+inline constexpr std::string_view NonEligibleExcluded = "excluded";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(
@@ -448,6 +461,51 @@ void replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::
   builder.add(std::string_view(WhoFieldName), VPackValue(who));
 }
 
+void replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
+    toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder obj(&builder);
+  builder.add(ReasonFieldName,
+              VPackValue(NonEligibleServerRequiredForQuorumEnum));
+  builder.add(VPackValue(CandidatesFieldName));
+  VPackObjectBuilder canObject(&builder);
+  for (auto const& [p, why] : candidates) {
+    builder.add(p, VPackValue(to_string(why)));
+  }
+}
+
+auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
+    to_string(replicated_log::CommitFailReason::
+                  NonEligibleServerRequiredForQuorum::Why why) noexcept
+    -> std::string_view {
+  switch (why) {
+    case kFailed:
+      return NonEligibleFailed;
+    case kExcluded:
+      return NonEligibleExcluded;
+    default:
+      TRI_ASSERT(false);
+      return "(unknown)";
+  }
+}
+
+auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
+    fromVelocyPack(velocypack::Slice s) -> NonEligibleServerRequiredForQuorum {
+  TRI_ASSERT(s.get(ReasonFieldName)
+                 .isEqualString(NonEligibleServerRequiredForQuorumEnum))
+      << "Expected string `" << NonEligibleServerRequiredForQuorumEnum
+      << "`, found: " << s.stringView();
+  CandidateMap candidates;
+  for (auto const& [key, value] :
+       velocypack::ObjectIterator(s.get(CandidatesFieldName))) {
+    if (value.isEqualString(NonEligibleFailed)) {
+      candidates[key.copyString()] = kFailed;
+    } else if (value.isEqualString(NonEligibleExcluded)) {
+      candidates[key.copyString()] = kExcluded;
+    }
+  }
+  return NonEligibleServerRequiredForQuorum{std::move(candidates)};
+}
+
 auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s)
     -> CommitFailReason {
   auto reason = s.get(ReasonFieldName).stringView();
@@ -459,6 +517,9 @@ auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s)
   } else if (reason == ForcedParticipantNotInQuorumEnum) {
     return CommitFailReason{std::in_place,
                             ForcedParticipantNotInQuorum::fromVelocyPack(s)};
+  } else if (reason == NonEligibleServerRequiredForQuorumEnum) {
+    return CommitFailReason{
+        std::in_place, NonEligibleServerRequiredForQuorum::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -485,6 +546,16 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
         CommitFailReason::ForcedParticipantNotInQuorum const& reason)
         -> std::string {
       return "Forced participant not in quorum. Participant " + reason.who;
+    }
+    auto operator()(
+        CommitFailReason::NonEligibleServerRequiredForQuorum const& reason)
+        -> std::string {
+      auto result =
+          std::string{"A non-eligible server is required to reach a quorum: "};
+      for (auto const& [pid, why] : reason.candidates) {
+        result += basics::StringUtils::concatT(" ", pid, ": ", why);
+      }
+      return result;
     }
   };
 

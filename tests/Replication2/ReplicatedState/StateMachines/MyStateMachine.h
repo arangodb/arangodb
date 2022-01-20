@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
 
 namespace arangodb::replication2::test {
 
@@ -53,7 +54,7 @@ struct MyStateBase {
 };
 
 struct MyLeaderState : MyStateBase,
-                       replicated_state::ReplicatedLeaderState<MyState> {
+                       replicated_state::IReplicatedLeaderState<MyState> {
   void set(std::string key, std::string value);
   auto wasRecoveryRun() -> bool { return recoveryRan; }
 
@@ -65,9 +66,9 @@ struct MyLeaderState : MyStateBase,
 };
 
 struct MyFollowerState : MyStateBase,
-                         replicated_state::ReplicatedFollowerState<MyState> {
+                         replicated_state::IReplicatedFollowerState<MyState> {
  protected:
-  auto acquireSnapshot(ParticipantId const& destination) noexcept
+  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -122,18 +123,27 @@ class PathValidatorOptions {
 
   aql::FixedVarExpressionContext& getExpressionContext();
 
+  // @brief If a graph is asked for the first vertex and that is filtered
+  // it can be removed for 3.9 => nextVersion.
+  void setBfsResultHasToIncludeFirstVertex() {
+    _bfsResultHasToIncludeFirstVertex = true;
+  }
+
+  bool bfsResultHasToIncludeFirstVertex() const {
+    return _bfsResultHasToIncludeFirstVertex;
+  }
+
  private:
   // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
   containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>>
       _vertexExpressionOnDepth;
   std::vector<std::string> _allowedVertexCollections;
+  bool _bfsResultHasToIncludeFirstVertex = false;
 
   // Prune section
   std::shared_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
   std::shared_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
-
-  // TODO [GraphRefactor]: Post filter section - to be implemented
 
   aql::Variable const* _tmpVar;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;

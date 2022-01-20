@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -93,6 +94,8 @@ struct ILogParticipant {
  */
 struct ILogFollower : ILogParticipant, AbstractFollower {
   virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto getLeader() const noexcept
+      -> std::optional<ParticipantId> const& = 0;
 };
 
 /**

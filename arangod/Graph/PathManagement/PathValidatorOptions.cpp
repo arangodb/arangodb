@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -92,10 +93,13 @@ void PathValidatorOptions::setVertexExpression(
 
 aql::Expression* PathValidatorOptions::getVertexExpression(
     uint64_t depth) const {
-  auto const& it = _vertexExpressionOnDepth.find(depth);
-  if (it != _vertexExpressionOnDepth.end()) {
-    return it->second.get();
+  if (!_vertexExpressionOnDepth.empty()) {
+    auto const& it = _vertexExpressionOnDepth.find(depth);
+    if (it != _vertexExpressionOnDepth.end()) {
+      return it->second.get();
+    }
   }
+
   return _allVerticesExpression.get();
 }
 

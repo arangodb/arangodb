@@ -2934,12 +2934,8 @@ function complexFilteringSuite() {
       // 1 Edge (Tri1->Tri2)
       // 1 Primary (Tri2)
 
-      if (isCluster) {
-        // one edge and one vertex lookup
-        assertEqual(stats.scannedIndex, 2);
-      } else {
-        assertEqual(stats.scannedIndex, 1);
-      }
+      // one edge and one vertex lookup (both single server and cluster)
+      assertEqual(stats.scannedIndex, 2);
 
       assertEqual(stats.filtered, 1);
     },

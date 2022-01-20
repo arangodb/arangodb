@@ -28,7 +28,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include "Replication2/Mocks/FakeFollower.h"
+#include "Replication2/Mocks/FakeAbstractFollower.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -42,7 +42,7 @@ TEST_F(WaitForSyncTest, no_wait_for_sync) {
   auto const term = LogTerm{4};
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, waitForSync),
                                         "leader", term, {follower});
   // first entry is always with waitForSync
@@ -73,7 +73,7 @@ TEST_F(WaitForSyncTest, global_wait_for_sync) {
   auto const term = LogTerm{4};
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, waitForSync),
                                         "leader", term, {follower});
   // first entry is always with waitForSync
@@ -104,7 +104,7 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
   auto const term = LogTerm{4};
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeFollower>("follower");
+  auto follower = std::make_shared<FakeAbstractFollower>("follower");
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, waitForSync),
                                         "leader", term, {follower});
   // first entry is always with waitForSync
