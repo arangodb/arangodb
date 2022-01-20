@@ -454,10 +454,10 @@ TEST_F(TraversalExecutorTestInputStartVertex,
     TraversalExecutor testee(fetcher, executorInfos);
     TraversalStats stats{};
 
-  auto inputBlock = buildBlock<1>(
-      itemBlockManager,
-      MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+    auto inputBlock = buildBlock<1>(
+        itemBlockManager,
+        MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
+    auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
     OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                          registerInfos.registersToKeep(),
