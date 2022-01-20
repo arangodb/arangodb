@@ -222,6 +222,7 @@ class StaticStrings {
 
   // collection attributes
   static std::string const CacheEnabled;
+  static std::string const ComputedValues;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsSmart;

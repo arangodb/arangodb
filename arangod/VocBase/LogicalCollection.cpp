@@ -46,6 +46,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
@@ -148,9 +149,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _isSmartChild(
           Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
+      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
-      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
@@ -188,10 +189,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
-  auto res = updateSchema(info.get(StaticStrings::Schema));
-  if (res.fail()) {
+  if (auto res = updateSchema(info.get(StaticStrings::Schema)); res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   _internalValidatorTypes = Helper::getNumericValue<uint64_t>(
       info, StaticStrings::InternalValidatorTypes, 0);
 
@@ -203,6 +204,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // add keyOptions from slice
   _keyGenerator.reset(
       KeyGenerator::factory(vocbase.server(), info.get("keyOptions")));
+
+  // computed values
+  if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
@@ -272,39 +279,75 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   decorateWithInternalValidators();
 }
 
+LogicalCollection::~LogicalCollection() = default;
+
 Result LogicalCollection::updateSchema(VPackSlice schema) {
-  using namespace std::literals::string_literals;
-  if (schema.isNone()) {
-    return {TRI_ERROR_NO_ERROR};
-  }
-  if (schema.isNull()) {
-    schema = VPackSlice::emptyObjectSlice();
-  }
-  if (!schema.isObject()) {
-    return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
-            "Schema description is not an object."};
-  }
-
-  TRI_ASSERT(schema.isObject());
-
-  std::shared_ptr<arangodb::ValidatorBase> newSchema;
-
-  // delete validators if empty object is given
-  if (!schema.isEmptyObject()) {
-    try {
-      newSchema = std::make_shared<ValidatorJsonSchema>(schema);
-    } catch (std::exception const& ex) {
-      return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
-              "Error when building schema: "s + ex.what()};
+  if (!schema.isNone()) {
+    if (schema.isNull()) {
+      schema = VPackSlice::emptyObjectSlice();
     }
+    if (!schema.isObject()) {
+      return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
+              "Schema description is not an object."};
+    }
+
+    TRI_ASSERT(schema.isObject());
+
+    std::shared_ptr<arangodb::ValidatorBase> newSchema;
+
+    // schema will be removed if empty object is given
+    if (!schema.isEmptyObject()) {
+      try {
+        newSchema = std::make_shared<ValidatorJsonSchema>(schema);
+      } catch (std::exception const& ex) {
+        using namespace std::literals::string_literals;
+        return {TRI_ERROR_VALIDATION_BAD_PARAMETER,
+                "Error when building schema: "s + ex.what()};
+      }
+    }
+
+    std::atomic_store_explicit(&_schema, newSchema, std::memory_order_relaxed);
   }
 
-  std::atomic_store_explicit(&_schema, newSchema, std::memory_order_relaxed);
-
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
-LogicalCollection::~LogicalCollection() = default;
+Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
+  if (!computedValues.isNone()) {
+    if (computedValues.isNull()) {
+      computedValues = VPackSlice::emptyArraySlice();
+    }
+    if (!computedValues.isArray()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Computed values description is not an array."};
+    }
+
+    TRI_ASSERT(computedValues.isArray());
+
+    std::shared_ptr<ComputedValues> newValue;
+
+    // computed values will be removed if empty array is given
+    if (!computedValues.isEmptyArray()) {
+      try {
+        newValue =
+            std::make_shared<ComputedValues>(vocbase()
+                                                 .server()
+                                                 .getFeature<DatabaseFeature>()
+                                                 .getCalculationVocbase(),
+                                             shardKeys(), computedValues);
+      } catch (std::exception const& ex) {
+        using namespace std::literals::string_literals;
+        return {TRI_ERROR_BAD_PARAMETER,
+                "Error when validating computedValues: "s + ex.what()};
+      }
+    }
+
+    std::atomic_store_explicit(&_computedValues, newValue,
+                               std::memory_order_relaxed);
+  }
+
+  return {};
+}
 
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
@@ -768,10 +811,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   getIndexesVPack(result, filter);
 
   // Schema
-  {
-    result.add(VPackValue(StaticStrings::Schema));
-    schemaToVelocyPack(result);
-  }
+  result.add(VPackValue(StaticStrings::Schema));
+  schemaToVelocyPack(result);
+
+  // Computed Values
+  result.add(VPackValue(StaticStrings::ComputedValues));
+  computedValuesToVelocyPack(result);
+
   // Internal CollectionType
   result.add(StaticStrings::InternalValidatorTypes,
              VPackValue(_internalValidatorTypes));
@@ -860,6 +906,11 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  res = updateComputedValues(slice.get(StaticStrings::ComputedValues));
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1190,6 +1241,16 @@ bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
   return false;
 }
 #endif
+
+void LogicalCollection::computedValuesToVelocyPack(VPackBuilder& b) const {
+  auto computedValues =
+      std::atomic_load_explicit(&_computedValues, std::memory_order_relaxed);
+  if (computedValues != nullptr) {
+    computedValues->toVelocyPack(b);
+  } else {
+    b.add(VPackSlice::nullSlice());
+  }
+}
 
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);

@@ -45,6 +45,7 @@ typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
+class ComputedValues;
 class FollowerInfo;
 class Index;
 class IndexIterator;
@@ -81,7 +82,7 @@ class LogicalCollection : public LogicalDataSource {
                     bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
-  ~LogicalCollection() override;
+  ~LogicalCollection();
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
@@ -324,6 +325,8 @@ class LogicalCollection : public LogicalDataSource {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const& callback);
 
+  void computedValuesToVelocyPack(VPackBuilder&) const;
+
   void schemaToVelocyPack(VPackBuilder&) const;
   Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
   Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
@@ -370,6 +373,8 @@ class LogicalCollection : public LogicalDataSource {
                                   Serialization context) const override;
 
   Result updateSchema(VPackSlice schema);
+
+  Result updateComputedValues(VPackSlice computedValues);
 
   /**
    * Enterprise only method. See enterprise code for implementation
@@ -423,9 +428,9 @@ class LogicalCollection : public LogicalDataSource {
 #endif
 
   // SECTION: Properties
-  std::atomic<bool> _waitForSync;
-
   bool const _allowUserKeys;
+
+  std::atomic<bool> _waitForSync;
 
   std::atomic<bool> _usesRevisionsAsDocumentIds;
 
@@ -449,6 +454,10 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
+
+  // `_computedValues` must be used with atomic accessors only!!
+  // We use relaxed access (load/store) as we only care about atomicity.
+  std::shared_ptr<ComputedValues> _computedValues;
 
   // `_schema` must be used with atomic accessors only!!
   // We use relaxed access (load/store) as we only care about atomicity.
