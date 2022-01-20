@@ -339,18 +339,11 @@ bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(
 
   TRI_ASSERT(value.isObject() || value.isNull());
 
-  aql::AqlValue edgeVal(aql::AqlValueHintDocumentNoCopy(value.begin()));
-  _expressionCtx.setVariableValue(_tmpVar, edgeVal);
-  ScopeGuard defer([&]() noexcept {
-    try {
-      _expressionCtx.clearVariableValue(_tmpVar);
-    } catch (...) {
-      // This method could in theory throw, if the
-      // _tmpVar is not in the list. However this is
-      // guaranteed by this code. If it would throw
-      // with not found, nothing bad has happened
-    }
-  });
+  // register temporary variables in expression context
+  _expressionCtx.setVariableValue(
+      _tmpVar, aql::AqlValue{aql::AqlValueHintSliceNoCopy{value}});
+  ScopeGuard defer(
+      [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
 
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);

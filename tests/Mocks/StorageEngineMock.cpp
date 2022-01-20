@@ -1097,7 +1097,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     index = EdgeIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare("hash")) {
     index = HashIndexMock::make(id, _logicalCollection, info);
-  } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
+  } else if (0 ==
+             type.compare(
+                 arangodb::iresearch::StaticStrings::DataSourceType.data())) {
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {

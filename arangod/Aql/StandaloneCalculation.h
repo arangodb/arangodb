@@ -18,16 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchCommon.h"
+#pragma once
 
-namespace arangodb {
-namespace iresearch {
+#include "Basics/Result.h"
 
-LogTopic TOPIC{std::string{StaticStrings::DataSourceType}, LogLevel::INFO};
+#include <memory>
+#include <string_view>
 
-}  // namespace iresearch
-}  // namespace arangodb
+struct TRI_vocbase_t;
+
+namespace arangodb::aql {
+class QueryContext;
+
+class StandaloneCalculation {
+ public:
+  static std::unique_ptr<QueryContext> buildQueryContext(
+      TRI_vocbase_t& vocbase);
+
+  static arangodb::Result validateQuery(TRI_vocbase_t& vocbase,
+                                        std::string_view queryString,
+                                        std::string_view parameterName,
+                                        char const* errorContext);
+};
+
+}  // namespace arangodb::aql
