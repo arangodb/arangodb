@@ -48,7 +48,21 @@ export class GraphView extends React.Component {
               const text = 'label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
               return text;
             },
-          }
+          },
+          {
+            type: 'edge-tooltip', // Edge tooltip
+            formatText(model) {
+              // The content of the edge tooltip
+              const text =
+                '<strong>id:</strong> ' +
+                model.id +
+                '<br /><strong>source:</strong> ' +
+                model.source +
+                '<br/><strong>target:</strong> ' +
+                model.target;
+              return text;
+            },
+          },
         ],
       },
       defaultNode: {
