@@ -103,22 +103,19 @@ class proxy_query final : public irs::filter::prepared {
       const irs::sub_reader& rdr, const irs::order::prepared&,
       const irs::attribute_provider* /*ctx*/) const override {
     // first try to find segment in cache.
-    auto cached = cache_.readers_.find(&rdr);
-    if (cached != cache_.readers_.end()) {
-      auto cached_bitset = cached->second.get();
-      TRI_ASSERT(cached_bitset);
-      return irs::memory::make_managed<lazy_filter_bitset_iterator>(
-          *cached_bitset, rdr.docs_count());
-    } else {
+    auto& [unused, cached] = *cache_.readers_.emplace(&rdr, nullptr).first;
+
+    if (!cached) {
       if (!cache_.prepared_real_filter_) {
         cache_.prepared_real_filter_ = real_filter_->prepare(index_, order_);
       }
-      auto inserted = cache_.readers_.insert(
-          {&rdr, std::make_unique<lazy_bitset>(
-                     rdr, *(cache_.prepared_real_filter_.get()))});
-      return irs::memory::make_managed<lazy_filter_bitset_iterator>(
-          *inserted.first->second.get(), rdr.docs_count());
+      cached = 
+          std::make_unique<lazy_bitset>(rdr, *cache_.prepared_real_filter_);
     }
+
+    assert(cached);
+    return irs::memory::make_managed<lazy_filter_bitset_iterator>(
+        *cached, rdr.docs_count());
   }
 
  private:
