@@ -72,6 +72,8 @@ auto operator++(MessageId& id) -> MessageId&;
 auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
 auto to_string(MessageId id) -> std::string;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 struct AppendEntriesResult {
   LogTerm const logTerm;
   ErrorCode const errorCode;
@@ -99,6 +101,7 @@ struct AppendEntriesResult {
       -> AppendEntriesResult;
   static auto withOk(LogTerm, MessageId) noexcept -> AppendEntriesResult;
 };
+#pragma GCC diagnostic pop
 
 struct AppendEntriesRequest {
   using EntryContainer =
