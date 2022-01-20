@@ -93,6 +93,8 @@ class Methods {
   using IndexHandle = std::shared_ptr<arangodb::Index>;  // legacy
   using VPackSlice = arangodb::velocypack::Slice;
 
+  static constexpr int kNoMutableConditionIdx{-1};
+
   Methods() = delete;
   Methods(Methods const&) = delete;
   Methods& operator=(Methods const&) = delete;

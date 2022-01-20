@@ -324,7 +324,9 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
         cursor = _trx->indexScanForCondition(
             it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
             static_cast<int>(
-                info.conditionNeedUpdate ? info.conditionMemberToUpdate : -1));
+                info.conditionNeedUpdate
+                    ? info.conditionMemberToUpdate
+                    : transaction::Methods::kNoMutableConditionIdx));
       }
       ++j;
     }
@@ -361,7 +363,8 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
     csrs.emplace_back(_trx->indexScanForCondition(
         index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions,
         ReadOwnWrites::no,
-        static_cast<int>(info.conditionNeedUpdate ? info.conditionMemberToUpdate
-                                                  : -1)));
+        static_cast<int>(info.conditionNeedUpdate
+                             ? info.conditionMemberToUpdate
+                             : transaction::Methods::kNoMutableConditionIdx)));
   }
 }

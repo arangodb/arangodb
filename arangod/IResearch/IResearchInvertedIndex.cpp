@@ -379,7 +379,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                                      aql::AstNode const* condition,
                                      IResearchInvertedIndex* index,
                                      aql::Variable const* variable,
-                                     int64_t mutableConditionIdx,
+                                     int mutableConditionIdx,
                                      std::string_view extraFieldName)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         _index(index),
@@ -476,7 +476,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
     irs::Or root;
     if (condition) {
-      if (_mutableConditionIdx == -1 ||
+      if (_mutableConditionIdx == transaction::Methods::kNoMutableConditionIdx ||
           (condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
         auto rv = FilterFactory::filter(&root, queryCtx, *condition, false,
@@ -580,8 +580,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   irs::index_reader const* _reader{0};
   IResearchInvertedIndex* _index;
   aql::Variable const* _variable;
-  int64_t _mutableConditionIdx;
   int64_t _extraIndex{-1};
+  int _mutableConditionIdx;
 };
 
 class IResearchInvertedIndexIterator final
@@ -1099,11 +1099,13 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     }
   } else {
     // sorting  case
-    TRI_ASSERT(
-        !_meta._sort.empty());  // we should not be called for sort optimization
-                                // if our index is not sorted
+
+    // we should not be called for sort optimization if our index is not sorted
+    TRI_ASSERT(!_meta._sort.empty());  
+
     return std::make_unique<IResearchInvertedIndexMergeIterator>(
-        collection, trx, node, this, reference, -1, extraFieldName);
+        collection, trx, node, this, reference,
+        transaction::Methods::kNoMutableConditionIdx, extraFieldName);
   }
 }
 

@@ -345,7 +345,8 @@ IndexExecutor::CursorReader::CursorReader(
       _index(index),
       _cursor(_trx.indexScanForCondition(
           index, condition, infos.getOutVariable(), infos.getOptions(),
-          infos.canReadOwnWrites(), -1)),
+          infos.canReadOwnWrites(),
+          transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
       _type(
           infos.getCount()             ? Type::Count
@@ -521,7 +522,8 @@ void IndexExecutor::CursorReader::reset() {
     // We need to build a fresh search and cannot go the rearm shortcut
     _cursor = _trx.indexScanForCondition(
         _index, _condition, _infos.getOutVariable(), _infos.getOptions(),
-        _infos.canReadOwnWrites(), -1);
+        _infos.canReadOwnWrites(),
+        transaction::Methods::kNoMutableConditionIdx);
   }
 }
 

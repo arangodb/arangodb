@@ -146,7 +146,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
         ReadOwnWrites::no,
         static_cast<int>(_accessor->getMemberToUpdate().has_value()
                              ? _accessor->getMemberToUpdate().value()
-                             : -1));
+                             : transaction::Methods::kNoMutableConditionIdx));
   }
 }
 
