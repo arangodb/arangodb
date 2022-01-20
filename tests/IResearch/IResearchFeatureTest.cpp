@@ -2072,33 +2072,6 @@ TEST_F(IResearchFeatureTest, IResearch_version_test) {
               arangodb::rest::Version::Values["iresearch-version"]);
 }
 
-// Temporarily surpress for MSVC
-TEST_F(IResearchFeatureTest, test_async_schedule) {
-  bool deallocated =
-      false;  // declare above 'feature' to ensure proper destruction order
-  arangodb::iresearch::IResearchFeature feature(server.server());
-  feature.collectOptions(server.server().options());
-  feature.validateOptions(server.server().options());
-  feature.prepare();
-  feature.start();  // start thread pool
-  std::condition_variable cond;
-  std::mutex mutex;
-  auto lock = irs::make_unique_lock(mutex);
-
-  {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
-    feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms,
-                  [&cond, &mutex, flag]() {
-                    auto scopedLock = irs::make_lock_guard(mutex);
-                    cond.notify_all();
-                  });
-  }
-  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));
-  std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
-}
-
 TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   struct Task {
     Task(bool& deallocated, std::mutex& mutex, std::condition_variable& cond,
@@ -2182,8 +2155,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_single_run_task) {
-  bool deallocated =
-      false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
@@ -2191,20 +2164,21 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
   feature.start();  // start thread pool
   std::condition_variable cond;
   std::mutex mutex;
-  auto lock = irs::make_unique_lock(mutex);
-
-  {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
-    feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms,
-                  [&cond, &mutex, flag]() {
-                    auto scopedLock = irs::make_lock_guard(mutex);
-                    cond.notify_all();
-                  });
-  }
-  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));
-  std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
+  struct Func {
+    bool& _deallocated;
+    std::condition_variable& _cond;
+    std::mutex& _mutex;
+  };
+  Func func{deallocated, cond, mutex};
+  std::shared_ptr<Func> flag(&func, [](Func* func) {
+    std::lock_guard lock{func->_mutex};
+    func->_deallocated = true;
+    func->_cond.notify_all();
+  });
+  feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms,
+                [flag = std::move(flag)] {});
+  std::unique_lock lock{mutex};
+  ASSERT_TRUE(cond.wait_for(lock, 10s, [&] { return deallocated; }));
 }
 
 TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
