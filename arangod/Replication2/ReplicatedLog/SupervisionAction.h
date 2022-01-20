@@ -65,13 +65,16 @@ auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
 // TODO: we currently use a mix of nullptr and EmptyAction; should only use one
 // of them.
 struct EmptyAction : Action {
-  EmptyAction(){};
+  EmptyAction() : _message(""){};
+  EmptyAction(std::string_view message) : _message(message){};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override {
     return envelope;
   };
   ActionType type() const override { return Action::ActionType::EmptyAction; };
   void toVelocyPack(VPackBuilder& builder) const override;
+
+  std::string _message;
 };
 auto to_string(EmptyAction action) -> std::string;
 auto operator<<(std::ostream& os, EmptyAction const& action) -> std::ostream&;

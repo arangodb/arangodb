@@ -34,6 +34,8 @@
 
 #include "Logger/LogMacros.h"
 
+#include <ranges>
+
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
@@ -118,13 +120,22 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
         runElectionCampaign(current.localState, plan.participantsConfig, health,
                             plan.currentTerm->term);
 
-    // Check whether we already have a participant that is
+    // TODO: see whether we can use views and filter here
+    auto acceptableLeaderSet = std::vector<ParticipantId>{};
+    std::copy_if(std::begin(election.electibleLeaderSet),
+                 std::end(election.electibleLeaderSet),
+                 std::back_inserter(acceptableLeaderSet),
+                 [&](ParticipantId const& id) {
+                   return id != current.leader->serverId;
+                 });
+    //
+    //  Check whether we already have a participant that is
     //  * electable
     //  * forced
     //  * *not* the current leader
     //
     //  if so, do make them leader
-    for (auto const& participant : election.electibleLeaderSet) {
+    for (auto const& participant : acceptableLeaderSet) {
       auto const& flags =
           current.leader->committedParticipantsConfig->participants.at(
               participant);
@@ -142,10 +153,10 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
 
     // Did not find a  participant above, so pick one at random
     // and force them.
-    auto const numElectible = election.electibleLeaderSet.size();
+    auto const numElectible = acceptableLeaderSet.size();
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
     auto const& chosenOne =
-        election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+        acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
 
     auto flags =
         current.leader->committedParticipantsConfig->participants.at(chosenOne);
@@ -187,6 +198,7 @@ auto checkLeaderInTarget(LogTarget const& target,
 
           if (planLeaderConfig.forced != true ||
               planLeaderConfig.excluded == true) {
+            // here error feedpack?
             return std::make_unique<EmptyAction>();
           }
 
@@ -452,51 +464,63 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     return std::make_unique<EmptyAction>();
   }
 
+  // Check that the log has a leader in plan; if not try electing one
   if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
       !isEmptyAction(action)) {
     return action;
   }
-  //
+
   // TODO: maybe we should report an error here; we won't make any progress,
   // but also don't implode
   TRI_ASSERT(log.plan->currentTerm->leader);
 
-  // If the leader is unhealthy, we need to create a new term
-  // in the next round we should be electing a new leader above
+  // If the leader is unhealthy, we need to create a new term that
+  // does not have a leader; in the next round we should be electing
+  // a new leader above
   if (auto action = checkLeaderHealth(*log.plan, health);
       !isEmptyAction(action)) {
     return action;
   }
 
+  // Check whether the participant entry for the current
+  // leader has been removed from target; this means we have
+  // to gracefully remove this leader
   if (auto action = checkLeaderRemovedFromTarget(log.target, *log.plan,
                                                  *log.current, health);
       !isEmptyAction(action)) {
     return action;
   }
 
+  // Check whether the flags for a participant differ between target and plan
+  // if so, transfer that change to them
   if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
       !isEmptyAction(action)) {
     return action;
   }
 
-  // If someone wishes a specific participant to become leader
-  // by putting a ParticipantId into the target
+  // Handle the case of the user putting a *specific* participant into target to
+  // become leader
   if (auto action =
           checkLeaderInTarget(log.target, *log.plan, *log.current, health);
       !isEmptyAction(action)) {
     return action;
   }
 
+  // Check whether a participant has been added to Target that is not Planned
+  // yet
   if (auto action = checkLogTargetParticipantAdded(log.target, *log.plan);
       !isEmptyAction(action)) {
     return action;
   }
 
+  // Check whether a participant has been removed from Target that is still in
+  // Plan
   if (auto action = checkLogTargetParticipantRemoved(log.target, *log.plan);
       !isEmptyAction(action)) {
     return action;
   }
 
+  // Check whether the configuration of the replicated log has been changed
   if (auto action = checkLogTargetConfig(log.target, *log.plan);
       !isEmptyAction(action)) {
     return action;

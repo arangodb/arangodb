@@ -495,6 +495,7 @@ const replicatedLogSuite = function () {
         [newServer]: {excluded: true, forced: false},
         [leader]: null,
       }));
+
       // TODO we except the supervision to fail here (like the todo above)
       sleep(3);
       // now remove the excluded flag
@@ -505,7 +506,7 @@ const replicatedLogSuite = function () {
         [newServer]: {excluded: false, forced: false},
         [leader]: null,
       }));
-      waitFor(replicatedLogIsReady(database, logId, term + 2, [...followers, newServer], newServer));
+      waitFor(replicatedLogIsReady(database, logId, term + 1, [...followers, newServer], newServer));
     },
 
     // This tests requests a non-participant server as leader and expects the

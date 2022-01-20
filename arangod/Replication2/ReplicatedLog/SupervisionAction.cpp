@@ -96,6 +96,9 @@ void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
+
+  builder.add(VPackValue("message"));
+  builder.add(VPackValue(_message));
 }
 
 /*
