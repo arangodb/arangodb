@@ -194,7 +194,7 @@
       let replicationFactor = $('#new-replication-factor').val();
       let writeConcern = $('#new-write-concern').val();
 
-      if(parseInt(writeConcern) <= parseInt(replicationFactor)) {
+      if (!window.App.isCluster || parseInt(writeConcern) <= parseInt(replicationFactor)) {
         var options = {
           name: dbname,
           "options" : {
