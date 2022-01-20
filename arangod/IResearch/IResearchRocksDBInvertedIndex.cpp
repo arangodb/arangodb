@@ -223,17 +223,12 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
     normalized.add(arangodb::StaticStrings::ObjectId,
                    VPackValue(std::to_string(TRI_NewTickServer())));
   }
-  // if (definition.hasKey(arangodb::StaticStrings::IndexId)) {
-  //   normalized.add(arangodb::StaticStrings::IndexId,
-  //   definition.get(arangodb::StaticStrings::IndexId));
-  // }
 
   normalized.add(arangodb::StaticStrings::IndexSparse,
                  arangodb::velocypack::Value(true));
   normalized.add(arangodb::StaticStrings::IndexUnique,
                  arangodb::velocypack::Value(false));
 
-  // FIXME: make indexing true background?
   bool bck = basics::VelocyPackHelper::getBooleanValue(
       definition, arangodb::StaticStrings::IndexInBackground, false);
   normalized.add(arangodb::StaticStrings::IndexInBackground, VPackValue(bck));
@@ -252,17 +247,8 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                    objectId, false) {}
 
 IResearchRocksDBInvertedIndex::~IResearchRocksDBInvertedIndex() {
-  Result res;
-  try {
-    res = shutdownDataStore();
-  } catch (...) {
-    res = {TRI_ERROR_INTERNAL};
-  }
-  if (!res.ok()) {
-    LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
-        << "failed to unload arangosearch rockdb inverted index destructor: "
-        << res.errorNumber() << " " << res.errorMessage();
-  }
+  // if triggered  - no unload was called prior to deleting index object
+  TRI_ASSERT(!_dataStore);
 }
 
 void IResearchRocksDBInvertedIndex::toVelocyPack(
@@ -292,6 +278,15 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
 }
 
 Result IResearchRocksDBInvertedIndex::drop() { return deleteDataStore(); }
+
+void IResearchRocksDBInvertedIndex::unload() {
+  auto res = shutdownDataStore();
+  if (!res.ok()) {
+    LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
+        << "failed to unload arangosearch rockdb inverted index: "
+        << res.errorNumber() << " " << res.errorMessage();
+  }
+}
 
 bool IResearchRocksDBInvertedIndex::matchesDefinition(
     arangodb::velocypack::Slice const& other) const {

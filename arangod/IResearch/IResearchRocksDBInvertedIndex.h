@@ -73,7 +73,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   Result drop() override;
 
   void load() override {}
-  void unload() override { shutdownDataStore(); }
+  void unload() override;
 
   bool matchesDefinition(
       arangodb::velocypack::Slice const& other) const override;

@@ -339,14 +339,16 @@ struct InvertedIndexFieldMeta {
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   Fields _fields;
-  IResearchViewSort _sort;  // sort condition associated with the link
-  IResearchViewStoredValues
-      _storedValues;  // stored values associated with the link
+  // sort condition associated with the link (primarySort)
+  IResearchViewSort _sort;
+  // stored values associated with the link
+  IResearchViewStoredValues _storedValues;  
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
   irs::string_ref _collectionName;
-  uint32_t _version;  // the version of the iresearch interface e.g. which how
-                      // data is stored in iresearch (default == 0)
-};                    // InvertedIndexFieldMeta
+  // the version of the iresearch interface e.g. which how data is stored in
+  // iresearch (default == MAX) InvertedIndexFieldMeta
+  uint32_t _version{static_cast<uint32_t>(LinkVersion::MAX)};
+};
 
 }  // namespace iresearch
 }  // namespace arangodb
