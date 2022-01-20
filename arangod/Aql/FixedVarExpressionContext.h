@@ -64,13 +64,13 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
   containers::FlatHashMap<Variable const*, AqlValue> _vars;
 };
 
-class SingleVarExpressionContext final : public QueryExpressionContext {
+class NoVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit SingleVarExpressionContext(transaction::Methods& trx,
-                                      QueryContext& query,
-                                      AqlFunctionsInternalCache& cache);
+  explicit NoVarExpressionContext(transaction::Methods& trx,
+                                  QueryContext& query,
+                                  AqlFunctionsInternalCache& cache);
 
-  ~SingleVarExpressionContext() = default;
+  ~NoVarExpressionContext() = default;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

@@ -2651,6 +2651,9 @@ void ExecutionPlan::findCollectionAccessVariables() {
     } else if (node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       // views always return full documents
       variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::MATERIALIZE) {
+      // materialize nodes always return full documents
+      variable->isFullDocumentFromCollection = true;
     } else if (node->getType() == ExecutionNode::TRAVERSAL) {
       TraversalNode const* tn =
           ExecutionNode::castTo<TraversalNode const*>(node);

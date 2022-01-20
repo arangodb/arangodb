@@ -82,13 +82,13 @@ void FixedVarExpressionContext::serializeAllVariables(
   }
 }
 
-SingleVarExpressionContext::SingleVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache)
+NoVarExpressionContext::NoVarExpressionContext(transaction::Methods& trx,
+                                               QueryContext& context,
+                                               AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
 
-AqlValue SingleVarExpressionContext::getVariableValue(
-    Variable const* /*variable*/, bool /*doCopy*/,
-    bool& /*mustDestroy*/) const {
+AqlValue NoVarExpressionContext::getVariableValue(Variable const* /*variable*/,
+                                                  bool /*doCopy*/,
+                                                  bool& /*mustDestroy*/) const {
   return AqlValue(AqlValueHintNull());
 }

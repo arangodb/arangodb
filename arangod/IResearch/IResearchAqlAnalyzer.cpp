@@ -296,8 +296,7 @@ void resetFromExpression(AqlAnalyzer* analyzer) {
 
   // create context
   // value is not needed since getting it from _bindedNodes
-  SingleVarExpressionContext ctx(trx, query,
-                                 analyzer->_aqlFunctionsInternalCache);
+  NoVarExpressionContext ctx(trx, query, analyzer->_aqlFunctionsInternalCache);
 
   analyzer->_executionState = ExecutionState::DONE;  // already calculated
 
@@ -359,9 +358,9 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::SingleVarExpressionContext ctx(
-                    _query->trxForOptimization(), *_query,
-                    _aqlFunctionsInternalCache);
+                aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
+                                                *_query,
+                                                _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToString(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
@@ -375,9 +374,9 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::SingleVarExpressionContext ctx(
-                    _query->trxForOptimization(), *_query,
-                    _aqlFunctionsInternalCache);
+                aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
+                                                *_query,
+                                                _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToNumber(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isNumber());
@@ -390,9 +389,9 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::SingleVarExpressionContext ctx(
-                    _query->trxForOptimization(), *_query,
-                    _aqlFunctionsInternalCache);
+                aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
+                                                *_query,
+                                                _aqlFunctionsInternalCache);
                 _valueBuffer = aql::Functions::ToBool(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isBoolean());
