@@ -1920,7 +1920,7 @@ AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 void AstNode::stringify(std::string& buffer, bool failIfLong) const {
   // any arrays/objects with more values than this will not be stringified if
   // failIfLong is set to true!
-  constexpr size_t tooLongThreshold = 80;
+  constexpr size_t kTooLongThreshold = 80;
 
   if (type == NODE_TYPE_VALUE) {
     // must be JavaScript-compatible!
@@ -1935,7 +1935,7 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     // must be JavaScript-compatible!
     size_t const n = numMembers();
 
-    if (failIfLong && n > tooLongThreshold) {
+    if (failIfLong && n > kTooLongThreshold) {
       // intentionally do not stringify this node because the output would be
       // too long
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -1961,7 +1961,7 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     buffer.push_back('{');
     size_t const n = numMembers();
 
-    if (failIfLong && n > tooLongThreshold) {
+    if (failIfLong && n > kTooLongThreshold) {
       // intentionally do not stringify this node because the output would be
       // too long
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

@@ -2648,6 +2648,9 @@ void ExecutionPlan::findCollectionAccessVariables() {
                node->getType() == ExecutionNode::REMOVE) {
       // these nodes always return full documents
       variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+      // views always return full documents
+      variable->isFullDocumentFromCollection = true;
     } else if (node->getType() == ExecutionNode::TRAVERSAL) {
       TraversalNode const* tn =
           ExecutionNode::castTo<TraversalNode const*>(node);
@@ -2657,8 +2660,7 @@ void ExecutionPlan::findCollectionAccessVariables() {
         variable->isFullDocumentFromCollection = true;
       }
     }
-    // TODO: maybe add more node types here, e.g. arangosearch nodes or
-    // materialize nodes?
+    // TODO: maybe add more node types here, e.g. materialize nodes?
   });
 }
 

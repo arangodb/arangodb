@@ -316,10 +316,10 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintUInt v) noexcept;
 
   // construct from char* and length, copying the string
-  AqlValue(char const* value, size_t length);
+  [[deprecated]] AqlValue(char const* value, size_t length);
 
   // construct from std::string
-  explicit AqlValue(std::string const& value);
+  explicit AqlValue(std::string_view value);
 
   explicit AqlValue(AqlValueHintEmptyArray) noexcept;
 

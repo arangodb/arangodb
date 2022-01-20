@@ -31,31 +31,29 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+FixedVarExpressionContext::FixedVarExpressionContext(
+    transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache)
+    : QueryExpressionContext(trx, context, cache) {}
+
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  // first check temporary variables in QueryExpressionContext.
-  if (!_variables.empty()) {
-    auto it = _variables.find(variable);
-
-    if (it != _variables.end()) {
-      // copy the slice we found
-      mustDestroy = true;
-      return AqlValue((*it).second);
-    }
-  }
-
-  // now check our own temporary variables
-  auto it = _vars.find(variable);
-  if (it == _vars.end()) {
-    TRI_ASSERT(false);
-    return AqlValue(AqlValueHintNull());
-  }
-  mustDestroy = doCopy;
-  if (doCopy) {
-    return it->second.clone();
-  }
-  return it->second;
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        // now check our own temporary variables
+        auto it = _vars.find(variable);
+        if (it == _vars.end()) {
+          TRI_ASSERT(false);
+          return AqlValue(AqlValueHintNull());
+        }
+        mustDestroy = doCopy;
+        if (doCopy) {
+          return it->second.clone();
+        }
+        return it->second;
+      });
 }
 
 void FixedVarExpressionContext::clearVariableValues() noexcept {
@@ -83,11 +81,6 @@ void FixedVarExpressionContext::serializeAllVariables(
     builder.close();
   }
 }
-
-FixedVarExpressionContext::FixedVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache)
-    : QueryExpressionContext(trx, context, cache) {}
 
 SingleVarExpressionContext::SingleVarExpressionContext(
     transaction::Methods& trx, QueryContext& context,

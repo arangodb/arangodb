@@ -41,6 +41,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -658,7 +659,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   }
 
   // unordered set for tracking unique object keys
-  std::unordered_set<std::string> keys;
+  containers::FlatHashSet<std::string> keys;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
 
   transaction::BuilderLeaser builder(&trx);

@@ -37,18 +37,13 @@ DocumentExpressionContext::DocumentExpressionContext(
 AqlValue DocumentExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  if (!_variables.empty()) {
-    auto it = _variables.find(variable);
-
-    if (it != _variables.end()) {
-      // copy the slice we found
-      mustDestroy = true;
-      return AqlValue((*it).second);
-    }
-  }
-  mustDestroy = doCopy;
-  if (doCopy) {
-    return AqlValue(AqlValueHintSliceCopy(_document));
-  }
-  return AqlValue(AqlValueHintSliceNoCopy(_document));
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        mustDestroy = doCopy;
+        if (doCopy) {
+          return AqlValue(AqlValueHintSliceCopy(_document));
+        }
+        return AqlValue(AqlValueHintSliceNoCopy(_document));
+      });
 }

@@ -1209,7 +1209,6 @@ void arangodb::aql::removeRedundantSortsRule(
   }
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
-  std::string buffer;
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -1219,7 +1218,7 @@ void arangodb::aql::removeRedundantSortsRule(
 
     auto const sortNode = ExecutionNode::castTo<SortNode*>(n);
 
-    auto sortInfo = sortNode->getSortInformation(plan.get(), buffer);
+    auto sortInfo = sortNode->getSortInformation();
 
     if (sortInfo.isValid && !sortInfo.criteria.empty()) {
       // we found a sort that we can understand
@@ -1237,8 +1236,7 @@ void arangodb::aql::removeRedundantSortsRule(
           // we found another sort. now check if they are compatible!
 
           auto other =
-              ExecutionNode::castTo<SortNode*>(current)->getSortInformation(
-                  plan.get(), buffer);
+              ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
 
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
@@ -2649,7 +2647,6 @@ void arangodb::aql::removeRedundantCalculationsRule(
       if (current->getType() == EN::CALCULATION) {
         try {
           buffer.clear();
-          // ExecutionNode::castTo<CalculationNode*>(current)->expression()->node()->dump(0);
           ExecutionNode::castTo<CalculationNode const*>(current)
               ->expression()
               ->stringifyIfNotTooLong(buffer);

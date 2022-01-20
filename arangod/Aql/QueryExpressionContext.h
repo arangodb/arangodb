@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ExpressionContext.h"
+#include "Aql/AqlValue.h"
 #include "Basics/ErrorCode.h"
 #include "Containers/FlatHashMap.h"
 
@@ -74,6 +75,24 @@ class QueryExpressionContext : public ExpressionContext {
 
   // unregister a temporary variable from the ExpressionContext.
   void clearVariable(Variable const* variable) noexcept override;
+
+ protected:
+  // return temporary variable if set, otherwise call lambda for
+  // retrieving variable value
+  template<typename F>
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy, F&& fn) const {
+    if (!_variables.empty()) {
+      auto it = _variables.find(variable);
+
+      if (it != _variables.end()) {
+        // copy the slice we found
+        mustDestroy = true;
+        return AqlValue((*it).second);
+      }
+    }
+    return std::invoke(std::forward<F>(fn), variable, doCopy, mustDestroy);
+  }
 
  private:
   transaction::Methods& _trx;

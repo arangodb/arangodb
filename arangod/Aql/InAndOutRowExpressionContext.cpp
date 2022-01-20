@@ -73,59 +73,52 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(
     Variable const* variable, bool doCopy, bool& mustDestroy) const {
   TRI_ASSERT(_input.isInitialized());
 
-  if (!_variables.empty()) {
-    TRI_ASSERT(_variables.empty());
-    auto it = _variables.find(variable);
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        for (size_t i = 0; i < _vars.size(); ++i) {
+          auto const& v = _vars[i];
+          if (v->id == variable->id) {
+            TRI_ASSERT(i < _regs.size());
+            mustDestroy = doCopy;
+            if (doCopy) {
+              if (i == _vertexVarIdx) {
+                return _vertexValue.clone();
+              }
+              if (i == _edgeVarIdx) {
+                return _edgeValue.clone();
+              }
+              if (i == _pathVarIdx) {
+                return _pathValue.clone();
+              }
+              // Search InputRow
+              RegisterId const& regId = _regs[i];
+              TRI_ASSERT(regId < _input.getNumRegisters());
+              return _input.getValue(regId).clone();
+            } else {
+              if (i == _vertexVarIdx) {
+                return _vertexValue;
+              }
+              if (i == _edgeVarIdx) {
+                return _edgeValue;
+              }
+              if (i == _pathVarIdx) {
+                return _pathValue;
+              }
+              // Search InputRow
+              RegisterId const& regId = _regs[i];
+              TRI_ASSERT(regId < _input.getNumRegisters());
+              return _input.getValue(regId);
+            }
+          }
+        }
 
-    if (it != _variables.end()) {
-      // copy the slice we found
-      mustDestroy = true;
-      return AqlValue((*it).second);
-    }
-  }
-
-  for (size_t i = 0; i < _vars.size(); ++i) {
-    auto const& v = _vars[i];
-    if (v->id == variable->id) {
-      TRI_ASSERT(i < _regs.size());
-      mustDestroy = doCopy;
-      if (doCopy) {
-        if (i == _vertexVarIdx) {
-          return _vertexValue.clone();
-        }
-        if (i == _edgeVarIdx) {
-          return _edgeValue.clone();
-        }
-        if (i == _pathVarIdx) {
-          return _pathValue.clone();
-        }
-        // Search InputRow
-        RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _input.getNumRegisters());
-        return _input.getValue(regId).clone();
-      } else {
-        if (i == _vertexVarIdx) {
-          return _vertexValue;
-        }
-        if (i == _edgeVarIdx) {
-          return _edgeValue;
-        }
-        if (i == _pathVarIdx) {
-          return _pathValue;
-        }
-        // Search InputRow
-        RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _input.getNumRegisters());
-        return _input.getValue(regId);
-      }
-    }
-  }
-
-  std::string msg("variable not found '");
-  msg.append(variable->name);
-  // NOTE: PRUNE is the only feature using this context.
-  msg.append("' in PRUNE statement");
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+        std::string msg("variable not found '");
+        msg.append(variable->name);
+        // NOTE: PRUNE is the only feature using this context.
+        msg.append("' in PRUNE statement");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+      });
 }
 
 bool InAndOutRowExpressionContext::needsVertexValue() const {

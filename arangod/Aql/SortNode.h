@@ -104,7 +104,7 @@ class SortNode : public ExecutionNode {
   SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
-  SortInformation getSortInformation(ExecutionPlan*, std::string& buffer) const;
+  SortInformation getSortInformation() const;
 
   /// @brief simplifies the expressions of the sort node
   /// this will sort expressions if they are constant

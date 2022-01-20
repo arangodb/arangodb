@@ -1510,7 +1510,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
   }
 }
 
-AqlValue::AqlValue(std::string const& value)
+AqlValue::AqlValue(std::string_view value)
     : AqlValue(value.data(), value.size()) {}
 
 AqlValue::AqlValue(AqlValueHintEmptyArray) noexcept {
@@ -1551,6 +1551,7 @@ AqlValue::AqlValue(AqlValueHintSliceNoCopy v) noexcept {
 }
 
 AqlValue::AqlValue(AqlValueHintSliceCopy v) {
+  TRI_ASSERT(v.slice.start() != nullptr);
   initFromSlice(v.slice, v.slice.byteSize());
 }
 

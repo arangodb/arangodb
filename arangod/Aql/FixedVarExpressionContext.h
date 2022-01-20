@@ -25,8 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/QueryExpressionContext.h"
-
-#include <unordered_map>
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -62,7 +61,7 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
  private:
   // temporary storage for expression data context
-  std::unordered_map<Variable const*, AqlValue> _vars;
+  containers::FlatHashMap<Variable const*, AqlValue> _vars;
 };
 
 class SingleVarExpressionContext final : public QueryExpressionContext {

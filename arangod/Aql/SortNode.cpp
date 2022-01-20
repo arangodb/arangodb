@@ -122,9 +122,9 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 }
 
 /// @brief returns all sort information
-SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
-                                             std::string& buffer) const {
+SortInformation SortNode::getSortInformation() const {
   SortInformation result;
+  std::string buffer;
 
   auto const& elms = elements();
   for (auto it = elms.begin(); it != elms.end(); ++it) {
@@ -152,6 +152,8 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
         break;
       }
 
+      // fix buffer if it was in an invalid state of being moved-away
+      buffer.clear();
       try {
         expression->stringify(buffer);
       } catch (...) {
@@ -161,7 +163,6 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
       result.criteria.emplace_back(
           std::make_tuple(const_cast<ExecutionNode const*>(setter),
                           std::move(buffer), (*it).ascending));
-      buffer.clear();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not
