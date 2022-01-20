@@ -151,7 +151,7 @@ void NetworkFeature::collectOptions(
           "--network.protocol",
           "network protocol to use for cluster-internal communication",
           new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
-          options::makeDefaultFlags(options::Flags::Hidden))
+          options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30700)
       .setDeprecatedIn(30900);
 
@@ -160,7 +160,7 @@ void NetworkFeature::collectOptions(
                   "controls the number of internal requests that can be in "
                   "flight at a given point in time",
                   new options::UInt64Parameter(&_maxInFlight),
-                  options::makeDefaultFlags(options::Flags::Hidden))
+                  options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30800);
 }
 

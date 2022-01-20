@@ -67,7 +67,7 @@ void OptimizerRulesFeature::collectOptions(
           "prefixed with '-' for disabling, '+' for enabling)",
           new arangodb::options::VectorParameter<
               arangodb::options::StringParameter>(&_optimizerRules),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30600);
 
   options

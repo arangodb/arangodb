@@ -532,7 +532,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_startAsService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 
   options->addOption(
@@ -540,7 +540,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_installService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 
   options->addOption(
@@ -548,7 +548,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_unInstallService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 
   options->addOption(
@@ -558,7 +558,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_forceUninstall),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 
   options->addOption(
@@ -566,7 +566,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_startService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 
   options->addOption(
@@ -575,7 +575,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_startWaitService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 
   options->addOption(
@@ -583,7 +583,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_stopService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 
   options->addOption(
@@ -592,7 +592,7 @@ void WindowsServiceFeature::collectOptions(
       new BooleanParameter(&_stopWaitService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Uncommon,
                                    arangodb::options::Flags::Command));
 }
 

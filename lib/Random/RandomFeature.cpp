@@ -57,7 +57,7 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "only)",
       new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
                                                    generators),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void RandomFeature::prepare() {

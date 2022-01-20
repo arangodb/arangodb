@@ -205,7 +205,7 @@ void GeneralServerFeature::collectOptions(
           "--http.allow-method-override",
           "allow HTTP method override using special headers",
           new BooleanParameter(&_allowMethodOverride),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30800);
 
   options->addOption("--http.keep-alive-timeout",

@@ -523,7 +523,7 @@ void MetricsFeature::collectOptions(
       ->addOption(
           "--server.export-metrics-api", "turn metrics API on or off",
           new options::BooleanParameter(&_export),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30600);
 
   options
@@ -531,7 +531,7 @@ void MetricsFeature::collectOptions(
           "--server.export-read-write-metrics",
           "turn metrics for document read/write metrics on or off",
           new options::BooleanParameter(&_exportReadWriteMetrics),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30707);
 }
 

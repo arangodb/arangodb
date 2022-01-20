@@ -160,7 +160,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_compactionStepSize),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+          arangodb::options::Flags::Uncommon, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.compaction-keep-size",
                      "keep as many indices before compaction point",
@@ -176,7 +176,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_waitForSync),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+          arangodb::options::Flags::Uncommon, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.max-append-size",
@@ -184,7 +184,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_maxAppendSize),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+          arangodb::options::Flags::Uncommon, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.disaster-recovery-id",
@@ -193,7 +193,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new StringParameter(&_recoveryId),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
+          arangodb::options::Flags::Uncommon, arangodb::options::Flags::OnAgent));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

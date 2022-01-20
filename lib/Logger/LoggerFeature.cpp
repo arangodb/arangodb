@@ -99,7 +99,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption(
           "--log", "the global or topic-specific log level",
           new VectorParameter<StringParameter>(&_levels),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   options->addSection("log", "logging");
@@ -143,14 +143,14 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption(
           "--log.use-local-time", "use local timezone instead of UTC",
           new BooleanParameter(&_useLocalTime),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   options
       ->addOption(
           "--log.use-microtime", "use microtime instead",
           new BooleanParameter(&_useMicrotime),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   options
@@ -203,25 +203,25 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--log.prefix", "prefix log message with this string",
       new StringParameter(&_prefix),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--log.file", "shortcut for '--log.output file://<filename>'",
       new StringParameter(&_file),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--log.line-number",
       "include the function name, file name and line number of the source code "
       "that issues the log message. Format: `[func@FileName.cpp:123]`",
       new BooleanParameter(&_lineNumber),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--log.shorten-filenames",
       "shorten filenames in log output (use with --log.line-number)",
       new BooleanParameter(&_shortenFilenames),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--log.hostname",
@@ -234,24 +234,24 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption(
           "--log.process", "show process identifier (pid) in log message",
           new BooleanParameter(&_processId),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   options->addOption(
       "--log.thread", "show thread identifier in log message",
       new BooleanParameter(&_threadId),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--log.thread-name", "show thread name in log message",
       new BooleanParameter(&_threadName),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
           "--log.performance", "shortcut for '--log.level performance=trace'",
           new BooleanParameter(&_performance),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   if (_threaded) {
@@ -260,25 +260,25 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "--log.keep-logrotate",
         "keep the old log file after receiving a sighup",
         new BooleanParameter(&_keepLogRotate),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
   }
 
   options->addOption(
       "--log.foreground-tty", "also log to tty if backgrounded",
       new BooleanParameter(&_foregroundTty),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--log.force-direct", "do not start a seperate thread for logging",
       new BooleanParameter(&_forceDirect),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--log.request-parameters",
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_logRequestParameters),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addObsoleteOption("log.content-filter", "", true);
   options->addObsoleteOption("log.source-filter", "", true);
