@@ -96,7 +96,7 @@ class AsyncValue {
   ~AsyncValue() { reset(); }
 
   [[nodiscard]] bool empty() const noexcept {
-    return _count.load(std::memory_order_acquire) & kReset;
+    return _count.load(std::memory_order_relaxed) & kReset;
   }
 
   [[nodiscard]] Value lock() noexcept {

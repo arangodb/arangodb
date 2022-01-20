@@ -603,12 +603,11 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
                 name() + "'"};
   }
   if (ServerState::instance()->isSingleServer()) {
-    auto r = LogicalViewHelperStorageEngine::properties(*this);
-    if (!r.ok()) {
+    if (auto r = LogicalViewHelperStorageEngine::properties(*this); !r.ok()) {
       TRI_ASSERT(it != _links.end());
       _links.erase(it);
+      return r;
     }
-    return r;
   }
   IResearchLink::properties(std::move(linkLock), _meta);
   return {};
