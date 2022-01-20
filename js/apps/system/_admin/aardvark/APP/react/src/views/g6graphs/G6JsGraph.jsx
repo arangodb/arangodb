@@ -1,6 +1,6 @@
 /* global arangoHelper, arangoFetch, frontendConfig */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { GraphView } from './GraphView';
 import { data } from './data';
@@ -17,9 +17,31 @@ const G6JsGraph = () => {
   const currentUrl = window.location.href;
   const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
   console.log('graphName: ', graphName);
+  let [queryString, setQueryString] = useState(`/_admin/aardvark/g6graph/${graphName}`);
+  let [queryMethod, setQueryMethod] = useState("GET");
   let [graphData, setGraphData] = useState(data);
   const ref = React.useRef(null);
   let graph = null;
+
+  // fetching data # start
+  const fetchData = useCallback(() => {
+    arangoFetch(arangoHelper.databaseUrl(queryString), {
+      method: queryMethod,
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("NEW DATA for graphData: ", data);
+      setGraphData(data);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  }, [queryString]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+  // fetching data # end
 
   // Instantiate the Minimap
   const minimap = new G6.Minimap({
