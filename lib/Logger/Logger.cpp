@@ -63,6 +63,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::structuredParams;
 
 namespace {
 static std::string const DEFAULT = "DEFAULT";
@@ -227,14 +228,19 @@ void Logger::setLogLevel(std::string const& levelName) {
   }
 }
 
-void Logger::setLogStructuredParam(
-    std::pair<std::string, bool> const& paramAndValue) {
-  auto const& paramName = paramAndValue.first;
-  bool value = paramAndValue.second;
-  if (value) {
-    _structuredLogParams.emplace(paramName);
-  } else {
-    _structuredLogParams.erase(paramName);
+void Logger::setLogStructuredParams(
+    std::unordered_map<std::string, bool> const& paramsAndValues) {
+  WRITE_LOCKER(guard, Logger::_structuredParamsLock);
+  for (const auto & [paramName, value] : paramsAndValues) {
+    if (auto it = allowList.find({paramName.data(), paramName.size()});
+        it == allowList.end()) {
+      continue;
+    }
+    if (value) {
+      _structuredLogParams.emplace(paramName);
+    } else {
+      _structuredLogParams.erase(paramName);
+    }
   }
 }
 
@@ -244,7 +250,7 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
   }
 }
 
-std::unordered_map<std::string, bool> const Logger::filterInvalidParams(
+std::unordered_map<std::string, bool> const Logger::parseStringParams(
     std::vector<std::string> const& params) {
   std::unordered_map<std::string, bool> validParams;
   for (auto const& param : params) {
@@ -256,11 +262,6 @@ std::unordered_map<std::string, bool> const Logger::filterInvalidParams(
           << "strange log attribute and value set '" + param + "'";
     } else {
       StringUtils::trimInPlace(v[0]);
-      if (!structuredParams::allowList.contains(v[0])) {
-        LOG_TOPIC("c4c17", WARN, arangodb::Logger::FIXME)
-            << "strange log parameter '" + v[0] + "'";
-        continue;
-      }
       if (vSize == 2) {
         StringUtils::trimInPlace(v[1]);
       }
@@ -281,18 +282,7 @@ std::unordered_map<std::string, bool> const Logger::filterInvalidParams(
 
 void Logger::setLogStructuredParamsOnServerStart(
     std::vector<std::string> const& params) {
-  for (auto const& paramAndValue : filterInvalidParams(params)) {
-    setLogStructuredParam(paramAndValue);
-  }
-}
-
-void Logger::setLogStructuredParams(std::vector<std::string> const& params) {
-  std::unordered_map<std::string, bool> validParams =
-      filterInvalidParams(params);
-  WRITE_LOCKER(guard, Logger::_structuredParamsLock);
-  for (auto const& paramAndValue : validParams) {
-    setLogStructuredParam(paramAndValue);
-  }
+    setLogStructuredParams(parseStringParams(params));
 }
 
 void Logger::setRole(char role) { _role = role; }

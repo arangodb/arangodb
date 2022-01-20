@@ -3,10 +3,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,10 +20,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
@@ -31,6 +30,7 @@ const fs = require('fs');
 if (getOptions === true) {
   return {
     'log.structured-param': ['database=true', 'url', 'username', "pregelId=false"],
+    'log.use-json-format' : 'true',
   };
 }
 

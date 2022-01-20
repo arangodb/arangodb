@@ -421,9 +421,7 @@ void LoggerFeature::prepare() {
       std::max<uint32_t>(256, _maxEntryLength));
 
   Logger::setLogLevel(_levels);
-  if (!_structuredLogParams.empty()) {
-    Logger::setLogStructuredParamsOnServerStart(_structuredLogParams);
-  }
+  Logger::setLogStructuredParamsOnServerStart(_structuredLogParams);
   Logger::setShowIds(_showIds);
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);

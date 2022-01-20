@@ -121,8 +121,8 @@ RestStatus RestAdminLogHandler::execute() {
                     "superfluous suffix, expecting /_admin/log/<suffix>, "
                     "where suffix can be either 'entries', 'level' or 'structured'");
     }
-  } else if (type == rest::RequestType::PUT && suffixes.size() == 1) {
-    if (!suffixes.empty()) {
+  } else if (type == rest::RequestType::PUT ) {
+    if (suffixes.size() == 1) {
       if (suffixes[0] == "level") {
         handleLogLevel();
       } else if (suffixes[0] == "structured") {
@@ -133,9 +133,23 @@ RestStatus RestAdminLogHandler::execute() {
                       "superfluous suffix, expecting /_admin/log/<suffix>, "
                       "where suffix can be either 'level' or 'structured'");
       }
+    } else { // error handling
+      if (suffixes.empty()) {
+        generateError(rest::ResponseCode::BAD,
+                      TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                      "provide a suffix, expecting /_admin/log/<suffix>, "
+                      "where suffix can be either 'level' or 'structured'");
+      } else {
+        generateError(rest::ResponseCode::BAD,
+                      TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                      "superfluous suffix, expecting /_admin/log/<suffix>, "
+                      "where suffix can be either 'level' or 'structured'");
+      }
     }
+  } else {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
-
   return RestStatus::DONE;
 }
 
@@ -509,13 +523,13 @@ void RestAdminLogHandler::handleLogStructuredParams() {
     }
 
     if (slice.isObject()) {
+      std::unordered_map<std::string, bool> paramsAndValues;
       for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isBoolean()) {
-          std::string const l = it.key.copyString() + "=" +
-                                (it.value.getBoolean() ? "true" : "false");
-          Logger::setLogStructuredParams({l});
+          paramsAndValues.try_emplace(it.key.copyString(), it.value.getBoolean());
         }
       }
+      Logger::setLogStructuredParams(paramsAndValues);
     }
 
     VPackBuilder builder;

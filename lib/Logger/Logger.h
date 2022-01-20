@@ -264,14 +264,12 @@ class Logger {
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(std::vector<std::string> const&);
-
-  static std::unordered_map<std::string, bool> const filterInvalidParams(
+  static std::unordered_map<std::string, bool> const parseStringParams(
       std::vector<std::string> const&);
-  static void setLogStructuredParams(std::vector<std::string> const&);
   static void setLogStructuredParamsOnServerStart(
       std::vector<std::string> const&);
-  static void setLogStructuredParam(std::pair<std::string, bool> const&);
-
+  static void setLogStructuredParams(
+      std::unordered_map<std::string, bool> const& paramsAndValues);
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
   static void setHostname(std::string const&);
@@ -279,7 +277,6 @@ class Logger {
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
   static void setShowRole(bool);
-  static bool getShowRole() { return _showRole; };
   static void setShortenFilenames(bool);
   static void setShowProcessIdentifier(bool);
   static void setShowThreadIdentifier(bool);
