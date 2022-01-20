@@ -349,7 +349,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.h
-        Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
+  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/Mocks/PersistedLog.cpp
   Replication2/Mocks/PersistedLog.h
   Replication2/Serialization/LogCommonTest.cpp

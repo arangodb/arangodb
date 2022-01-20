@@ -250,7 +250,7 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
 auto agency::toVelocyPack(LogCurrentSupervisionElection::Outcome outcome,
                           VPackBuilder& builder) -> void {
   VPackObjectBuilder ob(&builder);
-  builder.add("outcome", VPackValue(static_cast<int>(outcome)));
+  builder.add(StaticStrings::Outcome, VPackValue(static_cast<int>(outcome)));
   builder.add("message", VPackValue(to_string(outcome)));
 }
 
