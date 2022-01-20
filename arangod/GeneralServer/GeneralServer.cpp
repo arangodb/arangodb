@@ -149,6 +149,10 @@ void GeneralServer::stopWorking() {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     _commTasks.clear();
   }
+  // need to stop IoThreads before cleaning up the acceptors
+  for (auto& ctx : _contexts) {
+    ctx.stop();
+  }
   _acceptors.clear();
   _contexts.clear();  // stops threads
 }

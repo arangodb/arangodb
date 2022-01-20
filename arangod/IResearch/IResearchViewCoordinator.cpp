@@ -46,24 +46,28 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
+namespace arangodb::iresearch {
 namespace {
 
-void ensureImmutableProperties(
-    arangodb::iresearch::IResearchViewMeta& dst,
-    arangodb::iresearch::IResearchViewMeta const& src) {
-  dst._version = src._version;
-  dst._writebufferActive = src._writebufferActive;
-  dst._writebufferIdle = src._writebufferIdle;
-  dst._writebufferSizeMax = src._writebufferSizeMax;
-  dst._primarySort = src._primarySort;
-  dst._storedValues = src._storedValues;
-  dst._primarySortCompression = src._primarySortCompression;
+bool equalPartial(IResearchViewMeta const& lhs, IResearchViewMeta const& rhs) {
+  if (lhs._cleanupIntervalStep != rhs._cleanupIntervalStep ||
+      lhs._commitIntervalMsec != rhs._commitIntervalMsec ||
+      lhs._consolidationIntervalMsec != rhs._consolidationIntervalMsec) {
+    return false;
+  }
+  try {
+    if (!basics::VelocyPackHelper::equal(lhs._consolidationPolicy.properties(),
+                                         rhs._consolidationPolicy.properties(),
+                                         false)) {
+      return false;
+    }
+  } catch (...) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
@@ -212,7 +216,7 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     // verify that the current user has access on all linked collections
     ExecContext const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {
-      for (auto& entry : _collections) {
+      for (auto& entry : _collections) {  // TODO Data race?
         if (!exec.canUseCollection(vocbase().name(), entry.second.first,
                                    auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN);
@@ -386,7 +390,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     ExecContext const& exe = ExecContext::current();
     if (!exe.isSuperuser()) {
       // check existing links
-      for (auto& entry : _collections) {
+      for (auto& entry : _collections) {  // TODO Data race?
         auto collection = engine.getCollection(
             vocbase().name(), std::to_string(entry.first.id()));
 
@@ -401,7 +405,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
         }
       }
     }
-
+    // TODO read necessary members from slice in single call
     std::string error;
     IResearchViewMeta meta;
 
@@ -416,20 +420,13 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
                            name() + "' from definition, error in attribute '" +
                            error + "': " + slice.toString()));
     }
-
-    // reset non-updatable values to match current meta
-    ensureImmutableProperties(meta, _meta);
-
     // only trigger persisting of properties if they have changed
-    if (_meta != meta) {
-      auto oldMeta = std::move(_meta);
-
-      _meta = std::move(meta);  // update meta for persistence
-
+    if (!equalPartial(_meta, meta)) {
+      IResearchViewMeta oldMeta{IResearchViewMeta::PartialTag{},
+                                std::move(_meta)};
+      _meta.storePartial(std::move(meta));  // update meta for persistence
       auto result = LogicalViewHelperClusterInfo::properties(*this);
-
-      _meta = std::move(oldMeta);  // restore meta
-
+      _meta.storePartial(std::move(oldMeta));  // restore meta
       if (!result.ok()) {
         return result;
       }
@@ -552,5 +549,4 @@ Result IResearchViewCoordinator::dropImpl() {
   return LogicalViewHelperClusterInfo::drop(*this);
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
