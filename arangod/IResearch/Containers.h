@@ -51,52 +51,6 @@ struct typelist;
 namespace arangodb {
 namespace iresearch {
 
-// template<typename T>
-// class AsyncValue {
-//   struct Destructor {
-//     AsyncValue* self;
-//
-//     void operator()(T*) const {
-//       std::lock_guard lock{self->_m};
-//       self->_state.store(State::Invalid, std::memory_order_relaxed);
-//       self->_cv.notify_all();
-//     }
-//   };
-//
-//  public:
-//   using Value = std::shared_ptr<T>;
-//
-//   explicit AsyncValue(T* resource) noexcept
-//       : _lock{resource, Destructor{this}}, _resource{_lock} {}
-//
-//   ~AsyncValue() { reset(); }
-//
-//   Value lock() const { return _resource.lock(); }
-//
-//   void reset() {
-//     auto old = State::Valid;
-//     if (_state.compare_exchange_strong(old, State::Some,
-//                                        std::memory_order_relaxed)) {
-//       _lock = nullptr;
-//     }
-//     if (old == State::Invalid) {
-//       return;
-//     }
-//     std::unique_lock lock{_m};
-//     while (_state.load(std::memory_order_relaxed) != State::Invalid) {
-//       _cv.wait(lock);
-//     }
-//   }
-//
-//  private:
-//   std::mutex _m;
-//   std::condition_variable _cv;
-//   enum class State { Valid, Some, Invalid };
-//   std::atomic<State> _state{State::Valid};
-//   Value _lock;
-//   std::weak_ptr<T> _resource;
-// };
-
 template<typename T>
 class AsyncValue {
  public:
@@ -110,12 +64,8 @@ class AsyncValue {
       return *this;
     }
 
-    T* get() noexcept {
-      return _self ? static_cast<T*>(_self->_resource) : nullptr;
-    }
-    T const* get() const noexcept {
-      return _self ? static_cast<T const*>(_self->_resource) : nullptr;
-    }
+    T* get() noexcept { return _self ? _self->_resource : nullptr; }
+    T const* get() const noexcept { return _self ? _self->_resource : nullptr; }
     T* operator->() noexcept { return get(); }
     T const* operator->() const noexcept { return get(); }
 
@@ -153,7 +103,7 @@ class AsyncValue {
     if (empty()) {
       return {};
     }
-    if (_count.fetch_add(kRef, std::memory_order_acq_rel) & kDestroy) {
+    if (_count.fetch_add(kRef, std::memory_order_acquire) & kDestroy) {
       return {};
     }
     return {*this};
@@ -179,7 +129,7 @@ class AsyncValue {
     auto count = _count.fetch_sub(kRef, std::memory_order_acq_rel) - kRef;
     if (count == kReset &&
         _count.compare_exchange_strong(count, kReset | kDestroy,
-                                       std::memory_order_acq_rel,
+                                       std::memory_order_release,
                                        std::memory_order_relaxed)) {
       std::lock_guard lock{_m};
       _resource = nullptr;
@@ -187,7 +137,7 @@ class AsyncValue {
     }
   }
 
-  void* _resource;
+  T* _resource;
   mutable std::atomic_uint64_t _count;
   std::mutex _m;
   std::condition_variable _cv;
