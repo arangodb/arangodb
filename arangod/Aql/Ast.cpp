@@ -2388,8 +2388,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       TRI_ASSERT(node->numMembers() == 2);
       Variable const* variable =
           static_cast<Variable const*>(node->getMember(0)->getData());
-      AstNode const* expression = node->getMember(1);
-      AstNode const* source = expression;
+      AstNode const* source = node->getMember(1);
       // recursively process assignments so we can track LET a = b LET c = b
 
       while (source->type == NODE_TYPE_REFERENCE) {
