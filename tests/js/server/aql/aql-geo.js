@@ -190,7 +190,6 @@ function geoSuite () {
 /// @brief test single point
 ////////////////////////////////////////////////////////////////////////////////
 
-    /*
     testSetup : function () {
       insertAll([{geo: { type: "Point", coordinates: [50, 50] } }]);
       waitForArangoSearch();
@@ -652,7 +651,7 @@ function geoSuite () {
         assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
       }
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test intersects query with large non-convex object whose centroid
 /// is not contained in the object.

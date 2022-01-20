@@ -45,26 +45,52 @@
 
 using namespace arangodb;
 
-// Here are some explanations on how this all works together (reverse
-// engineered from the code):
+// Here are some explanations on how this whole geo index technology works
+// together (reverse engineered from the code):
 //
-// The class RDBNearIterator does the actual work. It gets told what
-// to look for by the geo::QueryParams, and it gets access to a (read)
-// transaction trx and a logical collection and a geo index to use.
+// The classes RDBNearIterator and RDBCoveringIterator organise the actual
+// work of looking up things in the geo index. But before we talk about this,
+// let's put this in a wider context and link to other places in the code
+// base.
+//
+// A geo index is a specific type of index, which indexes one or two
+// attributes in the documents of a collection for its "geo content".
+// "Geo content" can be locations on earth (longitude/lattitude), or can
+// be "geojson" objects like polygons. Simplified a lot, the index then allows
+// to quickly find stuff which is "close to the indexed geo content" on earth.
+//
+// This works by configuring an "index factory" in
+// `arangod/Indexes/IndexFactor.cpp` via the `IndexFactory::emplace` method.
+// This is done in `arangod/RocksDBEngine/RocksDBIndexFactor.cpp` in the
+// constructor of `RocksDBIndexFactory` for RocksDB and in
+// `arangod/ClusterEngine/ClusterIndexFactor.cpp` in
+// `ClusterIndexFactory::linkIndexFactories` for the cluster engine.
+// These factories are implemented in the same file, for example
+// as `GeoIndexFactory` for RocksDB. This index factory produces then
+// an object of type `RocksDBGeoIndex` and this is responsible for
+// storing stuff in RocksDB for the indexed data. The corresponding
+// methods can be found in this file here. This is how we produce the
+// indexed data.
+//
+// The `LogicalCollection` object knows about its indexes, and so the query
+// optimizer for AQL can know about them.
+//
 // There are essentially three types of query:
 //  (1) Find everything within a radius (assuming a geo index on the `geo`
 //      attribute of our collection `coll`:
 //      FOR d IN coll
 //        FILTER GEO_DISTANCE(obj, d.geo) <= @radius
 //        RETURN d
-//      This might or might not be sorted by distance from the target.
-//  (2) Find everything in the database, which intersects a given object:
-//      FOR d IN coll
-//        FILTER GEO_INTERSECTS(obj, d.geo)
-//        RETURN d
-//  (3) Find everything in the database, which is contained in a given object:
+//      This might or might not be sorted by distance from the target. We
+//      can also use `>=` or `<` or `>` or a combination to prescribe
+//      the area of an annulus.
+//  (2) Find everything in the database, which is contained in a given object:
 //      FOR d IN coll
 //        FILTER GEO_CONTAINS(obj, d.geo)
+//        RETURN d
+//  (3) Find everything in the database, which intersects a given object:
+//      FOR d IN coll
+//        FILTER GEO_INTERSECTS(obj, d.geo)
 //        RETURN d
 // In principle, there could also be:
 //  (4) Find everything in the database, which contains a given object:
@@ -97,30 +123,50 @@ using namespace arangodb;
 // unconventional and unintuitive definition of distance. In this case,
 // there could be an additional SORT clause to sort by distance.
 //
-// Finally, the algorithms can take into account as to whether it is known that
-// all objects indexed in the geo index are known to be points. In this case
-// a number of optimizations are possible, which are in general not valid for
-// the general GeoJSON case.
+// The query optimizer has to recognize all these possibilities. It does so
+// by means of the optimizer rule `arangodb::aql::geoIndexRule` which can
+// be found in `arangod/Aql/OptimizerRules.cpp`. It looks at the abstract
+// syntax tree of the query and sees if any `EnumerateCollection` node
+// can be optimized into an `IndexNode` which uses the geo index. At the
+// end of the day, it puts together a `GeoIndexInfo` which is translated
+// into options for the `IndexNode` and a "condition node" to specify
+// the filtering and sorting conditions.
+//
+// When it comes to the execution of the query plan, the IndexBlock will call
+// `iteratorForCondition` on the index object and hand in the condition
+// for further processing here. Therefore, it is this method, which in the
+// end organises a cursor for the index lookup.
+//
+// The algorithms can take into account one more piece of information, namely
+// whether it is known that all objects indexed in the geo index are
+// known to be points. In this case a number of optimizations are
+// possible, which are in general not valid for the general GeoJSON
+// case.
 //
 // Altogether, this amounts to a total of 60 possible combinations (12
-// near query types, since they always have to have an upper bound for
-// the GEO_DISTANCE, 24 contains query types and 24 intersects query types.
+// "near" query types, since they always have to have an upper bound for
+// the GEO_DISTANCE, 24 "contains" query types and 24 "intersects" query types.
 //
-// This `RDBNearIterator` object is supposed to be an `IndexIterator`,
-// this means, once the query is set up, it supports the
-// next/nextDocument/nextExtra methods by implementing the
+// Depending on the case, we either deploy a `RDBNearIterator` object or
+// a `RDBCoveringIterator` object, both implemented in this file here.
+// The latter is a simpler object, which only uses a covering of the search
+// object. It can only be used if we are dealing with a "contains" or
+// "intersects" query with no restrictions on the `GEO_DISTANCE`, and if
+// no sorting by `GEO_DISTANCE` is needed.
+//
+// Both objects get told what to look for by the geo::QueryParams,
+// and they get access to a (read) transaction trx, a logical
+// collection and a geo index to use. Both objects are supposed to
+// be an `IndexIterator`, this means, once the query is set up, it
+// supports the next/nextDocument/nextExtra methods by implementing the
 // nextImpl/nextDocumentImpl/nextExtraImpl virtual methods. Furthermore,
 // it needs to support skip and friends.
 //
-// This class is in turn used by the `RocksDBGeoIndex` class, which implements
-// the geo index, but delegates its work to `RDBNearIterator` in all cases.
-// It uses the `RocksDBGeoIndex::iteratorForCondition` method below, which
-// inspects the query and builds the `RDBNearIterator` object.
-//
-// All of the following is templated on the sorting direction, which can
-// be arangodb::geo_index::DocumentsAscending or `...::DocumentsDescending`,
-// which means the sorting order by the distance to the query point/object.
-// In case of an object, the distance to the centroid of the object is meant.
+// For the `RDBNearIterator` object is templated on the sorting
+// direction, which can be arangodb::geo_index::DocumentsAscending
+// or `...::DocumentsDescending`, which means the sorting order by
+// the distance to the query point/object. In case of an object, the
+// distance to the centroid of the object is meant.
 //
 // The `RDBNearIterator` object does not do all the work on its own. Rather,
 // it employs the help of a `geo_index::NearUtils` object. The `NearUtils`
@@ -142,6 +188,18 @@ using namespace arangodb;
 // `performScan`. Whatever is found in the index is then reported back
 // to the `NearUtils` object via `reportFound` and that calls the callback
 // we got from the outside.
+//
+// Similarly, the `RDBCoveringIterator` object does not do all the work on
+// its own. Rather, it employs the help of a `geo_index::CoveringUtils`
+// object. The `CoveringUtils` object is responsible for maintaining a
+// deque `GeoDocumentsQueue` which is supposed to return the objects which
+// are found in the index. The documents come in any order, but are
+// deduplicated. Sometimes the index finds too many objects, but the
+// `CoveringUtils` do a final step to filter out wrong results.
+//
+// The `CoveringUtils` object uses the following parameters:
+//  - the flag `pointsOnly` which indicates that only points are indexed
+//  - a filtering object and a filtering type (CONTAINS or INTERSECTS).
 
 template<typename CMP = geo_index::DocumentsAscending>
 class RDBNearIterator final : public IndexIterator {
@@ -676,8 +734,24 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
-  // FIXME: <Optimize away>
-  params.sorted = true;
+  LOG_DEVEL << "First step query params for geo index: " << params.toString();
+
+  // First check if we can use the simpler method with a covering of the
+  // target object:
+  // If we have a `GEO_CONTAINS` or `GEO_INTERSECTS` clause but no
+  // restriction on the `GEO_DISTANCE` and no sorting of results by
+  // `GEO_DISTANCE`, we use the simpler method:
+  if (!params.sorted &&
+      (params.filterType == geo::FilterType::CONTAINS ||
+       params.filterType == geo::FilterType::INTERSECTS) &&
+      (params.minDistanceRad() < geo::kRadEps &&
+       params.maxDistanceRad() >
+           geo::kMaxRadiansBetweenPoints - geo::kRadEps)) {
+    return std::make_unique<RDBCoveringIterator>(&_collection, trx, this,
+                                                 std::move(params));
+  }
+
+  params.sorted = true;  // RDBNearIterator always works sorted!
   if (params.filterType == geo::FilterType::CONTAINS ||
       (params.filterType == geo::FilterType::INTERSECTS && params.pointsOnly)) {
     // This updates the maximal distance. We can only do this for a CONTAINS
