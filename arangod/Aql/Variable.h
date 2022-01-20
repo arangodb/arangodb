@@ -60,7 +60,7 @@ struct Variable {
   };
 
   /// @brief create the variable
-  Variable(std::string name, VariableId id, bool isDataFromCollection);
+  Variable(std::string name, VariableId id, bool isFullDocumentFromCollection);
 
   explicit Variable(arangodb::velocypack::Slice const&);
 
@@ -110,8 +110,8 @@ struct Variable {
   std::string name;
 
   /// @brief whether or not the source data for this variable is from a
-  /// collection (i.e. is a document). this is only used for optimizations
-  bool isDataFromCollection;
+  /// collection AND is a full document. this is only used for optimizations
+  bool isFullDocumentFromCollection;
 
  private:
   // for const variables, this stores the constant value determined
