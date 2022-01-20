@@ -229,7 +229,9 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
                                std::forward<InvertedIndexFieldMeta>(m)),
         Index(iid, collection, name, IResearchInvertedIndex::fields(meta()),
               false, true),
-        _objectId(objectId) {}
+        _objectId(objectId) {
+    TRI_ASSERT(_objectId);
+  }
 
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;

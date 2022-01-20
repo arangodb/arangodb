@@ -253,6 +253,10 @@ class InvertedIndexFieldIterator {
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
 
+  // Support for outputting primitive type from analyzer
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+                                         VPackSlice slice);
+
   size_t _prefixLength{};
   InvertedIndexFieldMeta::FieldRecord const* _begin{nullptr};
   InvertedIndexFieldMeta::FieldRecord const* _end{nullptr};
@@ -262,10 +266,6 @@ class InvertedIndexFieldIterator {
   VPackSlice _valueSlice;
   irs::string_ref _collection;
   IndexId _indexId;
-  // Support for outputting primitive type from analyzer
-  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
-                                         VPackSlice slice);
-
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};

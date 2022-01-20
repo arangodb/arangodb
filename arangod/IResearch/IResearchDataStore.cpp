@@ -157,12 +157,11 @@ std::atomic_size_t sLinksCount{0};  // TODO Why?
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 template<typename FieldIteratorType, typename MetaType>
-inline Result insertDocument(irs::index_writer::documents_context& ctx,
-                             transaction::Methods const& trx,
-                             FieldIteratorType& body,
-                             velocypack::Slice const& document,
-                             LocalDocumentId const& documentId,
-                             MetaType const& meta, IndexId id) {
+Result insertDocument(irs::index_writer::documents_context& ctx,
+                      transaction::Methods const& trx, FieldIteratorType& body,
+                      velocypack::Slice const& document,
+                      LocalDocumentId const& documentId, MetaType const& meta,
+                      IndexId id) {
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
@@ -365,12 +364,10 @@ void CommitTask::operator()() {
     TRI_IF_FAILURE("IResearchCommitTask::lockDataStore") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
-    TRI_ASSERT(
-        linkPtr->_dataStore);  // must be valid if _asyncSelf->get() is valid
-    READ_LOCKER(
-        lock,
-        linkPtr->_dataStore._mutex);  // '_meta' can be asynchronously modified
+    // must be valid if _asyncSelf->get() is valid
+    TRI_ASSERT(linkPtr->_dataStore);
+    // '_meta' can be asynchronously modified
+    READ_LOCKER(lock, linkPtr->_dataStore._mutex);
     auto& meta = linkPtr->_dataStore._meta;
 
     commitIntervalMsec = std::chrono::milliseconds(meta._commitIntervalMsec);
@@ -391,9 +388,8 @@ void CommitTask::operator()() {
   TRI_IF_FAILURE("IResearchCommitTask::commitUnsafe") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  auto [res, timeMs] = linkPtr->commitUnsafe(
-      false, &code);  // run commit ('_asyncSelf' locked by async task)
+  // run commit ('_asyncSelf' locked by async task)
+  auto [res, timeMs] = linkPtr->commitUnsafe(false, &code);
 
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
@@ -414,9 +410,8 @@ void CommitTask::operator()() {
     TRI_IF_FAILURE("IResearchCommitTask::cleanupUnsafe") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
-    auto [res, timeMs] = linkPtr->cleanupUnsafe();  // run cleanup ('_asyncSelf'
-                                                    // locked by async task)
+    // run cleanup ('_asyncSelf' locked by async task)
+    auto [res, timeMs] = linkPtr->cleanupUnsafe();
 
     if (res.ok()) {
       LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
@@ -1529,8 +1524,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
 
 void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
                                        transaction::Methods* trx) {
-  auto lock =
-      _asyncSelf->lock();  // '_dataStore' can be asynchronously modified
+  // '_dataStore' can be asynchronously modified
+  auto lock = _asyncSelf->lock();
 
   bool ok{false};
   auto computeMetrics = irs::make_finally([&]() noexcept {
@@ -1567,10 +1562,11 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
 #endif
 
     if (ctx) {
-      ctx->reset();  // throw away all pending operations as clear will
-                     // overwrite them all
-      state.cookie(key, nullptr);  // force active segment release to allow
-                                   // commit go and avoid deadlock in clear
+      // throw away all pending operations as clear will overwrite them all
+      ctx->reset();
+      // force active segment release to allow commit go and avoid deadlock in
+      // clear
+      state.cookie(key, nullptr);
     }
   }
 
@@ -1586,8 +1582,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
 
   try {
     _dataStore._writer->clear(tick);
-    recoverCommittedTick =
-        false;  //_lastCommittedTick now updated and data is written to storage
+    //_lastCommittedTick now updated and data is written to storage
+    recoverCommittedTick = false;
 
     // get new reader
     auto reader = _dataStore._reader.reopen();
@@ -1629,8 +1625,9 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
 }
 
 bool IResearchDataStore::hasSelectivityEstimate() {
-  return false;  // selectivity can only be determined per query since multiple
-                 // fields are indexed
+  // selectivity can only be determined per query since multiple fields are
+  // indexed
+  return false;
 }
 
 IResearchDataStore::Stats IResearchDataStore::statsSynced() const {

@@ -740,8 +740,8 @@ InvertedIndexFieldIterator::InvertedIndexFieldIterator(
     arangodb::transaction::Methods&, irs::string_ref collection,
     IndexId indexId)
     : _collection(collection), _indexId(indexId) {
-  _value._storeValues =
-      ValueStorage::ID;  // we need id column for range queries
+  // we need id column for range queries
+  _value._storeValues = ValueStorage::ID;
 }
 
 void InvertedIndexFieldIterator::next() {
@@ -767,7 +767,7 @@ void InvertedIndexFieldIterator::next() {
           // for array subobjects we index "null" in case of absence as declared
           // for other indicies
           _valueSlice = get(*_arrayStack.back(), _begin->expansion,
-                            arangodb::velocypack::Slice::nullSlice());
+                            VPackSlice::nullSlice());
         }
         ++_arrayStack.back();
         _nameBuffer.resize(_prefixLength);  // FIXME: just clear should work!
@@ -782,7 +782,7 @@ void InvertedIndexFieldIterator::next() {
           return;  // exhausted
         }
         _valueSlice = get(_slice, _begin->attribute,
-                          arangodb::velocypack::Slice::noneSlice());
+                          VPackSlice::noneSlice());
         if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
             _begin->attribute.back().shouldExpand) {
           _valueSlice = VPackSlice::noneSlice();

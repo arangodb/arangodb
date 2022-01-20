@@ -444,23 +444,36 @@ class IResearchDataStore {
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
   StorageEngine* _engine;
+  
+  // for primarySort ordering
   VPackComparer _comparer;
-  IResearchFeature*
-      _asyncFeature;  // the feature where async jobs were registered (nullptr
-                      // == no jobs registered)
-  AsyncLinkPtr _asyncSelf;  // 'this' for the lifetime of the link (for use with
-                            // asynchronous calls)
-  LogicalCollection& _collection;  // the linked collection
-  DataStore
-      _dataStore;  // the iresearch data store, protected by _asyncSelf->mutex()
+
+  // the feature where async jobs were registered (nullptr == no jobs
+  // registered)
+  IResearchFeature* _asyncFeature;
+
+  // 'this' for the lifetime of the link (for use with asynchronous calls)
+  AsyncLinkPtr _asyncSelf;
+
+  // the linked collection
+  LogicalCollection& _collection;
+
+  // the iresearch data store, protected by _asyncSelf->mutex()
+  DataStore _dataStore;
+
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
-  IndexId const _id;                  // the index identifier
-  TRI_voc_tick_t _lastCommittedTick;  // protected by _commitMutex
+  IndexId const _id;
+  // protected by _commitMutex
+  TRI_voc_tick_t _lastCommittedTick;
   size_t _cleanupIntervalCount;
-  std::mutex _commitMutex;  // prevents data store sequential commits
+
+  // prevents data store sequential commits
+  std::mutex _commitMutex;
+
+  // for insert(...)/remove(...)
   std::function<void(transaction::Methods& trx, transaction::Status status)>
-      _trxCallback;  // for insert(...)/remove(...)
+      _trxCallback;
 
   metrics::Gauge<uint64_t>* _numFailedCommits;
   metrics::Gauge<uint64_t>* _numFailedCleanups;
