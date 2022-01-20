@@ -30,6 +30,7 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `rtasource`: directory of the release test automation',
+  '   - `makedata_args`: list of arguments ala --makedata_args:bigDoc true'
 ];
 
 const internal = require('internal');
@@ -84,8 +85,13 @@ function makeDataWrapper (options) {
       if (addArgs !== undefined) {
         args = Object.assign(args, addArgs);
       }
+      let argv = toArgv(args);
+      if (options.hasOwnProperty('makedata_args')) {
+        argv = argv.concat(['--']);
+        argv = argv.concat(toArgv(options['makedata_args']));
+      }
       require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-      let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
+      let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
       res.total++;
       res.duration += rc.duration;
       res.status &= rc.status;
