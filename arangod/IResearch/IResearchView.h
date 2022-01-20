@@ -102,9 +102,10 @@ class IResearchView final : public arangodb::LogicalView {
     SyncAndReplace
   };
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor to clean up resources
-  ///////////////////////////////////////////////////////////////////////////////
+  static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
+    return {ViewType::kSearch, StaticStrings::DataSourceType};
+  }
+
   virtual ~IResearchView() override;
 
   using LogicalView::name;
