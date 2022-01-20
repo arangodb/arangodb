@@ -202,7 +202,9 @@ struct TRI_vocbase_t {
   [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
       arangodb::replication2::LogId,
       arangodb::replication2::replicated_state::StateStatus>;
-
+  [[nodiscard]] auto getReplicatedStateById(
+      arangodb::replication2::LogId id) const
+      -> std::shared_ptr<arangodb::replication2::replicated_state::ReplicatedStateBase>;
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,
                                      arangodb::LogicalCollection>
