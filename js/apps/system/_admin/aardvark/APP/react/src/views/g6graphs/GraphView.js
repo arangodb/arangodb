@@ -3,6 +3,7 @@ import G6 from '@antv/g6';
 import ReactDOM from 'react-dom';
 import { Card } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
+import EdgeStyleSelector from './EdgeStyleSelector.js';
 import styles from './graphview.module.css';
 
 export class GraphView extends React.Component {
@@ -49,6 +50,12 @@ export class GraphView extends React.Component {
             fontFamily: 'sans-serif',
             fontSize: 12
           },
+        },
+      },
+      defaultEdge: {
+        type: 'quadratic', // assign the edges to be quadratic bezier curves
+        style: {
+          stroke: '#e2e2e2',
         },
       },
     });
@@ -115,6 +122,18 @@ export class GraphView extends React.Component {
     this.graph.render();
   }
 
+  changeEdgeStyle = (typeModel) => {
+    this.graph.edge((edge) => {
+      return {
+        id: edge.id,
+        ...typeModel
+      };
+    });
+    
+    this.graph.data(this.props.data);
+    this.graph.render();
+  }
+
   render() {
     return <>
       <button onClick={this.getNodes}>Get nodes (new)</button>
@@ -122,6 +141,7 @@ export class GraphView extends React.Component {
       <button onClick={this.addNode}>Add node (new)</button>
       <button onClick={this.addEdge}>Add edge (new)</button>
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
+      <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
       <Card
           title="Pure JS G6 Graph"
         >
