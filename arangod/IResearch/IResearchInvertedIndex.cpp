@@ -726,8 +726,7 @@ class IResearchInvertedIndexMergeIterator final
                                            variable, mutableConditionIdx,
                                            extraFieldName),
         _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments}),
-        _projectionsPrototype(index->meta()) {
-  }
+        _projectionsPrototype(index->meta()) {}
 
   char const* typeName() const override {
     return "inverted-index-merge-iterator";
