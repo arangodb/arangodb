@@ -143,7 +143,8 @@ void ReplicationFeature::collectOptions(
           "Maximum number of concurrently allowed WAL tailing invocations (0 = "
           "unlimited)",
           new UInt64Parameter(&_maxParallelTailingInvocations),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30500);
 
   options
@@ -166,7 +167,8 @@ void ReplicationFeature::collectOptions(
           "Limit at which 'quick' calls to the replication keys API return "
           "only the document count for second run",
           new UInt64Parameter(&_quickKeysLimit),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30709);
 
   options

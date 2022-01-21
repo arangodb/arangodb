@@ -1706,7 +1706,8 @@ void RestoreFeature::collectOptions(
           "clean up duplicate attributes (use first specified value) in input "
           "documents instead of making the restore operation fail",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
@@ -1769,11 +1770,11 @@ void RestoreFeature::collectOptions(
 
   // deprecated options
   options
-      ->addOption(
-          "--default-number-of-shards",
-          "default value for numberOfShards if not specified in dump",
-          new UInt64Parameter(&_options.defaultNumberOfShards),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--default-number-of-shards",
+                  "default value for numberOfShards if not specified in dump",
+                  new UInt64Parameter(&_options.defaultNumberOfShards),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
@@ -1782,7 +1783,8 @@ void RestoreFeature::collectOptions(
           "--default-replication-factor",
           "default value for replicationFactor if not specified in dump",
           new UInt64Parameter(&_options.defaultReplicationFactor),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 }

@@ -85,7 +85,8 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "lock timeout in seconds "
           "in case of parallel access to the same streaming transaction",
           new DoubleParameter(&_streamingLockTimeout),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30605)
       .setIntroducedIn(30701);
 

@@ -34,11 +34,11 @@ namespace options {
 
 /// @brief option flags. these can be bit-ORed to combine multiple flags
 enum class Flags : uint16_t {
-  None = 0,        // nothing special here
-  Uncommon = 1,    // the option is not listed by --help, only made visible by
-                   // --help-all, --help-. or --help-uncommon
-  Obsolete = 2,    // the option is obsolete. setting it does not influence the
-                   // program behavior
+  None = 0,      // nothing special here
+  Uncommon = 1,  // the option is not listed by --help, only made visible by
+                 // --help-all, --help-. or --help-uncommon
+  Obsolete = 2,  // the option is obsolete. setting it does not influence the
+                 // program behavior
   // also see addOldOption() for renamed and addObsoleteOption() for deprecated
   // options. for internal, "hidden" options use:
   //   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

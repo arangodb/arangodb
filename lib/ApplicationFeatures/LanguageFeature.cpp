@@ -113,11 +113,11 @@ void LanguageFeature::collectOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--default-language-check",
-          "check if default language matches stored language",
-          new BooleanParameter(&_forceLanguageCheck),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--default-language-check",
+                  "check if default language matches stored language",
+                  new BooleanParameter(&_forceLanguageCheck),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 }
 

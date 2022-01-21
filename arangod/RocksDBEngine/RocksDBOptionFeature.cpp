@@ -438,7 +438,8 @@ void RocksDBOptionFeature::collectOptions(
           "if turned on, the RocksDB block cache quota will also include "
           "RocksDB memtable sizes",
           new BooleanParameter(&_cacheIndexAndFilterBlocks),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options
@@ -449,7 +450,8 @@ void RocksDBOptionFeature::collectOptions(
           "making index and filter blocks be less likely to be evicted than "
           "data blocks",
           new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options
@@ -459,7 +461,8 @@ void RocksDBOptionFeature::collectOptions(
           "filter and index blocks are pinned and only evicted from cache when "
           "the table reader is freed",
           new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options
@@ -469,7 +472,8 @@ void RocksDBOptionFeature::collectOptions(
           "the top-level index of partitioned filter and index blocks are "
           "pinned and only evicted from cache when the table reader is freed",
           new BooleanParameter(&_pinTopLevelIndexAndFilter),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30701);
 
   options->addOption(
@@ -504,21 +508,21 @@ void RocksDBOptionFeature::collectOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--rocksdb.limit-open-files-at-startup",
-          "limit the amount of .sst files RocksDB will inspect at "
-          "startup, in order to reduce startup IO",
-          new BooleanParameter(&_limitOpenFilesAtStartup),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--rocksdb.limit-open-files-at-startup",
+                  "limit the amount of .sst files RocksDB will inspect at "
+                  "startup, in order to reduce startup IO",
+                  new BooleanParameter(&_limitOpenFilesAtStartup),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30405);
 
   options
-      ->addOption(
-          "--rocksdb.allow-fallocate",
-          "if true, allow RocksDB to use fallocate calls. if false, "
-          "fallocate calls are bypassed",
-          new BooleanParameter(&_allowFAllocate),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--rocksdb.allow-fallocate",
+                  "if true, allow RocksDB to use fallocate calls. if false, "
+                  "fallocate calls are bypassed",
+                  new BooleanParameter(&_allowFAllocate),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30405);
   options
       ->addOption(
@@ -529,7 +533,8 @@ void RocksDBOptionFeature::collectOptions(
           "engine, "
           "but will inhibit concurrent write operations",
           new BooleanParameter(&_exclusiveWrites),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30504)
       .setDeprecatedIn(30800);
 

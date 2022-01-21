@@ -255,7 +255,8 @@ void LogBufferFeature::collectOptions(
           "--log.in-memory",
           "use in-memory log appender, which can be queried via API and web UI",
           new BooleanParameter(&_useInMemoryAppender),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   std::unordered_set<std::string> const logLevels = {
@@ -266,7 +267,8 @@ void LogBufferFeature::collectOptions(
           "use in-memory log appender only for this log level and higher",
           new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel,
                                                        logLevels),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30709);
 }
 

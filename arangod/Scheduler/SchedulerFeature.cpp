@@ -142,10 +142,10 @@ void SchedulerFeature::collectOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--server.prio2-size", "size of the priority 2 fifo",
-          new UInt64Parameter(&_fifo2Size),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--server.prio2-size", "size of the priority 2 fifo",
+                  new UInt64Parameter(&_fifo2Size),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   options->addOption(

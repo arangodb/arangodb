@@ -96,10 +96,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.escape", "log.escape-control-chars");
 
   options
-      ->addOption(
-          "--log", "the global or topic-specific log level",
-          new VectorParameter<StringParameter>(&_levels),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--log", "the global or topic-specific log level",
+                  new VectorParameter<StringParameter>(&_levels),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   options->addSection("log", "logging");
@@ -140,17 +140,17 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30709);
 
   options
-      ->addOption(
-          "--log.use-local-time", "use local timezone instead of UTC",
-          new BooleanParameter(&_useLocalTime),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--log.use-local-time", "use local timezone instead of UTC",
+                  new BooleanParameter(&_useLocalTime),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   options
-      ->addOption(
-          "--log.use-microtime", "use microtime instead",
-          new BooleanParameter(&_useMicrotime),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--log.use-microtime", "use microtime instead",
+                  new BooleanParameter(&_useMicrotime),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   options
@@ -231,10 +231,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30800);
 
   options
-      ->addOption(
-          "--log.process", "show process identifier (pid) in log message",
-          new BooleanParameter(&_processId),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--log.process",
+                  "show process identifier (pid) in log message",
+                  new BooleanParameter(&_processId),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   options->addOption(
@@ -248,19 +249,20 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--log.performance", "shortcut for '--log.level performance=trace'",
-          new BooleanParameter(&_performance),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--log.performance",
+                  "shortcut for '--log.level performance=trace'",
+                  new BooleanParameter(&_performance),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
-    options->addOption(
-        "--log.keep-logrotate",
-        "keep the old log file after receiving a sighup",
-        new BooleanParameter(&_keepLogRotate),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+    options->addOption("--log.keep-logrotate",
+                       "keep the old log file after receiving a sighup",
+                       new BooleanParameter(&_keepLogRotate),
+                       arangodb::options::makeDefaultFlags(
+                           arangodb::options::Flags::Uncommon));
   }
 
   options->addOption(

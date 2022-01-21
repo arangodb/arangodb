@@ -346,12 +346,12 @@ void QueryRegistryFeature::collectOptions(
                      new UInt64Parameter(&_maxQueryPlans));
 
   options
-      ->addOption(
-          "--query.max-nodes-per-callstack",
-          "maximum number execution nodes on the callstack before "
-          "splitting the remaining nodes into a separate thread",
-          new UInt64Parameter(&_maxNodesPerCallstack),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--query.max-nodes-per-callstack",
+                  "maximum number execution nodes on the callstack before "
+                  "splitting the remaining nodes into a separate thread",
+                  new UInt64Parameter(&_maxNodesPerCallstack),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30900);
 
   options->addOption(
@@ -396,11 +396,11 @@ void QueryRegistryFeature::collectOptions(
 #endif
 
   options
-      ->addOption(
-          "--query.allow-collections-in-expressions",
-          "allow full collections to be used in AQL expressions",
-          new BooleanParameter(&_allowCollectionsInExpressions),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      ->addOption("--query.allow-collections-in-expressions",
+                  "allow full collections to be used in AQL expressions",
+                  new BooleanParameter(&_allowCollectionsInExpressions),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800)
       .setDeprecatedIn(30900);
 }

@@ -208,7 +208,8 @@ void MaintenanceFeature::collectOptions(
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Uncommon, arangodb::options::Flags::Dynamic));
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::Dynamic));
 
   options
       ->addOption("--server.maintenance-slow-threads",

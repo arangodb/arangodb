@@ -153,7 +153,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
 
     options->addOption(
         "--server.jwt-secret-keyfile",
@@ -164,7 +165,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new StringParameter(&_jwtSecretFile),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
   }
 
   options->addOption("--server.connection-timeout",

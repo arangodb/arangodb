@@ -168,8 +168,8 @@ class ProgramOptions {
   }
 
   // adds a deprecated option that has no effect to the program options to not
-  // throw an unrecognized startup option error after upgrades until fully removed.
-  // not listed by --help (uncommon option)
+  // throw an unrecognized startup option error after upgrades until fully
+  // removed. not listed by --help (uncommon option)
   Option& addObsoleteOption(std::string const& name,
                             std::string const& description,
                             bool requiresValue) {

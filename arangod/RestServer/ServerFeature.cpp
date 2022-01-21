@@ -92,7 +92,8 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "perform UTF-8 string validation for incoming JSON and VelocyPack "
           "data",
           new BooleanParameter(&_validateUtf8Strings),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30700);
 
   options->addOption("--javascript.script", "run scripts and exit",
