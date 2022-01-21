@@ -217,7 +217,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -294,7 +294,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -371,7 +371,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_EQ(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK,
               link->type());
-    EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE.name(), link->typeName());
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::DataSourceType,
+              link->typeName());
     EXPECT_FALSE(link->unique());
 
     {

@@ -28,17 +28,12 @@
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
-#include "VocBase/LogicalDataSource.h"
 
 namespace arangodb {
 namespace iresearch {
 
-LogicalDataSource::Type const& dataSourceType();
-LogTopic& logTopic();
-
-ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED extern LogTopic TOPIC;
-ADB_IGNORE_UNUSED inline constexpr std::string_view
+[[maybe_unused]] extern LogTopic TOPIC;
+[[maybe_unused]] inline constexpr std::string_view
     IRESEARCH_INVERTED_INDEX_TYPE = "inverted";
 
 ////////////////////////////////////////////////////////////////////////////////

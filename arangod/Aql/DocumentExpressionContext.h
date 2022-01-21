@@ -38,10 +38,6 @@ class DocumentExpressionContext final : public QueryExpressionContext {
 
   ~DocumentExpressionContext() = default;
 
-  bool isDataFromCollection(Variable const* variable) const override {
-    return true;
-  }
-
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 

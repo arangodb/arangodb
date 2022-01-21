@@ -249,7 +249,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+      if (ViewType::kSearch != logicalView->type()) {
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,  // code
                 "error finding view: '" + viewId + "' for link '" +
                     std::to_string(_id.id()) + "' : no such view"};
@@ -264,8 +264,8 @@ Result IResearchLink::init(velocypack::Slice definition,
                     std::to_string(_id.id()) + "'"};
       }
 
-      viewId = view->guid();  // ensue that this is a GUID (required by
-                              // operator==(IResearchView))
+      // ensue that this is a GUID (required by operator==(IResearchView))
+      viewId = view->guid();
 
       // required for IResearchViewCoordinator which calls
       // IResearchLink::properties(...)
@@ -343,7 +343,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
       // if there is no logicalView present yet then skip this step
       if (logicalView) {
-        if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+        if (ViewType::kSearch != logicalView->type()) {
           unload();  // unlock the data store directory
           return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "error finding view: '" + viewId + "' for link '" +
@@ -419,7 +419,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
     // if there is no logicalView present yet then skip this step
     if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+      if (ViewType::kSearch != logicalView->type()) {
         unload();  // unlock the data store directory
 
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -518,8 +518,9 @@ Result IResearchLink::properties(velocypack::Builder& builder,
 
   builder.add(arangodb::StaticStrings::IndexId,
               velocypack::Value(std::to_string(_id.id())));
-  builder.add(arangodb::StaticStrings::IndexType,
-              velocypack::Value(IResearchLinkHelper::type()));
+  builder.add(
+      arangodb::StaticStrings::IndexType,
+      velocypack::Value(arangodb::iresearch::StaticStrings::DataSourceType));
   builder.add(StaticStrings::ViewIdField, velocypack::Value(_viewGuid));
 
   return {};
@@ -573,7 +574,7 @@ Index::IndexType IResearchLink::type() {
 }
 
 char const* IResearchLink::typeName() {
-  return IResearchLinkHelper::type().c_str();
+  return StaticStrings::DataSourceType.data();
 }
 
 bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
@@ -754,8 +755,8 @@ void IResearchLink::invalidateQueryCache(TRI_vocbase_t* vocbase) {
 
 void IResearchLink::LinkStats::needName() const { _needName = true; }
 
-void IResearchLink::LinkStats::toPrometheus(std::string& result,       //
-                                            std::string_view globals,  //
+void IResearchLink::LinkStats::toPrometheus(std::string& result,
+                                            std::string_view globals,
                                             std::string_view labels) const {
   auto writeAnnotation = [&] {
     result.push_back('{');

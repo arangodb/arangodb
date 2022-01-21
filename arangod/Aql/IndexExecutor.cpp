@@ -129,9 +129,9 @@ IndexIterator::CoveringCallback getCallback(
           s = fc.covering.value();
         }
         if (doCopy) {
-          return AqlValue(AqlValueHintCopy(s.start()));
+          return AqlValue(AqlValueHintSliceCopy(s));
         }
-        return AqlValue(AqlValueHintDocumentNoCopy(s.start()));
+        return AqlValue(AqlValueHintSliceNoCopy(s));
       };
 
       if (!context.checkFilter(getValue, &fc)) {

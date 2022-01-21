@@ -41,9 +41,14 @@ namespace {
 
 class LogicalViewImpl : public arangodb::LogicalView {
  public:
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(52),
+                     std::string_view{"LogicalViewImpl"}};
+  }
+
   LogicalViewImpl(TRI_vocbase_t& vocbase,
                   arangodb::velocypack::Slice const& definition)
-      : LogicalView(vocbase, definition) {}
+      : LogicalView(*this, vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
                                                 Serialization) const override {
     return arangodb::Result();
