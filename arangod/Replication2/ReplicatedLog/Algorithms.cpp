@@ -438,8 +438,11 @@ auto algorithms::updateReplicatedLog(
         }
       }
 
-      auto newLeader = log->becomeLeader(spec->currentTerm->config, myServerId,
-                                         spec->currentTerm->term, followers);
+      TRI_ASSERT(spec->participantsConfig.generation > 0);
+      auto newLeader = log->becomeLeader(
+          spec->currentTerm->config, myServerId, spec->currentTerm->term,
+          followers,
+          std::make_shared<ParticipantsConfig>(spec->participantsConfig));
       newLeader->triggerAsyncReplication();  // TODO move this call into
                                              // becomeLeader?
       return newLeader->waitForLeadership().thenValue(

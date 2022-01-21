@@ -140,9 +140,9 @@ struct BaseOptions {
                      std::string const& attributeName, aql::AstNode* condition,
                      bool onlyEdgeIndexes = false);
 
-  void clearVariableValues();
+  void clearVariableValues() noexcept;
 
-  void setVariableValue(aql::Variable const*, aql::AqlValue const);
+  void setVariableValue(aql::Variable const*, aql::AqlValue);
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 

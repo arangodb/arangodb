@@ -40,14 +40,8 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
 
   ~DocumentIndexExpressionContext() = default;
 
-  /// true if the variable we are referring to is set by
-  /// a collection enumeration/index enumeration
-  virtual bool isDataFromCollection(Variable const* variable) const override {
-    return false;
-  }
-
-  virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                                    bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
 
  private:
   /// @brief returns var's aql value
