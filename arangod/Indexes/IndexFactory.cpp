@@ -374,7 +374,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
   }
 
   std::unordered_set<velocypack::StringRef> fields;
-  auto fieldsSlice = definition.get(StaticStrings::IndexFields);
+  auto fieldsSlice = definition.get(attributeName);
 
   if (fieldsSlice.isArray()) {
     std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$",
