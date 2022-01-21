@@ -1595,6 +1595,78 @@ static void reportCurrentReplicatedLog(
     }
   }
 }
+
+static void reportCurrentReplicatedState(
+    VPackBuilder& report,
+    replication2::replicated_state::StateStatus const& status, VPackSlice cur,
+    replication2::LogId id, std::string const& dbName,
+    std::string const& serverId) {
+  // update the local snapshot information
+  auto const& snapshot = status.getSnapshotStatus();
+
+  // load current into memory
+  auto current = std::invoke(
+      [&]() -> std::optional<replication2::replicated_state::agency::Current> {
+        auto currentSlice = cur.get(cluster::paths::aliases::current()
+                                        ->replicatedStates()
+                                        ->database(dbName)
+                                        ->state(to_string(id))
+                                        ->vec());
+        if (currentSlice.isNone()) {
+          return std::nullopt;
+        }
+        return replication2::replicated_state::agency::Current::fromVelocyPack(
+            currentSlice);
+      });
+
+  bool const updateCurrent = std::invoke([&] {
+    if (!current.has_value()) {
+      return true;
+    }
+    // update current if the snapshot information is different
+    if (auto iter = current->participants.find(serverId);
+        iter != std::end(current->participants)) {
+      auto const& cs = iter->second;
+      if (cs.generation != snapshot.generation) {
+        return true;
+      }
+      if (cs.snapshot.status != snapshot.status) {
+        return true;
+      }
+    } else {
+      return true;
+    }
+    return false;
+  });
+
+  if (!updateCurrent) {
+    return;
+  }
+
+  using ParticipantStatus =
+      replication2::replicated_state::agency::Current::ParticipantStatus;
+
+  auto updatePath = cluster::paths::aliases::current()
+                        ->replicatedStates()
+                        ->database(dbName)
+                        ->state(to_string(id))
+                        ->participants()
+                        ->participant(serverId);
+
+  ParticipantStatus update;
+  update.generation = snapshot.generation;
+  update.snapshot.status = snapshot.status;
+  update.snapshot.timestamp = snapshot.lastChange;
+
+  report.add(VPackValue(updatePath->str(cluster::paths::SkipComponents(1))));
+  {
+    VPackObjectBuilder o(&report);
+    report.add(OP, VP_SET);
+    report.add(VPackValue("payload"));
+    update.toVelocyPack(report);
+  }
+}
+
 // updateCurrentForCollections
 // diff current and local and prepare agency transactions or whatever
 // to update current. Will report the errors created locally to the agency
@@ -1607,7 +1679,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   for (auto const& dbName : dirty) {
     auto lit = local.find(dbName);
     VPackSlice ldb;
@@ -1965,6 +2038,21 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           << "': " << ex.what();
       throw;
     }
+    // Update Replicated States
+    try {
+      if (auto stateIter = localStates.find(dbName);
+          stateIter != std::end(localStates)) {
+        for (auto const& [id, status] : stateIter->second) {
+          reportCurrentReplicatedState(report, status, cur, id, dbName,
+                                       serverId);
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("84ee0", WARN, Logger::MAINTENANCE)
+          << "caught exception in Maintenance for database '" << dbName
+          << "': " << ex.what();
+      throw;
+    }
 
   }  // next database
 
@@ -2230,6 +2318,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates,
     std::unordered_set<std::string> const& failedServers) {
   auto start = std::chrono::steady_clock::now();
 
@@ -2250,7 +2339,8 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       // Update Current
       try {
         result = reportInCurrent(feature, plan, dirty, cur, local, allErrors,
-                                 serverId, report, shardStats, localLogs);
+                                 serverId, report, shardStats, localLogs,
+                                 localStates);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
             << "Error reporting in current: " << e.what();

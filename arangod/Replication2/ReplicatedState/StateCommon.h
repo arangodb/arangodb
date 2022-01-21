@@ -62,7 +62,7 @@ struct StateGeneration {
 struct SnapshotStatus {
   enum Status {
     kUninitialized,
-    kInitiated,
+    kInProgress,
     kCompleted,
     kFailed,
   };

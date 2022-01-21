@@ -252,6 +252,7 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
   status.state.state = internalState;
   status.state.lastChange = lastInternalStateChange;
   status.state.detail = std::nullopt;
+  status.snapshot = core->snapshot;
   return StateStatus{.variant = std::move(status)};
 }
 

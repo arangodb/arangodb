@@ -79,11 +79,6 @@ struct Current {
     StateGeneration generation;
 
     struct Snapshot {
-      enum class Status {
-        kInProgress,
-        kCompleted,
-        kFailed,
-      };
 
       using clock = std::chrono::system_clock;
 
@@ -104,7 +99,7 @@ struct Current {
       friend auto operator==(Snapshot const&, Snapshot const&) noexcept
           -> bool = default;
 
-      Status status{Status::kInProgress};
+      SnapshotStatus::Status status{SnapshotStatus::Status::kUninitialized};
       clock::time_point timestamp;
       std::optional<Error> error;
     };
@@ -127,9 +122,5 @@ struct Current {
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
 
-auto to_string(Current::ParticipantStatus::Snapshot::Status status)
-    -> std::string_view;
-auto from_string(std::string_view string)
-    -> Current::ParticipantStatus::Snapshot::Status;
 
 }  // namespace arangodb::replication2::replicated_state::agency

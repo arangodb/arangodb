@@ -336,7 +336,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
     tmp = arangodb::maintenance::phaseTwo(
         plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
-        currentShardLocks, localLogs, failedServers);
+        currentShardLocks, localLogs, localStates, failedServers);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

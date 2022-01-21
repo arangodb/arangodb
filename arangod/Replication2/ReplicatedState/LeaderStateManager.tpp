@@ -150,6 +150,7 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   } else {
     status.state.detail = std::nullopt;
   }
+  status.snapshot = core->snapshot;
   return StateStatus{.variant = std::move(status)};
 }
 

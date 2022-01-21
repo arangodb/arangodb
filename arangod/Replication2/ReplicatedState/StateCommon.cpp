@@ -68,8 +68,8 @@ auto replicated_state::to_string(SnapshotStatus::Status s) noexcept
   switch (s) {
     case SnapshotStatus::kUninitialized:
       return "Uninitialized";
-    case SnapshotStatus::kInitiated:
-      return "Initiated";
+    case SnapshotStatus::kInProgress:
+      return "InProgress";
     case SnapshotStatus::kCompleted:
       return "Completed";
     case SnapshotStatus::kFailed:

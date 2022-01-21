@@ -58,9 +58,9 @@ struct LeaderStatus {
     static auto fromVelocyPack(velocypack::Slice) -> State;
   };
 
-  StateGeneration generation;
   State state;
   replicated_log::LeaderStatus log;
+  SnapshotStatus snapshot;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> LeaderStatus;
@@ -88,9 +88,9 @@ struct FollowerStatus {
     static auto fromVelocyPack(velocypack::Slice) -> State;
   };
 
-  StateGeneration generation;
   State state;
   replicated_log::FollowerStatus log;
+  SnapshotStatus snapshot;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> FollowerStatus;
@@ -101,6 +101,12 @@ struct StateStatus {
 
   auto asFollowerStatus() const noexcept -> FollowerStatus const* {
     return std::get_if<FollowerStatus>(&variant);
+  }
+
+  [[nodiscard]] auto getSnapshotStatus() const noexcept -> SnapshotStatus const& {
+    return std::visit([](auto&& s) -> SnapshotStatus const& {
+      return s.snapshot;
+    }, variant);
   }
 
   void toVelocyPack(velocypack::Builder&) const;

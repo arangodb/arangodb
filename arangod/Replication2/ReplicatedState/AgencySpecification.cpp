@@ -43,6 +43,7 @@ auto const String_Generation = velocypack::StringRef{"generation"};
 auto const String_InProgress = std::string_view{"InProgress"};
 auto const String_Completed = std::string_view{"Completed"};
 auto const String_Failed = std::string_view{"Failed"};
+auto const String_Uninitialized = std::string_view{"Uninitialized"};
 }  // namespace
 
 void Current::ParticipantStatus::Snapshot::Error::toVelocyPack(
@@ -67,28 +68,16 @@ auto Current::ParticipantStatus::Snapshot::Error::fromVelocyPack(
   return Error{errorCode, message, {}};
 }
 
-using Status = Current::ParticipantStatus::Snapshot::Status;
-
-auto agency::to_string(Status status) -> std::string_view {
-  switch (status) {
-    case Status::kInProgress:
-      return String_InProgress;
-    case Status::kCompleted:
-      return String_Completed;
-    case Status::kFailed:
-      return String_Failed;
-  }
-  TRI_ASSERT(false) << "status value was " << static_cast<int>(status);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
-}
-
-auto agency::from_string(std::string_view string) -> Status {
+static auto snapshotStatusFromString(std::string_view string)
+    -> SnapshotStatus::Status {
   if (string == String_InProgress) {
-    return Status::kInProgress;
+    return SnapshotStatus::Status::kInProgress;
   } else if (string == String_Completed) {
-    return Status::kCompleted;
+    return SnapshotStatus::Status::kCompleted;
   } else if (string == String_Failed) {
-    return Status::kFailed;
+    return SnapshotStatus::Status::kFailed;
+  } else if (string == String_Uninitialized) {
+    return SnapshotStatus::Status::kUninitialized;
   }
   // TODO make a proper error code
   THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
@@ -112,7 +101,8 @@ auto Current::ParticipantStatus::Snapshot::fromVelocyPack(
       !error_slice.isNone()) {
     error = Error::fromVelocyPack(error_slice);
   }
-  Status status = agency::from_string(slice.get(String_Status).stringView());
+  SnapshotStatus::Status status =
+      snapshotStatusFromString(slice.get(String_Status).stringView());
   return Snapshot{.status = status, .timestamp = {}, .error = std::move(error)};
 }
 
