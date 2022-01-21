@@ -38,8 +38,7 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
   auto followerLog = makeReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader = leaderLog->becomeLeader(LogConfig{2, 2, 2, false}, "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
@@ -71,8 +70,7 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
   auto followerLog = makeReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader = leaderLog->becomeLeader(LogConfig{2, 2, 2, false}, "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
