@@ -27,27 +27,231 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 #include "Pregel/Utils.h"
 #include "Logger/LogMacros.h"
 
 namespace arangodb::pregel {
 
-struct PregelStats {
+class PregelMetrics {
+ protected:
   using server_t = std::string;
   using numGss_t = uint32_t;
-  using spentTime_t = uint64_t;
+  using spentTime_t = std::chrono::duration<uint64_t>;
 
+ public:
+  PregelMetrics() = default;
+
+ private:
+
+};
+
+class PregelConductorMetrics : PregelMetrics {
+ public:
   uint16_t numThreadsGlobal = 0;
-  // server->numThreads
+  // server->max numThreads
   std::map<server_t, uint16_t> serverNumThreads;
-  // sourceServer -> (targetServer -> numMsg): sum over all gss
+  // sourceServer -> (targetServer -> numMsg): sum over all Gss
   std::map<server_t, std::map<server_t, uint16_t>> serverToServerNumMsg;
-  // server->(global step number -> milliseconds) // better micro?
-  std::map<server_t, std::map<numGss_t, spentTime_t>> serverGSSTime;
-  // (sourceServer->(targetServer->(global step number->sum of sizes of messages)))
-  std::map<server_t, std::map<server_t, std::map<numGss_t, size_t>>> serverToServerGSSMessageSize;
-  // (gss->number active vertices)
-  std::map<numGss_t, uint16_t> GSSToNumActive;
+  // server->(global step number -> time)
+  std::map<server_t, std::map<numGss_t, spentTime_t>> serverGssTime;
+  // (sourceServer->(targetServer->(global step number->sum of sizes of
+  // messages)))
+  std::map<server_t, std::map<server_t, std::map<numGss_t, size_t>>>
+      serverToServerGssMessageSize;
+  // (Gss->number active vertices)
+  std::map<numGss_t, uint16_t> GssToNumActive;
+  // (server->(Gss->time preparing global step))
+  std::map<server_t, std::map<numGss_t, spentTime_t>> serverGssPrepareTime;
+  // (server->(Gss->time starting global step))
+  std::map<server_t, std::map<numGss_t, spentTime_t>> serverGssStartTime;
+  // (server->(Gss->time parsing and storing messages))
+  // i.e, time spent in receivedMessages()
+  std::map<server_t, std::map<numGss_t, spentTime_t>>
+      serverGssAggregateMsgsTime;
+  // time initializing workers (in Conductor)
+  spentTime_t initWorkersTime;
+  // time finalizing workers (in Conductor)
+  spentTime_t finalizeWorkersTime;
+  // finishedWorkerStep time (in Conductor)
+  spentTime_t finishWorkersTime;
+  // finishedWorkerFinalize time (in Conductor)
+  spentTime_t finishedWorkerFinalizeTime;
+
+  void serializeValues(VPackBuilder& b) const {
+    // server->numThreads
+    {
+      VPackBuilder snT;
+      snT.openObject();
+      for (auto& [server, numThreads] : serverNumThreads) {
+        snT.add(server, VPackValue(numThreads));
+      }
+      snT.close();
+      b.add("serverNumThreads", snT.slice());
+    }
+
+    // sourceServer -> (targetServer -> numMsg): sum over all Gss
+    {
+      VPackBuilder sSrvTSrvNumMsgVP;
+      sSrvTSrvNumMsgVP.openObject();
+      for (auto const& [sourceServer, tServerNumMsg] : serverToServerNumMsg) {
+        VPackBuilder tServerNumMsgVP;
+        tServerNumMsgVP.openObject();
+        for (auto const& [targetServer, numMsg] : tServerNumMsg) {
+          tServerNumMsgVP.add(targetServer, VPackValue(numMsg));
+        }
+        tServerNumMsgVP.close();
+        sSrvTSrvNumMsgVP.add(sourceServer, tServerNumMsgVP.slice());
+      }
+      sSrvTSrvNumMsgVP.close();
+      b.add("serverToServerNumMsg", sSrvTSrvNumMsgVP.slice());
+    }
+
+    // server->(global step number -> time)
+    {
+      VPackBuilder serverGssTimeVP;
+      serverGssTimeVP.openObject();
+      for (auto const& [server, gssTime] : serverGssTime) {
+        VPackBuilder gssTimeVP;
+        gssTimeVP.openObject();
+        for (auto const& [gss, duration] : gssTime) {
+          gssTimeVP.add(std::to_string(gss), VPackValue(duration.count()));
+        }
+        gssTimeVP.close();
+        serverGssTimeVP.add(server, gssTimeVP.slice());
+      }
+      serverGssTimeVP.close();
+      b.add("serverGssTime", serverGssTimeVP.slice());
+    }
+
+    {
+      // (sourceServer->(targetServer->(global step number->sum of sizes of
+      // messages)))
+      VPackBuilder sSrvTSrvGssSizeMsg;
+      sSrvTSrvGssSizeMsg.openObject();
+      for (auto const& [sSrv, tSrvGssSizeMsg] : serverToServerGssMessageSize) {
+        VPackBuilder tSrvGssSizeMsgVP;
+        tSrvGssSizeMsgVP.openObject();
+        for (auto const& [tSrv, gssSizeMsg] : tSrvGssSizeMsg) {
+          VPackBuilder gssSizeMsgVP;
+          gssSizeMsgVP.openObject();
+          for (auto const& [gss, sizeMsg] : gssSizeMsg) {
+            gssSizeMsgVP.add(std::to_string(gss), VPackValue(sizeMsg));
+          }
+          gssSizeMsgVP.close();
+          tSrvGssSizeMsgVP.add(tSrv, gssSizeMsgVP.slice());
+        }
+        tSrvGssSizeMsgVP.close();
+        sSrvTSrvGssSizeMsg.add(sSrv, tSrvGssSizeMsgVP.slice());
+      }
+      sSrvTSrvGssSizeMsg.close();
+      b.add("sSrvTSrvGssSizeMsg", sSrvTSrvGssSizeMsg.slice());
+    }
+
+    {
+      // (Gss->number active vertices)
+      VPackBuilder gssNumActive;
+      gssNumActive.openObject();
+      for (auto const& [gss, numActive] : GssToNumActive) {
+        gssNumActive.add(std::to_string(gss), VPackValue(numActive));
+      }
+      gssNumActive.close();
+      b.add("gssNumActive", gssNumActive.slice());
+    }
+
+    {
+      // (server->(Gss->time preparing global step))
+      VPackBuilder srvGssPrepTime;
+      srvGssPrepTime.openObject();
+      for (auto const& [srv, gssPrepTime] : serverGssPrepareTime) {
+        VPackBuilder gssPrepTimeVP;
+        gssPrepTimeVP.openObject();
+        for (auto const& [gss, prepTime] : gssPrepTime) {
+          gssPrepTimeVP.add(std::to_string(gss), VPackValue(prepTime.count()));
+        }
+        gssPrepTimeVP.close();
+        srvGssPrepTime.add(srv, gssPrepTimeVP.slice());
+      }
+      srvGssPrepTime.close();
+      b.add("srvGssPrepTime", srvGssPrepTime.slice());
+    }
+
+    {
+      // (server->(Gss->time starting global step))
+      VPackBuilder srvGssStartTime;
+      srvGssStartTime.openObject();
+      for (auto const& [srv, gssStartTime] : serverGssStartTime) {
+        VPackBuilder gssStartTimeVP;
+        gssStartTimeVP.openObject();
+        for (auto const& [gss, startTime] : gssStartTime) {
+          gssStartTimeVP.add(std::to_string(gss),
+                             VPackValue(startTime.count()));
+        }
+        gssStartTimeVP.close();
+        srvGssStartTime.add(srv, gssStartTimeVP.slice());
+      }
+      srvGssStartTime.close();
+      b.add("srvGssStartTime", srvGssStartTime.slice());
+    }
+
+    {
+      // (server->(Gss->time parsing and storing messages))
+      VPackBuilder srvGssAggrTime;
+      srvGssAggrTime.openObject();
+      for (auto const& [srv, gssAggrTime] : serverGssAggregateMsgsTime) {
+        VPackBuilder gssAggrTimeVP;
+        gssAggrTimeVP.openObject();
+        for (auto const& [gss, duration] : gssAggrTime) {
+          gssAggrTimeVP.add(std::to_string(gss), VPackValue(duration.count()));
+        }
+        gssAggrTimeVP.close();
+        srvGssAggrTime.add(srv, gssAggrTimeVP.slice());
+      }
+      srvGssAggrTime.close();
+      b.add("srvGssAggrTime", srvGssAggrTime.slice());
+    }
+
+    // time initializing workers (in Conductor)
+    b.add("initWorkersTime", VPackValue(initWorkersTime.count()));
+    // time finalizing workers (in Conductor))
+    b.add("finalizeWorkersTime", VPackValue(finalizeWorkersTime.count()));
+    // finishedWorkerStep time (in Conductor)
+    b.add("finishWorkersTime", VPackValue(finishWorkersTime.count()));
+    // finishedWorkerFinalize time (in Conductor)
+    b.add("finishedWorkerFinalizeTime",
+          VPackValue(finishedWorkerFinalizeTime.count()));
+  }
+
+};
+
+class PregelWorkerMetrics : PregelMetrics {
+ public:
+
+  // max numThreads
+  uint16_t numThreads;
+  // targetServer -> numMsg: sum over all Gss
+  std::map<server_t, uint16_t> toServerNumMsg;
+  // global step number -> time
+  std::map<numGss_t, spentTime_t> gssTime;
+  // targetServer->(global step number->sum of sizes of messages)
+  std::map<server_t, std::map<numGss_t, size_t>> toServerGssMessageSize;
+  // Gss->number active vertices
+  std::map<numGss_t, uint16_t> gssToNumActive;
+  // server->(Gss->time preparing global step)
+  std::map<server_t, std::map<numGss_t, spentTime_t>> serverGssPrepareTime;
+  // server->(Gss->time starting global step)
+  std::map<server_t, std::map<numGss_t, spentTime_t>> serverGssStartTime;
+  // server->(Gss->time parsing and storing messages)
+  // i.e, time spent in receivedMessages()
+  std::map<server_t, std::map<numGss_t, spentTime_t>>
+      serverGssAggregateMsgsTime;
+
+
+
+
+ private:
+  numGss_t _gss = 0;
 };
 
 struct MessageStats {
@@ -118,8 +322,6 @@ struct StatsManager {
       stats.accumulate(pair.second);
     }
     stats.serializeValues(b);
-
-
   }
 
   /// Test if all messages were processed
@@ -163,7 +365,8 @@ struct StatsManager {
   size_t clientCount() const { return _serverStats.size(); }
 
  private:
-  std::map<std::string, uint64_t> _activeStats; // (senderKey->activeCountKey)
+  std::map<std::string, uint64_t> _activeStats;  // (senderKey->activeCountKey)
   std::map<std::string, MessageStats> _serverStats;
+  PregelConductorMetrics _pregelMetrics;
 };
 }  // namespace arangodb::pregel

@@ -129,11 +129,12 @@ class Worker : public IWorker {
 
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
+  PregelWorkerMetrics workerMetrics;
   ReportManager _reports;
   /// valid after _finishedProcessing was called
   uint64_t _activeCount = 0;
   /// current number of running threads
-  size_t _runningThreads = 0;
+  uint16_t _runningThreads = 0;
   /// During async mode this should keep track of the send messages
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
