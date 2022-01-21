@@ -177,14 +177,12 @@ bool attributesMatch(
     auto found = false;
     nodeAttr.afData.field = nullptr;
     // try to find in the sort column
-    size_t fieldNum = 0;
     TRI_ASSERT(!tmpUsedColumnsCounter.empty());
     found |= findMatchedField<indexDataOnly>(
         primarySort.fields(), tmpUsedColumnsCounter.front(), nodeAttr);
     // try to find in other columns
     size_t columnNum = 1;
     for (auto const& column : storedValues.columns()) {
-      fieldNum = 0;
       TRI_ASSERT(tmpUsedColumnsCounter.size() >= columnNum);
       found |= findMatchedField<indexDataOnly>(
           column.fields, tmpUsedColumnsCounter[columnNum], nodeAttr);
