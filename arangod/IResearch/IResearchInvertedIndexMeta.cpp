@@ -244,7 +244,8 @@ bool IResearchInvertedIndexMeta::init(
             LinkVersion{_version}, extendedNames);
 
         if (res.fail() || !analyzer) {
-          errorField = std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
+          errorField =
+              std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
           if (res.fail()) {
             errorField.append(": ").append(res.errorMessage());
           }
@@ -389,8 +390,8 @@ bool IResearchInvertedIndexMeta::init(
         return false;
       }
     } else {
-      errorField =
-          std::string{kFieldsFieldName} + "[" + basics::StringUtils::itoa(itr.index()) + "]";
+      errorField = std::string{kFieldsFieldName} + "[" +
+                   basics::StringUtils::itoa(itr.index()) + "]";
       return false;
     }
   }
