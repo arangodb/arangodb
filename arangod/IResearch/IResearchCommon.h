@@ -28,16 +28,11 @@
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
-#include "VocBase/LogicalDataSource.h"
 
 namespace arangodb {
 namespace iresearch {
 
-LogicalDataSource::Type const& dataSourceType();
-LogTopic& logTopic();
-
-ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED extern LogTopic TOPIC;
+[[maybe_unused]] extern LogTopic TOPIC;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines the implementation version of the iresearch view interface

@@ -106,7 +106,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
                     aql::AstNode* filterCondition, aql::AstNode* options,
                     std::vector<Scorer>&& scorers);
 
-  IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice const& base);
+  IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }

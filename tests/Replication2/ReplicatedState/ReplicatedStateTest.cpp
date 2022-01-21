@@ -53,8 +53,8 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
   state->flush();
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
   auto mux = streams::LogMultiplexer<
       replicated_state::ReplicatedStateStreamSpec<MyState>>::construct(leader);
   auto inputStream = mux->getStreamById<1>();
@@ -80,8 +80,8 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
 
   // create a leader in term 1
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
   auto mux =
       streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(
           leader);
@@ -94,8 +94,7 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
   follower = log->becomeFollower("follower", LogTerm{2}, "leader");
 
   // create a leader in term 2
-  leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                   LogTerm{2}, {follower});
+  leader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
   leader->triggerAsyncReplication();
 
   while (follower->hasPendingAppendEntries()) {
@@ -114,8 +113,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto log = makeReplicatedLog(LogId{1});
-  auto leader = log->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                  LogTerm{1}, {follower});
+  auto leader = log->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
   leader->triggerAsyncReplication();
   auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", log));
@@ -168,8 +167,7 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
                 FollowerInternalState::kWaitForLeaderConfirmation);
     }
 
-    auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                          LogTerm{1}, {follower});
+    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
     auto mux =
         streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(
             leader);
@@ -193,8 +191,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
   // and check that old entries are recovered.
   {
     auto follower = leaderLog->becomeFollower("follower", LogTerm{2}, "leader");
-    auto leader = log->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                    LogTerm{2}, {follower});
+    auto leader = log->becomeLeader("leader", LogTerm{2}, {follower}, 2);
+
     leader->triggerAsyncReplication();
     auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
         feature->createReplicatedState("my-state", log));
@@ -229,8 +227,7 @@ TEST_F(ReplicatedStateTest, stream_test) {
   auto followerLog = makeReplicatedLog(LogId{1});
 
   auto follower = followerLog->becomeFollower("B", LogTerm{1}, "A");
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "A",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("A", LogTerm{1}, {follower}, 2);
   leader->triggerAsyncReplication();
 
   auto leaderState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
