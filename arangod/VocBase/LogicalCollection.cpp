@@ -201,11 +201,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   TRI_UpdateTickServer(id().id());
 
   // add keyOptions from slice
-  VPackSlice keyOpts = info.get("keyOptions");
-  _keyGenerator.reset(KeyGenerator::factory(vocbase.server(), keyOpts));
-  if (!keyOpts.isNone()) {
-    _keyOptions = VPackBuilder::clone(keyOpts).steal();
-  }
+  _keyGenerator.reset(
+      KeyGenerator::factory(vocbase.server(), info.get("keyOptions")));
 
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
@@ -264,7 +261,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
-    _followers.reset(new FollowerInfo(this));
+    _followers = std::make_unique<FollowerInfo>(this);
   }
 
   TRI_ASSERT(_physical != nullptr);
