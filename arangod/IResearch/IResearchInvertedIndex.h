@@ -67,7 +67,7 @@ class lazy_filter_bitset_iterator final : public irs::doc_iterator,
  public:
   lazy_filter_bitset_iterator(lazy_bitset& bitset,
                               irs::cost::cost_t estimation) noexcept
-      : cost_(estimation), bitset_(bitset) {
+      : bitset_(bitset), cost_(estimation) {
     reset();
   }
 
@@ -166,6 +166,8 @@ class IResearchInvertedIndex : public IResearchDataStore {
  public:
   explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection,
                                   IResearchInvertedIndexMeta&& meta);
+
+  virtual ~IResearchInvertedIndex() = default;
 
   void toVelocyPack(application_features::ApplicationServer& server,
                     TRI_vocbase_t const* defaultVocbase,
