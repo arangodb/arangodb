@@ -39,6 +39,12 @@ enum class Flags : uint16_t {
                    // --help-all, --help-. or --help-uncommon
   Obsolete = 2,    // the option is obsolete. setting it does not influence the
                    // program behavior
+  // also see addOldOption() for renamed and addObsoleteOption() for deprecated
+  // options. for internal, "hidden" options use:
+  //   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //     options->addOption(...);
+  //   #endif
+
   Enterprise = 4,  // the option is only available in the Enterprise Edition
   Command = 8,     // the option executes a special command, e.g. --version,
                    // --check-configuration, --dump-options
@@ -46,12 +52,6 @@ enum class Flags : uint16_t {
                    // target host configuration
   FlushOnFirst = 32,  // when we first see this parameter, we will flush the
                       // contents of its default value before setting it.
-  // also see addOldOption() for renamed and addObsoleteOption() for deprecated
-  // options. for internal, "hidden" options use:
-  //   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  //     options->addOption(...);
-  //   #endif
-
   // operating systems
   OsLinux = 64,     // option can be used on Linux
   OsWindows = 128,  // option can be used on Windows
