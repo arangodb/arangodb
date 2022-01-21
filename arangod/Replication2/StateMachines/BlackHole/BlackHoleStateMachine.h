@@ -75,8 +75,7 @@ struct BlackHoleFactory {
 }  // namespace black_hole
 
 template<>
-struct replicated_state::EntryDeserializer<
-    replicated_state::black_hole::BlackHoleLogEntry> {
+struct EntryDeserializer<black_hole::BlackHoleLogEntry> {
   auto operator()(streams::serializer_tag_t<
                       replicated_state::black_hole::BlackHoleLogEntry>,
                   velocypack::Slice s) const
@@ -84,8 +83,7 @@ struct replicated_state::EntryDeserializer<
 };
 
 template<>
-struct replicated_state::EntrySerializer<
-    replicated_state::black_hole::BlackHoleLogEntry> {
+struct EntrySerializer<black_hole::BlackHoleLogEntry> {
   void operator()(streams::serializer_tag_t<
                       replicated_state::black_hole::BlackHoleLogEntry>,
                   replicated_state::black_hole::BlackHoleLogEntry const& e,

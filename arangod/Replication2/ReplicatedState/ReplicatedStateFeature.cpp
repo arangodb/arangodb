@@ -37,6 +37,8 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
   auto name_str =
       std::string{name};  // TODO C++20 transparent hashing not yet available
   if (auto iter = factories.find(name_str); iter != std::end(factories)) {
+    LOG_TOPIC("24af7", TRACE, Logger::REPLICATED_STATE)
+        << "Creating replicated state of type `" << name << "`.";
     return iter->second->createReplicatedState(std::move(log));
   }
   THROW_ARANGO_EXCEPTION(
