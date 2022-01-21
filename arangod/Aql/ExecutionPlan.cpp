@@ -2632,19 +2632,38 @@ bool ExecutionPlan::fullCount() const noexcept {
 void ExecutionPlan::findCollectionAccessVariables() {
   _ast->variables()->visit([this](Variable* variable) {
     ExecutionNode* node = this->getVarSetBy(variable->id);
-    if (node != nullptr) {
-      if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-          node->getType() == ExecutionNode::INDEX ||
-          node->getType() == ExecutionNode::INSERT ||
-          node->getType() == ExecutionNode::UPDATE ||
-          node->getType() == ExecutionNode::REPLACE ||
-          node->getType() == ExecutionNode::REMOVE) {
-        // TODO: maybe add more node types here, e.g. arangosearch nodes
-        // also check if it makes sense to do this if the node uses
-        // projections
-        variable->isDataFromCollection = true;
+    if (node == nullptr) {
+      return;
+    }
+    if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+        node->getType() == ExecutionNode::INDEX) {
+      // we only produce full documents if there are no projections
+      variable->isFullDocumentFromCollection =
+          ExecutionNode::castTo<DocumentProducingNode const*>(node)
+              ->projections()
+              .empty();
+    } else if (node->getType() == ExecutionNode::INSERT ||
+               node->getType() == ExecutionNode::UPDATE ||
+               node->getType() == ExecutionNode::REPLACE ||
+               node->getType() == ExecutionNode::REMOVE) {
+      // these nodes always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+      // views always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::MATERIALIZE) {
+      // materialize nodes always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::TRAVERSAL) {
+      TraversalNode const* tn =
+          ExecutionNode::castTo<TraversalNode const*>(node);
+      if (variable == tn->vertexOutVariable() ||
+          variable == tn->edgeOutVariable()) {
+        // traversal vertices and edges are always returned as full documents
+        variable->isFullDocumentFromCollection = true;
       }
     }
+    // TODO: maybe add more node types here?
   });
 }
 

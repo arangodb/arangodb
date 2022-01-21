@@ -184,9 +184,6 @@ class Ast {
   /// @brief create an AST let node, without creating a variable
   AstNode* createNodeLet(AstNode const*, AstNode const*);
 
-  /// @brief create an AST let node, with an IF condition
-  AstNode* createNodeLet(char const*, size_t, AstNode const*, AstNode const*);
-
   /// @brief create an AST filter node
   AstNode* createNodeFilter(AstNode const*);
 
@@ -551,14 +548,8 @@ class Ast {
   AstNode* optimizeFunctionCall(transaction::Methods&,
                                 AqlFunctionsInternalCache&, AstNode*);
 
-  /// @brief optimizes a reference to a variable
-  AstNode* optimizeReference(AstNode*);
-
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
   AstNode* optimizeIndexedAccess(AstNode*);
-
-  /// @brief optimizes the LET statement
-  AstNode* optimizeLet(AstNode*);
 
   /// @brief optimizes the FILTER statement
   AstNode* optimizeFilter(AstNode*);
