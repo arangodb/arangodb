@@ -372,8 +372,8 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "noaccess")) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
-  if (::typeMatch(type, len,
-                  arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data())) {
+  if (arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE ==
+      std::string_view{type, len}) {
     return TRI_IDX_TYPE_INVERTED_INDEX;
   }
   return TRI_IDX_TYPE_UNKNOWN;

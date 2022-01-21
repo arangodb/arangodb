@@ -246,11 +246,6 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                        RocksDBColumnFamilyManager::Family::Invalid),
                    objectId, false) {}
 
-IResearchRocksDBInvertedIndex::~IResearchRocksDBInvertedIndex() {
-  // if triggered  - no unload was called prior to deleting index object
-  TRI_ASSERT(!_dataStore);
-}
-
 void IResearchRocksDBInvertedIndex::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {

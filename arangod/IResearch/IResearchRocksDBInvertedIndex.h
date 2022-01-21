@@ -36,7 +36,14 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                                 uint64_t objectId, std::string const& name,
                                 IResearchInvertedIndexMeta&& meta);
 
-  virtual ~IResearchRocksDBInvertedIndex();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  virtual ~IResearchRocksDBInvertedIndex() {
+    // if triggered  - no unload was called prior to deleting index object
+    TRI_ASSERT(!_dataStore);
+  }
+#else
+  virtual ~IResearchRocksDBInvertedIndex() = default;
+#endif
 
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
