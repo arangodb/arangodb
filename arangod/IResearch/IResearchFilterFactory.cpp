@@ -806,6 +806,47 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
   }
 }
 
+using TypeRangeHandler = void (*)(irs::Or& rangeOr, std::string name,
+                                  irs::boost_t boost);
+
+std::array<TypeRangeHandler, 4> constexpr TypeRangeHandlers{
+    {[](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+       auto nullName = name;  // intentional copy as mangling is inplace!
+       kludge::mangleNull(nullName);
+       setupAllTypedFilter(rangeOr, std::move(nullName), boost);
+     },
+     [](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+       auto boolName = name;  // intentional copy as mangling is inplace!
+       kludge::mangleBool(boolName);
+       setupAllTypedFilter(rangeOr, std::move(boolName), boost);
+     },
+     [](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+       auto numberName = name;  // intentional copy as mangling is inplace!
+       kludge::mangleNumeric(numberName);
+       setupAllTypedFilter(rangeOr, std::move(numberName), boost);
+     },
+     [](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+       auto stringName = name;  // intentional copy as mangling is inplace!
+       kludge::mangleString(stringName);
+       setupAllTypedFilter(rangeOr, std::move(stringName), boost);
+     }}};
+
+template<bool Min, size_t typeIdx>
+void setupTypeOrderRangeFilter(irs::Or& rangeOr, std::string name,
+                               irs::boost_t boost) {
+  static_assert(typeIdx < TypeRangeHandlers.size());
+  static_assert(typeIdx >= 0);
+  if constexpr (Min) {
+    for (size_t i = typeIdx + 1; i < TypeRangeHandlers.size(); ++i) {
+      TypeRangeHandlers[i](rangeOr, name, boost);
+    }
+  } else {
+    for (size_t i = 0; i < typeIdx; ++i) {
+      TypeRangeHandlers[i](rangeOr, name, boost);
+    }
+  }
+}
+
 template<bool Min>
 Result byRange(irs::boolean_filter* filter, std::string name,
                const ScopedAqlValue& value, bool const incl,
@@ -821,27 +862,8 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_range>();
-          // all number, bool and string fields are greater by data order
-          {
-            auto stringName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleString(stringName);
-            setupAllTypedFilter(rangeOr, std::move(stringName),
-                                filterCtx.boost());
-          }
-          {
-            auto numberName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleNumeric(numberName);
-            setupAllTypedFilter(rangeOr, std::move(numberName),
-                                filterCtx.boost());
-          }
-          {
-            auto boolName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleBool(boolName);
-            setupAllTypedFilter(rangeOr, std::move(boolName),
-                                filterCtx.boost());
-          }
+          setupTypeOrderRangeFilter<Min, 0>(rangeOr, name, filterCtx.boost());
         }
-
         kludge::mangleNull(name);
         *range->mutable_field() = std::move(name);
         range->boost(filterCtx.boost());
@@ -861,29 +883,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_range>();
-          if constexpr (Min) {
-            // all number and string fields ae greater by data order
-            {
-              auto stringName =
-                  name;  // intentional copy as mangling is inplace!
-              kludge::mangleString(stringName);
-              setupAllTypedFilter(rangeOr, std::move(stringName),
-                                  filterCtx.boost());
-            }
-            {
-              auto numberName =
-                  name;  // intentional copy as mangling is inplace!
-              kludge::mangleNumeric(numberName);
-              setupAllTypedFilter(rangeOr, std::move(numberName),
-                                  filterCtx.boost());
-            }
-          } else {
-            // all null sub-field is ok )
-            auto nullName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleNull(nullName);
-            setupAllTypedFilter(rangeOr, std::move(nullName),
-                                filterCtx.boost());
-          }
+          setupTypeOrderRangeFilter<Min, 1>(rangeOr, name, filterCtx.boost());
         }
         TRI_ASSERT(range);
         kludge::mangleBool(name);
@@ -913,26 +913,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_granular_range>();
-          if constexpr (Min) {
-            auto stringName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleString(stringName);
-            setupAllTypedFilter(rangeOr, std::move(stringName),
-                                filterCtx.boost());
-          } else {
-            {
-              auto boolName = name;  // intentional copy as mangling is inplace!
-              kludge::mangleBool(boolName);
-              setupAllTypedFilter(rangeOr, std::move(boolName),
-                                  filterCtx.boost());
-            }
-            {
-              // all null sub-field is ok )
-              auto nullName = name;  // intentional copy as mangling is inplace!
-              kludge::mangleNull(nullName);
-              setupAllTypedFilter(rangeOr, std::move(nullName),
-                                  filterCtx.boost());
-            }
-          }
+          setupTypeOrderRangeFilter<Min, 2>(rangeOr, name, filterCtx.boost());
         }
         irs::numeric_token_stream stream;
 
@@ -946,7 +927,6 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         (Min ? opts->range.min_type : opts->range.max_type) =
             incl ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
-
       return {};
     }
     case SCOPED_VALUE_TYPE_STRING: {
@@ -964,25 +944,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_range>();
-          {
-            auto boolName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleBool(boolName);
-            setupAllTypedFilter(rangeOr, std::move(boolName),
-                                filterCtx.boost());
-          }
-          {
-            // all null sub-field is ok )
-            auto nullName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleNull(nullName);
-            setupAllTypedFilter(rangeOr, std::move(nullName),
-                                filterCtx.boost());
-          }
-          {
-            auto numberName = name;  // intentional copy as mangling is inplace!
-            kludge::mangleNumeric(numberName);
-            setupAllTypedFilter(rangeOr, std::move(numberName),
-                                filterCtx.boost());
-          }
+          setupTypeOrderRangeFilter<Min, 3>(rangeOr, name, filterCtx.boost());
         }
 
         auto& analyzer = filterCtx.fieldAnalyzer(name);
