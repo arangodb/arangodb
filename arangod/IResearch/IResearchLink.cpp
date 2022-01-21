@@ -770,6 +770,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     }
   }
 
+  std::lock_guard guard{_commitMutex};
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
 
@@ -1554,7 +1555,6 @@ Result IResearchLink::initDataStore(
       // NOOP
     }
   }
-
   _lastCommittedTick = _dataStore._recoveryTick;
   _flushSubscription =
       std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTick);
@@ -1575,6 +1575,7 @@ Result IResearchLink::initDataStore(
   }
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
+    // call from commit under lock _commitMutex (_dataStore._writer->commit())
     // update last tick
     _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t{tick});
     // convert to BE
