@@ -931,7 +931,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     if (!_storedValuesPaths.empty()) {
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
-      for (auto const it : _storedValuesPaths) {
+      for (auto const& it : _storedValuesPaths) {
         leased->add(doc.get(it));
       }
       leased->close();
@@ -1008,7 +1008,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     if (!_storedValuesPaths.empty()) {
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
-      for (auto const it : _storedValuesPaths) {
+      for (auto const& it : _storedValuesPaths) {
         leased->add(doc.get(it));
       }
       leased->close();
