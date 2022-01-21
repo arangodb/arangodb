@@ -42,7 +42,7 @@ inline void normalizeExpansion(std::string& name) {
   }
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -56,11 +56,7 @@ std::string_view constexpr BOOL_SUFFIX("\0_b", 3);
 std::string_view constexpr NUMERIC_SUFFIX("\0_d", 3);
 std::string_view constexpr STRING_SUFFIX("\0_s", 3);
 
-
-void mangleType(std::string& name) {
-
-  name += TYPE_DELIMITER;
-}
+void mangleType(std::string& name) { name += TYPE_DELIMITER; }
 
 void mangleAnalyzer(std::string& name) {
   normalizeExpansion(name);

@@ -21,7 +21,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once 
+#pragma once
 
 #include "IResearchLinkMeta.h"
 #include "IResearchViewSort.h"
@@ -58,8 +58,7 @@ struct IResearchInvertedIndexMeta {
   /// @param defaultVocbase fallback vocbase
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::application_features::ApplicationServer& server,
-            VPackBuilder& builder,
-            bool writeAnalyzerDefinition,
+            VPackBuilder& builder, bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
   bool hasExtra() const noexcept;
@@ -95,11 +94,11 @@ struct IResearchInvertedIndexMeta {
   // sort condition associated with the link (primarySort)
   IResearchViewSort _sort;
   // stored values associated with the link
-  IResearchViewStoredValues _storedValues;  
+  IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
   irs::string_ref _collectionName;
   // the version of the iresearch interface e.g. which how data is stored in
   // iresearch (default == MAX) IResearchInvertedIndexMeta
   uint32_t _version{static_cast<uint32_t>(LinkVersion::MAX)};
 };
-} // namespace arangodb::iresearch
+}  // namespace arangodb::iresearch

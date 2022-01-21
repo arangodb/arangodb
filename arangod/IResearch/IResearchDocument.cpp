@@ -781,8 +781,7 @@ void InvertedIndexFieldIterator::next() {
           TRI_ASSERT(!valid());
           return;  // exhausted
         }
-        _valueSlice = get(_slice, _begin->attribute,
-                          VPackSlice::noneSlice());
+        _valueSlice = get(_slice, _begin->attribute, VPackSlice::noneSlice());
         if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
             _begin->attribute.back().shouldExpand) {
           _valueSlice = VPackSlice::noneSlice();

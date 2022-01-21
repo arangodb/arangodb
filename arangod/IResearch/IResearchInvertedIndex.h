@@ -108,7 +108,7 @@ class proxy_query final : public irs::filter::prepared {
       if (!cache_.prepared_real_filter_) {
         cache_.prepared_real_filter_ = real_filter_->prepare(index_, order_);
       }
-      cached = 
+      cached =
           std::make_unique<lazy_bitset>(rdr, *cache_.prepared_real_filter_);
     }
 

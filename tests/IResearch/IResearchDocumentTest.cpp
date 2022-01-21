@@ -3581,8 +3581,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, mangleNumeric("fields.fieldA.name"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it,
-                                                     mangleNumeric("array[*].id"));
+        assertField<irs::numeric_token_stream, true>(
+            server, *it, mangleNumeric("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(

@@ -1727,8 +1727,8 @@ template Result IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId const& documentId,
     velocypack::Slice const doc, IResearchLinkMeta const& meta);
 
-template Result
-IResearchDataStore::insert<InvertedIndexFieldIterator, IResearchInvertedIndexMeta>(
+template Result IResearchDataStore::insert<InvertedIndexFieldIterator,
+                                           IResearchInvertedIndexMeta>(
     transaction::Methods& trx, LocalDocumentId const& documentId,
     velocypack::Slice const doc, IResearchInvertedIndexMeta const& meta);
 

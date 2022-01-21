@@ -444,7 +444,7 @@ class IResearchDataStore {
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
   StorageEngine* _engine;
-  
+
   // for primarySort ordering
   VPackComparer _comparer;
 

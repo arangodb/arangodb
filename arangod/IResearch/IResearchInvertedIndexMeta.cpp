@@ -266,9 +266,8 @@ bool IResearchInvertedIndexMeta::init(
         std::vector<basics::AttributeName> fieldParts;
         TRI_ParseAttributeString(val.stringView(), fieldParts, true);
         TRI_ASSERT(!fieldParts.empty());
-        _fields.emplace_back(
-            std::move(fieldParts),
-            FieldMeta::Analyzer(versionSpecificIdentity)); 
+        _fields.emplace_back(std::move(fieldParts),
+                             FieldMeta::Analyzer(versionSpecificIdentity));
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
             << "Error parsing attribute: " << err.what();
@@ -345,7 +344,8 @@ bool IResearchInvertedIndexMeta::init(
                 AnalyzerPool::ptr remappedAnalyzer;
 
                 auto const res = IResearchAnalyzerFeature::copyAnalyzerPool(
-                    remappedAnalyzer, *analyzer, LinkVersion{_version}, extendedNames);
+                    remappedAnalyzer, *analyzer, LinkVersion{_version},
+                    extendedNames);
 
                 LOG_TOPIC_IF("2d81d", ERR, iresearch::TOPIC, res.fail())
                     << "Error remapping analyzer '" << name
@@ -376,9 +376,8 @@ bool IResearchInvertedIndexMeta::init(
             return false;
           }
         } else {
-          _fields.emplace_back(
-              std::move(fieldParts),
-              FieldMeta::Analyzer(versionSpecificIdentity));
+          _fields.emplace_back(std::move(fieldParts),
+                               FieldMeta::Analyzer(versionSpecificIdentity));
         }
       } else {
         errorField = fieldsFieldName + "[" +
@@ -596,4 +595,4 @@ bool IResearchInvertedIndexMeta::FieldRecord::isIdentical(
   }
   return false;
 }
-} // namespace arangodb::iresearch
+}  // namespace arangodb::iresearch

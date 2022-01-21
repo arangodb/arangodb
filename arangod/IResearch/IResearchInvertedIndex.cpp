@@ -145,7 +145,7 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   static FieldMeta::Analyzer defaultAnalyzer =
       FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
   return [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
-          std::string_view ex) -> FieldMeta::Analyzer const& {
+             std::string_view ex) -> FieldMeta::Analyzer const& {
     for (auto const& field : meta._fields) {
       if (field.toString() == ex) {
         return field.analyzer;
@@ -475,7 +475,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
     irs::Or root;
     if (condition) {
-      if (_mutableConditionIdx == transaction::Methods::kNoMutableConditionIdx ||
+      if (_mutableConditionIdx ==
+              transaction::Methods::kNoMutableConditionIdx ||
           (condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
         auto rv = FilterFactory::filter(&root, queryCtx, *condition, false,
@@ -902,9 +903,9 @@ class IResearchInvertedIndexMergeIterator final
 namespace arangodb {
 namespace iresearch {
 
-IResearchInvertedIndex::IResearchInvertedIndex(IndexId iid,
-                                               LogicalCollection& collection,
-                                               IResearchInvertedIndexMeta&& meta)
+IResearchInvertedIndex::IResearchInvertedIndex(
+    IndexId iid, LogicalCollection& collection,
+    IResearchInvertedIndexMeta&& meta)
     : IResearchDataStore(iid, collection), _meta(std::move(meta)) {}
 
 // Analyzer names storing
@@ -1100,7 +1101,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     // sorting  case
 
     // we should not be called for sort optimization if our index is not sorted
-    TRI_ASSERT(!_meta._sort.empty());  
+    TRI_ASSERT(!_meta._sort.empty());
 
     return std::make_unique<IResearchInvertedIndexMergeIterator>(
         collection, trx, node, this, reference,

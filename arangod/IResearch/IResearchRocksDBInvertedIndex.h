@@ -122,8 +122,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
     return IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                      IResearchInvertedIndexMeta>(trx, documentId,
-                                                              doc, meta());
+                                      IResearchInvertedIndexMeta>(
+        trx, documentId, doc, meta());
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
