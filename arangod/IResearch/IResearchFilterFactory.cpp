@@ -840,7 +840,7 @@ void setupTypeOrderRangeFilter(irs::Or& rangeOr, std::string name,
     for (size_t i = typeIdx + 1; i < TypeRangeHandlers.size(); ++i) {
       TypeRangeHandlers[i](rangeOr, name, boost);
     }
-  } else  if constexpr (typeIdx > 0) {
+  } else if constexpr (typeIdx > 0) {
     for (size_t i = 0; i < typeIdx; ++i) {
       TypeRangeHandlers[i](rangeOr, name, boost);
     }
