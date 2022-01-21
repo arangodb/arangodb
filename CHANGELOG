@@ -1,5 +1,8 @@
 devel
 -----
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
+  determining the shard in SingleRemoteModification Nodes was incorrect.
+
 * Upgraded boost to 1.78.0
 
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
