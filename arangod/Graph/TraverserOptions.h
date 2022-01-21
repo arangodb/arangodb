@@ -74,9 +74,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief The condition given in PRUNE (might be empty)
   ///        The Node keeps responsibility
-  // TODO [GraphRefactor]: This got changed to shared_ptr as the options of the
-  // PathValidator needs the PruneExpression. Using unique_ptrs causes troubles
-  // with the auto generated default constructors.
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
   /// @brief The condition given for PostFilters (might be empty)
