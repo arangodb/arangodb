@@ -1321,7 +1321,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
   // reference in array ANY
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1362,7 +1362,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   }
   // reference in array ALL
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1403,7 +1403,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   }
   // reference in array NONE
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 

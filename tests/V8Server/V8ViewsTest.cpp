@@ -76,9 +76,14 @@ struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(42),
+                     std::string_view{"testViewType"}};
+  }
+
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(vocbase, definition) {}
+      : arangodb::LogicalView(*this, vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder& builder, Serialization) const override {
     builder.add("properties", _properties.slice());
@@ -169,10 +174,6 @@ v8::Local<v8::Function> getViewMethodFunction(
   return v8::Local<v8::Function>::Cast(fn);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class V8ViewsTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
@@ -185,15 +186,9 @@ class V8ViewsTest
     arangodb::tests::v8Init();  // on-time initialize V8
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(
-                                 std::string_view("testViewType")),
-                             viewFactory);
+    viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 TEST_F(V8ViewsTest, test_auth) {
   // test create
@@ -339,7 +334,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(arangodb::ViewType{42}, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -1218,7 +1214,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(TestView::typeInfo().first, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -1542,7 +1539,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(TestView::typeInfo().first, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view1 = vocbase.lookupView("testView1");
       EXPECT_FALSE(!view1);
     }
@@ -1581,7 +1579,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(TestView::typeInfo().first, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view1 = vocbase.lookupView("testView1");
       EXPECT_FALSE(!view1);
     }
