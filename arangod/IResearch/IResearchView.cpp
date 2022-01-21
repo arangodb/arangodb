@@ -724,41 +724,47 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
   }
+  TRI_ASSERT(ctx);
   try {
-    auto cantFind = [&] {
-      LOG_TOPIC("d63ff", ERR, TOPIC)
-          << "Some link was removed in arangosearch view '" << name()
-          << "', skipping it";
-      state.cookie(key, nullptr);  // unset cookie
-      return nullptr;              // skip missing links
-    };
     // collect snapshots from all requested links
     auto iterate = [&]<typename T>(T const& collections) -> Snapshot const* {
       for (auto const& entry : collections) {
         constexpr bool kIsShards =
             std::is_same_v<containers::FlatHashSet<DataSourceId>, T>;
+        DataSourceId cid;
         LinkLock linkLock;
         if constexpr (kIsShards) {
-          auto it = _links.find(entry);
+          cid = entry;
+          auto it = _links.find(cid);
           if (it == _links.end()) {
-            return cantFind();
+            LOG_TOPIC("e76eb", ERR, TOPIC)
+                << "failed to find an arangosearch link in collection '" << cid
+                << "' for arangosearch view '" << name() << "', skipping it";
+            state.cookie(key, nullptr);
+            return nullptr;
           }
           linkLock = it->second ? it->second->lock() : LinkLock{};
         } else {
+          cid = entry.first;
           linkLock = entry.second ? entry.second->lock() : LinkLock{};
         }
         if (!linkLock) {
-          return cantFind();
+          LOG_TOPIC("d63ff", ERR, TOPIC)
+              << "failed to find an arangosearch link in collection '" << cid
+              << "' for arangosearch view '" << name() << "', skipping it";
+          state.cookie(key, nullptr);
+          return nullptr;
         }
         auto snapshot = IResearchLink::snapshot(std::move(linkLock));
         if (!snapshot.getDirectoryReader()) {
-          return cantFind();
+          LOG_TOPIC("fffff", ERR, TOPIC)
+              << "failed to find an arangosearch link in collection '" << cid
+              << "' for arangosearch view '" << name() << "', skipping it";
+          TRI_ASSERT(false);
+          state.cookie(key, nullptr);
+          return nullptr;
         }
-        if constexpr (kIsShards) {
-          ctx->add(entry, std::move(snapshot));
-        } else {
-          ctx->add(entry.first, std::move(snapshot));
-        }
+        ctx->add(cid, std::move(snapshot));
       }
       return ctx;
     };
