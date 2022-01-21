@@ -732,7 +732,7 @@ class IResearchInvertedIndexMergeIterator final
     return "inverted-index-merge-iterator";
   }
 
-  bool hasCovering() const { return !_projectionsPrototype.empty(); }
+  bool hasCovering() const override { return !_projectionsPrototype.empty(); }
 
  protected:
   void resetImpl() override {
