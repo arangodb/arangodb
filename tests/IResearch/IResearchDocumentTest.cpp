@@ -3652,7 +3652,6 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
   arangodb::iresearch::InvertedIndexFieldIterator it(
       trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
-  size_t fieldIdx{};
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
                                                mangleNumeric("boost"));
@@ -3683,7 +3682,6 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
   arangodb::iresearch::InvertedIndexFieldIterator it(
       trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
-  size_t fieldIdx{};
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
                                                mangleNumeric("boost"));
@@ -3713,7 +3711,6 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
   arangodb::iresearch::InvertedIndexFieldIterator it(
       trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
-  size_t fieldIdx{};
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
                                                mangleNumeric("boost"));
@@ -3743,6 +3740,5 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   arangodb::iresearch::InvertedIndexFieldIterator it(
       trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
-  size_t fieldIdx{};
   ASSERT_FALSE(it.valid());
 }

@@ -167,16 +167,6 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
-      arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), {}, {},
-          {}, arangodb::transaction::Options());
-      auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
-      if (mockCtx) {
-        mockCtx->setTrx(&trx);
-      }
-
-      arangodb::iresearch::QueryContext const ctx{&trx,    nullptr, nullptr,
-                                                  mockCtx, nullptr, ref};
       auto costs = Index.supportsFilterCondition(id, indexFields, {},
                                                  filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
@@ -266,17 +256,6 @@ class IResearchInvertedIndexConditionTest
     arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>
         nonNullAttributes;
     {
-      arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), {}, {},
-          {}, arangodb::transaction::Options());
-      auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
-      if (mockCtx) {
-        mockCtx->setTrx(&trx);
-      }
-
-      arangodb::iresearch::QueryContext const ctx{&trx,    nullptr, nullptr,
-                                                  mockCtx, nullptr, ref};
-
       SortCondition sortCondition(query->plan(), sorts, constAttributes,
                                   nonNullAttributes, variableDefinitions);
       auto costs = Index.supportsSortCondition(&sortCondition, ref, 0);
