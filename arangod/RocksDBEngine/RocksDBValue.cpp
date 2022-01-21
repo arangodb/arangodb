@@ -223,15 +223,19 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
 RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
     : _type(type), _buffer() {
   switch (_type) {
+    case RocksDBEntryType::VPackIndexValue:
+      TRI_ASSERT(data.isArray());
+      [[fallthrough]];
+
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::ReplicatedLog:
     case RocksDBEntryType::View:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
-      _buffer.reserve(static_cast<size_t>(data.byteSize()));
-      _buffer.append(reinterpret_cast<char const*>(data.begin()),
-                     static_cast<size_t>(data.byteSize()));
+      size_t byteSize = static_cast<size_t>(data.byteSize());
+      _buffer.reserve(byteSize);
+      _buffer.append(reinterpret_cast<char const*>(data.begin()), byteSize);
       break;
     }
 
