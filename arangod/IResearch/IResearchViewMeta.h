@@ -127,13 +127,19 @@ struct IResearchViewMeta {
   IResearchViewMeta();
   IResearchViewMeta(IResearchViewMeta const& other);
 
-  struct SafeTag {};
-  IResearchViewMeta(SafeTag, IResearchViewMeta&& other) noexcept;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ctor with '*Tag' not thread-safe for '&& other'
+  //////////////////////////////////////////////////////////////////////////////
+  struct FullTag {};
+  IResearchViewMeta(FullTag, IResearchViewMeta&& other) noexcept;
   struct PartialTag {};
   IResearchViewMeta(PartialTag, IResearchViewMeta&& other) noexcept;
 
-  void storeSafe(IResearchViewMeta const& other);
-  void storeSafe(IResearchViewMeta&& other) noexcept;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief store methods not thread-safe for 'this', and not for '&& other'
+  //////////////////////////////////////////////////////////////////////////////
+  void storeFull(IResearchViewMeta const& other);
+  void storeFull(IResearchViewMeta&& other) noexcept;
   void storePartial(IResearchViewMeta&& other) noexcept;
 
   bool operator==(IResearchViewMeta const& other) const noexcept;

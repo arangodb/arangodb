@@ -1962,7 +1962,7 @@ void IResearchLink::properties(LinkLock linkLock,
   {
     WRITE_LOCKER(writeLock, linkLock->_dataStore._mutex);
     // '_meta' can be asynchronously modified
-    linkLock->_dataStore._meta.storeSafe(meta);
+    linkLock->_dataStore._meta.storeFull(meta);
   }
 
   if (linkLock->_engine->recoveryState() == RecoveryState::DONE) {

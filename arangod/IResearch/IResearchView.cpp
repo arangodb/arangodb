@@ -295,7 +295,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase,
                              IResearchViewMeta&& meta)
     : LogicalView(*this, vocbase, info),
       _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
-      _meta(IResearchViewMeta::SafeTag{}, std::move(meta)),
+      _meta(IResearchViewMeta::FullTag{}, std::move(meta)),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
   if (vocbase.server().hasFeature<DatabaseFeature>()) {

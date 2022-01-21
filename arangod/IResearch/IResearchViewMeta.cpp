@@ -234,12 +234,12 @@ IResearchViewMeta::IResearchViewMeta()
 }
 
 IResearchViewMeta::IResearchViewMeta(IResearchViewMeta const& other) {
-  storeSafe(other);
+  storeFull(other);
 }
 
-IResearchViewMeta::IResearchViewMeta(SafeTag,
+IResearchViewMeta::IResearchViewMeta(FullTag,
                                      IResearchViewMeta&& other) noexcept {
-  storeSafe(std::move(other));
+  storeFull(std::move(other));
 }
 
 IResearchViewMeta::IResearchViewMeta(PartialTag,
@@ -247,7 +247,7 @@ IResearchViewMeta::IResearchViewMeta(PartialTag,
   storePartial(std::move(other));
 }
 
-void IResearchViewMeta::storeSafe(IResearchViewMeta const& other) {
+void IResearchViewMeta::storeFull(IResearchViewMeta const& other) {
   if (this == &other) {
     return;
   }
@@ -264,7 +264,7 @@ void IResearchViewMeta::storeSafe(IResearchViewMeta const& other) {
   _primarySortCompression = other._primarySortCompression;
 }
 
-void IResearchViewMeta::storeSafe(IResearchViewMeta&& other) noexcept {
+void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
   if (this == &other) {
     return;
   }
