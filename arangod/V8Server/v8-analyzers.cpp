@@ -77,7 +77,7 @@ v8::Handle<v8::Object> WrapAnalyzer(
 
   LOG_TOPIC("44ea6", TRACE, arangodb::Logger::V8)
       << "Wrapping Analyzer " << analyzer->name() << " with ptr "
-      << (void*)analyzer.get();
+      << (void*)analyzer.get() << " to context ID " << v8g->_id;
 
   auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, analyzer);
   auto& entry = itr.first;

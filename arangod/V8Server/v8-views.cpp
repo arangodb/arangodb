@@ -95,7 +95,8 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
   }
 
   LOG_TOPIC("44ea4", TRACE, arangodb::Logger::V8)
-      << "Wrapping View " << view->name() << " with ptr " << (void*)view.get();
+      << "Wrapping View " << view->name() << " with ptr " << (void*)view.get()
+      << " to context ID " << v8g->_id;
 
   auto value = std::shared_ptr<void>(  // persistent value
       view.get(),                      // value
