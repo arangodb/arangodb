@@ -35,6 +35,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
@@ -51,6 +52,8 @@ Index::Index(VPackSlice const& info,
              std::vector<std::vector<basics::AttributeName>> const& fields)
     : _variant(Variant::NONE), _legacyPolygons(false) {
   _coverParams.fromVelocyPack(info);
+  _legacyPolygons = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      info, StaticStrings::IndexLegacyPolygons, true);
 
   if (fields.size() == 1) {
     bool geoJson =
@@ -146,7 +149,7 @@ Result Index::shape(velocypack::Slice const& doc,
     if (loc.isArray() && loc.length() >= 2) {
       return shape.parseCoordinates(loc, /*geoJson*/ true);
     } else if (loc.isObject()) {
-      return geo::geojson::parseRegion(loc, shape, false);
+      return geo::geojson::parseRegion(loc, shape, _legacyPolygons);
     }
     return TRI_ERROR_BAD_PARAMETER;
   } else if (_variant == Variant::COMBINED_LAT_LON) {

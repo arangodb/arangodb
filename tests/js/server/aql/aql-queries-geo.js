@@ -1310,10 +1310,72 @@ function geoFunctionsTestSuite() {
   };
 }
 
+function geoLegacyComparison() {
+
+  function runQuery(query) {
+    return getQueryResults(query.string, query.bindVars || {}, false);
+  }
+
+  let legacy, newStyle;
+
+  const cnLegacy = "UnitTestsAhuacatlGeoLegacy";
+  const cnNewStyle = "UnitTestsAhuacatlGeoNewStyle";
+
+  return {
+    setUp : function() {
+      db._drop(cnLegacy);
+      db._drop(cnNewStyle);
+      legacy = db._create(cnLegacy);
+      legacy.ensureIndex({type:"geo", fields:["geo"], geoJson: true,
+                          legacyPolygons: true});
+      newStyle = db._create(cnNewStyle);
+      newStyle.ensureIndex({type:"geo", fields:["geo"], geoJson: true});
+    },
+
+    tearDown : function() {
+      db._drop(cnLegacy);
+      db._drop(cnNewStyle);
+    },
+
+    testRectangles : function () {
+      let poly = { "type": "Polygon",
+          "coordinates": [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]
+      };
+      legacy.insert({geo: poly});
+      newStyle.insert({geo: poly});
+      let a = getQueryResults(`FOR d IN ${cnLegacy}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(1, a.length);
+      let b = getQueryResults(`FOR d IN ${cnNewStyle}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(0, b.length);
+    },
+
+    testLargerThanHalfOfEarth : function() {
+      let poly = { "type": "Polygon",
+          "coordinates": [[[10, 10], [15, 15], [20, 10], [15, 5], [10, 10]]] };
+      legacy.insert({geo: poly});
+      newStyle.insert({geo: poly});
+      let a = getQueryResults(`FOR d IN ${cnLegacy}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(1, a.length);
+      let b = getQueryResults(`FOR d IN ${cnNewStyle}
+                                 FILTER GEO_INTERSECTS({type:"Point", coordinates:[15, 10]}, d.geo)
+                                 RETURN d._key`, {}, false);
+      assertEqual(0, b.length);
+    },
+
+  };
+}
+
 jsunity.run(ahuacatlLegacyGeoTestSuite);
 jsunity.run(legacyGeoTestSuite);
 jsunity.run(pointsTestSuite);
 jsunity.run(geoJsonTestSuite);
 jsunity.run(geoFunctionsTestSuite);
+jsunity.run(geoLegacyComparison);
 
 return jsunity.done();
