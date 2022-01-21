@@ -30,6 +30,8 @@
 #include "IResearchCommon.h"
 #include "IResearchDataStore.h"
 #include "IResearchInvertedIndexMeta.h"
+// FIXME: remove this header once lazy_bitset is landed in the upstream
+#include "Containers/FlatHashMap.h"
 
 #include "search/boolean_filter.hpp"
 #include "search/bitset_doc_iterator.hpp"
@@ -87,7 +89,7 @@ class lazy_filter_bitset_iterator final : public irs::doc_iterator,
 class proxy_query final : public irs::filter::prepared {
  public:
   struct proxy_cache {
-    std::map<const irs::sub_reader*, std::unique_ptr<lazy_bitset>> readers_;
+    iresearch_absl::flat_hash_map<const irs::sub_reader*, std::unique_ptr<lazy_bitset>> readers_;
     irs::filter::prepared::ptr prepared_real_filter_;
   };
 

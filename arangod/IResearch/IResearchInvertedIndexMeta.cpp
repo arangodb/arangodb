@@ -41,17 +41,17 @@ bool IResearchInvertedIndexMeta::init(
   // copied part begin FIXME: verify and move to common base class if possible
   {
     // optional stored values
-    static VPackStringRef const fieldName("storedValues");
+    constexpr std::string_view kFieldName("storedValues");
 
-    auto const field = slice.get(fieldName);
+    auto const field = slice.get(kFieldName);
     if (!field.isNone() && !_storedValues.fromVelocyPack(field, errorField)) {
       return false;
     }
   }
   {
     // optional sort compression
-    static VPackStringRef const fieldName("primarySortCompression");
-    auto const field = slice.get(fieldName);
+    constexpr std::string_view kFieldName("primarySortCompression");
+    auto const field = slice.get(kFieldName);
 
     if (!field.isNone() && ((_sortCompression = columnCompressionFromString(
                                  getStringRef(field))) == nullptr)) {
@@ -60,27 +60,27 @@ bool IResearchInvertedIndexMeta::init(
   }
   {
     // optional primarySort
-    static VPackStringRef const fieldName("primarySort");
-    auto const field = slice.get(fieldName);
+    constexpr std::string_view kFieldName("primarySort");
+    auto const field = slice.get(kFieldName);
     if (!field.isNone() && !_sort.fromVelocyPack(field, errorField)) {
       return false;
     }
   }
   {
     // optional version
-    VPackStringRef constexpr fieldName("version");
-    auto const field = slice.get(fieldName);
+    constexpr std::string_view kFieldName("version");
+    auto const field = slice.get(kFieldName);
     if (field.isNumber()) {
       _version = field.getNumber<uint32_t>();
       if (_version > static_cast<uint32_t>(LinkVersion::MAX)) {
-        errorField = fieldName;
+        errorField = kFieldName;
         return false;
       }
     } else if (field.isNone()) {
       _version = static_cast<uint32_t>(
           LinkVersion::MAX);  // not present -> last version
     } else {
-      errorField = fieldName;
+      errorField = kFieldName;
       return false;
     }
   }
@@ -103,15 +103,15 @@ bool IResearchInvertedIndexMeta::init(
     _analyzerDefinitions.clear();
 
     // optional object list
-    static const std::string fieldName("analyzerDefinitions");
+    constexpr std::string_view kFieldName{"analyzerDefinitions"};
 
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
     if (readAnalyzerDefinition) {
-      auto field = slice.get(fieldName);
+      auto field = slice.get(kFieldName);
 
       if (!field.isArray()) {
-        errorField = fieldName;
+        errorField = kFieldName;
 
         return false;
       }
@@ -120,7 +120,8 @@ bool IResearchInvertedIndexMeta::init(
         auto value = *itr;
 
         if (!value.isObject()) {
-          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
+          errorField =
+              std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -129,17 +130,18 @@ bool IResearchInvertedIndexMeta::init(
 
         {
           // required string value
-          static const std::string subFieldName("name");
+          constexpr std::string_view kSubFieldName{"name"};
 
-          if (!value.hasKey(subFieldName)  // missing required filed
-              || !value.get(subFieldName).isString()) {
-            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." +
-                         subFieldName;
+          if (!value.hasKey(kSubFieldName)  // missing required filed
+              || !value.get(kSubFieldName).isString()) {
+            errorField = std::string{kFieldName} + "[" +
+                         std::to_string(itr.index()) + "]." +
+                         std::string{kSubFieldName};
 
             return false;
           }
 
-          name = value.get(subFieldName).copyString();
+          name = value.get(kSubFieldName).copyString();
           if (!defaultVocbase.null()) {
             name =
                 IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
@@ -149,13 +151,13 @@ bool IResearchInvertedIndexMeta::init(
 
         {
           // required string value
-          static const std::string subFieldName("type");
-          auto typeSlice = value.get(subFieldName);
+          constexpr std::string_view kSubFieldName{"type"};
+          auto typeSlice = value.get(kSubFieldName);
 
           if (!typeSlice.isString()) {
-            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." +
-                         subFieldName;
-
+            errorField = std::string{kFieldName} + "[" +
+                         std::to_string(itr.index()) + "]." +
+                         std::string{kSubFieldName};
             return false;
           }
 
@@ -166,15 +168,15 @@ bool IResearchInvertedIndexMeta::init(
 
         {
           // optional string value
-          static const std::string subFieldName("properties");
+          constexpr std::string_view kSubFieldName{"properties"};
 
-          if (value.hasKey(subFieldName)) {
-            auto subField = value.get(subFieldName);
+          if (value.hasKey(kSubFieldName)) {
+            auto subField = value.get(kSubFieldName);
 
             if (!subField.isObject() && !subField.isNull()) {
-              errorField = fieldName + "[" + std::to_string(itr.index()) +
-                           "]." + subFieldName;
-
+              errorField = std::string{kFieldName} + "[" +
+                           std::to_string(itr.index()) + "]." +
+                           std::string{kSubFieldName};
               return false;
             }
 
@@ -184,14 +186,15 @@ bool IResearchInvertedIndexMeta::init(
         Features features;
         {
           // optional string list
-          static const std::string subFieldName("features");
+          constexpr std::string_view kSubFieldName{"features"};
 
-          if (value.hasKey(subFieldName)) {
-            auto subField = value.get(subFieldName);
+          if (value.hasKey(kSubFieldName)) {
+            auto subField = value.get(kSubFieldName);
 
             if (!subField.isArray()) {
-              errorField = fieldName + "[" + std::to_string(itr.index()) +
-                           "]." + subFieldName;
+              errorField = std::string{kFieldName} + "[" +
+                           std::to_string(itr.index()) + "]." +
+                           std::string{kSubFieldName};
 
               return false;
             }
@@ -201,18 +204,19 @@ bool IResearchInvertedIndexMeta::init(
               auto subValue = *subItr;
 
               if (!subValue.isString() && !subValue.isNull()) {
-                errorField = fieldName + "[" + std::to_string(itr.index()) +
-                             "]." + subFieldName + "[" +
+                errorField = std::string{kFieldName} + "[" +
+                             std::to_string(itr.index()) + "]." +
+                             std::string{kSubFieldName} + "[" +
                              std::to_string(subItr.index()) + +"]";
-
                 return false;
               }
 
               const auto featureName = getStringRef(subValue);
               if (!features.add(featureName)) {
-                errorField = fieldName + "[" + std::to_string(itr.index()) +
-                             "]." + subFieldName + "." +
-                             std::string(featureName);
+                errorField = std::string{kFieldName} + "[" +
+                             std::to_string(itr.index()) + "]." +
+                             std::string{kSubFieldName} + "." +
+                             std::string{featureName};
 
                 return false;
               }
@@ -240,7 +244,7 @@ bool IResearchInvertedIndexMeta::init(
             LinkVersion{_version}, extendedNames);
 
         if (res.fail() || !analyzer) {
-          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
+          errorField = std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
           if (res.fail()) {
             errorField.append(": ").append(res.errorMessage());
           }
@@ -251,11 +255,11 @@ bool IResearchInvertedIndexMeta::init(
     }
   }
   // end of the copied part
-  static const std::string fieldsFieldName("fields");
+  constexpr std::string_view kFieldsFieldName("fields");
   // for index there is no recursive struct and fields array is mandatory
-  auto field = slice.get(fieldsFieldName);
+  auto field = slice.get(kFieldsFieldName);
   if (!field.isArray() || field.isEmptyArray()) {
-    errorField = fieldsFieldName;
+    errorField = kFieldsFieldName;
     return false;
   }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
@@ -271,7 +275,7 @@ bool IResearchInvertedIndexMeta::init(
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
             << "Error parsing attribute: " << err.what();
-        errorField = fieldsFieldName + "[" +
+        errorField = std::string{kFieldsFieldName} + "[" +
                      basics::StringUtils::itoa(itr.index()) + "]";
         return false;
       }
@@ -295,14 +299,14 @@ bool IResearchInvertedIndexMeta::init(
             LOG_TOPIC("2646b", ERR, iresearch::TOPIC)
                 << "Error parsing field: '" << nameSlice.stringView() << "'. "
                 << "Expansion is allowed only once.";
-            errorField = fieldsFieldName + "[" +
+            errorField = std::string{kFieldsFieldName} + "[" +
                          basics::StringUtils::itoa(itr.index()) + "]";
             return false;
           }
         } catch (arangodb::basics::Exception const& err) {
           LOG_TOPIC("84c20", ERR, iresearch::TOPIC)
               << "Error parsing attribute: " << err.what();
-          errorField = fieldsFieldName + "[" +
+          errorField = std::string{kFieldsFieldName} + "[" +
                        basics::StringUtils::itoa(itr.index()) + "]";
           return false;
         }
@@ -354,7 +358,7 @@ bool IResearchInvertedIndexMeta::init(
               }
             }
             if (!analyzer) {
-              errorField = fieldsFieldName + "[" +
+              errorField = std::string{kFieldsFieldName} + "[" +
                            basics::StringUtils::itoa(itr.index()) + "]" +
                            ".analyzer";
               LOG_TOPIC("2d79d", ERR, iresearch::TOPIC)
@@ -370,7 +374,7 @@ bool IResearchInvertedIndexMeta::init(
                 std::move(fieldParts),
                 FieldMeta::Analyzer(analyzer, std::move(shortName)));
           } else {
-            errorField = fieldsFieldName + "[" +
+            errorField = std::string{kFieldsFieldName} + "[" +
                          basics::StringUtils::itoa(itr.index()) + "]" +
                          ".analyzer";
             return false;
@@ -380,13 +384,13 @@ bool IResearchInvertedIndexMeta::init(
                                FieldMeta::Analyzer(versionSpecificIdentity));
         }
       } else {
-        errorField = fieldsFieldName + "[" +
+        errorField = std::string{kFieldsFieldName} + "[" +
                      basics::StringUtils::itoa(itr.index()) + "]";
         return false;
       }
     } else {
       errorField =
-          fieldsFieldName + "[" + basics::StringUtils::itoa(itr.index()) + "]";
+          std::string{kFieldsFieldName} + "[" + basics::StringUtils::itoa(itr.index()) + "]";
       return false;
     }
   }
