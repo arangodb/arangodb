@@ -104,7 +104,7 @@ return require('internal').options()["log.output"];
     testLogRestoreParams: function() {
       const res = arango.PUT("/_admin/log/structured", {"database": true});
 
-      assertTrue(Object.keys(res).length == 3);
+      assertTrue(Object.keys(res).length === 3);
       assertTrue(res.hasOwnProperty("url"));
       assertTrue(res.hasOwnProperty("username"));
       assertFalse(res.hasOwnProperty("dog"));
