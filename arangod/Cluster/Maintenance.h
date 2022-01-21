@@ -29,16 +29,22 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 namespace arangodb {
 
 class LogicalCollection;
 class StorageEngine;
 
-namespace replication2::replicated_log {
+namespace replication2 {
+namespace replicated_log {
 struct QuickLogStatus;
 enum class ParticipantRole;
-}  // namespace replication2::replicated_log
+}  // namespace replicated_log
+namespace replicated_state {
+struct StateStatus;
+}
+}  // namespace replication2
 
 namespace maintenance {
 
@@ -72,6 +78,14 @@ using ReplicatedLogStatusMapByDatabase =
 using ReplicatedLogSpecMap =
     std::unordered_map<arangodb::replication2::LogId,
                        arangodb::replication2::agency::LogPlanSpecification>;
+using ReplicatedStateStatusMap =
+    std::unordered_map<arangodb::replication2::LogId,
+                       arangodb::replication2::replicated_state::StateStatus>;
+using ReplicatedStateStatusMapByDatabase =
+    std::unordered_map<DatabaseID, ReplicatedStateStatusMap>;
+using ReplicatedStateSpecMap =
+    std::unordered_map<arangodb::replication2::LogId,
+                       arangodb::replication2::replicated_state::agency::Plan>;
 
 /**
  * @brief          Diff Plan Replicated Logs and Local Replicated Logs for phase
@@ -88,6 +102,29 @@ using ReplicatedLogSpecMap =
 void diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
+    MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions);
+
+/**
+ * @brief          Diff Plan Replicated State and Local Replicated States for
+ * phase 1 of Maintenance run
+ *
+ * @param database    Database under which to find the replicated logs
+ * @param localLogs   Locally existent logs on this DB server
+ * @param localStates Locally existent states on this DB server
+ * @param planLogs    All logs found in plan
+ * @param planStates  All states found in plan
+ * @param serverId    Current server ID
+ * @param makeDirty   Set of all databases that require changes
+ * @param callNotify  Indicates whether any changes are needed on this DB server
+ * @param actions     Actions taken in order to perform updates
+ */
+void diffReplicatedStates(
+    DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
+    ReplicatedStateStatusMap const& localStates,
+    ReplicatedLogSpecMap const& planLogs,
+    ReplicatedStateSpecMap const& planStates, std::string const& serverId,
     MaintenanceFeature::errors_t& errors,
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions);
@@ -115,7 +152,8 @@ arangodb::Result diffPlanLocal(
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -139,7 +177,8 @@ arangodb::Result executePlan(
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
     VPackBuilder& report,
     arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates);
 
 /**
  * @brief          Difference local and current states for phase 2 of
@@ -180,7 +219,8 @@ arangodb::Result phaseOne(
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates);
 
 /**
  * @brief          Phase two: Report in agency

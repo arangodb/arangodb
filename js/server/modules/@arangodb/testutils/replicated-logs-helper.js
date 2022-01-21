@@ -312,3 +312,4 @@ exports.allServersHealthy = allServersHealthy;
 exports.continueServerWaitOk = continueServerWaitOk;
 exports.stopServerWaitFailed = stopServerWaitFailed;
 exports.getLocalStatus = getLocalStatus;
+exports.getServerRebootId = getServerRebootId;

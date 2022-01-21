@@ -30,7 +30,7 @@ const LH = require("@arangodb/testutils/replicated-logs-helper");
 const SH = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
 
-const database = "ReplicatedStateMaintenanceTestDB";
+const database = "Replicated_StateMaintenanceTestDB";
 
 const {setUpAll, tearDownAll} = (function () {
   let previousDatabase, databaseExisted = true;
@@ -60,13 +60,45 @@ const replicatedStateSuite = function () {
     testCreateReplicatedState: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
-      SH.updateReplicatedStatePlan(database, logId, function (plan) {
-        plan.participants = {};
+      const leader = servers[0];
+      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
+        state.participants = {};
+        log.currentTerm = {
+          term: 1,
+          config: {
+            replicationFactor: 3,
+            writeConcern: 2,
+            softWriteConcern: 2,
+            waitForSync: false,
+          },
+          leader: {
+            serverId: leader,
+            rebootId: LH.getServerRebootId(leader),
+          }
+        };
+        log.targetConfig = {
+          replicationFactor: 3,
+          writeConcern: 2,
+          softWriteConcern: 2,
+          waitForSync: false,
+        };
+        log.participantsConfig = {
+          generation: 1,
+          participants: {},
+        };
         for (const server of servers) {
-          plan.participants[server] = {
+          state.participants[server] = {
             generation: 1,
           };
+          log.participantsConfig.participants[server] = {};
+          state.properties = {
+            implementation: {
+              type: "black-hole",
+            }
+          };
         }
+
+
       });
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));

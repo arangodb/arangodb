@@ -26,19 +26,24 @@ const LH = require("@arangodb/testutils/replicated-logs-helper");
 
 
 const readReplicatedStateAgency = function (database, logId) {
-  let target =  LH.readAgencyValueAt(`Target/ReplicatedState/${database}/${logId}`);
-  let plan =  LH.readAgencyValueAt(`Plan/ReplicatedState/${database}/${logId}`);
-  let current =  LH.readAgencyValueAt(`Current/ReplicatedState/${database}/${logId}`);
+  let target =  LH.readAgencyValueAt(`Target/ReplicatedStates/${database}/${logId}`);
+  let plan =  LH.readAgencyValueAt(`Plan/ReplicatedStates/${database}/${logId}`);
+  let current =  LH.readAgencyValueAt(`Current/ReplicatedStates/${database}/${logId}`);
   return {target, plan, current};
 };
 
 const updateReplicatedStatePlan = function (database, logId, callback) {
-  let {plan} = readReplicatedStateAgency(database, logId);
-  if (plan === undefined) {
-    plan = {id: logId, generation: 1};
+  let {plan: planState} = readReplicatedStateAgency(database, logId);
+  let {plan: planLog} = LH.readReplicatedLogAgency(database, logId);
+  if (planState === undefined ) {
+    planState = {id: logId, generation: 1};
   }
-  callback(plan);
-  global.ArangoAgency.set(`Plan/ReplicatedState/${database}/${logId}`, plan);
+  if (planLog === undefined) {
+    planLog = {id: logId};
+  }
+  callback(planState, planLog);
+  global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, planState);
+  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, planLog);
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 

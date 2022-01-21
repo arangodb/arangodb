@@ -573,7 +573,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
-)
+        Replication2/ReplicatedState/UpdateReplicatedState.cpp Replication2/ReplicatedState/UpdateReplicatedState.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp
@@ -695,6 +695,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
+  Cluster/UpdateReplicatedStateAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp

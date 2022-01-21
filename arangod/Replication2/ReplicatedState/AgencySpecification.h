@@ -39,9 +39,25 @@ class Slice;
 
 namespace arangodb::replication2::replicated_state::agency {
 
+struct ImplementationSpec {
+  std::string type;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> ImplementationSpec;
+};
+
 struct Plan {
   LogId id;
   StateGeneration generation;
+
+  struct Properties {
+    ImplementationSpec implementation;
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
+  };
+
+  Properties properties;
 
   struct Participant {
     StateGeneration generation;

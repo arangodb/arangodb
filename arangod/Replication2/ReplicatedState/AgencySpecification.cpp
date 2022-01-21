@@ -176,6 +176,8 @@ void Plan::toVelocyPack(velocypack::Builder& builder) const {
       state.toVelocyPack(builder);
     }
   }
+  builder.add(velocypack::Value(StaticStrings::Properties));
+  properties.toVelocyPack(builder);
 }
 
 auto Plan::fromVelocyPack(velocypack::Slice slice) -> Plan {
@@ -188,7 +190,34 @@ auto Plan::fromVelocyPack(velocypack::Slice slice) -> Plan {
     participants.emplace(key.copyString(), status);
   }
 
+  auto properties =
+      Properties::fromVelocyPack(slice.get(StaticStrings::Properties));
+
   return Plan{.id = id,
               .generation = generation,
+              .properties = std::move(properties),
               .participants = std::move(participants)};
+}
+
+void Plan::Properties::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  builder.add(velocypack::Value("implementation"));
+  implementation.toVelocyPack(builder);
+}
+
+auto Plan::Properties::fromVelocyPack(velocypack::Slice slice)
+    -> Plan::Properties {
+  auto impl = ImplementationSpec::fromVelocyPack(slice.get("implementation"));
+  return Properties{.implementation = std::move(impl)};
+}
+
+void ImplementationSpec::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  builder.add(StaticStrings::IndexType, velocypack::Value(type));
+}
+
+auto ImplementationSpec::fromVelocyPack(velocypack::Slice slice)
+    -> ImplementationSpec {
+  return ImplementationSpec{
+      .type = slice.get(StaticStrings::IndexType).copyString()};
 }

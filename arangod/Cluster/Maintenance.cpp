@@ -42,6 +42,7 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
@@ -628,6 +629,82 @@ void arangodb::maintenance::diffReplicatedLogs(
   }
 }
 
+void arangodb::maintenance::diffReplicatedStates(
+    DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
+    ReplicatedStateStatusMap const& localStates,
+    ReplicatedLogSpecMap const& planLogs,
+    ReplicatedStateSpecMap const& planStates, std::string const& serverId,
+    MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions) {
+  using namespace arangodb::replication2;
+
+  auto const createReplicatedStateAction =
+      [&](LogId id, replicated_state::agency::Plan const* spec) {
+        auto specStr = std::invoke([&] {
+          VPackBuilder builder;
+          auto slice = VPackSlice::noneSlice();
+          if (spec != nullptr) {
+            spec->toVelocyPack(builder);
+            slice = builder.slice();
+          }
+          return StringUtils::encodeBase64(slice.startAs<char>(),
+                                           slice.byteSize());
+        });
+
+        auto description = std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+                {std::string(NAME), std::string(UPDATE_REPLICATED_STATE)},
+                {std::string(DATABASE), database},
+                {REPLICATED_LOG_ID, std::to_string(id.id())},
+                {REPLICATED_LOG_SPEC, specStr},
+            },
+            NORMAL_PRIORITY, false);
+
+        makeDirty.insert(database);
+        callNotify = true;
+        actions.emplace_back(std::move(description));
+      };
+
+  // 1. for each state in Plan
+  //    1.1. check if state exists locally
+  // 2. for each local state
+  //    2.1. check that it is still in Plan
+  //      otherwise delete
+  //    2.2: check if we are still a participant
+  //      otherwise delete
+  //    2.2. check if local snapshot is valid
+  //      otherwise flush
+  for (auto const& [id, spec] : planStates) {
+    if (!spec.participants.contains(serverId)) {
+      continue;  // ignore all replicated states without this server as
+                 // participant
+    }
+    if (!localStates.contains(id)) {
+      // we have to create this replicated state
+      createReplicatedStateAction(id, &spec);
+    }
+  }
+
+  for (auto const& [id, status] : localStates) {
+    bool const shouldDeleted = std::invoke([&, id = id] {
+      if (auto it = planStates.find(id); it == std::end(planStates)) {
+        return true;
+      } else if (!it->second.participants.contains(serverId)) {
+        return true;
+      } else {
+        return false;
+      }
+    });
+
+    if (shouldDeleted) {
+      createReplicatedStateAction(id, nullptr);
+    }
+
+    // TODO check snapshot
+  }
+}
+
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
     StorageEngine& engine,
@@ -638,11 +715,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   // You are entering the functional sector.
   // Vous entrez dans le secteur fonctionel.
   // Sie betreten den funktionalen Sektor.
-
   arangodb::Result result;
   std::unordered_set<std::string>
       commonShrds;                        // Intersection collections plan&local
@@ -697,7 +774,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         actions.emplace_back(std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
                 {std::string(NAME), std::string(DROP_DATABASE)},
-                {std::string(DATABASE), std::move(dbname)}},
+                {std::string(DATABASE), dbname}},
             HIGHER_PRIORITY, false));
       }
     }
@@ -825,6 +902,34 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
     diffReplicatedLogs(dbname, logs, planLogs, serverId, errors, makeDirty,
                        callNotify, actions);
+
+    auto lits = localStates.find(dbname);
+    if (lits == std::end(localStates)) {
+      continue;
+    }
+    auto pits = plan.find(dbname);
+    if (pits == std::end(plan)) {
+      continue;
+    }
+
+    auto const& states = lits->second;
+    auto planss = pits->second->slice()[0].get(cluster::paths::aliases::plan()
+                                                   ->replicatedStates()
+                                                   ->database(dbname)
+                                                   ->vec());
+    if (!planss.isObject()) {
+      continue;
+    }
+
+    // create data structure
+    auto planStates = ReplicatedStateSpecMap{};
+    for (auto [key, value] : VPackObjectIterator(planss)) {
+      auto spec = replicated_state::agency::Plan::fromVelocyPack(value);
+      planStates.emplace(spec.id, std::move(spec));
+    }
+
+    diffReplicatedStates(dbname, logs, states, planLogs, planStates, serverId,
+                         errors, makeDirty, callNotify, actions);
   }
 
   // See if shard errors can be thrown out:
@@ -909,7 +1014,8 @@ arangodb::Result arangodb::maintenance::executePlan(
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
   arangodb::Result result = feature.copyAllErrors(errors);
@@ -933,7 +1039,8 @@ arangodb::Result arangodb::maintenance::executePlan(
     auto& engine =
         feature.server().getFeature<EngineSelectorFeature>().engine();
     diffPlanLocal(engine, plan, planIndex, dirty, local, serverId, errors,
-                  makeDirty, callNotify, actions, shardActionMap, localLogs);
+                  makeDirty, callNotify, actions, shardActionMap, localLogs,
+                  localStates);
     feature.addDirty(makeDirty, callNotify);
   }
 
@@ -1071,7 +1178,8 @@ arangodb::Result arangodb::maintenance::phaseOne(
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs) {
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ReplicatedStateStatusMapByDatabase const& localStates) {
   auto start = std::chrono::steady_clock::now();
 
   arangodb::Result result;
@@ -1082,8 +1190,9 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
     // Execute database changes
     try {
-      result = executePlan(plan, planIndex, dirty, moreDirt, local, serverId,
-                           feature, report, shardActionMap, localLogs);
+      result =
+          executePlan(plan, planIndex, dirty, moreDirt, local, serverId,
+                      feature, report, shardActionMap, localLogs, localStates);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
           << "Error executing plan: " << e.what();
