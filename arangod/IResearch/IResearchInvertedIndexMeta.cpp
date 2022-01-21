@@ -84,6 +84,20 @@ bool IResearchInvertedIndexMeta::init(
       return false;
     }
   }
+  bool const extendedNames =
+      server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+
+  auto const& identity = *IResearchAnalyzerFeature::identity();
+  AnalyzerPool::ptr versionSpecificIdentity;
+
+  auto const res = IResearchAnalyzerFeature::copyAnalyzerPool(
+      versionSpecificIdentity, identity, LinkVersion{_version}, extendedNames);
+
+  if (res.fail() || !versionSpecificIdentity) {
+    TRI_ASSERT(false);
+    return false;
+  }
+
   {
     // clear existing definitions
     _analyzerDefinitions.clear();
@@ -221,8 +235,6 @@ bool IResearchInvertedIndexMeta::init(
         }
 
         AnalyzerPool::ptr analyzer;
-        bool extendedNames =
-            server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
             analyzer, name, type, properties, revision, features,
             LinkVersion{_version}, extendedNames);
@@ -256,10 +268,7 @@ bool IResearchInvertedIndexMeta::init(
         TRI_ASSERT(!fieldParts.empty());
         _fields.emplace_back(
             std::move(fieldParts),
-            FieldMeta::Analyzer(
-                IResearchAnalyzerFeature::identity(),
-                std::string(IResearchAnalyzerFeature::identity()
-                                ->name())));  // FIXME: deduplicate
+            FieldMeta::Analyzer(versionSpecificIdentity)); 
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("1d04c", ERR, iresearch::TOPIC)
             << "Error parsing attribute: " << err.what();
@@ -331,6 +340,18 @@ bool IResearchInvertedIndexMeta::init(
               analyzer =
                   analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
                                 ServerState::instance()->isClusterRole());
+              if (analyzer) {
+                // Remap analyzer features to match version.
+                AnalyzerPool::ptr remappedAnalyzer;
+
+                auto const res = IResearchAnalyzerFeature::copyAnalyzerPool(
+                    remappedAnalyzer, *analyzer, LinkVersion{_version}, extendedNames);
+
+                LOG_TOPIC_IF("2d81d", ERR, iresearch::TOPIC, res.fail())
+                    << "Error remapping analyzer '" << name
+                    << "' Error:" << res.errorMessage();
+                analyzer = remappedAnalyzer;
+              }
             }
             if (!analyzer) {
               errorField = fieldsFieldName + "[" +
@@ -357,9 +378,7 @@ bool IResearchInvertedIndexMeta::init(
         } else {
           _fields.emplace_back(
               std::move(fieldParts),
-              FieldMeta::Analyzer(
-                  IResearchAnalyzerFeature::identity(),
-                  std::string(IResearchAnalyzerFeature::identity()->name())));
+              FieldMeta::Analyzer(versionSpecificIdentity));
         }
       } else {
         errorField = fieldsFieldName + "[" +
