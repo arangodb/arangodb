@@ -77,7 +77,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
   IResearchViewMeta indexMeta;
   std::string errField;
   if (!indexMeta.init(definition, errField)) {
-    LOG_TOPIC("a9ccd", ERR, iresearch::TOPIC)
+    LOG_TOPIC("d2b8a", ERR, iresearch::TOPIC)
         << (errField.empty()
                 ? (std::string(
                        "failed to initialize index meta from definition: ") +
@@ -277,7 +277,7 @@ Result IResearchRocksDBInvertedIndex::drop() { return deleteDataStore(); }
 void IResearchRocksDBInvertedIndex::unload() {
   auto res = shutdownDataStore();
   if (!res.ok()) {
-    LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
+    LOG_TOPIC("0617f", ERR, iresearch::TOPIC)
         << "failed to unload arangosearch rockdb inverted index: "
         << res.errorNumber() << " " << res.errorMessage();
   }

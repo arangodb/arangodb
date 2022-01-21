@@ -56,7 +56,7 @@ function optimizerRuleInvertedIndexTestSuite() {
                        primarySort:[{field: "count", direction:"desc"}]});
       let data = [];
       for (let i = 0; i < docs; i++) {
-        if (i % 10 == 0) {
+        if (i % 10 === 0) {
           data.push({count:i,
                      data_field:'value' + i % 100,
                      custom_field:"quick brown",
