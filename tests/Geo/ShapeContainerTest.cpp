@@ -29,6 +29,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/VelocyPackHelper.h"
+
 #include "Basics/Common.h"
 #include "Basics/error.h"
 #include "Basics/Exceptions.h"
@@ -482,6 +484,48 @@ TEST_F(ShapeContainerTest, polygon_area_test) {
   // tolerance 50.000 km^2 vs 7.692.000 km^2 total
   ASSERT_NEAR(shape.area(geo::SPHERE), 7800367402432, 50000000000);
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 7800367402432, 50000000000);
+}
+
+using namespace arangodb::tests;
+
+TEST_F(ShapeContainerTest, compare_new_legacy) {
+  // Check that legacy parsing detects LngLatRects and new style finds .
+  // a polygon Also check containment of a point to make sure          .
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  Result res = geojson::parseRegion(polyS, shape, false);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
+  S2Point point = S2LatLng::FromDegrees(10.0, 15.0).ToPoint();
+  ASSERT_FALSE(shape.contains(point));
+
+  res = geojson::parseRegion(polyS, shape, true);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_LATLNGRECT, shape.type());
+  ASSERT_TRUE(shape.contains(point));
+
+  // Check that legacy parsing normalizes polygons whereas new style allows
+  // for polygons covering more than half of the world:
+  poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10, 10], [15, 15], [20, 10], [15, 5], [10, 10]]]
+  })"_vpack;
+  // This polygon contains what is to the left of the polyline, which is
+  // the complement of a small shape around [15, 10]!
+  polyS = velocypack::Slice(poly->data());
+  res = geojson::parseRegion(polyS, shape, false);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
+  point = S2LatLng::FromDegrees(10.0, 15.0).ToPoint();
+  ASSERT_FALSE(shape.contains(point));
+
+  res = geojson::parseRegion(polyS, shape, true);
+  ASSERT_TRUE(res.ok());
+  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
+  ASSERT_TRUE(shape.contains(point));
 }
 
 class ShapeContainerTest2 : public ::testing::Test {

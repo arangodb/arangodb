@@ -363,8 +363,13 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region,
     // more than half of the earth, we must not blindly "Normalize"
     // the loops, as we did in earlier versions, although RFC7946
     // says "parsers SHOULD NOT reject Polygons that do not follow
-    // the right-hand rule". Since we cannot detect this, we cannot    // reject
-    // anything, is my reading of this. Max 1.9.2021 .
+    // the right-hand rule". Since we cannot detect this, we cannot
+    // reject anything, is my reading of this. Max 1.9.2021 .
+    // Nevertheless, we need to support legacy applications, therefore:
+    if (legacy) {
+      S2Loop* loop = loops.back().get();
+      loop->Normalize();
+    }
 
     // subsequent loops must be holes within first loop:
     S2Loop* loop = loops.back().get();
