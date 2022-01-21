@@ -344,6 +344,7 @@ void Worker<V, E, M>::_startProcessing() {
   }
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
+  workerMetrics.numThreads = std::max(workerMetrics.numThreads, _runningThreads);
   size_t numT = _runningThreads;
 
   auto self = shared_from_this();

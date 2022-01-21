@@ -223,6 +223,10 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
+  // return true if "extended" is a parameter with value true, yes, on,
+  // ::checkmark:: or 1 and false otherwise
+  c->setReturnExtendedInfo(_request->parsedValue("extended", false));
+
   VPackBuilder builder;
   c->toVelocyPack(builder);
   generateResult(rest::ResponseCode::OK, builder.slice());
