@@ -665,8 +665,8 @@ std::string const& IResearchLink::getViewId() const noexcept {
   return _viewGuid;
 }
 
-std::string IResearchLink::getDbName() const {
-  return std::to_string(_collection.vocbase().id());
+std::string const& IResearchLink::getDbName() const {
+  return _collection.vocbase().name();
 }
 
 std::string const& IResearchLink::getShardName() const noexcept {

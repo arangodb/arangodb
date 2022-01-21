@@ -128,7 +128,8 @@ void assertField(arangodb::tests::mocks::MockAqlServer& server,
 
     ASSERT_EQ(expectedAnalyzerPtr->type(), analyzer->type());
     ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().fieldFeatures(
-                  arangodb::iresearch::LinkVersion::MIN),
+                  inverted ? arangodb::iresearch::LinkVersion::MAX
+                           : arangodb::iresearch::LinkVersion::MIN),
               value.features());
     ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().indexFeatures(),
               value.index_features());
@@ -3581,35 +3582,35 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
       },
       [](auto& server, auto const& it) {
         assertField<irs::numeric_token_stream, true>(server, *it,
-                                                     mangleNumeric("array.id"));
+                                                     mangleNumeric("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("array.id"));
+            server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("array.id"));
+            server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
-                                            mangleNull("array.id"));
+                                            mangleNull("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<arangodb::iresearch::GeoJSONAnalyzer>(
-            server, *it, "array.subobj.id", "my_geo");
+            server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
-                                            mangleNull("array.subobj.id"));
+                                            mangleNull("array[*].subobj.id"));
       },
       [](auto& server, auto const& it) {
         assertField<arangodb::iresearch::GeoJSONAnalyzer>(
-            server, *it, "array.subobj.id", "my_geo");
+            server, *it, "array[*].subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
         assertField<arangodb::iresearch::GeoJSONAnalyzer>(
-            server, *it, "array.subobj.id", "my_geo");
+            server, *it, "array[*].subobj.id", "my_geo");
       },
   };
 
