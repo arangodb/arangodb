@@ -77,6 +77,7 @@ void RestBaseHandler::handleError(Exception const& ex) {
 template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      Payload&& payload) {
+  // in _response, clear _headers, _payload and set _responseCode = code;
   resetResponse(code);
   writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
 }

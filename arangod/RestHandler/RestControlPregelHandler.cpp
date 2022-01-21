@@ -196,6 +196,7 @@ void RestControlPregelHandler::startExecution() {
 void RestControlPregelHandler::getExecutionStatus() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
+  // if suffixes is empty, return []
   if (suffixes.empty()) {
     bool const allDatabases = _request->parsedValue("all", false);
     bool const fanout = ServerState::instance()->isCoordinator() &&
@@ -207,6 +208,7 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
+  // suffixes[0] should be the id of the current pregel run
   if (suffixes.size() != 1 || suffixes[0].empty()) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
