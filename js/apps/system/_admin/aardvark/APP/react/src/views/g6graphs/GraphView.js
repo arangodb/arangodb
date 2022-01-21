@@ -2,6 +2,7 @@ import React from 'react';
 import G6 from '@antv/g6';
 import ReactDOM from 'react-dom';
 import { Card } from 'antd';
+import { data2 } from './data2';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
 import styles from './graphview.module.css';
@@ -123,14 +124,21 @@ export class GraphView extends React.Component {
   }
 
   addNode = () => {
+    const min = 0;
+    const maxX = 1000;
+    const maxY = 400;
+    const id = (Math.random() + 1).toString(36).substring(7);
+    const address = (Math.random() + 1).toString(8).substring(7);
+    const fillColor = `#${Math.floor(Math.random()*16777215).toString(16)}`;
+    console.log("fillColor: ", fillColor);
     const nodeModel = {
-      id: 'newnode',
-      label: 'newnode',
-      address: 'cq',
-      x: 200,
-      y: 150,
+      id: id,
+      label: id,
+      address: address,
+      x: Math.floor(Math.random() * (Math.floor(maxX) - Math.ceil(min))) + Math.ceil(min),
+      y: Math.floor(Math.random() * (Math.floor(maxY) - Math.ceil(min))) + Math.ceil(min),
       style: {
-        fill: 'white',
+        fill: fillColor,
       },
     };
     
@@ -175,12 +183,65 @@ export class GraphView extends React.Component {
     this.graph.render();
   }
 
+  updateNodeGraphData = () => {
+    const tempNodes = this.graph.getNodes();
+    console.log("updateNodeGraphData: Nodes in child: ", tempNodes);
+    const dataWithNewNodes = {
+      nodes: [
+        {
+          id: '1',
+          label: 'node1'
+        },
+        {
+          id: '2',
+          label: 'node2'
+        },
+        {
+          id: '3',
+          label: 'node3'
+        }
+      ],
+      edges: [
+        {
+          source: '1',
+          target: '2',
+          data: {
+            type: 'name1',
+            amount: '100,000,000,00 元',
+            date: '2019-08-03'
+          }
+        },
+        {
+          source: '1',
+          target: '3',
+          data: {
+            type: 'name2',
+            amount: '100,000,000,00 元',
+            date: '2019-08-03'
+          }
+        },
+        {
+          source: '2',
+          target: '3',
+          data: {
+            type: 'name3',
+            amount: '100,000,000,00 元',
+            date: '2019-08-03'
+          }
+        }
+      ]
+    };
+    this.props.onUpdateNodeGraphData(dataWithNewNodes);
+  }
+
   render() {
     return <>
       <button onClick={this.getNodes}>Get nodes (new)</button>
       <button onClick={this.getEdges}>Get edges (new)</button>
       <button onClick={this.addNode}>Add node (new)</button>
       <button onClick={this.addEdge}>Add edge (new)</button>
+      <button onClick={this.updateNodeGraphData}>Update node graph data (new)</button>
+      <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
       <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
       <Card

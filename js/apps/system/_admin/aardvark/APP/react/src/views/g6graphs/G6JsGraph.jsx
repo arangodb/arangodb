@@ -272,6 +272,30 @@ const G6JsGraph = () => {
     console.log('graph is: ', graph);
   }
 
+  const updateGraphDataNodes = (newNodes) => {
+    console.log('graphData is: ', graphData);
+    console.log('graphData.nodes are: ', graphData.nodes);
+    /*
+    const currentEdges = graphData.edges;
+    const newGraphData = {
+      edges: {
+        ...currentEdges
+      },
+       nodes: {
+        ...newNodes
+      }
+    }
+    console.log("currentEdges: ", currentEdges);
+    console.log("Complete new created graphData-Object: ", newGraphData);
+    */
+    setGraphData(newNodes);
+    //setGraphData(data2);
+  }
+
+  const printGraphData = () => {
+    console.log("Current graphData: ", graphData);
+  }
+
   /*
   <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
         <EdgeStyleSelector onEdgeStyleChange={(typeModel) => changeEdgeStyle(typeModel)} />
@@ -289,8 +313,10 @@ const G6JsGraph = () => {
   return (
     <div>
       <button onClick={() => changeGraphData()}>Change graph data (parent)</button>
+      <button onClick={() => printGraphData()}>Print graphData</button>
         <GraphView
             data={graphData}
+            onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
         />
     </div>
   );
