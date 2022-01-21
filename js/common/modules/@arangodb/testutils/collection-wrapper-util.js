@@ -27,7 +27,8 @@
 const {db} = require("@arangodb");
 
 function* ValidKeyGenerator() {
-  yield "test";
+  yield "6010215";
+  // yield "test";
 }
 
 function* SpecialCharacterKeyGenerator() {
@@ -57,7 +58,7 @@ function* BasicDocumentGenerator(keyGenerator) {
 }
 
 class CollectionWrapper {
-  
+
   constructor(name) {
     this._collectionName = name;
   }

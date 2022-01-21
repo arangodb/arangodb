@@ -44,6 +44,9 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       const keyUrl = baseUrl + "/" + encodeURIComponent(doc._key);
       // create document
       let result = arango.POST_RAW(baseUrl, doc);
+      if (202 != result.code) {
+        console.warn(`Got error ${JSON.stringify(result)} for doc ${JSON.stringify(doc)}`);
+      }
       assertEqual(202, result.code, `Creating document with key ${doc._key}`);
       let rev = result.parsedBody._rev;
 
@@ -155,6 +158,69 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
     [`testSpecialKeysInUrls${testNamePostfix}`]: function () {
       // This is supposed to test special characters in URLs
       runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
+    },
+
+    /// @brief this tests the SimpleQueries lookupByKeys and removeByKeys
+    [`testLookupByKeys${testNamePostfix}`]: function () {
+      const collection = collectionWrapper.rawCollection();
+      const cn = collection.name();
+      const baseUrl = "/_api/document/" + encodeURIComponent(cn);
+      const documents = [];
+      for (const doc of collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator())) {
+        documents.push(doc);
+      }
+      {
+        // create all documents in one call
+        const result = arango.POST_RAW(baseUrl, documents);
+        assertEqual(202, result.code);
+        assertFalse(result.headers.hasOwnProperty("x-arango-error-codes"), `Got errors on insert: ${JSON.stringify(result.headers["x-arango-error-codes"])}`);
+        // Validate all documents are successfully created
+        assertEqual(documents.length, collection.count());
+        require("console").warn(JSON.stringify(result));
+      }
+      const sortByKey = (l, r) => {
+        return l._key < r._key;
+      };
+      const keys = documents.map(d => d._key).slice(0, 1);
+      documents.sort(sortByKey);
+      {
+        // Try to find them by keys
+        const lookupUrl = "/_api/simple/lookup-by-keys";
+        const body = {
+          collection: collection.name(),
+          keys
+        };
+
+        require("console").warn(`PUT ${lookupUrl} ${JSON.stringify(body)}`);
+        const result = arango.PUT_RAW(lookupUrl, body);
+        require("console").warn(`RESULTS IN ${JSON.stringify(result)}`);
+
+        {
+          return;
+        }
+        assertEqual(200, result.code);
+        const response = result.parsedBody.documents.sort(sortByKey);
+        assertEqual(response.length, documents.length);
+        for (let i = 0; i < documents.length; ++i) {
+          for (const [key, value] of Object.entries(documents[i])) {
+            assertEqual(response[i][key], value,
+              `Mismatch at document ${i} user data of ${JSON.stringify(response[i])} does not match the insert ${JSON.stringify(documents[i])}`);
+          }
+        }
+      }
+
+      {
+        // Try to remove them by keys
+        const removeUrl = "/_api/simple/remove-by-keys";
+        const body = {
+          collection: collection.name(),
+          keys
+        };
+        const result = arango.PUT_RAW(removeUrl, body);
+        assertEqual(200, result.code);
+        // Validate all documents are successfully removed
+        assertEqual(0, collection.count());
+      }
     },
   };
 };
