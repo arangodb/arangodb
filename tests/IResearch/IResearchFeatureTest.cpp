@@ -2074,10 +2074,10 @@ TEST_F(IResearchFeatureTest, IResearch_version_test) {
 
 TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   struct Task {
-    Task(bool& deallocated, std::mutex& mutex, std::condition_variable& cond,
-         std::atomic<size_t>& count,
+    Task(std::atomic_bool& deallocated, std::mutex& mutex,
+         std::condition_variable& cond, std::atomic<size_t>& count,
          arangodb::iresearch::IResearchFeature& feature)
-        : flag(&deallocated, [](bool* ptr) -> void { *ptr = true; }),
+        : flag(&deallocated, [](std::atomic_bool* ptr) { *ptr = true; }),
           mutex(&mutex),
           cond(&cond),
           count(&count),
@@ -2094,15 +2094,15 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
       cond->notify_all();
     }
 
-    std::shared_ptr<bool> flag;
+    std::shared_ptr<std::atomic_bool> flag;
     std::mutex* mutex;
     std::condition_variable* cond;
     std::atomic<size_t>* count;
     arangodb::iresearch::IResearchFeature* feature;
   };
 
-  bool deallocated =
-      false;  // declare above 'feature' to ensure proper destruction order
+  std::atomic_bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   server.server()
@@ -2182,8 +2182,8 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
-  bool deallocated =
-      false;  // declare above 'feature' to ensure proper destruction order
+  std::atomic_bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
@@ -2196,11 +2196,11 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   auto lock = irs::make_unique_lock(mutex);
 
   {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
+    std::shared_ptr<std::atomic_bool> flag(
+        &deallocated, [](std::atomic_bool* ptr) { *ptr = true; });
 
     struct Task {
-      std::shared_ptr<bool> flag;
+      std::shared_ptr<std::atomic_bool> flag;
       size_t* count;
       std::chrono::steady_clock::duration* diff;
       std::mutex* mutex;
@@ -2227,20 +2227,20 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
     task.feature = &feature;
     task.count = &count;
     task.diff = &diff;
-    task.flag = flag;
+    task.flag = std::move(flag);
 
     feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, task);
   }
 
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));
   std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
+  EXPECT_TRUE(deallocated);  // TODO write correct sync
   EXPECT_EQ(2, count);
   EXPECT_TRUE(100ms < diff);
 }
 
 TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
-  bool deallocated = false;
+  std::atomic_bool deallocated = false;
   std::condition_variable cond;
   std::mutex mutex;
   auto lock = irs::make_unique_lock(mutex);
@@ -2251,11 +2251,11 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
     feature.validateOptions(server.server().options());
     feature.prepare();
     feature.start();  // start thread pool
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
+    std::shared_ptr<std::atomic_bool> flag(
+        &deallocated, [](std::atomic_bool* ptr) { *ptr = true; });
 
     struct Task {
-      std::shared_ptr<bool> flag;
+      std::shared_ptr<std::atomic_bool> flag;
       std::mutex* mutex;
       std::condition_variable* cond;
       arangodb::iresearch::IResearchFeature* feature;
@@ -2272,7 +2272,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
     task.mutex = &mutex;
     task.cond = &cond;
     task.feature = &feature;
-    task.flag = flag;
+    task.flag = std::move(flag);
 
     feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, task);
 
@@ -2283,8 +2283,8 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
-  bool deallocated =
-      false;  // declare above 'feature' to ensure proper destruction order
+  std::atomic_bool deallocated = false;
+  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   server.server()
@@ -2299,11 +2299,11 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   std::chrono::steady_clock::duration diff;
   auto lock = irs::make_unique_lock(mutex);
   {
-    std::shared_ptr<bool> flag(&deallocated,
-                               [](bool* ptr) -> void { *ptr = true; });
+    std::shared_ptr<std::atomic_bool> flag(
+        &deallocated, [](std::atomic_bool* ptr) { *ptr = true; });
 
     struct Task {
-      std::shared_ptr<bool> flag;
+      std::shared_ptr<std::atomic_bool> flag;
       size_t* count;
       std::chrono::steady_clock::duration* diff;
       std::mutex* mutex;
@@ -2338,7 +2338,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
                     // trigger resize with a task
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));
   std::this_thread::sleep_for(100ms);
-  EXPECT_TRUE(deallocated);
+  EXPECT_TRUE(deallocated);  // TODO write correct sync
   EXPECT_EQ(2, count);
   EXPECT_TRUE(100ms < diff);
 }
