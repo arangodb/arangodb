@@ -63,26 +63,26 @@ class Methods;
 
 struct IndexIteratorOptions;
 
+class IndexIteratorCoveringData {
+ public:
+  virtual ~IndexIteratorCoveringData() = default;
+  virtual VPackSlice at(size_t i) = 0;
+  virtual bool isArray() const noexcept = 0;
+  virtual VPackSlice value() const {
+    TRI_ASSERT(false);
+    return VPackSlice::noneSlice();
+  }
+
+  virtual velocypack::ValueLength length() const = 0;
+};
+
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 class IndexIterator {
   friend class MultiIndexIterator;
 
  public:
-  class CoveringData {
-   public:
-    virtual ~CoveringData() = default;
-    virtual VPackSlice at(size_t i) = 0;
-    virtual bool isArray() const noexcept = 0;
-    virtual VPackSlice value() const {
-      TRI_ASSERT(false);
-      return VPackSlice::noneSlice();
-    }
-
-    virtual velocypack::ValueLength length() const = 0;
-  };
-
-  class SliceCoveringData final : public CoveringData {
+  class SliceCoveringData final : public IndexIteratorCoveringData {
    public:
     explicit SliceCoveringData(VPackSlice slice) : _slice(slice) {}
 
@@ -107,7 +107,7 @@ class IndexIterator {
                              velocypack::Slice doc)>
       DocumentCallback;
   typedef std::function<bool(LocalDocumentId const& token,
-                             CoveringData& covering)>
+                             IndexIteratorCoveringData& covering)>
       CoveringCallback;
   typedef std::function<bool(LocalDocumentId const& token,
                              velocypack::Slice extra)>

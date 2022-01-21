@@ -297,7 +297,7 @@ struct CoveringValue {
 };
 
 /// @brief Represents virtual "vector" of stored values in the irsesearch index
-class CoveringVector final : public IndexIterator::CoveringData {
+class CoveringVector final : public IndexIteratorCoveringData {
  public:
   explicit CoveringVector(IResearchInvertedIndexMeta const& meta) {
     size_t fields{meta._sort.fields().size()};

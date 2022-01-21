@@ -225,7 +225,7 @@ void Projections::toVelocyPackFromDocument(
 
 /// @brief projections from a covering index
 void Projections::toVelocyPackFromIndex(
-    arangodb::velocypack::Builder& b, IndexIterator::CoveringData& covering,
+    arangodb::velocypack::Builder& b, IndexIteratorCoveringData& covering,
     transaction::Methods const* trxPtr) const {
   TRI_ASSERT(_supportsCoveringIndex);
   TRI_ASSERT(b.isOpenObject());

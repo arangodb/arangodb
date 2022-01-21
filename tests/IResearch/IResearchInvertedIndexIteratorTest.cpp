@@ -368,7 +368,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData& data) {
+                           arangodb::IndexIteratorCoveringData& data) {
       docs.push_back(token);
       EXPECT_TRUE(data.isArray());
       auto invalid = data.at(5);
@@ -430,7 +430,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData& data) {
+                           arangodb::IndexIteratorCoveringData& data) {
       docs.push_back(token);
       EXPECT_TRUE(data.isArray());
       auto invalid = data.at(5);
@@ -493,7 +493,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_subarray) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData& data) {
+                           arangodb::IndexIteratorCoveringData& data) {
       docs.push_back(token);
       EXPECT_TRUE(data.isArray());
       auto invalid = data.at(5);
@@ -559,7 +559,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_skip) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData& data) {
+                           arangodb::IndexIteratorCoveringData& data) {
       docs.push_back(token);
       EXPECT_TRUE(data.isArray());
       auto invalid = data.at(5);
@@ -712,7 +712,7 @@ TEST_F(IResearchInvertedIndexIteratorSortedTest, test_nextCovering_full) {
     std::vector<arangodb::LocalDocumentId> docs;
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData& data) {
+                           arangodb::IndexIteratorCoveringData& data) {
       docs.push_back(token);
       EXPECT_TRUE(data.isArray());
       // sort columns counts also as stored so ivalid index is not 5 but 7

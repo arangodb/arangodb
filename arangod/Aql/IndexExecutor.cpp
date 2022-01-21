@@ -84,7 +84,7 @@ IndexIterator::CoveringCallback getCallback(
     IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
   return [&context, &index, &outNonMaterializedIndVars,
           &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                      IndexIterator::CoveringData& covering) {
+                                      IndexIteratorCoveringData& covering) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -105,7 +105,7 @@ IndexIterator::CoveringCallback getCallback(
     if (context.hasFilter()) {
       struct filterContext {
         IndexNode::IndexValuesVars const& outNonMaterializedIndVars;
-        IndexIterator::CoveringData& covering;
+        IndexIteratorCoveringData& covering;
       };
       filterContext fc{outNonMaterializedIndVars, covering};
 
