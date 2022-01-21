@@ -32,6 +32,7 @@
 #include "Pregel/Statistics.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
+#include "PregelFeature.h"
 
 #include <chrono>
 
@@ -45,7 +46,7 @@ enum ExecutionState {
   CANCELED,     // after a terminal error or manual canceling
   IN_ERROR,     // after an error which should allow recovery
   RECOVERING,   // during recovery
-  FATAL_ERROR,  // execution can not continue because of errors
+  FATAL_ERROR   // execution can not continue because of errors
 };
 extern const char* ExecutionStateNames[8];
 
@@ -107,38 +108,24 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;
   /// some tracking info
-  using Secs = std::chrono::seconds;
-  using MicroSecs = std::chrono::microseconds;
-  using NanoSecs = std::chrono::nanoseconds;
-  using Clock = std::chrono::steady_clock;
-  using TimePoint = std::chrono::time_point<Clock, MicroSecs>;
-  static TimePoint now() {
-    //  std::chrono::steady_clock::now() returns in nanoseconds
-    return std::chrono::time_point_cast<MicroSecs>(
-        std::chrono::steady_clock::now());
-  }
-
-  static double seconds_from(const TimePoint& start) {
-    std::chrono::duration<double> dur = now() - start;
-    return dur.count();
-  }
-
+  
   double _startTimeSecs = 0.0;
   double _computationStartTimeSecs = 0.0;
-  TimePoint _computationStartTime;
+  TimePoint _global_start;
+  std::optional<TimePoint> _computationStartTime{std::nullopt};
   double _finalizationStartTimeSecs = 0.0;
-  TimePoint _finalizationStartTime;
+  std::optional<TimePoint> _storageStartTime;
   double _storeTimeSecs = 0.0;
   double _endTimeSecs = 0.0;
   double _stepStartTimeSecs = 0.0;  // start time of current gss
   TimePoint _gssStartTime;
   Scheduler::WorkHandle _workHandle;
+  bool _return_extended_info = false;
 
-  // in seconds
-  double _workerStartupDuration;
-  double _computationDuration;
-  double _storageDuration;
-  double _gssDuration;
+  std::optional<Duration> _workerStartupDuration{std::nullopt};
+  std::optional<Duration> _computationDuration{std::nullopt};
+  Duration _storageDuration{0};
+  Duration _gssDuration{0};
 
   bool _startGlobalStep();
   ErrorCode _initializeWorkers(std::string const& suffix,
@@ -200,6 +187,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void startRecovery();
   void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void setReturnExtendedInfo(bool b) {_return_extended_info = b;};
 
   double totalRuntimeSecs() const {
     return _endTimeSecs == 0.0 ? TRI_microtime() - _startTimeSecs

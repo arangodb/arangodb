@@ -157,10 +157,9 @@ void Conductor::start() {
   updateState(ExecutionState::RUNNING);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
-  auto start = now();
+  _global_start = Clock::now();
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
-  _workerStartupDuration = seconds_from(start);
-  _feature.setStartupDuration(_workerStartupDuration);  // setting metric
+
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
     LOG_PREGEL("30171", ERR) << "Not all DBServers started the execution";
@@ -254,6 +253,9 @@ bool Conductor::_startGlobalStep() {
 
   // TODO make maximum configurable
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
+    TRI_ASSERT(_computationStartTime.has_value());
+    _computationDuration = Clock::now() - _computationStartTime.value();
+    _feature.setComputationDuration(_computationDuration.value());
     // tells workers to store / discard results
     if (_storeResults) {
       updateState(ExecutionState::STORING);
@@ -300,7 +302,7 @@ bool Conductor::_startGlobalStep() {
   LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
 
   _stepStartTimeSecs = TRI_microtime();
-  _gssStartTime = now();
+  _gssStartTime = Clock::now();
 
   // start vertex level operations, does not get a response
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
@@ -344,7 +346,10 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   _computationStartTimeSecs = TRI_microtime();
-  _computationStartTime = now();
+  _workerStartupDuration = Clock::now() - _global_start;
+  TRI_ASSERT(_workerStartupDuration.has_value());
+  _feature.setStartupDuration(_workerStartupDuration.value()); // setting metric
+  _computationStartTime = Clock::now();
   _startGlobalStep();
 }
 
@@ -395,7 +400,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
 
   LOG_PREGEL("39385", DEBUG) << "Finished gss " << _globalSuperstep << " in "
                              << (TRI_microtime() - _stepStartTimeSecs) << "s";
-  _gssDuration = seconds_from(_gssStartTime);
+  _gssDuration = Clock::now() - _gssStartTime;
   _feature.setGssDuration(_gssDuration);
 
   //_statistics.debugOutput();
@@ -787,7 +792,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
   _finalizationStartTimeSecs = TRI_microtime();
-  _finalizationStartTime = now();
+  _storageStartTime = Clock::now();
   bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
@@ -810,9 +815,6 @@ ErrorCode Conductor::_finalizeWorkers() {
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
-  _computationDuration = seconds_from(_computationStartTime);
-  _feature.setComputationDuration(_computationDuration);
-
   MUTEX_LOCKER(guard, _callbackMutex);
   {
     auto reports = data.get(Utils::reportsKey);
@@ -853,7 +855,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   TRI_ASSERT(compTime >= 0);
   if (didStore) {
     _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
-    _storageDuration = seconds_from(_finalizationStartTime);
+    TRI_ASSERT(_storageStartTime.has_value());
+    _storageDuration = Clock::now() - _storageStartTime.value();
     _feature.setStorageDuration(_storageDuration);
   }
 
@@ -942,10 +945,34 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
-  result.add("startupTime", VPackValue(_workerStartupDuration));
-  result.add("computationTime", VPackValue(_computationDuration));
-  if (_storageDuration > 0.0) {
-    result.add("storageTime", VPackValue(_storageDuration));
+  if (_workerStartupDuration.has_value()) {
+    result.add("startupTime",
+               VPackValue(DurationSec(_workerStartupDuration.value()).count()));
+  } else {
+    result.add("startupTime",
+               VPackValue(DurationSec(Clock::now() - _global_start).count()));
+  }
+  if (_computationStartTime.has_value()) {
+    if (_computationDuration.has_value()) {
+      result.add("computationTime",
+                 VPackValue(DurationSec(_computationDuration.value()).count()));
+    } else {
+      result.add(
+          "computationTime",
+          VPackValue(DurationSec(Clock::now() - _computationStartTime.value())
+                         .count()));
+    }
+  } else {
+    result.add("computationTime", VPackValue(VPackValueType::Null));
+  }
+
+  if (_return_extended_info) {
+    if (_storageStartTime.has_value()) {
+      result.add("storageTime",
+                 VPackValue(DurationSec(_storageDuration).count()));
+    } else {
+      result.add("storageTime", VPackValue(VPackValueType::Null));
+    }
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);

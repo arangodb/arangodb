@@ -47,6 +47,14 @@ struct TRI_vocbase_t;
 
 namespace arangodb::pregel {
 
+using Secs = std::chrono::seconds;
+using MicroSecs = std::chrono::microseconds;
+using NanoSecs = std::chrono::nanoseconds;
+using Clock = std::chrono::steady_clock;
+using TimePoint = Clock::time_point;
+using Duration = Clock::duration;
+using DurationSec = std::chrono::duration<double>;  // in seconds
+
 class Conductor;
 class IWorker;
 class RecoveryManager;
@@ -132,13 +140,21 @@ class PregelFeature final : public application_features::ApplicationFeature {
                       arangodb::velocypack::Builder& result, bool allDatabases,
                       bool fanout) const;
 
-  void setStartupDuration(double time) { _workersStartupDuration.count(time); }
+  void setStartupDuration(Duration time) {
+    _workersStartupDuration.count(DurationSec(time).count());
+  }
 
-  void setComputationDuration(double time) { _computationDuration.count(time); }
+  void setComputationDuration(Duration time) {
+    _computationDuration.count(DurationSec(time).count());
+  }
 
-  void setStorageDuration(double time) { _storageDuration.count(time); }
+  void setStorageDuration(Duration time) {
+    _storageDuration.count(DurationSec(time).count());
+  }
 
-  void setGssDuration(double time) { _gssDuration.count(time); }
+  void setGssDuration(Duration time) {
+    _gssDuration.count(DurationSec(time).count());
+  }
 
  private:
   void scheduleGarbageCollection();
