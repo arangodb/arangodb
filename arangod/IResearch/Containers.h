@@ -51,9 +51,21 @@ struct typelist;
 namespace arangodb {
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief A wrapper to control the lifetime of an object
+///        that is used by multiple threads.
+///
+/// An analogue of shared_ptr and weak_ptr,
+/// in fact AsyncValue is both shared_ptr and weak_ptr, before they called
+/// AsyncValue::reset, after it only weak_ptr to already destroyed shared_ptr.
+////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class AsyncValue {
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Same semantics as shared_ptr, expect copy ctor and assign
+  ///        (easy to add but we don't want it).
+  //////////////////////////////////////////////////////////////////////////////
   class Value {
    public:
     constexpr Value() noexcept : _self{nullptr} {}
@@ -95,10 +107,16 @@ class AsyncValue {
 
   ~AsyncValue() { reset(); }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief If return true then reset was call
+  //////////////////////////////////////////////////////////////////////////////
   [[nodiscard]] bool empty() const noexcept {
-    return _count.load(std::memory_order_relaxed) & kReset;
+    return _count.load(std::memory_order_acquire) & kReset;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Has the same semantics as weak_ptr::lock
+  //////////////////////////////////////////////////////////////////////////////
   [[nodiscard]] Value lock() noexcept {
     if (empty()) {
       return {};
@@ -109,8 +127,12 @@ class AsyncValue {
     return {*this};
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Denies access to resource granted by a lock,
+  ///        and waits until all locks on resource have been released.
+  //////////////////////////////////////////////////////////////////////////////
   void reset() {
-    auto count = _count.fetch_or(kReset, std::memory_order_acq_rel);
+    auto count = _count.fetch_or(kReset, std::memory_order_release);
     if (!(count & kReset)) {
       destroy();
     }
@@ -121,16 +143,16 @@ class AsyncValue {
   }
 
  private:
-  static constexpr uint64_t kReset = 1;
-  static constexpr uint64_t kDestroy = 2;
-  static constexpr uint64_t kRef = 4;
+  static constexpr size_t kReset = 1;
+  static constexpr size_t kDestroy = 2;
+  static constexpr size_t kRef = 4;
 
   void destroy() {
-    auto count = _count.fetch_sub(kRef, std::memory_order_acq_rel) - kRef;
-    if (count == kReset &&
-        _count.compare_exchange_strong(count, kReset | kDestroy,
-                                       std::memory_order_release,
-                                       std::memory_order_relaxed)) {
+    auto count = _count.fetch_sub(kRef, std::memory_order_release) - kRef;
+    if (count == kReset  // acquire for fetch_sub, release for fetch_add
+        && _count.compare_exchange_strong(count, kReset | kDestroy,
+                                          std::memory_order_acq_rel,
+                                          std::memory_order_relaxed)) {
       std::lock_guard lock{_m};
       _resource = nullptr;
       _cv.notify_all();  // should be under lock
@@ -138,7 +160,7 @@ class AsyncValue {
   }
 
   T* _resource;
-  mutable std::atomic_uint64_t _count;
+  mutable std::atomic_size_t _count;
   std::mutex _m;
   std::condition_variable _cv;
 };
