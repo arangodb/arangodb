@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Logger/LogMacros.h"
 #include "UpdateReplicatedState.h"
+#include "Replication2/ReplicatedState/StateCommon.h"
 #include "Basics/voc-errors.h"
 
 using namespace arangodb::replication2;
@@ -47,7 +48,7 @@ auto algorithms::updateReplicatedState(
     }
 
     state = result.get();
-    state->flush(nullptr);
+    state->flush(std::make_unique<ReplicatedStateCore>());
     return {TRI_ERROR_NO_ERROR};
   } else {
     auto status = state->getSnapshotStatus();

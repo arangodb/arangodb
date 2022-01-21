@@ -41,6 +41,8 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 
 struct StateActionContextImpl : algorithms::StateActionContext {
+  explicit StateActionContextImpl(TRI_vocbase_t& vocbase) : vocbase(vocbase) {}
+
   auto getReplicatedLogById(LogId)
       -> std::shared_ptr<replicated_log::ReplicatedLog> override {
     return nullptr;
@@ -51,15 +53,18 @@ struct StateActionContextImpl : algorithms::StateActionContext {
     return nullptr;
   }
 
-  auto createReplicatedState(LogId, std::string_view, velocypack::Slice)
+  auto createReplicatedState(LogId id, std::string_view type,
+                             velocypack::Slice data)
       -> ResultT<
           std::shared_ptr<replicated_state::ReplicatedStateBase>> override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
+    return vocbase.createReplicatedState(id, type, data);
   }
 
   auto dropReplicatedState(LogId) -> Result override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
+
+  TRI_vocbase_t& vocbase;
 };
 
 bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
@@ -80,24 +85,23 @@ bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
   auto serverId = ServerState::instance()->getId();
   // auto rebootId = ServerState::instance()->getRebootId();
 
-  // auto const& database = _description.get(DATABASE);
-  // auto& df = _feature.server().getFeature<DatabaseFeature>();
-  // DatabaseGuard guard(df, database);
-  // auto ctx = LogActionContextMaintenance{guard.database(), pool};
+  auto const& database = _description.get(DATABASE);
+  auto& df = _feature.server().getFeature<DatabaseFeature>();
+  DatabaseGuard guard(df, database);
 
-  auto ctx = StateActionContextImpl{};
+  auto ctx = StateActionContextImpl{guard.database()};
   try {
     auto result = replication2::algorithms::updateReplicatedState(
         ctx, serverId, logId, spec.has_value() ? &spec.value() : nullptr);
     if (result.fail()) {
-      LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
-          << "failed to modify replicated log " << _description.get(DATABASE)
+      LOG_TOPIC("ba776", ERR, Logger::REPLICATION2)
+          << "failed to modify replicated state " << _description.get(DATABASE)
           << '/' << logId << "; " << result.errorMessage();
     }
     _feature.addDirty(_description.get(DATABASE));
   } catch (std::exception const& e) {
-    LOG_TOPIC("f824f", ERR, Logger::REPLICATION2)
-        << "exception during update of replicated log "
+    LOG_TOPIC("f824e", ERR, Logger::REPLICATION2)
+        << "exception during update of replicated state "
         << _description.get(DATABASE) << '/' << logId << "; " << e.what();
   }
 
