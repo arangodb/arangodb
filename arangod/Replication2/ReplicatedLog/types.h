@@ -78,7 +78,7 @@ auto to_string(FollowerState const&) -> std::string_view;
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
 
-#ifdef __GNUC__
+#if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
@@ -107,7 +107,7 @@ struct AppendEntriesErrorReason {
                          AppendEntriesErrorReason const& right) noexcept
       -> bool = default;
 };
-#ifdef __GNUC__
+#if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic pop
 #endif
 
