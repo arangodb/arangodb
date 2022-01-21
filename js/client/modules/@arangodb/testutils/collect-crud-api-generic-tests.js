@@ -44,9 +44,6 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       const keyUrl = baseUrl + "/" + encodeURIComponent(doc._key);
       // create document
       let result = arango.POST_RAW(baseUrl, doc);
-      if (202 != result.code) {
-        console.warn(`Got error ${JSON.stringify(result)} for doc ${JSON.stringify(doc)}`);
-      }
       assertEqual(202, result.code, `Creating document with key ${doc._key}`);
       let rev = result.parsedBody._rev;
 
@@ -176,30 +173,52 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         assertFalse(result.headers.hasOwnProperty("x-arango-error-codes"), `Got errors on insert: ${JSON.stringify(result.headers["x-arango-error-codes"])}`);
         // Validate all documents are successfully created
         assertEqual(documents.length, collection.count());
-        require("console").warn(JSON.stringify(result));
       }
       const sortByKey = (l, r) => {
-        return l._key < r._key;
+        if (l._key < r._key) {
+          return -1;
+        }
+        if (l._key > r._key) {
+          return 1;
+        }
+        return 0;
       };
-      const keys = documents.map(d => d._key).slice(0, 1);
+      const keys = documents.map(d => d._key);
+      {
+        // Try to find one by key
+        // This defaults to a SingleRemoteOperation
+        const lookupUrl = "/_api/simple/lookup-by-keys";
+        const body = {
+          collection: collection.name(),
+          keys: keys.slice(0, 1)
+        };
+        const result = arango.PUT_RAW(lookupUrl, body);
+
+        assertEqual(200, result.code);
+        const response = result.parsedBody.documents;
+        assertEqual(1, response.length);
+
+        for (const [key, value] of Object.entries(documents[0])) {
+          assertEqual(response[0][key], value,
+            `Mismatch user data of ${JSON.stringify(response[0])} does not match the insert ${JSON.stringify(documents[0])}`);
+        }
+      }
+      // The response does not have to be sorted by input keys.
       documents.sort(sortByKey);
       {
         // Try to find them by keys
+        // This defaults to an IndexLookup
         const lookupUrl = "/_api/simple/lookup-by-keys";
         const body = {
           collection: collection.name(),
           keys
         };
 
-        require("console").warn(`PUT ${lookupUrl} ${JSON.stringify(body)}`);
         const result = arango.PUT_RAW(lookupUrl, body);
-        require("console").warn(`RESULTS IN ${JSON.stringify(result)}`);
 
-        {
-          return;
-        }
         assertEqual(200, result.code);
-        const response = result.parsedBody.documents.sort(sortByKey);
+        const response = result.parsedBody.documents;
+        response.sort(sortByKey);
         assertEqual(response.length, documents.length);
         for (let i = 0; i < documents.length; ++i) {
           for (const [key, value] of Object.entries(documents[i])) {
@@ -217,6 +236,9 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
           keys
         };
         const result = arango.PUT_RAW(removeUrl, body);
+        if (result.code !== 200) {
+          console.warn(`Remove returned with: ${JSON.stringify(result)}`);
+        }
         assertEqual(200, result.code);
         // Validate all documents are successfully removed
         assertEqual(0, collection.count());
