@@ -99,7 +99,6 @@ TEST(AsyncValue, multithread) {
     while (count.load() < 100) {
     }
     arangodb::iresearch::AsyncValue<char>::Value value;
-    bool empty = false;
     do {
       value = asyncValue.lock();
     } while (value);
