@@ -1709,18 +1709,14 @@ std::tuple<uint64_t, uint64_t, uint64_t> IResearchDataStore::avgTime() const {
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchDataStore const& link) {
   irs::utf8_path dataPath(dbPathFeature.directory());
-  static constexpr std::string_view kSubPath{"databases"};
-  static constexpr std::string_view kDbPath{"database-"};
 
-  dataPath /= kSubPath;
-  dataPath /= kDbPath;
+  dataPath /= "databases";
+  dataPath /= "database-";
   dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
   dataPath += "-";
-  dataPath += std::to_string(
-      link.collection()
-          .id()
-          .id());  // has to be 'id' since this can be a per-shard collection
+  // has to be 'id' since this can be a per-shard collection
+  dataPath += std::to_string(link.collection().id().id());
   dataPath += "_";
   dataPath += std::to_string(link.id().id());
 

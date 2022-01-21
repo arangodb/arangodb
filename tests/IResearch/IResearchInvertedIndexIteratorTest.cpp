@@ -272,8 +272,6 @@ class IResearchInvertedIndexIteratorTestBase
 using IResearchInvertedIndexIteratorTest =
     IResearchInvertedIndexIteratorTestBase<SimpleDataSetProvider>;
 
-/// *IResearchInvertedIndexIteratorTest*:*IResearchInvertedIndex*:*LateMaterialization*:*NoMaterialization*
-/// --gtest_break_on_failure
 TEST_F(IResearchInvertedIndexIteratorTest, test_skipAll) {
   std::string queryString{
       R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
