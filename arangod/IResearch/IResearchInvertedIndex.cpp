@@ -121,7 +121,6 @@ bool lazy_bitset::get(size_t word_idx, word_t* data) {
   word_t* requested = set_.get() + word_idx;
   if (requested >= end_) {
     auto block_limit = ((word_idx + 1) * BITS) - 1;
-    bool target_passed{false};
     auto doc_id{irs::doc_limits::invalid()};
     while (real_doc_itr_->next()) {
       doc_id = real_doc_->value;
@@ -601,7 +600,7 @@ class IResearchInvertedIndexIterator final
 
   char const* typeName() const override { return "inverted-index-iterator"; }
 
-  bool hasCovering() const { return !_projections.empty(); }
+  bool hasCovering() const override { return !_projections.empty(); }
 
  protected:
   bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override {
@@ -726,8 +725,8 @@ class IResearchInvertedIndexMergeIterator final
       : IResearchInvertedIndexIteratorBase(collection, trx, condition, index,
                                            variable, mutableConditionIdx,
                                            extraFieldName),
-        _projectionsPrototype(index->meta()),
-        _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments}) {
+        _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments}),
+        _projectionsPrototype(index->meta()) {
   }
 
   char const* typeName() const override {

@@ -196,7 +196,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
                            "error in attribute '") +
                errField + "': " + definition.toString()));
   }
-  if (!tmpLinkMeta.json(_server, normalized, &vocbase)) {
+  if (!tmpLinkMeta.json(_server, normalized, isCreation, &vocbase)) {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(

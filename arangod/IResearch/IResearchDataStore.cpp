@@ -563,8 +563,8 @@ void ConsolidationTask::operator()() {
 
 IResearchDataStore::IResearchDataStore(IndexId iid,
                                        LogicalCollection& collection)
-    : _collection(collection),
-      _engine(nullptr),
+    : _engine(nullptr),
+      _collection(collection),
       _asyncFeature(
           &collection.vocbase().server().getFeature<IResearchFeature>()),
       _asyncSelf(std::make_shared<AsyncLinkHandle>(

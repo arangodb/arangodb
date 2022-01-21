@@ -856,6 +856,8 @@ void InvertedIndexFieldIterator::next() {
           setValue(_valueSlice, _begin->analyzer);
           return;
         }
+        default:
+          break;
       }
     }
   }
