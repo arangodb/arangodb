@@ -28,7 +28,6 @@
 #include <windows.h>
 #include <iostream>
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Common.h"
 #include "Basics/win-utils.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -56,13 +55,13 @@ static bool IsRunning = false;
 /// @brief Windows service name
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string ServiceName = "ArangoDB";
+constexpr std::string_view ServiceName = "ArangoDB";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Windows service name for the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string FriendlyServiceName =
+constexpr std::string_view FriendlyServiceName =
     "ArangoDB - the native multi-model NoSQL database";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +93,7 @@ void WindowsServiceFeature::StartArangoService(bool WaitForRunning) {
   }
   // Get a handle to the service.
   auto arangoService = OpenService(
-      schSCManager, ServiceName.c_str(),
+      schSCManager, ServiceName.data(),
       SERVICE_START | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS);
 
   if (arangoService == nullptr) {
@@ -175,7 +174,7 @@ void WindowsServiceFeature::StopArangoService(bool WaitForShutdown) {
 
   // Get a handle to the service.
   auto arangoService = OpenService(
-      schSCManager, ServiceName.c_str(),
+      schSCManager, ServiceName.data(),
       SERVICE_STOP | SERVICE_QUERY_STATUS | SERVICE_ENUMERATE_DEPENDENTS);
 
   if (arangoService == nullptr) {
@@ -266,19 +265,19 @@ void WindowsServiceFeature::installService() {
   }
 
   SC_HANDLE schService =
-      CreateServiceA(schSCManager,                 // SCManager database
-                     ServiceName.c_str(),          // name of service
-                     FriendlyServiceName.c_str(),  // service name to display
-                     SERVICE_ALL_ACCESS,           // desired access
-                     SERVICE_WIN32_OWN_PROCESS,    // service type
-                     SERVICE_AUTO_START,           // start type
-                     SERVICE_ERROR_NORMAL,         // error control type
-                     command.c_str(),              // path to service's binary
-                     nullptr,                      // no load ordering group
-                     nullptr,                      // no tag identifier
-                     nullptr,                      // no dependencies
-                     nullptr,                      // account (LocalSystem)
-                     nullptr);                     // password
+      CreateServiceA(schSCManager,                // SCManager database
+                     ServiceName.data(),          // name of service
+                     FriendlyServiceName.data(),  // service name to display
+                     SERVICE_ALL_ACCESS,          // desired access
+                     SERVICE_WIN32_OWN_PROCESS,   // service type
+                     SERVICE_AUTO_START,          // start type
+                     SERVICE_ERROR_NORMAL,        // error control type
+                     command.c_str(),             // path to service's binary
+                     nullptr,                     // no load ordering group
+                     nullptr,                     // no tag identifier
+                     nullptr,                     // no dependencies
+                     nullptr,                     // account (LocalSystem)
+                     nullptr);                    // password
 
   CloseServiceHandle(schSCManager);
 
@@ -318,8 +317,8 @@ void DeleteService(bool force) {
   }
 
   SC_HANDLE schService = OpenServiceA(
-      schSCManager,         // SCManager database
-      ServiceName.c_str(),  // name of service
+      schSCManager,        // SCManager database
+      ServiceName.data(),  // name of service
       DELETE |
           SERVICE_QUERY_CONFIG);  // first validate whether its us, then delete.
 
@@ -503,15 +502,7 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   }
 }
 
-WindowsServiceFeature::WindowsServiceFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "WindowsService"),
-      _server(&server),
-      _progress(2),
-      _shutdownNoted(false) {
-  setOptional(true);
-  requiresElevatedPrivileges(true);
-  startsAfter<GreetingsFeaturePhase>();
+void WindowsServiceFeature::init() {
   ArangoInstance = this;
 
   if (!TRI_InitWindowsEventLog()) {

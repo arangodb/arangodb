@@ -32,16 +32,31 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+}  // namespace application_features
 namespace options {
 class ProgramOptions;
 }
 
+class LoggerFeature;
+class ShellColorsFeature;
+
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "Config"; }
+
+  template<typename Server>
   ConfigFeature(application_features::ApplicationServer& server,
                 std::string const& progname,
-                std::string const& configFilename = "");
+                std::string const& configFilename = "")
+      : ApplicationFeature(server, Server::template id<ConfigFeature>(),
+                           name()),
+        _file(configFilename),
+        _checkConfiguration(false),
+        _progname(progname) {
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+    startsAfter<ShellColorsFeature, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,

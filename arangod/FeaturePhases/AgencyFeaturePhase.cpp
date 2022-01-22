@@ -22,20 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyFeaturePhase.h"
-
-#include "Agency/AgencyFeature.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
-
-namespace arangodb {
-namespace application_features {
-
-AgencyFeaturePhase::AgencyFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AgencyPhase") {
-  setOptional(false);
-  startsAfter<FoxxFeaturePhase>();
-
-  startsAfter<AgencyFeature>();
-}
-
-}  // namespace application_features
-}  // namespace arangodb

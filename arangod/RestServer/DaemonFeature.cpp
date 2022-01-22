@@ -32,7 +32,6 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
@@ -72,16 +71,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Daemon") {
-  setOptional(true);
-  startsAfter<GreetingsFeaturePhase>();
-
-#ifndef _WIN32
-  _workingDirectory = "/var/tmp";
-#endif
-}
-
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--daemon", "background the server, running it as daemon",
@@ -107,7 +96,8 @@ void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                    arangodb::options::Flags::Hidden));
 }
 
-void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void DaemonFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> /*options*/) {
   if (!_daemon) {
     return;
   }

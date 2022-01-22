@@ -26,11 +26,36 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+class EndpointFeature;
+class GeneralServerFeature;
+class NetworkFeature;
+class ServerFeature;
+class SslServerFeature;
+class StatisticsFeature;
+class UpgradeFeature;
 namespace application_features {
+
+class AqlFeaturePhase;
 
 class ServerFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit ServerFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ServerPhase"; }
+
+  template<typename Server>
+  explicit ServerFeaturePhase(Server& server)
+      : ApplicationFeaturePhase(
+            server, Server::template id<ServerFeaturePhase>(), name()) {
+    setOptional(false);
+    startsAfter<AqlFeaturePhase, Server>();
+
+    startsAfter<EndpointFeature, Server>();
+    startsAfter<GeneralServerFeature, Server>();
+    startsAfter<NetworkFeature, Server>();
+    startsAfter<ServerFeature, Server>();
+    startsAfter<SslServerFeature, Server>();
+    startsAfter<StatisticsFeature, Server>();
+    startsAfter<UpgradeFeature, Server>();
+  }
 };
 
 }  // namespace application_features

@@ -26,11 +26,28 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+class BootstrapFeature;
+class FoxxFeature;
+class FrontendFeature;
 namespace application_features {
+
+class ServerFeaturePhase;
 
 class FoxxFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit FoxxFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "FoxxPhase"; }
+
+  template<typename Server>
+  explicit FoxxFeaturePhase(Server& server)
+      : ApplicationFeaturePhase(server, Server::template id<FoxxFeaturePhase>(),
+                                name()) {
+    setOptional(false);
+    startsAfter<ServerFeaturePhase, Server>();
+
+    startsAfter<BootstrapFeature, Server>();
+    startsAfter<FoxxFeature, Server>();
+    startsAfter<FrontendFeature, Server>();
+  }
 };
 
 }  // namespace application_features

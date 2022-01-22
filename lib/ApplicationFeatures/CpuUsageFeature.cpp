@@ -23,7 +23,6 @@
 
 #include "CpuUsageFeature.h"
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
@@ -148,15 +147,6 @@ struct CpuUsageFeature::SnapshotProvider {
   }
 };
 #endif
-
-CpuUsageFeature::CpuUsageFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CpuUsage"),
-      _snapshotProvider(),
-      _updateInProgress(false) {
-  setOptional(true);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
 
 CpuUsageFeature::~CpuUsageFeature() = default;
 

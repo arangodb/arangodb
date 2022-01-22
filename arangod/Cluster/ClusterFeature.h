@@ -32,14 +32,34 @@
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
+namespace application_features {
+class CommunicationFeaturePhase;
+class DatabaseFeaturePhase;
+}  // namespace application_features
+namespace metrics {
+class MetricsFeature;
+}
 
 class AgencyCache;
 class AgencyCallbackRegistry;
+class DatabaseFeature;
 class HeartbeatThread;
 
 class ClusterFeature : public application_features::ApplicationFeature {
  public:
   explicit ClusterFeature(application_features::ApplicationServer& server);
+
+  static constexpr std::string_view name() noexcept { return "Cluster"; }
+
+  template<typename Server>
+  explicit ClusterFeature(Server& server)
+      : ClusterFeature(server, server.getFeature<metrics::MetricsFeature>(),
+                       Server::template id<ClusterFeature>()) {
+    setOptional(true);
+    startsAfter<application_features::CommunicationFeaturePhase>();
+    startsAfter<application_features::DatabaseFeaturePhase>();
+  }
+
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -174,6 +194,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
                             std::string const& endpoints);
 
  private:
+  ClusterFeature(application_features::ApplicationServer& server,
+                 metrics::MetricsFeature& metrics, DatabaseFeature& database,
+                 size_t registration);
   void reportRole(ServerState::RoleEnum);
 
   std::vector<std::string> _agencyEndpoints;
@@ -216,6 +239,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   metrics::Counter* _followersWrongChecksumCounter = nullptr;
   metrics::Counter* _followersTotalRebuildCounter = nullptr;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
+  metrics::MetricsFeature& _metrics;
+  DatabaseFeature& _database;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;

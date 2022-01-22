@@ -34,14 +34,25 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+class GreetingsFeaturePhase;
+}  // namespace application_features
 namespace options {
 class ProgramOptions;
 }
 
 class PrivilegeFeature final : public application_features::ApplicationFeature {
  public:
-  explicit PrivilegeFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Privilege"; }
+
+  template<typename Server>
+  explicit PrivilegeFeature(Server& server)
+      : ApplicationFeature(server, Server::template id<PrivilegeFeature>(),
+                           name()),
+        _numericUid(0),
+        _numericGid(0) {
+    setOptional(true);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;

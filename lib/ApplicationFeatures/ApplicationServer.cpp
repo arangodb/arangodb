@@ -107,21 +107,19 @@ void ApplicationServer::throwFeatureNotEnabledException(char const* name) {
       "feature '" + boost::core::demangle(name) + "' is not enabled");
 }
 
-void ApplicationServer::disableFeatures(
-    std::vector<std::type_index> const& types) {
+void ApplicationServer::disableFeatures(std::vector<size_t> const& types) {
   disableFeatures(types, false);
 }
 
-void ApplicationServer::forceDisableFeatures(
-    std::vector<std::type_index> const& types) {
+void ApplicationServer::forceDisableFeatures(std::vector<size_t> const& types) {
   disableFeatures(types, true);
 }
 
-void ApplicationServer::disableFeatures(
-    std::vector<std::type_index> const& types, bool force) {
-  for (auto const& type : types) {
+void ApplicationServer::disableFeatures(std::vector<size_t> const& types,
+                                        bool force) {
+  for (size_t const type : types) {
     if (hasFeature(type)) {
-      auto& feature = getFeature<ApplicationFeature>(type);
+      auto& feature = *_features[type];
       if (force) {
         feature.forceDisable();
       } else {
@@ -312,8 +310,8 @@ VPackBuilder ApplicationServer::options(
 void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
                               bool enabledOnly) {
   for (auto& it : _features) {
-    if (!enabledOnly || it.second->isEnabled()) {
-      callback(*it.second);
+    if (!enabledOnly || it->isEnabled()) {
+      callback(*it);
     }
   }
 }
@@ -375,13 +373,12 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
               << "{\n"
               << "  overlap = false;\n";
     for (auto& feature : _features) {
-      for (auto before : feature.second->startsAfter()) {
-        std::string depName = before.name();
+      for (size_t const before : feature->startsAfter()) {
+        std::string_view depName;
         if (hasFeature(before)) {
-          depName = getFeature<ApplicationFeature>(before).name();
+          depName = getFeature(before).name();
         }
-        std::cout << "  " << feature.second->name() << " -> " << depName
-                  << ";\n";
+        std::cout << "  " << feature->name() << " -> " << depName << ";\n";
       }
     }
     std::cout << "}\n";
@@ -455,22 +452,23 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
   // apply all "startsBefore" values
   for (auto& it : _features) {
-    auto& feature = *it.second;
+    auto& feature = *it;
     for (auto const& other : feature.startsBefore()) {
       if (!hasFeature(other)) {
         if (failOnMissing) {
-          fail("feature '" + feature.name() + "' depends on unknown feature '" +
-               other.name() + "'");
+          fail("feature '" + std::string{feature.name()} +
+               "' depends on unknown feature '" +
+               /*other.name() FIXME*/ +"'");
         }
         continue;
       }
-      getFeature<ApplicationFeature>(other).startsAfter(feature.registration());
+      getFeature(other).startsAfter(feature.registration());
     }
   }
 
   // calculate ancestors for all features
   for (auto& it : _features) {
-    it.second->determineAncestors(it.first);
+    it->determineAncestors(it->registration());
   }
 
   // first check if a feature references an unknown other feature
@@ -479,14 +477,18 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         [this](ApplicationFeature& feature) {
           for (auto& other : feature.dependsOn()) {
             if (!hasFeature(other)) {
-              fail("feature '" + feature.name() +
-                   "' depends on unknown feature '" + other.name() + "'");
+              fail(std::string{"feature '"}
+                       .append(feature.name())
+                       .append("' depends on unknown feature '")
+                       /*.append(other.name()) FIXME(gnusi)*/
+                       .append("'"));
             }
-            if (!getFeature<ApplicationFeature>(other).isEnabled()) {
-              fail("enabled feature '" + feature.name() +
-                   "' depends on other feature '" +
-                   getFeature<ApplicationFeature>(other).name() +
-                   "', which is disabled");
+            if (!getFeature(other).isEnabled()) {
+              fail(std::string{"enabled feature '"}
+                       .append(feature.name())
+                       .append("' depends on other feature '")
+                       .append(getFeature(other).name())
+                       .append("', which is disabled"));
             }
           }
         },
@@ -496,7 +498,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   // first insert all features, even the inactive ones
   std::vector<std::reference_wrapper<ApplicationFeature>> features;
   for (auto& it : _features) {
-    auto& us = *it.second;
+    auto& us = *it;
     auto insertPosition = features.end();
 
     for (size_t i = features.size(); i > 0; --i) {
@@ -579,11 +581,11 @@ void ApplicationServer::disableDependentFeatures() {
             << "turning off feature '" << feature.name()
             << "' because it is enabled only in conjunction with non-existing "
                "feature '"
-            << other.name() << "'";
+            << /* other.name() FIXME(gnusi) << */ "'";
         feature.disable();
         break;
       }
-      ApplicationFeature& f = getFeature<ApplicationFeature>(other);
+      ApplicationFeature& f = getFeature(other);
       if (!f.isEnabled()) {
         LOG_TOPIC("58e0e", TRACE, Logger::STARTUP)
             << "turning off feature '" << feature.name()
@@ -670,25 +672,29 @@ void ApplicationServer::start() {
       res.reset(
           ex.code(),
           std::string(
-              "startup aborted: caught exception during start of feature '") +
-              feature.name() + "': " + ex.what());
+              "startup aborted: caught exception during start of feature '")
+                  .append(feature.name()) +
+              "': " + ex.what());
     } catch (std::bad_alloc const& ex) {
       res.reset(
           TRI_ERROR_OUT_OF_MEMORY,
           std::string(
-              "startup aborted: caught exception during start of feature '") +
-              feature.name() + "': " + ex.what());
+              "startup aborted: caught exception during start of feature '")
+                  .append(feature.name()) +
+              "': " + ex.what());
     } catch (std::exception const& ex) {
       res.reset(
           TRI_ERROR_INTERNAL,
           std::string(
-              "startup aborted: caught exception during start of feature '") +
-              feature.name() + "': " + ex.what());
+              "startup aborted: caught exception during start of feature '")
+                  .append(feature.name()) +
+              "': " + ex.what());
     } catch (...) {
       res.reset(TRI_ERROR_INTERNAL,
                 std::string("startup aborted: caught unknown exception during "
-                            "start of feature '") +
-                    feature.name() + "'");
+                            "start of feature '")
+                        .append(feature.name()) +
+                    "'");
     }
 
     if (res.fail()) {
@@ -894,7 +900,7 @@ void ApplicationServer::reportServerProgress(State state) {
 }
 
 void ApplicationServer::reportFeatureProgress(State state,
-                                              std::string const& name) {
+                                              std::string_view name) {
   for (auto reporter : _progressReports) {
     reporter._feature(state, name);
   }

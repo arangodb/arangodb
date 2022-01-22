@@ -22,33 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GreetingsFeaturePhase.h"
-
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
-#include "Logger/LoggerFeature.h"
-#include "Random/RandomFeature.h"
-
-namespace arangodb {
-namespace application_features {
-
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server,
-                                             bool isClient)
-    : ApplicationFeaturePhase(server, "GreetingsPhase") {
-  setOptional(false);
-
-  startsAfter<ConfigFeature>();
-  startsAfter<LoggerFeature>();
-  startsAfter<RandomFeature>();
-  startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
-
-  if (!isClient) {
-    // These are server only features
-    startsAfter<GreetingsFeature>();
-  }
-}
-
-}  // namespace application_features
-}  // namespace arangodb

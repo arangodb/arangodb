@@ -22,30 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterFeaturePhase.h"
-
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/MaintenanceFeature.h"
-#include "Cluster/ReplicationTimeoutFeature.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-
-namespace arangodb {
-namespace application_features {
-
-ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ClusterPhase") {
-  setOptional(false);
-  startsAfter<DatabaseFeaturePhase>();
-
-  startsAfter<ClusterFeature>();
-  startsAfter<MaintenanceFeature>();
-  startsAfter<ReplicationTimeoutFeature>();
-  startsAfter<ReplicatedLogFeature>();
-
-  // use before here since platform feature is in lib
-  startsBefore<V8PlatformFeature>();
-}
-
-}  // namespace application_features
-}  // namespace arangodb

@@ -59,16 +59,15 @@ struct ClusterFeatureScale {
 DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
                   "Request time for Agency requests [ms]");
 
-ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster"),
+ClusterFeature::ClusterFeature(application_features::ApplicationServer& server,
+                               metrics::MetricsFeature& metrics,
+                               DatabaseFeature& database, size_t registration)
+    : ApplicationFeature(server, registration, name()),
       _apiJwtPolicy("jwt-compat"),
       _agency_comm_request_time_ms(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agencycomm_request_time_msec{})) {
-  setOptional(true);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<DatabaseFeaturePhase>();
-}
+          metrics.add(arangodb_agencycomm_request_time_msec{})),
+      _metrics{metrics},
+      _database{database} {}
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
@@ -504,8 +503,7 @@ void ClusterFeature::prepare() {
 
   reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config(
-      server().getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config config(_metrics);
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
@@ -653,17 +651,13 @@ void ClusterFeature::start() {
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _followersDroppedCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_dropped_followers_total{});
+        &_metrics.add(arangodb_dropped_followers_total{});
     _followersRefusedCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_refused_followers_total{});
+        &_metrics.add(arangodb_refused_followers_total{});
     _followersWrongChecksumCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_sync_wrong_checksum_total{});
+        &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_sync_rebuilds_total{});
+        &_metrics.add(arangodb_sync_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -973,7 +967,7 @@ bool ClusterFeature::isDirty(std::string const& dbName) const {
 
 std::unordered_set<std::string> ClusterFeature::allDatabases() const {
   std::unordered_set<std::string> allDBNames;
-  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
+  auto const tmp = _database.getDatabaseNames();
   allDBNames.reserve(tmp.size());
   for (auto const& i : tmp) {
     allDBNames.emplace(i);

@@ -22,36 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFeaturePhase.h"
-
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
-#include "FeaturePhases/V8FeaturePhase.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
-#include "Pregel/PregelFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-
-namespace arangodb {
-namespace application_features {
-
-AqlFeaturePhase::AqlFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AQLPhase") {
-  setOptional(false);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<V8FeaturePhase>();
-
-  startsAfter<AqlFeature>();
-  startsAfter<aql::AqlFunctionFeature>();
-  startsAfter<iresearch::IResearchAnalyzerFeature>();
-  startsAfter<iresearch::IResearchFeature>();
-  startsAfter<aql::OptimizerRulesFeature>();
-  startsAfter<pregel::PregelFeature>();
-  startsAfter<QueryRegistryFeature>();
-  startsAfter<SystemDatabaseFeature>();
-}
-
-}  // namespace application_features
-}  // namespace arangodb

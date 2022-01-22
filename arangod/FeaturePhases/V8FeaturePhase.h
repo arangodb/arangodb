@@ -26,11 +26,31 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+class ActionFeature;
+class ServerSecurityFeature;
+class V8DealerFeature;
+class V8PlatformFeature;
+class V8SecurityFeature;
 namespace application_features {
+class ClusterFeaturePhase;
 
 class V8FeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit V8FeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "V8Phase"; }
+
+  template<typename Server>
+  explicit V8FeaturePhase(Server& server)
+      : ApplicationFeaturePhase(server, Server::template id<V8FeaturePhase>(),
+                                name()) {
+    setOptional(false);
+    startsAfter<ClusterFeaturePhase, Server>();
+
+    startsAfter<ActionFeature, Server>();
+    startsAfter<ServerSecurityFeature, Server>();
+    startsAfter<V8DealerFeature, Server>();
+    startsAfter<V8PlatformFeature, Server>();
+    startsAfter<V8SecurityFeature, Server>();
+  }
 };
 
 }  // namespace application_features

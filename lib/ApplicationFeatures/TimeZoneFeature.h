@@ -31,15 +31,24 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+class GreetingsFeaturePhase;
+}  // namespace application_features
 namespace options {
 class ProgramOptions;
 }
 
 class TimeZoneFeature final : public application_features::ApplicationFeature {
  public:
-  explicit TimeZoneFeature(application_features::ApplicationServer& server);
-  ~TimeZoneFeature();
+  static constexpr std::string_view name() noexcept { return "TimeZone"; }
+
+  template<typename Server>
+  explicit TimeZoneFeature(Server& server)
+      : ApplicationFeature(server, Server::template id<TimeZoneFeature>(),
+                           name()),
+        _binaryPath(server.getBinaryPath()) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
   void prepare() override final;
   void start() override final;

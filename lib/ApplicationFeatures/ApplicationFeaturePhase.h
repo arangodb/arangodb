@@ -40,7 +40,7 @@ class ApplicationFeaturePhase : public ApplicationFeature {
 
  public:
   explicit ApplicationFeaturePhase(ApplicationServer& server,
-                                   std::string const& name);
+                                   size_t registration, std::string_view name);
 
   // validate options of this phase
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;

@@ -30,11 +30,23 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+class GreetingsFeaturePhase;
+}  // namespace application_features
 
 class CpuUsageFeature final : public application_features::ApplicationFeature {
  public:
-  explicit CpuUsageFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "CpuUsage"; }
+
+  template<typename Server>
+  explicit CpuUsageFeature(Server& server)
+      : ApplicationFeature(server, Server::template id<CpuUsageFeature>(),
+                           name()),
+        _snapshotProvider(),
+        _updateInProgress(false) {
+    setOptional(true);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
+
   ~CpuUsageFeature();
 
   void prepare() override final;

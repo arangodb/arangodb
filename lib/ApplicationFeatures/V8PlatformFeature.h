@@ -71,10 +71,17 @@ class V8PlatformFeature final
     getIsolateData(isolate)->_outOfMemory = false;
   }
 
-  static const uint32_t V8_INFO = 0;
-  static const uint32_t V8_DATA_SLOT = 1;
+  static constexpr uint32_t V8_INFO = 0;
+  static constexpr uint32_t V8_DATA_SLOT = 1;
 
-  explicit V8PlatformFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "V8Platform"; }
+
+  template<typename Server>
+  explicit V8PlatformFeature(Server& server)
+      : ApplicationFeature(server, Server::template id<V8PlatformFeature>(),
+                           name()) {
+    setOptional(true);
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

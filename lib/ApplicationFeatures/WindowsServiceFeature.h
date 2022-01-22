@@ -37,16 +37,33 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode);
 
 namespace arangodb {
 
+namespace application_features {
+class GreetingsFeaturePhase;
+}
+
 class WindowsServiceFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit WindowsServiceFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "WindowsService"; }
+
+  template<typename Server>
+  explicit WindowsServiceFeature(Server& server)
+      : ApplicationFeature(server, Server::template id<WindowsServiceFeature>(),
+                           name()),
+        _server(&server),
+        _progress(2),
+        _shutdownNoted(false) {
+    setOptional(true);
+    requiresElevatedPrivileges(true);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+    init();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  private:
+  void init();
   void installService();
   void StartArangoService(bool WaitForRunning);
   void StopArangoService(bool WaitForShutdown);

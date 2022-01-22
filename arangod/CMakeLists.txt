@@ -1162,6 +1162,10 @@ target_link_libraries(${BIN_ARANGOD}
   arangoserver
 )
 
+target_include_directories(${BIN_ARANGOD}
+  PUBLIC ${IRESEARCH_INCLUDE}
+)
+
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
 
 install(

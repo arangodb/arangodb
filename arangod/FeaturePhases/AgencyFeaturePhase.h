@@ -28,9 +28,21 @@
 namespace arangodb {
 namespace application_features {
 
+class AgencyFeature;
+class FoxxFeaturePhase;
+
 class AgencyFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit AgencyFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "AgencyPhase"; }
+
+  template<typename Server>
+  explicit AgencyFeaturePhase(Server& server)
+      : ApplicationFeaturePhase(
+            server, Server::template id<AgencyFeaturePhase>(), name()) {
+    setOptional(false);
+    startsAfter<FoxxFeaturePhase, Server>();
+    startsAfter<AgencyFeature, Server>();
+  }
 };
 
 }  // namespace application_features

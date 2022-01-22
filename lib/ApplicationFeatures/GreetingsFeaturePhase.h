@@ -28,9 +28,33 @@
 namespace arangodb {
 namespace application_features {
 
+class ConfigFeature;
+class LoggerFeature;
+class RandomFeature;
+class ShellColorsFeature;
+class VersionFeature;
+class GreetingsFeature;
+
 class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
  public:
-  explicit GreetingsFeaturePhase(ApplicationServer& server, bool isClient);
+  static constexpr std::string_view name() noexcept { return "GreetingsPhase"; }
+
+  template<typename Server>
+  explicit GreetingsFeaturePhase(Server& server, bool isClient)
+      : ApplicationFeaturePhase(server, name()) {
+    setOptional(false);
+
+    startsAfter<ConfigFeature, Server>();
+    startsAfter<LoggerFeature, Server>();
+    startsAfter<RandomFeature, Server>();
+    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<VersionFeature, Server>();
+
+    if (!isClient) {
+      // These are server only features
+      startsAfter<GreetingsFeature, Server>();
+    }
+  }
 };
 
 }  // namespace application_features

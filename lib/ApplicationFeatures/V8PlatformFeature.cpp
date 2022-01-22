@@ -75,9 +75,9 @@ static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
 }
 
 static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
-                               v8::GCCallbackFlags flags) {
+                               v8::GCCallbackFlags /*flags*/) {
   TRI_GET_GLOBALS();
-  static size_t const LIMIT_ABS = 200 * 1024 * 1024;
+  size_t constexpr LIMIT_ABS = 200 * 1024 * 1024;
   size_t minFreed = LIMIT_ABS / 10;
 
   if (type != v8::kGCTypeMarkSweepCompact) {
@@ -158,12 +158,6 @@ static void fatalCallback(char const* location, char const* message) {
 
 }  // namespace
 
-V8PlatformFeature::V8PlatformFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Platform") {
-  setOptional(true);
-}
-
 void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
@@ -178,7 +172,7 @@ void V8PlatformFeature::collectOptions(
 }
 
 void V8PlatformFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+    std::shared_ptr<ProgramOptions> /*options*/) {
   if (!_v8Options.empty()) {
     _v8CombinedOptions = StringUtils::join(_v8Options, " ");
 

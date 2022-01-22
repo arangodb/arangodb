@@ -34,7 +34,15 @@ class ApplicationServer;
 class SharedPRNGFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit SharedPRNGFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "SharedPRNG"; }
+
+  template<typename Server>
+  explicit SharedPRNGFeature(Server& server)
+      : ApplicationFeature(server, Server::template id<SharedPRNGFeature>(),
+                           name()) {
+    setOptional(true);
+  }
+
   ~SharedPRNGFeature();
 
   void prepare() override final;

@@ -24,21 +24,12 @@
 #include "ActionFeature.h"
 
 #include "Actions/actions.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
-
-ActionFeature::ActionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Action"), _allowUseDatabase(false) {
-  setOptional(true);
-  startsAfter<ClusterFeaturePhase>();
-}
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(

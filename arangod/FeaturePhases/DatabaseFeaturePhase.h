@@ -26,11 +26,65 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+
+class AuthenticationFeature;
+class CacheManagerFeature;
+class CheckVersionFeature;
+class DatabaseFeature;
+class EngineSelectorFeature;
+class FlushFeature;
+class InitDatabaseFeature;
+class LockfileFeature;
+class ReplicationFeature;
+class RocksDBEngine;
+class RocksDBRecoveryManager;
+class ServerIdFeature;
+class StorageEngineFeature;
+class SystemDatabaseFeature;
+class ViewTypesFeature;
+#ifdef USE_ENTERPRISE
+class LdapFeature;
+#endif
+
+namespace transaction {
+class ManagerFeature;
+}
 namespace application_features {
+
+class BasicFeaturePhaseServer;
 
 class DatabaseFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit DatabaseFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "DatabasePhase"; }
+
+  template<typename Server>
+  explicit DatabaseFeaturePhase(Server& server)
+      : ApplicationFeaturePhase(
+            server, Server::template id<DatabaseFeaturePhase>(), name()) {
+    setOptional(false);
+    startsAfter<BasicFeaturePhaseServer, Server>();
+
+    startsAfter<AuthenticationFeature, Server>();
+    startsAfter<CacheManagerFeature, Server>();
+    startsAfter<CheckVersionFeature, Server>();
+    startsAfter<DatabaseFeature, Server>();
+    startsAfter<EngineSelectorFeature, Server>();
+    startsAfter<FlushFeature, Server>();
+    startsAfter<InitDatabaseFeature, Server>();
+    startsAfter<LockfileFeature, Server>();
+    startsAfter<ReplicationFeature, Server>();
+    startsAfter<RocksDBEngine, Server>();
+    startsAfter<RocksDBRecoveryManager, Server>();
+    startsAfter<ServerIdFeature, Server>();
+    startsAfter<StorageEngineFeature, Server>();
+    startsAfter<SystemDatabaseFeature, Server>();
+    startsAfter<transaction::ManagerFeature, Server>();
+    startsAfter<ViewTypesFeature, Server>();
+
+#ifdef USE_ENTERPRISE
+    startsAfter<LdapFeature, Server>();
+#endif
+  }
 };
 
 }  // namespace application_features

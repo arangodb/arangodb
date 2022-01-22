@@ -26,11 +26,22 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase;
+}
 
 class TempFeature final : public application_features::ApplicationFeature {
  public:
-  TempFeature(application_features::ApplicationServer& server,
-              std::string const& appname);
+  static constexpr std::string_view name() noexcept { return "Temp"; }
+
+  template<typename Server>
+  TempFeature(Server& server, std::string const& appname)
+      : ApplicationFeature(server, Server::template id<TempFeature>(), name()),
+        _path(),
+        _appname(appname) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

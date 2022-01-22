@@ -22,32 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerFeaturePhase.h"
-
-#include "FeaturePhases/AqlFeaturePhase.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
-#include "Network/NetworkFeature.h"
-#include "RestServer/EndpointFeature.h"
-#include "RestServer/ServerFeature.h"
-#include "RestServer/UpgradeFeature.h"
-#include "Statistics/StatisticsFeature.h"
-
-namespace arangodb {
-namespace application_features {
-
-ServerFeaturePhase::ServerFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ServerPhase") {
-  setOptional(false);
-  startsAfter<AqlFeaturePhase>();
-
-  startsAfter<EndpointFeature>();
-  startsAfter<GeneralServerFeature>();
-  startsAfter<NetworkFeature>();
-  startsAfter<ServerFeature>();
-  startsAfter<SslServerFeature>();
-  startsAfter<StatisticsFeature>();
-  startsAfter<UpgradeFeature>();
-}
-
-}  // namespace application_features
-}  // namespace arangodb

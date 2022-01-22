@@ -22,28 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8FeaturePhase.h"
-
-#include "Actions/ActionFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "GeneralServer/ServerSecurityFeature.h"
-#include "V8Server/V8DealerFeature.h"
-
-namespace arangodb {
-namespace application_features {
-
-V8FeaturePhase::V8FeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8Phase") {
-  setOptional(false);
-  startsAfter<ClusterFeaturePhase>();
-
-  startsAfter<ActionFeature>();
-  startsAfter<ServerSecurityFeature>();
-  startsAfter<V8DealerFeature>();
-  startsAfter<V8PlatformFeature>();
-  startsAfter<V8SecurityFeature>();
-}
-
-}  // namespace application_features
-}  // namespace arangodb
