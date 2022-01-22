@@ -396,12 +396,12 @@ IndexExecutor::CursorReader::CursorReader(
   if (_coveringProducer) {
     _coveringSkipper =
         checkUniqueness
-            ? ::getCallback<true, true>(context, _index,
-                                        _infos.getOutNonMaterializedIndVars(),
-                                        _infos.getOutNonMaterializedIndRegs())
-            : ::getCallback<false, true>(context, _index,
-                                         _infos.getOutNonMaterializedIndVars(),
-                                         _infos.getOutNonMaterializedIndRegs());
+            ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
+                                            WithProjectionsCoveredByIndex{},
+                                        context)
+            : ::getCallback<false, true>(DocumentProducingCallbackVariant::
+                                             WithProjectionsCoveredByIndex{},
+                                         context);
   } else {
     _documentSkipper = checkUniqueness
                            ? buildDocumentCallback<true, true>(context)

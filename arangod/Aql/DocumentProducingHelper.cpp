@@ -140,7 +140,8 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 
   if (!context.getProjections().empty()) {
     // return a projection
-    TRI_ASSERT(!context.getProjections().supportsCoveringIndex());
+    TRI_ASSERT(!context.getProjections().supportsCoveringIndex() ||
+               !context.getAllowCoveringIndexOptimization());
     // projections from a "real" document
     return getCallback<checkUniqueness, skip>(
         DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex{},
@@ -333,6 +334,7 @@ IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token,
                     IndexIteratorCoveringData& covering) {
+    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -344,21 +346,21 @@ IndexIterator::CoveringCallback aql::getCallback(
 
     // recycle our Builder object
     VPackBuilder& objectBuilder = context.getBuilder();
-    objectBuilder.clear();
-    objectBuilder.openObject(true);
+    if (!skip || context.hasFilter()) {
+      objectBuilder.clear();
+      objectBuilder.openObject(true);
 
-    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
-    // projections from a covering index
-    context.getProjections().toVelocyPackFromIndex(objectBuilder, covering,
-                                                   context.getTrxPtr());
+      // projections from a covering index
+      context.getProjections().toVelocyPackFromIndex(objectBuilder, covering,
+                                                     context.getTrxPtr());
 
-    objectBuilder.close();
+      objectBuilder.close();
 
-    if (context.hasFilter() && !context.checkFilter(objectBuilder.slice())) {
-      context.incrFiltered();
-      return false;
+      if (context.hasFilter() && !context.checkFilter(objectBuilder.slice())) {
+        context.incrFiltered();
+        return false;
+      }
     }
-
     if constexpr (!skip) {
       InputAqlItemRow const& input = context.getInputRow();
       OutputAqlItemRow& output = context.getOutputRow();
