@@ -62,10 +62,8 @@
 
 using namespace std::literals;
 
+namespace arangodb::iresearch {
 namespace {
-
-using namespace arangodb;
-using namespace arangodb::iresearch;
 
 DECLARE_GAUGE(arangosearch_num_buffered_docs, uint64_t,
               "Number of buffered documents");
@@ -150,7 +148,7 @@ IResearchLink::~IResearchLink() {
   }
 
   if (!res.ok()) {
-    LOG_TOPIC("2b41f", ERR, iresearch::TOPIC)
+    LOG_TOPIC("2b41f", ERR, TOPIC)
         << "failed to unload arangosearch link in link destructor: "
         << res.errorNumber() << " " << res.errorMessage();
   }
@@ -190,7 +188,7 @@ Result IResearchLink::drop() {
     if (!view) {
       LOG_TOPIC("f4e2c", WARN, iresearch::TOPIC)
           << "unable to find arangosearch view '" << _viewGuid
-          << "' while dropping arangosearch link '" << id().id() << "'";
+          << "' while dropping arangosearch link '" << _id.id() << "'";
     } else {
       view->unlink(
           collection()
@@ -299,19 +297,19 @@ Result IResearchLink::init(velocypack::Slice definition,
       // set, but here we must get this name on our own
       if (meta._collectionName.empty()) {
         if (clusterWideLink) {  // could set directly
-          LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC)
+          LOG_TOPIC("86ecd", TRACE, TOPIC)
               << "Setting collection name '" << _collection.name()
               << "' for new link '" << this->id().id() << "'";
           meta._collectionName = _collection.name();
         } else {
           meta._collectionName =
               ci.getCollectionNameForShard(_collection.name());
-          LOG_TOPIC("86ece", TRACE, iresearch::TOPIC)
+          LOG_TOPIC("86ece", TRACE, TOPIC)
               << "Setting collection name '" << meta._collectionName
               << "' for new link '" << this->id().id() << "'";
         }
         if (ADB_UNLIKELY(meta._collectionName.empty())) {
-          LOG_TOPIC("67da6", WARN, iresearch::TOPIC)
+          LOG_TOPIC("67da6", WARN, TOPIC)
               << "Failed to init collection name for the link '"
               << this->id().id()
               << "'. Link will not index '_id' attribute. Please recreate the "
@@ -321,7 +319,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 #ifdef USE_ENTERPRISE
         // enterprise name is not used in _id so should not be here!
         if (ADB_LIKELY(!meta._collectionName.empty())) {
-          arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
+          ClusterMethods::realNameFromSmartName(meta._collectionName);
         }
 #endif
       }
@@ -401,9 +399,8 @@ Result IResearchLink::init(velocypack::Slice definition,
         }
       }
     } else {
-      LOG_TOPIC("67dd6", DEBUG, iresearch::TOPIC)
-          << "Skipped link '" << this->id().id()
-          << "' due to disabled cluster features.";
+      LOG_TOPIC("67dd6", DEBUG, TOPIC) << "Skipped link '" << this->id().id()
+                                       << "' due to disabled cluster features.";
     }
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
@@ -527,33 +524,38 @@ Result IResearchLink::properties(velocypack::Builder& builder,
 }
 
 Result IResearchLink::properties(IResearchViewMeta const& meta) {
-  if (!_asyncSelf) {
+  auto linkLock = _asyncSelf->lock();
+  // '_dataStore' can be asynchronously modified
+  if (!linkLock) {
     // the current link is no longer valid (checked after ReadLock acquisition)
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
             "failed to lock arangosearch link while modifying properties "
             "of arangosearch link '" +
                 std::to_string(id().id()) + "'"};
   }
-  // '_dataStore' can be asynchronously modified
-  auto lock = _asyncSelf->lock();
-  return propertiesUnsafe(meta);
+  IResearchLink::properties(std::move(linkLock), meta);
+  return {};
 }
 
-Result IResearchLink::propertiesUnsafe(IResearchViewMeta const& meta) {
-  TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
+void IResearchLink::properties(LinkLock linkLock,
+                               IResearchViewMeta const& meta) {
+  TRI_ASSERT(linkLock);
+  TRI_ASSERT(linkLock->_dataStore);
+  // must be valid if _asyncSelf->lock() is valid
   {
-    WRITE_LOCKER(writeLock,
-                 _dataStore._mutex);  // '_meta' can be asynchronously modified
-    _dataStore._meta = meta;
+    WRITE_LOCKER(writeLock, linkLock->_dataStore._mutex);
+    // '_meta' can be asynchronously modified
+    linkLock->_dataStore._meta.storeFull(meta);
   }
 
-  if (_engine->recoveryState() == RecoveryState::DONE) {
+  if (linkLock->_engine->recoveryState() == RecoveryState::DONE) {
     if (meta._commitIntervalMsec) {
-      scheduleCommit(std::chrono::milliseconds(meta._commitIntervalMsec));
+      linkLock->scheduleCommit(
+          std::chrono::milliseconds(meta._commitIntervalMsec));
     }
 
     if (meta._consolidationIntervalMsec && meta._consolidationPolicy.policy()) {
-      scheduleConsolidation(
+      linkLock->scheduleConsolidation(
           std::chrono::milliseconds(meta._consolidationIntervalMsec));
     }
   }
@@ -584,7 +586,7 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
     nonConstMeta._collectionName = name;
     return true;
   }
-  LOG_TOPIC_IF("5573c", ERR, iresearch::TOPIC, name != _meta._collectionName)
+  LOG_TOPIC_IF("5573c", ERR, TOPIC, name != _meta._collectionName)
       << "Collection name mismatch for arangosearch link '" << id() << "'."
       << " Meta name '" << _meta._collectionName << "' setting name '" << name
       << "'";
@@ -604,10 +606,11 @@ Result IResearchLink::unload() {
     return drop();
   }
 
-  std::atomic_store(&_flushSubscription,
-                    {});  // reset together with '_asyncSelf'
-  _asyncSelf->reset();    // the data-store is being deallocated, link use is no
-                        // longer valid (wait for all the view users to finish)
+  std::atomic_store(&_flushSubscription, {});
+  // reset together with '_asyncSelf'
+  _asyncSelf->reset();
+  // the data-store is being deallocated, link use is no longer valid
+  // (wait for all the view users to finish)
 
   if (!_dataStore) {
     return {};
@@ -651,6 +654,14 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(
   }
 
   return nullptr;
+}
+
+IResearchLink::LinkStats IResearchLink::stats() const {
+  auto linkLock = _asyncSelf->lock();
+  if (!linkLock) {
+    return {};
+  }
+  return statsUnsafe();
 }
 
 std::string_view IResearchLink::format() const noexcept {

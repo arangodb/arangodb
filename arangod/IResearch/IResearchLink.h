@@ -74,7 +74,7 @@ class IResearchLink : public IResearchDataStore {
   static bool canBeDropped() {
     // valid for a link to be dropped from an ArangoSearch view
     return true;
-  };
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
@@ -112,10 +112,11 @@ class IResearchLink : public IResearchDataStore {
   Result properties(IResearchViewMeta const& meta);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief update runtime data processing properties (not persisted)
-  /// @return success
+  /// @return pointer to an index reader containing the data store current
+  ///         record snapshot
+  ///         (nullptr == no data store snapshot available, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
-  Result propertiesUnsafe(IResearchViewMeta const& meta);
+  Snapshot snapshot() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoSearch Link index type enum value

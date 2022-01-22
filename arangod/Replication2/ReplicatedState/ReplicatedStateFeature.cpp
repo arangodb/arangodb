@@ -51,3 +51,7 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
     FATAL_ERROR_EXIT();
   }
 }
+
+replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature(server, "ReplicatedState") {}

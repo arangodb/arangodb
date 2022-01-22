@@ -45,10 +45,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{1}, leaderId);
-  auto leader = LogLeader::construct(
-      LoggerContext(Logger::REPLICATION2), _logMetricsMock, _optionsMock,
-      leaderId, std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
+  auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{1},
+                                             std::move(coreA), {follower}, 2);
 
   auto countHistogramEntries = [](auto const& histogram) {
     auto [begin, end] =
@@ -243,10 +241,8 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
-  auto leader = LogLeader::construct(
-      defaultLogger(), _logMetricsMock, _optionsMock, leaderId,
-      std::move(coreA), LogTerm{3},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
+  auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{3},
+                                             std::move(coreA), {follower}, 2);
 
   {
     // Leader should know it spearhead, but commitIndex is 0
@@ -327,12 +323,9 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto follower_2 = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId_2, std::move(coreC),
       LogTerm{1}, leaderId);
-  // create leader with write concern 2
-  auto leader = LogLeader::construct(
-      defaultLogger(), _logMetricsMock, _optionsMock, leaderId,
-      std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2},
-      3);
+  // create leader with write concern 3
+  auto leader = createLeaderWithDefaultFlags(
+      leaderId, LogTerm{1}, std::move(coreA), {follower_1, follower_2}, 3);
 
   auto index = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
@@ -395,7 +388,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 
   // handle append entries on second follower
   follower_2->runAsyncAppendEntries();
-  // now write concern 2 is reached, future is ready
+  // now write concern 3 is reached, future is ready
   // and update of commitIndex on both follower
   {
     ASSERT_TRUE(future.isReady());
@@ -492,11 +485,10 @@ TEST_F(ReplicatedLogTest,
   auto follower = std::make_shared<DelayedFollowerLog>(
       defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
       LogTerm{3}, leaderId);
-  auto leader = LogLeader::construct(
-      defaultLogger(), _logMetricsMock, _optionsMock, leaderId,
-      std::move(coreA), LogTerm{3},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower},
-      1);  // set write concern to one
+  // set write concern to one
+  auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{3},
+                                             std::move(coreA), {follower}, 1);
+
   leader->triggerAsyncReplication();
 
   {
