@@ -26,11 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -50,8 +48,8 @@ DECLARE_COUNTER(arangodb_transactions_expired_total,
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"),
+ManagerFeature::ManagerFeature(Server& server)
+    : ArangodFeature(server, Server::id<ManagerFeature>(), name()),
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(

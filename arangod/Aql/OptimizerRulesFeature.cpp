@@ -28,12 +28,10 @@
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -48,9 +46,8 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 // @brief lookup from rule name to rule level
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
-OptimizerRulesFeature::OptimizerRulesFeature(
-    arangodb::application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "OptimizerRules"),
+OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
+    : ArangodFeature{server, Server::id<OptimizerRulesFeature>(), name()},
       _parallelizeGatherWrites(true) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();

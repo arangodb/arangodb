@@ -53,5 +53,7 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
 }
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "ReplicatedState") {}
+    Server& server)
+    : ArangodFeature(server,
+                     Server::id<replicated_state::ReplicatedStateAppFeature>(),
+                     name()) {}

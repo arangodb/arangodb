@@ -36,7 +36,6 @@ void BlackHoleStateMachineFeature::start() {
   feature.registerStateType<BlackHoleState>("black-hole");
 }
 
-BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server,
-                                               "BlackHoleStateMachine") {}
+BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(Server& server)
+    : ArangodFeature(server, Server::id<BlackHoleStateMachineFeature>(),
+                     name()) {}
