@@ -376,12 +376,12 @@ IndexExecutor::CursorReader::CursorReader(
     case Type::LateMaterialized:
       _coveringProducer =
           checkUniqueness
-              ? ::getCallback<true>(
-                    context, _index, _infos.getOutNonMaterializedIndVars(),
-                    _infos.getOutNonMaterializedIndRegs())
-              : ::getCallback<false>(
-                    context, _index, _infos.getOutNonMaterializedIndVars(),
-                    _infos.getOutNonMaterializedIndRegs());
+              ? ::getCallback<true>(context, _index,
+                                    _infos.getOutNonMaterializedIndVars(),
+                                    _infos.getOutNonMaterializedIndRegs())
+              : ::getCallback<false>(context, _index,
+                                     _infos.getOutNonMaterializedIndVars(),
+                                     _infos.getOutNonMaterializedIndRegs());
       break;
     case Type::Count:
       break;
