@@ -70,14 +70,9 @@ class ViewTrxState final : public TransactionState::Cookie,
     return *(_subReaders[subReaderId].second);
   }
 
-==== BASE ====
-  void add(arangodb::DataSourceId cid,
-           arangodb::iresearch::IResearchLink::Snapshot&& snapshot);
-==== BASE ====
+  void add(DataSourceId cid, IResearchDataStore::Snapshot&& snapshot);
 
-==== BASE ====
   arangodb::DataSourceId cid(size_t offset) const noexcept override {
-==== BASE ====
     return offset < _subReaders.size() ? _subReaders[offset].first
                                        : DataSourceId::none();
   }
@@ -119,18 +114,16 @@ class ViewTrxState final : public TransactionState::Cookie,
   }
 
  private:
-==== BASE ====
-  size_t _docs_count{};
-  size_t _live_docs_count{};
-  std::unordered_set<arangodb::DataSourceId> _collections;
-  std::vector<arangodb::iresearch::IResearchLink::Snapshot>
-      _snapshots;  // prevent data-store deallocation (lock @ AsyncSelf)
-  std::vector<std::pair<arangodb::DataSourceId, irs::sub_reader const*>>
-      _subReaders;
-==== BASE ====
+  size_t _docs_count = 0;
+  size_t _live_docs_count = 0;
+  containers::FlatHashSet<DataSourceId> _collections;
+  std::vector<IResearchLink::Snapshot> _snapshots;
+  // prevent data-store deallocation (lock @ AsyncSelf)
+  std::vector<std::pair<DataSourceId, irs::sub_reader const*>> _subReaders;
 };
 
-void ViewTrxState::add(DataSourceId cid, IResearchLink::Snapshot&& snapshot) {
+void ViewTrxState::add(DataSourceId cid,
+                       IResearchDataStore::Snapshot&& snapshot) {
   auto& reader = snapshot.getDirectoryReader();
   for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct,
@@ -143,8 +136,6 @@ void ViewTrxState::add(DataSourceId cid, IResearchLink::Snapshot&& snapshot) {
   _collections.emplace(cid);
   _snapshots.emplace_back(std::move(snapshot));
 }
-
-==== BASE ====
 void ensureImmutableProperties(
     arangodb::iresearch::IResearchViewMeta& dst,
     arangodb::iresearch::IResearchViewMeta const& src) {
@@ -156,8 +147,6 @@ void ensureImmutableProperties(
   dst._storedValues = src._storedValues;
   dst._primarySortCompression = src._primarySortCompression;
 }
-
-==== BASE ====
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -619,7 +608,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     // or
     // a previous link instance was unload()ed and a new instance is linking
     it->second = link;
-    IResearchLink::properties(std::move(linkLock), _meta);
+    IResearchDataStore::properties(std::move(linkLock), _meta);
     return {};
   } else {
     return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
@@ -634,7 +623,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
       return r;
     }
   }
-  IResearchLink::properties(std::move(linkLock), _meta);
+  IResearchDataStore::properties(std::move(linkLock), _meta);
   return {};
 }
 
@@ -901,7 +890,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
       // prevent the link from being deallocated
       auto linkLock = entry.second->lock();
       if (linkLock) {
-        IResearchLink::properties(std::move(linkLock), _meta);
+        IResearchDataStore::properties(std::move(linkLock), _meta);
       }
     }
     if (links.isEmptyObject() && (partialUpdate || _inRecovery.load())) {

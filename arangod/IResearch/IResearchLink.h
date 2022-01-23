@@ -40,8 +40,8 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView
@@ -99,24 +99,12 @@ class IResearchLink : public IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   bool matchesDefinition(velocypack::Slice slice) const;
 
+  using IResearchDataStore::properties;
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a jSON description of a IResearchLink object
   ///        elements are appended to an existing object
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, bool forPersistence) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update runtime data processing properties (not persisted)
-  /// @return success
-  //////////////////////////////////////////////////////////////////////////////
-  Result properties(IResearchViewMeta const& meta);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return pointer to an index reader containing the data store current
-  ///         record snapshot
-  ///         (nullptr == no data store snapshot available, e.g. error)
-  //////////////////////////////////////////////////////////////////////////////
-  Snapshot snapshot() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoSearch Link index type enum value
@@ -213,9 +201,8 @@ class IResearchLink : public IResearchDataStore {
  private:
   metrics::Batch<LinkStats>* _linkStats;
   IResearchLinkMeta const _meta;
-  std::string const _viewGuid;  // the identifier of the desired view
-                                // (read-only, set via init())
+  // the identifier of the desired view (read-only, set via init())
+  std::string const _viewGuid;
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

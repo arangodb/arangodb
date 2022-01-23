@@ -131,8 +131,6 @@ T getMetric(const IResearchLink& link) {
 
 }  // namespace
 
-namespace arangodb::iresearch {
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     IResearchLink
 // -----------------------------------------------------------------------------
@@ -523,53 +521,6 @@ Result IResearchLink::properties(velocypack::Builder& builder,
   return {};
 }
 
-Result IResearchLink::properties(IResearchViewMeta const& meta) {
-  auto linkLock = _asyncSelf->lock();
-  // '_dataStore' can be asynchronously modified
-  if (!linkLock) {
-    // the current link is no longer valid (checked after ReadLock acquisition)
-    return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-            "failed to lock arangosearch link while modifying properties "
-            "of arangosearch link '" +
-                std::to_string(id().id()) + "'"};
-  }
-  IResearchLink::properties(std::move(linkLock), meta);
-  return {};
-}
-
-void IResearchLink::properties(LinkLock linkLock,
-                               IResearchViewMeta const& meta) {
-  TRI_ASSERT(linkLock);
-  TRI_ASSERT(linkLock->_dataStore);
-  // must be valid if _asyncSelf->lock() is valid
-  {
-    WRITE_LOCKER(writeLock, linkLock->_dataStore._mutex);
-    // '_meta' can be asynchronously modified
-    linkLock->_dataStore._meta.storeFull(meta);
-  }
-
-  if (linkLock->_engine->recoveryState() == RecoveryState::DONE) {
-    if (meta._commitIntervalMsec) {
-      linkLock->scheduleCommit(
-          std::chrono::milliseconds(meta._commitIntervalMsec));
-    }
-
-    if (meta._consolidationIntervalMsec && meta._consolidationPolicy.policy()) {
-      linkLock->scheduleConsolidation(
-          std::chrono::milliseconds(meta._consolidationIntervalMsec));
-    }
-  }
-
-  irs::index_writer::segment_options properties;
-  properties.segment_count_max = meta._writebufferActive;
-  properties.segment_memory_max = meta._writebufferSizeMax;
-
-  static_assert(noexcept(_dataStore._writer->options(properties)));
-  _dataStore._writer->options(properties);
-
-  return {};
-}
-
 Index::IndexType IResearchLink::type() {
   // TODO: don't use enum
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -606,33 +557,7 @@ Result IResearchLink::unload() {
     return drop();
   }
 
-  std::atomic_store(&_flushSubscription, {});
-  // reset together with '_asyncSelf'
-  _asyncSelf->reset();
-  // the data-store is being deallocated, link use is no longer valid
-  // (wait for all the view users to finish)
-
-  if (!_dataStore) {
-    return {};
-  }
-  removeStats();
-
-  try {
-    _dataStore.resetDataStore();
-  } catch (basics::Exception const& e) {
-    return {e.code(), "caught exception while unloading arangosearch link '" +
-                          std::to_string(id().id()) + "': " + e.what()};
-  } catch (std::exception const& e) {
-    return {TRI_ERROR_INTERNAL,
-            "caught exception while removing arangosearch link '" +
-                std::to_string(id().id()) + "': " + e.what()};
-  } catch (...) {
-    return {TRI_ERROR_INTERNAL,
-            "caught exception while removing arangosearch link '" +
-                std::to_string(id().id()) + "'"};
-  }
-
-  return {};
+  return shutdownDataStore();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,14 +579,6 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(
   }
 
   return nullptr;
-}
-
-IResearchLink::LinkStats IResearchLink::stats() const {
-  auto linkLock = _asyncSelf->lock();
-  if (!linkLock) {
-    return {};
-  }
-  return statsUnsafe();
 }
 
 std::string_view IResearchLink::format() const noexcept {

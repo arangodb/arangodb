@@ -57,10 +57,9 @@ class AsyncLinkHandle final {
  public:
   explicit AsyncLinkHandle(IResearchDataStore* link);
   ~AsyncLinkHandle();
-  bool empty() const noexcept { return _link.empty(); }
-  auto lock() noexcept { return _link.lock(); }
-  auto tryLock() noexcept { return _link.try_lock(); }
-  bool terminationRequested() const noexcept {
+  [[nodiscard]] bool empty() const noexcept { return _link.empty(); }
+  [[nodiscard]] auto lock() noexcept { return _link.lock(); }
+  [[nodiscard]] bool terminationRequested() const noexcept {
     return _asyncTerminate.load(std::memory_order_acquire);
   }
 
@@ -76,24 +75,23 @@ class AsyncLinkHandle final {
   void reset();
 
   AsyncValue<IResearchDataStore> _link;
-  std::atomic_bool _asyncTerminate{
-      false};  // trigger termination of long-running async jobs
+  // trigger termination of long-running async jobs
+  std::atomic_bool _asyncTerminate{false};
 };
+
+using LinkLock = AsyncValue<IResearchDataStore>::Value;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the index state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchTrxState final : public TransactionState::Cookie {
   irs::index_writer::documents_context _ctx;
-  AsyncValue<IResearchDataStore>::Value
-      _linkLock;  // prevent data-store deallocation (lock @ AsyncSelf)
+  // prevent data-store deallocation (lock @ AsyncSelf)
+  LinkLock _linkLock;
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
-  IResearchTrxState(AsyncValue<IResearchDataStore>::Value&& linkLock,
-                    irs::index_writer& writer) noexcept
-      : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
-    TRI_ASSERT(_linkLock.ownsLock());
-  }
+  IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
+      : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {}
 
   virtual ~IResearchTrxState() noexcept {
     if (_removals.empty()) {
@@ -143,21 +141,15 @@ class IResearchDataStore {
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(AsyncValue<IResearchDataStore>::Value&& lock,
-             irs::directory_reader&& reader) noexcept
-        : _lock{std::move(lock)}, _reader{std::move(reader)} {
-      TRI_ASSERT(_lock.ownsLock());
-    }
+    Snapshot(LinkLock&& lock, irs::directory_reader&& reader) noexcept
+        : _lock{std::move(lock)}, _reader{std::move(reader)} {}
     Snapshot(Snapshot&& rhs) noexcept
-        : _lock{std::move(rhs._lock)}, _reader{std::move(rhs._reader)} {
-      TRI_ASSERT(_lock.ownsLock());
-    }
+        : _lock{std::move(rhs._lock)}, _reader{std::move(rhs._reader)} {}
     Snapshot& operator=(Snapshot&& rhs) noexcept {
       if (this != &rhs) {
         _lock = std::move(rhs._lock);
         _reader = std::move(rhs._reader);
       }
-      TRI_ASSERT(_lock.ownsLock());
       return *this;
     }
 
@@ -166,8 +158,8 @@ class IResearchDataStore {
     }
 
    private:
-    AsyncValue<IResearchDataStore>::Value
-        _lock;  // lock preventing data store deallocation
+    // lock preventing data store deallocation
+    LinkLock _lock;
     irs::directory_reader _reader;
   };
 
@@ -186,7 +178,7 @@ class IResearchDataStore {
   ///         (nullptr == no data store snapshot availabe, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
   Snapshot snapshot() const;
-
+  static Snapshot snapshot(LinkLock linkLock);
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link/index
   //////////////////////////////////////////////////////////////////////////////
@@ -213,6 +205,7 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   //////////////////////////////////////////////////////////////////////////////
   Result commit(bool wait = true);
+  static Result commit(LinkLock linkLock, bool wait);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
@@ -247,12 +240,7 @@ class IResearchDataStore {
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
   Result properties(IResearchViewMeta const& meta);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update runtime data processing properties (not persisted)
-  /// @return success
-  //////////////////////////////////////////////////////////////////////////////
-  Result propertiesUnsafe(IResearchViewMeta const& meta);
+  static void properties(LinkLock linkLock, IResearchViewMeta const& meta);
 
  protected:
   friend struct CommitTask;
@@ -398,16 +386,6 @@ class IResearchDataStore {
   Result deleteDataStore();
 
  public:  // TODO public only for tests, make protected
-  // TODO: Generalize for Link/Index
-  struct LinkStats : Stats {
-    void needName() const;
-    void toPrometheus(std::string& result, std::string_view globals,
-                      std::string_view labels) const;
-
-   private:
-    mutable bool _needName{false};
-  };
-
   // These methods only for tests
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get numbers of failed commit cleanup consolidation
