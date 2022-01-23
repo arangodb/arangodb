@@ -230,10 +230,7 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
       : IResearchInvertedIndex(iid, collection,
                                std::forward<IResearchInvertedIndexMeta>(m)),
         Index(iid, collection, name, IResearchInvertedIndex::fields(meta()),
-              false, true),
-        _objectId(objectId) {
-    TRI_ASSERT(_objectId);
-  }
+              false, true) {}
 
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
@@ -309,9 +306,6 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
       aql::AstNode* node, aql::Variable const* reference) const override {
     return IResearchInvertedIndex::specializeCondition(node, reference);
   }
-
- private:
-  uint64_t _objectId;
 };
 
 }  // namespace iresearch

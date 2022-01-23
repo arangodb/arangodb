@@ -1222,11 +1222,6 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   IResearchInvertedIndex::toVelocyPack(
       IResearchDataStore::collection().vocbase().server(),
       &IResearchDataStore::collection().vocbase(), builder, forPersistence);
-  if (forPersistence) {
-    TRI_ASSERT(_objectId != 0);  // If we store it, it cannot be 0
-    builder.add(arangodb::StaticStrings::ObjectId,
-                VPackValue(std::to_string(_objectId)));
-  }
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,
