@@ -56,6 +56,14 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+PrivilegeFeature::PrivilegeFeature(Server& server)
+    : ArangodFeature{server, Server::id<PrivilegeFeature>(), name()},
+      _numericUid(0),
+      _numericGid(0) {
+  setOptional(true);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
+
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef ARANGODB_HAVE_SETUID
   options->addOption(

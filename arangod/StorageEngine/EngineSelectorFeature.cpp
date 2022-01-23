@@ -30,7 +30,6 @@
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -63,9 +62,8 @@ std::unordered_map<std::string, EngineInfo> createEngineMap() {
 
 namespace arangodb {
 
-EngineSelectorFeature::EngineSelectorFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "EngineSelector"),
+EngineSelectorFeature::EngineSelectorFeature(Server& server)
+    : ArangodFeature{server, Server::id<EngineSelectorFeature>(), name()},
       _engine(nullptr),
       _engineName("auto"),
       _selected(false),

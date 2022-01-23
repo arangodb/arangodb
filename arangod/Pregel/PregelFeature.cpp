@@ -32,7 +32,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -231,8 +230,8 @@ uint64_t PregelFeature::createExecutionNumber() {
   return TRI_NewServerSpecificTick();
 }
 
-PregelFeature::PregelFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "Pregel"),
+PregelFeature::PregelFeature(Server& server)
+    : ArangodFeature{server, Server::id<PregelFeature>(), name()},
       _softShutdownOngoing(false) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();

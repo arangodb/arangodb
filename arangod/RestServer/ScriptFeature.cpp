@@ -24,7 +24,6 @@
 #include "ScriptFeature.h"
 
 #include "Basics/application-exit.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -44,9 +43,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ScriptFeature::ScriptFeature(application_features::ApplicationServer& server,
-                             int* result)
-    : ApplicationFeature(server, "Script"), _result(result) {
+ScriptFeature::ScriptFeature(Server& server, int* result)
+    : ArangodFeature{server, Server::id<ScriptFeature>(), name()},
+      _result(result) {
   setOptional(true);
   startsAfter<AgencyFeaturePhase>();
 }

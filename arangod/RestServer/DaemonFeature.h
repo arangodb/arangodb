@@ -27,31 +27,18 @@
 #include <string>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-class GreetingsFeaturePhase;
-}  // namespace application_features
 namespace options {
 class ProgramOptions;
 }
 
-class DaemonFeature final : public application_features::ApplicationFeature {
+class DaemonFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Daemon"; }
 
-  template<typename Server>
-  explicit DaemonFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature(server, Server::template id<DaemonFeature>(),
-                           name()) {
-    setOptional(true);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
-
-#ifndef _WIN32
-    _workingDirectory = "/var/tmp";
-#endif
-  }
+  explicit DaemonFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -35,8 +35,6 @@
 #include "Basics/system-functions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -428,8 +426,10 @@ class TtlThread final : public Thread {
 
 }  // namespace arangodb
 
-TtlFeature::TtlFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Ttl"), _allowRunning(true), _active(true) {
+TtlFeature::TtlFeature(Server& server)
+    : ArangodFeature{server, Server::id<TtlFeature>(), name()},
+      _allowRunning(true),
+      _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }

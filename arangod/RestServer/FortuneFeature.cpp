@@ -29,7 +29,6 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/BootstrapFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -66,8 +65,9 @@ static char const* cookies[] = {
 
 }  // namespace
 
-FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Fortune"), _fortune(false) {
+FortuneFeature::FortuneFeature(Server& server)
+    : ArangodFeature{server, Server::id<FortuneFeature>(), name()},
+      _fortune(false) {
   startsAfter<BootstrapFeature>();
 }
 

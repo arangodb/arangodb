@@ -34,7 +34,6 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -166,9 +165,8 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
 
-QueryRegistryFeature::QueryRegistryFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "QueryRegistry"),
+QueryRegistryFeature::QueryRegistryFeature(Server& server)
+    : ArangodFeature{server, Server::id<QueryRegistryFeature>(), name()},
       _trackingEnabled(true),
       _trackSlowQueries(true),
       _trackQueryString(true),

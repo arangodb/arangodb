@@ -27,32 +27,18 @@
 #include <memory>
 #include <string>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-class GreetingsFeaturePhase;
-}  // namespace application_features
 namespace options {
 class ProgramOptions;
 }
 
-class LanguageFeature final : public application_features::ApplicationFeature {
+class LanguageFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Language"; }
 
-  template<typename Server>
-  explicit LanguageFeature(Server& server)
-      : ApplicationFeature(server, Server::template id<LanguageFeature>(),
-                           name()),
-        _locale(),
-        _binaryPath(server.getBinaryPath()),
-        _icuDataPtr(nullptr),
-        _forceLanguageCheck(true) {
-    setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
-  }
+  explicit LanguageFeature(Server& server);
 
   ~LanguageFeature();
 

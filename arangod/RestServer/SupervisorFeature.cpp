@@ -30,7 +30,6 @@
 #include "SupervisorFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -106,9 +105,8 @@ static void HUPHandler(int) {
   }
 }
 
-SupervisorFeature::SupervisorFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Supervisor"),
+SupervisorFeature::SupervisorFeature(Server& server)
+    : ArangodFeature{server, Server::id<SupervisorFeature>(), name()},
       _supervisor(false),
       _clientPid(0) {
   setOptional(true);

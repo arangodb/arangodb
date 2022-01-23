@@ -26,9 +26,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
 class LoggerFeature;
 

@@ -206,7 +206,7 @@ class LogAppenderEventLog final : public LogAppender {
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(application_features::ApplicationServer& server)
+  LogAppenderMetricsCounter(ArangodServer& server)
       : LogAppender(),
         _warningsCounter(server.getFeature<metrics::MetricsFeature>().add(
             arangodb_logger_warnings_total{})),
@@ -229,9 +229,8 @@ class LogAppenderMetricsCounter final : public LogAppender {
   metrics::Counter& _errorsCounter;
 };
 
-LogBufferFeature::LogBufferFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "LogBuffer"),
+LogBufferFeature::LogBufferFeature(Server& server)
+    : ArangodFeature{server, Server::id<LogBufferFeature>(), name()},
       _minInMemoryLogLevel("info"),
       _useInMemoryAppender(true) {
   setOptional(true);

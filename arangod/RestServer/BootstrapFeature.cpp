@@ -31,7 +31,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
@@ -43,12 +42,10 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 
 namespace {
-static std::string const FEATURE_NAME("Bootstrap");
 static std::string const bootstrapKey = "Bootstrap";
 static std::string const healthKey = "Supervision/Health";
 }  // namespace
@@ -62,9 +59,8 @@ class Query;
 using namespace arangodb;
 using namespace arangodb::options;
 
-BootstrapFeature::BootstrapFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME),
+BootstrapFeature::BootstrapFeature(Server& server)
+    : ArangodFeature{server, Server::id<BootstrapFeature>(), name()},
       _isReady(false),
       _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();
@@ -82,10 +78,6 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("Server");
   startsAfter("Upgrade");
   */
-}
-
-/*static*/ std::string const& BootstrapFeature::name() noexcept {
-  return FEATURE_NAME;
 }
 
 bool BootstrapFeature::isReady() const {

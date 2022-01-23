@@ -38,9 +38,20 @@ namespace options {
 class ProgramOptions;
 }
 
+class ShellColorsFeature;
+class VersionFeature;
+
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
-  LoggerFeature(application_features::ApplicationServer& server, bool threaded);
+  static constexpr std::string_view name() { return "Logger"; }
+
+  template<typename Server>
+  LoggerFeature(Server& server, bool threaded)
+      : LoggerFeature(server, Server::template id<LoggerFeature>(), threaded) {
+    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<VersionFeature, Server>();
+  }
+
   ~LoggerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -58,6 +69,9 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool onlySuperUser() const { return _apiSwitch == "jwt"; }
 
  private:
+  LoggerFeature(application_features::ApplicationServer& server,
+                size_t registration, bool threaded);
+
   std::vector<std::string> _output;
   std::vector<std::string> _levels;
   std::string _prefix;

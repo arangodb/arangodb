@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/BootstrapFeature.h"
@@ -67,10 +66,8 @@ InvalidViewFactory const kInvalid;
 
 namespace arangodb {
 
-ViewTypesFeature::ViewTypesFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(
-          server, std::string{ViewTypesFeature::name()}) {
+ViewTypesFeature::ViewTypesFeature(Server& server)
+    : ArangodFeature{server, Server::id<ViewTypesFeature>(), name()} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }

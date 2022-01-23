@@ -30,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -49,9 +48,8 @@ namespace arangodb {
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
-AuthenticationFeature::AuthenticationFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Authentication"),
+AuthenticationFeature::AuthenticationFeature(Server& server)
+    : ArangodFeature{server, Server::id<AuthenticationFeature>(), name()},
       _userManager(nullptr),
       _authCache(nullptr),
       _authenticationUnixSockets(true),

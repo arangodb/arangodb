@@ -27,8 +27,6 @@
 #include "Aql/Function.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
-#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -39,12 +37,10 @@ namespace aql {
 
 using FF = Function::Flags;
 
-AqlFunctionFeature::AqlFunctionFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "AQLFunctions") {
+AqlFunctionFeature::AqlFunctionFeature(Server& server)
+    : ArangodFeature{server, Server::id<AqlFunctionFeature>(), name()} {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
-
   startsAfter<AqlFeature>();
 }
 

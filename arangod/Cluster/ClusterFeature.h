@@ -45,21 +45,11 @@ class AgencyCallbackRegistry;
 class DatabaseFeature;
 class HeartbeatThread;
 
-class ClusterFeature : public application_features::ApplicationFeature {
+class ClusterFeature : public ArangodFeature {
  public:
-  explicit ClusterFeature(application_features::ApplicationServer& server);
-
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
-  template<typename Server>
-  explicit ClusterFeature(Server& server)
-      : ClusterFeature(server, server.getFeature<metrics::MetricsFeature>(),
-                       Server::template id<ClusterFeature>()) {
-    setOptional(true);
-    startsAfter<application_features::CommunicationFeaturePhase>();
-    startsAfter<application_features::DatabaseFeaturePhase>();
-  }
-
+  explicit ClusterFeature(Server& server);
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -231,6 +221,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
+  metrics::MetricsFeature& _metrics;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
@@ -239,8 +230,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   metrics::Counter* _followersWrongChecksumCounter = nullptr;
   metrics::Counter* _followersTotalRebuildCounter = nullptr;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
-  metrics::MetricsFeature& _metrics;
-  DatabaseFeature& _database;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;

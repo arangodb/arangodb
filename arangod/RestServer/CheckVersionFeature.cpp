@@ -28,7 +28,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -39,9 +38,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
@@ -52,9 +48,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CheckVersionFeature::CheckVersionFeature(
-    application_features::ApplicationServer& server, int* result,
+    Server& server, int* result,
     std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "CheckVersion"),
+    : ArangodFeature{server, Server::id<CheckVersionFeature>(), name()},
       _checkVersion(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {

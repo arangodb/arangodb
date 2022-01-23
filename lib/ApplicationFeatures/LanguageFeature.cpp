@@ -21,11 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
-
 #include "LanguageFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include <stdlib.h>
+
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -86,6 +85,16 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
+
+LanguageFeature::LanguageFeature(Server& server)
+    : ArangodFeature{server, Server::id<LanguageFeature>(), name()},
+      _locale(),
+      _binaryPath(server.getBinaryPath()),
+      _icuDataPtr(nullptr),
+      _forceLanguageCheck(true) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
 
 LanguageFeature::~LanguageFeature() {
   if (_icuDataPtr != nullptr) {

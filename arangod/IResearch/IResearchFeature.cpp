@@ -52,7 +52,6 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -851,9 +850,8 @@ bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
-IResearchFeature::IResearchFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, std::string{name()}),
+IResearchFeature::IResearchFeature(Server& server)
+    : ArangodFeature{server, Server::id<IResearchFeature>(), name()},
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _consolidationThreads(0),

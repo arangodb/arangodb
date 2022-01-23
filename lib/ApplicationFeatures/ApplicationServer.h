@@ -326,21 +326,19 @@ class ApplicationServer {
   bool _dumpOptions = false;
 };
 
-template<typename Features>
-class ApplicationServerImpl : public ApplicationServer {
+template<typename FeatureList>
+class ApplicationServerT : public ApplicationServer {
  public:
+  using Features = FeatureList;
+
   template<typename T>
   static constexpr size_t id() noexcept {
     return Features::template id<T>();
   }
 
-  template<typename Initializer>
-  ApplicationServerImpl(Initializer&& initializer,
-                        std::shared_ptr<arangodb::options::ProgramOptions> opts,
-                        char const* binaryPath)
-      : ApplicationServer{opts, binaryPath} {
-    Features::visit(std::forward<Initializer>(initializer));
-  }
+  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
+                     char const* binaryPath)
+      : ApplicationServer{opts, binaryPath} {}
 
   // return whether or not a feature is enabled
   // will throw when called for a non-existing feature

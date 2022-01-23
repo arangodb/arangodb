@@ -26,7 +26,6 @@
 #include "ApplicationFeaturePhase.h"
 
 namespace arangodb {
-namespace application_features {
 
 class ConfigFeature;
 class LoggerFeature;
@@ -34,6 +33,8 @@ class RandomFeature;
 class ShellColorsFeature;
 class VersionFeature;
 class GreetingsFeature;
+
+namespace application_features {
 
 class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
  public:

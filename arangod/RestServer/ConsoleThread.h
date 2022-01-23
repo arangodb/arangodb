@@ -25,6 +25,7 @@
 
 #include "Basics/Thread.h"
 #include "V8Server/V8Context.h"
+#include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;
 

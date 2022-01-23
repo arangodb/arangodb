@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
@@ -34,32 +34,11 @@ namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public application_features::ApplicationFeature {
+class AgencyFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() { return "Agency"; }
 
-  template<typename Server>
-  explicit AgencyFeature(Server& server)
-      : ApplicationFeature(server, Server::template id<AgencyFeature>(),
-                           name()),
-        _activated(false),
-        _size(1),
-        _poolSize(1),
-        _minElectionTimeout(1.0),
-        _maxElectionTimeout(5.0),
-        _supervision(false),
-        _supervisionTouched(false),
-        _waitForSync(true),
-        _supervisionFrequency(1.0),
-        _compactionStepSize(1000),
-        _compactionKeepSize(50000),
-        _maxAppendSize(250),
-        _supervisionGracePeriod(10.0),
-        _supervisionOkThreshold(5.0),
-        _cmdLineTimings(false) {
-    setOptional(true);
-    startsAfter<application_features::FoxxFeaturePhase, Server>();
-  }
+  explicit AgencyFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

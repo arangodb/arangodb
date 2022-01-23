@@ -45,7 +45,6 @@
 #include "Basics/files.h"
 #include "Basics/terminal-utils.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -62,9 +61,8 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(
-    application_features::ApplicationServer& server,
-    std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "InitDatabase"),
+    Server& server, std::vector<size_t> const& nonServerFeatures)
+    : ArangodFeature{server, Server::id<InitDatabaseFeature>(), name()},
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();

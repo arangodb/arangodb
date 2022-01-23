@@ -26,9 +26,9 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+class AgencyFeature;
 namespace application_features {
 
-class AgencyFeature;
 class FoxxFeaturePhase;
 
 class AgencyFeaturePhase : public ApplicationFeaturePhase {

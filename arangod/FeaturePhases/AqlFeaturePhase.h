@@ -26,6 +26,9 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
+class AqlFeature;
+class SystemDatabaseFeature;
+class QueryRegistryFeature;
 namespace aql {
 class AqlFunctionFeature;
 class OptimizerRulesFeature;
@@ -42,9 +45,6 @@ namespace application_features {
 
 class CommunicationFeaturePhase;
 class V8FeaturePhase;
-class AqlFeature;
-class SystemDatabaseFeature;
-class QueryRegistryFeature;
 
 class AqlFeaturePhase : public ApplicationFeaturePhase {
  public:

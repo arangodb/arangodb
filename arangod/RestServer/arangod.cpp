@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangod.h"
+
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 #include "Basics/operating-system.h"
@@ -28,7 +30,6 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/CpuUsageFeature.h"
@@ -139,76 +140,8 @@
 #include <iostream>
 #endif
 
-#include <frozen/unordered_map.h>
-
 using namespace arangodb;
 using namespace arangodb::application_features;
-
-struct A {
-  static constexpr std::string_view name() noexcept { return "A"; }
-};
-
-struct B {
-  static constexpr std::string_view name() noexcept { return "B"; }
-};
-
-template<typename T>
-struct TypeTag {
-  using type = T;
-
-  size_t index;
-};
-
-template<typename... T>
-class TypeList {
- public:
-  constexpr static auto Size = sizeof...(T);
-
-  static constexpr auto toArray() {
-    return toArrayImpl(std::make_integer_sequence<size_t, Size>());
-  }
-
-  template<typename Visitor, size_t... Idx>
-  static constexpr void visit(Visitor&& visitor) {
-    visitImpl(std::forward<Visitor>(visitor),
-              std::make_integer_sequence<size_t, Size>());
-  }
-
- private:
-  template<size_t... Idx>
-  static constexpr std::array<std::pair<frozen::string, size_t>, Size>
-  toArrayImpl(std::integer_sequence<size_t, Idx...>) {
-    return {std::pair<frozen::string, size_t>{T::name(), Idx}...};
-  }
-
-  template<typename Visitor, size_t... Idx>
-  static constexpr void visitImpl(Visitor&& visitor,
-                                  std::integer_sequence<size_t, Idx...>) {
-    (std::forward<Visitor>(visitor)(TypeTag<T>{Idx}), ...);
-  }
-};
-
-template<typename... T>
-class FeatureList {
- public:
-  template<typename Visitor>
-  static constexpr void visit(Visitor&& visitor) {
-    Types::visit(std::forward<Visitor>(visitor));
-  }
-
-  template<typename U>
-  static consteval size_t id() {
-    static_assert(kFeatures.find(U::name()) != kFeatures.end(),
-                  "Feature not found");
-    return kFeatures[U::name()];
-  }
-
- private:
-  using Types = TypeList<T...>;
-
-  static constexpr auto kFeatures =
-      frozen::make_unordered_map(Types::toArray());
-};
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
@@ -219,7 +152,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         argv[0], "Usage: " + name + " [<options>]",
         "For more information use:", SBIN_DIRECTORY);
 
-    ApplicationServer server(options, SBIN_DIRECTORY);
+    ArangodServer server(options, SBIN_DIRECTORY);
     ServerState state(server);
 
     std::vector<std::type_index> nonServerFeatures = {
@@ -240,120 +173,34 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     int ret = EXIT_FAILURE;
 
-    // Adding the Phases
-    server.addFeature<AgencyFeaturePhase>();
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<AqlFeaturePhase>();
-    server.addFeature<BasicFeaturePhaseServer>();
-    server.addFeature<ClusterFeaturePhase>();
-    server.addFeature<DatabaseFeaturePhase>();
-    server.addFeature<FinalFeaturePhase>();
-    server.addFeature<FoxxFeaturePhase>();
-    server.addFeature<GreetingsFeaturePhase>(false);
-    server.addFeature<ServerFeaturePhase>();
-    server.addFeature<V8FeaturePhase>();
-
-    // Adding the features
-    server.addFeature<arangodb::metrics::MetricsFeature>();
-    server.addFeature<ActionFeature>();
-    server.addFeature<AgencyFeature>();
-    server.addFeature<AqlFeature>();
-    server.addFeature<AuthenticationFeature>();
-    server.addFeature<BootstrapFeature>();
-    server.addFeature<CacheManagerFeature>();
-    server.addFeature<CheckVersionFeature>(&ret, nonServerFeatures);
-    server.addFeature<ClusterFeature>();
-    server.addFeature<ClusterUpgradeFeature>();
-    server.addFeature<ConfigFeature>(name);
-    server.addFeature<ConsoleFeature>();
-    server.addFeature<CpuUsageFeature>();
-    server.addFeature<DatabaseFeature>();
-    server.addFeature<DatabasePathFeature>();
-    server.addFeature<EndpointFeature, HttpEndpointProvider>();
-    server.addFeature<EngineSelectorFeature>();
-    server.addFeature<EnvironmentFeature>();
-#ifdef TRI_HAVE_GETRLIMIT
-    server.addFeature<FileDescriptorsFeature>();
-#endif
-    server.addFeature<FlushFeature>();
-    server.addFeature<FortuneFeature>();
-    server.addFeature<FoxxFeature>();
-    server.addFeature<FrontendFeature>();
-    server.addFeature<GeneralServerFeature>();
-    server.addFeature<GreetingsFeature>();
-    server.addFeature<InitDatabaseFeature>(nonServerFeatures);
-    server.addFeature<LanguageCheckFeature>();
-    server.addFeature<LanguageFeature>();
-    server.addFeature<TimeZoneFeature>();
-    server.addFeature<LockfileFeature>();
-    server.addFeature<LogBufferFeature>();
-    server.addFeature<LoggerFeature>(true);
-    server.addFeature<MaintenanceFeature>();
-    server.addFeature<MaxMapCountFeature>();
-    server.addFeature<NetworkFeature>();
-    server.addFeature<NonceFeature>();
-    server.addFeature<PrivilegeFeature>();
-    server.addFeature<QueryRegistryFeature>();
-    server.addFeature<RandomFeature>();
-    server.addFeature<ReplicationFeature>();
-    server.addFeature<ReplicatedLogFeature>();
-    server.addFeature<ReplicationMetricsFeature>();
-    server.addFeature<ReplicationTimeoutFeature>();
-    server.addFeature<SchedulerFeature>();
-    server.addFeature<ScriptFeature>(&ret);
-    server.addFeature<ServerFeature>(&ret);
-    server.addFeature<ServerIdFeature>();
-    server.addFeature<ServerSecurityFeature>();
-    server.addFeature<ShardingFeature>();
-    server.addFeature<SharedPRNGFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});
-    server.addFeature<SoftShutdownFeature>();
-    server.addFeature<SslFeature>();
-    server.addFeature<StatisticsFeature>();
-    server.addFeature<StorageEngineFeature>();
-    server.addFeature<SystemDatabaseFeature>();
-    server.addFeature<TempFeature>(name);
-    server.addFeature<TtlFeature>();
-    server.addFeature<UpgradeFeature>(&ret, nonServerFeatures);
-    server.addFeature<V8DealerFeature>();
-    server.addFeature<V8PlatformFeature>();
-    server.addFeature<V8SecurityFeature>();
-    server.addFeature<transaction::ManagerFeature>();
-    server.addFeature<VersionFeature>();
-    server.addFeature<ViewTypesFeature>();
-    server.addFeature<aql::AqlFunctionFeature>();
-    server.addFeature<aql::OptimizerRulesFeature>();
-    server.addFeature<pregel::PregelFeature>();
-
-#ifdef ARANGODB_HAVE_FORK
-    server.addFeature<DaemonFeature>();
-    server.addFeature<SupervisorFeature>();
-#endif
-
-#ifdef _WIN32
-    server.addFeature<WindowsServiceFeature>();
-#endif
-
-#ifdef USE_ENTERPRISE
-    setupServerEE(server);
-#else
-    server.addFeature<SslServerFeature>();
-#endif
-
-    server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    server.addFeature<arangodb::iresearch::IResearchFeature>();
-
-    // storage engines
-    server.addFeature<ClusterEngine>();
-    server.addFeature<RocksDBEngine>();
-
-    // add replicated state
-    server.addFeature<
-        replication2::replicated_state::ReplicatedStateAppFeature>();
-    server.addFeature<replication2::replicated_state::black_hole::
-                          BlackHoleStateMachineFeature>();
+    ArangodServer::Features::visit([&]<typename T>(TypeTag<T>) {
+      if constexpr (std::is_same_v<T, GreetingsFeaturePhase>) {
+        server.addFeature<T>(false);
+      } else if (std::is_same_v<T, CheckVersionFeature>) {
+        server.addFeature<T>(&ret, nonServerFeatures);
+      } else if (std::is_same_v<T, ConfigFeature>) {
+        server.addFeature<T>(&ret, name);
+      } else if (std::is_same_v<T, EndpointFeature>) {
+        server.addFeature<EndpointFeature, HttpEndpointProvider>();
+      } else if (std::is_same_v<T, InitDatabaseFeature>) {
+        server.addFeature<T>(nonServerFeatures);
+      } else if (std::is_same_v<T, LoggerFeature>) {
+        server.addFeature<T>(true);
+      } else if (std::is_same_v<T, ScriptFeature>) {
+        server.addFeature<T>(&ret);
+      } else if (std::is_same_v<T, ServerFeature>) {
+        server.addFeature<T>(&ret);
+      } else if (std::is_same_v<T, ShutdownFeature>) {
+        server.addFeature<T>(std::vector<std::type_index>{
+            std::type_index(typeid(ScriptFeature))});
+      } else if (std::is_same_v<T, TempFeature>) {
+        server.addFeature<T>(name);
+      } else if (std::is_same_v<T, UpgradeFeature>) {
+        server.addFeature<T>(&ret, nonServerFeatures);
+      } else {
+        server.addFeature<T>();
+      }
+    });
 
     try {
       server.run(argc, argv);

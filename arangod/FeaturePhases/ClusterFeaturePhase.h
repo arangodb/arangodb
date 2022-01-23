@@ -26,14 +26,14 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
-namespace application_features {
-
-class DatabaseFeaturePhase;
 class ClusterFeature;
 class MaintenanceFeature;
 class ReplicationTimeoutFeature;
 class ReplicatedLogFeature;
 class V8PlatformFeature;
+
+namespace application_features {
+class DatabaseFeaturePhase;
 
 class ClusterFeaturePhase : public ApplicationFeaturePhase {
  public:

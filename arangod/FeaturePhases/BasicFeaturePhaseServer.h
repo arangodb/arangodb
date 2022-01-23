@@ -26,9 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 
 namespace arangodb {
-namespace application_features {
 
-class GreetingsFeaturePhase;
 class DaemonFeature;
 class DatabasePathFeature;
 class EnvironmentFeature;
@@ -50,6 +48,10 @@ class WindowsServiceFeature;
 class AuditFeature;
 class EncryptionFeature;
 #endif
+
+namespace application_features {
+
+class GreetingsFeaturePhase;
 
 class BasicFeaturePhaseServer : public ApplicationFeaturePhase {
  public:

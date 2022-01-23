@@ -61,6 +61,15 @@ CpuUsageFeature::SnapshotProvider::SnapshotProvider() : _statFile(nullptr) {
   _statFile = fopen("/proc/stat", "r");
 }
 
+CpuUsageFeature::CpuUsageFeature(Server& server)
+    : ArangodFeature{server, Server::id<CpuUsageFeature>(), name()},
+      _snapshotProvider(),
+      _updateInProgress(false) {
+  setOptional(true);
+
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
+
 CpuUsageFeature::SnapshotProvider::~SnapshotProvider() {
   if (_statFile != nullptr) {
     fclose(_statFile);

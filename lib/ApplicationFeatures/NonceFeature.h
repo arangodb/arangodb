@@ -25,23 +25,15 @@
 
 #include "Basics/Common.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class GreetingsFeaturePhase;
-}
 
-class NonceFeature : public application_features::ApplicationFeature {
+class NonceFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Nonce"; }
 
-  template<typename Server>
-  explicit NonceFeature(Server& server)
-      : ApplicationFeature(server, Server::template id<NonceFeature>(), name) {
-    setOptional(true);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
-  }
+  explicit NonceFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;

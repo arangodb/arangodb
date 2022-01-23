@@ -23,18 +23,19 @@
 
 #pragma once
 
-#include <cstdint>
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class CheckVersionFeature final
-    : public application_features::ApplicationFeature {
+class CheckVersionFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "CheckVersion"; }
+
   explicit CheckVersionFeature(
-      application_features::ApplicationServer& server, int* result,
+      Server& server, int* result,
       std::vector<std::type_index> const& nonServerFeatures);
 
  private:

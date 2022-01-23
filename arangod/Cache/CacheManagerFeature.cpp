@@ -33,7 +33,6 @@
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -49,9 +48,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheManagerFeature::CacheManagerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CacheManager"),
+CacheManagerFeature::CacheManagerFeature(Server& server)
+    : ArangodFeature{server, Server::id<CacheManagerFeature>(), name()},
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize(

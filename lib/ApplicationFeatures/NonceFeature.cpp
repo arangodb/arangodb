@@ -32,6 +32,12 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+NonceFeature::NonceFeature(Server& server)
+    : ArangodFeature{server, Server::id<NonceFeature>(), name} {
+  setOptional(true);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
+
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("nonce", "nonces", "", true, true);
   options->addObsoleteOption("--nonce.size",

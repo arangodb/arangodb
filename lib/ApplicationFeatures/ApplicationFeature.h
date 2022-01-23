@@ -180,7 +180,7 @@ class ApplicationFeature {
   void setOptional(bool value) { _optional = value; }
 
   // note that this feature requires another to be present
-  void dependsOn(std::type_index other) { _requires.emplace_back(other); }
+  void dependsOn(size_t other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
   template<typename T, typename Server>
@@ -266,6 +266,38 @@ class ApplicationFeature {
   bool _requiresElevatedPrivileges;
 
   bool _ancestorsDetermined;
+};
+
+template<typename ServerT>
+class ApplicationFeatureT : public ApplicationFeature {
+ public:
+  using Server = ServerT;
+
+  ApplicationFeatureT(Server& server, size_t registration,
+                      std::string_view name)
+      : ApplicationFeature{server, registration, name} {}
+
+  Server& server() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* p = dynamic_cast<Server*>(&ApplicationFeature::server());
+    TRI_ASSERT(p);
+    return *p;
+#else
+    return static_cast<Server&>(ApplicationFeature::server());
+#endif
+  }
+
+  // register a start dependency upon another feature
+  template<typename T>
+  void startsAfter() {
+    startsAfter(Server::template id<T>());
+  }
+
+  // register a start dependency upon another feature
+  template<typename T>
+  void startsBefore() {
+    startsBefore(Server::template id<T>());
+  }
 };
 
 }  // namespace application_features

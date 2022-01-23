@@ -52,7 +52,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -60,6 +59,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
+#include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
 
 struct TRI_vocbase_t;  // forward declaration
@@ -275,16 +275,18 @@ class AnalyzerPool : private irs::util::noncopyable {
 ///              invalidates all AnalyzerPool instances previously provided
 ///              by the deallocated feature instance
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchAnalyzerFeature final
-    : public application_features::ApplicationFeature {
+class IResearchAnalyzerFeature final : public ArangodFeature {
  public:
   /// first == vocbase name, second == analyzer name
   /// EMPTY == system vocbase
   /// NIL == unprefixed analyzer name, i.e. active vocbase
   using AnalyzerName = std::pair<irs::string_ref, irs::string_ref>;
 
-  explicit IResearchAnalyzerFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept {
+    return "ArangoSearchAnalyzer";
+  }
+
+  explicit IResearchAnalyzerFeature(Server& server);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions

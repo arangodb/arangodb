@@ -36,12 +36,10 @@
 #include "RestServer/DatabasePathFeature.h"
 
 namespace {
-static std::string const FEATURE_NAME("LanguageCheck");
 
 /// @brief reads previous default langauge from file
-arangodb::Result readLanguage(
-    arangodb::application_features::ApplicationServer& server,
-    std::string& language) {
+arangodb::Result readLanguage(arangodb::ArangodServer& server,
+                              std::string& language) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -75,9 +73,8 @@ arangodb::Result readLanguage(
 }
 
 /// @brief writes the default language to file
-ErrorCode writeLanguage(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& language) {
+ErrorCode writeLanguage(arangodb::ArangodServer& server,
+                        std::string const& language) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -110,9 +107,8 @@ ErrorCode writeLanguage(
   return TRI_ERROR_NO_ERROR;
 }
 
-std::string getOrSetPreviousLanguage(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& input) {
+std::string getOrSetPreviousLanguage(arangodb::ArangodServer& server,
+                                     std::string const& input) {
   std::string language;
   arangodb::Result res = ::readLanguage(server, language);
   if (res.ok()) {
@@ -129,15 +125,12 @@ std::string getOrSetPreviousLanguage(
 
 namespace arangodb {
 
-LanguageCheckFeature::LanguageCheckFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME) {
+LanguageCheckFeature::LanguageCheckFeature(Server& server)
+    : ArangodFeature{server, Server::id<LanguageCheckFeature>(), name()} {
   setOptional(false);
   startsAfter<DatabasePathFeature>();
   startsAfter<LanguageFeature>();
 }
-
-LanguageCheckFeature::~LanguageCheckFeature() = default;
 
 void LanguageCheckFeature::start() {
   auto& feature = server().getFeature<LanguageFeature>();
@@ -162,7 +155,8 @@ void LanguageCheckFeature::start() {
       LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
           << "specified language '" << language
           << "' does not match previously used language '" << previous
-          << "'. starting anyway due to --default-language-check=false setting";
+          << "'. starting anyway due to --default-language-check=false "
+             "setting";
     }
   }
 }

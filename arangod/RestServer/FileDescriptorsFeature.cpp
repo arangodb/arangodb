@@ -23,7 +23,6 @@
 
 #include "FileDescriptorsFeature.h"
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
@@ -111,9 +110,8 @@ struct FileDescriptors {
   }
 };
 
-FileDescriptorsFeature::FileDescriptorsFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "FileDescriptors"),
+FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
+    : ArangodFeature{server, Server::id<FileDescriptorsFeature>(), name()},
       _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
@@ -131,7 +129,7 @@ void FileDescriptorsFeature::collectOptions(
 }
 
 void FileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+    std::shared_ptr<ProgramOptions> /*options*/) {
   if (_descriptorsMinimum > 0 &&
       (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
        _descriptorsMinimum > std::numeric_limits<rlim_t>::max())) {

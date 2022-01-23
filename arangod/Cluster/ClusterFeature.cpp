@@ -25,7 +25,6 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -34,7 +33,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -59,15 +57,16 @@ struct ClusterFeatureScale {
 DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
                   "Request time for Agency requests [ms]");
 
-ClusterFeature::ClusterFeature(application_features::ApplicationServer& server,
-                               metrics::MetricsFeature& metrics,
-                               DatabaseFeature& database, size_t registration)
-    : ApplicationFeature(server, registration, name()),
+ClusterFeature::ClusterFeature(Server& server)
+    : ArangodFeature{server, Server::id<ClusterFeature>(), name()},
       _apiJwtPolicy("jwt-compat"),
+      _metrics{server.getFeature<metrics::MetricsFeature>()},
       _agency_comm_request_time_ms(
-          metrics.add(arangodb_agencycomm_request_time_msec{})),
-      _metrics{metrics},
-      _database{database} {}
+          _metrics.add(arangodb_agencycomm_request_time_msec{})) {
+  setOptional(true);
+  startsAfter<application_features::CommunicationFeaturePhase>();
+  startsAfter<application_features::DatabaseFeaturePhase>();
+}
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
@@ -967,7 +966,7 @@ bool ClusterFeature::isDirty(std::string const& dbName) const {
 
 std::unordered_set<std::string> ClusterFeature::allDatabases() const {
   std::unordered_set<std::string> allDBNames;
-  auto const tmp = _database.getDatabaseNames();
+  auto const tmp = server().getFeature<DatabaseFeature>().getDatabaseNames();
   allDBNames.reserve(tmp.size());
   for (auto const& i : tmp) {
     allDBNames.emplace(i);

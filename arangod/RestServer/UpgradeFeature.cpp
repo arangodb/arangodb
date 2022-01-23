@@ -34,7 +34,6 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
-#include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -58,10 +57,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-UpgradeFeature::UpgradeFeature(
-    application_features::ApplicationServer& server, int* result,
-    std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "Upgrade"),
+UpgradeFeature::UpgradeFeature(Server& server, int* result,
+                               std::vector<size_t> const& nonServerFeatures)
+    : ArangodFeature{server, Server::id<UpgradeFeature>(), name()},
       _upgrade(false),
       _upgradeCheck(true),
       _result(result),
@@ -134,17 +132,14 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(GreetingsFeature)),
-        std::type_index(typeid(pregel::PregelFeature)),
-        std::type_index(typeid(SupervisorFeature))};
+    std::vector<size_t> otherFeaturesToDisable = {
+        Server::id<DaemonFeature>(), Server::id<GreetingsFeature>(),
+        Server::id<pregel::PregelFeature>(), Server::id<SupervisorFeature>()};
     server().forceDisableFeatures(otherFeaturesToDisable);
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(BootstrapFeature)),
-        std::type_index(typeid(HttpEndpointProvider))};
+    std::vector<size_t> otherFeaturesToDisable = {
+        Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()};
     server().forceDisableFeatures(otherFeaturesToDisable);
   }
 

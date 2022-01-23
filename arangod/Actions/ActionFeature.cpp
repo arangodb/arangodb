@@ -31,6 +31,13 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+ActionFeature::ActionFeature(Server& server)
+    : ArangodFeature{server, Server::id<ActionFeature>(), name()},
+      _allowUseDatabase(false) {
+  setOptional(true);
+  startsAfter<application_features::ClusterFeaturePhase>();
+}
+
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.allow-use-database",

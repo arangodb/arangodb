@@ -50,6 +50,27 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
+AgencyFeature::AgencyFeature(Server& server)
+    : ArangodFeature{server, Server::id<AgencyFeature>(), name()},
+      _activated(false),
+      _size(1),
+      _poolSize(1),
+      _minElectionTimeout(1.0),
+      _maxElectionTimeout(5.0),
+      _supervision(false),
+      _supervisionTouched(false),
+      _waitForSync(true),
+      _supervisionFrequency(1.0),
+      _compactionStepSize(1000),
+      _compactionKeepSize(50000),
+      _maxAppendSize(250),
+      _supervisionGracePeriod(10.0),
+      _supervisionOkThreshold(5.0),
+      _cmdLineTimings(false) {
+  setOptional(true);
+  startsAfter<application_features::FoxxFeaturePhase>();
+}
+
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "agency");
 
