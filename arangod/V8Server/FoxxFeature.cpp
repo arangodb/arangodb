@@ -30,6 +30,15 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+FoxxFeature::FoxxFeature(Server& server)
+    : ArangodFeature{server, Server::id<FoxxFeature>(), name()},
+      _pollInterval(1.0),
+      _enabled(true),
+      _startupWaitForSelfHeal(false) {
+  setOptional(true);
+  startsAfter<application_features::ServerFeaturePhase>();
+}
+
 void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("foxx", "Foxx services");
 

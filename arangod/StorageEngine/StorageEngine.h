@@ -24,16 +24,11 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Cache/CacheManagerFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/HealthData.h"
-#include "StorageEngine/StorageEngineFeature.h"
-#include "Transaction/ManagerFeature.h"
+#include "RestServer/arangod.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
@@ -86,11 +81,14 @@ struct Options;
 
 }  // namespace transaction
 
-class StorageEngine : public application_features::ApplicationFeature {
+class StorageEngine : public ArangodFeature {
  public:
+  // FIXME(gnusi)
+  static constexpr std::string_view name() noexcept { return "StorageEngine"; }
+
   // create the storage engine
-  StorageEngine(application_features::ApplicationServer& server,
-                std::string engineName, std::string const& featureName,
+  StorageEngine(Server& server, std::string engineName,
+                std::string_view featureName,
                 std::unique_ptr<IndexFactory>&& indexFactory);
 
   virtual HealthData healthCheck() = 0;

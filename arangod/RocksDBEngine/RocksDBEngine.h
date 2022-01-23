@@ -127,8 +127,10 @@ class RocksDBEngine final : public StorageEngine {
   friend class RocksDBFilePurgeEnabler;
 
  public:
+  static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
+
   // create the storage engine
-  explicit RocksDBEngine(application_features::ApplicationServer& server);
+  explicit RocksDBEngine(Server& server);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature

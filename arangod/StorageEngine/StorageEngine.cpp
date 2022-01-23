@@ -32,11 +32,11 @@
 
 using namespace arangodb;
 
-StorageEngine::StorageEngine(application_features::ApplicationServer& server,
-                             std::string engineName,
-                             const std::string& featureName,
+StorageEngine::StorageEngine(Server& server, std::string engineName,
+                             std::string_view featureName,
                              std::unique_ptr<IndexFactory>&& indexFactory)
-    : application_features::ApplicationFeature(server, featureName),
+    : ArangodFeature{server, Server::id<StorageEngine>(),
+                     featureName},  // FIXME(gnusi): check featureName
       _indexFactory(std::move(indexFactory)),
       _typeName(std::move(engineName)) {
   // each specific storage engine feature is optional. the storage engine

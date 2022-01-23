@@ -140,9 +140,8 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
 
-GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "GeneralServer"),
+GeneralServerFeature::GeneralServerFeature(Server& server)
+    : ArangodFeature{server, Server::id<GeneralServerFeature>(), name()},
       _allowMethodOverride(false),
       _proxyCheck(true),
       _returnQueueTimeHeader(true),

@@ -23,27 +23,15 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ServerFeaturePhase;
-}
 
-class FoxxFeature final : public application_features::ApplicationFeature {
+class FoxxFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "FoxxQueues"; }
 
-  template<typename Server>
-  explicit FoxxFeature::FoxxFeature(Server& server)
-      : application_features::ApplicationFeature(
-            server, Server::template id<FoxxFeature>(), name()),
-        _pollInterval(1.0),
-        _enabled(true),
-        _startupWaitForSelfHeal(false) {
-    setOptional(true);
-    startsAfter<application_features::ServerFeaturePhase, Server>();
-  }
+  explicit FoxxFeature::FoxxFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

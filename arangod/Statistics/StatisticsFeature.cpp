@@ -35,7 +35,6 @@
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -592,9 +591,8 @@ class StatisticsThread final : public Thread {
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
-StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Statistics"),
+StatisticsFeature::StatisticsFeature(Server& server)
+    : ArangodFeature{server, Server::id<StatisticsFeature>(), name()},
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
@@ -653,8 +651,6 @@ StatisticsFeature::StatisticsFeature(
   }
 #endif
 }
-
-StatisticsFeature::~StatisticsFeature() = default;
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {

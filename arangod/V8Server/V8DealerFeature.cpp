@@ -26,7 +26,6 @@
 #include <regex>
 #include <thread>
 
-#include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Agency/v8-agency.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
@@ -43,7 +42,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -120,9 +118,8 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "V8Dealer"),
+V8DealerFeature::V8DealerFeature(Server& server)
+    : ArangodFeature{server, Server::id<V8DealerFeature>(), name()},
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),

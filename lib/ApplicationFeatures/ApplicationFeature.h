@@ -206,7 +206,7 @@ class ApplicationFeature {
 
   template<typename T, typename Server>
   void onlyEnabledWith() {
-    _onlyEnabledWith.emplace(std::type_index(typeid(T)));
+    _onlyEnabledWith.emplace(Server::template id<T>());
   }
 
   // return the list of other features that this feature depends on
@@ -290,13 +290,18 @@ class ApplicationFeatureT : public ApplicationFeature {
   // register a start dependency upon another feature
   template<typename T>
   void startsAfter() {
-    startsAfter(Server::template id<T>());
+    startsAfter<T, Server>();
   }
 
   // register a start dependency upon another feature
   template<typename T>
   void startsBefore() {
-    startsBefore(Server::template id<T>());
+    startsBefore<T, Server>();
+  }
+
+  template<typename T>
+  void onlyEnabledWith() {
+    _onlyEnabledWith<T, Server>();
   }
 };
 
