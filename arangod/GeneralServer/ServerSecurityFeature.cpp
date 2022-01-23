@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -32,9 +31,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ServerSecurityFeature::ServerSecurityFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ServerSecurity"),
+ServerSecurityFeature::ServerSecurityFeature(Server& server)
+    : ArangodFeature{server, Server::id<ServerSecurityFeature>(), name()},
       _enableFoxxApi(true),
       _enableFoxxStore(true),
       _hardenedRestApi(false),
