@@ -136,17 +136,6 @@ void ViewTrxState::add(DataSourceId cid,
   _collections.emplace(cid);
   _snapshots.emplace_back(std::move(snapshot));
 }
-void ensureImmutableProperties(
-    arangodb::iresearch::IResearchViewMeta& dst,
-    arangodb::iresearch::IResearchViewMeta const& src) {
-  dst._version = src._version;
-  dst._writebufferActive = src._writebufferActive;
-  dst._writebufferIdle = src._writebufferIdle;
-  dst._writebufferSizeMax = src._writebufferSizeMax;
-  dst._primarySort = src._primarySort;
-  dst._storedValues = src._storedValues;
-  dst._primarySortCompression = src._primarySortCompression;
-}
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
