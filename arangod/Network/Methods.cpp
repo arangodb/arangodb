@@ -25,7 +25,6 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -39,6 +38,7 @@
 #include "Network/Utils.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "RestServer/arangod.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>

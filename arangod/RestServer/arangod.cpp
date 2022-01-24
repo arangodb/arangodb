@@ -153,6 +153,14 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         "For more information use:", SBIN_DIRECTORY);
 
     ArangodServer server(options, SBIN_DIRECTORY);
+    server.addReporter(ArangodServer::ProgressHandler{
+        [&](ArangodServer::State state) {
+          if (ArangodServer::State::IN_START == state) {
+            // before start
+          }
+        },
+        {}});
+
     ServerState state(server);
 
     std::vector<std::type_index> nonServerFeatures = {

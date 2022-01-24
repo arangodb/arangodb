@@ -407,7 +407,7 @@ DECLARE_LEGACY_COUNTER(arangodb_load_plan_accum_runtime_msec_total,
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
-ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _server(server),
@@ -6277,9 +6277,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
-application_features::ApplicationServer& ClusterInfo::server() const {
-  return _server;
-}
+ArangodServer& ClusterInfo::server() const { return _server; }
 
 ClusterInfo::ServersKnown::ServersKnown(
     VPackSlice const serversKnownSlice,

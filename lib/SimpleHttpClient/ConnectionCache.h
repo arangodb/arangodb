@@ -35,7 +35,8 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+class CommunicationFeaturePhase;
+}  // namespace application_features
 
 namespace httpclient {
 class ConnectionCache;
@@ -75,10 +76,11 @@ class ConnectionCache {
     size_t maxConnectionsPerEndpoint;
   };
 
-  explicit ConnectionCache(
-      arangodb::application_features::ApplicationServer& server,
-      Options const& options);
-  ~ConnectionCache();
+  template<typename Server>
+  ConnectionCache(Server& server, Options const& options)
+      : ConnectionCache{server.template getFeature<
+                            application_features::CommunicationFeaturePhase>(),
+                        options} {}
 
   ConnectionLease acquire(std::string endpoint, double connectTimeout,
                           double requestTimeout, size_t connectRetries,
@@ -98,7 +100,11 @@ class ConnectionCache {
 #endif
 
  private:
-  arangodb::application_features::ApplicationServer& _server;
+  ConnectionCache(
+      arangodb::application_features::CommunicationFeaturePhase& comm,
+      Options const& options);
+
+  arangodb::application_features::CommunicationFeaturePhase& _comm;
 
   Options const _options;
 

@@ -24,7 +24,7 @@
 #include "CacheManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"

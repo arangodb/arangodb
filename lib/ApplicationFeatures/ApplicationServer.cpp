@@ -54,7 +54,6 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/PrivilegeFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -530,7 +529,8 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       std::function<std::string(std::type_index)> cb =
           [](std::type_index type) -> std::string { return type.name(); };
       dependencies =
-          " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
+          " - depends on: " +
+          StringUtils::join(startsAfter, ", " /*, cb*/);  // FIXME(gnusi)
     }
     LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)
         << "feature #" << ++position << ": " << feature.name()
@@ -886,9 +886,10 @@ void ApplicationServer::dropPrivilegesPermanently() {
         "must not try to drop privileges after having dropped them");
   }
 
-  if (hasFeature<PrivilegeFeature>()) {
-    getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
-  }
+  // FIXME(gnusi) implement
+  //   if (hasFeature<PrivilegeFeature>()) {
+  //     getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
+  //   }
 
   _privilegesDropped = true;
 }

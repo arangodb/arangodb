@@ -131,7 +131,7 @@ class ApplicationServer {
   ApplicationServer(std::shared_ptr<options::ProgramOptions>,
                     char const* binaryPath);
 
-  TEST_VIRTUAL ~ApplicationServer() = default;
+  virtual ~ApplicationServer() = default;
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
@@ -210,7 +210,7 @@ class ApplicationServer {
     return _features.size() < type && nullptr != _features[type];
   }
 
-  ApplicationFeature& getFeature(size_t type) {
+  ApplicationFeature& getFeature(size_t type) const {
     auto& feature = _features[type];
     if (!feature) {
       throwFeatureNotFoundException(/*type.name())*/ "");

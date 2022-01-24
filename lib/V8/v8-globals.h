@@ -44,6 +44,9 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class V8SecurityFeature;
 class HttpEndpointProvider;
+namespace application_features {
+class CommunicationFeaturePhase;
+}
 }  // namespace arangodb
 
 /// @brief shortcut for fetching the isolate from the thread context
@@ -515,6 +518,8 @@ struct TRI_v8_global_t {
       : TRI_v8_global_t{
             server.template getFeature<arangodb::V8SecurityFeature>(),
             server.template getFeature<arangodb::HttpEndpointProvider>(),
+            server.template getFeature<
+                arangodb::application_features::CommunicationFeaturePhase>(),
             isolate, id} {}
 
   ~TRI_v8_global_t();
@@ -856,10 +861,14 @@ struct TRI_v8_global_t {
 
   arangodb::HttpEndpointProvider& _endpoints;
 
+  arangodb::application_features::CommunicationFeaturePhase& _comm;
+
  private:
-  explicit TRI_v8_global_t(arangodb::V8SecurityFeature& v8security,
-                           arangodb::HttpEndpointProvider& endpoints,
-                           v8::Isolate*, size_t id);
+  explicit TRI_v8_global_t(
+      arangodb::V8SecurityFeature& v8security,
+      arangodb::HttpEndpointProvider& endpoints,
+      arangodb::application_features::CommunicationFeaturePhase& comm,
+      v8::Isolate*, size_t id);
 
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8

@@ -171,12 +171,12 @@ class ApplicationFeature {
   size_t registration() const { return _registration; }
 
  protected:
+  ApplicationFeature(ApplicationServer& server, size_t registration,
+                     std::string_view name);
+
   template<typename Server, typename Impl>
   ApplicationFeature(Server& server, const Impl&)
       : ApplicationFeature{server, Server::template id<Impl>(), Impl::name()} {}
-
-  ApplicationFeature(ApplicationServer& server, size_t registration,
-                     std::string_view name);
 
   void setOptional() { setOptional(true); }
 

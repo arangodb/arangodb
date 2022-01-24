@@ -430,7 +430,7 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer& server,
+  explicit ClusterInfo(ArangodServer& server,
                        AgencyCallbackRegistry* agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode);
 
@@ -1007,7 +1007,7 @@ class ClusterInfo final {
     return timeout;
   }
 
-  application_features::ApplicationServer& server() const;
+  ArangodServer& server() const;
 
  private:
   /// @brief worker function for dropIndexCoordinator
@@ -1083,7 +1083,7 @@ class ClusterInfo final {
   void triggerBackgroundGetIds();
 
   /// underlying application server
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

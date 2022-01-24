@@ -1018,8 +1018,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
-        GeneralClientConnection::factory(v8g->_v8security.server(), ep.get(),
-                                         timeout, timeout, 3, sslProtocol));
+        GeneralClientConnection::factory(v8g->_comm, ep.get(), timeout, timeout,
+                                         3, sslProtocol));
 
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
