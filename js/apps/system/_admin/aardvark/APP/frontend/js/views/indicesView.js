@@ -448,17 +448,21 @@
             actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
               'data-original-title="Delete index" title="Delete index"></span>';
           }
-
-          if (v.fields !== undefined) {
-            fieldsString = v.fields.join(', ');
-          } else {
-            fieldsString = '';
-          }
           
           if (v.storedValues !== undefined) {
             storedValuesString = v.storedValues.join(', ');
           } else {
             storedValuesString = '';
+          }
+
+          if (v.fields !== undefined) {
+            fieldString = v.fields.map(
+              function(v) {
+                if (typeof v === 'object') {
+                  return v.name;
+                }
+                return v;
+              }).join(', ');
           }
 
           // cut index id

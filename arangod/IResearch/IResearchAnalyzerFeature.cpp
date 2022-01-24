@@ -725,15 +725,17 @@ bool analyzerInUse(application_features::ApplicationServer& server,
       }
 
       for (auto const& index : collection->getIndexes()) {
-        if (!index ||
-            arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+        if (!index || (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
+                       Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
           continue;  // not an IResearchLink
         }
 
         // TODO FIXME find a better way to retrieve an iResearch Link
         // cannot use static_cast/reinterpret_cast since Index is not related to
         // IResearchLink
-        auto link = std::dynamic_pointer_cast<IResearchLink>(index);
+        auto link =
+            std::dynamic_pointer_cast<arangodb::iresearch::IResearchDataStore>(
+                index);
 
         if (!link) {
           continue;
@@ -957,6 +959,7 @@ bool AnalyzerPool::init(irs::string_ref const& type,
         _type = irs::string_ref(_config.c_str() + _properties.byteSize(),
                                 type.size());
       }
+      _requireMangling = isGeoAnalyzer(_type);
 
       if (instance->type() ==
           irs::type<irs::analysis::pipeline_token_stream>::id()) {
@@ -1024,7 +1027,7 @@ bool AnalyzerPool::init(irs::string_ref const& type,
   _type = irs::string_ref::NIL;           // set as uninitialized
   _properties = VPackSlice::noneSlice();  // set as uninitialized
   _features.clear();                      // set as uninitialized
-
+  _requireMangling = false;
   return false;
 }
 

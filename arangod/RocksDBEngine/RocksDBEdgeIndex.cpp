@@ -130,7 +130,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
   // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     transaction::BuilderLeaser coveringBuilder(_trx);
     return nextImplementation(
         [&](LocalDocumentId docId, VPackSlice fromTo) {
@@ -141,7 +141,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           coveringBuilder->add(_lastKey);
           coveringBuilder->add(fromTo);
           coveringBuilder->close();
-          cb(docId, coveringBuilder->slice(), VPackSlice::emptyArraySlice());
+          auto data = SliceCoveringData(coveringBuilder->slice());
+          cb(docId, data);
         },
         limit);
   }
@@ -574,7 +575,7 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);

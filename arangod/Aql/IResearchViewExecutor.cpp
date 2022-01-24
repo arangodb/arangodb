@@ -64,7 +64,7 @@ using namespace arangodb::iresearch;
 
 namespace {
 
-constexpr irs::payload NoPayload;
+const irs::payload NoPayload;
 
 size_t calculateSkipAllCount(CountApproximate approximation, size_t currentPos,
                              irs::doc_iterator* docs) {
@@ -290,11 +290,10 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(
       CallbackFactory;
 
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
-    return
-        [&ctx](LocalDocumentId /*id*/, VPackSlice doc, VPackSlice /*extra*/) {
-          ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, doc);
-          return true;
-        };
+    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, doc);
+      return true;
+    };
   }};
 
   return callbackFactory(ctx);

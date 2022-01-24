@@ -44,8 +44,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice,
-                    VPackSlice /*extra*/) {
+  return [&context](LocalDocumentId const& token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -92,8 +91,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice,
-                    VPackSlice /*extra*/) {
+  return [&context](LocalDocumentId const& token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -134,8 +132,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
     if (!context.getProduceResult()) {
       // This callback is disallowed use getNullCallback instead
       TRI_ASSERT(false);
-      return [](LocalDocumentId const&, VPackSlice /*slice*/,
-                VPackSlice /*extra*/) -> bool {
+      return [](LocalDocumentId const&, VPackSlice /*slice*/) -> bool {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
       };
     }
@@ -143,19 +140,13 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 
   if (!context.getProjections().empty()) {
     // return a projection
-    if (context.getProjections().supportsCoveringIndex()) {
-      // projections from an index value (covering index)
-      return getCallback<checkUniqueness, skip>(
-          DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex{},
-          context);
-    } else {
-      // projections from a "real" document
-      return getCallback<checkUniqueness, skip>(
-          DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex{},
-          context);
-    }
+    TRI_ASSERT(!context.getProjections().supportsCoveringIndex() ||
+               !context.getAllowCoveringIndexOptimization());
+    // projections from a "real" document
+    return getCallback<checkUniqueness, skip>(
+        DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex{},
+        context);
   }
-
   // return the document as is
   return getCallback<checkUniqueness, skip>(
       DocumentProducingCallbackVariant::DocumentCopy{}, context);
@@ -338,11 +329,12 @@ bool DocumentProducingFunctionContext::hasFilter() const noexcept {
 }
 
 template<bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback aql::getCallback(
+IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice,
-                    VPackSlice extra) {
+  return [&context](LocalDocumentId const& token,
+                    IndexIteratorCoveringData& covering) {
+    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -352,38 +344,23 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     context.incrScanned();
 
-    bool checkFilter = context.hasFilter();
-    if (checkFilter && !context.getAllowCoveringIndexOptimization()) {
-      if (!context.checkFilter(slice)) {
+    // recycle our Builder object
+    VPackBuilder& objectBuilder = context.getBuilder();
+    if (!skip || context.hasFilter()) {
+      objectBuilder.clear();
+      objectBuilder.openObject(true);
+
+      // projections from a covering index
+      context.getProjections().toVelocyPackFromIndex(objectBuilder, covering,
+                                                     context.getTrxPtr());
+
+      objectBuilder.close();
+
+      if (context.hasFilter() && !context.checkFilter(objectBuilder.slice())) {
         context.incrFiltered();
         return false;
       }
-      // no need to check later again
-      checkFilter = false;
     }
-
-    // recycle our Builder object
-    VPackBuilder& objectBuilder = context.getBuilder();
-    objectBuilder.clear();
-    objectBuilder.openObject(true);
-
-    if (context.getAllowCoveringIndexOptimization()) {
-      // projections from a covering index
-      context.getProjections().toVelocyPackFromIndex(
-          objectBuilder, slice, extra, context.getTrxPtr());
-    } else {
-      // projections from a "real" document
-      context.getProjections().toVelocyPackFromDocument(objectBuilder, slice,
-                                                        context.getTrxPtr());
-    }
-
-    objectBuilder.close();
-
-    if (checkFilter && !context.checkFilter(objectBuilder.slice())) {
-      context.incrFiltered();
-      return false;
-    }
-
     if constexpr (!skip) {
       InputAqlItemRow const& input = context.getInputRow();
       OutputAqlItemRow& output = context.getOutputRow();
@@ -399,16 +376,16 @@ IndexIterator::DocumentCallback aql::getCallback(
   };
 }
 
-template IndexIterator::DocumentCallback aql::getCallback<false, false>(
+template IndexIterator::CoveringCallback aql::getCallback<false, false>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, false>(
+template IndexIterator::CoveringCallback aql::getCallback<true, false>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<false, true>(
+template IndexIterator::CoveringCallback aql::getCallback<false, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, true>(
+template IndexIterator::CoveringCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 

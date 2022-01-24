@@ -134,7 +134,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     return false;
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -151,13 +151,15 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
                                    canReadOwnWrites());
 
     if (s.ok()) {
-      VPackSlice storedValues = VPackSlice::emptyArraySlice();
       if (_index->hasStoredValues()) {
-        storedValues = RocksDBValue::uniqueIndexStoredValues(ps);
+        auto data = SliceCoveringDataWithStoredValues(
+            RocksDBKey::indexedVPack(_key.ref()),
+            RocksDBValue::uniqueIndexStoredValues(ps));
+        cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
+      } else {
+        auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
+        cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
       }
-
-      cb(LocalDocumentId(RocksDBValue::documentId(ps)),
-         RocksDBKey::indexedVPack(_key.ref()), storedValues);
     }
 
     // there is at most one element, so we are done now
@@ -255,7 +257,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     } while (true);
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
@@ -275,22 +277,29 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       rocksdb::Slice key = _iterator->key();
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
-      VPackSlice storedValues = VPackSlice::emptyArraySlice();
-
       if constexpr (unique) {
         LocalDocumentId const documentId(
             RocksDBValue::documentId(_iterator->value()));
         if (_index->hasStoredValues()) {
-          storedValues =
-              RocksDBValue::uniqueIndexStoredValues(_iterator->value());
+          auto data = SliceCoveringDataWithStoredValues(
+              RocksDBKey::indexedVPack(key),
+              RocksDBValue::uniqueIndexStoredValues(_iterator->value()));
+          cb(documentId, data);
+        } else {
+          auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
+          cb(documentId, data);
         }
-        cb(documentId, RocksDBKey::indexedVPack(key), storedValues);
       } else {
         LocalDocumentId const documentId(RocksDBKey::indexDocumentId(key));
         if (_index->hasStoredValues()) {
-          storedValues = RocksDBValue::indexStoredValues(_iterator->value());
+          auto data = SliceCoveringDataWithStoredValues(
+              RocksDBKey::indexedVPack(key),
+              RocksDBValue::indexStoredValues(_iterator->value()));
+          cb(documentId, data);
+        } else {
+          auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
+          cb(documentId, data);
         }
-        cb(documentId, RocksDBKey::indexedVPack(key), storedValues);
       }
 
       if (!advance()) {
@@ -866,7 +875,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         // find conflicting document's key
         auto readResult = _collection.getPhysical()->read(
             &trx, docId,
-            [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
+            [&](LocalDocumentId const&, VPackSlice doc) {
               VPackSlice key =
                   transaction::helpers::extractKeyFromDocument(doc);
               if (mode == IndexOperationMode::internal) {
@@ -967,7 +976,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
         LocalDocumentId docId = RocksDBValue::documentId(existing);
         auto readResult = _collection.getPhysical()->read(
             &trx, docId,
-            [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
+            [&](LocalDocumentId const&, VPackSlice doc) {
               IndexOperationMode mode = options.indexOperationMode;
               VPackSlice key =
                   transaction::helpers::extractKeyFromDocument(doc);
@@ -1381,7 +1390,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   VPackBuilder searchValues;

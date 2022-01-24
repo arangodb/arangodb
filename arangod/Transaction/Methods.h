@@ -93,6 +93,8 @@ class Methods {
   using IndexHandle = std::shared_ptr<arangodb::Index>;  // legacy
   using VPackSlice = arangodb::velocypack::Slice;
 
+  static constexpr int kNoMutableConditionIdx{-1};
+
   Methods() = delete;
   Methods(Methods const&) = delete;
   Methods& operator=(Methods const&) = delete;
@@ -355,7 +357,7 @@ class Methods {
   std::unique_ptr<IndexIterator> indexScanForCondition(
       IndexHandle const&, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*, IndexIteratorOptions const&,
-      ReadOwnWrites readOwnWrites);
+      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when

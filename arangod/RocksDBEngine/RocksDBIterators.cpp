@@ -136,8 +136,7 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(
 
   do {
     cb(RocksDBKey::documentId(_iterator->key()),
-       VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())),
-       VPackSlice::emptyArraySlice());
+       VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _iterator->Next();
 
@@ -271,8 +270,7 @@ bool RocksDBAnyIndexIterator::nextDocumentImpl(
     IndexIterator::DocumentCallback const& cb, size_t limit) {
   return doNext(limit, [this, &cb]() {
     cb(RocksDBKey::documentId(_iterator->key()),
-       VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())),
-       VPackSlice::emptyArraySlice());
+       VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
   });
 }
 

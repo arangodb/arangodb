@@ -89,7 +89,7 @@ bool IndexIterator::nextExtra(ExtraCallback const& callback,
   return _hasMore;
 }
 
-bool IndexIterator::nextCovering(DocumentCallback const& callback,
+bool IndexIterator::nextCovering(CoveringCallback const& callback,
                                  uint64_t batchSize) {
   TRI_ASSERT(hasCovering());
 
@@ -184,7 +184,7 @@ bool IndexIterator::nextExtraImpl(ExtraCallback const&, size_t /*limit*/) {
 /// @brief default implementation for nextCovering
 /// specialized index iterators can implement this method with some
 /// sensible behavior
-bool IndexIterator::nextCoveringImpl(DocumentCallback const&,
+bool IndexIterator::nextCoveringImpl(CoveringCallback const&,
                                      size_t /*limit*/) {
   TRI_ASSERT(hasCovering());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -239,9 +239,8 @@ bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
 bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
                                           size_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token,
-                                arangodb::velocypack::Slice slice,
-                                arangodb::velocypack::Slice extra) {
-    if (callback(token, slice, extra)) {
+                                arangodb::velocypack::Slice slice) {
+    if (callback(token, slice)) {
       --limit;
       return true;
     }
@@ -274,13 +273,12 @@ bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback,
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-bool MultiIndexIterator::nextCoveringImpl(DocumentCallback const& callback,
+bool MultiIndexIterator::nextCoveringImpl(CoveringCallback const& callback,
                                           size_t limit) {
   TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
-                                arangodb::velocypack::Slice slice,
-                                arangodb::velocypack::Slice extra) {
-    if (callback(token, slice, extra)) {
+                                IndexIteratorCoveringData& data) {
+    if (callback(token, data)) {
       --limit;
       return true;
     }

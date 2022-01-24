@@ -395,6 +395,7 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case RocksDBIndex::TRI_IDX_TYPE_INVERTED_INDEX:
       if (unique) {
         return RocksDBKeyBounds::UniqueVPackIndex(objectId, false);
       }

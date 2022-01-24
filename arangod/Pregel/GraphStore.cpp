@@ -375,8 +375,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   uint64_t numVerticesOriginal = numVertices;
 
   std::string documentId;  // temp buffer for _id of vertex
-  auto cb = [&](LocalDocumentId const& token, VPackSlice slice,
-                VPackSlice /*extra*/) {
+  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
       vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
       vertexBuff = vertices.back().get();
@@ -554,8 +553,7 @@ void GraphStore<V, E>::loadEdges(
 
   } else {
     while (cursor->nextDocument(
-        [&](LocalDocumentId const& /*token*/, VPackSlice slice,
-            VPackSlice /*extra*/) {
+        [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
           slice = slice.resolveExternal();
 
           std::string_view toValue =

@@ -612,8 +612,7 @@ OperationResult transaction::Methods::anyLocal(
       collectionName, transaction::Methods::CursorType::ANY, ReadOwnWrites::no);
 
   iterator->nextDocument(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice,
-                       VPackSlice /*extra*/) {
+      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
       },
@@ -753,7 +752,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   return collection->getPhysical()->read(
       this, key,
-      [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
+      [&](LocalDocumentId const&, VPackSlice doc) {
         result.add(doc);
         return true;
       },
@@ -868,7 +867,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
       bool conflict = false;
       res = collection->getPhysical()->read(
           this, key,
-          [&](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
+          [&](LocalDocumentId const&, VPackSlice doc) {
             if (!options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);
               if (expectedRevision.isSet()) {
@@ -1850,8 +1849,7 @@ OperationResult transaction::Methods::allLocal(
       collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice,
-                       VPackSlice /*extra*/) {
+      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
       },
@@ -2199,7 +2197,7 @@ OperationResult transaction::Methods::countLocal(
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& idx, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2217,7 +2215,8 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites);
+  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites,
+                                   mutableConditionIdx);
 }
 
 /// @brief factory for IndexIterator objects

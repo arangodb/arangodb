@@ -63,17 +63,92 @@ class Methods;
 
 struct IndexIteratorOptions;
 
+class IndexIteratorCoveringData {
+ public:
+  virtual ~IndexIteratorCoveringData() = default;
+  virtual VPackSlice at(size_t i) = 0;
+  virtual bool isArray() const noexcept = 0;
+  virtual VPackSlice value() const {
+    // Only some "projections" are not accessed by index, but directly by value.
+    // Like edge or primaryKey index. In general this method should not be
+    // called for indicies providing projections as "array-like" structure.
+    TRI_ASSERT(false);
+    return VPackSlice::noneSlice();
+  }
+
+  virtual velocypack::ValueLength length() const = 0;
+};
+
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 class IndexIterator {
   friend class MultiIndexIterator;
 
  public:
+  class SliceCoveringData final : public IndexIteratorCoveringData {
+   public:
+    explicit SliceCoveringData(VPackSlice slice) : _slice(slice) {}
+
+    VPackSlice at(size_t i) override {
+      TRI_ASSERT(_slice.isArray());
+      return _slice.at(i);
+    }
+
+    VPackSlice value() const override { return _slice; }
+
+    bool isArray() const noexcept override { return _slice.isArray(); }
+
+    velocypack::ValueLength length() const override { return _slice.length(); }
+
+   private:
+    VPackSlice _slice;
+  };
+
+  class SliceCoveringDataWithStoredValues final
+      : public IndexIteratorCoveringData {
+   public:
+    SliceCoveringDataWithStoredValues(VPackSlice slice, VPackSlice storedValues)
+        : _slice(slice),
+          _storedValues(storedValues),
+          _sliceLength(slice.length()),
+          _storedValuesLength(storedValues.length()) {}
+
+    VPackSlice at(size_t i) override {
+      if (i >= _sliceLength) {
+        TRI_ASSERT(_storedValues.isArray());
+        return _storedValues.at(i - _sliceLength);
+      }
+      TRI_ASSERT(_slice.isArray());
+      return _slice.at(i);
+    }
+
+    // should not be called in our case
+    VPackSlice value() const override {
+      TRI_ASSERT(false);
+      return VPackSlice::noneSlice();
+    }
+
+    bool isArray() const noexcept override { return true; }
+
+    velocypack::ValueLength length() const override {
+      return _sliceLength + _storedValuesLength;
+    }
+
+   private:
+    VPackSlice _slice;
+    VPackSlice _storedValues;
+    velocypack::ValueLength _sliceLength;
+    velocypack::ValueLength _storedValuesLength;
+  };
+
   typedef std::function<bool(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
   typedef std::function<bool(LocalDocumentId const& token,
-                             velocypack::Slice doc, velocypack::Slice extra)>
+                             velocypack::Slice doc)>
       DocumentCallback;
+  typedef std::function<bool(LocalDocumentId const& token,
+                             IndexIteratorCoveringData& covering)>
+      CoveringCallback;
   typedef std::function<bool(LocalDocumentId const& token,
                              velocypack::Slice extra)>
       ExtraCallback;
@@ -119,7 +194,7 @@ class IndexIterator {
   /// @brief Calls cb for the next batchSize many elements, index-only
   /// projections returns true if there are more documents (hasMore) and false
   /// if there are none
-  bool nextCovering(IndexIterator::DocumentCallback const& callback,
+  bool nextCovering(IndexIterator::CoveringCallback const& callback,
                     uint64_t batchSize);
 
   /// @brief convenience function to retrieve all results
@@ -189,7 +264,7 @@ class IndexIterator {
 
   // extract index attribute values directly from the index while index scanning
   // must only be called if hasCovering()
-  virtual bool nextCoveringImpl(DocumentCallback const& callback, size_t limit);
+  virtual bool nextCoveringImpl(CoveringCallback const& callback, size_t limit);
 
   virtual void resetImpl() {}
 
@@ -228,7 +303,7 @@ class EmptyIndexIterator final : public IndexIterator {
     return false;
   }
   bool nextExtraImpl(ExtraCallback const&, size_t) override { return false; }
-  bool nextCoveringImpl(DocumentCallback const&, size_t) override {
+  bool nextCoveringImpl(CoveringCallback const&, size_t) override {
     return false;
   }
 
@@ -281,7 +356,7 @@ class MultiIndexIterator final : public IndexIterator {
   bool nextDocumentImpl(DocumentCallback const& callback,
                         size_t limit) override;
   bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override;
-  bool nextCoveringImpl(DocumentCallback const& callback,
+  bool nextCoveringImpl(CoveringCallback const& callback,
                         size_t limit) override;
 
   /// @brief Reset the cursor

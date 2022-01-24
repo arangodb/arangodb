@@ -231,8 +231,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
       collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId const&, VPackSlice slice,
-                       VPackSlice /*extra*/) {
+      [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
       },

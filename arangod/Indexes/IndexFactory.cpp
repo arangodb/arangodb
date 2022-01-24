@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchCommon.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utilities/NameValidator.h"
@@ -316,9 +317,12 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string> IndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary",  "edge",     "hash",
-                                  "skiplist", "ttl",      "persistent",
-                                  "geo",      "fulltext", "zkd"};
+  return std::vector<std::string>{
+      "primary", "edge",
+      "hash",    "skiplist",
+      "ttl",     "persistent",
+      "geo",     "fulltext",
+      "zkd",     arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data()};
 }
 
 std::unordered_map<std::string, std::string> IndexFactory::indexAliases()
@@ -375,6 +379,9 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
 
   std::unordered_set<std::string_view> fields;
   auto fieldsSlice = definition.get(attributeName);
+  auto const idxType = Index::type(
+      definition.get(arangodb::StaticStrings::IndexType).stringView());
+  auto const fieldIsObject = Index::TRI_IDX_TYPE_INVERTED_INDEX == idxType;
 
   if (fieldsSlice.isArray()) {
     std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$",
@@ -382,12 +389,17 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
 
     // "fields" is a list of fields
     for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-      if (!it.isString()) {
+      if (fieldIsObject && !it.isObject()) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "inverted index: field must be an object");
+      }
+      auto fieldName = fieldIsObject ? it.get("name") : it;
+      if (!fieldName.isString()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
       }
 
-      std::string_view f = it.stringView();
+      std::string_view f = fieldName.stringView();
 
       if (f.empty()) {
         return Result(TRI_ERROR_BAD_PARAMETER,

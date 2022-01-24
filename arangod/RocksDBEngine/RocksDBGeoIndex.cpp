@@ -99,8 +99,7 @@ class RDBNearIterator final : public IndexIterator {
           if (!_collection->getPhysical()
                    ->read(
                        _trx, gdoc.token,
-                       [&](LocalDocumentId const&, VPackSlice doc,
-                           VPackSlice extra) {
+                       [&](LocalDocumentId const&, VPackSlice doc) {
                          geo::FilterType const ft = _near.filterType();
                          if (ft != geo::FilterType::NONE) {  // expensive test
                            geo::ShapeContainer const& filter =
@@ -119,7 +118,7 @@ class RDBNearIterator final : public IndexIterator {
                              return false;
                            }
                          }
-                         cb(gdoc.token, doc, extra);  // return document
+                         cb(gdoc.token, doc);  // return document
                          result = true;
                          return true;
                          // geo index never needs to observe own writes
@@ -144,8 +143,7 @@ class RDBNearIterator final : public IndexIterator {
             if (!_collection->getPhysical()
                      ->read(
                          _trx, gdoc.token,
-                         [&](LocalDocumentId const&, VPackSlice doc,
-                             VPackSlice extra) {
+                         [&](LocalDocumentId const&, VPackSlice doc) {
                            geo::ShapeContainer test;
                            Result res = _index->shape(doc, test);
                            TRI_ASSERT(res.ok());  // this should never fail here
@@ -367,7 +365,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(readOwnWrites ==
