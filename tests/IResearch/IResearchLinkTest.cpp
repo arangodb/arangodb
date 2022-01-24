@@ -2743,7 +2743,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
   }
 }
 
-class IResearchLinkInRecoveryDBServerTest
+class IResearchLinkInRecoveryDBServerOnUpgradeTest
     : public ::testing::Test,
   public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR>,
@@ -2756,7 +2756,7 @@ class IResearchLinkInRecoveryDBServerTest
   arangodb::tests::mocks::MockDBServer server;
   std::string testFilesystemPath;
 
-  IResearchLinkInRecoveryDBServerTest() : server(false, true) {
+  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false, true) {
     arangodb::tests::init();
     
     // ensure ArangoSearch start 1 maintenance for each group
@@ -2774,7 +2774,7 @@ class IResearchLinkInRecoveryDBServerTest
     EXPECT_NE(nullptr, consolidationThreads);
     *consolidationThreads->ptr = 1;
     ars.validateOptions(opts);
-
+    server.getFeature<arangodb::ClusterFeature>().disable();
     server.startFeatures();
     EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
               ars.limits(arangodb::iresearch::ThreadGroup::_0));
@@ -2796,18 +2796,70 @@ class IResearchLinkInRecoveryDBServerTest
                         systemErrorStr);
   }
 
-  ~IResearchLinkInRecoveryDBServerTest() override {
+  ~IResearchLinkInRecoveryDBServerOnUpgradeTest() override {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
   }
 };
 
-TEST_F(IResearchLinkInRecoveryDBServerTest, test_init_in_recovery) {
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery_no_name) {
   // collection registered with view (collection initially not in view)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         R"({ "name": "testCollection", "id": 100 })");
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        R"({ "type": "arangosearch", "view": "42" })");
+        R"({ "type": "arangosearch", "view": "42"})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::unordered_set<arangodb::DataSourceId> expected;
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+
+      for (auto& cid : expected) {
+        EXPECT_EQ(1, actual.erase(cid));
+      }
+
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    auto link = StorageEngineMock::buildLinkMock(
+        arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_EQ(nullptr, link.get());
+
+    // collection in view on destruct
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
+  // collection registered with view (collection initially not in view)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "collectionName":"testCollection" })");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -2838,6 +2890,9 @@ TEST_F(IResearchLinkInRecoveryDBServerTest, test_init_in_recovery) {
     auto link = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
     EXPECT_NE(nullptr, link.get());
+
+    // Data store should contain at least segments file
+    ASSERT_GT(link->stats().numFiles, 0);
     // EXPECT_TRUE((false == !link));
 
     // collection in view after
@@ -2881,3 +2936,4 @@ TEST_F(IResearchLinkInRecoveryDBServerTest, test_init_in_recovery) {
     }
   }
 }
+
