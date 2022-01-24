@@ -316,7 +316,7 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "zkd") {
     return TRI_IDX_TYPE_ZKD_INDEX;
   }
-  if (std::string_view{type, len} == iresearch::StaticStrings::DataSourceType) {
+  if (type == iresearch::StaticStrings::DataSourceType) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
   if (type == "noaccess") {
