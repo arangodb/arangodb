@@ -144,7 +144,6 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
 
   auto plan = LogPlanSpecification(
       LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
-      config,
       ParticipantsConfig{
           .generation = 1,
           .participants = {
@@ -198,7 +197,6 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
       LogPlanTermSpecification(
           LogTerm{1}, config,
           LogPlanTermSpecification::Leader{"A", RebootId{42}}),
-      config,
       ParticipantsConfig{
           .generation = 1,
           .participants = {
@@ -244,7 +242,6 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
 
   auto const& plan = LogPlanSpecification(
       LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
-      config,
       ParticipantsConfig{
           .generation = 1,
           .participants = {
@@ -279,7 +276,7 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
       LogPlanTermSpecification(
           LogTerm{1}, config,
           LogPlanTermSpecification::Leader{"A", RebootId{1}}),
-      config, {});
+      {});
 
   auto const& health = ParticipantsHealth{
       ._health = {
@@ -312,9 +309,8 @@ TEST_F(SupervisionLogTest, test_log_created) {
   EXPECT_EQ(r->type(), Action::ActionType::AddLogToPlanAction) << *r;
 
   auto& action = dynamic_cast<AddLogToPlanAction&>(*r);
-
-  EXPECT_EQ(action._spec.targetConfig, config);
-  //  EXPECT_EQ(action._spec.participantsConfig, participants);
+  EXPECT_EQ(action._spec.participantsConfig,
+            (ParticipantsConfig{.generation = 1, .participants = participants}));
 
   // TODO check that the plan spec contains the required info
 }
@@ -359,7 +355,6 @@ TEST_F(SupervisionLogTest, test_checkleader_present) {
       LogPlanTermSpecification(
           LogTerm{1}, config,
           LogPlanTermSpecification::Leader{"A", RebootId{1}}),
-      config,
       ParticipantsConfig{
           .generation = 1,
           .participants = {
