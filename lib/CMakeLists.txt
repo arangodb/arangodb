@@ -70,14 +70,9 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
-  ApplicationFeatures/CpuUsageFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp
-  ApplicationFeatures/TimeZoneFeature.cpp
-  ApplicationFeatures/NonceFeature.cpp
-  ApplicationFeatures/PrivilegeFeature.cpp
-  ApplicationFeatures/SharedPRNGFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp

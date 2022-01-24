@@ -774,6 +774,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/CpuUsageFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
@@ -787,12 +788,16 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
+  RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/PrivilegeFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp

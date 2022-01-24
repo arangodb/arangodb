@@ -331,6 +331,10 @@ class ApplicationServerT : public ApplicationServer {
  public:
   using Features = FeatureList;
 
+  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
+                     char const* binaryPath)
+      : ApplicationServer{opts, binaryPath} {}
+
   template<typename T>
   static constexpr size_t id() noexcept {
     return Features::template id<T>();
@@ -428,11 +432,6 @@ class ApplicationServerT : public ApplicationServer {
     }
     return feature;
   }
-
- protected:
-  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
-                     char const* binaryPath)
-      : ApplicationServer{opts, binaryPath} {}
 };
 
 }  // namespace application_features

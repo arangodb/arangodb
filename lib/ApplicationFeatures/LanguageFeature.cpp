@@ -86,16 +86,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LanguageFeature::LanguageFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _locale(),
-      _binaryPath(server.getBinaryPath()),
-      _icuDataPtr(nullptr),
-      _forceLanguageCheck(true) {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
 LanguageFeature::~LanguageFeature() {
   if (_icuDataPtr != nullptr) {
     TRI_Free(_icuDataPtr);

@@ -301,7 +301,7 @@ class ApplicationFeatureT : public ApplicationFeature {
 
   template<typename T>
   void onlyEnabledWith() {
-    _onlyEnabledWith<T, Server>();
+    onlyEnabledWith<T, Server>();
   }
 
  protected:

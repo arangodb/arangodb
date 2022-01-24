@@ -41,6 +41,11 @@
 struct TRI_v8_global_t;
 struct TRI_vocbase_t;
 
+namespace arangodb {
+class V8SecurityFeature;
+class HttpEndpointProvider;
+}  // namespace arangodb
+
 /// @brief shortcut for fetching the isolate from the thread context
 #define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()
 
@@ -485,21 +490,18 @@ struct TRI_v8_global_t {
   /// @brief wrapper around a v8::Persistent to hold a shared_ptr and cleanup
   class SharedPtrPersistent {
    public:
-    SharedPtrPersistent(                    // constructor used ONLY by
-                                            // SharedPtrPersistent::emplace(...)
-        v8::Isolate& isolate,               // isolate
-        std::shared_ptr<void> const& value  // value
-    );
+    // emplace persistent shared pointer
+    static std::pair<SharedPtrPersistent&, bool> emplace(
+        v8::Isolate& isolate, std::shared_ptr<void> const& value);
+
+    // constructor used ONLY by SharedPtrPersistent::emplace(...)
+    SharedPtrPersistent(v8::Isolate& isolate,
+                        std::shared_ptr<void> const& value);
     SharedPtrPersistent(SharedPtrPersistent&&) = delete;
     SharedPtrPersistent(SharedPtrPersistent const&) = delete;
     ~SharedPtrPersistent();
     SharedPtrPersistent& operator=(SharedPtrPersistent&&) = delete;
     SharedPtrPersistent& operator=(SharedPtrPersistent const&) = delete;
-    static std::pair<SharedPtrPersistent&, bool>
-    emplace(                                // emplace persistent shared pointer
-        v8::Isolate& isolate,               // isolate
-        std::shared_ptr<void> const& value  // value
-    );
     v8::Local<v8::External> get() const { return _persistent.Get(&_isolate); }
 
    private:
@@ -508,8 +510,12 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  explicit TRI_v8_global_t(arangodb::application_features::ApplicationServer&,
-                           v8::Isolate*, size_t id);
+  template<typename Server>
+  TRI_v8_global_t(Server& server, v8::Isolate* isolate, size_t id)
+      : TRI_v8_global_t{
+            server.template getFeature<arangodb::V8SecurityFeature>(),
+            server.template getFeature<arangodb::HttpEndpointProvider>(),
+            isolate, id} {}
 
   ~TRI_v8_global_t();
 
@@ -846,9 +852,15 @@ struct TRI_v8_global_t {
 
   std::atomic<size_t> _heapLow;
 
-  arangodb::application_features::ApplicationServer& _server;
+  arangodb::V8SecurityFeature& _v8security;
+
+  arangodb::HttpEndpointProvider& _endpoints;
 
  private:
+  explicit TRI_v8_global_t(arangodb::V8SecurityFeature& v8security,
+                           arangodb::HttpEndpointProvider& endpoints,
+                           v8::Isolate*, size_t id);
+
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8
   /// @note used ONLY by the SharedPtrPersistent class
@@ -859,6 +871,18 @@ struct TRI_v8_global_t {
 TRI_v8_global_t* TRI_CreateV8Globals(
     arangodb::application_features::ApplicationServer&, v8::Isolate*,
     size_t id);
+
+template<typename Server>
+TRI_v8_global_t* TRI_CreateV8Globals(Server& server, v8::Isolate* isolate,
+                                     size_t id) {
+  TRI_GET_GLOBALS();
+
+  TRI_ASSERT(v8g == nullptr);
+  v8g = new TRI_v8_global_t(server, isolate, id);
+  isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
+
+  return v8g;
+}
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);

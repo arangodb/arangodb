@@ -38,7 +38,6 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
@@ -55,6 +54,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/PrivilegeFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

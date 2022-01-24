@@ -244,7 +244,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   v8::HandleScope handleScope(isolate);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, filename,
                                         FSAccessType::READ)) {
@@ -330,7 +330,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   auto filter = [&v8security, isolate](std::string const& name) {
     if (name.find("passwd") != std::string::npos ||
@@ -341,7 +341,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return v8security.shouldExposeStartupOption(isolate, name);
   };
 
-  VPackBuilder builder = v8g->_server.options(filter);
+  VPackBuilder builder = v8g->_v8security.server().options(filter);
 
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
@@ -505,7 +505,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   // extract arguments
   if (args.Length() != 1) {
@@ -759,7 +759,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   std::string const signature = "download(<url>, <body>, <options>, <outfile>)";
 
@@ -776,9 +776,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!url.empty() && url[0] == '/') {
     // check if we are a server
     isLocalUrl = true;
-    TRI_ASSERT(v8g->_server.hasFeature<HttpEndpointProvider>());
-    auto& feature = v8g->_server.getFeature<HttpEndpointProvider>();
-    endpoints = feature.httpEndpoints();
+    endpoints = v8g->_endpoints.httpEndpoints();
 
     // a relative url. now make this an absolute URL if possible
     for (auto const& endpoint : endpoints) {
@@ -1020,8 +1018,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
-        GeneralClientConnection::factory(v8g->_server, ep.get(), timeout,
-                                         timeout, 3, sslProtocol));
+        GeneralClientConnection::factory(v8g->_v8security.server(), ep.get(),
+                                         timeout, timeout, 3, sslProtocol));
 
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1371,7 +1369,7 @@ static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1435,7 +1433,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -1474,7 +1472,7 @@ static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1535,7 +1533,7 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, path, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1572,7 +1570,7 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   std::string dir = FileUtils::buildFilename(TRI_GetTempPath(), path, "");
 
@@ -1624,7 +1622,7 @@ static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1661,7 +1659,7 @@ static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1743,7 +1741,7 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1787,7 +1785,7 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1831,7 +1829,7 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -1874,7 +1872,7 @@ static void JS_MakeDirectoryRecursive(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -1930,7 +1928,7 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, filename,
                                         FSAccessType::READ)) {
@@ -1985,7 +1983,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::vector<std::string> filenames;
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, filename,
                                         FSAccessType::READ)) {
@@ -2066,7 +2064,7 @@ static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -2118,7 +2116,7 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -2321,7 +2319,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (v8security.isInternalModuleHardened(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -2558,7 +2556,7 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string filename = TRI_ObjectToString(isolate, args[0]);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, filename,
                                         FSAccessType::READ)) {
@@ -2595,7 +2593,7 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, source, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -2675,7 +2673,7 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, source, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -2736,7 +2734,7 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, source, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -2800,7 +2798,7 @@ static void JS_LinkFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string linkpath = TRI_ObjectToString(isolate, args[1]);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, target, FSAccessType::READ)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3022,7 +3020,7 @@ static void JS_ProcessStatisticsExternal(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (v8security.isInternalModuleHardened(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3043,7 +3041,7 @@ static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (v8security.isInternalModuleHardened(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -3121,7 +3119,7 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3160,7 +3158,7 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3201,7 +3199,7 @@ static void JS_WritePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3236,7 +3234,7 @@ static void JS_ClosePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3278,7 +3276,7 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3319,7 +3317,7 @@ static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3368,7 +3366,7 @@ static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3420,7 +3418,7 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -3470,7 +3468,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, utf8Name,
                                         FSAccessType::WRITE)) {
@@ -3546,7 +3544,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, utf8Name,
                                         FSAccessType::WRITE)) {
@@ -3647,7 +3645,7 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3686,7 +3684,7 @@ static void JS_RemoveDirectory(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -3733,7 +3731,7 @@ static void JS_RemoveRecursiveDirectory(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -4183,7 +4181,7 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
       correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
 
   TRI_GET_GLOBALS();
-  Result res = ::doSleep(n, v8g->_server);
+  Result res = ::doSleep(n, v8g->_v8security.server());
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res.errorNumber());
   }
@@ -4245,7 +4243,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // wait without gc
   TRI_GET_GLOBALS();
-  Result res = ::doSleep(n, v8g->_server);
+  Result res = ::doSleep(n, v8g->_v8security.server());
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res.errorNumber());
   }
@@ -4598,7 +4596,7 @@ static void JS_GetExternalSpawned(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -4639,7 +4637,7 @@ static void JS_ExecuteExternal(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -4764,7 +4762,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -4845,7 +4843,7 @@ static void JS_ExecuteExternalAndWait(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -4975,7 +4973,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -5036,7 +5034,7 @@ static void JS_SuspendExternal(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -5075,7 +5073,7 @@ static void JS_ContinueExternal(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToControlProcesses(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -5113,7 +5111,7 @@ static void JS_TestPort(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToTestPorts(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -5159,7 +5157,7 @@ static void JS_IsStopping(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  if (v8g->_server.isStopping()) {
+  if (v8g->_v8security.server().isStopping()) {
     TRI_V8_RETURN_TRUE();
   }
 

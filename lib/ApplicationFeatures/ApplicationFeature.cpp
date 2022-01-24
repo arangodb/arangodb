@@ -162,7 +162,7 @@ void ApplicationFeature::addAncestorToAllInPath(
         std::string{"dependencies for feature '"} +
             /*boost::core::demangle(pathTypes.begin()->name()) FIXME(gnusi)*/
             +"' are cyclic: " +
-            basics::StringUtils::join(pathTypes, " <= ", cb));
+            basics::StringUtils::join(pathTypes, " <= " /*, cb*/));
   }
 
   // not cyclic, go ahead and add

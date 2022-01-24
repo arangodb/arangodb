@@ -30,15 +30,13 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}  // namespace application_features
 namespace options {
 class ProgramOptions;
 }
 
 class LoggerFeature;
 class ShellColorsFeature;
+class VersionFeature;
 
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
@@ -47,10 +45,11 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   template<typename Server>
   ConfigFeature(Server& server, std::string const& progname,
                 std::string const& configFilename = "")
-      : ApplicationFeature{server, *this},
+      : application_features::ApplicationFeature{server, *this},
         _file(configFilename),
-        _checkConfiguration(false),
-        _progname(progname) {
+        _progname(progname),
+        _versionFeatureId{Server::template id<VersionFeature>()},
+        _checkConfiguration(false) {
     setOptional(false);
     startsAfter<LoggerFeature, Server>();
     startsAfter<ShellColorsFeature, Server>();
@@ -61,14 +60,14 @@ class ConfigFeature final : public application_features::ApplicationFeature {
                    char const* binaryPath) override final;
 
  private:
-  std::string _file;
-  std::vector<std::string> _defines;
-  bool _checkConfiguration;
-
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname, char const* binaryPath);
 
+  std::string _file;
   std::string _progname;
+  std::vector<std::string> _defines;
+  size_t _versionFeatureId;
+  bool _checkConfiguration;
 };
 
 }  // namespace arangodb

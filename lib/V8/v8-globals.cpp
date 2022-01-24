@@ -29,9 +29,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
 
-TRI_v8_global_t::TRI_v8_global_t(
-    arangodb::application_features::ApplicationServer& server,
-    v8::Isolate* isolate, size_t id)
+TRI_v8_global_t::TRI_v8_global_t(arangodb::V8SecurityFeature& v8security,
+                                 arangodb::HttpEndpointProvider& endpoints,
+                                 v8::Isolate* isolate, size_t id)
     : AgencyTempl(),
       AgentTempl(),
       ClusterInfoTempl(),
@@ -145,7 +145,8 @@ TRI_v8_global_t::TRI_v8_global_t(
       _countOfTimes(0),
       _heapMax(0),
       _heapLow(0),
-      _server(server) {
+      _v8security{v8security},
+      _endpoints{endpoints} {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));
@@ -299,6 +300,7 @@ TRI_v8_global_t::SharedPtrPersistent::emplace(  // emplace a persistent shared
 TRI_v8_global_t::~TRI_v8_global_t() = default;
 
 /// @brief creates a global context
+/* FIXME(gnusi)
 TRI_v8_global_t* TRI_CreateV8Globals(
     arangodb::application_features::ApplicationServer& server,
     v8::Isolate* isolate, size_t id) {
@@ -310,6 +312,7 @@ TRI_v8_global_t* TRI_CreateV8Globals(
 
   return v8g;
 }
+*/
 
 /// @brief returns a global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {

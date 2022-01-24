@@ -35,7 +35,7 @@ class VersionFeature final : public application_features::ApplicationFeature {
 
   template<typename Server>
   explicit VersionFeature(Server& server)
-      : ApplicationFeature{server, *this},
+      : application_features::ApplicationFeature{server, *this},
         _printVersion(false),
         _printVersionJson(false) {
     setOptional(false);
