@@ -147,6 +147,13 @@ export class GraphView extends React.Component {
     this.props.onAddSingleNode(nodeModel);
   }
 
+  removeNode = () => {
+    const nodeId = 'frenchCity/Lyon';
+    const item = this.graph.findById(nodeId);
+    this.props.onRemoveSingleNode(nodeId);
+    this.graph.removeItem(item);
+  }
+
   addEdge = () => {
     /*
     const node1 = null;
@@ -288,6 +295,7 @@ export class GraphView extends React.Component {
       <button onClick={this.getEdges}>Get edges (new)</button>
       <button onClick={this.addNode}>Add node (new)</button>
       <button onClick={this.addEdge}>Add edge (new)</button>
+      <button onClick={this.removeNode}>Remove node "frenchCity/Lyon"</button>
       <button onClick={this.updateNodeGraphData}>Update node graph data (new)</button>
       <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
