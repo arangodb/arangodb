@@ -752,8 +752,8 @@ static void JS_TypeViewVocbase(
                                    "insufficient rights to get view");
   }
 
-  auto& type = view->type().name();
-  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, type));
+  auto const type = view->typeName();
+  TRI_V8_RETURN(TRI_V8_PAIR_STRING(isolate, type.data(), type.size()));
   TRI_V8_TRY_CATCH_END
 }
 

@@ -1,0 +1,336 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Fiber local storage</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Fiber">
+<link rel="up" href="../index.html" title="Chapter 1. Fiber">
+<link rel="prev" href="synchronization/futures/packaged_task.html" title="Template packaged_task&lt;&gt;">
+<link rel="next" href="migration.html" title="Migrating fibers between threads">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="synchronization/futures/packaged_task.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="migration.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="fiber.fls"></a><a class="link" href="fls.html" title="Fiber local storage">Fiber local storage</a>
+</h2></div></div></div>
+<h4>
+<a name="fiber.fls.h0"></a>
+      <span class="phrase"><a name="fiber.fls.synopsis"></a></span><a class="link" href="fls.html#fiber.fls.synopsis">Synopsis</a>
+    </h4>
+<p>
+      Fiber local storage allows a separate instance of a given data item for each
+      fiber.
+    </p>
+<h4>
+<a name="fiber.fls.h1"></a>
+      <span class="phrase"><a name="fiber.fls.cleanup_at_fiber_exit"></a></span><a class="link" href="fls.html#fiber.fls.cleanup_at_fiber_exit">Cleanup
+      at fiber exit</a>
+    </h4>
+<p>
+      When a fiber exits, the objects associated with each <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a> instance
+      are destroyed. By default, the object pointed to by a pointer <code class="computeroutput"><span class="identifier">p</span></code> is destroyed by invoking <code class="computeroutput"><span class="keyword">delete</span> <span class="identifier">p</span></code>,
+      but this can be overridden for a specific instance of <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a> by
+      providing a cleanup routine <code class="computeroutput"><span class="identifier">func</span></code>
+      to the constructor. In this case, the object is destroyed by invoking <code class="computeroutput"><span class="identifier">func</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span></code>. The cleanup functions are called in an unspecified
+      order.
+    </p>
+<p>
+      </p>
+<h5>
+<a name="class_fiber_specific_ptr_bridgehead"></a>
+  <span class="phrase"><a name="class_fiber_specific_ptr"></a></span>
+  <a class="link" href="fls.html#class_fiber_specific_ptr">Class
+      <code class="computeroutput">fiber_specific_ptr</code></a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">fss</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">fiber_specific_ptr</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">T</span>   <span class="identifier">element_type</span><span class="special">;</span>
+
+    <span class="identifier">fiber_specific_ptr</span><span class="special">();</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">fiber_specific_ptr</span><span class="special">(</span> <span class="keyword">void</span><span class="special">(*</span><span class="identifier">fn</span><span class="special">)(</span><span class="identifier">T</span><span class="special">*)</span> <span class="special">);</span>
+
+    <span class="special">~</span><span class="identifier">fiber_specific_ptr</span><span class="special">();</span>
+
+    <span class="identifier">fiber_specific_ptr</span><span class="special">(</span> <span class="identifier">fiber_specific_ptr</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">fiber_specific_ptr</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">fiber_specific_ptr</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">T</span> <span class="special">*</span> <span class="identifier">get</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">T</span> <span class="special">*</span> <span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">T</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">T</span> <span class="special">*</span> <span class="identifier">release</span><span class="special">();</span>
+
+    <span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span> <span class="identifier">T</span> <span class="special">*);</span>
+<span class="special">};</span>
+
+<span class="special">}}</span>
+</pre>
+<h4>
+<a name="fiber.fls.h2"></a>
+      <span class="phrase"><a name="fiber.fls.constructor"></a></span><a class="link" href="fls.html#fiber.fls.constructor">Constructor</a>
+    </h4>
+<pre class="programlisting"><span class="identifier">fiber_specific_ptr</span><span class="special">();</span>
+<span class="keyword">explicit</span> <span class="identifier">fiber_specific_ptr</span><span class="special">(</span> <span class="keyword">void</span><span class="special">(*</span><span class="identifier">fn</span><span class="special">)(</span><span class="identifier">T</span><span class="special">*)</span> <span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">delete</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code> is well-formed; <code class="computeroutput"><span class="identifier">fn</span><span class="special">(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">())</span></code> does not throw
+          </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Construct a <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a> object for storing
+            a pointer to an object of type <code class="computeroutput"><span class="identifier">T</span></code>
+            specific to each fiber. When <code class="computeroutput"><span class="identifier">reset</span><span class="special">()</span></code> is called, or the fiber exits, <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a> calls
+            <code class="computeroutput"><span class="identifier">fn</span><span class="special">(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">())</span></code>.
+            If the no-arguments constructor is used, the default <code class="computeroutput"><span class="keyword">delete</span></code>-based
+            cleanup function will be used to destroy the fiber-local objects.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="identifier">fiber_error</span></code> if an error
+            occurs.
+          </p></dd>
+</dl>
+</div>
+<h4>
+<a name="fiber.fls.h3"></a>
+      <span class="phrase"><a name="fiber.fls.destructor"></a></span><a class="link" href="fls.html#fiber.fls.destructor">Destructor</a>
+    </h4>
+<pre class="programlisting"><span class="special">~</span><span class="identifier">fiber_specific_ptr</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+            All the fiber specific instances associated to this <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a>
+(except
+            maybe the one associated to this fiber) must be nullptr.
+          </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Calls <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">reset</span><span class="special">()</span></code>
+            to clean up the associated value for the current fiber, and destroys
+            <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+          </p></dd>
+<dt><span class="term">Remarks:</span></dt>
+<dd><p>
+            The requirement is an implementation restriction. If the destructor promised
+            to delete instances for all fibers, the implementation would be forced
+            to maintain a list of all the fibers having an associated specific ptr,
+            which is against the goal of fiber specific data. In general, a <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a> should
+            outlive the fibers that use it.
+          </p></dd>
+</dl>
+</div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Care needs to be taken to ensure that any fibers still running after an instance
+        of <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a> has been destroyed do not call
+        any member functions on that instance.
+      </p></td></tr>
+</table></div>
+<p>
+      </p>
+<h5>
+<a name="fiber_specific_ptr_get_bridgehead"></a>
+  <span class="phrase"><a name="fiber_specific_ptr_get"></a></span>
+  <a class="link" href="fls.html#fiber_specific_ptr_get">Member
+      function <code class="computeroutput">get</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="identifier">T</span> <span class="special">*</span> <span class="identifier">get</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            The pointer associated with the current fiber.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        The initial value associated with an instance of <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a> is
+        <code class="computeroutput"><span class="keyword">nullptr</span></code> for each fiber.
+      </p></td></tr>
+</table></div>
+<p>
+      </p>
+<h5>
+<a name="fiber_specific_ptr_operator_arrow_bridgehead"></a>
+  <span class="phrase"><a name="fiber_specific_ptr_operator_arrow"></a></span>
+  <a class="link" href="fls.html#fiber_specific_ptr_operator_arrow">Member
+      function <code class="computeroutput">operator-&gt;</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="identifier">T</span> <span class="special">*</span> <span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code>
+            is not <code class="computeroutput"><span class="keyword">nullptr</span></code>.
+          </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code>
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="fiber_specific_ptr_operator_star_bridgehead"></a>
+  <span class="phrase"><a name="fiber_specific_ptr_operator_star"></a></span>
+  <a class="link" href="fls.html#fiber_specific_ptr_operator_star">Member
+      function <code class="computeroutput">operator*</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="identifier">T</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code>
+            is not <code class="computeroutput"><span class="keyword">nullptr</span></code>.
+          </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="special">*(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">())</span></code>
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="fiber_specific_ptr_release_bridgehead"></a>
+  <span class="phrase"><a name="fiber_specific_ptr_release"></a></span>
+  <a class="link" href="fls.html#fiber_specific_ptr_release">Member
+      function <code class="computeroutput">release</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="identifier">T</span> <span class="special">*</span> <span class="identifier">release</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Return <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code>
+            and store <code class="computeroutput"><span class="keyword">nullptr</span></code> as the
+            pointer associated with the current fiber without invoking the cleanup
+            function.
+          </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()==</span><span class="keyword">nullptr</span></code>
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="fiber_specific_ptr_reset_bridgehead"></a>
+  <span class="phrase"><a name="fiber_specific_ptr_reset"></a></span>
+  <a class="link" href="fls.html#fiber_specific_ptr_reset">Member
+      function <code class="computeroutput">reset</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span> <span class="identifier">T</span> <span class="special">*</span> <span class="identifier">new_value</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            If <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()!=</span><span class="identifier">new_value</span></code> and <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code> is not <code class="computeroutput"><span class="keyword">nullptr</span></code>,
+            invoke <code class="computeroutput"><span class="keyword">delete</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()</span></code> or <code class="computeroutput"><span class="identifier">fn</span><span class="special">(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">())</span></code> as appropriate. Store <code class="computeroutput"><span class="identifier">new_value</span></code> as the pointer associated
+            with the current fiber.
+          </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get</span><span class="special">()==</span><span class="identifier">new_value</span></code>
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Exception raised during cleanup of previous value.
+          </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="synchronization/futures/packaged_task.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="migration.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

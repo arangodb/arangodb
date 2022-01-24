@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macro BOOST_CONTRACT_MAX_ARGS</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="reference.html#header.boost.contract.core.config_hpp" title="Header &lt;boost/contract/core/config.hpp&gt;">
+<link rel="prev" href="BOOST_CONTRACT_DI_idm34640.html" title="Macro BOOST_CONTRACT_DISABLE_THREADS">
+<link rel="next" href="BOOST_CONTRACT_BA_idm34666.html" title="Macro BOOST_CONTRACT_BASES_TYPEDEF">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_DI_idm34640.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.core.config_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_BA_idm34666.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_CONTRACT_MAX_ARGS"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_CONTRACT_MAX_ARGS</span></h2>
+<p>BOOST_CONTRACT_MAX_ARGS — Maximum number of arguments for public function overrides on compilers that do not support variadic templates (default to <code class="computeroutput">10</code>). </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="reference.html#header.boost.contract.core.config_hpp" title="Header &lt;boost/contract/core/config.hpp&gt;">boost/contract/core/config.hpp</a>&gt;
+
+</span>BOOST_CONTRACT_MAX_ARGS</pre></div>
+<div class="refsect1">
+<a name="idm37068"></a><h2>Description</h2>
+<p>On compilers that do not support C++11 variadic templates, this macro is defined to the maximum number of arguments that public function overrides can have and pass to <code class="computeroutput"><a class="link" href="boost/contract/public_function_idm36700.html" title="Function template public_function">boost::contract::public_function</a></code> (users can redefine this macro to a different value). On compilers that support variadic templates, this macro has no effect.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Regardless of the value of this macro and of compiler support for variadic templates, there might be an intrinsic limit of about 18 arguments for public function overrides (because of similar limits in Boost.MPL and Boost.FunctionTypes internally used by this library).</p></td></tr>
+</table></div>
+<p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="boost_contract/extras.html#boost_contract.extras.no_macros__and_no_variadic_macros_" title="No Macros (and No Variadic Macros)"> No Macros</a> </p>
+<p>
+</p>
+<p>
+</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_DI_idm34640.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.core.config_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_BA_idm34666.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

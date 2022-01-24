@@ -1,8 +1,0 @@
-//[example_output
-> example
-Running 1 test case...
-unknown location(0): fatal error: in "test_external_interface": std::runtime_error: Undefined Behaviour ahead!
-../doc/examples/example22.run-fail.cpp(17): last checkpoint: Calling 'foo' with i=1
-
-*** 1 failure is detected in the test module "example"
-//]

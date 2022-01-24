@@ -1,8 +1,0 @@
-//[example_output
-> tolerance_05
-Running 1 test case...
-../doc/examples/tolerance_05.run.cpp(20): error: in "test": check o1 == o2 has failed [ 1 !=  0.99]
-../doc/examples/tolerance_05.run.cpp(21): error: in "test": check o1 == d2 has failed [ 1 != 0.98999999999999999]
-
-*** 2 failures are detected in the test module "tolerance_05"
-//]
