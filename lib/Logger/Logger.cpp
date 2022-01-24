@@ -250,7 +250,7 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
   }
 }
 
-std::unordered_map<std::string, bool> const Logger::parseStringParams(
+std::unordered_map<std::string, bool> Logger::parseStringParams(
     std::vector<std::string> const& params) {
   std::unordered_map<std::string, bool> validParams;
   for (auto const& param : params) {
