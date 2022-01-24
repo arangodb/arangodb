@@ -301,7 +301,9 @@ void Index::validateFields(VPackSlice const& slice) {
   VPackValueLength len;
   const char* idxStr =
       slice.get(arangodb::StaticStrings::IndexType).getString(len);
-  auto allowExpansion = Index::allowExpansion(Index::type(idxStr, len));
+  auto const idxType = Index::type(idxStr, len);
+  auto allowExpansion = Index::allowExpansion(idxType);
+  auto const fieldIsObject = TRI_IDX_TYPE_INVERTED_INDEX == idxType;
 
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
   if (!fields.isArray()) {
@@ -309,6 +311,13 @@ void Index::validateFields(VPackSlice const& slice) {
   }
 
   for (VPackSlice name : VPackArrayIterator(fields)) {
+    if (fieldIsObject) {
+      if (!name.isObject()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                       "invered index: field is not an object");
+      }
+      name = name.get("name");
+    }
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
@@ -362,12 +371,21 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "noaccess")) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
-
+  if (arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE ==
+      std::string_view{type, len}) {
+    return TRI_IDX_TYPE_INVERTED_INDEX;
+  }
   return TRI_IDX_TYPE_UNKNOWN;
 }
 
 Index::IndexType Index::type(std::string const& type) {
   return Index::type(type.c_str(), type.size());
+}
+
+bool Index::onlyHintForced(IndexType type) {
+  // inverted index is eventually consistent, so usage must be explicilty
+  // permitted by the user
+  return type == TRI_IDX_TYPE_INVERTED_INDEX;
 }
 
 /// @brief return the name of an index type
@@ -399,6 +417,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "noaccess";
     case TRI_IDX_TYPE_ZKD_INDEX:
       return "zkd";
+    case TRI_IDX_TYPE_INVERTED_INDEX:
+      return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -697,7 +717,8 @@ arangodb::aql::AstNode* Index::specializeCondition(
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(
     transaction::Methods* /* trx */, aql::AstNode const* /* node */,
     aql::Variable const* /* reference */,
-    IndexIteratorOptions const& /* opts */, ReadOwnWrites /* readOwnWrites */) {
+    IndexIteratorOptions const& /* opts */, ReadOwnWrites /* readOwnWrites */,
+    int /*mutableConditionIdx*/) {
   // the default implementation should never be called
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
