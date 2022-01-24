@@ -28,6 +28,9 @@
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 TRI_v8_global_t::TRI_v8_global_t(
     arangodb::application_features::ApplicationServer& server,
@@ -258,9 +261,14 @@ TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(  // constructor
 
         auto* key =
             persistent->_value.get();  // same key as used in emplace(...)
+        LOG_TOPIC("44ea7", TRACE, arangodb::Logger::V8)
+            << "Weak UnWrapping ptr " << key << " Context ID: " << v8g->_id;
+
         auto count = v8g->JSSharedPtrs.erase(key);
-        TRI_ASSERT(count);  // zero indicates that v8g was probably deallocated
-                            // before calling the v8::WeakCallbackInfo::Callback
+        TRI_ASSERT(count) << "Did not find weak value the value for '" << key
+                          << "' in the registry! Context ID: " << v8g->_id;
+        // zero indicates that v8g was probably deallocated
+        // before calling the v8::WeakCallbackInfo::Callback
       },
       v8::WeakCallbackType::kFinalizer  // callback type
   );
