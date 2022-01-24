@@ -448,15 +448,11 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
 auto checkLogTargetConfig(LogTarget const& target,
                           LogPlanSpecification const& plan)
     -> std::unique_ptr<Action> {
-  TRI_ASSERT(false);
-  /*
-  if (target.config != plan.targetConfig) {
-    // TODO we should either test of disable plan.targetConfig
-    // TODO there is already a ticket for removing targetConfig from plan
-    // Validity check on config?
+
+  if (plan.currentTerm && target.config != plan.currentTerm->config) {
+    // TODO: validity Check on target config
     return std::make_unique<UpdateLogConfigAction>(plan.id, target.config);
   }
-   */
   return std::make_unique<EmptyAction>();
 }
 
