@@ -46,7 +46,7 @@ struct QuickLogStatus {
   std::optional<LogTerm> term{};
   std::optional<LogStatistics> local{};
   bool leadershipEstablished{false};
-  std::optional<CommitFailReason> commitFailReason{};
+  std::optional<CommitDetails> commitDetails{};
 
   // The following make sense only for a leader.
   std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig{};
@@ -85,7 +85,7 @@ struct LeaderStatus {
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
-  CommitFailReason lastCommitStatus;
+  CommitDetails lastCommitDetails;
   ParticipantsConfig activeParticipantsConfig;
   std::optional<ParticipantsConfig> committedParticipantsConfig;
 

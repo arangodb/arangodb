@@ -53,36 +53,36 @@ TEST(LogCommonTest, term_index_pair) {
 
 TEST(LogCommonTest, commit_fail_reason) {
   VPackBuilder builder;
-  auto reason = CommitFailReason::withNothingToCommit();
+  auto reason = CommitDetails::withSuccessfulQuorum();
   reason.toVelocyPack(builder);
   auto slice = builder.slice();
-  auto fromVPack = CommitFailReason::fromVelocyPack(slice);
+  auto fromVPack = CommitDetails::fromVelocyPack(slice);
   EXPECT_EQ(reason, fromVPack);
 
   auto jsonBuffer = R"({
-    "reason": "NothingToCommit"
+    "reason": "SuccessfulQuorum"
   })"_vpack;
   auto jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
   builder.clear();
-  reason = CommitFailReason::withQuorumSizeNotReached("PRMR-1234");
+  reason = CommitDetails::withQuorumSizeNotReached("PRMR-1234");
   reason.toVelocyPack(builder);
   slice = builder.slice();
-  fromVPack = CommitFailReason::fromVelocyPack(slice);
+  fromVPack = CommitDetails::fromVelocyPack(slice);
   EXPECT_EQ(reason, fromVPack);
 
   builder.clear();
-  reason = CommitFailReason::withForcedParticipantNotInQuorum("PRMR-1234");
+  reason = CommitDetails::withForcedParticipantNotInQuorum("PRMR-1234");
   reason.toVelocyPack(builder);
   slice = builder.slice();
-  fromVPack = CommitFailReason::fromVelocyPack(slice);
+  fromVPack = CommitDetails::fromVelocyPack(slice);
   EXPECT_EQ(reason, fromVPack);
 
-  jsonBuffer = R"({"xyz": "NothingToCommit", "reason": "xyz"})"_vpack;
+  jsonBuffer = R"({"xyz": "SuccessfulQuorum", "reason": "xyz"})"_vpack;
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_ANY_THROW({ CommitFailReason::fromVelocyPack(jsonSlice); });
+  EXPECT_ANY_THROW({ CommitDetails::fromVelocyPack(jsonSlice); });
 }
 
 TEST(LogCommonTest, log_config) {

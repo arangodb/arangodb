@@ -313,7 +313,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     LogIndex _releaseIndex{0};
     bool _didResign{false};
     bool _leadershipEstablished{false};
-    CommitFailReason _lastCommitFailReason;
+    CommitDetails _lastCommitDetails;
 
     // active - that is currently used to check for committed entries
     std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig;

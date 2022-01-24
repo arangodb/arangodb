@@ -135,7 +135,7 @@ struct LogCurrent {
     std::optional<ParticipantsConfig> committedParticipantsConfig;
     bool leadershipEstablished;
     // will be set after 5s if leader is unable to establish leadership
-    std::optional<replicated_log::CommitFailReason> commitStatus;
+    std::optional<replicated_log::CommitDetails> commitStatus;
 
     auto toVelocyPack(VPackBuilder&) const -> void;
     static auto fromVelocyPack(VPackSlice) -> Leader;

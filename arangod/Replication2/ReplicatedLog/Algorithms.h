@@ -93,6 +93,9 @@ struct ParticipantStateTuple {
   [[nodiscard]] auto isForced() const noexcept -> bool;
   [[nodiscard]] auto isFailed() const noexcept -> bool;
 
+  [[nodiscard]] auto lastTerm() const noexcept -> LogTerm;
+  [[nodiscard]] auto lastIndex() const noexcept -> LogIndex;
+
   friend auto operator<=>(ParticipantStateTuple const&,
                           ParticipantStateTuple const&) noexcept;
   friend auto operator<<(std::ostream& os,
@@ -106,20 +109,18 @@ auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
     -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
-  std::size_t const _writeConcern{
-      0};  // might be called quorumSize in other places
+  std::size_t const _writeConcern{0};
   std::size_t const _softWriteConcern{0};
-  std::size_t const _replicationFactor{0};
 
   CalculateCommitIndexOptions(std::size_t writeConcern,
-                              std::size_t softWriteConcern,
-                              std::size_t replicationFactor);
+                              std::size_t softWriteConcern);
 };
 
 auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
-                          CalculateCommitIndexOptions const opt,
-                          LogIndex currentCommitIndex, LogIndex spearhead)
-    -> std::tuple<LogIndex, replicated_log::CommitFailReason,
+                          CalculateCommitIndexOptions opt,
+                          LogIndex currentCommitIndex,
+                          TermIndexPair lastTermIndex)
+    -> std::tuple<LogIndex, replicated_log::CommitDetails,
                   std::vector<ParticipantId>>;
 
 }  // namespace arangodb::replication2::algorithms

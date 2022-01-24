@@ -361,36 +361,36 @@ auto LogRange::Iterator::operator->() const noexcept -> LogIndex const* {
 }
 
 template<typename... Args>
-replicated_log::CommitFailReason::CommitFailReason(std::in_place_t,
-                                                   Args&&... args) noexcept
+replicated_log::CommitDetails::CommitDetails(std::in_place_t,
+                                             Args&&... args) noexcept
     : value(std::forward<Args>(args)...) {}
 
-auto replicated_log::CommitFailReason::withNothingToCommit() noexcept
-    -> CommitFailReason {
-  return CommitFailReason(std::in_place, NothingToCommit{});
+auto replicated_log::CommitDetails::withSuccessfulQuorum() noexcept
+    -> CommitDetails {
+  return CommitDetails(std::in_place, SuccessfulQuorum{});
 }
 
-auto replicated_log::CommitFailReason::withQuorumSizeNotReached(
-    ParticipantId who) noexcept -> CommitFailReason {
-  return CommitFailReason(std::in_place, QuorumSizeNotReached{std::move(who)});
+auto replicated_log::CommitDetails::withQuorumSizeNotReached(
+    ParticipantId who) noexcept -> CommitDetails {
+  return CommitDetails(std::in_place, QuorumSizeNotReached{std::move(who)});
 }
 
-auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(
-    ParticipantId who) noexcept -> CommitFailReason {
-  return CommitFailReason(std::in_place,
-                          ForcedParticipantNotInQuorum{std::move(who)});
+auto replicated_log::CommitDetails::withForcedParticipantNotInQuorum(
+    ParticipantId who) noexcept -> CommitDetails {
+  return CommitDetails(std::in_place,
+                       ForcedParticipantNotInQuorum{std::move(who)});
 }
 
-auto replicated_log::CommitFailReason::withNonEligibleServerRequiredForQuorum(
+auto replicated_log::CommitDetails::withNonEligibleServerRequiredForQuorum(
     NonEligibleServerRequiredForQuorum::CandidateMap candidates) noexcept
-    -> CommitFailReason {
-  return CommitFailReason(
+    -> CommitDetails {
+  return CommitDetails(
       std::in_place, NonEligibleServerRequiredForQuorum{std::move(candidates)});
 }
 
 namespace {
 inline constexpr std::string_view ReasonFieldName = "reason";
-inline constexpr std::string_view NothingToCommitEnum = "NothingToCommit";
+inline constexpr std::string_view SuccessfulQuorumEnum = "SuccessfulQuorum";
 inline constexpr std::string_view QuorumSizeNotReachedEnum =
     "QuorumSizeNotReached";
 inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
@@ -401,26 +401,27 @@ inline constexpr std::string_view WhoFieldName = "who";
 inline constexpr std::string_view CandidatesFieldName = "candidates";
 inline constexpr std::string_view NonEligibleFailed = "failed";
 inline constexpr std::string_view NonEligibleExcluded = "excluded";
+inline constexpr std::string_view NonEligibleWrongTerm = "wrongTerm";
 }  // namespace
 
-auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(
-    velocypack::Slice s) -> NothingToCommit {
+auto replicated_log::CommitDetails::SuccessfulQuorum::fromVelocyPack(
+    velocypack::Slice s) -> SuccessfulQuorum {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(NothingToCommitEnum))
-      << "Expected string `" << NothingToCommitEnum
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(SuccessfulQuorumEnum))
+      << "Expected string `" << SuccessfulQuorumEnum
       << "`, found: " << s.stringView();
   return {};
 }
 
-void replicated_log::CommitFailReason::NothingToCommit::toVelocyPack(
+void replicated_log::CommitDetails::SuccessfulQuorum::toVelocyPack(
     velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
   builder.add(std::string_view(ReasonFieldName),
-              VPackValue(NothingToCommitEnum));
+              VPackValue(SuccessfulQuorumEnum));
 }
 
-auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(
+auto replicated_log::CommitDetails::QuorumSizeNotReached::fromVelocyPack(
     velocypack::Slice s) -> QuorumSizeNotReached {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
@@ -432,7 +433,7 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(
   return {s.get(WhoFieldName).toString()};
 }
 
-void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(
+void replicated_log::CommitDetails::QuorumSizeNotReached::toVelocyPack(
     velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
   builder.add(std::string_view(ReasonFieldName),
@@ -440,7 +441,7 @@ void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(
   builder.add(std::string_view(WhoFieldName), VPackValue(who));
 }
 
-auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::
+auto replicated_log::CommitDetails::ForcedParticipantNotInQuorum::
     fromVelocyPack(velocypack::Slice s) -> ForcedParticipantNotInQuorum {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
@@ -453,15 +454,15 @@ auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::
   return {s.get(WhoFieldName).toString()};
 }
 
-void replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::
-    toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::CommitDetails::ForcedParticipantNotInQuorum::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
   builder.add(std::string_view(ReasonFieldName),
               VPackValue(ForcedParticipantNotInQuorumEnum));
   builder.add(std::string_view(WhoFieldName), VPackValue(who));
 }
 
-void replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
+void replicated_log::CommitDetails::NonEligibleServerRequiredForQuorum::
     toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
   builder.add(ReasonFieldName,
@@ -473,22 +474,24 @@ void replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
   }
 }
 
-auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
-    to_string(replicated_log::CommitFailReason::
-                  NonEligibleServerRequiredForQuorum::Why why) noexcept
-    -> std::string_view {
+auto replicated_log::CommitDetails::NonEligibleServerRequiredForQuorum::
+    to_string(
+        replicated_log::CommitDetails::NonEligibleServerRequiredForQuorum::Why
+            why) noexcept -> std::string_view {
   switch (why) {
     case kFailed:
       return NonEligibleFailed;
     case kExcluded:
       return NonEligibleExcluded;
+    case kWrongTerm:
+      return NonEligibleWrongTerm;
     default:
       TRI_ASSERT(false);
       return "(unknown)";
   }
 }
 
-auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
+auto replicated_log::CommitDetails::NonEligibleServerRequiredForQuorum::
     fromVelocyPack(velocypack::Slice s) -> NonEligibleServerRequiredForQuorum {
   TRI_ASSERT(s.get(ReasonFieldName)
                  .isEqualString(NonEligibleServerRequiredForQuorumEnum))
@@ -501,54 +504,54 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
       candidates[key.copyString()] = kFailed;
     } else if (value.isEqualString(NonEligibleExcluded)) {
       candidates[key.copyString()] = kExcluded;
+    } else if (value.isEqualString(NonEligibleWrongTerm)) {
+      candidates[key.copyString()] = kWrongTerm;
     }
   }
   return NonEligibleServerRequiredForQuorum{std::move(candidates)};
 }
 
-auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s)
-    -> CommitFailReason {
+auto replicated_log::CommitDetails::fromVelocyPack(velocypack::Slice s)
+    -> CommitDetails {
   auto reason = s.get(ReasonFieldName).stringView();
-  if (reason == NothingToCommitEnum) {
-    return CommitFailReason{std::in_place, NothingToCommit::fromVelocyPack(s)};
+  if (reason == SuccessfulQuorumEnum) {
+    return CommitDetails{std::in_place, SuccessfulQuorum::fromVelocyPack(s)};
   } else if (reason == QuorumSizeNotReachedEnum) {
-    return CommitFailReason{std::in_place,
-                            QuorumSizeNotReached::fromVelocyPack(s)};
+    return CommitDetails{std::in_place,
+                         QuorumSizeNotReached::fromVelocyPack(s)};
   } else if (reason == ForcedParticipantNotInQuorumEnum) {
-    return CommitFailReason{std::in_place,
-                            ForcedParticipantNotInQuorum::fromVelocyPack(s)};
+    return CommitDetails{std::in_place,
+                         ForcedParticipantNotInQuorum::fromVelocyPack(s)};
   } else if (reason == NonEligibleServerRequiredForQuorumEnum) {
-    return CommitFailReason{
-        std::in_place, NonEligibleServerRequiredForQuorum::fromVelocyPack(s)};
+    return CommitDetails{std::in_place,
+                         NonEligibleServerRequiredForQuorum::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        basics::StringUtils::concatT("CommitFailReason `", reason,
-                                     "` unknown."));
+        basics::StringUtils::concatT("CommitDetails `", reason, "` unknown."));
   }
 }
 
-void replicated_log::CommitFailReason::toVelocyPack(
+void replicated_log::CommitDetails::toVelocyPack(
     velocypack::Builder& builder) const {
   std::visit([&](auto const& v) { v.toVelocyPack(builder); }, value);
 }
 
-auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
+auto replicated_log::to_string(CommitDetails const& r) -> std::string {
   struct ToStringVisitor {
-    auto operator()(CommitFailReason::NothingToCommit const&) -> std::string {
-      return "Nothing to commit";
+    auto operator()(CommitDetails::SuccessfulQuorum const&) -> std::string {
+      return "Quorum size reached";
     }
-    auto operator()(CommitFailReason::QuorumSizeNotReached const& reason)
+    auto operator()(CommitDetails::QuorumSizeNotReached const& reason)
         -> std::string {
       return "Required quorum size not yet reached. Participant " + reason.who;
     }
-    auto operator()(
-        CommitFailReason::ForcedParticipantNotInQuorum const& reason)
+    auto operator()(CommitDetails::ForcedParticipantNotInQuorum const& reason)
         -> std::string {
       return "Forced participant not in quorum. Participant " + reason.who;
     }
     auto operator()(
-        CommitFailReason::NonEligibleServerRequiredForQuorum const& reason)
+        CommitDetails::NonEligibleServerRequiredForQuorum const& reason)
         -> std::string {
       auto result =
           std::string{"A non-eligible server is required to reach a quorum: "};

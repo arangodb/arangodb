@@ -1304,7 +1304,7 @@ static auto reportCurrentReplicatedLogLeader(
     if (currentLeader == nullptr ||
         currentLeader->term != status.getCurrentTerm() ||
         currentLeader->leadershipEstablished != status.leadershipEstablished ||
-        currentLeader->commitStatus != status.commitFailReason) {
+        currentLeader->commitStatus != status.commitDetails) {
       return true;
     }
 
@@ -1330,7 +1330,7 @@ static auto reportCurrentReplicatedLogLeader(
     leader.term = *status.getCurrentTerm();
     leader.serverId = serverId;
     leader.leadershipEstablished = status.leadershipEstablished;
-    leader.commitStatus = status.commitFailReason;
+    leader.commitStatus = status.commitDetails;
     leader.committedParticipantsConfig = std::move(committedParticipantsConfig);
     return leader;
   }

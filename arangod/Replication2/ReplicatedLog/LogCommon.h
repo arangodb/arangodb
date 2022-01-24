@@ -1,5 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -353,14 +351,14 @@ struct ReplicatedLogGlobalSettings {
 };
 
 namespace replicated_log {
-struct CommitFailReason {
-  CommitFailReason() = default;
+struct CommitDetails {
+  CommitDetails() = default;
 
-  struct NothingToCommit {
-    static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
+  struct SuccessfulQuorum {
+    static auto fromVelocyPack(velocypack::Slice) -> SuccessfulQuorum;
     void toVelocyPack(velocypack::Builder& builder) const;
-    friend auto operator==(NothingToCommit const& left,
-                           NothingToCommit const& right) noexcept
+    friend auto operator==(SuccessfulQuorum const& left,
+                           SuccessfulQuorum const& right) noexcept
         -> bool = default;
   };
   struct QuorumSizeNotReached {
@@ -384,6 +382,7 @@ struct CommitFailReason {
     enum Why {
       kExcluded,
       kFailed,
+      kWrongTerm,
     };
     static auto to_string(Why) noexcept -> std::string_view;
 
@@ -399,31 +398,31 @@ struct CommitFailReason {
         NonEligibleServerRequiredForQuorum const& right) noexcept
         -> bool = default;
   };
-  std::variant<NothingToCommit, QuorumSizeNotReached,
+  std::variant<SuccessfulQuorum, QuorumSizeNotReached,
                ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum>
       value;
 
-  static auto withNothingToCommit() noexcept -> CommitFailReason;
+  static auto withSuccessfulQuorum() noexcept -> CommitDetails;
   static auto withQuorumSizeNotReached(ParticipantId who) noexcept
-      -> CommitFailReason;
+      -> CommitDetails;
   static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept
-      -> CommitFailReason;
+      -> CommitDetails;
   static auto withNonEligibleServerRequiredForQuorum(
       NonEligibleServerRequiredForQuorum::CandidateMap) noexcept
-      -> CommitFailReason;
+      -> CommitDetails;
 
-  static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
+  static auto fromVelocyPack(velocypack::Slice) -> CommitDetails;
   void toVelocyPack(velocypack::Builder& builder) const;
 
-  friend auto operator==(CommitFailReason const& left,
-                         CommitFailReason const& right) -> bool = default;
+  friend auto operator==(CommitDetails const& left, CommitDetails const& right)
+      -> bool = default;
 
  private:
   template<typename... Args>
-  explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
+  explicit CommitDetails(std::in_place_t, Args&&... args) noexcept;
 };
 
-auto to_string(CommitFailReason const&) -> std::string;
+auto to_string(CommitDetails const&) -> std::string;
 }  // namespace replicated_log
 
 }  // namespace arangodb::replication2

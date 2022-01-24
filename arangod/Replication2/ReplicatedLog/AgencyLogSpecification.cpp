@@ -267,7 +267,7 @@ auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
   if (auto commitStatusSlice = s.get("commitStatus");
       !commitStatusSlice.isNone()) {
     leader.commitStatus =
-        replicated_log::CommitFailReason::fromVelocyPack(commitStatusSlice);
+        replicated_log::CommitDetails::fromVelocyPack(commitStatusSlice);
   }
   if (auto configSlice = s.get(StringCommittedParticipantsConfig);
       !configSlice.isNone()) {

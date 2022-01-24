@@ -98,8 +98,8 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add("leadershipEstablished", VPackValue(leadershipEstablished));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
-  builder.add(VPackValue("lastCommitStatus"));
-  lastCommitStatus.toVelocyPack(builder);
+  builder.add(VPackValue("lastCommitDetails"));
+  lastCommitDetails.toVelocyPack(builder);
   builder.add(VPackValue("activeParticipantsConfig"));
   activeParticipantsConfig.toVelocyPack(builder);
   builder.add(VPackValue("committedParticipantsConfig"));
@@ -127,8 +127,8 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   status.leadershipEstablished = slice.get("leadershipEstablished").isTrue();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};
-  status.lastCommitStatus =
-      CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
+  status.lastCommitDetails =
+      CommitDetails::fromVelocyPack(slice.get("lastCommitDetails"));
   status.activeParticipantsConfig =
       ParticipantsConfig::fromVelocyPack(slice.get("activeParticipantsConfig"));
   if (auto const committedParticipantsConfigSlice =

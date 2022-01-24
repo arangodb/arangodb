@@ -453,7 +453,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.local = leaderData.getLocalStatistics();
     status.term = term;
     status.largestCommonIndex = leaderData._largestCommonIndex;
-    status.lastCommitStatus = leaderData._lastCommitFailReason;
+    status.lastCommitDetails = leaderData._lastCommitDetails;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
     if (auto const config = leaderData.committedParticipantsConfig;
@@ -503,16 +503,16 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
           throw ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
-        auto commitFailReason = std::optional<CommitFailReason>{};
+        auto commitDetails = std::optional<CommitDetails>{};
         if (leaderData.calculateCommitLag() > std::chrono::seconds{20}) {
-          commitFailReason = leaderData._lastCommitFailReason;
+          commitDetails = leaderData._lastCommitDetails;
         }
         return QuickLogStatus{
             .role = ParticipantRole::kLeader,
             .term = term,
             .local = leaderData.getLocalStatistics(),
             .leadershipEstablished = leaderData._leadershipEstablished,
-            .commitFailReason = commitFailReason,
+            .commitDetails = commitDetails,
             .activeParticipantsConfig = leaderData.activeParticipantsConfig,
             .committedParticipantsConfig =
                 leaderData.committedParticipantsConfig};
@@ -868,6 +868,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(
   return _inMemoryLog.getIteratorRange(firstIndex, _commitIndex + 1);
 }
 
+/*
+ * Collects last acknowledged term/index pairs from all followers.
+ * While doing so, it calculates the largest common index, which is
+ * the lowest acknowledged index of all followers.
+ * No followers are filtered out at this step.
+ */
 auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
     const
     -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>> {
@@ -875,20 +881,20 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
   std::vector<algorithms::ParticipantStateTuple> indexes;
   indexes.reserve(_follower.size());
   for (auto const& [pid, follower] : _follower) {
-    // auto flags = activeParticipantsConfig->participants.find(pid);
-    // TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
-    auto flags = std::invoke([&, &pid = pid] {
-      if (auto f = activeParticipantsConfig->participants.find(pid);
-          f != std::end(activeParticipantsConfig->participants)) {
-        return f->second;
-      }
-      return ParticipantFlags{};
-    });
+    // The lastAckedEntry is the last index/term pair that we sent that this
+    // follower acknowledged - means we sent it. And we must not have entries
+    // in our log with a term newer than currentTerm, which could have been
+    // sent to a follower.
+    TRI_ASSERT(follower->lastAckedEntry.term <= this->_self._currentTerm);
+
+    auto flags = activeParticipantsConfig->participants.find(pid);
+    TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
+
     indexes.emplace_back(algorithms::ParticipantStateTuple{
         .lastAckedEntry = follower->lastAckedEntry,
         .id = follower->_impl->getParticipantId(),
         .failed = false,
-        .flags = flags});
+        .flags = flags->second});
 
     largestCommonIndex =
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);
@@ -899,24 +905,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     -> ResolvedPromiseSet {
-  auto const quorum_size = _self._config.writeConcern;
-
-  if (quorum_size == 0 || quorum_size > _follower.size()) {
-    LOG_CTX("24e92", WARN, _self._logContext)
-        << "not enough participants to fulfill quorum size requirement";
-    return {};
-  }
-
   auto [newLargestCommonIndex, indexes] = collectFollowerIndexes();
-
-  LOG_CTX("a2d04", TRACE, _self._logContext)
-      << "checking commit index on set " << indexes;
-  if (quorum_size > indexes.size()) {
-    LOG_CTX("d8b19", DEBUG, _self._logContext)
-        << "not enough eligible participants to fulfill quorum size "
-           "requirement";
-    return {};
-  }
 
   if (newLargestCommonIndex != _largestCommonIndex) {
     // This assertion is no longer true, as followers can now be added.
@@ -927,13 +916,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     _largestCommonIndex = newLargestCommonIndex;
   }
 
-  auto [newCommitIndex, commitFailReason, quorum] =
+  auto [newCommitIndex, commitDetails, quorum] =
       algorithms::calculateCommitIndex(
           indexes,
           algorithms::CalculateCommitIndexOptions{
-              quorum_size, _self._config.softWriteConcern, indexes.size()},
-          _commitIndex, _inMemoryLog.getLastIndex());
-  _lastCommitFailReason = commitFailReason;
+              _self._config.writeConcern, _self._config.softWriteConcern},
+          _commitIndex, _inMemoryLog.getLastTermIndexPair());
+  _lastCommitDetails = commitDetails;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
