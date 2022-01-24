@@ -58,7 +58,6 @@ struct LogPlanSpecification {
   LogId id;
   std::optional<LogPlanTermSpecification> currentTerm;
 
-  LogConfig targetConfig;
   ParticipantsConfig participantsConfig;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
@@ -66,10 +65,9 @@ struct LogPlanSpecification {
   LogPlanSpecification(from_velocypack_t, VPackSlice);
   LogPlanSpecification() = default;
 
+  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term);
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
-                       LogConfig config);
-  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
-                       LogConfig config, ParticipantsConfig participantsConfig);
+                       ParticipantsConfig participantsConfig);
 };
 
 struct LogCurrentLocalState {

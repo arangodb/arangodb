@@ -74,8 +74,6 @@ LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
 auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Id, VPackValue(id.id()));
-  builder.add(VPackValue(StaticStrings::TargetConfig));
-  targetConfig.toVelocyPack(builder);
   if (currentTerm.has_value()) {
     builder.add(VPackValue(StaticStrings::CurrentTerm));
     currentTerm->toVelocyPack(builder);
@@ -85,8 +83,7 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
 }
 
 LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
-    : id(slice.get(StaticStrings::Id).extract<LogId>()),
-      targetConfig(slice.get(StaticStrings::TargetConfig)) {
+    : id(slice.get(StaticStrings::Id).extract<LogId>()) {
   if (auto term = slice.get(StaticStrings::CurrentTerm); !term.isNone()) {
     currentTerm = LogPlanTermSpecification{from_velocypack, term};
   }
@@ -102,15 +99,14 @@ LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
     : term(term), config(config), leader(std::move(leader)) {}
 
 LogPlanSpecification::LogPlanSpecification(
-    LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config)
-    : id(id), currentTerm(std::move(term)), targetConfig(config) {}
+    LogId id, std::optional<LogPlanTermSpecification> term)
+    : id(id), currentTerm(std::move(term)) {}
 
 LogPlanSpecification::LogPlanSpecification(
-    LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config,
+    LogId id, std::optional<LogPlanTermSpecification> term,
     ParticipantsConfig participantsConfig)
     : id(id),
       currentTerm(std::move(term)),
-      targetConfig(config),
       participantsConfig(std::move(participantsConfig)) {}
 
 auto LogPlanSpecification::fromVelocyPack(velocypack::Slice slice)

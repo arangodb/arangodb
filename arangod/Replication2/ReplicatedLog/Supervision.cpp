@@ -44,7 +44,7 @@ auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
   if (!log.plan) {
     // action that creates Plan entry for log
     auto const spec = LogPlanSpecification(
-        log.target.id, std::nullopt, log.target.config,
+        log.target.id, std::nullopt,
         ParticipantsConfig{.generation = 1,
                            .participants = log.target.participants});
 
@@ -53,12 +53,12 @@ auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
   return std::make_unique<EmptyAction>();
 }
 
-auto checkTermPresent(LogPlanSpecification const& plan)
+auto checkTermPresent(LogPlanSpecification const& plan, LogConfig const& config)
     -> std::unique_ptr<Action> {
   if (!plan.currentTerm) {
     return std::make_unique<CreateInitialTermAction>(
         plan.id,
-        LogPlanTermSpecification(LogTerm(1), plan.targetConfig, std::nullopt));
+        LogPlanTermSpecification(LogTerm(1), config, std::nullopt));
   }
   return std::make_unique<EmptyAction>();
 }
@@ -220,6 +220,7 @@ auto checkLeaderInTarget(LogTarget const& target,
           if (!health.isHealthy(*target.leader)) {
             election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
             return std::make_unique<EmptyAction>();
+            // TODO: use ErrorAction
             // problem:
           };
 
@@ -447,10 +448,15 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
 auto checkLogTargetConfig(LogTarget const& target,
                           LogPlanSpecification const& plan)
     -> std::unique_ptr<Action> {
+  TRI_ASSERT(false);
+  /*
   if (target.config != plan.targetConfig) {
+    // TODO we should either test of disable plan.targetConfig
+    // TODO there is already a ticket for removing targetConfig from plan
     // Validity check on config?
     return std::make_unique<UpdateLogConfigAction>(plan.id, target.config);
   }
+   */
   return std::make_unique<EmptyAction>();
 }
 
@@ -472,7 +478,7 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // but also don't implode
   TRI_ASSERT(log.plan.has_value());
 
-  if (auto action = checkTermPresent(*log.plan); !isEmptyAction(action)) {
+  if (auto action = checkTermPresent(*log.plan, log.target.config); !isEmptyAction(action)) {
     return action;
   }
 
