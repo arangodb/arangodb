@@ -36,10 +36,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-namespace basics {
-class StringBuffer;
-}
-
 namespace velocypack {
 class Builder;
 struct CustomTypeHandler;
@@ -82,17 +78,11 @@ class Context {
   /// @brief return the vocbase
   TRI_vocbase_t& vocbase() const { return _vocbase; }
 
-  /// @brief temporarily lease a StringBuffer object
-  basics::StringBuffer* leaseStringBuffer(size_t initialSize);
-
-  /// @brief return a temporary StringBuffer object
-  void returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept;
-
   /// @brief temporarily lease a std::string
-  std::string* leaseString();
+  TEST_VIRTUAL std::string* leaseString();
 
   /// @brief return a temporary std::string object
-  void returnString(std::string* str) noexcept;
+  TEST_VIRTUAL void returnString(std::string* str) noexcept;
 
   /// @brief temporarily lease a Builder object
   TEST_VIRTUAL arangodb::velocypack::Builder* leaseBuilder();
@@ -148,8 +138,6 @@ class Context {
                                                32>
       _builders;
   ::arangodb::containers::SmallVectorWithArena<std::string*, 32> _strings;
-
-  std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
 
   arangodb::velocypack::Options _options;
 

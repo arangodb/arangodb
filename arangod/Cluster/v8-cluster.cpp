@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Auth/TokenCache.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"

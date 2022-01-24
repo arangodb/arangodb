@@ -304,6 +304,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             auto inode = new IndexNode(
                 plan.get(), plan->nextId(), en->collection(), en->outVariable(),
                 std::vector<transaction::Methods::IndexHandle>{picked},
+                false,  // here we are not using inverted index so for sure no
+                        // "whole" coverage
                 std::move(condition), opts);
             en->CollectionAccessingNode::cloneInto(*inode);
             en->DocumentProducingNode::cloneInto(plan.get(), *inode);
@@ -400,6 +402,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           auto inode = new IndexNode(
               plan.get(), plan->nextId(), en->collection(), en->outVariable(),
               std::vector<transaction::Methods::IndexHandle>{picked},
+              false,  // here we are not using inverted index so for sure no
+                      // "whole" coverage
               std::move(condition), opts);
           plan->registerNode(inode);
           plan->replaceNode(n, inode);

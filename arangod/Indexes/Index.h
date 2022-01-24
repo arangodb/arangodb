@@ -103,7 +103,8 @@ class Index {
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX,
-    TRI_IDX_TYPE_ZKD_INDEX
+    TRI_IDX_TYPE_ZKD_INDEX,
+    TRI_IDX_TYPE_INVERTED_INDEX
   };
 
   /// @brief: helper struct returned by index methods that determine the costs
@@ -235,7 +236,7 @@ class Index {
   /// @brief whether or not the index covers all the attributes passed in.
   /// the function may modify the projections by setting the
   /// coveringIndexPosition value in it.
-  bool covers(arangodb::aql::Projections& projections) const;
+  virtual bool covers(arangodb::aql::Projections& projections) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
@@ -259,6 +260,9 @@ class Index {
   static IndexType type(char const* type, size_t len);
 
   static IndexType type(std::string const& type);
+
+  /// @brief checks if the index could be used without explicit hint
+  static bool onlyHintForced(IndexType type);
 
  public:
   virtual char const* typeName() const = 0;
@@ -427,7 +431,7 @@ class Index {
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, aql::AstNode const* node,
       aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites);
+      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,

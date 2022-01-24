@@ -23,6 +23,7 @@
 
 #include "DocumentIndexExpressionContext.h"
 #include "Aql/AqlValue.h"
+#include "Aql/Variable.h"
 
 using namespace arangodb::aql;
 
@@ -37,6 +38,10 @@ DocumentIndexExpressionContext::DocumentIndexExpressionContext(
 
 AqlValue DocumentIndexExpressionContext::getVariableValue(
     Variable const* variable, bool doCopy, bool& mustDestroy) const {
-  mustDestroy = doCopy;  // as we are copying
-  return _getValue(_ctx, variable, doCopy);
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        mustDestroy = doCopy;  // as we are copying
+        return _getValue(_ctx, variable, doCopy);
+      });
 }

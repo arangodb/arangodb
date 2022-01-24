@@ -550,7 +550,8 @@ std::unique_ptr<IndexIterator>
 arangodb::RocksDBZkdIndexBase::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference,
-    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites) {
+    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+    int) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(
@@ -562,7 +563,8 @@ std::unique_ptr<IndexIterator>
 arangodb::RocksDBUniqueZkdIndex::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference,
-    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites) {
+    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+    int) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(
