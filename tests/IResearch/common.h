@@ -143,6 +143,7 @@ std::string mangleNull(std::string name);
 std::string mangleNumeric(std::string name);
 std::string mangleString(std::string name, std::string_view suffix);
 std::string mangleStringIdentity(std::string name);
+std::string mangleInvertedIndexStringIdentity(std::string name);
 
 inline arangodb::aql::AstNode* defaultExpressionExtractor(
     arangodb::aql::AstNode* root) {
@@ -219,6 +220,11 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
   builder.close();
   return builder;
 }
+
+VPackBuilder getInvertedIndexPropertiesSlice(
+    arangodb::IndexId iid, std::vector<std::string> const& fields,
+    std::vector<std::vector<std::string>> const* storedFields = nullptr,
+    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr);
 
 arangodb::CreateDatabaseInfo createInfo(
     arangodb::application_features::ApplicationServer& server,

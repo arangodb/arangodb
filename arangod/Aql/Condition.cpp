@@ -634,7 +634,7 @@ void Condition::andCombine(AstNode const* node) {
 std::pair<bool, bool> Condition::findIndexes(
     EnumerateCollectionNode const* node,
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-    SortCondition const* sortCondition) {
+    SortCondition const* sortCondition, bool& isAllCoveredByIndex) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
   aql::Collection const& coll = *node->collection();
@@ -667,7 +667,7 @@ std::pair<bool, bool> Condition::findIndexes(
 
   return arangodb::aql::utils::getBestIndexHandlesForFilterCondition(
       coll, _ast, _root, reference, sortCondition, itemsInIndex, node->hint(),
-      usedIndexes, _isSorted);
+      usedIndexes, _isSorted, isAllCoveredByIndex);
 }
 
 /// @brief get the attributes for a sub-condition that are const

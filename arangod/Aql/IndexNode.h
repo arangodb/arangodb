@@ -64,7 +64,8 @@ class IndexNode : public ExecutionNode,
   IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
+            bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
+            IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -129,6 +130,8 @@ class IndexNode : public ExecutionNode,
     return canReadOwnWrites() == ReadOwnWrites::no;
   }
 
+  bool isAllCoveredByOneIndex() const noexcept { return _allCoveredByOneIndex; }
+
   struct IndexVariable {
     size_t indexFieldNum;
     Variable const* var;
@@ -183,6 +186,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief output variables to non-materialized document index references
   IndexValuesVars _outNonMaterializedIndVars;
+
+  /// @brief We have single index and this index covered whole condition
+  bool _allCoveredByOneIndex;
 };
 
 }  // namespace aql
