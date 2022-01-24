@@ -48,9 +48,13 @@ struct StateActionContextImpl : algorithms::StateActionContext {
     return nullptr;
   }
 
-  auto getReplicatedStateById(LogId)
+  auto getReplicatedStateById(LogId id)
       -> std::shared_ptr<replicated_state::ReplicatedStateBase> override {
-    return nullptr;
+    try {
+      return vocbase.getReplicatedStateById(id);
+    } catch (...) {
+      return nullptr;
+    }
   }
 
   auto createReplicatedState(LogId id, std::string_view type,

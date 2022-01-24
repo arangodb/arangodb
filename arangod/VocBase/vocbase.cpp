@@ -133,6 +133,17 @@ struct arangodb::VocBaseLogManager {
         "replicated log %" PRIu64 " not found", id.id());
   }
 
+  [[nodiscard]] auto getReplicatedStateById(replication2::LogId id)
+      -> std::shared_ptr<replication2::replicated_state::ReplicatedStateBase> {
+    auto guard = _guardedData.getLockedGuard();
+    if (auto iter = guard->states.find(id); iter != guard->states.end()) {
+      return iter->second;
+    }
+    THROW_ARANGO_EXCEPTION_FORMAT(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "replicated state %" PRIu64 " not found", id.id());
+  }
+
   auto resignAll() {
     auto guard = _guardedData.getLockedGuard();
     for (auto&& [id, log] : guard->logs) {
@@ -2146,6 +2157,11 @@ auto TRI_vocbase_t::getReplicatedStateStatus() const -> std::unordered_map<
     arangodb::replication2::LogId,
     arangodb::replication2::replicated_state::StateStatus> {
   return _logManager->getReplicatedStateStatus();
+}
+auto TRI_vocbase_t::getReplicatedStateById(arangodb::replication2::LogId id)
+    const -> std::shared_ptr<
+        arangodb::replication2::replicated_state::ReplicatedStateBase> {
+  return _logManager->getReplicatedStateById(id);
 }
 
 // -----------------------------------------------------------------------------

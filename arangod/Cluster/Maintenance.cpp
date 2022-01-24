@@ -683,12 +683,14 @@ void arangodb::maintenance::diffReplicatedStates(
     if (!localStates.contains(id)) {
       // we have to create this replicated state
       createReplicatedStateAction(id, &spec);
+      return;
     }
   }
 
   for (auto const& [id, status] : localStates) {
+    auto it = planStates.find(id);
     bool const shouldDeleted = std::invoke([&, id = id] {
-      if (auto it = planStates.find(id); it == std::end(planStates)) {
+      if (it == std::end(planStates)) {
         return true;
       } else if (!it->second.participants.contains(serverId)) {
         return true;
@@ -699,9 +701,13 @@ void arangodb::maintenance::diffReplicatedStates(
 
     if (shouldDeleted) {
       createReplicatedStateAction(id, nullptr);
+    } else {
+      TRI_ASSERT(it != std::end(planStates));
+      auto const& participant = it->second.participants.at(serverId);
+      if (participant.generation != status.getGeneration()) {
+        createReplicatedStateAction(id, &it->second);
+      }
     }
-
-    // TODO check snapshot
   }
 }
 
