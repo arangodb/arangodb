@@ -85,6 +85,11 @@ return require('internal').options()["log.output"];
 
       assertTrue(filtered[0].match(/testmann: start/));
       for (let i = 1; i < 11; ++i) {
+        const filteredObj = JSON.parse(filtered[i]);
+        assertTrue(filteredObj.hasOwnProperty("database"));
+        assertTrue(filteredObj.hasOwnProperty("username"));
+        assertTrue(filteredObj.hasOwnProperty("url"));
+
         assertTrue(filtered[i].match(/testmann: testi\d+/));
         assertTrue(filtered[i].match("[database: _system]"));
         assertTrue(filtered[i].match("[username: root]"));
@@ -142,6 +147,12 @@ return require('internal').options()["log.output"];
 
         assertTrue(filtered[0].match(/testParams: start/));
         for (let i = 1; i < 11; ++i) {
+          const filteredObj = JSON.parse(filtered[i]);
+          assertFalse(filteredObj.hasOwnProperty("dog"));
+          assertFalse(filteredObj.hasOwnProperty("database"));
+          assertTrue(filteredObj.hasOwnProperty("username"));
+          assertTrue(filteredObj.hasOwnProperty("url"));
+
           assertTrue(filtered[i].match(/testParams: testParam\d+/));
           assertFalse(filtered[i].match(/\[dog: /));
           assertFalse(filtered[i].match(/\[database: _system\]/));
