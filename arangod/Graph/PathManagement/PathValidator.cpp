@@ -301,13 +301,15 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     auto& evaluator = _options.getPostFilterEvaluator();
 
     if (evaluator->needsVertex()) {
-      if (vertexBuilder.isEmpty()) { // already added a vertex in case _options.usesPrune() == true
+      if (vertexBuilder.isEmpty()) {  // already added a vertex in case
+                                      // _options.usesPrune() == true
         _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
       }
       evaluator->injectVertex(vertexBuilder.slice());
     }
     if (evaluator->needsEdge()) {
-      if(edgeBuilder.isEmpty()){  // already added an edge in case _options.usesPrune() == true
+      if (edgeBuilder.isEmpty()) {  // already added an edge in case
+                                    // _options.usesPrune() == true
         _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
       }
       evaluator->injectEdge(edgeBuilder.slice());

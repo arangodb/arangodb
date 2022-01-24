@@ -510,8 +510,7 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
   // place) with the same TraversalExecutorInfos as before. Those
   // infos contain the traverser which might contain state from a previous run.
   if (infos.isRefactor()) {
-    _traversalEnumerator.clear(
-        false);
+    _traversalEnumerator.clear(false);
   } else {
     _traverser.done();
   }
