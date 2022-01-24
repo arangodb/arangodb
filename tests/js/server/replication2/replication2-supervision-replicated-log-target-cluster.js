@@ -108,6 +108,7 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
 const replicatedLogSupervisionError = function (database, logId, errorCode) {
   return function () {
     let {current} = readReplicatedLogAgency(database, logId);
+    console.log(current);
 
     if (current.supervision === undefined) {
       return Error(`supervision not yet defined`);
@@ -119,6 +120,7 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
       return Error(`reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`)
     }
     if (current.supervision.error.code === errorCode) {
+      console.log(current.supervision.error.code);
       return true;
     }
     return false;
@@ -482,6 +484,7 @@ const replicatedLogSuite = function () {
         [newServer]: {excluded: true, forced: false},
         [leader]: null,
       }));
+
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {excluded: false},
@@ -516,8 +519,11 @@ const replicatedLogSuite = function () {
       //  [leader]: null,
       }));
 
-      // TODO we except the supervision to fail here (like the todo above)
-      sleep(3);
+      console.log("before");
+      const errorCode = 0; // TARGET_LEADER_INVALID
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
+      console.log("after");
+
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {excluded: false},
