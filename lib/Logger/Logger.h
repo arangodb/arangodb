@@ -264,7 +264,7 @@ class Logger {
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(std::vector<std::string> const&);
-  static std::unordered_map<std::string, bool> const parseStringParams(
+  static std::unordered_map<std::string, bool> parseStringParams(
       std::vector<std::string> const&);
   static void setLogStructuredParamsOnServerStart(
       std::vector<std::string> const&);

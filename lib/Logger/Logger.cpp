@@ -620,7 +620,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
       LogContext::OverloadVisitor visitor([&out, &dumper](
                                               std::string_view const& key,
                                               auto&& value) {
-        if (!_structuredLogParams.contains(key.data())) {
+        if (!_structuredLogParams.contains({key.data(), key.size()})) {
           return;
         }
         out.push_back(',');
@@ -768,7 +768,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
       //  meta data from log
       LogContext::OverloadVisitor visitor([&out](std::string_view const& key,
                                                  auto&& value) {
-        if (!_structuredLogParams.contains(key.data())) {
+        if (!_structuredLogParams.contains({key.data(), key.size()})) {
           return;
         }
         out.push_back('[');

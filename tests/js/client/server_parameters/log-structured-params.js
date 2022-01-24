@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertMatch, assertEqual */
+/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -94,21 +94,64 @@ return require('internal').options()["log.output"];
     },
 
     testLogNewEntries: function() {
-      const res = arango.PUT("/_admin/log/structured", {"dog": true, "database": false});
+      let filtered = [];
+      try {
+        const resChangeParams = arango.PUT("/_admin/log/structured", {"dog": true, "database": false});
+        assertTrue(resChangeParams.hasOwnProperty("url"));
+        assertTrue(resChangeParams.hasOwnProperty("username"));
+        assertFalse(resChangeParams.hasOwnProperty("dog"));
+        assertFalse(resChangeParams.hasOwnProperty("database"));
 
-      assertTrue(res.hasOwnProperty("url"));
-      assertTrue(res.hasOwnProperty("username"));
-      assertFalse(res.hasOwnProperty("dog"));
-      assertFalse(res.hasOwnProperty("database"));
-    },
-    testLogRestoreParams: function() {
-      const res = arango.PUT("/_admin/log/structured", {"database": true});
+        const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
+require('console').log("testmann: start"); 
+for (let i = 0; i < 10; ++i) {
+  require('console').log("testmann: testi" + i);
+}
+require('console').log("testmann: done"); 
+return require('internal').options()["log.output"];
+`);
 
-      assertTrue(Object.keys(res).length === 3);
-      assertTrue(res.hasOwnProperty("url"));
-      assertTrue(res.hasOwnProperty("username"));
-      assertFalse(res.hasOwnProperty("dog"));
-      assertTrue(res.hasOwnProperty("database"));
+        assertTrue(Array.isArray(res));
+        assertTrue(res.length > 0);
+
+        let logfile = res[res.length - 1].replace(/^file:\/\//, '');
+
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        while (++tries < 60) {
+          let content = fs.readFileSync(logfile, 'ascii');
+          let lines = content.split('\n');
+
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
+
+          if (filtered.length === 12) {
+            break;
+          }
+
+          require("internal").sleep(0.5);
+        }
+        assertEqual(12, filtered.length);
+
+        assertTrue(filtered[0].match(/testmann: start/));
+        for (let i = 1; i < 11; ++i) {
+          assertTrue(filtered[i].match(/testmann: testi\d+/));
+          assertFalse(filtered[i].match(/\[dog: /));
+          assertFalse(filtered[i].match(/\[database: _system\]/));
+          assertTrue(filtered[i].match("[username: root]"));
+          assertTrue(filtered[i].match(`[url: /_admin/execute?returnBodyAsJSON=true]`));
+        }
+        assertTrue(filtered[11].match(/testmann: done/));
+      } finally {
+        const res = arango.PUT("/_admin/log/structured", {"database": true});
+
+        assertTrue(Object.keys(res).length === 3);
+        assertTrue(res.hasOwnProperty("url"));
+        assertTrue(res.hasOwnProperty("username"));
+        assertFalse(res.hasOwnProperty("dog"));
+        assertTrue(res.hasOwnProperty("database"));
+      }
     },
   };
 }
