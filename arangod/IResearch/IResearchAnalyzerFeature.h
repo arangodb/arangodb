@@ -343,7 +343,6 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
                                  LinkVersion version, bool extendedNames);
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
-  static std::string const& name() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @param name analyzer name

@@ -38,7 +38,7 @@ namespace arangodb {
 class ClusterEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer& server);
+  explicit ClusterEngine(ArangodServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);

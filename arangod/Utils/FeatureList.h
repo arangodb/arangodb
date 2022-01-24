@@ -28,7 +28,14 @@
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
 
+#include "Basics/system-compiler.h"
+
 namespace arangodb {
+
+template<typename T>
+constexpr frozen::string ctti() noexcept {
+  return {ARANGODB_PRETTY_FUNCTION};
+}
 
 template<typename T>
 struct TypeTag {
@@ -56,7 +63,7 @@ class TypeList {
   template<size_t... Idx>
   static constexpr std::array<std::pair<frozen::string, size_t>, Size>
   toArrayImpl(std::integer_sequence<size_t, Idx...>) {
-    return {std::pair<frozen::string, size_t>{T::name(), Idx}...};
+    return {std::pair<frozen::string, size_t>{ctti<T>(), Idx}...};
   }
 
   template<typename Visitor, size_t... Idx>
@@ -76,9 +83,9 @@ class FeatureList {
 
   template<typename U>
   static consteval size_t id() {
-    static_assert(kFeatures.find(U::name()) != kFeatures.end(),
+    static_assert(kFeatures.find(ctti<U>()) != kFeatures.end(),
                   "Feature not found");
-    return kFeatures[U::name()];
+    return kFeatures.find(ctti<U>())->second;
   }
 
  private:
@@ -88,4 +95,4 @@ class FeatureList {
       frozen::make_unordered_map(Types::toArray());
 };
 
-}
+}  // namespace arangodb

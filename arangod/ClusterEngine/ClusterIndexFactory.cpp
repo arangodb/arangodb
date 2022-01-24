@@ -52,8 +52,7 @@ using namespace arangodb::iresearch;
 struct DefaultIndexFactory : public IndexTypeFactory {
   std::string const _type;
 
-  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
-                               std::string const& type)
+  explicit DefaultIndexFactory(ArangodServer& server, std::string const& type)
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -100,8 +99,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(application_features::ApplicationServer& server,
-                            std::string const& type)
+  explicit EdgeIndexFactory(ArangodServer& server, std::string const& type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -123,8 +121,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(application_features::ApplicationServer& server,
-                               std::string const& type)
+  explicit PrimaryIndexFactory(ArangodServer& server, std::string const& type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -148,8 +145,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
-  explicit IResearchInvertedIndexFactory(
-      application_features::ApplicationServer& server)
+  explicit IResearchInvertedIndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, IRESEARCH_INVERTED_INDEX_TYPE.data()) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -204,8 +200,8 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
 
 namespace arangodb {
 
-void ClusterIndexFactory::linkIndexFactories(
-    application_features::ApplicationServer& server, IndexFactory& factory) {
+void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
+                                             IndexFactory& factory) {
   static const EdgeIndexFactory edgeIndexFactory(server, "edge");
   static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext");
   static const DefaultIndexFactory geoIndexFactory(server, "geo");
@@ -233,8 +229,7 @@ void ClusterIndexFactory::linkIndexFactories(
   factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
 }
 
-ClusterIndexFactory::ClusterIndexFactory(
-    application_features::ApplicationServer& server)
+ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server)
     : IndexFactory(server) {
   linkIndexFactories(server, *this);
 }

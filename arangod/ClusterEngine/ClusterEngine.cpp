@@ -60,7 +60,7 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
+ClusterEngine::ClusterEngine(ArangodServer& server)
     : StorageEngine(server, EngineName, FeatureName,
                     std::make_unique<ClusterIndexFactory>(server)),
       _actualEngine(nullptr) {

@@ -237,10 +237,9 @@ RestStatus RestLogHandler::handleDeleteRequest(
       }));
 }
 
-RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* req, GeneralResponse* resp)
+RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,
+                               GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}
-RestLogHandler::~RestLogHandler() = default;
 
 RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
   return waitForFuture(

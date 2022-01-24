@@ -290,18 +290,18 @@ class ApplicationFeatureT : public ApplicationFeature {
   // register a start dependency upon another feature
   template<typename T>
   void startsAfter() {
-    startsAfter<T, Server>();
+    ApplicationFeature::startsAfter<T, Server>();
   }
 
   // register a start dependency upon another feature
   template<typename T>
   void startsBefore() {
-    startsBefore<T, Server>();
+    ApplicationFeature::startsBefore<T, Server>();
   }
 
   template<typename T>
   void onlyEnabledWith() {
-    onlyEnabledWith<T, Server>();
+    ApplicationFeature::onlyEnabledWith<T, Server>();
   }
 
  protected:

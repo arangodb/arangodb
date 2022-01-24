@@ -146,7 +146,7 @@ class IResearchFeature;
 namespace replication2::replicated_state {
 struct ReplicatedStateAppFeature;
 namespace black_hole {
-class BlackHoleStateMachineFeature;
+struct BlackHoleStateMachineFeature;
 }
 
 }  // namespace replication2::replicated_state

@@ -394,7 +394,7 @@ class ApplicationServerT : public ApplicationServer {
                std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
   bool hasFeature() const noexcept {
     constexpr auto featureId = Features::template id<Type>();
-    return hasFeature(featureId);
+    return ApplicationServer::hasFeature(featureId);
   }
 
   // returns a const reference to a feature. will throw when used for
