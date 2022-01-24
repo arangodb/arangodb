@@ -2472,8 +2472,12 @@ TEST_F(IResearchLinkMetricsTest, CleanupWhenEmptyCommit) {
   }
   irs::file_utils::exists(exist, dataPath.c_str());
   EXPECT_TRUE(exist);
-  std::this_thread::sleep_for(10ms);
-  irs::file_utils::exists(exist, dataPath.c_str());
+
+  int tryCount = 100;
+  while(exist && (--tryCount) > 0) {
+    std::this_thread::sleep_for(10ms);
+    irs::file_utils::exists(exist, dataPath.c_str());
+  }
   EXPECT_FALSE(exist);
 }
 
@@ -2737,5 +2741,144 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     EXPECT_EQ(numFailed, (decltype(numFailed){0, 0, 0}));
     auto avgTime = l->avgTime();
     EXPECT_GE(avgTime, (decltype(avgTime){0, 0, 0}));
+  }
+}
+
+class IResearchLinkInRecoveryDBServerTest
+    : public ::testing::Test,
+  public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
+                                            arangodb::LogLevel::FATAL> {
+ protected:
+  static constexpr size_t kEncBlockSize{13};
+  arangodb::tests::mocks::MockDBServer server;
+  std::string testFilesystemPath;
+
+  IResearchLinkInRecoveryDBServerTest() : server(false, true) {
+    arangodb::tests::init();
+    
+    // ensure ArangoSearch start 1 maintenance for each group
+    auto opts = server.server().options();
+    auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
+    ars.collectOptions(opts);
+    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>(
+        "--arangosearch.commit-threads");
+    opts->processingResult().touch("arangosearch.commit-threads");
+    EXPECT_NE(nullptr, commitThreads);
+    *commitThreads->ptr = 1;
+    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>(
+        "--arangosearch.consolidation-threads");
+    opts->processingResult().touch("arangosearch.consolidation-threads");
+    EXPECT_NE(nullptr, consolidationThreads);
+    *consolidationThreads->ptr = 1;
+    ars.validateOptions(opts);
+
+    server.startFeatures();
+    EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
+              ars.limits(arangodb::iresearch::ThreadGroup::_0));
+    EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
+              ars.limits(arangodb::iresearch::ThreadGroup::_1));
+
+    TransactionStateMock::abortTransactionCount = 0;
+    TransactionStateMock::beginTransactionCount = 0;
+    TransactionStateMock::commitTransactionCount = 0;
+
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(
+        dbPathFeature);  // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature.directory();
+
+    long systemError;
+    std::string systemErrorStr;
+    TRI_CreateDirectory(testFilesystemPath.c_str(), systemError,
+                        systemErrorStr);
+  }
+
+  ~IResearchLinkInRecoveryDBServerTest() override {
+    TRI_RemoveDirectory(testFilesystemPath.c_str());
+  }
+};
+
+TEST_F(IResearchLinkInRecoveryDBServerTest, test_init_in_recovery) {
+  // collection registered with view (collection initially not in view)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42" })");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::unordered_set<arangodb::DataSourceId> expected;
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+
+      for (auto& cid : expected) {
+        EXPECT_EQ(1, actual.erase(cid));
+      }
+
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    auto link = StorageEngineMock::buildLinkMock(
+        arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
+    // EXPECT_TRUE((false == !link));
+
+    // collection in view after
+    {
+      std::unordered_set<arangodb::DataSourceId> expected = {
+          arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+
+      for (auto& cid : expected) {
+        EXPECT_EQ(1, actual.erase(cid));
+      }
+
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    link.reset();
+
+    // collection in view on destruct
+    {
+      std::unordered_set<arangodb::DataSourceId> expected = {
+          arangodb::DataSourceId{100}};
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+
+      for (auto& cid : expected) {
+        EXPECT_EQ(1, actual.erase(cid));
+      }
+
+      EXPECT_TRUE((actual.empty()));
+    }
   }
 }
