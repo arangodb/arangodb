@@ -97,7 +97,12 @@ return require('internal').options()["log.output"];
       const formerSettings = arango.GET("/_admin/log/structured");
       try {
         let filtered = [];
-        const resChangeParams = arango.PUT("/_admin/log/structured", {"dog": true, "database": false});
+        const resChangeParams = arango.PUT("/_admin/log/structured", {
+          "dog": true,
+          "database": false,
+          "username": true,
+          "url": true
+        });
         assertTrue(resChangeParams.hasOwnProperty("url"));
         assertTrue(resChangeParams.hasOwnProperty("username"));
         assertFalse(resChangeParams.hasOwnProperty("dog"));
@@ -145,13 +150,7 @@ return require('internal').options()["log.output"];
         }
         assertTrue(filtered[11].match(/testParams: done/));
       } finally {
-        const res = arango.PUT("/_admin/log/structured", formerSettings);
-
-        assertTrue(Object.keys(res).length === 3);
-        assertTrue(res.hasOwnProperty("url"));
-        assertTrue(res.hasOwnProperty("username"));
-        assertFalse(res.hasOwnProperty("dog"));
-        assertTrue(res.hasOwnProperty("database"));
+        arango.PUT("/_admin/log/structured", formerSettings);
       }
     },
   };
