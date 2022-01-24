@@ -45,6 +45,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
@@ -768,7 +769,7 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node,
   auto* resolver = trx.resolver();
   TRI_ASSERT(resolver);
 
-  ::arangodb::containers::HashSet<DataSourceId> collections;
+  ::arangodb::containers::FlatHashSet<DataSourceId> collections;
   for (auto& shard : node.shards()) {
     auto collection = resolver->getCollection(shard);
 
