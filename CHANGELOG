@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a
+  follower to a shard.
+
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 
 * Updated Enterprise license behavior: now there will be a 48 hour period for a
