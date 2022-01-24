@@ -25,6 +25,7 @@
 #pragma once
 
 #include "IResearchFilterOptimization.h"
+#include "IResearchLinkMeta.h"
 
 #include "VocBase/voc-types.h"
 
@@ -49,6 +50,9 @@ namespace iresearch {
 
 struct QueryContext;
 
+using AnalyzerProvider =
+    std::function<FieldMeta::Analyzer const&(std::string_view)>;
+
 struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch filter
@@ -56,7 +60,9 @@ struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::Result filter(irs::boolean_filter* filter,
                                  QueryContext const& ctx,
-                                 arangodb::aql::AstNode const& node);
+                                 arangodb::aql::AstNode const& node,
+                                 bool forSearch = true,
+                                 AnalyzerProvider const* provider = nullptr);
 };  // FilterFactory
 
 struct FilterConstants {
