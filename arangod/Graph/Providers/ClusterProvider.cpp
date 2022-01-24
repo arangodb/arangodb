@@ -77,17 +77,23 @@ auto operator<<(std::ostream& out, ClusterProvider::Step const& step)
   out << step._vertex.getID();
   return out;
 }
-}  // namespace arangodb
+}  // namespace arangodb::graph
 
 ClusterProvider::Step::Step(VertexType v)
     : _vertex(std::move(v)), _edge(), _fetched(false) {}
 
 ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev)
-    : BaseStep(prev), _vertex(std::move(v)), _edge(std::move(edge)), _fetched(false) {}
+    : BaseStep(prev),
+      _vertex(std::move(v)),
+      _edge(std::move(edge)),
+      _fetched(false) {}
 
 ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev,
                             bool fetched)
-    : BaseStep(prev), _vertex(std::move(v)), _edge(std::move(edge)), _fetched(fetched) {}
+    : BaseStep(prev),
+      _vertex(std::move(v)),
+      _edge(std::move(edge)),
+      _fetched(fetched) {}
 
 ClusterProvider::Step::~Step() = default;
 
