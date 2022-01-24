@@ -2197,7 +2197,7 @@ OperationResult transaction::Methods::countLocal(
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& idx, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2215,7 +2215,8 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites);
+  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites,
+                                   mutableConditionIdx);
 }
 
 /// @brief factory for IndexIterator objects

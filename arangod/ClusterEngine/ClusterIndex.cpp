@@ -287,6 +287,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       // should not be called for these indexes
@@ -322,6 +323,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX: {
@@ -367,6 +369,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::specializeCondition(node, reference);  // unsupported
