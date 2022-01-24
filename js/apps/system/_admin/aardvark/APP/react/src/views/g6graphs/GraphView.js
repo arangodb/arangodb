@@ -130,7 +130,6 @@ export class GraphView extends React.Component {
     const id = (Math.random() + 1).toString(36).substring(7);
     const address = (Math.random() + 1).toString(8).substring(7);
     const fillColor = `#${Math.floor(Math.random()*16777215).toString(16)}`;
-    console.log("fillColor: ", fillColor);
     const nodeModel = {
       id: id,
       label: id,
@@ -143,6 +142,7 @@ export class GraphView extends React.Component {
     };
     
     this.graph.addItem('node', nodeModel);
+    this.props.onAddSingleNode(nodeModel);
   }
 
   addEdge = () => {
@@ -174,6 +174,7 @@ export class GraphView extends React.Component {
     };
     
     this.graph.addItem('edge', edgeModel);
+    this.props.onAddSingleEdge(edgeModel);
   }
 
   changeNodeStyle = (typeModel) => {

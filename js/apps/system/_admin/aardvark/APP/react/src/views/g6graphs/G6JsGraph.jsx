@@ -272,6 +272,34 @@ const G6JsGraph = () => {
     console.log('graph is: ', graph);
   }
 
+  const updateGraphDataWithNode = (newNode) => {
+    const currentEdges = graphData.edges;
+    const newGraphData = {
+      nodes: [
+        ...graphData.nodes,
+        newNode
+      ],
+      edges: [
+        ...currentEdges
+      ]
+    };
+    setGraphData(newGraphData);
+  }
+
+  const updateGraphDataWithEdge = (newEdge) => {
+    const currentNodes = graphData.nodes;
+    const newGraphData = {
+      nodes: [
+        ...currentNodes,
+      ],
+      edges: [
+        ...graphData.edges,
+        newEdge
+      ]
+    };
+    setGraphData(newGraphData);
+  }
+
   const updateGraphDataNodes = (newNodes) => {
     const currentEdges = graphData.edges;
     const newGraphData = {
@@ -324,6 +352,8 @@ const G6JsGraph = () => {
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
             onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
+            onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
+            onAddSingleEdge={(newEdge) => updateGraphDataWithEdge(newEdge)}
         />
     </div>
   );
