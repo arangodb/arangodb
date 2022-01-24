@@ -273,23 +273,16 @@ const G6JsGraph = () => {
   }
 
   const updateGraphDataNodes = (newNodes) => {
-    console.log('graphData is: ', graphData);
-    console.log('graphData.nodes are: ', graphData.nodes);
-    /*
     const currentEdges = graphData.edges;
     const newGraphData = {
-      edges: {
-        ...currentEdges
-      },
-       nodes: {
+      nodes: [
         ...newNodes
-      }
-    }
-    console.log("currentEdges: ", currentEdges);
-    console.log("Complete new created graphData-Object: ", newGraphData);
-    */
-    setGraphData(newNodes);
-    //setGraphData(data2);
+      ],
+      edges: [
+        ...currentEdges
+      ]
+    };
+    setGraphData(newGraphData);
   }
 
   const printGraphData = () => {

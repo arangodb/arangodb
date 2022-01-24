@@ -184,54 +184,15 @@ export class GraphView extends React.Component {
   }
 
   updateNodeGraphData = () => {
-    const tempNodes = this.graph.getNodes();
-    console.log("updateNodeGraphData: Nodes in child: ", tempNodes);
-    const dataWithNewNodes = {
-      nodes: [
-        {
-          id: '1',
-          label: 'node1'
-        },
-        {
-          id: '2',
-          label: 'node2'
-        },
-        {
-          id: '3',
-          label: 'node3'
-        }
-      ],
-      edges: [
-        {
-          source: '1',
-          target: '2',
-          data: {
-            type: 'name1',
-            amount: '100,000,000,00 元',
-            date: '2019-08-03'
-          }
-        },
-        {
-          source: '1',
-          target: '3',
-          data: {
-            type: 'name2',
-            amount: '100,000,000,00 元',
-            date: '2019-08-03'
-          }
-        },
-        {
-          source: '2',
-          target: '3',
-          data: {
-            type: 'name3',
-            amount: '100,000,000,00 元',
-            date: '2019-08-03'
-          }
-        }
-      ]
-    };
-    this.props.onUpdateNodeGraphData(dataWithNewNodes);
+    //const tempNodes = this.graph.getNodes();
+    const tempNodes = [];
+    this.graph.findAll("node", (node) => {
+      console.log('node.get("model"): ', node.get("model"));
+      tempNodes.push(node.get("model"));
+      return node.get("model");
+    });
+    console.log("updateNodeGraphData (tempNodes in child): ", tempNodes);
+    this.props.onUpdateNodeGraphData(tempNodes);
   }
 
   render() {
