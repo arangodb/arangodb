@@ -198,8 +198,15 @@ auto checkLeaderInTarget(LogTarget const& target,
                                   health, plan.currentTerm->term);
 
           if (!plan.participantsConfig.participants.contains(*target.leader)) {
-            return std::make_unique<ErrorAction>(
-                plan.id, "The leader requested in Target is not a participant");
+            if (current.supervision && current.supervision->error &&
+                current.supervision->error ==
+                    LogCurrentSupervisionError::TARGET_LEADER_INVALID) {
+              // Error has already been reported; don't re-report
+              return std::make_unique<EmptyAction>();
+            } else {
+              return std::make_unique<ErrorAction>(
+                  plan.id, LogCurrentSupervisionError::TARGET_LEADER_INVALID);
+            }
           }
           auto const& planLeaderConfig =
               plan.participantsConfig.participants.at(*target.leader);

@@ -105,6 +105,26 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
   };
 };
 
+const replicatedLogSupervisionError = function (database, logId, errorCode) {
+  return function () {
+    let {current} = readReplicatedLogAgency(database, logId);
+
+    if (current.supervision === undefined) {
+      return Error(`supervision not yet defined`);
+    }
+    if (current.supervision.error === undefined) {
+      return Error(`no error reported in supervision`);
+    }
+    if (current.supervision.error.code !== errorCode) {
+      return Error(`reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`)
+    }
+    if (current.supervision.error.code === errorCode) {
+      return true;
+    }
+    return false;
+  };
+};
+
 const replicatedLogSuite = function () {
 
   const targetConfig = {
@@ -509,6 +529,24 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term + 1, [...followers, newServer], newServer));
     },
 
+    // This tests requests a non-server as leader and expects the
+    // supervision to fail
+    testChangeLeaderToNonServer: function () {
+      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+
+      // now change the leader
+      const otherServer = "Foo42";
+      setReplicatedLogLeaderTarget(database, logId, otherServer);
+      // The supervision should complain about the server not being a leader
+
+      const errorCode = 0; // TARGET_LEADER_INVALID
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
+
+      // nothing should have happend
+      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     // This tests requests a non-participant server as leader and expects the
     // supervision to fail
     testChangeLeaderToNonFollower: function () {
@@ -519,11 +557,11 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, otherServer);
       // The supervision should complain about the server not being a leader
 
-      sleep(10);
-      // TODO wait for the supervision to complain
-
+      const errorCode = 0; // TARGET_LEADER_INVALID
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
+      //
       // nothing should have happend
-      waitFor(replicatedLogIsReady(database, logId, term + 2, servers, leader));
+      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
       replicatedLogDeleteTarget(database, logId);
     },
 

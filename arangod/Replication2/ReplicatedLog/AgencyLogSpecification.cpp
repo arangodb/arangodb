@@ -158,6 +158,11 @@ LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t,
   if (auto es = slice.get("election"); !es.isNone()) {
     election = LogCurrentSupervisionElection{from_velocypack, es};
   }
+  if (auto es = slice.get("error"); !es.isNone()) {
+    if (es.isObject()) {
+      error = es.get("code").getNumericValue<LogCurrentSupervisionError>();
+    }
+  }
 }
 
 LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
@@ -196,9 +201,13 @@ auto LogCurrent::fromVelocyPack(VPackSlice s) -> LogCurrent {
 
 auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
-  if (election.has_value()) {
+  if (election) {
     builder.add(VPackValue("election"));
     election->toVelocyPack(builder);
+  }
+  if (error) {
+    builder.add(VPackValue("error"));
+    ::toVelocyPack(*error, builder);
   }
 }
 
@@ -277,6 +286,25 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
          left.participantsAvailable == right.participantsAvailable &&
          left.participantsRequired == right.participantsRequired &&
          left.detail == right.detail;
+}
+
+auto agency::toVelocyPack(LogCurrentSupervisionError error,
+                          VPackBuilder& builder) -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("code", VPackValue(static_cast<int>(error)));
+  builder.add("message", VPackValue(to_string(error)));
+}
+
+auto agency::to_string(LogCurrentSupervisionError error) noexcept
+    -> std::string_view {
+  switch (error) {
+    case LogCurrentSupervisionError::TARGET_LEADER_INVALID:
+      return "the leader selected in target is invalid";
+  }
+  LOG_TOPIC("7eee2", FATAL, arangodb::Logger::REPLICATION2)
+      << "Invalid LogCurrentSupervisionError "
+      << static_cast<std::underlying_type_t<decltype(error)>>(error);
+  FATAL_ERROR_ABORT();
 }
 
 auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {

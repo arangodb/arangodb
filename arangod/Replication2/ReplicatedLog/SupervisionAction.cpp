@@ -109,8 +109,8 @@ void ErrorAction::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
 
-  builder.add(VPackValue("message"));
-  builder.add(VPackValue(_message));
+  builder.add(VPackValue("error"));
+  ::toVelocyPack(_error, builder);
 }
 
 auto ErrorAction::execute(std::string dbName,
@@ -124,12 +124,9 @@ auto ErrorAction::execute(std::string dbName,
                           ->error()
                           ->str();
   return envelope.write()
-      .emplace_object(current_path,
-                      [&](VPackBuilder& builder) {
-                        auto ob = VPackObjectBuilder(&builder);
-                        builder.add(VPackValue("message"));
-                        builder.add(VPackValue(_message));
-                      })
+      .emplace_object(
+          current_path,
+          [&](VPackBuilder& builder) { ::toVelocyPack(_error, builder); })
       .inc(paths::current()->version()->str())
       .precs()
       .end();
