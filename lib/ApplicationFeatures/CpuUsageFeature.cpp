@@ -62,7 +62,7 @@ CpuUsageFeature::SnapshotProvider::SnapshotProvider() : _statFile(nullptr) {
 }
 
 CpuUsageFeature::CpuUsageFeature(Server& server)
-    : ArangodFeature{server, Server::id<CpuUsageFeature>(), name()},
+    : ArangodFeature{server, *this},
       _snapshotProvider(),
       _updateInProgress(false) {
   setOptional(true);

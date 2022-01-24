@@ -63,7 +63,7 @@ std::unordered_map<std::string, EngineInfo> createEngineMap() {
 namespace arangodb {
 
 EngineSelectorFeature::EngineSelectorFeature(Server& server)
-    : ArangodFeature{server, Server::id<EngineSelectorFeature>(), name()},
+    : ArangodFeature{server, *this},
       _engine(nullptr),
       _engineName("auto"),
       _selected(false),

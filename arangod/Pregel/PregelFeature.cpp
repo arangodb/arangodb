@@ -231,8 +231,7 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(Server& server)
-    : ArangodFeature{server, Server::id<PregelFeature>(), name()},
-      _softShutdownOngoing(false) {
+    : ArangodFeature{server, *this}, _softShutdownOngoing(false) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
 }

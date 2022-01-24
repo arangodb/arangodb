@@ -50,7 +50,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ConsoleFeature::ConsoleFeature(Server& server)
-    : ArangodFeature{server, Server::id<ConsoleFeature>(), name()},
+    : ArangodFeature{server, *this},
       _operationMode(OperationMode::MODE_SERVER) {
   startsAfter<AgencyFeaturePhase>();
 }

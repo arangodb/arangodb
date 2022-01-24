@@ -169,7 +169,7 @@ arangodb::Result arangodb::maintenance::collectionCount(
 }
 
 MaintenanceFeature::MaintenanceFeature(Server& server)
-    : ArangodFeature{server, Server::id<MaintenanceFeature>(), name()},
+    : ArangodFeature{server, *this},
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
       _firstRun(true),

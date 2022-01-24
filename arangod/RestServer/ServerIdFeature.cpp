@@ -44,7 +44,7 @@ namespace arangodb {
 ServerId ServerIdFeature::SERVERID{0};
 
 ServerIdFeature::ServerIdFeature(Server& server)
-    : ArangodFeature{server, Server::id<ServerIdFeature>(), name()} {
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 

@@ -427,9 +427,7 @@ class TtlThread final : public Thread {
 }  // namespace arangodb
 
 TtlFeature::TtlFeature(Server& server)
-    : ArangodFeature{server, Server::id<TtlFeature>(), name()},
-      _allowRunning(true),
-      _active(true) {
+    : ArangodFeature{server, *this}, _allowRunning(true), _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }

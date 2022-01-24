@@ -88,7 +88,7 @@ DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
 
 NetworkFeature::NetworkFeature(Server& server,
                                network::ConnectionPool::Config config)
-    : ArangodFeature{server, Server::id<NetworkFeature>(), name()},
+    : ArangodFeature{server, *this},
       _protocol(),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),

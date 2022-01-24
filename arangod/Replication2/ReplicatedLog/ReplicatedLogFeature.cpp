@@ -41,7 +41,7 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
 ReplicatedLogFeature::ReplicatedLogFeature(Server& server)
-    : ArangodFeature{server, Server::id<ReplicatedLogFeature>(), name()},
+    : ArangodFeature{server, *this},
       _replicatedLogMetrics(std::make_shared<ReplicatedLogMetrics>(
           server.getFeature<metrics::MetricsFeature>())),
       _options(std::make_shared<ReplicatedLogGlobalSettings>()) {

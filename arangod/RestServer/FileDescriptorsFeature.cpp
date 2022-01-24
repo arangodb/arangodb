@@ -111,7 +111,7 @@ struct FileDescriptors {
 };
 
 FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
-    : ArangodFeature{server, Server::id<FileDescriptorsFeature>(), name()},
+    : ArangodFeature{server, *this},
       _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();

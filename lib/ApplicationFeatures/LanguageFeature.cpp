@@ -87,7 +87,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 LanguageFeature::LanguageFeature(Server& server)
-    : ArangodFeature{server, Server::id<LanguageFeature>(), name()},
+    : ArangodFeature{server, *this},
       _locale(),
       _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr),

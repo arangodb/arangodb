@@ -851,7 +851,7 @@ bool isScorer(aql::Function const& func) noexcept {
 }
 
 IResearchFeature::IResearchFeature(Server& server)
-    : ArangodFeature{server, Server::id<IResearchFeature>(), name()},
+    : ArangodFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _consolidationThreads(0),

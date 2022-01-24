@@ -230,7 +230,7 @@ class LogAppenderMetricsCounter final : public LogAppender {
 };
 
 LogBufferFeature::LogBufferFeature(Server& server)
-    : ArangodFeature{server, Server::id<LogBufferFeature>(), name()},
+    : ArangodFeature{server, *this},
       _minInMemoryLogLevel("info"),
       _useInMemoryAppender(true) {
   setOptional(true);

@@ -60,9 +60,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(Server& server)
-    : ArangodFeature{server, Server::id<BootstrapFeature>(), name()},
-      _isReady(false),
-      _bark(false) {
+    : ArangodFeature{server, *this}, _isReady(false), _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();

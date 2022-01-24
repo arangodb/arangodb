@@ -51,7 +51,7 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 AgencyFeature::AgencyFeature(Server& server)
-    : ArangodFeature{server, Server::id<AgencyFeature>(), name()},
+    : ArangodFeature{server, *this},
       _activated(false),
       _size(1),
       _poolSize(1),

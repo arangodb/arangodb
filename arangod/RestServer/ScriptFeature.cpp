@@ -44,8 +44,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ScriptFeature::ScriptFeature(Server& server, int* result)
-    : ArangodFeature{server, Server::id<ScriptFeature>(), name()},
-      _result(result) {
+    : ArangodFeature{server, *this}, _result(result) {
   setOptional(true);
   startsAfter<AgencyFeaturePhase>();
 }

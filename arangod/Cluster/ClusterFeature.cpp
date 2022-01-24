@@ -58,7 +58,7 @@ DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
                   "Request time for Agency requests [ms]");
 
 ClusterFeature::ClusterFeature(Server& server)
-    : ArangodFeature{server, Server::id<ClusterFeature>(), name()},
+    : ArangodFeature{server, *this},
       _apiJwtPolicy("jwt-compat"),
       _metrics{server.getFeature<metrics::MetricsFeature>()},
       _agency_comm_request_time_ms(

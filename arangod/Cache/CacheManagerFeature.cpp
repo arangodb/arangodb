@@ -49,7 +49,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CacheManagerFeature::CacheManagerFeature(Server& server)
-    : ArangodFeature{server, Server::id<CacheManagerFeature>(), name()},
+    : ArangodFeature{server, *this},
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize(

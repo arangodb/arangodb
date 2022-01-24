@@ -63,7 +63,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 SslServerFeature::SslServerFeature(Server& server)
-    : ArangodFeature{server, Server::id<SslServerFeature>(), name()},
+    : ArangodFeature{server, *this},
       _cafile(),
       _keyfile(),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),

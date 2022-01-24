@@ -166,7 +166,7 @@ DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
 
 QueryRegistryFeature::QueryRegistryFeature(Server& server)
-    : ArangodFeature{server, Server::id<QueryRegistryFeature>(), name()},
+    : ArangodFeature{server, *this},
       _trackingEnabled(true),
       _trackSlowQueries(true),
       _trackQueryString(true),

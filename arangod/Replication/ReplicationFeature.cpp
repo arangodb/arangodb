@@ -80,7 +80,7 @@ DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total,
 namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(Server& server)
-    : ArangodFeature{server, Server::id<ReplicationFeature>(), name()},
+    : ArangodFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),

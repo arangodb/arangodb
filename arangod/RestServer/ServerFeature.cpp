@@ -50,7 +50,7 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 ServerFeature::ServerFeature(Server& server, int* res)
-    : ArangodFeature{server, Server::id<ServerFeature>(), name()},
+    : ArangodFeature{server, *this},
       _result(res),
       _operationMode(OperationMode::MODE_SERVER)
 #if _WIN32

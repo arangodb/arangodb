@@ -119,7 +119,7 @@ DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
 V8DealerFeature::V8DealerFeature(Server& server)
-    : ArangodFeature{server, Server::id<V8DealerFeature>(), name()},
+    : ArangodFeature{server, *this},
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),

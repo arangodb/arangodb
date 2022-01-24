@@ -121,8 +121,11 @@ class SupervisorFeature;
 class WindowsServiceFeature;
 #endif
 #ifdef USE_ENTERPRISE
-// FIXME(gnusi)
-setupServerEE(server);
+class AuditFeature;
+class LdapFeature;
+class LicenseFeature;
+class RCloneFeature;
+class HotBackupFeature;
 #else
 class SslServerFeature;
 #endif

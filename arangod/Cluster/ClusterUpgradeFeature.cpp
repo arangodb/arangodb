@@ -47,8 +47,7 @@ static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
 ClusterUpgradeFeature::ClusterUpgradeFeature(Server& server)
-    : ArangodFeature{server, Server::id<ClusterUpgradeFeature>(), name()},
-      _upgradeMode("auto") {
+    : ArangodFeature{server, *this}, _upgradeMode("auto") {
   startsAfter<application_features::FinalFeaturePhase>();
 }
 

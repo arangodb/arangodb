@@ -126,7 +126,7 @@ std::string getOrSetPreviousLanguage(arangodb::ArangodServer& server,
 namespace arangodb {
 
 LanguageCheckFeature::LanguageCheckFeature(Server& server)
-    : ArangodFeature{server, Server::id<LanguageCheckFeature>(), name()} {
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<DatabasePathFeature>();
   startsAfter<LanguageFeature>();

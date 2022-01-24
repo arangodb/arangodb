@@ -47,8 +47,7 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
-    : ArangodFeature{server, Server::id<OptimizerRulesFeature>(), name()},
-      _parallelizeGatherWrites(true) {
+    : ArangodFeature{server, *this}, _parallelizeGatherWrites(true) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 

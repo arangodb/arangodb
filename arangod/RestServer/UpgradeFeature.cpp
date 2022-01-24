@@ -59,7 +59,7 @@ namespace arangodb {
 
 UpgradeFeature::UpgradeFeature(Server& server, int* result,
                                std::vector<size_t> const& nonServerFeatures)
-    : ArangodFeature{server, Server::id<UpgradeFeature>(), name()},
+    : ArangodFeature{server, *this},
       _upgrade(false),
       _upgradeCheck(true),
       _result(result),

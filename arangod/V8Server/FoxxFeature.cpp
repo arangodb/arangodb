@@ -31,7 +31,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FoxxFeature::FoxxFeature(Server& server)
-    : ArangodFeature{server, Server::id<FoxxFeature>(), name()},
+    : ArangodFeature{server, *this},
       _pollInterval(1.0),
       _enabled(true),
       _startupWaitForSelfHeal(false) {

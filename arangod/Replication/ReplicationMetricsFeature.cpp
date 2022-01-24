@@ -97,7 +97,7 @@ DECLARE_COUNTER(arangodb_replication_synchronous_requests_total_number_total,
 namespace arangodb {
 
 ReplicationMetricsFeature::ReplicationMetricsFeature(Server& server)
-    : ArangodFeature{server, Server::id<ReplicationMetricsFeature>(), name()},
+    : ArangodFeature{server, *this},
       _numDumpRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_dump_requests_total{})),
       _numDumpBytesReceived(server.getFeature<metrics::MetricsFeature>().add(

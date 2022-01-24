@@ -46,7 +46,7 @@ double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
 // run into an error anyway. This is when a follower will be dropped.
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(Server& server)
-    : ArangodFeature{server, Server::id<ReplicationTimeoutFeature>(), name()} {
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }

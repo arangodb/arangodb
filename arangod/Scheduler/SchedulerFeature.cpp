@@ -73,8 +73,7 @@ namespace arangodb {
 SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(Server& server)
-    : ArangodFeature{server, Server::id<SchedulerFeature>(), name()},
-      _scheduler(nullptr) {
+    : ArangodFeature{server, *this}, _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 #ifdef TRI_HAVE_GETRLIMIT

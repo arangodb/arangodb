@@ -506,7 +506,7 @@ constexpr auto kSuppressionsV1 = frozen::make_unordered_set<frozen::string>({
 }  // namespace
 
 MetricsFeature::MetricsFeature(Server& server)
-    : ArangodFeature{server, Server::id<MetricsFeature>(), name()},
+    : ArangodFeature{server, *this},
       _export{true},
       _exportReadWriteMetrics{false} {
   setOptional(false);

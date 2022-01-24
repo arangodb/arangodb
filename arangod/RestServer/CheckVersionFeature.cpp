@@ -50,7 +50,7 @@ namespace arangodb {
 CheckVersionFeature::CheckVersionFeature(
     Server& server, int* result,
     std::vector<std::type_index> const& nonServerFeatures)
-    : ArangodFeature{server, Server::id<CheckVersionFeature>(), name()},
+    : ArangodFeature{server, *this},
       _checkVersion(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {

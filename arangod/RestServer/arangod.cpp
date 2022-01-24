@@ -200,6 +200,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
       } else {
         server.addFeature<T>();
       }
+
+      // FIXME(gnusi) handle
+      // class AuditFeature;
+      // class LdapFeature;
+      // class LicenseFeature;
+      // class RCloneFeature;
+      // class HotBackupFeature;
     });
 
     try {

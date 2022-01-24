@@ -273,6 +273,11 @@ class ApplicationFeatureT : public ApplicationFeature {
  public:
   using Server = ServerT;
 
+  template<typename Impl>
+  ApplicationFeatureT(Server& server, const Impl&)
+      : ApplicationFeatureT(server, Server::template id<Impl>(), Impl::name()) {
+  }
+
   ApplicationFeatureT(Server& server, size_t registration,
                       std::string_view name)
       : ApplicationFeature{server, registration, name} {}

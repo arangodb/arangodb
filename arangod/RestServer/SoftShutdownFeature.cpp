@@ -53,7 +53,7 @@ void queueShutdownChecker(std::mutex& mutex,
 namespace arangodb {
 
 SoftShutdownFeature::SoftShutdownFeature(Server& server)
-    : ArangodFeature{server, Server::id<SoftShutdownFeature>(), name()} {
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();

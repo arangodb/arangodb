@@ -32,7 +32,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ServerSecurityFeature::ServerSecurityFeature(Server& server)
-    : ArangodFeature{server, Server::id<ServerSecurityFeature>(), name()},
+    : ArangodFeature{server, *this},
       _enableFoxxApi(true),
       _enableFoxxStore(true),
       _hardenedRestApi(false),

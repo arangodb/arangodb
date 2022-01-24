@@ -32,8 +32,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ActionFeature::ActionFeature(Server& server)
-    : ArangodFeature{server, Server::id<ActionFeature>(), name()},
-      _allowUseDatabase(false) {
+    : ArangodFeature{server, *this}, _allowUseDatabase(false) {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
 }

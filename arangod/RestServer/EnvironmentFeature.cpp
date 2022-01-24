@@ -50,7 +50,7 @@ using namespace arangodb::basics;
 namespace arangodb {
 
 EnvironmentFeature::EnvironmentFeature(Server& server)
-    : ArangodFeature{server, Server::id<EnvironmentFeature>(), name()} {
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 

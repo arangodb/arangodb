@@ -62,8 +62,7 @@ namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(
     Server& server, std::vector<size_t> const& nonServerFeatures)
-    : ArangodFeature{server, Server::id<InitDatabaseFeature>(), name()},
-      _nonServerFeatures(nonServerFeatures) {
+    : ArangodFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 }

@@ -49,7 +49,7 @@ namespace arangodb {
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(Server& server)
-    : ArangodFeature{server, Server::id<AuthenticationFeature>(), name()},
+    : ArangodFeature{server, *this},
       _userManager(nullptr),
       _authCache(nullptr),
       _authenticationUnixSockets(true),

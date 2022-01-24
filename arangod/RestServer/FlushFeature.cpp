@@ -49,9 +49,7 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(Server& server)
-    : ArangodFeature{server, Server::id<FlushFeature>(), name()},
-      _flushInterval(1000000),
-      _stopped(false) {
+    : ArangodFeature{server, *this}, _flushInterval(1000000), _stopped(false) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

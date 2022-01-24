@@ -48,8 +48,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 TimeZoneFeature::TimeZoneFeature(Server& server)
-    : ArangodFeature{server, Server::id<TimeZoneFeature>(), name()},
-      _binaryPath(server.getBinaryPath()) {
+    : ArangodFeature{server, *this}, _binaryPath(server.getBinaryPath()) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

@@ -44,8 +44,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 DatabasePathFeature::DatabasePathFeature(Server& server)
-    : ArangodFeature{server, Server::id<DatabasePathFeature>(), name()},
-      _requiredDirectoryState("any") {
+    : ArangodFeature{server, *this}, _requiredDirectoryState("any") {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 

@@ -106,9 +106,7 @@ static void HUPHandler(int) {
 }
 
 SupervisorFeature::SupervisorFeature(Server& server)
-    : ArangodFeature{server, Server::id<SupervisorFeature>(), name()},
-      _supervisor(false),
-      _clientPid(0) {
+    : ArangodFeature{server, *this}, _supervisor(false), _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();

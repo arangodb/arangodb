@@ -294,7 +294,7 @@ void DatabaseManagerThread::run() {
 }
 
 DatabaseFeature::DatabaseFeature(Server& server)
-    : ArangodFeature{server, Server::id<DatabaseFeature>(), name()},
+    : ArangodFeature{server, *this},
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),

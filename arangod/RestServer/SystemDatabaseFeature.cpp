@@ -41,8 +41,7 @@ void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
 
 SystemDatabaseFeature::SystemDatabaseFeature(
     Server& server, TRI_vocbase_t* vocbase /*= nullptr*/)
-    : ArangodFeature{server, Server::id<SystemDatabaseFeature>(), name()},
-      _vocbase(vocbase) {
+    : ArangodFeature{server, *this}, _vocbase(vocbase) {
   startsAfter<DatabaseFeature>();
 }
 

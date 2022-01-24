@@ -32,8 +32,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-NonceFeature::NonceFeature(Server& server)
-    : ArangodFeature{server, Server::id<NonceFeature>(), name} {
+NonceFeature::NonceFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

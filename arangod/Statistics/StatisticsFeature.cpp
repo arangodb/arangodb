@@ -592,7 +592,7 @@ class StatisticsThread final : public Thread {
 // -----------------------------------------------------------------------------
 
 StatisticsFeature::StatisticsFeature(Server& server)
-    : ArangodFeature{server, Server::id<StatisticsFeature>(), name()},
+    : ArangodFeature{server, *this},
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
