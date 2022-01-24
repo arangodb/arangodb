@@ -121,7 +121,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30900);
   options
       ->addOption("--log.structured-param",
-                  "structured log displaying selected values",
+                  "toggle usage of log category parameter in structured log messages",
                   new VectorParameter<StringParameter>(&_structuredLogParams))
       .setIntroducedIn(31000);
 
