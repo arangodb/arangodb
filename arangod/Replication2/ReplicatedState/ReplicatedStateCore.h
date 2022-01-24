@@ -27,8 +27,29 @@
 namespace arangodb::replication2::replicated_state {
 
 struct ReplicatedStateCore {
-  SnapshotStatus snapshot;
-  StateGeneration plannedGeneration;
+  // handle async stuff here
+};
+
+/**
+ * The ReplicatedStateToken contains the snapshot information and is bound
+ * to a single generation.
+ */
+struct ReplicatedStateToken {
+  explicit ReplicatedStateToken(StateGeneration generation)
+      : generation(generation) {}
+
+  StateGeneration const generation;
+  SnapshotInfo snapshot;
+
+  static auto withExplicitSnapshotStatus(StateGeneration generation,
+                                         SnapshotInfo snapshot)
+      -> ReplicatedStateToken {
+    return {generation, std::move(snapshot)};
+  }
+
+ private:
+  ReplicatedStateToken(StateGeneration generation, SnapshotInfo snapshot)
+      : generation(generation), snapshot(std::move(snapshot)) {}
 };
 
 }  // namespace arangodb::replication2::replicated_state

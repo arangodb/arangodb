@@ -43,15 +43,18 @@ struct LeaderStateManager
       std::shared_ptr<ReplicatedState<S>> const& parent,
       std::shared_ptr<replicated_log::ILogLeader> leader,
       std::unique_ptr<ReplicatedStateCore> core,
+      std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
   using Stream = streams::ProducerStream<EntryType>;
   using Iterator = typename Stream::Iterator;
 
   auto getStatus() const -> StateStatus final;
-  auto getSnapshotStatus() const -> SnapshotStatus final;
 
   void run();
+
+  auto resign() && -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+                                std::unique_ptr<ReplicatedStateToken>> override;
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
   std::shared_ptr<IReplicatedLeaderState<S>> state;
@@ -64,6 +67,8 @@ struct LeaderStateManager
   std::optional<LogRange> recoveryRange;
 
   std::unique_ptr<ReplicatedStateCore> core;
+  std::unique_ptr<ReplicatedStateToken> token;
+
   std::shared_ptr<Factory> const factory;
 
  private:

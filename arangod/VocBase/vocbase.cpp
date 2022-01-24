@@ -238,7 +238,9 @@ struct arangodb::VocBaseLogManager {
         result;
     auto guard = _guardedData.getLockedGuard();
     for (auto& [id, state] : guard->states) {
-      result.emplace(id, state->getStatus());
+      if (auto status = state->getStatus(); status.has_value()) {
+        result.emplace(id, std::move(*status));
+      }
     }
     return result;
   }

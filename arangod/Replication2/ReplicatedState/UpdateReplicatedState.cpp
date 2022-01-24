@@ -35,9 +35,12 @@ auto algorithms::updateReplicatedState(
   }
 
   TRI_ASSERT(id == spec->id);
+  TRI_ASSERT(spec->participants.contains(serverId));
 
   auto state = ctx.getReplicatedStateById(id);
   if (state == nullptr) {
+    auto generation = spec->participants.at(serverId).generation;
+
     // TODO use user data instead of non-slice
     // here we have to put in the Current/Snapshot data here as well.
     auto result =
@@ -48,13 +51,17 @@ auto algorithms::updateReplicatedState(
     }
 
     state = result.get();
-    state->flush(std::make_unique<ReplicatedStateCore>());
+    // TODO put in the current token here
+    LOG_TOPIC("b089c", INFO, Logger::REPLICATED_STATE)
+        << "Creating replicated log for generation " << generation;
+    state->start(std::make_unique<ReplicatedStateToken>(generation));
     return {TRI_ERROR_NO_ERROR};
   } else {
-    auto status = state->getSnapshotStatus();
-    TRI_ASSERT(spec->participants.contains(serverId));
-    if (status.generation != spec->participants.at(serverId).generation) {
-      state->flush(nullptr);
+    auto status = state->getStatus();
+    TRI_ASSERT(status.has_value());
+    auto generation = status.value().getGeneration();
+    if (generation != spec->participants.at(serverId).generation) {
+      state->flush(generation);
     }
     return {TRI_ERROR_NO_ERROR};
   }

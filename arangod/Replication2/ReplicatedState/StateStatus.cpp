@@ -54,7 +54,8 @@ inline constexpr std::string_view StringUninitializedState =
 
 inline constexpr auto StringRole = velocypack::StringRef{"role"};
 inline constexpr auto StringDetail = velocypack::StringRef{"detail"};
-inline constexpr auto StringState = velocypack::StringRef{"state"};
+inline constexpr auto StringManagerState =
+    velocypack::StringRef{"managerState"};
 inline constexpr auto StringLog = velocypack::StringRef{"log"};
 
 auto followerStateFromString(std::string_view str) -> FollowerInternalState {
@@ -149,71 +150,89 @@ auto StateStatus::fromVelocyPack(velocypack::Slice slice) -> StateStatus {
 void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add(StringRole, velocypack::Value(StaticStrings::Follower));
-  builder.add(velocypack::Value(StringState));
-  state.toVelocyPack(builder);
+  builder.add(velocypack::Value(StringManagerState));
+  managerState.toVelocyPack(builder);
   builder.add(velocypack::Value(StringLog));
   log.toVelocyPack(builder);
+  builder.add(velocypack::Value("snapshot"));
+  snapshot.toVelocyPack(builder);
+  builder.add("generation", velocypack::Value(generation.value));
 }
 
 void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add(StringRole, velocypack::Value(StaticStrings::Leader));
-  builder.add(velocypack::Value(StringState));
-  state.toVelocyPack(builder);
+  builder.add(velocypack::Value(StringManagerState));
+  managerState.toVelocyPack(builder);
   builder.add(velocypack::Value(StringLog));
   log.toVelocyPack(builder);
+  builder.add(velocypack::Value("snapshot"));
+  snapshot.toVelocyPack(builder);
+  builder.add("generation", velocypack::Value(generation.value));
 }
 
 auto FollowerStatus::fromVelocyPack(velocypack::Slice s) -> FollowerStatus {
   TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Follower);
-  auto state = State::fromVelocyPack(s.get(StringState));
+  auto state = ManagerState::fromVelocyPack(s.get(StringManagerState));
   auto log = replicated_log::FollowerStatus::fromVelocyPack(s.get(StringLog));
-  return FollowerStatus{.state = std::move(state), .log = std::move(log)};
+  auto generation = s.get(StringLog).extract<StateGeneration>();
+  auto snapshot = SnapshotInfo::fromVelocyPack(s.get("snapshot"));
+  return FollowerStatus{.managerState = std::move(state),
+                        .generation = generation,
+                        .snapshot = std::move(snapshot),
+                        .log = std::move(log)};
 }
 
 auto LeaderStatus::fromVelocyPack(velocypack::Slice s) -> LeaderStatus {
   TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Leader);
-  auto state = State::fromVelocyPack(s.get(StringState));
+  auto state = ManagerState::fromVelocyPack(s.get(StringManagerState));
   auto log = replicated_log::LeaderStatus::fromVelocyPack(s.get(StringLog));
-  return LeaderStatus{.state = std::move(state), .log = std::move(log)};
+  auto generation = s.get(StringLog).extract<StateGeneration>();
+  auto snapshot = SnapshotInfo::fromVelocyPack(s.get("snapshot"));
+  return LeaderStatus{.managerState = std::move(state),
+                      .generation = generation,
+                      .snapshot = std::move(snapshot),
+                      .log = std::move(log)};
 }
 
-void FollowerStatus::State::toVelocyPack(velocypack::Builder& builder) const {
+void FollowerStatus::ManagerState::toVelocyPack(
+    velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   // TODO add lastChange timepoint
-  builder.add(StringState, velocypack::Value(to_string(state)));
+  builder.add(StringManagerState, velocypack::Value(to_string(state)));
   if (detail) {
     builder.add(StringDetail, velocypack::Value(*detail));
   }
 }
 
-auto FollowerStatus::State::fromVelocyPack(velocypack::Slice s)
-    -> FollowerStatus::State {
+auto FollowerStatus::ManagerState::fromVelocyPack(velocypack::Slice s)
+    -> FollowerStatus::ManagerState {
   // TODO read lastChange timepoint
-  auto state = followerStateFromString(s.get(StringState).stringView());
+  auto state = followerStateFromString(s.get(StringManagerState).stringView());
   auto detail = std::optional<std::string>{};
   if (auto detailSlice = s.get(StringDetail); !detailSlice.isNone()) {
     detail = detailSlice.copyString();
   }
-  return State{.state = state, .detail = std::move(detail)};
+  return ManagerState{.state = state, .detail = std::move(detail)};
 }
 
-void LeaderStatus::State::toVelocyPack(velocypack::Builder& builder) const {
+void LeaderStatus::ManagerState::toVelocyPack(
+    velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   // TODO add lastChange timepoint
-  builder.add(StringState, velocypack::Value(to_string(state)));
+  builder.add(StringManagerState, velocypack::Value(to_string(state)));
   if (detail) {
     builder.add(StringDetail, velocypack::Value(*detail));
   }
 }
 
-auto LeaderStatus::State::fromVelocyPack(velocypack::Slice s)
-    -> LeaderStatus::State {
+auto LeaderStatus::ManagerState::fromVelocyPack(velocypack::Slice s)
+    -> LeaderStatus::ManagerState {
   // TODO read lastChange timepoint
-  auto state = leaderStateFromString(s.get(StringState).stringView());
+  auto state = leaderStateFromString(s.get(StringManagerState).stringView());
   auto detail = std::optional<std::string>{};
   if (auto detailSlice = s.get(StringDetail); !detailSlice.isNone()) {
     detail = detailSlice.copyString();
   }
-  return State{.state = state, .detail = std::move(detail)};
+  return ManagerState{.state = state, .detail = std::move(detail)};
 }

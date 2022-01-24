@@ -42,7 +42,7 @@ void FollowerStateManager<S>::applyEntries(
                   range](futures::Try<Result> tryResult) {
         auto self = weak.lock();
         if (self == nullptr) {
-          return ;
+          return;
         }
         try {
           auto& result = tryResult.get();
@@ -84,13 +84,13 @@ void FollowerStateManager<S>::pollNewEntries() {
           futures::Try<std::unique_ptr<Iterator>> result) {
         auto self = weak.lock();
         if (self == nullptr) {
-          return ;
+          return;
         }
         try {
           self->applyEntries(std::move(result).get());
         } catch (replicated_log::ParticipantResignedException const&) {
           if (auto ptr = self->parent.lock(); ptr) {
-            ptr->flush(std::move(self->core));
+            // do nothing
           } else {
             LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
                 << "LogFollower resigned, but Replicated State already gone";
@@ -114,14 +114,14 @@ void FollowerStateManager<S>::tryTransferSnapshot(
                           hiddenState](futures::Try<Result>&& tryResult) {
     auto self = weak.lock();
     if (self == nullptr) {
-      return ;
+      return;
     }
     try {
       auto& result = tryResult.get();
       if (result.ok()) {
         LOG_TOPIC("44d58", INFO, Logger::REPLICATED_STATE)
             << "snapshot transfer successfully completed";
-        self->core->snapshot.updateStatus(SnapshotStatus::kCompleted);
+        self->token->snapshot.updateStatus(SnapshotStatus::kCompleted);
         return self->startService(hiddenState);
       }
     } catch (...) {
@@ -135,10 +135,9 @@ template<typename S>
 void FollowerStateManager<S>::checkSnapshot(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
   LOG_TOPIC("aee5b", DEBUG, Logger::REPLICATED_STATE)
-      << "snapshot status is " << core->snapshot << ", planned generation is "
-      << core->plannedGeneration;
-  bool needsSnapshot = core->snapshot.status != SnapshotStatus::kCompleted ||
-                       core->snapshot.generation != core->plannedGeneration;
+      << "snapshot status is " << token->snapshot.status << ", generation is "
+      << token->generation;
+  bool needsSnapshot = token->snapshot.status != SnapshotStatus::kCompleted;
   if (needsSnapshot) {
     LOG_TOPIC("3d0fc", INFO, Logger::REPLICATED_STATE)
         << "new snapshot is required";
@@ -182,9 +181,9 @@ void FollowerStateManager<S>::awaitLeaderShip() {
   logFollower->waitForLeaderAcked().thenFinal(
       [weak = this->weak_from_this()](
           futures::Try<replicated_log::WaitForResult>&& result) noexcept {
-        auto self  = weak.lock();
+        auto self = weak.lock();
         if (self == nullptr) {
-          return ;
+          return;
         }
         try {
           try {
@@ -194,7 +193,7 @@ void FollowerStateManager<S>::awaitLeaderShip() {
             self->ingestLogData();
           } catch (replicated_log::ParticipantResignedException const&) {
             if (auto ptr = self->parent.lock(); ptr) {
-              ptr->flush(std::move(self->core));
+              // Do nothing
             } else {
               LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
                   << "LogFollower resigned, but Replicated State already "
@@ -233,26 +232,25 @@ FollowerStateManager<S>::FollowerStateManager(
     std::shared_ptr<ReplicatedStateBase> parent,
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
     std::unique_ptr<ReplicatedStateCore> core,
+    std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logFollower(std::move(logFollower)),
       core(std::move(core)),
+      token(std::move(token)),
       factory(std::move(factory)) {}
 
-template<typename S>
-auto FollowerStateManager<S>::getSnapshotStatus() const -> SnapshotStatus {
-  return core->snapshot;
-}
 
 template<typename S>
 auto FollowerStateManager<S>::getStatus() const -> StateStatus {
   FollowerStatus status;
   status.log = std::get<replicated_log::FollowerStatus>(
       logFollower->getStatus().getVariant());
-  status.state.state = internalState;
-  status.state.lastChange = lastInternalStateChange;
-  status.state.detail = std::nullopt;
-  status.snapshot = core->snapshot;
+  status.managerState.state = internalState;
+  status.managerState.lastChange = lastInternalStateChange;
+  status.managerState.detail = std::nullopt;
+  status.generation = token->generation;
+  status.snapshot = token->snapshot;
   return StateStatus{.variant = std::move(status)};
 }
 
@@ -264,5 +262,12 @@ auto FollowerStateManager<S>::getFollowerState()
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
   }
   return state;
+}
+
+template<typename S>
+auto FollowerStateManager<S>::resign() && -> std::pair<
+    std::unique_ptr<ReplicatedStateCore>,
+    std::unique_ptr<ReplicatedStateToken>> {
+  return {std::move(core), std::move(token)};
 }
 }  // namespace arangodb::replication2::replicated_state

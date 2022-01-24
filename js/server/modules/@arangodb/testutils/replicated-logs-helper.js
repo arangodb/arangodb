@@ -34,7 +34,7 @@ const waitFor = function (checkFn, maxTries = 100) {
   let result = null;
   while (count < maxTries) {
     result = checkFn();
-    if (result === true) {
+    if (result === true || result === undefined) {
       return result;
     }
     console.log(result);

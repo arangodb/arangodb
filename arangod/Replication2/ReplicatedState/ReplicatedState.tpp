@@ -47,11 +47,12 @@ namespace arangodb::replication2::replicated_state {
 template<typename S>
 void ReplicatedState<S>::runFollower(
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
-    std::unique_ptr<ReplicatedStateCore> core) {
+    std::unique_ptr<ReplicatedStateCore> core,
+    std::unique_ptr<ReplicatedStateToken> token) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
   auto manager = std::make_shared<FollowerStateManager<S>>(
-      this->shared_from_this(), logFollower, std::move(core), factory);
+      this->shared_from_this(), logFollower, std::move(core), std::move(token), factory);
   manager->run();
   currentManager = manager;
 }
@@ -59,10 +60,11 @@ void ReplicatedState<S>::runFollower(
 template<typename S>
 void ReplicatedState<S>::runLeader(
     std::shared_ptr<replicated_log::ILogLeader> logLeader,
-    std::unique_ptr<ReplicatedStateCore> core) {
+    std::unique_ptr<ReplicatedStateCore> core,
+    std::unique_ptr<ReplicatedStateToken> token) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
   auto manager = std::make_shared<LeaderStateManager<S>>(
-      this->shared_from_this(), logLeader, std::move(core), factory);
+      this->shared_from_this(), logLeader, std::move(core), std::move(token), factory);
   manager->run();
   currentManager = manager;
 }
@@ -94,21 +96,13 @@ ReplicatedState<S>::ReplicatedState(
     : factory(std::move(factory)), log(std::move(log)) {}
 
 template<typename S>
-void ReplicatedState<S>::flush(std::unique_ptr<ReplicatedStateCore> core) {
-  auto participant = log->getParticipant();
-  if (auto leader =
-          std::dynamic_pointer_cast<replicated_log::ILogLeader>(participant);
-      leader) {
-    runLeader(std::move(leader), std::move(core));
-  } else if (auto follower =
-                 std::dynamic_pointer_cast<replicated_log::ILogFollower>(
-                     participant);
-             follower) {
-    runFollower(std::move(follower), std::move(core));
-  } else {
-    // unconfigured
-    std::abort();
+void ReplicatedState<S>::flush(StateGeneration planGeneration) {
+  auto [core, token] = std::move(*currentManager).resign();
+  if (token->generation != planGeneration) {
+    token = std::make_unique<ReplicatedStateToken>(planGeneration);
   }
+
+  rebuild(std::move(core), std::move(token));
 }
 
 template<typename S>
@@ -134,13 +128,38 @@ auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
 }
 
 template<typename S>
-auto ReplicatedState<S>::getStatus() -> StateStatus {
+auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
+  if (currentManager == nullptr) {
+    return std::nullopt;
+  }
   return currentManager->getStatus();
 }
 
 template<typename S>
-auto ReplicatedState<S>::getSnapshotStatus() const -> SnapshotStatus {
-  return currentManager->getSnapshotStatus();
+void ReplicatedState<S>::start(std::unique_ptr<ReplicatedStateToken> token) {
+  auto core = std::make_unique<ReplicatedStateCore>();
+  rebuild(std::move(core), std::move(token));
+}
+
+template<typename S>
+void ReplicatedState<S>::rebuild(std::unique_ptr<ReplicatedStateCore> core,
+             std::unique_ptr<ReplicatedStateToken> token) {
+  auto participant = log->getParticipant();
+  if (auto leader =
+          std::dynamic_pointer_cast<replicated_log::ILogLeader>(participant);
+      leader) {
+
+
+    runLeader(std::move(leader), std::move(core), std::move(token));
+  } else if (auto follower =
+                 std::dynamic_pointer_cast<replicated_log::ILogFollower>(
+                     participant);
+             follower) {
+    runFollower(std::move(follower), std::move(core), std::move(token));
+  } else {
+    // unconfigured
+    std::abort();
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state

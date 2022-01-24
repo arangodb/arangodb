@@ -79,6 +79,8 @@ const replicatedStateIsReady = function (database, logId, servers) {
         return result;
       }
     }
+
+    return true;
   };
 };
 

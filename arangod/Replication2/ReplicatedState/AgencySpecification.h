@@ -73,39 +73,10 @@ struct Plan {
 };
 
 struct Current {
-  LogId id;
-
   struct ParticipantStatus {
+
     StateGeneration generation;
-
-    struct Snapshot {
-
-      using clock = std::chrono::system_clock;
-
-      struct Error {
-        ErrorCode error;
-        std::optional<std::string> message;
-        clock::time_point retryAt;
-        void toVelocyPack(velocypack::Builder& builder) const;
-        [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
-
-        friend auto operator==(Error const&, Error const&) noexcept
-            -> bool = default;
-      };
-
-      void toVelocyPack(velocypack::Builder& builder) const;
-      [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Snapshot;
-
-      friend auto operator==(Snapshot const&, Snapshot const&) noexcept
-          -> bool = default;
-
-      SnapshotStatus::Status status{SnapshotStatus::Status::kUninitialized};
-      clock::time_point timestamp;
-      std::optional<Error> error;
-    };
-
-    // TODO might become an array later?
-    Snapshot snapshot;
+    SnapshotInfo snapshot; // TODO might become an array later?
 
     friend auto operator==(ParticipantStatus const&,
                            ParticipantStatus const&) noexcept -> bool = default;

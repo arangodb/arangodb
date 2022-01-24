@@ -49,18 +49,19 @@ auto to_string(LeaderInternalState) noexcept -> std::string_view;
 struct LeaderStatus {
   using clock = std::chrono::system_clock;
 
-  struct State {
+  struct ManagerState {
     LeaderInternalState state{};
     clock::time_point lastChange{};
     std::optional<std::string> detail;
 
     void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> State;
+    static auto fromVelocyPack(velocypack::Slice) -> ManagerState;
   };
 
-  State state;
+  ManagerState managerState;
+  StateGeneration generation;
+  SnapshotInfo snapshot;
   replicated_log::LeaderStatus log;
-  SnapshotStatus snapshot;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> LeaderStatus;
@@ -79,18 +80,19 @@ auto to_string(FollowerInternalState) noexcept -> std::string_view;
 struct FollowerStatus {
   using clock = std::chrono::system_clock;
 
-  struct State {
+  struct ManagerState {
     FollowerInternalState state{};
     clock::time_point lastChange{};
     std::optional<std::string> detail;
 
     void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> State;
+    static auto fromVelocyPack(velocypack::Slice) -> ManagerState;
   };
 
-  State state;
+  ManagerState managerState;
+  StateGeneration generation;
+  SnapshotInfo snapshot;
   replicated_log::FollowerStatus log;
-  SnapshotStatus snapshot;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> FollowerStatus;
@@ -103,9 +105,15 @@ struct StateStatus {
     return std::get_if<FollowerStatus>(&variant);
   }
 
-  [[nodiscard]] auto getSnapshotStatus() const noexcept -> SnapshotStatus const& {
-    return std::visit([](auto&& s) -> SnapshotStatus const& {
+  [[nodiscard]] auto getSnapshotInfo() const noexcept -> SnapshotInfo const& {
+    return std::visit([](auto&& s) -> SnapshotInfo const& {
       return s.snapshot;
+    }, variant);
+  }
+
+  [[nodiscard]] auto getGeneration() const noexcept -> StateGeneration {
+    return std::visit([](auto&& s) -> StateGeneration {
+      return s.generation;
     }, variant);
   }
 

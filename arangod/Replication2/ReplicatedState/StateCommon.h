@@ -36,6 +36,8 @@ namespace arangodb::velocypack {
 class Value;
 template<typename, typename>
 struct Extractor;
+class Builder;
+class Slice;
 }  // namespace arangodb::velocypack
 namespace arangodb {
 namespace replication2::replicated_state {
@@ -59,25 +61,42 @@ struct StateGeneration {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
-struct SnapshotStatus {
-  enum Status {
-    kUninitialized,
-    kInProgress,
-    kCompleted,
-    kFailed,
-  };
-
-  using clock = std::chrono::system_clock;
-
-  void updateStatus(Status, std::optional<Result> newError = std::nullopt);
-
-  Status status{kUninitialized};
-  clock::time_point lastChange;
-  StateGeneration generation;
-  std::optional<Result> error;
+enum SnapshotStatus {
+  kUninitialized,
+  kInProgress,
+  kCompleted,
+  kFailed,
 };
 
-auto to_string(SnapshotStatus::Status) noexcept -> std::string_view;
+struct SnapshotInfo {
+  using clock = std::chrono::system_clock;
+
+  struct Error {
+    ErrorCode error;
+    std::optional<std::string> message;
+    clock::time_point retryAt;
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
+
+    friend auto operator==(Error const&, Error const&) noexcept
+        -> bool = default;
+  };
+
+  void updateStatus(SnapshotStatus status) noexcept;
+
+  SnapshotStatus status{SnapshotStatus::kUninitialized};
+  clock::time_point timestamp;
+  std::optional<Error> error;
+
+  friend auto operator==(SnapshotInfo const&, SnapshotInfo const&) noexcept
+      -> bool = default;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> SnapshotInfo;
+};
+
+auto to_string(SnapshotStatus) noexcept -> std::string_view;
+auto snapshotStatusFromString(std::string_view) noexcept -> SnapshotStatus;
 auto operator<<(std::ostream&, SnapshotStatus const&) -> std::ostream&;
 auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
 }  // namespace replication2::replicated_state
@@ -91,4 +110,5 @@ struct arangodb::velocypack::Extractor<
         slice.getNumericValue<std::uint64_t>()};
   }
 };
+
 }  // namespace arangodb

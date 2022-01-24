@@ -1602,7 +1602,7 @@ static void reportCurrentReplicatedState(
     replication2::LogId id, std::string const& dbName,
     std::string const& serverId) {
   // update the local snapshot information
-  auto const& snapshot = status.getSnapshotStatus();
+  auto const& snapshot = status.getSnapshotInfo();
 
   // load current into memory
   auto current = std::invoke(
@@ -1627,7 +1627,7 @@ static void reportCurrentReplicatedState(
     if (auto iter = current->participants.find(serverId);
         iter != std::end(current->participants)) {
       auto const& cs = iter->second;
-      if (cs.generation != snapshot.generation) {
+      if (cs.generation != status.getGeneration()) {
         return true;
       }
       if (cs.snapshot.status != snapshot.status) {
@@ -1654,9 +1654,8 @@ static void reportCurrentReplicatedState(
                         ->participant(serverId);
 
   ParticipantStatus update;
-  update.generation = snapshot.generation;
-  update.snapshot.status = snapshot.status;
-  update.snapshot.timestamp = snapshot.lastChange;
+  update.generation = status.getGeneration();
+  update.snapshot = status.getSnapshotInfo();
 
   report.add(VPackValue(updatePath->str(cluster::paths::SkipComponents(1))));
   {
@@ -2049,8 +2048,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("84ee0", WARN, Logger::MAINTENANCE)
-          << "caught exception in Maintenance for database '" << dbName
+          << "caught exception in Maintenance for replicated states '" << dbName
           << "': " << ex.what();
+      TRI_ASSERT(false);
       throw;
     }
 
