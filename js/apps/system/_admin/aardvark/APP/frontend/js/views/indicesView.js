@@ -456,7 +456,7 @@
           }
 
           if (v.fields !== undefined) {
-            fieldString = v.fields.map(
+            fieldsString = v.fields.map(
               function(v) {
                 if (typeof v === 'object') {
                   return v.name;
