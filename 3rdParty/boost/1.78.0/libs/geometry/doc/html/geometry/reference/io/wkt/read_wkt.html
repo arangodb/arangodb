@@ -1,0 +1,214 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>read_wkt</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Chapter 1. Geometry">
+<link rel="up" href="../wkt.html" title="WKT (Well-Known Text)">
+<link rel="prev" href="from_wkt.html" title="from_wkt">
+<link rel="next" href="to_wkt.html" title="to_wkt">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="from_wkt.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../wkt.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="to_wkt.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="geometry.reference.io.wkt.read_wkt"></a><a class="link" href="read_wkt.html" title="read_wkt">read_wkt</a>
+</h5></div></div></div>
+<p>
+            <a class="indexterm" name="idm72626"></a>
+Parses OGC Well-Known Text (WKT (Well-Known Text)) into a geometry (any
+            geometry)
+          </p>
+<h6>
+<a name="geometry.reference.io.wkt.read_wkt.h0"></a>
+            <span class="phrase"><a name="geometry.reference.io.wkt.read_wkt.synopsis"></a></span><a class="link" href="read_wkt.html#geometry.reference.io.wkt.read_wkt.synopsis">Synopsis</a>
+          </h6>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Geometry</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">read_wkt</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">wkt</span><span class="special">,</span> <span class="identifier">Geometry</span> <span class="special">&amp;</span> <span class="identifier">geometry</span><span class="special">)</span></pre>
+<p>
+          </p>
+<h6>
+<a name="geometry.reference.io.wkt.read_wkt.h1"></a>
+            <span class="phrase"><a name="geometry.reference.io.wkt.read_wkt.parameters"></a></span><a class="link" href="read_wkt.html#geometry.reference.io.wkt.read_wkt.parameters">Parameters</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      Type
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Concept
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Description
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      std::string const &amp;
+                    </p>
+                  </td>
+<td>
+                  </td>
+<td>
+                    <p>
+                      wkt
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      string containing WKT (Well-Known Text)
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      Geometry &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Any type fulfilling a Geometry Concept
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      geometry
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A model of the specified concept output geometry
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.io.wkt.read_wkt.h2"></a>
+            <span class="phrase"><a name="geometry.reference.io.wkt.read_wkt.header"></a></span><a class="link" href="read_wkt.html#geometry.reference.io.wkt.read_wkt.header">Header</a>
+          </h6>
+<p>
+            Either
+          </p>
+<p>
+            <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+          </p>
+<p>
+            Or
+          </p>
+<p>
+            <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">io</span><span class="special">/</span><span class="identifier">wkt</span><span class="special">/</span><span class="identifier">read</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+          </p>
+<h6>
+<a name="geometry.reference.io.wkt.read_wkt.h3"></a>
+            <span class="phrase"><a name="geometry.reference.io.wkt.read_wkt.conformance"></a></span><a class="link" href="read_wkt.html#geometry.reference.io.wkt.read_wkt.conformance">Conformance</a>
+          </h6>
+<p>
+            Other libraries refer to this functionality as <span class="bold"><strong>ST_GeomFromText</strong></span>
+            or <span class="bold"><strong>STGeomFromText</strong></span>. That is not done
+            here because Boost.Geometry support more text formats. The name GeomFromText
+            is reserved for future usage, which will then have an indication of the
+            used text format.
+          </p>
+<h6>
+<a name="geometry.reference.io.wkt.read_wkt.h4"></a>
+            <span class="phrase"><a name="geometry.reference.io.wkt.read_wkt.example"></a></span><a class="link" href="read_wkt.html#geometry.reference.io.wkt.read_wkt.example">Example</a>
+          </h6>
+<p>
+            Shows the usage of read_wkt
+          </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">point_xy</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">linestring</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">polygon</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">d2</span><span class="special">::</span><span class="identifier">point_xy</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">point_type</span><span class="special">;</span>
+
+    <span class="identifier">point_type</span> <span class="identifier">a</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">linestring</span><span class="special">&lt;</span><span class="identifier">point_type</span><span class="special">&gt;</span> <span class="identifier">b</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">polygon</span><span class="special">&lt;</span><span class="identifier">point_type</span><span class="special">&gt;</span> <span class="identifier">c</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">box</span><span class="special">&lt;</span><span class="identifier">point_type</span><span class="special">&gt;</span> <span class="identifier">d</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">segment</span><span class="special">&lt;</span><span class="identifier">point_type</span><span class="special">&gt;</span> <span class="identifier">e</span><span class="special">;</span>
+
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"POINT(1 2)"</span><span class="special">,</span> <span class="identifier">a</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"LINESTRING(0 0,2 2,3 1)"</span><span class="special">,</span> <span class="identifier">b</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"POLYGON((0 0,0 7,4 2,2 0,0 0))"</span><span class="special">,</span> <span class="identifier">c</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"BOX(0 0,3 3)"</span><span class="special">,</span> <span class="identifier">d</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"SEGMENT(1 0,3 4)"</span><span class="special">,</span> <span class="identifier">e</span><span class="special">);</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          </p>
+<h6>
+<a name="geometry.reference.io.wkt.read_wkt.h5"></a>
+            <span class="phrase"><a name="geometry.reference.io.wkt.read_wkt.see_also"></a></span><a class="link" href="read_wkt.html#geometry.reference.io.wkt.read_wkt.see_also">See
+            also</a>
+          </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                <a class="link" href="from_wkt.html" title="from_wkt">From WKT</a>
+              </li>
+<li class="listitem">
+                <a class="link" href="to_wkt.html" title="to_wkt">To WKT</a>
+              </li>
+<li class="listitem">
+                <a class="link" href="wkt.html" title="wkt">WKT streaming manipulator</a>
+              </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2021 Barend Gehrels,
+      Bruno Lalande, Mateusz Loskot, Adam Wulkiewicz, Oracle and/or its affiliates<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="from_wkt.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../wkt.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="to_wkt.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

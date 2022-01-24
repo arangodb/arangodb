@@ -303,9 +303,11 @@ void Query::prepareQuery(SerializationFormat format) {
         _queryOptions.profile >= ProfileLevel::Blocks &&
         ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
     if (keepPlan) {
+      unsigned flags =
+          ExecutionPlan::buildSerializationFlags(false, false, false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
       VPackBuilder b(*_planSliceCopy);
-      plan->toVelocyPack(b, _ast.get(), false, ExplainRegisterPlan::No);
+      plan->toVelocyPack(b, _ast.get(), flags);
     }
 
     // simon: assumption is _queryString is empty for DBServer snippets
@@ -969,6 +971,11 @@ QueryResult Query::explain() {
           plan->prepareTraversalOptions();
         };
 
+    // build serialization flags for execution plan
+    unsigned flags = ExecutionPlan::buildSerializationFlags(
+        _queryOptions.verbosePlans, _queryOptions.explainInternals,
+        _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
+
     if (_queryOptions.allPlans) {
       result.data = std::make_shared<VPackBuilder>();
       {
@@ -980,9 +987,7 @@ QueryResult Query::explain() {
           TRI_ASSERT(pln != nullptr);
 
           preparePlanForSerialization(pln);
-          pln->toVelocyPack(*result.data.get(), parser.ast(),
-                            _queryOptions.verbosePlans,
-                            _queryOptions.explainRegisters);
+          pln->toVelocyPack(*result.data.get(), parser.ast(), flags);
         }
       }
       // cacheability not available here
@@ -994,9 +999,7 @@ QueryResult Query::explain() {
       TRI_ASSERT(bestPlan != nullptr);
 
       preparePlanForSerialization(bestPlan);
-      result.data =
-          bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans,
-                                 _queryOptions.explainRegisters);
+      result.data = bestPlan->toVelocyPack(parser.ast(), flags);
 
       // cacheability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&

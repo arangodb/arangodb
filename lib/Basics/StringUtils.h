@@ -545,6 +545,11 @@ auto joinImplStr(std::string_view delim, Args&&... args) -> std::string {
 /// or via `to_string`.
 template<typename... Args>
 auto concatT(Args&&... args) -> std::string {
+  static_assert(
+      (!std::is_same_v<std::decay_t<Args>, char> && ...),
+      "passing a `char` does not what you expect. Pass it as literal string"
+      "of length one. If you want to print the numeric value, cast "
+      "it to an int instead.");
   return detail::concatImplStr(detail::toStringOrView(args)...);
 }
 
@@ -554,6 +559,11 @@ auto concatT(Args&&... args) -> std::string {
 /// or via `to_string`.
 template<typename... Args>
 auto joinT(std::string_view delim, Args&&... args) -> std::string {
+  static_assert(
+      (!std::is_same_v<std::decay_t<Args>, char> && ...),
+      "passing a `char` does not what you expect. Pass it as literal string"
+      "of length one. If you want to print the numeric value, cast "
+      "it to an int instead.");
   return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
 

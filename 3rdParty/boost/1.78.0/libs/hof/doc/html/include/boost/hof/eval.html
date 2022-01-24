@@ -1,0 +1,121 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>eval &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="BOOST_HOF_STATIC_FUNCTION" href="function.html" />
+    <link rel="prev" title="apply_eval" href="apply_eval.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="apply_eval.html"><img src="../../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="../../../doc/src/reference.html"><img src="../../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../../../doc/index.html"><img src="../../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="function.html"><img src="../../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <div class="section" id="eval">
+<h1>eval<a class="headerlink" href="#eval" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="header">
+<h2>Header<a class="headerlink" href="#header" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include</span> <span class="cpf">&lt;boost/hof/eval.hpp&gt;</span><span class="cp"></span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal"><span class="pre">eval</span></code> function will evaluate a &#8220;thunk&#8221;. This can be either a nullary
+function or it can be a unary function that takes the identity function as
+the first parameter(which is helpful to delay compile-time checking).
+Also, additional parameters can be passed to <code class="docutils literal"><span class="pre">eval</span></code> to delay
+compiliation(so that result can depend on template parameters).</p>
+</div>
+<div class="section" id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">F</span><span class="p">,</span> <span class="n">class</span><span class="p">...</span> <span class="n">Ts</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="k">auto</span> <span class="n">eval</span><span class="p">(</span><span class="n">F</span><span class="o">&amp;&amp;</span> <span class="n">f</span><span class="p">,</span> <span class="n">Ts</span><span class="o">&amp;&amp;</span><span class="p">...);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<p>F must be:</p>
+<ul class="simple">
+<li><a class="reference internal" href="../../../doc/src/concepts.html#evaluatablefunctionobject"><span class="std std-ref">EvaluatableFunctionObject</span></a></li>
+</ul>
+</div>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include</span> <span class="cpf">&lt;boost/hof.hpp&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;cassert&gt;</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">hof</span><span class="o">::</span><span class="n">eval</span><span class="p">([]{</span> <span class="k">return</span> <span class="mi">3</span><span class="p">;</span> <span class="p">})</span> <span class="o">==</span> <span class="mi">3</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0051r2.pdf">POO51</a> - Proposal for C++
+Proposal for C++ generic overload function</li>
+<li><a class="reference internal" href="../../../doc/src/example_overloading.html#static-if"><span class="std std-ref">static_if</span></a></li>
+<li><a class="reference internal" href="../../../doc/src/more_examples.html#ordering-evaluation-of-arguments"><span class="std std-ref">Ordering evaluation of arguments</span></a></li>
+</ul>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,429 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>basic_parser</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__json__array_kind_t.html" title="array_kind_t">
+<link rel="next" href="boost__json__basic_parser/basic_parser.html" title="basic_parser::basic_parser">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__array_kind_t.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__basic_parser/basic_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="json.ref.boost__json__basic_parser"></a><a class="link" href="boost__json__basic_parser.html" title="basic_parser">basic_parser</a>
+</h4></div></div></div>
+<p>
+        An incremental SAX parser for serialized JSON.
+      </p>
+<h5>
+<a name="json.ref.boost__json__basic_parser.h0"></a>
+        <span class="phrase"><a name="json.ref.boost__json__basic_parser.synopsis"></a></span><a class="link" href="boost__json__basic_parser.html#json.ref.boost__json__basic_parser.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json/basic_parser.hpp" target="_top">boost/json/basic_parser.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">Handler</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">basic_parser</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__basic_parser.h1"></a>
+        <span class="phrase"><a name="json.ref.boost__json__basic_parser.member_functions"></a></span><a class="link" href="boost__json__basic_parser.html#json.ref.boost__json__basic_parser.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/basic_parser.html" title="basic_parser::basic_parser">basic_parser</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy constructor (deleted) <br> <span class="silver">—</span><br>
+                  Constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/done.html" title="basic_parser::done">done</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return true if a complete JSON has been parsed.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/fail.html" title="basic_parser::fail">fail</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Indicate a parsing failure.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/handler.html" title="basic_parser::handler">handler</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reference to the handler.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/last_error.html" title="basic_parser::last_error">last_error</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the last error.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/operator_eq_.html" title="basic_parser::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy assignment (deleted)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/reset.html" title="basic_parser::reset">reset</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reset the state, to parse a new document.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/write_some.html" title="basic_parser::write_some">write_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Parse some of an input string as JSON, incrementally.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__basic_parser/_dtor_basic_parser.html" title="basic_parser::~basic_parser">~basic_parser</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__basic_parser.h2"></a>
+        <span class="phrase"><a name="json.ref.boost__json__basic_parser.description"></a></span><a class="link" href="boost__json__basic_parser.html#json.ref.boost__json__basic_parser.description">Description</a>
+      </h5>
+<p>
+        This implements a SAX-style parser, invoking a caller-supplied handler with
+        each parsing event. To use, first declare a variable of type <code class="computeroutput"><span class="identifier">basic_parser</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> where
+        <code class="computeroutput"><span class="identifier">T</span></code> meets the handler requirements
+        specified below. Then call <a class="link" href="boost__json__basic_parser/write_some.html" title="basic_parser::write_some"><code class="computeroutput"><span class="identifier">write_some</span></code></a> one or more times with
+        the input, setting <code class="computeroutput"><span class="identifier">more</span> <span class="special">=</span> <span class="keyword">false</span></code> on
+        the final buffer. The parsing events are realized through member function
+        calls on the handler, which exists as a data member of the parser.
+      </p>
+<p>
+        The parser may dynamically allocate intermediate storage as needed to accommodate
+        the nesting level of the input JSON. On subsequent invocations, the parser
+        can cheaply re-use this memory, improving performance. This storage is freed
+        when the parser is destroyed
+      </p>
+<h5>
+<a name="json.ref.boost__json__basic_parser.h3"></a>
+        <span class="phrase"><a name="json.ref.boost__json__basic_parser.usage"></a></span><a class="link" href="boost__json__basic_parser.html#json.ref.boost__json__basic_parser.usage">Usage</a>
+      </h5>
+<p>
+        To get the declaration and function definitions for this class it is necessary
+        to include this file instead:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">json</span><span class="special">/</span><span class="identifier">basic_parser_impl</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        Users who wish to parse JSON into the DOM container <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> will not use this class directly;
+        instead they will create an instance of <a class="link" href="boost__json__parser.html" title="parser"><code class="computeroutput"><span class="identifier">parser</span></code></a> or <a class="link" href="boost__json__stream_parser.html" title="stream_parser"><code class="computeroutput"><span class="identifier">stream_parser</span></code></a> and use that instead.
+        Alternatively, they may call the function <a class="link" href="boost__json__parse.html" title="parse"><code class="computeroutput"><span class="identifier">parse</span></code></a>. This class is designed for
+        users who wish to perform custom actions instead of building a <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>. For example, to produce a
+        DOM from an external library.
+      </p>
+<h5>
+<a name="json.ref.boost__json__basic_parser.h4"></a>
+        <span class="phrase"><a name="json.ref.boost__json__basic_parser.remarks"></a></span><a class="link" href="boost__json__basic_parser.html#json.ref.boost__json__basic_parser.remarks">Remarks</a>
+      </h5>
+<p>
+        By default, only conforming JSON using UTF-8 encoding is accepted. However,
+        select non-compliant syntax can be allowed by construction using a <a class="link" href="boost__json__parse_options.html" title="parse_options"><code class="computeroutput"><span class="identifier">parse_options</span></code></a>
+        set to desired values.
+      </p>
+<h5>
+<a name="json.ref.boost__json__basic_parser.h5"></a>
+        <span class="phrase"><a name="json.ref.boost__json__basic_parser.handler0"></a></span><a class="link" href="boost__json__basic_parser.html#json.ref.boost__json__basic_parser.handler0">Handler</a>
+      </h5>
+<p>
+        The handler provided must be implemented as an object of class type which
+        defines each of the required event member functions below. The event functions
+        return a <code class="computeroutput"><span class="keyword">bool</span></code> where <code class="computeroutput"><span class="keyword">true</span></code> indicates success, and <code class="computeroutput"><span class="keyword">false</span></code> indicates failure. If the member function
+        returns <code class="computeroutput"><span class="keyword">false</span></code>, it must set the
+        error code to a suitable value. This error code will be returned by the write
+        function to the caller.
+      </p>
+<p>
+        Handlers are required to declare the maximum limits on various elements.
+        If these limits are exceeded during parsing, then parsing fails with an error.
+      </p>
+<p>
+        The following declaration meets the parser's handler requirements:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">handler</span>
+<span class="special">{</span>
+    <span class="comment">/// The maximum number of elements allowed in an array</span>
+    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">max_array_size</span> <span class="special">=</span> <span class="special">-</span><span class="number">1</span><span class="special">;</span>
+
+    <span class="comment">/// The maximum number of elements allowed in an object</span>
+    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">max_object_size</span> <span class="special">=</span> <span class="special">-</span><span class="number">1</span><span class="special">;</span>
+
+    <span class="comment">/// The maximum number of characters allowed in a string</span>
+    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">max_string_size</span> <span class="special">=</span> <span class="special">-</span><span class="number">1</span><span class="special">;</span>
+
+    <span class="comment">/// The maximum number of characters allowed in a key</span>
+    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">max_key_size</span> <span class="special">=</span> <span class="special">-</span><span class="number">1</span><span class="special">;</span>
+
+    <span class="comment">/// Called once when the JSON parsing begins.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_document_begin</span><span class="special">(</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when the JSON parsing is done.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_document_end</span><span class="special">(</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when the beginning of an array is encountered.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_array_begin</span><span class="special">(</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when the end of the current array is encountered.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param n The number of elements in the array.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_array_end</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when the beginning of an object is encountered.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_object_begin</span><span class="special">(</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when the end of the current object is encountered.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param n The number of elements in the object.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_object_end</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called with characters corresponding to part of the current string.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param s The partial characters</span>
+    <span class="comment">/// @param n The total size of the string thus far</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_string_part</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called with the last characters corresponding to the current string.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param s The remaining characters</span>
+    <span class="comment">/// @param n The total size of the string</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_string</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called with characters corresponding to part of the current key.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param s The partial characters</span>
+    <span class="comment">/// @param n The total size of the key thus far</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_key_part</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called with the last characters corresponding to the current key.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param s The remaining characters</span>
+    <span class="comment">/// @param n The total size of the key</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_key</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called with the characters corresponding to part of the current number.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param s The partial characters</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_number_part</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when a signed integer is parsed.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param i The value</span>
+    <span class="comment">/// @param s The remaining characters</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_int64</span><span class="special">(</span> <span class="identifier">int64_t</span> <span class="identifier">i</span><span class="special">,</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when an unsigend integer is parsed.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param u The value</span>
+    <span class="comment">/// @param s The remaining characters</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_uint64</span><span class="special">(</span> <span class="identifier">uint64_t</span> <span class="identifier">u</span><span class="special">,</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when a double is parsed.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param d The value</span>
+    <span class="comment">/// @param s The remaining characters</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_double</span><span class="special">(</span> <span class="keyword">double</span> <span class="identifier">d</span><span class="special">,</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when a boolean is parsed.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param b The value</span>
+    <span class="comment">/// @param s The remaining characters</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_bool</span><span class="special">(</span> <span class="keyword">bool</span> <span class="identifier">b</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called when a null is parsed.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_null</span><span class="special">(</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called with characters corresponding to part of the current comment.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param s The partial characters.</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_comment_part</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+
+    <span class="comment">/// Called with the last characters corresponding to the current comment.</span>
+    <span class="comment">///</span>
+    <span class="comment">/// @return `true` on success.</span>
+    <span class="comment">/// @param s The remaining characters</span>
+    <span class="comment">/// @param ec Set to the error, if any occurred.</span>
+    <span class="comment">///</span>
+    <span class="keyword">bool</span> <span class="identifier">on_comment</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span> <span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__basic_parser.h6"></a>
+        <span class="phrase"><a name="json.ref.boost__json__basic_parser.see_also"></a></span><a class="link" href="boost__json__basic_parser.html#json.ref.boost__json__basic_parser.see_also">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__json__parse.html" title="parse"><code class="computeroutput"><span class="identifier">parse</span></code></a>,
+        <a class="link" href="boost__json__stream_parser.html" title="stream_parser"><code class="computeroutput"><span class="identifier">stream_parser</span></code></a>.
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json.hpp" target="_top">boost/json.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__array_kind_t.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__basic_parser/basic_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

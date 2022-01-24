@@ -1,0 +1,250 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=us-ascii" />
+<link rel="stylesheet" href="../../../../boost.css" type="text/css"/>
+<link rel="stylesheet" href="ublas.css" type="text/css" />
+<script type="text/javascript" src="js/jquery-1.3.2.min.js" async="async" ></script>
+<script type="text/javascript" src="js/jquery.toc-gw.js" async="async" ></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+      jax: ["input/TeX", "output/HTML-CSS"],
+      extensions: ["tex2jax.js"],
+      "HTML-CSS": { preferredFont: "TeX", availableFonts: ["STIX","TeX"], scale: "80" },
+      tex2jax: { 
+      	inlineMath: [ ["$", "$"], ["\\(","\\)"] ], 
+      	displayMath: [ ["$$","$$"], ["\\[", "\\]"] ], 
+      	processEscapes: true, 
+      	ignoreClass: "tex2jax_ignore|dno" },
+      TeX: { noUndefined: { attributes: { mathcolor: "red", mathbackground: "#FFEEEE", mathsize: "90%" } } },
+      messageStyle: "none"
+    });
+</script>    
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js"></script>
+
+<title>Shape</title>
+</head>
+<body>
+<h1><img src="../../../../boost.png" align="middle" />Extents</h1>
+<div class="toc" id="toc"></div>
+<h2><a name="extents"></a>basic_extents&lt;size_type&gt;</h2>
+<h4>Description</h4>
+<p>The template class <code>basic_extents</code> specifies dimension extents of a  <a href=
+"../tensor.html#tensor">tensor</a> instance.</p>
+
+<h4>Example</h4>
+<pre>
+#include &lt;boost/numeric/ublas/tensor/extents.hpp&gt;
+
+int main () {
+    <b>using namespace</b> boost::numeric::ublas;
+    shape s{4,3,2};
+    for (<b>auto</b> i = 0u; i &lt; s.size(); ++i) {
+        std::cout &lt;&lt; s.at(i) &lt;&lt; std::endl;
+    }
+}
+</pre>
+<h4>Definition</h4>
+<p>Defined in the header tensor/extents.hpp.</p>
+
+<h4>Public base classes</h4>
+<p>None.</p>
+
+<h4>Specialization</h4>
+<p><code><b>using</b> shape = basic_extents&lt;std::size_t&gt;</code></p>
+
+
+<h4>Template parameters</h4>
+<table border="1" style="font-size:100%" summary="parameters">
+<tbody style="font-size:100%">
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>size_type</code></td>
+<td>Unsigned integer type.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Member types</h4>
+<table border="1" style="font-size:100%" summary="members">
+<tbody style="font-size:100%" >
+<tr>
+<th>Member type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>value_type</code></td>
+<td>Type <code>size_type</code> of the extents.</td>
+</tr>
+<tr>
+<td><code>size_type</code></td>
+<td>Unsigned integer such as <code>std::size_t</code>.</td>
+</tr>
+<tr>
+<td><code>reference</code></td>
+<td>Reference type which is <code>value_type&</code>.</td>
+</tr>
+<tr>
+<td><code>const_reference</code></td>
+<td>Constant reference type which is <code>const value_type&</code>.</td>
+</tr>
+<tr>
+<td><code>pointer</code></td>
+<td>Pointer type which is <code>value_type*</code>.</td>
+</tr>
+<tr>
+<td><code>const_pointer</code></td>
+<td>Constant reference type which is <code>const value_type*</code>.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+<h4>Member Functions</h4>
+<table border="1" summary="members functions">
+<tbody>
+<tr>
+<th>Member Function</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>basic_extents ()</code></td>
+<td>Constructs an empty instance of <code>basic_extents</code>.</td>
+</tr>
+<tr>
+<td><code>basic_extents (std::vector&lt;value_type&gt; const& vector)</code></td>
+<td>Constructs an instance copying the content of <code>vector</code>.</td>
+</tr>
+<tr>
+<td><code>basic_extents (std::vector&lt;value_type&gt; && vector)</code></td>
+<td>Constructs an instance moving the content of <code>vector</code>.</td>
+</tr>
+<tr>
+<td><code>basic_extents (std::initializer_list&lt;value_type&gt; list)</code></td>
+<td>Constructs an instance from <code>list</code>.</td>
+</tr>
+<tr>
+<td><code>basic_extents (const_iterator first, const_iterator last)</code></td>
+<td>Constructs an instance from the range specified by <code>[first</code>,<code>last)</code>.</td>
+</tr>
+<tr>
+<td><code>basic_extents (basic_extents const& other)</code></td>
+<td>Constructs an instance from <code>other</code> copying its elements.</td>
+</tr>
+<tr>
+<td><code>basic_extents (basic_extents && other)</code></td>
+<td>Constructs an instance from <code>other</code> by moving its elements.</td>
+</tr>
+<tr>
+<td><code>basic_extents& operator= (basic_extents other)</code></td>
+<td>Assigns the elements of <code>other</code> to this instance.</td>
+</tr>
+<tr>
+<td><code>bool is_scalar() const</code></td>
+<td>Returns true if the elements are <code>(1,1,[1,...,1])</code>.</td>
+</tr>
+<tr>
+<td><code>bool is_vector() const</code></td>
+<td>Returns true if the elements are <code>(n,1,[1,...,1])</code> or <code>(1,n,[1,...,1])</code> where <code>n>1</code>.</td>
+</tr>
+<tr>
+<td><code>bool is_matrix() const</code></td>
+<td>Returns true if the elements are <code>(m,n,[1,...,1])</code> where <code>m>1</code> and <code>n>1</code>.</td>
+</tr>
+<tr>
+<td><code>bool is_tensor() const</code></td>
+<td>Returns true if it is not a scalar, vector or matrix.</td>
+</tr>
+<tr>
+<td><code>const_pointer data() const</code></td>
+<td>Returns a <code>const_pointer</code> to the first element.</td>
+</tr>
+<tr>
+<td><code>pointer data()</code></td>
+<td>Returns a <code>pointer</code> to the first element.</td>
+</tr>
+<tr>
+<td><code>reference operator[](size_type i)</code></td>
+<td>Returns a <code>reference</code> to the <code>i</code>-th element.</td>
+</tr>
+<tr>
+<td><code>const_reference operator[](size_type i) const</code></td>
+<td>Returns a <code>const_reference</code> to the <code>i</code>-th element.</td>
+</tr>
+<tr>
+<td><code>reference at(size_type i)</code></td>
+<td>Returns a <code>reference</code> to the <code>i</code>-th element.</td>
+</tr>
+<tr>
+<td><code>const_reference at(size_type i) const</code></td>
+<td>Returns a <code>const_reference</code> to the <code>i</code>-th element.</td>
+</tr>
+<tr>
+<td><code>bool empty()</code></td>
+<td>Returns true if the container has no elements.</td>
+</tr>
+<tr>
+<td><code>size_type size() const</code></td>
+<td>Returns the number of elements.</td>
+</tr>
+<tr>
+<td><code>bool valid() const</code></td>
+<td>Returns true if size()>1 and all elements are greater than one.</td>
+</tr>
+<tr>
+<td><code>size_type product() const</code></td>
+<td>Returns the multiplication of all entries.</td>
+</tr>
+<tr>
+<td><code>basic_extents squeeze() const</code></td>
+<td>Returns a new instance where entries equal to one are eliminated.</td>
+</tr>
+<tr>
+<td><code>bool operator==(basic_extents const& b) const</code></td>
+<td>Returns true if all elements are equal.</td>
+</tr>
+<tr>
+<td><code>bool operator!=(basic_extents const& b) const</code></td>
+<td>Returns true if some elements are not equal.</td>
+</tr>
+<tr>
+<td><code>const_iterator begin() const</code></td>
+<td>Returns an <code>const_iterator<code> pointing to the first element.</td>
+</tr>
+<tr>
+<td><code>const_iterator end() const</code></td>
+<td>Returns a <code>const_iterator</code> pointing to an element passed the last element.</td>
+</tr>
+<tr>
+<td><code>std::vector&lt;size_type&gt; base() const</code></td>
+<td>Returns a const reference to the private member sequence container holding all elements.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+<hr />
+<p>
+Copyright (&copy;) 2018 Cem Bassoy<br />
+   Use, modification and distribution are subject to the
+   Boost Software License, Version 1.0.
+   (See accompanying file LICENSE_1_0.txt
+   or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">
+      http://www.boost.org/LICENSE_1_0.txt
+   </a>).
+</p>
+<script type="text/javascript">
+(function($) {
+    $('#toc').toc();
+})(jQuery);
+</script>
+</body>
+</html>

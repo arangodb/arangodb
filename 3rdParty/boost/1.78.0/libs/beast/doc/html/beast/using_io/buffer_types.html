@@ -1,0 +1,466 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Buffer Types</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../using_io.html" title="Networking">
+<link rel="prev" href="layered_streams/counted_stream_example.html" title="Counted Stream 💡">
+<link rel="next" href="files.html" title="Files">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="layered_streams/counted_stream_example.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="files.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_io.buffer_types"></a><a class="link" href="buffer_types.html" title="Buffer Types">Buffer Types</a>
+</h3></div></div></div>
+<p>
+        To facilitate working with instances of the <a href="../../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="emphasis"><em>ConstBufferSequence</em></span></a>
+        and <a href="../../../../../../doc/html/boost_asio/reference/MutableBufferSequence.html" target="_top"><span class="emphasis"><em>MutableBufferSequence</em></span></a>
+        concepts introduced in <a href="../../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>,
+        Beast treats those sequences as a special type of range. The following algorithms
+        and wrappers are provided which transform these ranges efficiently using
+        lazy evaluation. No memory allocations are used in the transformations; instead,
+        they create lightweight iterators over the existing, unmodified memory buffers.
+        Control of buffers is retained by the caller; ownership is not transferred.
+      </p>
+<div class="table">
+<a name="beast.using_io.buffer_types.buffer_algorithms_and_types"></a><p class="title"><b>Table 1.7. Buffer Algorithms and Types</b></p>
+<div class="table-contents"><table class="table" summary="Buffer Algorithms and Types">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffer_bytes.html" title="buffer_bytes"><code class="computeroutput"><span class="identifier">buffer_bytes</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This is a more reliable version of <a href="../../../../../../doc/html/boost_asio/reference/buffer_size.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">buffer_size</span></code></a> which is
+                  easier to use and also works for types which are convertible to
+                  <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">const_buffer</span></code> or <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">mutable_buffer</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_cat.html" title="buffers_cat"><code class="computeroutput"><span class="identifier">buffers_cat</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This functions returns a new buffer sequence which, when iterated,
+                  traverses the sequence which would be formed if all of the input
+                  buffer sequences were concatenated. With this routine, multiple
+                  calls to a stream's <code class="computeroutput"><span class="identifier">write_some</span></code>
+                  function may be combined into one, eliminating expensive system
+                  calls.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_cat_view.html" title="buffers_cat_view"><code class="computeroutput"><span class="identifier">buffers_cat_view</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This class represents the buffer sequence formed by concatenating
+                  two or more buffer sequences. This is type of object returned by
+                  <a class="link" href="../ref/boost__beast__buffers_cat.html" title="buffers_cat"><code class="computeroutput"><span class="identifier">buffers_cat</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_front.html" title="buffers_front"><code class="computeroutput"><span class="identifier">buffers_front</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function returns the first buffer in a buffer sequence, or
+                  a buffer of size zero if the buffer sequence has no elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_prefix.html" title="buffers_prefix"><code class="computeroutput"><span class="identifier">buffers_prefix</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function returns a new buffer or buffer sequence which represents
+                  a prefix of the original buffers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_prefix_view.html" title="buffers_prefix_view"><code class="computeroutput"><span class="identifier">buffers_prefix_view</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This class represents the buffer sequence formed from a prefix
+                  of an existing buffer sequence. This is the type of buffer returned
+                  by <a class="link" href="../ref/boost__beast__buffers_prefix.html" title="buffers_prefix"><code class="computeroutput"><span class="identifier">buffers_prefix</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_range.html" title="buffers_range"><code class="computeroutput"><span class="identifier">buffers_range</span></code></a> <a class="link" href="../ref/boost__beast__buffers_range_ref.html" title="buffers_range_ref"><code class="computeroutput"><span class="identifier">buffers_range_ref</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function returns an iterable range representing the passed
+                  buffer sequence. The values obtained when iterating the range will
+                  always be a constant buffer, unless the underlying buffer sequence
+                  is mutable, in which case the value obtained when iterating will
+                  be a mutable buffer. It is intended as a notational convenience
+                  when writing a <span class="emphasis"><em>range-for</em></span> statement over a
+                  buffer sequence.
+                </p>
+                <p>
+                  The function <a class="link" href="../ref/boost__beast__buffers_range_ref.html" title="buffers_range_ref"><code class="computeroutput"><span class="identifier">buffers_range</span></code></a> maintains
+                  a copy of the buffer sequence, while <a class="link" href="../ref/boost__beast__buffers_range_ref.html" title="buffers_range_ref"><code class="computeroutput"><span class="identifier">buffers_range_ref</span></code></a> maintains
+                  a reference (in this case, the caller must ensure that the lifetime
+                  of the referenced buffer sequence extends until the range object
+                  is destroyed).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_suffix.html" title="buffers_suffix"><code class="computeroutput"><span class="identifier">buffers_suffix</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This class wraps the underlying memory of an existing buffer sequence
+                  and presents a suffix of the original sequence. The length of the
+                  suffix may be progressively shortened. This lets callers work with
+                  sequential increments of a buffer sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_to_string.html" title="buffers_to_string"><code class="computeroutput"><span class="identifier">buffers_to_string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function converts a buffer sequence to a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>.
+                  It can be used for diagnostic purposes and tests.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        The <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+        concept introduced in <a href="../../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>
+        models a buffer sequence which supports an owning, resizable range. Beast
+        provides this set of additional implementations of the dynamic buffer concept:
+      </p>
+<div class="table">
+<a name="beast.using_io.buffer_types.dynamic_buffer_implementations"></a><p class="title"><b>Table 1.8. Dynamic Buffer Implementations</b></p>
+<div class="table-contents"><table class="table" summary="Dynamic Buffer Implementations">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_adaptor.html" title="buffers_adaptor"><code class="computeroutput"><span class="identifier">buffers_adaptor</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This wrapper adapts any <a href="../../../../../../doc/html/boost_asio/reference/MutableBufferSequence.html" target="_top"><span class="emphasis"><em>MutableBufferSequence</em></span></a>
+                  into a <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+                  with an upper limit on the total size of the input and output areas
+                  equal to the size of the underlying mutable buffer sequence. The
+                  implementation does not perform heap allocations.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__flat_buffer.html" title="flat_buffer"><code class="computeroutput"><span class="identifier">flat_buffer</span></code></a> <a class="link" href="../ref/boost__beast__basic_flat_buffer.html" title="basic_flat_buffer"><code class="computeroutput"><span class="identifier">basic_flat_buffer</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Guarantees that input and output areas are buffer sequences with
+                  length one. Upon construction an optional upper limit to the total
+                  size of the input and output areas may be set. The basic container
+                  is an <a href="https://en.cppreference.com/w/cpp/named_req/AllocatorAwareContainer" target="_top"><span class="bold"><strong>AllocatorAwareContainer</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__multi_buffer.html" title="multi_buffer"><code class="computeroutput"><span class="identifier">multi_buffer</span></code></a> <a class="link" href="../ref/boost__beast__basic_multi_buffer.html" title="basic_multi_buffer"><code class="computeroutput"><span class="identifier">basic_multi_buffer</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Uses a sequence of one or more character arrays of varying sizes.
+                  Additional character array objects are appended to the sequence
+                  to accommodate changes in the size of the character sequence. The
+                  basic container is an <a href="https://en.cppreference.com/w/cpp/named_req/AllocatorAwareContainer" target="_top"><span class="bold"><strong>AllocatorAwareContainer</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__flat_static_buffer.html" title="flat_static_buffer"><code class="computeroutput"><span class="identifier">flat_static_buffer</span></code></a> <a class="link" href="../ref/boost__beast__flat_static_buffer_base.html" title="flat_static_buffer_base"><code class="computeroutput"><span class="identifier">flat_static_buffer_base</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Guarantees that input and output areas are buffer sequences with
+                  length one. Provides the facilities of a dynamic buffer, subject
+                  to an upper limit placed on the total size of the input and output
+                  areas defined by a constexpr template parameter. The storage for
+                  the sequences are kept in the class; the implementation does not
+                  perform heap allocations.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__static_buffer.html" title="static_buffer"><code class="computeroutput"><span class="identifier">static_buffer</span></code></a> <a class="link" href="../ref/boost__beast__static_buffer_base.html" title="static_buffer_base"><code class="computeroutput"><span class="identifier">static_buffer_base</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Provides the facilities of a circular dynamic buffer. subject to
+                  an upper limit placed on the total size of the input and output
+                  areas defined by a constexpr template parameter. The implementation
+                  never moves memory during buffer operations. The storage for the
+                  sequences are kept in the class; the implementation does not perform
+                  heap allocations.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        These two functions facilitate buffer interoperability with standard output
+        streams.
+      </p>
+<div class="table">
+<a name="beast.using_io.buffer_types.buffer_output_streams"></a><p class="title"><b>Table 1.9. Buffer Output Streams</b></p>
+<div class="table-contents"><table class="table" summary="Buffer Output Streams">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__make_printable.html" title="make_printable"><code class="computeroutput"><span class="identifier">make_printable</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function wraps a <a href="../../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="emphasis"><em>ConstBufferSequence</em></span></a>
+                  so it may be used with <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__ostream.html" title="ostream"><code class="computeroutput"><span class="identifier">ostream</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function returns a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code>
+                  which wraps a dynamic buffer. Characters sent to the stream using
+                  <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></code>
+                  are stored in the dynamic buffer.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        These type traits are provided to facilitate writing compile-time metafunctions
+        which operate on buffers:
+      </p>
+<div class="table">
+<a name="beast.using_io.buffer_types.buffer_algorithms_and_types0"></a><p class="title"><b>Table 1.10. Buffer Algorithms and Types</b></p>
+<div class="table-contents"><table class="table" summary="Buffer Algorithms and Types">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_iterator_type.html" title="buffers_iterator_type"><code class="computeroutput"><span class="identifier">buffers_iterator_type</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This metafunction is used to determine the type of iterator used
+                  by a particular buffer sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffers_type.html" title="buffers_type"><code class="computeroutput"><span class="identifier">buffers_type</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This metafunction is used to determine the underlying buffer type
+                  for a list of buffer sequence. The equivalent type of the alias
+                  will vary depending on the template type argument.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__is_const_buffer_sequence.html" title="is_const_buffer_sequence"><code class="computeroutput"><span class="identifier">is_const_buffer_sequence</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This metafunction is used to determine if all of the specified
+                  types meet the requirements of <a href="../../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="emphasis"><em>ConstBufferSequence</em></span></a>.
+                  This type alias will be <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">true_type</span></code>
+                  if each specified type meets the requirements, otherwise, this
+                  type alias will be <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">false_type</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__is_mutable_buffer_sequence.html" title="is_mutable_buffer_sequence"><code class="computeroutput"><span class="identifier">is_mutable_buffer_sequence</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This metafunction is used to determine if all of the specified
+                  types meet the requirements of <a href="../../../../../../doc/html/boost_asio/reference/MutableBufferSequence.html" target="_top"><span class="emphasis"><em>MutableBufferSequence</em></span></a>.
+                  This type alias will be <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">true_type</span></code>
+                  if each specified type meets the requirements, otherwise, this
+                  type alias will be <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">false_type</span></code>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="layered_streams/counted_stream_example.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="files.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
