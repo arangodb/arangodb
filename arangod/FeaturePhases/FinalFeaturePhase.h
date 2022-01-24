@@ -24,34 +24,16 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-
-class ConsoleFeature;
-class ScriptFeature;
-class ShutdownFeature;
-class SoftShutdownFeature;
-
 namespace application_features {
-
-class AgencyFeaturePhase;
 
 class FinalFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "FinalPhase"; }
 
-  template<typename Server>
-  explicit FinalFeaturePhase(Server& server)
-      : ApplicationFeaturePhase(
-            server, Server::template id<FinalFeaturePhase>(), name()) {
-    setOptional(false);
-    startsAfter<AgencyFeaturePhase, Server>();
-
-    startsAfter<ConsoleFeature, Server>();
-    startsAfter<ScriptFeature, Server>();
-    startsAfter<ShutdownFeature, Server>();
-    startsAfter<SoftShutdownFeature, Server>();
-  }
+  explicit FinalFeaturePhase(ArangodServer& server);
 };
 
 }  // namespace application_features

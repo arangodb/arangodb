@@ -45,11 +45,9 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Config"; }
 
   template<typename Server>
-  ConfigFeature(application_features::ApplicationServer& server,
-                std::string const& progname,
+  ConfigFeature(Server& server, std::string const& progname,
                 std::string const& configFilename = "")
-      : ApplicationFeature(server, Server::template id<ConfigFeature>(),
-                           name()),
+      : ApplicationFeature{server, *this},
         _file(configFilename),
         _checkConfiguration(false),
         _progname(progname) {

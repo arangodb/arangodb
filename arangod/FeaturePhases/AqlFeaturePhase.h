@@ -24,49 +24,16 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-class AqlFeature;
-class SystemDatabaseFeature;
-class QueryRegistryFeature;
-namespace aql {
-class AqlFunctionFeature;
-class OptimizerRulesFeature;
-}  // namespace aql
-namespace iresearch {
-
-class IResearchAnalyzerFeature;
-class IResearchFeature;
-}  // namespace iresearch
-namespace pregel {
-class PregelFeature;
-}
 namespace application_features {
-
-class CommunicationFeaturePhase;
-class V8FeaturePhase;
 
 class AqlFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "AQLPhase"; }
 
-  template<typename Server>
-  explicit AqlFeaturePhase(Server& server)
-      : ApplicationFeaturePhase(server, Server::template id<AqlFeaturePhase>(),
-                                name()) {
-    setOptional(false);
-    startsAfter<CommunicationFeaturePhase, Server>();
-    startsAfter<V8FeaturePhase, Server>();
-
-    startsAfter<AqlFeature, Server>();
-    startsAfter<aql::AqlFunctionFeature, Server>();
-    startsAfter<iresearch::IResearchAnalyzerFeature, Server>();
-    startsAfter<iresearch::IResearchFeature, Server>();
-    startsAfter<aql::OptimizerRulesFeature, Server>();
-    startsAfter<pregel::PregelFeature, Server>();
-    startsAfter<QueryRegistryFeature, Server>();
-    startsAfter<SystemDatabaseFeature, Server>();
-  }
+  explicit AqlFeaturePhase(ArangodServer& server);
 };
 
 }  // namespace application_features

@@ -48,9 +48,6 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationFeature const&) = delete;
   ApplicationFeature& operator=(ApplicationFeature const&) = delete;
 
-  ApplicationFeature(ApplicationServer& server, size_t registration,
-                     std::string_view name);
-
   virtual ~ApplicationFeature();
 
   enum class State {
@@ -174,6 +171,13 @@ class ApplicationFeature {
   size_t registration() const { return _registration; }
 
  protected:
+  template<typename Server, typename Impl>
+  ApplicationFeature(Server& server, const Impl&)
+      : ApplicationFeature{server, Server::template id<Impl>(), Impl::name()} {}
+
+  ApplicationFeature(ApplicationServer& server, size_t registration,
+                     std::string_view name);
+
   void setOptional() { setOptional(true); }
 
   // make the feature optional (or not)
@@ -273,15 +277,6 @@ class ApplicationFeatureT : public ApplicationFeature {
  public:
   using Server = ServerT;
 
-  template<typename Impl>
-  ApplicationFeatureT(Server& server, const Impl&)
-      : ApplicationFeatureT(server, Server::template id<Impl>(), Impl::name()) {
-  }
-
-  ApplicationFeatureT(Server& server, size_t registration,
-                      std::string_view name)
-      : ApplicationFeature{server, registration, name} {}
-
   Server& server() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto* p = dynamic_cast<Server*>(&ApplicationFeature::server());
@@ -308,6 +303,16 @@ class ApplicationFeatureT : public ApplicationFeature {
   void onlyEnabledWith() {
     _onlyEnabledWith<T, Server>();
   }
+
+ protected:
+  template<typename Impl>
+  ApplicationFeatureT(Server& server, const Impl&)
+      : ApplicationFeatureT(server, Server::template id<Impl>(), Impl::name()) {
+  }
+
+  ApplicationFeatureT(Server& server, size_t registration,
+                      std::string_view name)
+      : ApplicationFeature{server, registration, name} {}
 };
 
 }  // namespace application_features

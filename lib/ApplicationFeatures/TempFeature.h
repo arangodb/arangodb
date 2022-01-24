@@ -36,9 +36,7 @@ class TempFeature final : public application_features::ApplicationFeature {
 
   template<typename Server>
   TempFeature(Server& server, std::string const& appname)
-      : ApplicationFeature(server, Server::template id<TempFeature>(), name()),
-        _path(),
-        _appname(appname) {
+      : ApplicationFeature{server, *this}, _path(), _appname(appname) {
     setOptional(false);
     startsAfter<application_features::GreetingsFeaturePhase, Server>();
   }

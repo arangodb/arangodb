@@ -38,8 +38,7 @@ class ShutdownFeature final : public application_features::ApplicationFeature {
 
   template<typename Server>
   ShutdownFeature(Server& server, std::vector<size_t> const& features)
-      : ApplicationFeature(server, Server::template id<ShutdownFeature>(),
-                           name()) {
+      : ApplicationFeature{server, *this} {
     setOptional(true);
     startsAfter<application_features::GreetingsFeaturePhase, Server>();
 

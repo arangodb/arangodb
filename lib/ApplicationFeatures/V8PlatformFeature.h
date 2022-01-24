@@ -78,8 +78,7 @@ class V8PlatformFeature final
 
   template<typename Server>
   explicit V8PlatformFeature(Server& server)
-      : ApplicationFeature(server, Server::template id<V8PlatformFeature>(),
-                           name()) {
+      : ApplicationFeature{server, *this} {
     setOptional(true);
   }
 

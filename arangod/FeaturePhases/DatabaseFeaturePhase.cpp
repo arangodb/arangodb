@@ -22,3 +22,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeaturePhase.h"
+
+namespace arangodb::application_features {
+
+DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
+  setOptional(false);
+  startsAfter<BasicFeaturePhaseServer, ArangodServer>();
+
+  startsAfter<AuthenticationFeature, ArangodServer>();
+  startsAfter<CacheManagerFeature, ArangodServer>();
+  startsAfter<CheckVersionFeature, ArangodServer>();
+  startsAfter<DatabaseFeature, ArangodServer>();
+  startsAfter<EngineSelectorFeature, ArangodServer>();
+  startsAfter<FlushFeature, ArangodServer>();
+  startsAfter<InitDatabaseFeature, ArangodServer>();
+  startsAfter<LockfileFeature, ArangodServer>();
+  startsAfter<ReplicationFeature, ArangodServer>();
+  startsAfter<RocksDBEngine, ArangodServer>();
+  startsAfter<RocksDBRecoveryManager, ArangodServer>();
+  startsAfter<ServerIdFeature, ArangodServer>();
+  startsAfter<StorageEngineFeature, ArangodServer>();
+  startsAfter<SystemDatabaseFeature, ArangodServer>();
+  startsAfter<transaction::ManagerFeature, ArangodServer>();
+  startsAfter<ViewTypesFeature, ArangodServer>();
+
+#ifdef USE_ENTERPRISE
+  startsAfter<LdapFeature, ArangodServer>();
+#endif
+}
+
+}  // namespace arangodb::application_features

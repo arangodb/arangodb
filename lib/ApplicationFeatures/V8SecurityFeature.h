@@ -55,8 +55,7 @@ class V8SecurityFeature final
 
   template<typename Server>
   explicit V8SecurityFeature(Server& server)
-      : ApplicationFeature(server, Server::template id<V8SecurityFeature>(),
-                           name()),
+      : ApplicationFeature{server, *this},
         _hardenInternalModule(false),
         _allowProcessControl(false),
         _allowPortTesting(false) {

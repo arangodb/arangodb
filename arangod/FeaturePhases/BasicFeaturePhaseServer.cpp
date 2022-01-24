@@ -22,3 +22,38 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicFeaturePhaseServer.h"
+
+namespace arangodb::application_features {
+
+BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
+  setOptional(false);
+  startsAfter<GreetingsFeaturePhase, ArangodServer>();
+
+  startsAfter<DaemonFeature, ArangodServer>();
+  startsAfter<DatabasePathFeature, ArangodServer>();
+  startsAfter<EnvironmentFeature, ArangodServer>();
+#ifdef TRI_HAVE_GETRLIMIT
+  startsAfter<FileDescriptorsFeature, ArangodServer>();
+#endif
+  startsAfter<LanguageFeature, ArangodServer>();
+  startsAfter<MaxMapCountFeature, ArangodServer>();
+  startsAfter<NonceFeature, ArangodServer>();
+  startsAfter<PrivilegeFeature, ArangodServer>();
+  startsAfter<SchedulerFeature, ArangodServer>();
+  startsAfter<ShardingFeature, ArangodServer>();
+  startsAfter<SslFeature, ArangodServer>();
+  startsAfter<SupervisorFeature, ArangodServer>();
+  startsAfter<TempFeature, ArangodServer>();
+
+#ifdef _WIN32
+  startsAfter<WindowsServiceFeature, ArangodServer>();
+#endif
+
+#ifdef USE_ENTERPRISE
+  startsAfter<AuditFeature, ArangodServer>();
+  startsAfter<EncryptionFeature, ArangodServer>();
+#endif
+}
+
+}  // namespace arangodb::application_features

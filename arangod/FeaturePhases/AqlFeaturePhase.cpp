@@ -22,3 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFeaturePhase.h"
+
+namespace arangodb::application_features {
+
+AqlFeaturePhase::AqlFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
+  setOptional(false);
+  startsAfter<CommunicationFeaturePhase, ArangodServer>();
+  startsAfter<V8FeaturePhase, ArangodServer>();
+
+  startsAfter<AqlFeature, ArangodServer>();
+  startsAfter<aql::AqlFunctionFeature, ArangodServer>();
+  startsAfter<iresearch::IResearchAnalyzerFeature, ArangodServer>();
+  startsAfter<iresearch::IResearchFeature, ArangodServer>();
+  startsAfter<aql::OptimizerRulesFeature, ArangodServer>();
+  startsAfter<pregel::PregelFeature, ArangodServer>();
+  startsAfter<QueryRegistryFeature, ArangodServer>();
+  startsAfter<SystemDatabaseFeature, ArangodServer>();
+}
+
+}  // namespace arangodb::application_features

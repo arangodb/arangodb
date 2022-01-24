@@ -35,8 +35,7 @@ class GreetingsFeature final : public application_features::ApplicationFeature {
 
   template<typename Server>
   explicit GreetingsFeature(Server& server)
-      : ApplicationFeature(server, Server::template id<GreetingsFeature>(),
-                           name()) {
+      : ApplicationFeature{server, *this} {
     setOptional(false);
     startsAfter<LoggerFeature, Server>();
   }

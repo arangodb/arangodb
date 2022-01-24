@@ -24,71 +24,16 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-
-class DaemonFeature;
-class DatabasePathFeature;
-class EnvironmentFeature;
-class FileDescriptorsFeature;
-class LanguageFeature;
-class MaxMapCountFeature;
-class NonceFeature;
-class PrivilegeFeature;
-class SchedulerFeature;
-class ShardingFeature;
-class SslFeature;
-class SupervisorFeature;
-class TempFeature;
-#ifdef _WIN32
-class WindowsServiceFeature;
-#endif
-
-#ifdef USE_ENTERPRISE
-class AuditFeature;
-class EncryptionFeature;
-#endif
-
 namespace application_features {
-
-class GreetingsFeaturePhase;
 
 class BasicFeaturePhaseServer : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "BasicsPhase"; }
 
-  template<typename Server>
-  explicit BasicFeaturePhaseServer(Server& server)
-      : ApplicationFeaturePhase(
-            server, Server::template id<BasicFeaturePhaseServer>(), name()) {
-    setOptional(false);
-    startsAfter<GreetingsFeaturePhase, Server>();
-
-    startsAfter<DaemonFeature, Server>();
-    startsAfter<DatabasePathFeature, Server>();
-    startsAfter<EnvironmentFeature, Server>();
-#ifdef TRI_HAVE_GETRLIMIT
-    startsAfter<FileDescriptorsFeature, Server>();
-#endif
-    startsAfter<LanguageFeature, Server>();
-    startsAfter<MaxMapCountFeature, Server>();
-    startsAfter<NonceFeature, Server>();
-    startsAfter<PrivilegeFeature, Server>();
-    startsAfter<SchedulerFeature, Server>();
-    startsAfter<ShardingFeature, Server>();
-    startsAfter<SslFeature, Server>();
-    startsAfter<SupervisorFeature, Server>();
-    startsAfter<TempFeature, Server>();
-
-#ifdef _WIN32
-    startsAfter<WindowsServiceFeature, Server>();
-#endif
-
-#ifdef USE_ENTERPRISE
-    startsAfter<AuditFeature, Server>();
-    startsAfter<EncryptionFeature, Server>();
-#endif
-  }
+  explicit BasicFeaturePhaseServer(ArangodServer& server);
 };
 
 }  // namespace application_features

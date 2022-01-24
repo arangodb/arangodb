@@ -336,10 +336,6 @@ class ApplicationServerT : public ApplicationServer {
     return Features::template id<T>();
   }
 
-  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
-                     char const* binaryPath)
-      : ApplicationServer{opts, binaryPath} {}
-
   // return whether or not a feature is enabled
   // will throw when called for a non-existing feature
   template<typename T>
@@ -432,6 +428,11 @@ class ApplicationServerT : public ApplicationServer {
     }
     return feature;
   }
+
+ protected:
+  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
+                     char const* binaryPath)
+      : ApplicationServer{opts, binaryPath} {}
 };
 
 }  // namespace application_features

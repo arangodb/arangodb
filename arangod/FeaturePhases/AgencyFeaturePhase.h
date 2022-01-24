@@ -24,26 +24,15 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
-namespace arangodb {
-class AgencyFeature;
-namespace application_features {
-
-class FoxxFeaturePhase;
+namespace arangodb::application_features {
 
 class AgencyFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "AgencyPhase"; }
 
-  template<typename Server>
-  explicit AgencyFeaturePhase(Server& server)
-      : ApplicationFeaturePhase(
-            server, Server::template id<AgencyFeaturePhase>(), name()) {
-    setOptional(false);
-    startsAfter<FoxxFeaturePhase, Server>();
-    startsAfter<AgencyFeature, Server>();
-  }
+  explicit AgencyFeaturePhase(ArangodServer& server);
 };
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

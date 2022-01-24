@@ -24,36 +24,16 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-class ClusterFeature;
-class MaintenanceFeature;
-class ReplicationTimeoutFeature;
-class ReplicatedLogFeature;
-class V8PlatformFeature;
-
 namespace application_features {
-class DatabaseFeaturePhase;
 
 class ClusterFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterPhase"; }
 
-  template<typename Server>
-  explicit ClusterFeaturePhase(Server& server)
-      : ApplicationFeaturePhase(
-            server, Server::template id<ClusterFeaturePhase>(), name()) {
-    setOptional(false);
-    startsAfter<DatabaseFeaturePhase, Server>();
-
-    startsAfter<ClusterFeature, Server>();
-    startsAfter<MaintenanceFeature, Server>();
-    startsAfter<ReplicationTimeoutFeature, Server>();
-    startsAfter<ReplicatedLogFeature, Server>();
-
-    // use before here since platform feature is in lib
-    startsBefore<V8PlatformFeature, Server>();
-  }
+  explicit ClusterFeaturePhase(ArangodServer& server);
 };
 
 }  // namespace application_features

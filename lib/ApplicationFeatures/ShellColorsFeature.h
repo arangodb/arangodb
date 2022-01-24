@@ -33,10 +33,8 @@ class ShellColorsFeature final
   static constexpr std::string_view name() noexcept { return "ShellColors"; }
 
   template<typename Server>
-  explicit ShellColorsFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature(server, Server::template id<ShellColorsFeature>(),
-                           name()),
-        _initialized(false) {
+  explicit ShellColorsFeature(Server& server)
+      : ApplicationFeature{server, *this}, _initialized(false) {
     setOptional(false);
 
     // it's admittedly a hack that we already call prepare here...
