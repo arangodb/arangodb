@@ -266,7 +266,7 @@ TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(  // constructor
 
         auto count = v8g->JSSharedPtrs.erase(key);
         TRI_ASSERT(count) << "Did not find weak value the value for '" << key
-                          << "' in the registry! Context ID:" << v8g->_id;
+                          << "' in the registry! Context ID: " << v8g->_id;
         // zero indicates that v8g was probably deallocated
         // before calling the v8::WeakCallbackInfo::Callback
       },
