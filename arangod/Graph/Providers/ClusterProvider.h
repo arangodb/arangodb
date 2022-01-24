@@ -137,7 +137,7 @@ class ClusterProvider {
       return collectionNameResult.get().first;
     };
 
-    static bool isResponsible(transaction::Methods* trx) ;
+    static bool isResponsible(transaction::Methods* trx);
 
     friend auto operator<<(std::ostream& out, Step const& step)
         -> std::ostream&;
@@ -163,8 +163,8 @@ class ClusterProvider {
 
   void clear();
 
-  auto startVertex(const VertexType& vertex, size_t depth = 0, double weight = 0.0)
-      -> Step;
+  auto startVertex(const VertexType& vertex, size_t depth = 0,
+                   double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,
