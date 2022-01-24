@@ -285,6 +285,19 @@ const G6JsGraph = () => {
     setGraphData(newGraphData);
   }
 
+  const updateGraphDataEdges = (newEdges) => {
+    const currentNodes = graphData.nodes;
+    const newGraphData = {
+      nodes: [
+        ...currentNodes
+      ],
+      edges: [
+        ...newEdges
+      ]
+    };
+    setGraphData(newGraphData);
+  }
+
   const printGraphData = () => {
     console.log("Current graphData: ", graphData);
   }
@@ -310,6 +323,7 @@ const G6JsGraph = () => {
         <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
+            onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
         />
     </div>
   );

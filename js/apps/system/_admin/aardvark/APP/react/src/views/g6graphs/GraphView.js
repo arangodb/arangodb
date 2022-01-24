@@ -146,9 +146,26 @@ export class GraphView extends React.Component {
   }
 
   addEdge = () => {
+    /*
+    const node1 = null;
+    const node2 = null;
+    const min = 0;
+    const max = this.graph.getNodes().length - 1;
+    console.log('max: ', max);
+    const randomNode1 = Math.floor(Math.random() * (max - min) + min);
+    console.log('randomNode1: ', randomNode1);
+    const randomNode2 = Math.floor(Math.random() * (max - min) + min);
+    console.log('randomNode2: ', randomNode2);
+    this.graph.findAll("node", (node) => {
+      console.log('node.get("model").id: ', node.get("model").id);
+      //tempNodes.push(node.get("model"));
+      return node.get("model");
+    });
+    */
     const edgeModel = {
-      source: 'newnode',
-      target: '2',
+      id: 'alicetodiana',
+      source: 'female/alice',
+      target: 'female/diana',
       data: {
         type: 'name1',
         amount: '1000,00 元',
@@ -184,7 +201,6 @@ export class GraphView extends React.Component {
   }
 
   updateNodeGraphData = () => {
-    //const tempNodes = this.graph.getNodes();
     const tempNodes = [];
     this.graph.findAll("node", (node) => {
       console.log('node.get("model"): ', node.get("model"));
@@ -193,6 +209,15 @@ export class GraphView extends React.Component {
     });
     console.log("updateNodeGraphData (tempNodes in child): ", tempNodes);
     this.props.onUpdateNodeGraphData(tempNodes);
+  }
+
+  updateEdgeGraphData = () => {
+    const tempEdges = [];
+    this.graph.findAll("edge", (edge) => {
+      tempEdges.push(edge.get("model"));
+      return edge.get("model");
+    });
+    this.props.onUpdateEdgeGraphData(tempEdges);
   }
 
   render() {
