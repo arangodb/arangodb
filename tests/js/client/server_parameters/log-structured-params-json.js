@@ -103,11 +103,11 @@ return require('internal').options()["log.output"];
         assertFalse(resChangeParams.hasOwnProperty("database"));
 
         const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("testmann: start"); 
+require('console').log("testParams: start"); 
 for (let i = 0; i < 10; ++i) {
-  require('console').log("testmann: testi" + i);
+  require('console').log("testParams: testParam" + i);
 }
-require('console').log("testmann: done"); 
+require('console').log("testParams: done"); 
 return require('internal').options()["log.output"];
 `);
 
@@ -123,7 +123,7 @@ return require('internal').options()["log.output"];
           let lines = content.split('\n');
 
           filtered = lines.filter((line) => {
-            return line.match(/testmann: /);
+            return line.match(/testParams: /);
           });
 
           if (filtered.length === 12) {
@@ -134,15 +134,15 @@ return require('internal').options()["log.output"];
         }
         assertEqual(12, filtered.length);
 
-        assertTrue(filtered[0].match(/testmann: start/));
+        assertTrue(filtered[0].match(/testParams: start/));
         for (let i = 1; i < 11; ++i) {
-          assertTrue(filtered[i].match(/testmann: testi\d+/));
+          assertTrue(filtered[i].match(/testParams: testParam\d+/));
           assertFalse(filtered[i].match(/\[dog: /));
           assertFalse(filtered[i].match(/\[database: _system\]/));
           assertTrue(filtered[i].match("[username: root]"));
           assertTrue(filtered[i].match(`[url: /_admin/execute?returnBodyAsJSON=true]`));
         }
-        assertTrue(filtered[11].match(/testmann: done/));
+        assertTrue(filtered[11].match(/testParams: done/));
       } finally {
         const res = arango.PUT("/_admin/log/structured", {"database": true});
 
