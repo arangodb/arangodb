@@ -635,7 +635,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
-  std::string const queryString(TRI_ObjectToString(isolate, args[0]));
+  std::string queryString(TRI_ObjectToString(isolate, args[0]));
 
   // bind parameters
   std::shared_ptr<VPackBuilder> bindVars;
@@ -663,7 +663,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // bind parameters will be freed by the query later
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(queryString), std::move(bindVars),
+      aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
   auto queryResult = query->explain();
 
@@ -874,7 +874,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
-  std::string const queryString(TRI_ObjectToString(isolate, args[0]));
+  std::string queryString(TRI_ObjectToString(isolate, args[0]));
 
   // bind parameters
   std::shared_ptr<VPackBuilder> bindVars;
@@ -901,7 +901,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(queryString), std::move(bindVars),
+      aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);

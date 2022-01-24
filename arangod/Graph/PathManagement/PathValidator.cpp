@@ -24,6 +24,7 @@
 #include "PathValidator.h"
 #include "Aql/AstNode.h"
 #include "Aql/PruneExpressionEvaluator.h"
+#include "Basics/ScopeGuard.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -338,8 +339,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   auto tmpVar = _options.getTempVar();
   bool mustDestroy = false;
   auto ctx = _options.getExpressionContext();
-  aql::AqlValue tmpVal{value};
-  ctx.setVariableValue(tmpVar, tmpVal);
+  ctx.setVariableValue(tmpVar,
+                       aql::AqlValue{aql::AqlValueHintSliceNoCopy{value}});
+  ScopeGuard defer([&]() noexcept { ctx.clearVariableValue(tmpVar); });
   aql::AqlValue res = expression->execute(&ctx, mustDestroy);
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());

@@ -43,7 +43,7 @@ MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
       TRI_ASSERT(ctx._inputRow);
       TRI_ASSERT(ctx._inputRow->isInitialized());
       TRI_ASSERT(ctx._infos);
-      arangodb::aql::AqlValue a{arangodb::aql::AqlValueHintCopy(doc.begin())};
+      arangodb::aql::AqlValue a{arangodb::aql::AqlValueHintSliceCopy(doc)};
       bool mustDestroy = true;
       arangodb::aql::AqlValueGuard guard{a, mustDestroy};
       ctx._outputRow->moveValueInto(

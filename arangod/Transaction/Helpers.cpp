@@ -24,7 +24,6 @@
 #include "Helpers.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Transaction/Context.h"
@@ -423,26 +422,14 @@ std::string transaction::helpers::makeIdFromParts(
   return resolved;
 }
 
-// ============== StringBufferLeaser ==============
-
-/// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
-    : _transactionContext(trx->transactionContextPtr()),
-      _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
-
-/// @brief destructor
-transaction::StringBufferLeaser::~StringBufferLeaser() {
-  _transactionContext->returnStringBuffer(_stringBuffer);
-}
-
 // ============== StringLeaser ==============
 
-/// @brief constructor, leases a std::string
+/// @brief constructor, leases an std::string
 transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
     : _transactionContext(trx->transactionContextPtr()),
       _string(_transactionContext->leaseString()) {}
 
-/// @brief constructor, leases a StringBuffer
+/// @brief constructor, leases an std::string
 transaction::StringLeaser::StringLeaser(
     transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
