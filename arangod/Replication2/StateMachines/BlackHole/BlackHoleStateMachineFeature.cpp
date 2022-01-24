@@ -37,5 +37,4 @@ void BlackHoleStateMachineFeature::start() {
 }
 
 BlackHoleStateMachineFeature::BlackHoleStateMachineFeature(Server& server)
-    : ArangodFeature(server, Server::id<BlackHoleStateMachineFeature>(),
-                     name()) {}
+    : ArangodFeature{server, *this} {}

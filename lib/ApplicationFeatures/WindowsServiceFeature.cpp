@@ -77,7 +77,7 @@ void reportServiceAborted(void) {
 }
 
 WindowsServiceFeature::WindowsServiceFeature(Server& server)
-    : ArangodFeature(server, Server::id<WindowsServiceFeature>(), name()),
+    : ArangodFeature{server, this},
       _server(&server),
       _progress(2),
       _shutdownNoted(false) {
