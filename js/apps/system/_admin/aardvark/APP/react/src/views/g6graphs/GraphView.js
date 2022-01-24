@@ -5,7 +5,8 @@ import { Card } from 'antd';
 import { data2 } from './data2';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
-import AddCollectionNameSelector from './AddCollectionNameSelector';
+import AddCollectionNameToNodesSelector from './AddCollectionNameToNodesSelector';
+import AddCollectionNameToEdgesSelector from './AddCollectionNameToEdgesSelector';
 import styles from './graphview.module.css';
 
 export class GraphView extends React.Component {
@@ -253,12 +254,25 @@ export class GraphView extends React.Component {
     this.graph.updateItem(item, model);
   }
 
-  addCollectionName = (value) => {
+  addCollectionNameToNodes = (value) => {
     this.graph.node((node) => {
       const slashPos = node.id.indexOf("/");
       node.label = node.id.substring(slashPos + 1) + " - " + node.id.substring(0, slashPos);
       return {
         node
+      };
+    });
+    
+    this.graph.data(this.props.data);
+    this.graph.render();
+  }
+
+  addCollectionNameToEdges = (value) => {
+    this.graph.edge((edge) => {
+      const slashPos = edge.id.indexOf("/");
+      edge.label = edge.id.substring(slashPos + 1) + " - " + edge.id.substring(0, slashPos);
+      return {
+        edge
       };
     });
     
@@ -278,7 +292,8 @@ export class GraphView extends React.Component {
       <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
       <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
-      <AddCollectionNameSelector onAddCollectionNameChange={(value) => this.addCollectionName(value)} />
+      <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
+      <AddCollectionNameToEdgesSelector onAddCollectionNameToEdgesChange={(value) => this.addCollectionNameToEdges(value)} />
       <Card
           title="Pure JS G6 Graph"
         >

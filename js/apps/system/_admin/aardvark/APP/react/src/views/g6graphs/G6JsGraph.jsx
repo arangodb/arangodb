@@ -9,7 +9,6 @@ import G6 from '@antv/g6';
 import { Card } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
-import AddCollectionNameSelector from './AddCollectionNameSelector.js';
 import NodeLabelContentSelector from './NodeLabelContentSelector.js';
 import './tooltip.css';
 
@@ -186,22 +185,6 @@ const G6JsGraph = () => {
     graph.addItem('edge', edgeModel);
   }
 
-  const updateNodeModel = () => {
-    const model = {
-      id: '2',
-      label: 'node2',
-      population: '2,950,000',
-      type: 'diamond',
-      style: {
-        fill: 'red',
-      },
-    };
-    
-    // Find the item instance by id
-    const item = graph.findById('2');
-    graph.updateItem(item, model);
-  }
-
   const updateEdgeModel = () => {
     const model = {
       id: '2',
@@ -340,7 +323,6 @@ const G6JsGraph = () => {
         <button onClick={() => changeGraphData()}>Change graph data</button>
         <button onClick={() => addNode()}>Add node</button>
         <button onClick={() => addEdge()}>Add edge</button>
-        <button onClick={() => updateNodeModel()}>Update node2</button>
         <button onClick={() => returnGraph()}>What is graph?</button>
   */
 
