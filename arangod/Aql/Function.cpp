@@ -56,6 +56,7 @@ Function::Function(std::string const& name, char const* arguments,
       << ", canRunOnDBServerOneShard: "
       << hasFlag(Flags::CanRunOnDBServerOneShard)
       << ", canReadDocuments: " << hasFlag(Flags::CanReadDocuments)
+      << ", canUseInAnalyzer: " << hasFlag(Flags::CanUseInAnalyzer)
       << ", hasCxxImplementation: " << hasCxxImplementation()
       << ", hasConversions: " << !conversions.empty();
 
@@ -64,6 +65,10 @@ Function::Function(std::string const& name, char const* arguments,
   // in the future.
   TRI_ASSERT(!hasFlag(Flags::CanRunOnDBServerCluster) ||
              hasFlag(Flags::CanRunOnDBServerOneShard));
+
+  // functions that read documents are not usable in analyzers.
+  TRI_ASSERT(!hasFlag(Flags::CanReadDocuments) ||
+             !hasFlag(Flags::CanUseInAnalyzer));
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -223,6 +228,8 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
   builder.add("canRunOnDBServerOneShard",
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerOneShard)));
+  builder.add("canUseInAnalyzer",
+              velocypack::Value(hasFlag(Flags::CanUseInAnalyzer)));
 
   // deprecated: only here for compatibility
   builder.add("canRunOnDBServer",

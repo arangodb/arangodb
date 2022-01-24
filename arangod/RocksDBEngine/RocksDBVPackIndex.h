@@ -120,7 +120,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
-      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) override;
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;

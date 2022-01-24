@@ -45,10 +45,6 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
 
   ~ExecutorExpressionContext() override = default;
 
-  bool isDataFromCollection(Variable const* variable) const override {
-    return variable->isDataFromCollection;
-  }
-
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 

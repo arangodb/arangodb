@@ -217,7 +217,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -294,7 +294,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -371,7 +371,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_EQ(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK,
               link->type());
-    EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE.name(), link->typeName());
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::DataSourceType,
+              link->typeName());
     EXPECT_FALSE(link->unique());
 
     {
@@ -2464,21 +2465,19 @@ TEST_F(IResearchLinkMetricsTest, CleanupWhenEmptyCommit) {
   setLink();
   auto dataPath = _dirPath / "abracadabra.txt";
   bool exist{false};
-  irs::file_utils::exists(exist, dataPath.c_str());
-  EXPECT_FALSE(exist);
+  ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
+  ASSERT_FALSE(exist);
   {  // It's necessary to close dataFile, otherwise test doesn't work on Windows
     std::ofstream dataFile{dataPath.c_str()};
     dataFile << "boom";
   }
-  irs::file_utils::exists(exist, dataPath.c_str());
-  EXPECT_TRUE(exist);
-
-  int tryCount = 100;
-  while(exist && (--tryCount) > 0) {
+  ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
+  int tryCount{1000};
+  while (exist && (--tryCount) > 0) {
     std::this_thread::sleep_for(10ms);
-    irs::file_utils::exists(exist, dataPath.c_str());
+    ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
   }
-  EXPECT_FALSE(exist);
+  ASSERT_FALSE(exist);
 }
 
 TEST_F(IResearchLinkMetricsTest, RemoveMetrics) {
@@ -2658,32 +2657,32 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     expected +=
         R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}0)";
+    expected += R"(",shard="",db="testVocbase"}0)";
     expected += "\n";
 
     expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}1)";
+    expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
     expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}1)";
+    expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
     expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}1)";
+    expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
     expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}6)";
+    expected += R"(",shard="",db="testVocbase"}6)";
     expected += "\n";
 
     expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}681)";
+    expected += R"(",shard="",db="testVocbase"}681)";
     expected += "\n";
 
     std::string actual;
@@ -2703,32 +2702,32 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     expected +=
         R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}0)";
+    expected += R"(",shard="",db="testVocbase"}0)";
     expected += "\n";
 
     expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}3)";
+    expected += R"(",shard="",db="testVocbase"}3)";
     expected += "\n";
 
     expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}3)";
+    expected += R"(",shard="",db="testVocbase"}3)";
     expected += "\n";
 
     expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}2)";
+    expected += R"(",shard="",db="testVocbase"}2)";
     expected += "\n";
 
     expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}11)";
+    expected += R"(",shard="",db="testVocbase"}11)";
     expected += "\n";
 
     expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}1513)";
+    expected += R"(",shard="",db="testVocbase"}1513)";
     expected += "\n";
 
     std::string actual;

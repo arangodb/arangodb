@@ -421,11 +421,30 @@ bool visitAttributeAccess(aql::AstNode const*& head, aql::AstNode const* node,
         auto* root = itr->getMemberUnchecked(1);
         auto* var = itr->getMemberUnchecked(0);
 
-        return ref && aql::NODE_TYPE_ITERATOR == itr->type &&
-               aql::NODE_TYPE_REFERENCE == ref->type && var &&
-               aql::NODE_TYPE_VARIABLE == var->type &&
-               visitAttributeAccess(head, root, visitor)  // 1st visit root
-               && visitor.expansion(*node);  // 2nd visit current node
+        if (!ref) {
+          return false;  // malformed node
+        }
+
+        if (aql::NODE_TYPE_REFERENCE == ref->type) {
+          // b.a[*]
+          return aql::NODE_TYPE_ITERATOR == itr->type &&
+                 aql::NODE_TYPE_REFERENCE == ref->type && var &&
+                 aql::NODE_TYPE_VARIABLE == var->type &&
+                 visitAttributeAccess(head, root, visitor)  // 1st visit root
+                 && visitor.expansion(*node);  // 2nd visit current node
+        } else if (aql::NODE_TYPE_ATTRIBUTE_ACCESS == ref->type) {
+          // tail after the expansion b.a[*].c
+          aql::AstNode const* tailHead{nullptr};
+          return aql::NODE_TYPE_ITERATOR == itr->type && var &&
+                 aql::NODE_TYPE_VARIABLE == var->type &&
+                 visitAttributeAccess(head, root, visitor) &&  // 1st visit root
+                 visitor.expansion(*node) &&  // 2nd visit current node
+                 visitAttributeAccess(tailHead, ref,
+                                      visitor);  // 3rd visit the tail
+        } else {                                 // unexpected expansion form
+          TRI_ASSERT(false);
+          return false;
+        }
       }
     }
     case aql::NODE_TYPE_REFERENCE: {
@@ -502,7 +521,7 @@ bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
-                      NormalizedCmpNode& out);
+                      bool allowExpansion, NormalizedCmpNode& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks 2 nodes of type NODE_TYPE_ATTRIBUTE_ACCESS for equality
@@ -516,7 +535,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx);
+                             QueryContext const& ctx, bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
@@ -524,7 +543,60 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
 /// @returns the specified node on success, nullptr otherwise
 ////////////////////////////////////////////////////////////////////////////////
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
-                                         aql::Variable const& ref) noexcept;
+                                         aql::Variable const& ref,
+                                         bool allowExpansion) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Enumerates all attributes accessed for specified variable in node and
+/// subnodes.
+///        Full path is visited only once e.g. for d.a.b.c.d and variable d
+///        there will be only 1 call with name "a.b.c.d"
+/// @tparam Visitor callable accepting string_view with full attribute name
+/// @param node node to visit
+/// @param ref variable to check for access
+/// @param ctx current query context
+/// @param allowExpansion allow to have [*] in path
+/// @param visitor visitor to apply
+/// @return true if all access were valid and all visitor calls returned true,
+/// false otherwise
+////////////////////////////////////////////////////////////////////////////////
+template<typename Visitor>
+bool nameFromAttributeAccesses(aql::AstNode const* node,
+                               aql::Variable const& ref, bool allowExpansion,
+                               QueryContext const& ctx,
+                               Visitor const& visitor) {
+  if (!node) {
+    return false;
+  }
+  std::string name;
+  switch (node->type) {
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:
+    case aql::NODE_TYPE_INDEXED_ACCESS:
+    case aql::NODE_TYPE_EXPANSION:
+      if (checkAttributeAccess(node, ref, allowExpansion) &&
+          nameFromAttributeAccess(name, *node, ctx, allowExpansion)) {
+        if (!visitor(name)) {
+          return false;
+        }
+      } else if (findReference(*node, ref)) {
+        return false;
+      }
+      break;  // nameFromAttributeAccess has already consumed all the path. So
+              // we are done with this branch
+    default: {
+      size_t const n = node->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto const* member = node->getMemberUnchecked(i);
+        TRI_ASSERT(member);
+        if (!nameFromAttributeAccesses(member, ref, allowExpansion, ctx,
+                                       visitor)) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
 
 }  // namespace iresearch
 }  // namespace arangodb

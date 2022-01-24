@@ -28,16 +28,13 @@
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
-#include "VocBase/LogicalDataSource.h"
 
 namespace arangodb {
 namespace iresearch {
 
-LogicalDataSource::Type const& dataSourceType();
-LogTopic& logTopic();
-
-ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED extern LogTopic TOPIC;
+[[maybe_unused]] extern LogTopic TOPIC;
+[[maybe_unused]] inline constexpr std::string_view
+    IRESEARCH_INVERTED_INDEX_TYPE = "inverted";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines the implementation version of the iresearch view interface
@@ -152,6 +149,52 @@ struct StaticStrings {
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view CollectionNameField{"collectionName"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running consolidations
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationIntervalMsec{
+      "consolidationIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running commits
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view CommitIntervalMsec{"commitIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        number of completed consolidtions before cleanup is run
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view CleanupIntervalStep{"cleanupIntervalStep"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///         consolidation policy properties
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationPolicy{"consolidationPolicy"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of concurrent active writers (segments) that perform
+  ///        a transaction. Other writers (segments) wait till current active
+  ///        writers (segments) finish.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferActive{"writebufferActive"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of writers (segments) cached in the pool.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferIdle{"writebufferIdle"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum memory byte size per writer (segment) before a writer
+  ///        (segment) flush is triggered
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferSizeMax{"writebufferSizeMax"};
 };
 
 }  // namespace iresearch

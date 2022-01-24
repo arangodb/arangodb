@@ -321,8 +321,9 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
               pair.at(0), "id", 0);
       aql::Variable* var = variables()->getVariable(varId);
       TRI_ASSERT(var != nullptr);
-      aql::AqlValue val(pair.at(1).start());
-      _opts->setVariableValue(var, val);
+      // register temporary variables in expression context
+      _opts->setVariableValue(
+          var, aql::AqlValue{aql::AqlValueHintSliceNoCopy{pair.at(1)}});
     }
     _opts->calculateIndexExpressions(_query.ast());
   }
