@@ -95,8 +95,9 @@ return require('internal').options()["log.output"];
     },
 
     testLogNewEntries: function() {
-      let filtered = [];
+      const formerSettings = arango.GET("/_admin/log/structured");
       try {
+        let filtered = [];
         const resChangeParams = arango.PUT("/_admin/log/structured", {"dog": true, "database": false});
         assertTrue(resChangeParams.hasOwnProperty("url"));
         assertTrue(resChangeParams.hasOwnProperty("username"));
@@ -145,7 +146,7 @@ return require('internal').options()["log.output"];
         }
         assertTrue(filtered[11].match(/testParams: done/));
       } finally {
-        const res = arango.PUT("/_admin/log/structured", {"database": true});
+        const res = arango.PUT("/_admin/log/structured", formerSettings);
 
         assertTrue(Object.keys(res).length === 3);
         assertTrue(res.hasOwnProperty("url"));
