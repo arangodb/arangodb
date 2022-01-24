@@ -5,6 +5,7 @@ import { Card } from 'antd';
 import { data2 } from './data2';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
+import AddCollectionNameSelector from './AddCollectionNameSelector';
 import styles from './graphview.module.css';
 
 export class GraphView extends React.Component {
@@ -221,8 +222,54 @@ export class GraphView extends React.Component {
     this.props.onUpdateEdgeGraphData(tempEdges);
   }
 
+  addCollectionNameToNodes = () => {
+    console.log("addCollectionNameToNodes triggered");
+    this.graph.node((node) => {
+      console.log("NODE: ", node);
+      return {
+        id: node.id,
+      };
+    });
+    
+    /*
+    this.graph.data(this.props.data);
+    this.graph.render();
+    */
+  }
+
+  updateNodeModel = () => {
+    const model = {
+      id: '2',
+      label: 'node2',
+      population: '2,950,000',
+      type: 'diamond',
+      style: {
+        fill: 'red',
+      },
+    };
+    
+    // Find the item instance by id
+    const item = this.graph.findById('frenchCity/Paris');
+    this.graph.updateItem(item, model);
+  }
+
+  addCollectionName = (value) => {
+    this.graph.node((node) => {
+      const slashPos = node.id.indexOf("/");
+      node.label = node.id.substring(slashPos + 1) + " - " + node.id.substring(0, slashPos);
+      return {
+        node
+      };
+    });
+    
+    this.graph.data(this.props.data);
+    this.graph.render();
+  }
+
   render() {
     return <>
+      <button onClick={this.updateNodeModel}>Update "frenchCity/Paris"</button>
+      <button onClick={this.addCollectionNameToNodes}>Add collection name (nodes)</button>
       <button onClick={this.getNodes}>Get nodes (new)</button>
       <button onClick={this.getEdges}>Get edges (new)</button>
       <button onClick={this.addNode}>Add node (new)</button>
@@ -231,6 +278,7 @@ export class GraphView extends React.Component {
       <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
       <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
+      <AddCollectionNameSelector onAddCollectionNameChange={(value) => this.addCollectionName(value)} />
       <Card
           title="Pure JS G6 Graph"
         >
