@@ -267,10 +267,9 @@
       }
     },
 
-    getLabels: function () {
+    getLabels: function (saveOnly, silent, callback, callbackMethod) {
+      var self = this;
       var data;
-      var edges = [];
-      var vertices = [];
 
       // let countIdex = function (arr, n) {
       //   let cnt = 0;
@@ -297,9 +296,12 @@
         data: data,
 
         success: function (data) {
-
           var result = data.cursor;
+          var edges = [];
+          var vertices = [];
+
           _.each(result.json, function (obj) {
+
             for (let i = 0; i < obj.edges.length; i++) {
               if (edges.length == 0) {
                 edges.push(getAllKeys(obj.edges[i]));
@@ -318,15 +320,16 @@
               }
             }
           });
+
+          self.nodeLabels = vertices;
+          self.edgeLabels = edges;
+
+          callbackMethod(saveOnly, silent, callback);
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not load full graph.');
         }
       });
-
-
-      this.nodeLabels = vertices;
-      this.edgeLabels = edges;
     },
 
     checkEnterKey: function (e) {
@@ -497,41 +500,44 @@
     },
 
     setDefaults: function (saveOnly, silent, callback) {
-      this.getLabels();
-      var obj = {
-        layout: 'force',
-        renderer: 'canvas',
-        depth: '2',
-        limit: '250',
-        nodeColor: '#2ecc71',
-        nodeColorAttribute: '',
-        nodeColorByCollection: 'true',
-        edgeColor: '#cccccc',
-        edgeColorAttribute: '',
-        edgeColorByCollection: 'false',
-        nodeLabel: '_key',
-        edgeLabel: '_key',
-        edgeType: 'arrow',
-        nodeSize: '',
-        nodeSizeByEdges: 'true',
-        edgeEditable: 'true',
-        nodeLabelByCollection: 'false',
-        edgeLabelByCollection: 'false',
-        nodeStart: '',
-        barnesHutOptimize: true
-      };
+      var successCallback = function () {
+        var obj = {
+          layout: 'force',
+          renderer: 'canvas',
+          depth: '2',
+          limit: '250',
+          nodeColor: '#2ecc71',
+          nodeColorAttribute: '',
+          nodeColorByCollection: 'true',
+          edgeColor: '#cccccc',
+          edgeColorAttribute: '',
+          edgeColorByCollection: 'false',
+          nodeLabel: '_key',
+          edgeLabel: '_key',
+          edgeType: 'arrow',
+          nodeSize: '',
+          nodeSizeByEdges: 'true',
+          edgeEditable: 'true',
+          nodeLabelByCollection: 'false',
+          edgeLabelByCollection: 'false',
+          nodeStart: '',
+          barnesHutOptimize: true
+        };
 
-      if (saveOnly === true) {
-        if (silent) {
-          this.saveGraphSettings(null, null, null, obj, silent, callback);
+        if (saveOnly === true) {
+          if (silent) {
+            this.saveGraphSettings(null, null, null, obj, silent, callback);
+          } else {
+            this.saveGraphSettings(null, null, null, obj);
+          }
         } else {
-          this.saveGraphSettings(null, null, null, obj);
+          this.saveGraphSettings(null, null, null, obj, null);
+          this.render();
+          window.App.graphViewer.render(this.lastFocussed);
         }
-      } else {
-        this.saveGraphSettings(null, null, null, obj, null);
-        this.render();
-        window.App.graphViewer.render(this.lastFocussed);
-      }
+      }.bind(this);
+
+      this.getLabels(saveOnly, silent, callback, successCallback);
     },
 
     toggle: function () {
@@ -601,6 +607,8 @@
     },
 
     continueRender: function () {
+      console.log(this.nodeLabels);
+      console.log(this.edgeLabels);
       $(this.el).html(this.template.render({
         general: this.general,
         specific: this.specific,
