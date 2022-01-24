@@ -70,9 +70,20 @@ function makeDataWrapper (options) {
     let tests = [
         fs.join(options.rtasource, 'test_data', 'makedata.js'),
         fs.join(options.rtasource, 'test_data', 'checkdata.js'),
+        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
         fs.join(options.rtasource, 'test_data', 'cleardata.js'),
     ];
+    let count = 0;
     tests.forEach(file => {
+      count += 1;
+      if (options.cluster) {
+          if (count === 3) {
+              print(instanceInfo)
+              print('stopping dbserver')
+          } else if (count === 4) {
+              print('relaunching dbserver')
+          }
+      }
       let args = pu.makeArgs.arangosh(options);
       args['server.endpoint'] = tu.findEndpoint(options, instanceInfo);
       args['javascript.execute'] = file;
