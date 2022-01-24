@@ -1,6 +1,10 @@
 devel
 -----
-  
+
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a
+  follower to that shard.
+
 * Disable optimizer rule "optimize-cluster-single-document-operations" when a
   collection is accessed in exclusive mode, because the optimized query would
   use a slightly different mode of locking then.
