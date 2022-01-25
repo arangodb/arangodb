@@ -276,6 +276,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane, std::unique_ptr<WorkItemBa
 
   uint64_t const approxQueueLength = jobsSubmitted - jobsDone;
 
+  TRI_ASSERT(lane != RequestLane::UNDEFINED);
   auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
 
   TRI_ASSERT(queueNo < NumberOfQueues);
