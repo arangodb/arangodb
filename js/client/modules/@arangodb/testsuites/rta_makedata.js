@@ -65,6 +65,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function makeDataWrapper (options) {
+  let stoppedDbServerInstance = {};
   function runRtaInArangosh (options, instanceInfo, file, addArgs) {
     let res = {'total':0, 'duration':0.0, 'status':true};
     let tests = [
@@ -74,16 +75,9 @@ function makeDataWrapper (options) {
         fs.join(options.rtasource, 'test_data', 'cleardata.js'),
     ];
     let count = 0;
+    let counters = { nonAgenciesCount: 1};
     tests.forEach(file => {
       count += 1;
-      if (options.cluster) {
-          if (count === 3) {
-              print(instanceInfo)
-              print('stopping dbserver')
-          } else if (count === 4) {
-              print('relaunching dbserver')
-          }
-      }
       let args = pu.makeArgs.arangosh(options);
       args['server.endpoint'] = tu.findEndpoint(options, instanceInfo);
       args['javascript.execute'] = file;
@@ -97,15 +91,34 @@ function makeDataWrapper (options) {
         args = Object.assign(args, addArgs);
       }
       let argv = toArgv(args);
+      argv = argv.concat(['--', '--minReplicationFactor', '2', '--progress', 'true']);
       if (options.hasOwnProperty('makedata_args')) {
-        argv = argv.concat(['--']);
         argv = argv.concat(toArgv(options['makedata_args']));
+      }
+      if ((options.cluster) && (count === 3)) {
+        instanceInfo.arangods.forEach(function (oneInstance, i) {
+          if (oneInstance.role === 'dbserver') {
+            stoppedDbServerInstance = oneInstance;
+          }
+        });
+        print('stopping dbserver ' + stoppedDbServerInstance.name +
+              ' ID: ' + stoppedDbServerInstance.id);
+        pu.shutDownOneInstance(options, stoppedDbServerInstance, instanceInfo, counters, false, 10);
+        print("waiting for shutdown...");
+        internal.statusExternal(stoppedDbServerInstance.pid, true);
+        print("gone");
+        argv = argv.concat([ '--disabledDbserverUUID', stoppedDbServerInstance.id]);
       }
       require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
       let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
       res.total++;
       res.duration += rc.duration;
       res.status &= rc.status;
+
+      if ((options.cluster) && (count === 3)) {
+        print('relaunching dbserver');
+        pu.restartOneInstance(options, stoppedDbServerInstance, instanceInfo, {});
+      }
     });
     return res;
   }
