@@ -1,5 +1,9 @@
 devel
 -----
+
+* Upgraded bundled version of RocksDB to 6.29.
+
+* Fix creation of satellite graphs with a `numberOfShards` value != 1.
   
 * Disable optimizer rule "optimize-cluster-single-document-operations" when a
   collection is accessed in exclusive mode, because the optimized query would
