@@ -87,6 +87,7 @@ export class GraphView extends React.Component {
         } else if(chosenAction === 'deleteEdge') {
           console.log("Trigger deleteEdge() with edge: ", item._cfg);
           console.log("Trigger deleteEdge() with edgeId: ", item._cfg.id);
+          this.removeEdge(item._cfg.id);
         } else if(chosenAction === 'editEdge') {
           console.log("Trigger editEdge() with edge: ", item._cfg);
           console.log("Trigger editEdge() with edgeId: ", item._cfg.id);
@@ -229,6 +230,12 @@ export class GraphView extends React.Component {
   removeNode = (nodeId = '') => {
     const item = this.graph.findById(nodeId);
     this.props.onRemoveSingleNode(nodeId);
+    this.graph.removeItem(item);
+  }
+
+  removeEdge = (edgeId = '') => {
+    const item = this.graph.findById(edgeId);
+    this.props.onRemoveSingleEdge(edgeId);
     this.graph.removeItem(item);
   }
 

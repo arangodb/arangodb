@@ -331,6 +331,24 @@ const G6JsGraph = () => {
     setGraphData(newGraphData);
   }
 
+  const removeEdge = (edgeId) => {
+    const edges = graphData.edges;
+    console.log("removeEdge (edges):", edges);
+    console.log("removeEdge: ", edgeId);
+    const updatedEdges = edges.filter(item => item.id !== edgeId);
+    console.log("updatedEdges: ", updatedEdges);
+    const currentNodes = graphData.nodes;
+    const newGraphData = {
+      nodes: [
+        ...currentNodes
+      ],
+      edges: [
+        ...updatedEdges
+      ]
+    };
+    setGraphData(newGraphData);
+  }
+
   /*
   <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
         <EdgeStyleSelector onEdgeStyleChange={(typeModel) => changeEdgeStyle(typeModel)} />
@@ -355,6 +373,7 @@ const G6JsGraph = () => {
             onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
             onAddSingleEdge={(newEdge) => updateGraphDataWithEdge(newEdge)}
             onRemoveSingleNode={(node) => removeNode(node)}
+            onRemoveSingleEdge={(edge) => removeEdge(edge)}
         />
     </div>
   );
