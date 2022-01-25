@@ -1601,9 +1601,9 @@ void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
   auto& graphNodes = graphNodesStorage.vector();
 
   plan.findNodesOfType(graphNodes,
-                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
-                         ExecutionNode::K_SHORTEST_PATHS},
-                        true);
+                       {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
+                        ExecutionNode::K_SHORTEST_PATHS},
+                       true);
   for (auto& node : graphNodes) {
     auto graphNode = ExecutionNode::castTo<GraphNode*>(node);
     auto const& vCols = graphNode->vertexColls();
