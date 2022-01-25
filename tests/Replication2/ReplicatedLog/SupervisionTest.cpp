@@ -309,8 +309,9 @@ TEST_F(SupervisionLogTest, test_log_created) {
   EXPECT_EQ(r->type(), Action::ActionType::AddLogToPlanAction) << *r;
 
   auto& action = dynamic_cast<AddLogToPlanAction&>(*r);
-  EXPECT_EQ(action._spec.participantsConfig,
-            (ParticipantsConfig{.generation = 1, .participants = participants}));
+  EXPECT_EQ(
+      action._spec.participantsConfig,
+      (ParticipantsConfig{.generation = 1, .participants = participants}));
 
   // TODO check that the plan spec contains the required info
 }

@@ -44,20 +44,6 @@ struct ParticipantRecord {
 
 using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
 
-  /*
-auto checkReplicatedLog(
-    DatabaseID const& database, agency::LogPlanSpecification const& spec,
-    agency::LogCurrent const& current,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification,
-                    agency::LogCurrentSupervisionElection>;
-
-auto checkReplicatedLogParticipants(
-    DatabaseID const& database, agency::LogPlanSpecification const& spec,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, ParticipantsConfig>;
-  */
-
 enum class ConflictReason {
   LOG_ENTRY_AFTER_END,
   LOG_ENTRY_BEFORE_BEGIN,
