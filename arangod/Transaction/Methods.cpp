@@ -752,7 +752,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   return collection->getPhysical()->read(
       this, key,
-      [&](LocalDocumentId const&, VPackSlice const& doc) {
+      [&](LocalDocumentId const&, VPackSlice doc) {
         result.add(doc);
         return true;
       },
@@ -867,7 +867,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
       bool conflict = false;
       res = collection->getPhysical()->read(
           this, key,
-          [&](LocalDocumentId const&, VPackSlice const& doc) {
+          [&](LocalDocumentId const&, VPackSlice doc) {
             if (!options.ignoreRevs && value.isObject()) {
               RevisionId expectedRevision = RevisionId::fromSlice(value);
               if (expectedRevision.isSet()) {
