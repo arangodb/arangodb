@@ -1023,21 +1023,39 @@ Result GraphManager::checkDropGraphPermissions(
 
 ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string const& graphName,
                                                                   VPackSlice input) const {
+  auto isSatellite = [](VPackSlice options) -> bool {
+    if (options.isObject()) {
+      VPackSlice s = options.get(StaticStrings::ReplicationFactor);
+      return ((s.isNumber() && s.getNumber<int>() == 0) ||
+              (s.isString() && s.stringRef() == "satellite"));
+    }
+    return false;
+  };
+  auto numberOfShards = [](VPackSlice options) -> std::pair<bool, int> {
+    if (options.isObject()) {
+      VPackSlice s = options.get(StaticStrings::NumberOfShards);
+      if (s.isNumber()) {
+        return { true, s.getNumber<int>() };
+      }
+    }
+    return { false, 0 };
+  };
+  
   try {
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
-      VPackSlice s = input.get(StaticStrings::IsSmart);
-      if (s.isBoolean() && s.getBoolean()) {
-        s = input.get("options");
-        if (s.isObject()) {
-          s = s.get(StaticStrings::ReplicationFactor);
-          if ((s.isNumber() && s.getNumber<int>() == 0) ||
-              (s.isString() && s.stringRef() == "satellite")) {
-            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
-          }
+      VPackSlice options = input.get("options");
+      if (input.get(StaticStrings::IsSmart).isTrue() && isSatellite(options)) {
+        // the combination of isSmart and replicationFactor == 'satellite' is invalid
+        return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+      }
+      if (options.isObject() && isSatellite(options)) {
+        auto ns = numberOfShards(options);
+        if (ns.first && ns.second != 1) {
+          // the combination of numberOfShards != 1 and replicationFactor == 'satellite' is invalid
+          return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of 'numberOfShards' and 'satellite' replicationFactor"};
         }
       }
-
       // validate numberOfShards and replicationFactor
       Result res =
           ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),
