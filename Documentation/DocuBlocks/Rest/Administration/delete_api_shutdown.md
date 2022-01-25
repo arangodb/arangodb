@@ -12,10 +12,15 @@
 If set to `true`, this initiates a soft shutdown. This is only available
 on Coordinators. When issued, the Coordinator tracks a number of ongoing
 operations, waits until all have finished, and then shuts itself down
-normally. In the meantime, new operations of these types are no longer
-accepted and a 503 response is sent instead. However, further requests
-to finish the ongoing operations are allowed. This feature can be used
-to make restart operations of Coordinators less intrusive for clients.
+normally. It will still accept new operations.
+
+This feature can be used to make restart operations of Coordinators less
+intrusive for clients. It is designed for setups with a load balancer in front
+of Coordinators. Remove the designated Coordinator from the load balancer before
+issuing the soft-shutdown. The remaining Coordinators will internally forward
+requests that need to be handled by the designated Coordinator. All other
+requests will be handled by the remaining Coordinators, reducing the designated
+Coordinator's load.
 
 The following types of operations are tracked:
 
@@ -28,11 +33,8 @@ The following types of operations are tracked:
  - Queued low priority requests (most normal requests)
  - Ongoing low priority requests
 
-Note that the latter two are tracked but not prevented from being
-started, to allow for finishing operations.
-
 @RESTDESCRIPTION
-This call initiates a clean shutdown sequence. Requires administrive privileges.
+This call initiates a clean shutdown sequence. Requires administrative privileges.
 
 @RESTRETURNCODES
 

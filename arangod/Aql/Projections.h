@@ -32,6 +32,9 @@
 #include <vector>
 
 namespace arangodb {
+
+class IndexIteratorCoveringData;
+
 namespace transaction {
 class Methods;
 }
@@ -103,7 +106,7 @@ class Projections {
 
   /// @brief extract projections from a covering index
   void toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
-                             arangodb::velocypack::Slice slice,
+                             IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
 
   /// @brief serialize the projections to velocypack

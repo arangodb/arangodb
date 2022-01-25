@@ -64,7 +64,7 @@ using namespace arangodb::iresearch;
 
 namespace {
 
-constexpr irs::payload NoPayload;
+const irs::payload NoPayload;
 
 size_t calculateSkipAllCount(CountApproximate approximation, size_t currentPos,
                              irs::doc_iterator* docs) {

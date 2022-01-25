@@ -396,7 +396,6 @@ bool FieldMeta::init(
       }
     }
   }
-
   return true;
 }
 
@@ -472,7 +471,6 @@ bool FieldMeta::json(application_features::ApplicationServer& server,
 
       fieldsBuilder.close();
     }
-
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
   }
