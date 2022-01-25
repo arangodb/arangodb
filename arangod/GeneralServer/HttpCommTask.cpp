@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"

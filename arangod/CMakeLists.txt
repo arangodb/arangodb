@@ -59,12 +59,15 @@ add_library(arango_iresearch
   IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
+  IResearch/IResearchDataStore.cpp IResearch/IResearchDataStore.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
   IResearch/IResearchFilterOptimization.cpp IResearch/IResearchFilterOptimization.h
   IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
+  IResearch/IResearchInvertedIndex.h IResearch/IResearchInvertedIndex.cpp
+  IResearch/IResearchInvertedIndexMeta.h IResearch/IResearchInvertedIndexMeta.cpp
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
@@ -73,6 +76,8 @@ add_library(arango_iresearch
   IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
   IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
   IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
+  IResearch/IResearchRocksDBEncryption.cpp IResearch/IResearchRocksDBEncryption.h
+  IResearch/IResearchRocksDBInvertedIndex.cpp IResearch/IResearchRocksDBInvertedIndex.h
   IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h
@@ -429,6 +434,7 @@ set(LIB_ARANGO_AQL_SOURCES
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
+  Aql/StandaloneCalculation.cpp
   Replication/DatabaseReplicationApplier.cpp
   Utils/CollectionNameResolver.cpp
   Utils/CursorRepository.cpp
@@ -567,6 +573,8 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/Supervision.cpp
   Replication2/ReplicatedState/SupervisionVelocyPackHell.cpp
+  Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
+  Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
@@ -1018,6 +1026,7 @@ target_link_libraries(arango_indexes date_interface)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
+target_link_libraries(arango_iresearch arango_vocbase)
 
 target_link_libraries(arango_metrics arango)
 target_link_libraries(arango_metrics arango::validation)

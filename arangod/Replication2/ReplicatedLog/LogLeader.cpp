@@ -288,27 +288,6 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     LogConfig config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    ParticipantId id, LogTerm const term, LoggerContext const& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-    -> std::shared_ptr<LogLeader> {
-  auto participantsConfig = std::make_shared<ParticipantsConfig>();
-  participantsConfig->generation = 0;
-  std::transform(followers.begin(), followers.end(),
-                 std::inserter(participantsConfig->participants,
-                               participantsConfig->participants.end()),
-                 [](auto& f) {
-                   return std::make_pair(f->getParticipantId(),
-                                         ParticipantFlags{});
-                 });
-  return construct(config, std::move(logCore), followers, participantsConfig,
-                   std::move(id), term, logContext, std::move(logMetrics),
-                   std::move(options));
-}
-
-auto replicated_log::LogLeader::construct(
-    LogConfig config, std::unique_ptr<LogCore> logCore,
-    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -369,6 +348,7 @@ auto replicated_log::LogLeader::construct(
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore), lastIndex);
 
+  TRI_ASSERT(participantsConfig != nullptr);
   {
     auto leaderDataGuard = leader->acquireMutex();
 
@@ -379,6 +359,14 @@ auto replicated_log::LogLeader::construct(
     TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
         << " writeConcern: " << config.writeConcern;
+    TRI_ASSERT(leaderDataGuard->_follower.size() ==
+               leaderDataGuard->activeParticipantsConfig->participants.size());
+    TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
+                           leaderDataGuard->_follower.end(),
+                           [&](auto const& it) {
+                             return leaderDataGuard->activeParticipantsConfig
+                                 ->participants.contains(it.first);
+                           }));
   }
 
   leader->establishLeadership(std::move(participantsConfig));
@@ -1109,22 +1097,6 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   });
 }
 
-auto replicated_log::LogLeader::construct(
-    const LoggerContext& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-    const std::vector<std::shared_ptr<AbstractFollower>>& followers,
-    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-  LogConfig config;
-  config.writeConcern = writeConcern;
-  config.softWriteConcern = writeConcern;
-  config.waitForSync = false;
-  return LogLeader::construct(config, std::move(logCore), followers,
-                              std::move(id), term, logContext,
-                              std::move(logMetrics), std::move(options));
-}
-
 auto replicated_log::LogLeader::copyInMemoryLog() const
     -> replicated_log::InMemoryLog {
   return _guardedLeaderData.getLockedGuard()->_inMemoryLog;
@@ -1252,7 +1224,10 @@ void replicated_log::LogLeader::establishLeadership(
             result.throwIfFailed();
             self->_guardedLeaderData.doUnderLock([&](auto& data) {
               data._leadershipEstablished = true;
-              data.committedParticipantsConfig = std::move(config);
+              if (data.activeParticipantsConfig->generation ==
+                  config->generation) {
+                data.committedParticipantsConfig = std::move(config);
+              }
             });
             LOG_CTX("536f4", TRACE, self->_logContext)
                 << "leadership established";

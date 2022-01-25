@@ -133,7 +133,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     return false;
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -150,8 +150,8 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
                                    canReadOwnWrites());
 
     if (s.ok()) {
-      cb(LocalDocumentId(RocksDBValue::documentId(ps)),
-         RocksDBKey::indexedVPack(_key.ref()));
+      auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
+      cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
     }
 
     // there is at most one element, so we are done now
@@ -246,7 +246,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     } while (true);
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
@@ -269,7 +269,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       LocalDocumentId const documentId(
           _index->_unique ? RocksDBValue::documentId(_iterator->value())
                           : RocksDBKey::indexDocumentId(key));
-      cb(documentId, RocksDBKey::indexedVPack(key));
+      auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
+      cb(documentId, data);
 
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
@@ -1316,7 +1317,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   VPackBuilder searchValues;

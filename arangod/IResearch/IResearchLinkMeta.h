@@ -68,6 +68,7 @@ struct FieldMeta {
         : Analyzer(pool, pool ? std::string{pool->name()} : std::string{}) {}
     Analyzer(AnalyzerPool::ptr const& pool, std::string&& shortName) noexcept
         : _pool(pool), _shortName(std::move(shortName)) {}
+
     operator bool() const noexcept { return false == !_pool; }
 
     AnalyzerPool const* operator->() const noexcept { return _pool.get(); }

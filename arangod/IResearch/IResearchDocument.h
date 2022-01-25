@@ -28,6 +28,7 @@
 
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 #include "IResearchVPackTermAttribute.h"
 #include "VelocyPackHelper.h"
 
@@ -210,6 +211,69 @@ class FieldIterator {
 
   bool _isDBServer;
 };  // FieldIterator
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows to iterate over the provided VPack according to the specified
+///        IResearchInvertedIndexMeta
+////////////////////////////////////////////////////////////////////////////////
+class InvertedIndexFieldIterator {
+ public:
+  // must match interface of FieldIterator to make usable template insert
+  // implementation
+  Field const& operator*() const noexcept { return _value; }
+
+  InvertedIndexFieldIterator& operator++() {
+    next();
+    return *this;
+  }
+
+  // we don't need trx as we don't index the _id attribute.
+  // but we require it here just to match signature of "FieldIterator" in
+  // general
+  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods&,
+                                      irs::string_ref collection,
+                                      IndexId indexId);
+
+  bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
+
+  void reset(velocypack::Slice slice,
+             IResearchInvertedIndexMeta const& fieldsMeta) {
+    _slice = slice;
+    _fieldsMeta = &fieldsMeta;
+    TRI_ASSERT(!_fieldsMeta->_fields.empty());
+    _begin = _fieldsMeta->_fields.data() - 1;
+    _end = _fieldsMeta->_fields.data() + _fieldsMeta->_fields.size();
+    next();
+  }
+
+ private:
+  void next();
+  bool setValue(VPackSlice const value,
+                FieldMeta::Analyzer const& valueAnalyzer);
+  void setNullValue();
+  void setNumericValue(VPackSlice const value);
+  void setBoolValue(VPackSlice const value);
+
+  // Support for outputting primitive type from analyzer
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+                                         VPackSlice slice);
+
+  size_t _prefixLength{};
+  IResearchInvertedIndexMeta::FieldRecord const* _begin{nullptr};
+  IResearchInvertedIndexMeta::FieldRecord const* _end{nullptr};
+  IResearchInvertedIndexMeta const* _fieldsMeta{nullptr};
+  Field _value;       // iterator's value
+  VPackSlice _slice;  // input slice
+  VPackSlice _valueSlice;
+  irs::string_ref _collection;
+  IndexId _indexId;
+  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
+  VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
+  PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+  std::vector<VPackArrayIterator> _arrayStack;
+  std::string _nameBuffer;
+  VPackBuffer<uint8_t> _buffer;  // buffer for stored values
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document
