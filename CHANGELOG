@@ -1,5 +1,13 @@
 devel
 -----
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
+  determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
+  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
+  contained this bug
+
+* Upgraded bundled version of RocksDB to 6.29.
+
+* Fix creation of satellite graphs with a `numberOfShards` value != 1.
   
 * Disable optimizer rule "optimize-cluster-single-document-operations" when a
   collection is accessed in exclusive mode, because the optimized query would
