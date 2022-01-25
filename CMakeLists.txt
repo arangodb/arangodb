@@ -574,25 +574,24 @@ add_definitions("-DARANGODB_BITS=${BITS}")
 ## COMPILER FEATURES
 ################################################################################
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 endif ()
 
+set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
+set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
+set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
+set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
+set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+
 if (MSVC)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"                 CACHE STRING "base flags")
-  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}"                             CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus" CACHE STRING "base C++flags")
+  set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
   # Increase the reserved stack size for all threads to 4MB
   # Note: this is only _reserved_ memory, not necessarily _committed_ memory
-  set(BASE_LD_FLAGS  "/STACK:4194304"             CACHE STRING "base linker flags")
-else ()
-  set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
-  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
-  set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
-  set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+  set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -604,7 +603,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(MSVC)
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
@@ -619,7 +618,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   endif()
 endif()
 
-if (CMAKE_COMPILER_IS_CLANG)
+if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
   if (APPLE)
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
       set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
@@ -643,7 +642,8 @@ set(CMAKE_CXX_STANDARD 20)
 # turn off compiler language extensions (e.g. don't use -std=gnu++20, but
 # -std=c++20).
 set(CMAKE_CXX_EXTENSIONS OFF)
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # we need to exclude clang-cl
   # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
   # remain restricted to /std:c++latest due to WG21's upcoming changes.
   # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895")
@@ -995,6 +995,9 @@ if (MSVC)
   endif ()
 
   add_definitions(/bigobj)
+  if (CMAKE_COMPILER_IS_CLANG) # clang-cl
+    set(BASE_FLAGS "-Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  endif()
 else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
@@ -1068,7 +1071,7 @@ else () # NOT MSVC
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       # On Darwin -fstandalone-debug is enabled by default, so we don't need
       # to add it for AppleClang.
       set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")

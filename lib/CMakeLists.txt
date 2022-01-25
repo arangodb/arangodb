@@ -217,7 +217,7 @@ add_library(arango STATIC
 #     -fno-rtti may not work. For example, programs may fail to
 #     link if a class compiled with -fno-rtti is used as a
 #     base for a class compiled with -frtti.
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if(MSVC)
   set_source_files_properties(
     Containers/MerkleTreeHelpers.cpp
     PROPERTIES COMPILE_FLAGS "/GR-")

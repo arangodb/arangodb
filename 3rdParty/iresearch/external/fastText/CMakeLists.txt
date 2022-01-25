@@ -15,7 +15,9 @@ set (fasttext_VERSION_MINOR 1)
 
 include_directories(src)
 
-set(CMAKE_CXX_FLAGS " -pthread -std=c++11 -funroll-loops -O3 -march=native")
+if (NOT MSVC)
+  set(CMAKE_CXX_FLAGS " -pthread -std=c++11 -funroll-loops -O3 -march=native")
+endif()
 
 set(HEADER_FILES
     src/args.h
@@ -50,7 +52,7 @@ set(SOURCE_FILES
     src/vector.cc)
 
 
-if (NOT MSVC)
+if (NOT MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   include(GNUInstallDirs)
   configure_file("fasttext.pc.in" "fasttext.pc" @ONLY)
   install(FILES "${CMAKE_BINARY_DIR}/fasttext.pc" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)

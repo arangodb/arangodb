@@ -477,10 +477,7 @@ if (USE_ENTERPRISE)
   LIST(APPEND TARGETS arangobackup)
 endif()
 
-message("TARGETS=${TARGETS}")
-
 foreach (TARGET IN LISTS TARGETS)
-  message("TARGET=${TARGET}")
   if (USE_FAIL_ON_WARNINGS)
     if (MSVC)
       target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
