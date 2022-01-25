@@ -163,21 +163,21 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     ServerState state(server);
 
-    std::vector<std::type_index> nonServerFeatures = {
-        std::type_index(typeid(ActionFeature)),
-        std::type_index(typeid(AgencyFeature)),
-        std::type_index(typeid(ClusterFeature)),
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(FoxxFeature)),
-        std::type_index(typeid(GeneralServerFeature)),
-        std::type_index(typeid(GreetingsFeature)),
-        std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(LogBufferFeature)),
-        std::type_index(typeid(pregel::PregelFeature)),
-        std::type_index(typeid(ServerFeature)),
-        std::type_index(typeid(SslServerFeature)),
-        std::type_index(typeid(StatisticsFeature)),
-        std::type_index(typeid(SupervisorFeature))};
+    std::vector<size_t> nonServerFeatures = {
+        ArangodServer::id<ActionFeature>(),
+        ArangodServer::id<AgencyFeature>(),
+        ArangodServer::id<ClusterFeature>(),
+        ArangodServer::id<DaemonFeature>(),
+        ArangodServer::id<FoxxFeature>(),
+        ArangodServer::id<GeneralServerFeature>(),
+        ArangodServer::id<GreetingsFeature>(),
+        ArangodServer::id<HttpEndpointProvider>(),
+        ArangodServer::id<LogBufferFeature>(),
+        ArangodServer::id<pregel::PregelFeature>(),
+        ArangodServer::id<ServerFeature>(),
+        ArangodServer::id<SslServerFeature>(),
+        ArangodServer::id<StatisticsFeature>(),
+        ArangodServer::id<SupervisorFeature>()};
 
     int ret = EXIT_FAILURE;
 
@@ -199,8 +199,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
       } else if (std::is_same_v<T, ServerFeature>) {
         server.addFeature<T>(&ret);
       } else if (std::is_same_v<T, ShutdownFeature>) {
-        server.addFeature<T>(std::vector<std::type_index>{
-            std::type_index(typeid(ScriptFeature))});
+        server.addFeature<T>(
+            std::vector<size_t>{ArangodServer::id<ScriptFeature>()});
       } else if (std::is_same_v<T, TempFeature>) {
         server.addFeature<T>(name);
       } else if (std::is_same_v<T, UpgradeFeature>) {
