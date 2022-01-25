@@ -76,4 +76,3 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     return current;
   }
 };
-
