@@ -1,7 +1,11 @@
-v3.8.5 (XXXX-XX-XX)
+v3.8.6 (XXXX-XX-XX)
 -------------------
 
 * Fix creation of satellite graphs with a `numberOfShards` value != 1.
+
+
+v3.8.5 (XXXX-XX-XX)
+-------------------
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
