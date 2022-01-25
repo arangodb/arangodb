@@ -26,7 +26,8 @@ and uniqueness but different **storedValues** attributes. That means the value o
 **storedValues** is not considered by index creation calls when checking if an 
 index is already present or needs to be created.
 In unique indexes, only the attributes in **fields** are checked for uniqueness,
-but the attributes in **storedValues** are not checked for their uniqueness.
+but the attributes in **storedValues** are not checked for their uniqueness. 
+Non-existing attributes are stored as **null** values inside **storedValues**.
 
 @RESTBODYPARAM{unique,boolean,optional,}
 if *true*, then create a unique index. Defaults to *false*.
