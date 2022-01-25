@@ -408,32 +408,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get(), true);
 
-  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*>
-      graphNodesStorage;
-  auto& graphNodes = graphNodesStorage.vector();
-
-  plan->findNodesOfType(graphNodes,
-                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
-                         ExecutionNode::K_SHORTEST_PATHS},
-                        true);
-  for (auto& node : graphNodes) {
-    auto graphNode = ExecutionNode::castTo<GraphNode*>(node);
-    auto const& vCols = graphNode->vertexColls();
-    if (vCols.empty()) {
-      auto& myResolver = resolver();
-      collections().visit(
-          [&myResolver, graphNode](std::string const& name,
-                                   aql::Collection& collection) {
-            // If resolver cannot resolve this collection
-            // it has to be a view.
-            if (myResolver.getCollection(name)) {
-              // All known edge collections will be ignored by this call!
-              graphNode->injectVertexCollection(collection);
-            }
-            return true;
-          });
-    }
-  }
+  TRI_ASSERT(plan != nullptr);
+  injectVertexCollectionIntoGraphNodes(*plan);
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -982,6 +958,9 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     std::unique_ptr<ExecutionPlan> plan =
         ExecutionPlan::instantiateFromAst(parser.ast(), true);
+
+    TRI_ASSERT(plan != nullptr);
+    injectVertexCollectionIntoGraphNodes(*plan);
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -1613,6 +1592,40 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       }
     }
     return ExecutionState::DONE;
+  }
+}
+
+void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*>
+      graphNodesStorage;
+  auto& graphNodes = graphNodesStorage.vector();
+
+  plan.findNodesOfType(graphNodes,
+                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
+                         ExecutionNode::K_SHORTEST_PATHS},
+                        true);
+  for (auto& node : graphNodes) {
+    auto graphNode = ExecutionNode::castTo<GraphNode*>(node);
+    auto const& vCols = graphNode->vertexColls();
+
+    if (vCols.empty()) {
+      auto& myResolver = resolver();
+
+      // In case our graphNode does not have any collections added yet,
+      // we need to visit all query-known collections and add the
+      // vertex collections.
+      collections().visit(
+          [&myResolver, graphNode](std::string const& name,
+                                   aql::Collection& collection) {
+            // If resolver cannot resolve this collection
+            // it has to be a view.
+            if (myResolver.getCollection(name)) {
+              // All known edge collections will be ignored by this call!
+              graphNode->injectVertexCollection(collection);
+            }
+            return true;
+          });
+    }
   }
 }
 
