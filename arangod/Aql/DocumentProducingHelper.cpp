@@ -78,8 +78,8 @@ IndexIterator::DocumentCallback aql::getCallback(
     RegisterId registerId = context.getOutputRegister();
 
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto<InputAqlItemRow, VPackSlice const>(
-        registerId, input, objectBuilder.slice());
+    VPackSlice s = objectBuilder.slice();
+    output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -91,7 +91,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice const slice) {
+  return [&context](LocalDocumentId const& token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -132,7 +132,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
     if (!context.getProduceResult()) {
       // This callback is disallowed use getNullCallback instead
       TRI_ASSERT(false);
-      return [](LocalDocumentId const&, VPackSlice slice) -> bool {
+      return [](LocalDocumentId const&, VPackSlice /*slice*/) -> bool {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
       };
     }
@@ -366,8 +366,8 @@ IndexIterator::CoveringCallback aql::getCallback(
       OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
       TRI_ASSERT(!output.isFull());
-      output.moveValueInto<InputAqlItemRow, VPackSlice const>(
-          registerId, input, objectBuilder.slice());
+      VPackSlice s = objectBuilder.slice();
+      output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
       TRI_ASSERT(output.produced());
       output.advanceRow();
     }

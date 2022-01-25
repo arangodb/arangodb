@@ -104,6 +104,43 @@ class IndexIterator {
     VPackSlice _slice;
   };
 
+  class SliceCoveringDataWithStoredValues final
+      : public IndexIteratorCoveringData {
+   public:
+    SliceCoveringDataWithStoredValues(VPackSlice slice, VPackSlice storedValues)
+        : _slice(slice),
+          _storedValues(storedValues),
+          _sliceLength(slice.length()),
+          _storedValuesLength(storedValues.length()) {}
+
+    VPackSlice at(size_t i) override {
+      if (i >= _sliceLength) {
+        TRI_ASSERT(_storedValues.isArray());
+        return _storedValues.at(i - _sliceLength);
+      }
+      TRI_ASSERT(_slice.isArray());
+      return _slice.at(i);
+    }
+
+    // should not be called in our case
+    VPackSlice value() const override {
+      TRI_ASSERT(false);
+      return VPackSlice::noneSlice();
+    }
+
+    bool isArray() const noexcept override { return true; }
+
+    velocypack::ValueLength length() const override {
+      return _sliceLength + _storedValuesLength;
+    }
+
+   private:
+    VPackSlice _slice;
+    VPackSlice _storedValues;
+    velocypack::ValueLength _sliceLength;
+    velocypack::ValueLength _storedValuesLength;
+  };
+
   typedef std::function<bool(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
   typedef std::function<bool(LocalDocumentId const& token,

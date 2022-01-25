@@ -35,6 +35,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Logger/LogStructuredParamsAllowList.h"
 #include "Meta/conversion.h"
 #include "Rest/CommonDefines.h"
 #include "StorageEngine/TransactionState.h"
@@ -219,8 +220,21 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       _context(*static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context.vocbase()) {
+      _vocbase(_context.vocbase()),
+      _scopeVocbaseValues(
+          LogContext::makeValue().with<structuredParams::DatabaseName>(_vocbase.name()).share()) {
   TRI_ASSERT(request->requestContext());
+}
+
+void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
+  RestHandler::prepareExecute(isContinue);
+  _logContextVocbaseEntry =
+      LogContext::Current::pushValues(_scopeVocbaseValues);
+}
+
+void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
+  LogContext::Current::popEntry(_logContextVocbaseEntry);
+  RestHandler::shutdownExecute(isFinalized);
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
