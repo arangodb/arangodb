@@ -231,7 +231,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 void Logger::setLogStructuredParams(
     std::unordered_map<std::string, bool> const& paramsAndValues) {
   WRITE_LOCKER(guard, Logger::_structuredParamsLock);
-  for (const auto & [paramName, value] : paramsAndValues) {
+  for (const auto& [paramName, value] : paramsAndValues) {
     if (auto it = allowList.find({paramName.data(), paramName.size()});
         it == allowList.end()) {
       continue;
@@ -282,7 +282,7 @@ std::unordered_map<std::string, bool> Logger::parseStringParams(
 
 void Logger::setLogStructuredParamsOnServerStart(
     std::vector<std::string> const& params) {
-    setLogStructuredParams(parseStringParams(params));
+  setLogStructuredParams(parseStringParams(params));
 }
 
 void Logger::setRole(char role) { _role = role; }
