@@ -230,9 +230,16 @@ class ApplicationServer {
     throwFeatureNotFoundException(/*type.name())*/ "");
   }
 
+  template<typename T>
+  bool hasFeature() const {
+    // FIXME(gnusi)
+    throwFeatureNotFoundException(/*type.name())*/ "");
+  }
+
   ApplicationFeature& getFeature(size_t type) const {
     auto& feature = _features[type];
     if (!feature) {
+      // FIXME(gnusi)
       throwFeatureNotFoundException(/*type.name())*/ "");
     }
     return *feature;

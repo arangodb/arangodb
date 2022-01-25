@@ -55,7 +55,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  State(ArangodServer& server);
+  State(application_features::ApplicationServer& server);
 
   /// @brief Default Destructor
   virtual ~State();
@@ -269,7 +269,7 @@ class State {
   bool removeObsolete(arangodb::consensus::index_t cind);
 
   /// @brief Our agent
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   /// @brief Our agent
   Agent* _agent;

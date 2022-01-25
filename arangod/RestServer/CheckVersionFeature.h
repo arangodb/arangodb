@@ -50,7 +50,7 @@ class CheckVersionFeature final : public ArangodFeature {
   void checkVersion();
 
   int* _result;
-  std::vector<std::type_index> _nonServerFeatures;
+  std::vector<size_t> _nonServerFeatures;
 };
 
 }  // namespace arangodb

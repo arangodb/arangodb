@@ -71,7 +71,7 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(ArangodServer& server, Agent* agent,
+  explicit Store(application_features::ApplicationServer& server, Agent* agent,
                  std::string const& name = "root");
 
   /// @brief Destruct
@@ -183,7 +183,7 @@ class Store {
 
  private:
   /// @brief underlying application server, needed for testing code
-  ArangodServer& _server;
+  arangodb::application_features::ApplicationServer& _server;
 
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
