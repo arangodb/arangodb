@@ -94,7 +94,7 @@ std::string const NO_LEADER("");
 
 /// Agent configuration
 Agent::Agent(ArangodServer& server, config_t const& config)
-    : Thread(server, "Agent"),
+    : arangodb::ServerThread<ArangodServer>(server, "Agent"),
       _constituent(server),
       _supervision(server),
       _state(server),
@@ -693,7 +693,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot(_server, this, "snapshot");
+      Store snapshot(server(), this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
@@ -2386,7 +2386,7 @@ void Agent::emptyCbTrashBin() {
 }
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
-  Store store(_server, this);
+  Store store(server(), this);
   index_t oldIndex;
   term_t term;
   if (!_state.loadLastCompactedSnapshot(store, oldIndex, term)) {

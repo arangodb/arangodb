@@ -44,7 +44,8 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace consensus {
 
-class Agent final : public arangodb::Thread, public AgentInterface {
+class Agent final : public arangodb::ServerThread<ArangodServer>,
+                    public AgentInterface {
  public:
   /// @brief Construct with program options
   explicit Agent(ArangodServer& server, config_t const&);

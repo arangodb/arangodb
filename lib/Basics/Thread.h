@@ -197,7 +197,7 @@ class ServerThread : public Thread {
                std::uint32_t terminationTimeout = INFINITE)
       : Thread{server, name, deleteOnExit, terminationTimeout} {}
 
-  Server& server() const noexcept {
+  Server& server() noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto* p = dynamic_cast<Server*>(&Thread::server());
     TRI_ASSERT(p);
