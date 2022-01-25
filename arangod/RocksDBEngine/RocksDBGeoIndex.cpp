@@ -559,9 +559,6 @@ class RDBCoveringIterator final : public IndexIterator {
       _gotIntervals = true;
       _scanningInterval = 0;
     }
-    // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " <<
-    // scan.size(); size_t seeks = 0;
-
     while (_scanningInterval < _scan.size()) {
       geo::Interval const& it = _scan[_scanningInterval];
       TRI_ASSERT(it.range_min <= it.range_max);
@@ -594,8 +591,6 @@ class RDBCoveringIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC("0afaa", INFO, Logger::ENGINES) << "[Scan] seeking:" <<
-        // it.min; seeks++;
         _iter->Seek(bds.start());
       }
 
