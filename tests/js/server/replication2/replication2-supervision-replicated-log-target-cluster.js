@@ -116,7 +116,7 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
       return Error(`no error reported in supervision`);
     }
     if (current.supervision.error.code !== errorCode) {
-      return Error(`reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`)
+      return Error(`reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`);
     }
     if (current.supervision.error.code === errorCode) {
       return true;
