@@ -397,8 +397,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       std::string_view key = RocksDBKey::primaryKey(_iterator->key());
 
       builder->clear();
-      builder->add(
-          VPackValuePair(key.data(), key.size(), VPackValueType::String));
+      builder->add(VPackValue(key));
       auto data = SliceCoveringData(builder->slice());
       cb(documentId, data);
 

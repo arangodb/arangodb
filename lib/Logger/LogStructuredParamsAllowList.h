@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,35 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
+/// @author Julia Casarin Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "RestHandler/RestBaseHandler.h"
+#include <frozen/string.h>
+#include <frozen/unordered_set.h>
 
 namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief admin log request handler
-////////////////////////////////////////////////////////////////////////////////
-
-class RestAdminLogHandler : public RestBaseHandler {
- public:
-  explicit RestAdminLogHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
-
- public:
-  char const* name() const override final { return "RestAdminLogHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
-
- private:
-  arangodb::Result verifyPermitted();
-  void clearLogs();
-  RestStatus reportLogs(bool newFormat);
-  void handleLogLevel();
-  void handleLogStructuredParams();
-};
+namespace structuredParams {
+// the parameters will be converted to lowercase when parsed, so the allow list
+// is in lowercase too
+static constexpr char DatabaseName[] = "database";
+static constexpr char UrlName[] = "url";
+static constexpr char UserName[] = "username";
+constexpr auto allowList = frozen::make_unordered_set<frozen::string>({
+    DatabaseName, UserName, UrlName});
+}
 }  // namespace arangodb
+
