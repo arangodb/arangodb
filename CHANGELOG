@@ -1,5 +1,9 @@
 devel
 -----
+
+* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+  Smart Graph could led to wrong shard location calculation and therefore to
+  wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
   
 * Disable optimizer rule "optimize-cluster-single-document-operations" when a
   collection is accessed in exclusive mode, because the optimized query would
