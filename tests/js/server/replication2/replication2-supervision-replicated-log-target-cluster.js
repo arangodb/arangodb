@@ -108,7 +108,6 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
 const replicatedLogSupervisionError = function (database, logId, errorCode) {
   return function () {
     let {current} = readReplicatedLogAgency(database, logId);
-    console.log(current);
 
     if (current.supervision === undefined) {
       return Error(`supervision not yet defined`);
@@ -120,7 +119,6 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
       return Error(`reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`)
     }
     if (current.supervision.error.code === errorCode) {
-      console.log(current.supervision.error.code);
       return true;
     }
     return false;
@@ -398,9 +396,9 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, newLeader);
 
       // nothing should happen (supervision should not elect leader)
-      sleep(3);
-      // TODO check here that the supervision complains
-      //      that an excluded participant must not be a leader
+      waitFor(replicatedLogLeaderElectionFailed(database, logId, term, {
+        [newLeader]: 3,
+      }));
 
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newLeader]: {excluded: false},
@@ -519,10 +517,12 @@ const replicatedLogSuite = function () {
       //  [leader]: null,
       }));
 
-      console.log("before");
-      const errorCode = 0; // TARGET_LEADER_INVALID
-      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
-      console.log("after");
+      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+        [newServer]: 3,
+        [servers[0]]: 0,
+        [servers[1]]: 0,
+        [servers[2]]: 0,
+      }));
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
@@ -579,7 +579,7 @@ const replicatedLogSuite = function () {
 
       let log = db._replicatedLog(logId);
       let globalStatus = log.status();
-      assertEqual(globalStatus.supervision, {});
+//      assertEqual(globalStatus.supervision, { });
       assertEqual(globalStatus.leaderId, leader);
       let localStatus = helper.getLocalStatus(database, logId, leader);
       assertEqual(localStatus.role, "leader");
@@ -590,7 +590,7 @@ const replicatedLogSuite = function () {
       stopServer(leader);
       stopServer(servers[1]);
 
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 3, {
         [leader]: 1,
         [servers[1]]: 1,
         [servers[2]]: 0,
@@ -599,6 +599,7 @@ const replicatedLogSuite = function () {
       globalStatus = log.status();
       const {current} = readReplicatedLogAgency(database, logId);
       const election = current.supervision.election;
+
       assertEqual(election, globalStatus.supervision.election);
 
       replicatedLogDeleteTarget(database, logId);

@@ -168,6 +168,13 @@ LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
           slice.get("participantsRequired").getNumericValue<std::size_t>()),
       participantsAvailable(
           slice.get("participantsAvailable").getNumericValue<std::size_t>()) {
+  // TODO: this is a bit ugly
+  if (auto oco = slice.get("outcome"); oco.isObject()) {
+    if (auto oc = oco.get("outcome"); !oc.isNone()) {
+      outcome = oc.getNumericValue<LogCurrentSupervisionElection::Outcome>();
+    }
+  }
+
   for (auto [key, value] : VPackObjectIterator(slice.get("details"))) {
     detail.emplace(key.copyString(),
                    value.get("code").getNumericValue<ErrorCode>());

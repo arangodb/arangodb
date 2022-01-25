@@ -312,6 +312,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
 
   if (numElectible == 0 ||
       numElectible > std::numeric_limits<uint16_t>::max()) {
+    election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
     return std::make_unique<LeaderElectionAction>(plan.id, election);
   }
 
