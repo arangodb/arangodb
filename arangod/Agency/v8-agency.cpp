@@ -46,8 +46,8 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -56,7 +56,7 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
     VPackBuilder builder;
     agent->state().toVelocyPack(builder);
@@ -75,8 +75,8 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -84,7 +84,7 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(
-      v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
+      v8::Boolean::New(isolate, v8g->server().isEnabled<AgencyFeature>()));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -93,8 +93,8 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -103,7 +103,7 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -127,8 +127,8 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -137,7 +137,7 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -164,8 +164,8 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -174,7 +174,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {

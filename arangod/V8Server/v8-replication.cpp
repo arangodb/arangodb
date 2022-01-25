@@ -218,10 +218,10 @@ static void SynchronizeReplication(
             .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(
-          v8g->_server, builder.slice(), databaseName);
+          v8g->server(), builder.slice(), databaseName);
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

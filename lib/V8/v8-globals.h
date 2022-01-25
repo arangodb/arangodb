@@ -461,6 +461,10 @@ inline std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
       isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
 
+#define TRI_GET_SERVER_GLOBALS(server)                    \
+  V8Global<server>* v8g = static_cast<V8Global<server>*>( \
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
+
 #define TRI_GET_GLOBALS2(isolate)                       \
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
       isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
@@ -513,9 +517,8 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  template<typename Server>
-  TRI_v8_global_t(Server& server, v8::Isolate* isolate, size_t id)
-      : TRI_v8_global_t{server, isolate, id} {}
+  TRI_v8_global_t(arangodb::application_features::ApplicationServer& comm,
+                  v8::Isolate*, size_t id);
 
   ~TRI_v8_global_t();
 
@@ -855,14 +858,27 @@ struct TRI_v8_global_t {
   arangodb::application_features::ApplicationServer& _server;
 
  private:
-  explicit TRI_v8_global_t(
-      arangodb::application_features::ApplicationServer& comm, v8::Isolate*,
-      size_t id);
-
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8
   /// @note used ONLY by the SharedPtrPersistent class
   std::unordered_map<void*, SharedPtrPersistent> JSSharedPtrs;
+};
+
+// Intentionally final since we don't have virtual destructor
+template<typename Server>
+struct V8Global final : TRI_v8_global_t {
+  V8Global(Server& server, v8::Isolate* isolate, size_t id)
+      : TRI_v8_global_t{server, isolate, id} {}
+
+  Server& server() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* p = dynamic_cast<Server*>(&_server);
+    TRI_ASSERT(p);
+    return *p;
+#else
+    return static_cast<Server&>(_server);
+#endif
+  }
 };
 
 /// @brief creates a global context

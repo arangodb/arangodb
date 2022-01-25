@@ -282,8 +282,9 @@ void HeartbeatThread::run() {
         "Current/DBServers", "Target/FailedServers", "Target/CleanedServers",
         "Target/ToBeCleanedServers"};
     for (auto const& path : dbServerAgencyPaths) {
-      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(
-                                            _server, path, updbs, true, false));
+      serverCallbacks.try_emplace(
+          path,
+          std::make_shared<AgencyCallback>(server(), path, updbs, true, false));
     }
     std::function<bool(VPackSlice const& result)> upsrv =
         [self = shared_from_this()](VPackSlice const& result) {
@@ -300,8 +301,9 @@ void HeartbeatThread::run() {
         "Current/ServersKnown", "Supervision/Health",
         "Current/ServersKnown/" + ServerState::instance()->getId()};
     for (auto const& path : serverAgencyPaths) {
-      serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(
-                                            _server, path, upsrv, true, false));
+      serverCallbacks.try_emplace(
+          path,
+          std::make_shared<AgencyCallback>(server(), path, upsrv, true, false));
     }
     std::function<bool(VPackSlice const& result)> upcrd =
         [self = shared_from_this()](VPackSlice const& result) {
@@ -319,7 +321,7 @@ void HeartbeatThread::run() {
         };
     std::string const path = "Current/Coordinators";
     serverCallbacks.try_emplace(path, std::make_shared<AgencyCallback>(
-                                          _server, path, upcrd, true, false));
+                                          server(), path, upcrd, true, false));
 
     for (auto const& cb : serverCallbacks) {
       auto res = _agencyCallbackRegistry->registerCallback(cb.second);
@@ -357,7 +359,9 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isDBServer(role)) {
     runDBServer();
   } else if (ServerState::instance()->isSingleServer(role)) {
-    if (_server.getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
+    if (this->server()
+            .getFeature<ReplicationFeature>()
+            .isActiveFailoverEnabled()) {
       runSingleServer();
     }
   } else if (ServerState::instance()->isAgent(role)) {
@@ -1340,7 +1344,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         continue;
       }
 
-      arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
+      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
       TRI_ASSERT(options.value.get("name").isString());
       // when loading we allow system database names
       auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());

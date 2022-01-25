@@ -46,9 +46,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminExecuteHandler::RestAdminExecuteHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAdminExecuteHandler::RestAdminExecuteHandler(ArangodServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminExecuteHandler::execute() {

@@ -212,30 +212,6 @@ class ApplicationServer {
     return _features.size() < type && nullptr != _features[type];
   }
 
-  template<typename T>
-  T& getFeature() const {
-    // FIXME(gnusi)
-    throwFeatureNotFoundException(/*type.name())*/ "");
-  }
-
-  template<typename T>
-  T& getEnabledFeature() const {
-    // FIXME(gnusi)
-    throwFeatureNotFoundException(/*type.name())*/ "");
-  }
-
-  template<typename T>
-  bool isEnabled() const {
-    // FIXME(gnusi)
-    throwFeatureNotFoundException(/*type.name())*/ "");
-  }
-
-  template<typename T>
-  bool hasFeature() const {
-    // FIXME(gnusi)
-    throwFeatureNotFoundException(/*type.name())*/ "");
-  }
-
   ApplicationFeature& getFeature(size_t type) const {
     auto& feature = _features[type];
     if (!feature) {
@@ -457,7 +433,7 @@ class ApplicationServerT : public ApplicationServer {
   AsType& getEnabledFeature() const {
     AsType& feature = getFeature<Type, AsType>();
     if (!feature.isEnabled()) {
-      throwFeatureNotEnabledException(ctti<Type>());
+      throwFeatureNotEnabledException("" /*ctti<Type>()*/);  // FIXME(gnusi)
     }
     return feature;
   }

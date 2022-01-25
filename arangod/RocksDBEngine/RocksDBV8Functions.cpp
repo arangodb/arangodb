@@ -81,8 +81,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_GLOBALS();
-  v8g->_server.getFeature<EngineSelectorFeature>().engine().flushWal(
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  v8g->server().getFeature<EngineSelectorFeature>().engine().flushWal(
       waitForSync, waitForCollector);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -200,8 +200,9 @@ static void JS_WaitForEstimatorSync(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  v8g->_server.getFeature<EngineSelectorFeature>()
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  v8g->server()
+      .getFeature<EngineSelectorFeature>()
       .engine()
       .waitForEstimatorSync(std::chrono::seconds(10));
 
