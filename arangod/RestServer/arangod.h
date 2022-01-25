@@ -24,7 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Utils/FeatureList.h"
+#include "Utils/TypeList.h"
 
 namespace arangodb {
 
@@ -156,7 +156,7 @@ struct BlackHoleStateMachineFeature;
 
 using namespace application_features;
 
-using ArangodFeatures = FeatureList<
+using ArangodFeatures = TypeList<
     // Adding the Phases
     AgencyFeaturePhase, CommunicationFeaturePhase, AqlFeaturePhase,
     BasicFeaturePhaseServer, ClusterFeaturePhase, DatabaseFeaturePhase,

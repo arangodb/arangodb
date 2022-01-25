@@ -24,7 +24,6 @@
 #pragma once
 
 #include <array>
-#include <source_location>
 
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
@@ -47,41 +46,13 @@ struct TypeTag {
 
 template<typename... T>
 class TypeList {
- public:
-  constexpr static auto Size = sizeof...(T);
-
-  static constexpr auto toArray() {
-    return toArrayImpl(std::make_integer_sequence<size_t, Size>());
-  }
-
-  template<typename Visitor, size_t... Idx>
-  static constexpr void visit(Visitor&& visitor) {
-    visitImpl(std::forward<Visitor>(visitor),
-              std::make_integer_sequence<size_t, Size>());
-  }
-
  private:
-  template<size_t... Idx>
-  static constexpr std::array<std::pair<frozen::string, size_t>, Size>
-  toArrayImpl(std::integer_sequence<size_t, Idx...>) {
-    return {std::pair<frozen::string, size_t>{ctti<T>(), Idx}...};
-  }
-
-  template<typename Visitor, size_t... Idx>
-  static constexpr void visitImpl(Visitor&& visitor,
-                                  std::integer_sequence<size_t, Idx...>) {
-    (std::forward<Visitor>(visitor)(TypeTag<T>{Idx}), ...);
-  }
-};
-
-template<typename... T>
-class FeatureList {
  public:
   static constexpr size_t size() noexcept { return kFeatures.size(); }
 
   template<typename Visitor>
   static constexpr void visit(Visitor&& visitor) {
-    Types::visit(std::forward<Visitor>(visitor));
+    List::visit(std::forward<Visitor>(visitor));
   }
 
   template<typename U>
@@ -92,10 +63,35 @@ class FeatureList {
   }
 
  private:
-  using Types = TypeList<T...>;
+  class List {
+   public:
+    constexpr static auto Size = sizeof...(T);
 
-  static constexpr auto kFeatures =
-      frozen::make_unordered_map(Types::toArray());
+    static constexpr auto toArray() {
+      return toArrayImpl(std::make_integer_sequence<size_t, Size>());
+    }
+
+    template<typename Visitor, size_t... Idx>
+    static constexpr void visit(Visitor&& visitor) {
+      visitImpl(std::forward<Visitor>(visitor),
+                std::make_integer_sequence<size_t, Size>());
+    }
+
+   private:
+    template<size_t... Idx>
+    static constexpr std::array<std::pair<frozen::string, size_t>, Size>
+    toArrayImpl(std::integer_sequence<size_t, Idx...>) {
+      return {std::pair<frozen::string, size_t>{ctti<T>(), Idx}...};
+    }
+
+    template<typename Visitor, size_t... Idx>
+    static constexpr void visitImpl(Visitor&& visitor,
+                                    std::integer_sequence<size_t, Idx...>) {
+      (std::forward<Visitor>(visitor)(TypeTag<T>{Idx}), ...);
+    }
+  };
+
+  static constexpr auto kFeatures = frozen::make_unordered_map(List::toArray());
 };
 
 }  // namespace arangodb
