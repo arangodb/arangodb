@@ -71,6 +71,7 @@ export class GraphView extends React.Component {
         if(chosenAction === 'deleteNode') {
           console.log("Trigger deleteNode() with node: ", item._cfg);
           console.log("Trigger deleteNode() with nodeId: ", item._cfg.id);
+          this.removeNode(item._cfg.id);
         } else if(chosenAction === 'editNode') {
           console.log("Trigger editNode() with node: ", item._cfg);
           console.log("Trigger editNode() with nodeId: ", item._cfg.id);
@@ -225,8 +226,7 @@ export class GraphView extends React.Component {
     this.props.onAddSingleNode(nodeModel);
   }
 
-  removeNode = () => {
-    const nodeId = 'frenchCity/Lyon';
+  removeNode = (nodeId = '') => {
     const item = this.graph.findById(nodeId);
     this.props.onRemoveSingleNode(nodeId);
     this.graph.removeItem(item);
@@ -365,6 +365,9 @@ export class GraphView extends React.Component {
     this.graph.render();
   }
 
+  /*
+  <button onClick={() => this.removeNode('frenchCity/Lyon')}>Remove node "frenchCity/Paris"</button>
+  */
   render() {
     return <>
       <button onClick={this.updateNodeModel}>Update "frenchCity/Paris"</button>
@@ -373,7 +376,6 @@ export class GraphView extends React.Component {
       <button onClick={this.getEdges}>Get edges (new)</button>
       <button onClick={this.addNode}>Add node (new)</button>
       <button onClick={this.addEdge}>Add edge (new)</button>
-      <button onClick={this.removeNode}>Remove node "frenchCity/Lyon"</button>
       <button onClick={this.updateNodeGraphData}>Update node graph data (new)</button>
       <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
