@@ -25,9 +25,13 @@ It is not possible to create multiple indexes with the same **fields** attribute
 and uniqueness but different **storedValues** attributes. That means the value of 
 **storedValues** is not considered by index creation calls when checking if an 
 index is already present or needs to be created.
+In unique indexes, only the attributes in **fields** are checked for uniqueness,
+but the attributes in **storedValues** are not checked for their uniqueness.
 
 @RESTBODYPARAM{unique,boolean,optional,}
 if *true*, then create a unique index. Defaults to *false*.
+In unique indexes, only the attributes in **fields** are checked for uniqueness,
+but the attributes in **storedValues** are not checked for their uniqueness.
 
 @RESTBODYPARAM{sparse,boolean,optional,}
 if *true*, then create a sparse index. Defaults to *false*.
