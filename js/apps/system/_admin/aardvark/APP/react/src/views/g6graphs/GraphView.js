@@ -8,6 +8,22 @@ import EdgeStyleSelector from './EdgeStyleSelector.js';
 import AddCollectionNameToNodesSelector from './AddCollectionNameToNodesSelector';
 import AddCollectionNameToEdgesSelector from './AddCollectionNameToEdgesSelector';
 import styles from './graphview.module.css';
+import menustyles from './graphview.menu.css';
+import {
+  TagFilled,
+  DeleteFilled,
+  ExpandAltOutlined,
+  TrademarkCircleFilled,
+  ChromeFilled,
+  BranchesOutlined,
+  ApartmentOutlined,
+  AppstoreFilled,
+  CopyrightCircleFilled,
+  CustomerServiceFilled,
+  ShareAltOutlined,
+  EditOutlined,
+  QuestionCircleOutlined
+} from '@ant-design/icons';
 
 export class GraphView extends React.Component {
 
@@ -17,6 +33,68 @@ export class GraphView extends React.Component {
   }
 
   componentDidMount() {
+    const contextMenu = new G6.Menu({
+      getContent(evt) {
+        let header = '';
+        let menu = '';
+        if (evt.target && evt.target.isCanvas && evt.target.isCanvas()) {
+          header = 'Canvas ContextMenu';
+          menu = `<ul id='graphViewerMenu'>
+            <li title='addNode'>Add node</li>
+          </ul>`;
+        } else if (evt.item) {
+          const itemType = evt.item.getType();
+          console.log("itemType: ", itemType);
+          if(itemType === 'node') {
+            header = `${itemType.toUpperCase()} ContextMenu`;
+            menu = `<ul id='graphViewerMenu'>
+              <li title='deleteNode'>Delete node</li>
+              <li title='editNode'>Edit node</li>
+              <li title='expandNode'>Expand node</li>
+              <li title='setAsStartnode'>Set as startnode</li>
+            </ul>`;
+          }
+          if(itemType === 'edge') {
+            header = `${itemType.toUpperCase()} ContextMenu`;
+            menu = `<ul id='graphViewerMenu'>
+              <li title='deleteEdge'>Delete edge</li>
+              <li title='editEdge'>Edit edge</li>
+            </ul>`;
+          }
+        }
+        return `${menu}`;
+      },
+      handleMenuClick: (target, item) => {
+        console.log(target, item);
+        let chosenAction = target.getAttribute('title');
+        console.log("chosenAction: ", chosenAction);
+        if(chosenAction === 'deleteNode') {
+          console.log("Trigger deleteNode() with node: ", item._cfg);
+          console.log("Trigger deleteNode() with nodeId: ", item._cfg.id);
+        } else if(chosenAction === 'editNode') {
+          console.log("Trigger editNode() with node: ", item._cfg);
+          console.log("Trigger editNode() with nodeId: ", item._cfg.id);
+        } else if(chosenAction === 'expandNode') {
+          console.log("Trigger expandNode() with node: ", item._cfg);
+          console.log("Trigger expandNode() with nodeId: ", item._cfg.id);
+        } else if(chosenAction === 'setAsStartnode') {
+          console.log("Trigger setAsStartnode() with node: ", item._cfg);
+          console.log("Trigger setAsStartnode() with nodeId: ", item._cfg.id);
+        } else if(chosenAction === 'addNode') {
+          console.log("Trigger addNode()");
+          this.addNode();
+        } else if(chosenAction === 'deleteEdge') {
+          console.log("Trigger deleteEdge() with edge: ", item._cfg);
+          console.log("Trigger deleteEdge() with edgeId: ", item._cfg.id);
+        } else if(chosenAction === 'editEdge') {
+          console.log("Trigger editEdge() with edge: ", item._cfg);
+          console.log("Trigger editEdge() with edgeId: ", item._cfg.id);
+        } 
+      },
+      offsetX: 16 + 10,
+      offsetY: 0,
+      itemTypes: ['node', 'edge', 'canvas'],
+    });
     const toolbar = new G6.ToolBar({
       position: { x: 10, y: 10 },
     });
@@ -28,7 +106,7 @@ export class GraphView extends React.Component {
       width: 1200,
       //height: container.offsetHeight,
       height: 400,
-      plugins: [toolbar],
+      plugins: [toolbar, contextMenu],
       enabledStack: true,
       layout: {
         type: 'gForce',

@@ -1,0 +1,8 @@
+ul#graphViewerMenu {
+  margin-bottom: 0px;
+}
+
+ul#graphViewerMenu li {
+  list-style-type: none;
+  margin-left: -16px;
+}
