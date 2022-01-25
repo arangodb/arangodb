@@ -94,6 +94,10 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
     return scope.Escape<v8::Object>(result);
   }
 
+  LOG_TOPIC("44ea4", TRACE, arangodb::Logger::V8)
+      << "Wrapping View " << view->name() << " with ptr " << (void*)view.get()
+      << " to context ID " << v8g->_id;
+
   auto value = std::shared_ptr<void>(  // persistent value
       view.get(),                      // value
       [view](void*) -> void {  // ensure view shared_ptr is not deallocated
@@ -752,8 +756,8 @@ static void JS_TypeViewVocbase(
                                    "insufficient rights to get view");
   }
 
-  auto& type = view->type().name();
-  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, type));
+  auto const type = view->typeName();
+  TRI_V8_RETURN(TRI_V8_PAIR_STRING(isolate, type.data(), type.size()));
   TRI_V8_TRY_CATCH_END
 }
 

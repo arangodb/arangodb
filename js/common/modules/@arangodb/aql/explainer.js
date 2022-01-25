@@ -114,6 +114,14 @@ function attributeUncolored(v) {
   return '`' + v + '`';
 }
 
+function indexFieldToName(v) {
+  'use strict';
+  if (typeof v === 'object') {
+    return v.name;
+  }
+  return v;
+}
+
 function keyword(v) {
   'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
@@ -361,7 +369,7 @@ function printIndexes(indexes) {
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
-      l = index.fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      l = index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
@@ -385,8 +393,8 @@ function printIndexes(indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? 'true' : 'false');
       var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
-      var fields = '[ ' + indexes[i].fields.map(attribute).join(', ') + ' ]';
-      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -1133,7 +1141,10 @@ function processQuery(query, explain, planIndex) {
     }
     idx.collection = node.collection;
     idx.node = node.id;
-    if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
+    if (node.hasOwnProperty('condition') && node.hasOwnProperty('allCoveredByOneIndex') &&
+        node.allCoveredByOneIndex) {
+       idx.condition = buildExpression(node.condition);
+    } else if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
       idx.condition = buildExpression(node.condition.subNodes[i]);
     } else {
       if (variable !== false && variable !== undefined) {
@@ -2124,6 +2135,7 @@ function explain(data, options, shouldPrint) {
     options = data.options;
   }
   options = options || {};
+  options.explainInternals = false;
   options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
@@ -2885,6 +2897,7 @@ function explainRegisters(data, options, shouldPrint) {
   }
   options = options || {};
   options.verbosePlans = true;
+  options.explainInternals = true;
   options.explainRegisters = true;
   setColors(options.colors === undefined ? true : options.colors);
 

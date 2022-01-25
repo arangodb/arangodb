@@ -53,13 +53,9 @@ namespace arangodb {
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
-LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
-    : LogicalDataSource(*this,
-                        LogicalDataSource::Type::emplace(
-                            arangodb::basics::VelocyPackHelper::getStringView(
-                                definition, StaticStrings::DataSourceType,
-                                std::string_view())),
-                        vocbase, definition) {
+LogicalView::LogicalView(std::pair<ViewType, std::string_view> const& typeInfo,
+                         TRI_vocbase_t& vocbase, VPackSlice definition)
+    : LogicalDataSource(*this, vocbase, definition), _typeInfo{typeInfo} {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -93,15 +89,14 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
   }
 
   builder.add(StaticStrings::DataSourceType,
-              arangodb::velocypack::Value(type().name()));
+              velocypack::Value(_typeInfo.second));
 
   return appendVelocyPackImpl(builder, context);
 }
 
-bool LogicalView::canUse(arangodb::auth::Level const& level) {
+bool LogicalView::canUse(auth::Level const& level) {
   // as per https://github.com/arangodb/backlog/issues/459
-  return ExecContext::current().canUseDatabase(vocbase().name(),
-                                               level);  // can use vocbase
+  return ExecContext::current().canUseDatabase(vocbase().name(), level);
 
   /* FIXME TODO per-view authentication checks disabled as per
   https://github.com/arangodb/backlog/issues/459 return !ctx // authentication
@@ -132,7 +127,7 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
 
   auto type = basics::VelocyPackHelper::getStringView(
       definition, StaticStrings::DataSourceType, std::string_view());
-  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(type);
 
   return factory.create(view, vocbase, definition, isUserRequest);
 }
@@ -206,7 +201,7 @@ Result LogicalView::drop() {
 
   auto type = basics::VelocyPackHelper::getStringView(
       definition, StaticStrings::DataSourceType, std::string_view());
-  auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
+  auto& factory = viewTypes.factory(type);
 
   return factory.instantiate(view, vocbase, definition);
 }
@@ -257,11 +252,10 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     if (!impl) {
-      return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failure during instantiation while creating "
-                      "arangosearch View in database '") +
-              vocbase.name() + "'");
+      return Result(TRI_ERROR_INTERNAL,
+                    std::string("failure during instantiation while creating "
+                                "arangosearch View in database '") +
+                        vocbase.name() + "'");
     }
 
     velocypack::Builder builder;
@@ -276,23 +270,21 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     builder.close();
-    res = engine.createViewCoordinator(  // create view
-        vocbase.name(), std::to_string(impl->id().id()),
-        builder.slice()  // args
-    );
+    res = engine.createViewCoordinator(
+        vocbase.name(), std::to_string(impl->id().id()), builder.slice());
 
     if (!res.ok()) {
       return res;
     }
 
-    view = engine.getView(
-        vocbase.name(),
-        std::to_string(impl->id().id()));  // refresh view from Agency
+    // refresh view from Agency
+    view = engine.getView(vocbase.name(), std::to_string(impl->id().id()));
 
     if (view) {
-      view->open();  // open view to match the behavior in
-                     // StorageEngine::openExistingDatabase(...) and original
-                     // behavior of TRI_vocbase_t::createView(...)
+      // open view to match the behavior in
+      // StorageEngine::openExistingDatabase(...) and original
+      // behavior of TRI_vocbase_t::createView(...)
+      view->open();
     }
 
     return Result();
@@ -317,9 +309,8 @@ Result LogicalView::rename(std::string&& newName) {
     auto& engine =
         view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
-    return engine.dropViewCoordinator(                         // drop view
-        view.vocbase().name(), std::to_string(view.id().id())  // args
-    );
+    return engine.dropViewCoordinator(view.vocbase().name(),
+                                      std::to_string(view.id().id()));
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {
@@ -330,7 +321,7 @@ Result LogicalView::rename(std::string&& newName) {
 }
 
 /*static*/ Result LogicalViewHelperClusterInfo::properties(
-    velocypack::Builder& builder, LogicalView const& view) noexcept {
+    velocypack::Builder&, LogicalView const&) noexcept {
   return Result();  // NOOP
 }
 
@@ -373,8 +364,8 @@ Result LogicalView::rename(std::string&& newName) {
 
 /*static*/ Result LogicalViewHelperClusterInfo::rename(
     LogicalView const& /*view*/, std::string const& /*oldName*/) noexcept {
-  return Result(TRI_ERROR_CLUSTER_UNSUPPORTED);  // renaming a view in a cluster
-                                                 // is not supported
+  // renaming a view in a cluster is not supported
+  return Result(TRI_ERROR_CLUSTER_UNSUPPORTED);
 }
 
 // -----------------------------------------------------------------------------
@@ -517,7 +508,3 @@ Result LogicalView::rename(std::string&& newName) {
 }
 
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

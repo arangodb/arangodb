@@ -532,7 +532,8 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
                            operation.first, "d.a.b.c.e.f RETURN d");
       SCOPED_TRACE(testing::Message("Query:") << queryString);
 
-      arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+      arangodb::aql::Variable var("c", 0,
+                                  /*isFullDocumentFromCollection*/ false);
       arangodb::aql::AqlValue value(arangodb::aql::AqlValue("2"));
       arangodb::aql::AqlValueGuard guard(value, true);
       ExpressionContextMock ctx;

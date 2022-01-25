@@ -67,6 +67,7 @@ class IndexExecutorInfos {
       arangodb::aql::Projections projections,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
+      bool oneIndexCondition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
       IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -123,6 +124,8 @@ class IndexExecutorInfos {
     return _outNonMaterializedIndRegs;
   }
 
+  bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
+
  private:
   /// @brief _indexes holds all Indexes used in this block
   std::vector<transaction::Methods::IndexHandle> _indexes;
@@ -167,6 +170,9 @@ class IndexExecutorInfos {
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   bool _count;
+
+  bool _oneIndexCondition;
+
   ReadOwnWrites const _readOwnWrites;
 };
 
@@ -191,7 +197,7 @@ class IndexExecutor {
 
     CursorReader(const CursorReader&) = delete;
     CursorReader& operator=(const CursorReader&) = delete;
-    CursorReader(CursorReader&& other) noexcept;
+    CursorReader(CursorReader&& other) noexcept = default;
 
    private:
     enum Type { NoResult, Covering, Document, LateMaterialized, Count };
@@ -211,6 +217,8 @@ class IndexExecutor {
     IndexIterator::LocalDocumentIdCallback _documentNonProducer;
     IndexIterator::DocumentCallback _documentProducer;
     IndexIterator::DocumentCallback _documentSkipper;
+    IndexIterator::CoveringCallback _coveringProducer;
+    IndexIterator::CoveringCallback _coveringSkipper;
   };
 
  public:

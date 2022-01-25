@@ -322,7 +322,11 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
         cursor = _trx->indexScanForCondition(
-            it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no);
+            it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
+            static_cast<int>(
+                info.conditionNeedUpdate
+                    ? info.conditionMemberToUpdate
+                    : transaction::Methods::kNoMutableConditionIdx));
       }
       ++j;
     }
@@ -352,13 +356,15 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
                                        std::string_view vertex) {
   ::PrepareIndexCondition(info, vertex);
   IndexIteratorOptions defaultIndexIteratorOptions;
-
   _cursors.emplace_back();
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
     csrs.emplace_back(_trx->indexScanForCondition(
         index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions,
-        ReadOwnWrites::no));
+        ReadOwnWrites::no,
+        static_cast<int>(info.conditionNeedUpdate
+                             ? info.conditionMemberToUpdate
+                             : transaction::Methods::kNoMutableConditionIdx)));
   }
 }
