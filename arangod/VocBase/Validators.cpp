@@ -28,7 +28,19 @@
 
 #include <tao/json/contrib/schema.hpp>
 #include <tao/json/jaxn/to_string.hpp>
+
+#ifdef __clang__
+#pragma clang diagnostic push
+// Suppress the following warning:
+//   3rdParty\taocpp-json\include\tao/json/contrib/../internal/../external/double.hpp(142,23):
+//   error : unused typedef 'VerifySizesAreEqual'
+//   [-Werror,-Wunused-local-typedef]
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
+#endif
 #include <validation/validation.hpp>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 #include <iostream>
 #include <tao/json/to_string.hpp>

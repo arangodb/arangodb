@@ -30,7 +30,28 @@
 #include <s2/s2region_coverer.h>
 #include <s2/s2region_intersection.h>
 
+#ifdef __clang__
+#pragma clang diagnostic push
+// Suppress the warning
+//   3rdParty\s2geometry\dfefe0c\src\s2/s2shape_index.h(276,21): error :
+//   'iterator<std::forward_iterator_tag, S2Shape *>' is deprecated: warning
+//   STL4015: The std::iterator class template (used as a base class to provide
+//   typedefs) is deprecated in C++17. (The <iterator> header is NOT
+//   deprecated.) The C++ Standard has never required user-defined iterators to
+//   derive from std::iterator. To fix this warning, stop deriving from
+//   std::iterator and start providing publicly accessible typedefs named
+//   iterator_category, value_type, difference_type, pointer, and reference.
+//   Note that value_type is required to be non-const, even for constant
+//   iterators. You can define
+//   _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING or
+//   _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have
+//   received this warning. [-Werror,-Wdeprecated-declarations]
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
 #include <s2/s2distance_target.h>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

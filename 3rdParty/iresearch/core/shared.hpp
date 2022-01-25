@@ -149,8 +149,8 @@
 #endif
 
 // hook for MSVC-only code
-#if defined(_MSC_VER)
-  #define MSVC_ONLY(...) __VA_ARGS__
+#if defined(_MSC_VER) && !defined(__clang__)
+#define MSVC_ONLY(...) __VA_ARGS__
 #else
   #define MSVC_ONLY(...)
 #endif

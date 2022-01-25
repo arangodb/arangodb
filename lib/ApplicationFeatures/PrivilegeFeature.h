@@ -54,8 +54,8 @@ class PrivilegeFeature final : public application_features::ApplicationFeature {
  private:
   void extractPrivileges();
 
-  TRI_uid_t _numericUid;
-  TRI_gid_t _numericGid;
+  [[maybe_unused]] TRI_uid_t _numericUid{};
+  [[maybe_unused]] TRI_gid_t _numericGid{};
 };
 
 }  // namespace arangodb

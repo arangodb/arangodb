@@ -23,7 +23,26 @@
 
 #pragma once
 
+#ifdef __clang__
+#pragma clang diagnostic push
+// Suppress the warning
+//   3rdParty\s2geometry\dfefe0c\src\s2/util/math/vector3_hash.h(32,24): error :
+//   'is_pod<double>' is deprecated: warning STL4025: std::is_pod and
+//   std::is_pod_v are deprecated in C++20. The std::is_trivially_copyable
+//   and/or std::is_standard_layout traits likely suit your use case. You can
+//   define _SILENCE_CXX20_IS_POD_DEPRECATION_WARNING or
+//   _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to acknowledge that you have
+//   received this warning. [-Werror,-Wdeprecated-declarations]
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+// Suppress the warning
+//   3rdParty\s2geometry\dfefe0c\src\s2/base/logging.h(82,21): error : private
+//   field 'severity_' is not used [-Werror,-Wunused-private-field]
+#pragma clang diagnostic ignored "-Wunused-private-field"
+#endif
 #include <s2/s2cell_id.h>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 #include <s2/s2latlng.h>
 
 #include "Basics/Result.h"

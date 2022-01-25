@@ -167,7 +167,7 @@ class LogAppenderDebugOutput final : public LogAppender {
   LogAppenderDebugOutput() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const& message) {
+  void logMessage(LogMessage const& message) override {
     // only handle FATAl and ERR log messages
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
@@ -188,7 +188,7 @@ class LogAppenderEventLog final : public LogAppender {
   LogAppenderEventLog() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const& message) {
+  void logMessage(LogMessage const& message) override {
     // only handle FATAl and ERR log messages
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;

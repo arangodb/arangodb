@@ -417,6 +417,10 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   }
 }
 
+// Avoid duplicate symbols when linking: This file is directly included by
+// ExecutionBlockImplTestInstances.cpp
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
 // Without the namespaces it fails with
 // error: specialization of 'template<class Executor>
@@ -479,6 +483,24 @@ ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
 }
 
 }  // namespace arangodb::aql
+#else
+// Just predeclare the specializations for the tests.
+
+namespace arangodb::aql {
+template<>
+template<>
+auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
+    IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block, SkipResult skipped)
+    -> void;
+
+template<>
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+    InputAqlItemRow const& input);
+
+}  // namespace arangodb::aql
+
+#endif
 
 // TODO: We need to define the size of this block based on Input / Executor /
 // Subquery depth
@@ -994,6 +1016,9 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
+// Avoid duplicate symbols when linking: This file is directly included by
+// ExecutionBlockImplTestInstances.cpp
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 template<>
 auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
     AqlCallStack& stack) -> ExecState {
@@ -1107,6 +1132,17 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
     return ExecState::NEXTSUBQUERY;
   }
 }
+#else
+// Just predeclare the specializations for the tests.
+template<>
+auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
+    AqlCallStack& stack) -> ExecState;
+
+template<>
+auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
+    AqlCallStack& stack) -> ExecState;
+
+#endif
 
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
@@ -2108,6 +2144,9 @@ auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept
   return _lastRange.hasDataRow();
 }
 
+// Avoid duplicate symbols when linking: This file is directly included by
+// ExecutionBlockImplTestInstances.cpp
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 template<>
 template<>
 RegisterId
@@ -2115,6 +2154,15 @@ ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
     getOutputRegisterId() const noexcept {
   return _executorInfos.getOutputRegister();
 }
+#else
+// Just predeclare the specializations for the tests.
+
+template<>
+template<>
+RegisterId
+ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
+    getOutputRegisterId() const noexcept;
+#endif
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::init() {

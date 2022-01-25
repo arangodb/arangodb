@@ -52,7 +52,18 @@ namespace asio_ns = asio;
 
 #else
 
+#ifdef __clang__
+// Suppress the warning
+//   3rdParty\boost\1.78.0\boost/asio/detail/strand_service.hpp(112,15): error :
+//     private field 'io_context_' is not used [-Werror,-Wunused-private-field]
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-private-field"
+#endif
 #include <boost/asio.hpp>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/steady_timer.hpp>

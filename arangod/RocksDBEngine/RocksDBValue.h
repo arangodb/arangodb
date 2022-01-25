@@ -26,7 +26,17 @@
 
 #include <rocksdb/slice.h>
 
+#ifdef __clang__
+#pragma clang diagnostic push
+// Suppress the warning
+//   3rdParty\s2geometry\dfefe0c\src\s2/base/logging.h(82,21): error :
+//   private field 'severity_' is not used [-Werror,-Wunused-private-field]
+#pragma clang diagnostic ignored "-Wunused-private-field"
+#endif
 #include <s2/s2point.h>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>

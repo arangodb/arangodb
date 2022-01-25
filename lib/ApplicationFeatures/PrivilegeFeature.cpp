@@ -59,7 +59,7 @@ namespace arangodb {
 
 PrivilegeFeature::PrivilegeFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Privilege"), _numericUid(0), _numericGid(0) {
+    : ApplicationFeature(server, "Privilege") {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
