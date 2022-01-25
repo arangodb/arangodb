@@ -82,6 +82,7 @@
 #include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPregelHandler.h"
+#include "RestHandler/RestPregel3Handler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
@@ -577,6 +578,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/pregel3", RestHandlerCreator<RestPregel3Handler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);

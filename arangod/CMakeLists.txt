@@ -253,6 +253,10 @@ set(LIB_ARANGO_PREGEL_SOURCES
   RestHandler/RestPregelHandler.cpp
 )
 
+set(LIB_ARANGO_PREGEL3_SOURCES
+  Pregel3/Methods.cpp
+  RestHandler/RestPregel3Handler.cpp)
+
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
@@ -867,6 +871,10 @@ add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_AIR_SOURCES}
 )
 
+add_library(arango_pregel3 STATIC
+  ${LIB_ARANGO_PREGEL3_SOURCES}
+)
+
 add_library(arango_aql STATIC
   ${LIB_ARANGO_AQL_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
@@ -1048,6 +1056,8 @@ target_link_libraries(arango_pregel arango_greenspun)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
 
+target_link_libraries(arango_pregel3 arango)
+
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
@@ -1116,6 +1126,7 @@ target_link_libraries(arangoserver arango_iresearch)
 target_link_libraries(arangoserver arango_metrics)
 target_link_libraries(arangoserver arango_network)
 target_link_libraries(arangoserver arango_pregel)
+target_link_libraries(arangoserver arango_pregel3)
 target_link_libraries(arangoserver arango_replication)
 target_link_libraries(arangoserver arango_storage_engine)
 target_link_libraries(arangoserver arango_utils)
@@ -1200,6 +1211,7 @@ foreach(TARGET
   arango_metrics
   arango_network
   arango_pregel
+  arango_pregel3
   arango_replication
   arango_replication2
   arango_rocksdb
