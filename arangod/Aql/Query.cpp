@@ -32,6 +32,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/GraphNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
@@ -406,6 +407,33 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get(), true);
+
+  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*>
+      graphNodesStorage;
+  auto& graphNodes = graphNodesStorage.vector();
+
+  plan->findNodesOfType(graphNodes,
+                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
+                         ExecutionNode::K_SHORTEST_PATHS},
+                        true);
+  for (auto& node : graphNodes) {
+    auto graphNode = ExecutionNode::castTo<GraphNode*>(node);
+    auto const& vCols = graphNode->vertexColls();
+    if (vCols.empty()) {
+      auto& myResolver = resolver();
+      collections().visit(
+          [&myResolver, graphNode](std::string const& name,
+                                   aql::Collection& collection) {
+            // If resolver cannot resolve this collection
+            // it has to be a view.
+            if (myResolver.getCollection(name)) {
+              // All known edge collections will be ignored by this call!
+              graphNode->injectVertexCollection(collection);
+            }
+            return true;
+          });
+    }
+  }
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
