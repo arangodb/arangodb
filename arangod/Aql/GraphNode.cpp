@@ -729,7 +729,8 @@ Collection const* GraphNode::collection() const {
 }
 
 void GraphNode::injectVertexCollection(aql::Collection& other) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+             ServerState::instance()->isSingleServer());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into

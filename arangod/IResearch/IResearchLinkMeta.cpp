@@ -613,7 +613,9 @@ bool IResearchLinkMeta::init(
     constexpr std::string_view kFieldName{StaticStrings::VersionField};
 
     auto const field = slice.get(kFieldName);
-    mask->_version = field.isNumber<uint32_t>();
+    if (!field.isNone()) {
+      mask->_version = field.isNumber<uint32_t>();
+    }
 
     if (mask->_version) {
       _version = field.getNumber<uint32_t>();
