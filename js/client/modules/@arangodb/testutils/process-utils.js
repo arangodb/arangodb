@@ -712,9 +712,7 @@ function getProcessStats(pid) {
 
 function initProcessStats(instanceInfo) {
   instanceInfo.arangods.forEach((arangod) => {
-    if (arangod.pid > 0) {
-      arangod.stats = getProcessStats(arangod.pid);
-    }
+    arangod.stats = getProcessStats(arangod.pid);
   });
 }
 
