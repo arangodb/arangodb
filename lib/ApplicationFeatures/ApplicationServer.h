@@ -444,6 +444,8 @@ class ApplicationServerT : public ApplicationServer {
 #endif
   }
 
+  using ApplicationServer::getFeature;
+
   // returns the feature with the given name if known and enabled
   // throws otherwise
   template<typename Type, typename AsType = Type,

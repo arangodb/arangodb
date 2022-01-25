@@ -111,6 +111,7 @@ class V8PlatformFeature;
 class V8SecurityFeature;
 class VersionFeature;
 class ViewTypesFeature;
+class StorageEngine;  // FIXME(gnusi)
 class ClusterEngine;
 class RocksDBEngine;
 #ifdef ARANGODB_HAVE_FORK
@@ -197,8 +198,8 @@ using ArangodFeatures = FeatureList<
     SslServerFeature,
 #endif
     arangodb::iresearch::IResearchAnalyzerFeature,
-    arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
-    replication2::replicated_state::ReplicatedStateAppFeature,
+    arangodb::iresearch::IResearchFeature, StorageEngine, ClusterEngine,
+    RocksDBEngine, replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature>;
 
 using ArangodServer = ApplicationServerT<ArangodFeatures>;

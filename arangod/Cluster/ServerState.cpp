@@ -84,7 +84,7 @@ static constexpr char const* currentServersRegisteredPref =
 
 static ServerState* Instance = nullptr;
 
-ServerState::ServerState(application_features::ApplicationServer& server)
+ServerState::ServerState(ArangodServer& server)
     : _server(server),
       _role(RoleEnum::ROLE_UNDEFINED),
       _shortId(0),

@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

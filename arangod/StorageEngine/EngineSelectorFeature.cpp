@@ -43,7 +43,7 @@ using namespace arangodb::options;
 
 namespace {
 struct EngineInfo {
-  std::type_index type;
+  size_t type;
   // whether or not the engine is deprecated
   bool deprecated;
   // whether or not new deployments with this engine are allowed
@@ -53,9 +53,10 @@ struct EngineInfo {
 std::unordered_map<std::string, EngineInfo> createEngineMap() {
   std::unordered_map<std::string, EngineInfo> map;
   // rocksdb is not deprecated and the engine of choice
-  map.try_emplace(arangodb::RocksDBEngine::EngineName,
-                  EngineInfo{std::type_index(typeid(arangodb::RocksDBEngine)),
-                             false, true});
+  map.try_emplace(
+      arangodb::RocksDBEngine::EngineName,
+      EngineInfo{arangodb::ArangodServer::id<arangodb::RocksDBEngine>(), false,
+                 true});
   return map;
 }
 }  // namespace
@@ -178,7 +179,8 @@ void EngineSelectorFeature::prepare() {
     _engine = &ce;
 
     for (auto& engine : engines) {
-      StorageEngine& e = server().getFeature<StorageEngine>(engine.second.type);
+      StorageEngine& e =
+          static_cast<StorageEngine&>(server().getFeature(engine.second.type));
       // turn off all other storage engines
       LOG_TOPIC("001b6", TRACE, Logger::STARTUP)
           << "disabling storage engine " << engine.first;
@@ -193,7 +195,8 @@ void EngineSelectorFeature::prepare() {
   } else {
     // deactivate all engines but the selected one
     for (auto& engine : engines) {
-      auto& e = server().getFeature<StorageEngine>(engine.second.type);
+      auto& e =
+          static_cast<StorageEngine&>(server().getFeature(engine.second.type));
 
       if (engine.first == _engineName) {
         // this is the selected engine

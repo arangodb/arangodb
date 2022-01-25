@@ -110,6 +110,7 @@ void ApplicationServer::throwFeatureNotEnabledException(char const* name) {
       "feature '" + boost::core::demangle(name) + "' is not enabled");
 }
 
+// FIXME(gnusi) don't use vector
 void ApplicationServer::disableFeatures(std::vector<size_t> const& types) {
   disableFeatures(types, false);
 }

@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <source_location>
 
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>

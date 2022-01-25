@@ -28,7 +28,6 @@
 #include "Basics/debugging.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
 namespace arangodb {

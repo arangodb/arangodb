@@ -23,6 +23,7 @@
 
 #include "ReplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -88,7 +89,9 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
-      _connectionCache{server, httpclient::ConnectionCache::Options{5}},
+      _connectionCache{
+          server.getFeature<application_features::CommunicationFeaturePhase>(),
+          httpclient::ConnectionCache::Options{5}},
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),

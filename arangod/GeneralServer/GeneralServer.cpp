@@ -231,6 +231,4 @@ Result GeneralServer::reloadTLS() {
   }
 }
 
-application_features::ApplicationServer& GeneralServer::server() const {
-  return _feature.server();
-}
+ArangodServer& GeneralServer::server() const { return _feature.server(); }

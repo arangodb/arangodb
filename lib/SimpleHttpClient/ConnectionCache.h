@@ -32,6 +32,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "SimpleHttpClient/GeneralClientConnection.h"
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -40,7 +42,6 @@ class CommunicationFeaturePhase;
 
 namespace httpclient {
 class ConnectionCache;
-class GeneralClientConnection;
 
 struct ConnectionLease {
   ConnectionLease();
@@ -76,11 +77,9 @@ class ConnectionCache {
     size_t maxConnectionsPerEndpoint;
   };
 
-  template<typename Server>
-  ConnectionCache(Server& server, Options const& options)
-      : ConnectionCache{server.template getFeature<
-                            application_features::CommunicationFeaturePhase>(),
-                        options} {}
+  ConnectionCache(
+      arangodb::application_features::CommunicationFeaturePhase& comm,
+      Options const& options);
 
   ConnectionLease acquire(std::string endpoint, double connectTimeout,
                           double requestTimeout, size_t connectRetries,
@@ -100,10 +99,6 @@ class ConnectionCache {
 #endif
 
  private:
-  ConnectionCache(
-      arangodb::application_features::CommunicationFeaturePhase& comm,
-      Options const& options);
-
   arangodb::application_features::CommunicationFeaturePhase& _comm;
 
   Options const _options;

@@ -311,12 +311,10 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (!_enableJS) {
     disable();
-    server().disableFeatures(
-        std::vector<std::type_index>{std::type_index(typeid(V8PlatformFeature)),
-                                     std::type_index(typeid(ActionFeature)),
-                                     std::type_index(typeid(ScriptFeature)),
-                                     std::type_index(typeid(FoxxFeature)),
-                                     std::type_index(typeid(FrontendFeature))});
+    server().disableFeatures(std::vector<size_t>{
+        Server::id<V8PlatformFeature>(), Server::id<ActionFeature>(),
+        Server::id<ScriptFeature>(), Server::id<FoxxFeature>(),
+        Server::id<FrontendFeature>()});
     return;
   }
 
