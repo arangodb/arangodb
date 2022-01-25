@@ -86,6 +86,9 @@ using ReplicatedStateStatusMapByDatabase =
 using ReplicatedStateSpecMap =
     std::unordered_map<arangodb::replication2::LogId,
                        arangodb::replication2::replicated_state::agency::Plan>;
+using ReplicatedStateCurrentMap = std::unordered_map<
+    arangodb::replication2::LogId,
+    arangodb::replication2::replicated_state::agency::Current>;
 
 /**
  * @brief          Diff Plan Replicated Logs and Local Replicated Logs for phase
@@ -124,7 +127,8 @@ void diffReplicatedStates(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedStateStatusMap const& localStates,
     ReplicatedLogSpecMap const& planLogs,
-    ReplicatedStateSpecMap const& planStates, std::string const& serverId,
+    ReplicatedStateSpecMap const& planStates,
+    ReplicatedStateCurrentMap const& statesCurrent, std::string const& serverId,
     MaintenanceFeature::errors_t& errors,
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions);
@@ -146,7 +150,10 @@ void diffReplicatedStates(
 arangodb::Result diffPlanLocal(
     StorageEngine& engine,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    uint64_t planIndex, std::unordered_set<std::string> dirty,
+    uint64_t planIndex,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
+    uint64_t currentIndex, std::unordered_set<std::string> dirty,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
@@ -171,7 +178,10 @@ arangodb::Result diffPlanLocal(
  */
 arangodb::Result executePlan(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+    uint64_t planIndex,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
+    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
     std::unordered_set<std::string> const& moreDirt,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
@@ -213,7 +223,10 @@ arangodb::Result diffLocalCurrent(
  */
 arangodb::Result phaseOne(
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+    uint64_t planIndex,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
+    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
     std::unordered_set<std::string> const& moreDirt,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     std::string const& serverId, MaintenanceFeature& feature,

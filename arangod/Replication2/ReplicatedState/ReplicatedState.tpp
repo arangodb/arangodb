@@ -162,4 +162,11 @@ void ReplicatedState<S>::rebuild(std::unique_ptr<ReplicatedStateCore> core,
   }
 }
 
+template<typename S>
+void ReplicatedState<S>::forceRebuild() {
+  LOG_TOPIC("8041a", INFO, Logger::REPLICATED_STATE) << "Force rebuild of replicated state";
+  auto [core, token] = std::move(*currentManager).resign();
+  rebuild(std::move(core), std::move(token));
+}
+
 }  // namespace arangodb::replication2::replicated_state

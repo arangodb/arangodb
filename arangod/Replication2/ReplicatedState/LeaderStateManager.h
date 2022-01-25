@@ -79,6 +79,8 @@ struct LeaderStateManager
     recoveryRange = range;
   }
 
+  void waitForParticipantResigned();
+
   // TODO locking
 };
 }  // namespace arangodb::replication2::replicated_state

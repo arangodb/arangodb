@@ -88,6 +88,7 @@ void LeaderStateManager<S>::run() {
                         self->updateInternalState(
                             LeaderInternalState::kServiceAvailable);
                         self->state->_stream = self->stream;
+                        self->waitForParticipantResigned();
                         return result;
                       } else {
                         LOG_TOPIC("3fd49", FATAL, Logger::REPLICATED_STATE)
@@ -146,13 +147,12 @@ LeaderStateManager<S>::LeaderStateManager(
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   LeaderStatus status;
-  status.log = std::get<replicated_log::LeaderStatus>(
-      logLeader->getStatus().getVariant());
   status.managerState.state = internalState;
   status.managerState.lastChange = lastInternalStateChange;
   if (internalState == LeaderInternalState::kRecoveryInProgress &&
       recoveryRange) {
-    status.managerState.detail = "recovery range is " + to_string(*recoveryRange);
+    status.managerState.detail =
+        "recovery range is " + to_string(*recoveryRange);
   } else {
     status.managerState.detail = std::nullopt;
   }
@@ -166,5 +166,18 @@ auto LeaderStateManager<S>::resign() && -> std::pair<
     std::unique_ptr<ReplicatedStateCore>,
     std::unique_ptr<ReplicatedStateToken>> {
   return {std::move(core), std::move(token)};
+}
+
+template<typename S>
+void LeaderStateManager<S>::waitForParticipantResigned() {
+  logLeader
+      ->waitFor(LogIndex{std::numeric_limits<decltype(LogIndex::value)>::max()})
+      .thenFinal([weak = this->weak_from_this()](auto&&) {
+        if (auto self = weak.lock(); self != nullptr) {
+          if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
+            parentPtr->forceRebuild();
+          }
+        }
+      });
 }
 }  // namespace arangodb::replication2::replicated_state

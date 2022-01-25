@@ -41,9 +41,9 @@ const updateReplicatedStatePlan = function (database, logId, callback) {
   if (planLog === undefined) {
     planLog = {id: logId};
   }
-  callback(planState, planLog);
-  global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, planState);
-  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, planLog);
+  const {state, log} = callback(planState, planLog);
+  global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, state);
+  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, log);
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 

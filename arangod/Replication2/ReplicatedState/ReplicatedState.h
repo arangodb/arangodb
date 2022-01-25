@@ -55,6 +55,7 @@ struct ReplicatedStateBase {
 
   virtual void flush(StateGeneration plannedGeneration) = 0;
   virtual void start(std::unique_ptr<ReplicatedStateToken> token) = 0;
+  virtual void forceRebuild() = 0;
   virtual auto getStatus() -> std::optional<StateStatus> = 0;
   auto getLeader() -> std::shared_ptr<IReplicatedLeaderStateBase> {
     return getLeaderBase();
@@ -99,6 +100,11 @@ struct ReplicatedState final
   auto getLeader() const -> std::shared_ptr<LeaderType>;
 
   auto getStatus() -> std::optional<StateStatus> final;
+
+  /**
+   * Rebuilds the managers. Called when the managers participant is gone.
+   */
+  void forceRebuild() override;
 
   struct StateManagerBase {
     virtual ~StateManagerBase() = default;

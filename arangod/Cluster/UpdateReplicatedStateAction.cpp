@@ -72,18 +72,22 @@ struct StateActionContextImpl : algorithms::StateActionContext {
 };
 
 bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
-  auto spec =
-      std::invoke([&]() -> std::optional<replicated_state::agency::Plan> {
-        auto buffer =
-            StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
-        auto slice =
-            VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
-        if (!slice.isNone()) {
-          return replicated_state::agency::Plan::fromVelocyPack(slice);
-        }
+  auto const extractOptionalType =
+      [&]<typename T>(std::string_view key) -> std::optional<T> {
+    auto buffer = StringUtils::decodeBase64(_description.get(std::string{key}));
+    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
+    if (!slice.isNone()) {
+      return T::fromVelocyPack(slice);
+    }
 
-        return std::nullopt;
-      });
+    return std::nullopt;
+  };
+
+  auto spec = extractOptionalType.operator()<replicated_state::agency::Plan>(
+      REPLICATED_LOG_SPEC);
+  auto current =
+      extractOptionalType.operator()<replicated_state::agency::Current>(
+          REPLICATED_STATE_CURRENT);
 
   auto logId = LogId{StringUtils::uint64(_description.get(REPLICATED_LOG_ID))};
   auto serverId = ServerState::instance()->getId();
@@ -96,7 +100,8 @@ bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
   auto ctx = StateActionContextImpl{guard.database()};
   try {
     auto result = replication2::algorithms::updateReplicatedState(
-        ctx, serverId, logId, spec.has_value() ? &spec.value() : nullptr);
+        ctx, serverId, logId, spec.has_value() ? &spec.value() : nullptr,
+        current.has_value() ? &current.value() : nullptr);
     if (result.fail()) {
       LOG_TOPIC("ba776", ERR, Logger::REPLICATION2)
           << "failed to modify replicated state " << _description.get(DATABASE)

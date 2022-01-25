@@ -61,7 +61,6 @@ struct LeaderStatus {
   ManagerState managerState;
   StateGeneration generation;
   SnapshotInfo snapshot;
-  replicated_log::LeaderStatus log;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> LeaderStatus;
@@ -92,7 +91,6 @@ struct FollowerStatus {
   ManagerState managerState;
   StateGeneration generation;
   SnapshotInfo snapshot;
-  replicated_log::FollowerStatus log;
 
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> FollowerStatus;

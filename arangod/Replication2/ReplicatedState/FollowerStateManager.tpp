@@ -90,7 +90,7 @@ void FollowerStateManager<S>::pollNewEntries() {
           self->applyEntries(std::move(result).get());
         } catch (replicated_log::ParticipantResignedException const&) {
           if (auto ptr = self->parent.lock(); ptr) {
-            // do nothing
+            ptr->forceRebuild();
           } else {
             LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
                 << "LogFollower resigned, but Replicated State already gone";
@@ -193,7 +193,7 @@ void FollowerStateManager<S>::awaitLeaderShip() {
             self->ingestLogData();
           } catch (replicated_log::ParticipantResignedException const&) {
             if (auto ptr = self->parent.lock(); ptr) {
-              // Do nothing
+              ptr->forceRebuild();
             } else {
               LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
                   << "LogFollower resigned, but Replicated State already "
@@ -244,8 +244,6 @@ FollowerStateManager<S>::FollowerStateManager(
 template<typename S>
 auto FollowerStateManager<S>::getStatus() const -> StateStatus {
   FollowerStatus status;
-  status.log = std::get<replicated_log::FollowerStatus>(
-      logFollower->getStatus().getVariant());
   status.managerState.state = internalState;
   status.managerState.lastChange = lastInternalStateChange;
   status.managerState.detail = std::nullopt;

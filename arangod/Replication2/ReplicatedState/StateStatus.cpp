@@ -152,8 +152,6 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StringRole, velocypack::Value(StaticStrings::Follower));
   builder.add(velocypack::Value(StringManagerState));
   managerState.toVelocyPack(builder);
-  builder.add(velocypack::Value(StringLog));
-  log.toVelocyPack(builder);
   builder.add(velocypack::Value("snapshot"));
   snapshot.toVelocyPack(builder);
   builder.add("generation", velocypack::Value(generation.value));
@@ -164,8 +162,6 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StringRole, velocypack::Value(StaticStrings::Leader));
   builder.add(velocypack::Value(StringManagerState));
   managerState.toVelocyPack(builder);
-  builder.add(velocypack::Value(StringLog));
-  log.toVelocyPack(builder);
   builder.add(velocypack::Value("snapshot"));
   snapshot.toVelocyPack(builder);
   builder.add("generation", velocypack::Value(generation.value));
@@ -174,25 +170,21 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
 auto FollowerStatus::fromVelocyPack(velocypack::Slice s) -> FollowerStatus {
   TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Follower);
   auto state = ManagerState::fromVelocyPack(s.get(StringManagerState));
-  auto log = replicated_log::FollowerStatus::fromVelocyPack(s.get(StringLog));
   auto generation = s.get(StringLog).extract<StateGeneration>();
   auto snapshot = SnapshotInfo::fromVelocyPack(s.get("snapshot"));
   return FollowerStatus{.managerState = std::move(state),
                         .generation = generation,
-                        .snapshot = std::move(snapshot),
-                        .log = std::move(log)};
+                        .snapshot = std::move(snapshot)};
 }
 
 auto LeaderStatus::fromVelocyPack(velocypack::Slice s) -> LeaderStatus {
   TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Leader);
   auto state = ManagerState::fromVelocyPack(s.get(StringManagerState));
-  auto log = replicated_log::LeaderStatus::fromVelocyPack(s.get(StringLog));
   auto generation = s.get(StringLog).extract<StateGeneration>();
   auto snapshot = SnapshotInfo::fromVelocyPack(s.get("snapshot"));
   return LeaderStatus{.managerState = std::move(state),
                       .generation = generation,
-                      .snapshot = std::move(snapshot),
-                      .log = std::move(log)};
+                      .snapshot = std::move(snapshot)};
 }
 
 void FollowerStatus::ManagerState::toVelocyPack(

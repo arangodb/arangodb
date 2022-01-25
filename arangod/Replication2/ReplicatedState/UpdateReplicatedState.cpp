@@ -29,7 +29,8 @@ using namespace arangodb::replication2::replicated_state;
 
 auto algorithms::updateReplicatedState(
     StateActionContext& ctx, std::string const& serverId, LogId id,
-    replicated_state::agency::Plan const* spec) -> arangodb::Result {
+    replicated_state::agency::Plan const* spec,
+    replicated_state::agency::Current const* current) -> arangodb::Result {
   if (spec == nullptr) {
     return ctx.dropReplicatedState(id);
   }
@@ -38,12 +39,12 @@ auto algorithms::updateReplicatedState(
   TRI_ASSERT(spec->participants.contains(serverId));
   auto expectedGeneration = spec->participants.at(serverId).generation;
   LOG_TOPIC("b089c", INFO, Logger::REPLICATED_STATE)
-      << "Update replicated log" << id << " for generation " << expectedGeneration;
+      << "Update replicated log" << id << " for generation "
+      << expectedGeneration;
 
   auto state = ctx.getReplicatedStateById(id);
   if (state == nullptr) {
     // TODO use user data instead of non-slice
-    // here we have to put in the Current/Snapshot data here as well.
     auto result =
         ctx.createReplicatedState(id, spec->properties.implementation.type,
                                   velocypack::Slice::noneSlice());
@@ -52,8 +53,24 @@ auto algorithms::updateReplicatedState(
     }
 
     state = result.get();
-    // TODO put in the current token here
-    state->start(std::make_unique<ReplicatedStateToken>(expectedGeneration));
+
+    auto token = std::invoke([&] {
+      if (current) {
+        if (auto const& p = current->participants.find(serverId);
+            p != std::end(current->participants)) {
+          if (p->second.generation == expectedGeneration) {
+            // we are allowed to use the information stored here
+            return std::make_unique<ReplicatedStateToken>(
+                ReplicatedStateToken::withExplicitSnapshotStatus(
+                    expectedGeneration, p->second.snapshot));
+          }
+        }
+      }
+
+      return std::make_unique<ReplicatedStateToken>(expectedGeneration);
+    });
+    // now start the replicated state
+    state->start(std::move(token));
     return {TRI_ERROR_NO_ERROR};
   } else {
     auto status = state->getStatus();

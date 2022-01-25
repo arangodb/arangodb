@@ -271,12 +271,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
+    AgencyCache::databases_t current =
+        clusterInfo.getCurrent(currentIndex, dirty);
+
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
 
     tmp = arangodb::maintenance::phaseOne(
-        plan, planIndex, dirty, moreDirt, local, serverId, mfeature, rb,
+        plan, planIndex, current, currentIndex, dirty, moreDirt, local, serverId, mfeature, rb,
         currentShardLocks, localLogs, localStates);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
@@ -292,9 +295,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
              "0.1s...";
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-
-    AgencyCache::databases_t current =
-        clusterInfo.getCurrent(currentIndex, dirty);
 
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current;

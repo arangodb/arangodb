@@ -29,6 +29,7 @@ const _ = require('lodash');
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const SH = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const {dbservers} = require("../../../../js/server/modules/@arangodb/testutils/replicated-logs-helper");
 
 const database = "Replicated_StateMaintenanceTestDB";
 
@@ -54,6 +55,54 @@ const {setUpAll, tearDownAll} = (function () {
 }());
 
 const replicatedStateSuite = function () {
+
+  const createReplicatedState = function (database, logId, servers, leader) {
+    SH.updateReplicatedStatePlan(database, logId, function () {
+      let log = {
+        id: logId,
+        currentTerm: {
+          term: 1,
+          config: {
+            replicationFactor: 3,
+            writeConcern: 2,
+            softWriteConcern: 2,
+            waitForSync: false,
+          },
+          leader: {
+            serverId: leader,
+            rebootId: LH.getServerRebootId(leader),
+          }
+        }, targetConfig: {
+          replicationFactor: 3,
+          writeConcern: 2,
+          softWriteConcern: 2,
+          waitForSync: false,
+        },
+        participantsConfig: {
+          generation: 1,
+          participants: {},
+        }
+      };
+      let state = {
+        id: logId,
+        generation: 1,
+        participants: {},
+        properties: {
+          implementation: {
+            type: "black-hole",
+          }
+        }
+      };
+      for (const server of servers) {
+        state.participants[server] = {
+          generation: 1,
+        };
+        log.participantsConfig.participants[server] = {};
+      }
+      return {state, log};
+    });
+  };
+
   return {
     setUpAll, tearDownAll,
 
@@ -61,44 +110,7 @@ const replicatedStateSuite = function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
-        log.currentTerm = {
-          term: 1,
-          config: {
-            replicationFactor: 3,
-            writeConcern: 2,
-            softWriteConcern: 2,
-            waitForSync: false,
-          },
-          leader: {
-            serverId: leader,
-            rebootId: LH.getServerRebootId(leader),
-          }
-        };
-        log.targetConfig = {
-          replicationFactor: 3,
-          writeConcern: 2,
-          softWriteConcern: 2,
-          waitForSync: false,
-        };
-        log.participantsConfig = {
-          generation: 1,
-          participants: {},
-        };
-        state.participants = {};
-        state.properties = {
-          implementation: {
-            type: "black-hole",
-          }
-        };
-        for (const server of servers) {
-          state.participants[server] = {
-            generation: 1,
-          };
-          log.participantsConfig.participants[server] = {};
-        }
-      });
-
+      createReplicatedState(database, logId, servers, leader);
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
@@ -106,51 +118,16 @@ const replicatedStateSuite = function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
-        log.currentTerm = {
-          term: 1,
-          config: {
-            replicationFactor: 3,
-            writeConcern: 2,
-            softWriteConcern: 2,
-            waitForSync: false,
-          },
-          leader: {
-            serverId: leader,
-            rebootId: LH.getServerRebootId(leader),
-          }
-        };
-        log.targetConfig = {
-          replicationFactor: 3,
-          writeConcern: 2,
-          softWriteConcern: 2,
-          waitForSync: false,
-        };
-        log.participantsConfig = {
-          generation: 1,
-          participants: {},
-        };
-        state.participants = {};
-        state.properties = {
-          implementation: {
-            type: "black-hole",
-          }
-        };
-        for (const server of servers) {
-          state.participants[server] = {
-            generation: 1,
-          };
-          log.participantsConfig.participants[server] = {};
-        }
-      });
+      createReplicatedState(database, logId, servers, leader);
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
 
 
       const followers = _.difference(servers, [leader]);
       const follower = _.sample(followers);
-      SH.updateReplicatedStatePlan(database, logId, function (state) {
+      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
         state.participants[follower].generation += 1;
+        return {state, log};
       });
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
@@ -160,51 +137,42 @@ const replicatedStateSuite = function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
-        log.currentTerm = {
-          term: 1,
-          config: {
-            replicationFactor: 3,
-            writeConcern: 2,
-            softWriteConcern: 2,
-            waitForSync: false,
-          },
-          leader: {
-            serverId: leader,
-            rebootId: LH.getServerRebootId(leader),
-          }
-        };
-        log.targetConfig = {
-          replicationFactor: 3,
-          writeConcern: 2,
-          softWriteConcern: 2,
-          waitForSync: false,
-        };
-        log.participantsConfig = {
-          generation: 1,
-          participants: {},
-        };
-        state.participants = {};
-        state.properties = {
-          implementation: {
-            type: "black-hole",
-          }
-        };
-        for (const server of servers) {
-          state.participants[server] = {
-            generation: 1,
-          };
-          log.participantsConfig.participants[server] = {};
-        }
-      });
+      createReplicatedState(database, logId, servers, leader);
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
 
       SH.updateReplicatedStatePlan(database, logId, function (state, log) {
         log.currentTerm.term += 1;
+        return {state, log};
       });
 
       LH.waitFor(LH.replicatedLogIsReady(database, logId, 2, servers, leader));
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+    },
+
+    testReplicatedStateDropFollower: function () {
+      const logId = LH.nextUniqueLogId();
+      const servers = _.sampleSize(LH.dbservers, 3);
+      const leader = servers[0];
+      createReplicatedState(database, logId, servers, leader);
+
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+
+      const followers = _.difference(servers, [leader]);
+      const oldFollower = _.sample(followers);
+      const newFollower = _.sample(_.difference(dbservers, servers));
+      SH.updateReplicatedStatePlan(database, logId, function (state, log) {
+        log.participantsConfig.participants[newFollower] = {excluded: true};
+        delete log.participantsConfig.participants[oldFollower];
+        log.participantsConfig.generation += 1;
+        const nextGeneration = state.generation += 1;
+        state.participants[newFollower] = {generation: nextGeneration};
+        delete state.participants[oldFollower];
+        return {state, log};
+      });
+
+      const newParticipants = [newFollower, ..._.difference(servers, oldFollower)];
+      LH.waitFor(LH.replicatedLogIsReady(database, logId, 2, newParticipants, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
   };
