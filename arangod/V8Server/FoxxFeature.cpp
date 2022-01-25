@@ -23,8 +23,12 @@
 
 #include "FoxxFeature.h"
 
+#include "Agency/AgencyComm.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
+
+#include <shared_mutex>
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -32,7 +36,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "FoxxQueues"),
+    : application_features::ApplicationFeature(server, "Foxx"),
+      _queueVersion(0),
+      _localQueueInserts(0),
       _pollInterval(1.0),
       _enabled(true),
       _startupWaitForSelfHeal(false) {
@@ -74,14 +80,64 @@ void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30705);
 }
 
-bool FoxxFeature::startupWaitForSelfHeal() const {
-  return _startupWaitForSelfHeal;
-}
-
 void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // use a minimum for the interval
   if (_pollInterval < 0.1) {
     _pollInterval = 0.1;
+  }
+}
+
+bool FoxxFeature::startupWaitForSelfHeal() const {
+  return _startupWaitForSelfHeal;
+}
+
+uint64_t FoxxFeature::queueVersion() const noexcept {
+  std::shared_lock lock(_queueLock);
+  return _queueVersion;
+}
+
+uint64_t FoxxFeature::setQueueVersion(uint64_t version) noexcept {
+  std::unique_lock lock(_queueLock);
+  if (version > _queueVersion) {
+    _queueVersion = version;
+  }
+  return _queueVersion;
+}
+
+void FoxxFeature::trackLocalQueueInsert() noexcept {
+  std::unique_lock lock(_queueLock);
+  ++_localQueueInserts;
+}
+
+void FoxxFeature::bumpQueueVersionIfRequired() {
+  uint64_t localQueueInserts = 0;
+  {
+    std::shared_lock lock(_queueLock);
+    localQueueInserts = _localQueueInserts;
+    _localQueueInserts = 0;
+  }
+
+  bool success = true;
+  if (localQueueInserts > 0) {
+    try {
+      double timeout = 10.0;
+      AgencyComm agency(server());
+      AgencyOperation incrementVersion("Sync/FoxxQueueVersion",
+                                       AgencySimpleOperationType::INCREMENT_OP);
+      AgencyWriteTransaction trx(incrementVersion);
+      AgencyCommResult res = agency.sendTransactionWithFailover(trx, timeout);
+      success = res.successful();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("a80c9", WARN, Logger::FIXME)
+          << "unable to send Foxx queue update status to agency: " << ex.what();
+      success = false;
+    }
+
+    if (!success) {
+      // restore old value
+      std::unique_lock lock(_queueLock);
+      _localQueueInserts += localQueueInserts;
+    }
   }
 }
 
