@@ -238,9 +238,9 @@ void Projections::toVelocyPackFromIndex(
 
       // we will get a Slice with an array of index values. now we need
       // to look up the array values from the correct positions to
-      // populate the result with the projection values this case will
+      // populate the result with the projection values. this case will
       // be triggered for indexes that can be set up on any number of
-      // attributes (hash/skiplist)
+      // attributes (persistent/hash/skiplist)
       VPackSlice found = covering.at(it.coveringIndexPosition);
       if (found.isNone()) {
         found = VPackSlice::nullSlice();

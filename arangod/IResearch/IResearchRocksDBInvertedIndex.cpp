@@ -158,8 +158,8 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
     bool isCreation, TRI_vocbase_t const& vocbase) const {
   TRI_ASSERT(normalized.isOpenObject());
 
-  auto res =
-      IndexFactory::validateFieldsDefinition(definition, 1, SIZE_MAX, true);
+  auto res = IndexFactory::validateFieldsDefinition(
+      definition, arangodb::StaticStrings::IndexFields, 1, SIZE_MAX, true);
   if (res.fail()) {
     return res;
   }
