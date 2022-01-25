@@ -765,5 +765,37 @@ TEST_F(ShapeContainerTest2, intersections_nearly_latlntrects) {
   ASSERT_FALSE(nearly[3].intersects(&rects[0]));
 }
 
+class ShapeContainerTest3 : public ::testing::Test {
+ protected:
+  using ShapeType = arangodb::geo::ShapeContainer::Type;
+
+  ShapeContainer line;
+  ShapeContainer multiline;
+  ShapeContainer poly;
+
+  ShapeContainerTest3() {
+    auto builder = VPackParser::fromJson(R"=(
+      { "type": "LineString",
+        "coordinates": [ [ 5, 5 ], [ 6, 6 ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), line, false);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "MultiLineString",
+        "coordinates": [ [ [ 5, 5 ], [ 6, 6 ] ],
+                         [ [ 7, 7 ], [ 8, 8 ] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), multiline, false);
+    builder = VPackParser::fromJson(R"=(
+      { "type": "Polygon",
+        "coordinates": [ [ [0,0], [10,0], [10,10], [0,10], [0,0] ] ]
+      })=");
+    geojson::parseRegion(builder->slice(), poly, false);
+  }
+};
+
+TEST_F(ShapeContainerTest3, contains) {
+  ASSERT_TRUE(poly.contains(&line));
+  ASSERT_TRUE(poly.contains(&multiline));
+}
 }  // namespace geo
 }  // namespace arangodb
