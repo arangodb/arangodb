@@ -941,7 +941,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
       for (auto const& it : _storedValuesPaths) {
-        leased->add(doc.get(it));
+        VPackSlice s = doc.get(it);
+        if (s.isNone()) {
+          s = VPackSlice::nullSlice();
+        }
+        leased->add(s);
       }
       leased->close();
       value = RocksDBValue::UniqueVPackIndexValue(documentId, leased->slice());
@@ -1018,7 +1022,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
       for (auto const& it : _storedValuesPaths) {
-        leased->add(doc.get(it));
+        VPackSlice s = doc.get(it);
+        if (s.isNone()) {
+          s = VPackSlice::nullSlice();
+        }
+        leased->add(s);
       }
       leased->close();
       value = RocksDBValue::VPackIndexValue(leased->slice());
