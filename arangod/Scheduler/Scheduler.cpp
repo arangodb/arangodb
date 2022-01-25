@@ -47,13 +47,15 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-class SchedulerThread : virtual public Thread {
+// FIXME(gnusi) why virtual public???
+class SchedulerThread : virtual public ServerThread<ArangodServer> {
  public:
-  explicit SchedulerThread(application_features::ApplicationServer& server,
-                           Scheduler& scheduler)
-      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() =
-      default;  // shutdown is called by derived implementation!
+  explicit SchedulerThread(Server& server, Scheduler& scheduler)
+      : ServerThread<ArangodServer>(server, "Scheduler"),
+        _scheduler(scheduler) {}
+
+  // shutdown is called by derived implementation!
+  ~SchedulerThread() = default;
 
  protected:
   Scheduler& _scheduler;
@@ -61,9 +63,9 @@ class SchedulerThread : virtual public Thread {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(application_features::ApplicationServer& server,
-                               Scheduler& scheduler)
-      : Thread(server, "SchedCron"), SchedulerThread(server, scheduler) {}
+  explicit SchedulerCronThread(ArangodServer& server, Scheduler& scheduler)
+      : ServerThread<ArangodServer>(server, "SchedCron"),
+        SchedulerThread(server, scheduler) {}
 
   ~SchedulerCronThread() { shutdown(); }
 
@@ -72,7 +74,7 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
-Scheduler::Scheduler(application_features::ApplicationServer& server)
+Scheduler::Scheduler(ArangodServer& server)
     : _server(server) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where

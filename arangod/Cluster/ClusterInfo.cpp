@@ -6423,10 +6423,11 @@ CollectionWatcher::~CollectionWatcher() {
   }
 }
 
-ClusterInfo::SyncerThread::SyncerThread(
-    application_features::ApplicationServer& server, std::string const& section,
-    std::function<void()> const& f, AgencyCallbackRegistry* cregistry)
-    : arangodb::Thread(server, section + "Syncer"),
+ClusterInfo::SyncerThread::SyncerThread(Server& server,
+                                        std::string const& section,
+                                        std::function<void()> const& f,
+                                        AgencyCallbackRegistry* cregistry)
+    : arangodb::ServerThread<Server>(server, section + "Syncer"),
       _news(false),
       _section(section),
       _f(f),

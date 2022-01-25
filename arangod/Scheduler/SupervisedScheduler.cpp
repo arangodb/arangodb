@@ -32,7 +32,6 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -45,6 +44,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Statistics/RequestStatistics.h"
 #include "Cluster/ServerState.h"
@@ -121,12 +121,12 @@ namespace arangodb {
 
 class SupervisedSchedulerThread : virtual public Thread {
  public:
-  explicit SupervisedSchedulerThread(
-      ArangodServer& server,
-      SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerThread(ArangodServer& server,
+                                     SupervisedScheduler& scheduler)
       : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SupervisedSchedulerThread() =
-      default;  // shutdown is called by derived implementation!
+
+  // shutdown is called by derived implementation!
+  ~SupervisedSchedulerThread() = default;
 
  protected:
   SupervisedScheduler& _scheduler;
@@ -135,9 +135,8 @@ class SupervisedSchedulerThread : virtual public Thread {
 class SupervisedSchedulerManagerThread final
     : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerManagerThread(
-      ArangodServer& server,
-      SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerManagerThread(ArangodServer& server,
+                                            SupervisedScheduler& scheduler)
       : Thread(server, "SchedMan"),
         SupervisedSchedulerThread(server, scheduler) {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
@@ -146,9 +145,8 @@ class SupervisedSchedulerManagerThread final
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerWorkerThread(
-      ArangodServer& server,
-      SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerWorkerThread(ArangodServer& server,
+                                           SupervisedScheduler& scheduler)
       : Thread(server, "SchedWorker"),
         SupervisedSchedulerThread(server, scheduler) {}
   ~SupervisedSchedulerWorkerThread() { shutdown(); }
@@ -207,9 +205,9 @@ DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
 
 SupervisedScheduler::SupervisedScheduler(
-    ArangodServer& server, uint64_t minThreads,
-    uint64_t maxThreads, uint64_t maxQueueSize, uint64_t fifo1Size,
-    uint64_t fifo2Size, uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
+    ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
+    uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
+    uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
     double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),

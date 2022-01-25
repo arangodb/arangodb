@@ -53,9 +53,8 @@ using namespace arangodb::rest;
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 Mutex ConsoleThread::serverConsoleMutex;
 
-ConsoleThread::ConsoleThread(ApplicationServer& applicationServer,
-                             TRI_vocbase_t* vocbase)
-    : Thread(applicationServer, "Console"),
+ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
+    : ServerThread<ArangodServer>(applicationServer, "Console"),
       _vocbase(vocbase),
       _userAborted(false) {}
 

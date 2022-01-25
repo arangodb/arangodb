@@ -30,6 +30,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionVariable.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 class AgencyComm;
@@ -98,8 +99,7 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  AgencyCallback(application_features::ApplicationServer& server,
-                 std::string const&,
+  AgencyCallback(ArangodServer& server, std::string const&,
                  std::function<bool(velocypack::Slice const&)> const&,
                  bool needsValue, bool needsInitialValue = true);
 
@@ -144,7 +144,7 @@ class AgencyCallback {
   void checkValue(std::shared_ptr<velocypack::Builder>, bool forceCheck);
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::unique_ptr<AgencyComm> _agency;
   std::function<bool(velocypack::Slice const&)> const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;

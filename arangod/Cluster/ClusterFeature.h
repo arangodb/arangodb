@@ -184,9 +184,8 @@ class ClusterFeature : public ArangodFeature {
                             std::string const& endpoints);
 
  private:
-  ClusterFeature(application_features::ApplicationServer& server,
-                 metrics::MetricsFeature& metrics, DatabaseFeature& database,
-                 size_t registration);
+  ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
+                 DatabaseFeature& database, size_t registration);
   void reportRole(ServerState::RoleEnum);
 
   std::vector<std::string> _agencyEndpoints;

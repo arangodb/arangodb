@@ -207,11 +207,11 @@ DECLARE_COUNTER(arangodb_heartbeat_failures_total,
 DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale,
                   "Time required to send heartbeat [ms]");
 
-HeartbeatThread::HeartbeatThread(
-    application_features::ApplicationServer& server,
-    AgencyCallbackRegistry* agencyCallbackRegistry,
-    std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning)
-    : Thread(server, "Heartbeat"),
+HeartbeatThread::HeartbeatThread(Server& server,
+                                 AgencyCallbackRegistry* agencyCallbackRegistry,
+                                 std::chrono::microseconds interval,
+                                 uint64_t maxFailsBeforeWarning)
+    : arangodb::ServerThread<Server>(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
       _agency(server),
@@ -235,7 +235,7 @@ HeartbeatThread::HeartbeatThread(
       _updateCounter(0),
       _updateDBServers(false),
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
-      _agencySync(_server, this),
+      _agencySync(server, this),
       _heartbeat_send_time_ms(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
@@ -631,7 +631,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(state->getId()));
 
-      AgencyComm agency(_server);
+      AgencyComm agency(server());
 
       auto updateLeader = agency.casValue(
           "/Current/Foxxmaster", foxxmasterSlice, myIdBuilder.slice(), 0, 10.0);

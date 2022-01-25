@@ -41,8 +41,7 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-AgencyCallback::AgencyCallback(application_features::ApplicationServer& server,
-                               std::string const& key,
+AgencyCallback::AgencyCallback(ArangodServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
     : key(key),

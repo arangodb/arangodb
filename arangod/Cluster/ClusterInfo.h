@@ -368,10 +368,9 @@ class ClusterInfo final {
       DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
-  class SyncerThread final : public arangodb::Thread {
+  class SyncerThread final : public arangodb::ServerThread<ArangodServer> {
    public:
-    explicit SyncerThread(application_features::ApplicationServer&,
-                          std::string const& section,
+    explicit SyncerThread(Server&, std::string const& section,
                           std::function<void()> const&,
                           AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
