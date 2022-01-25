@@ -52,6 +52,8 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
+std::atomic<bool> hasFailurePoints{false};
+
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
@@ -108,8 +110,11 @@ void TRI_TerminateDebugging(std::string_view message) {
 
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(std::string_view value) noexcept {
-  READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.find(value) != ::failurePoints.end();
+  if (::hasFailurePoints.load(std::memory_order_relaxed)) {
+    READ_LOCKER(readLocker, ::failurePointsLock);
+    return ::failurePoints.find(value) != ::failurePoints.end();
+  }
+  return false;
 }
 
 /// @brief add a failure point
@@ -121,6 +126,7 @@ void TRI_AddFailurePointDebugging(std::string_view value) {
   }
 
   if (added) {
+    ::hasFailurePoints.store(true, std::memory_order_relaxed);
     LOG_TOPIC("d8a5f", WARN, arangodb::Logger::FIXME)
         << "activating intentional failure point '" << value
         << "'. the server will misbehave!";
@@ -133,6 +139,9 @@ void TRI_RemoveFailurePointDebugging(std::string_view value) {
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     numRemoved = ::failurePoints.erase(std::string(value));
+    if (::failurePoints.size() == 0) {
+      ::hasFailurePoints.store(false, std::memory_order_relaxed);
+    }
   }
 
   if (numRemoved > 0) {
@@ -149,6 +158,7 @@ void TRI_ClearFailurePointsDebugging() noexcept {
     numExisting = ::failurePoints.size();
     ::failurePoints.clear();
   }
+  ::hasFailurePoints.store(false, std::memory_order_relaxed);
 
   if (numExisting > 0) {
     LOG_TOPIC("ea4e7", INFO, arangodb::Logger::FIXME)
