@@ -226,6 +226,11 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
         if (mod->collection() != indexNode->collection()) {
           continue;
         }
+
+        if (mod->getOptions().exclusive) {
+          // exclusive lock used. this is not supported by the SingleRemoteOperationNode
+          continue;
+        }
         
         auto parentType = parentModification->getType();
         Variable const* update = nullptr;
@@ -301,6 +306,11 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
     }
 
     if (!::parentIsReturnOrConstCalc(node)) {
+      continue;
+    }
+        
+    if (mod->getOptions().exclusive) {
+      // exclusive lock used. this is not supported by the SingleRemoteOperationNode
       continue;
     }
 
