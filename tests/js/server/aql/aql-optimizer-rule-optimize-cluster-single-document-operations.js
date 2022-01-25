@@ -375,8 +375,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
       ];
 
       var expectedNodes = [
@@ -439,8 +439,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
       ];
 
       var expectedNodes = [
