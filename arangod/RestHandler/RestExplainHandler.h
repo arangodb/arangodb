@@ -29,7 +29,7 @@
 namespace arangodb {
 class RestExplainHandler : public RestVocbaseBaseHandler {
  public:
-  RestExplainHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestExplainHandler(ArangodServer&, GeneralRequest*,
                      GeneralResponse*);
 
  public:

@@ -40,7 +40,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestAuthHandler::RestAuthHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
+    ArangodServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 

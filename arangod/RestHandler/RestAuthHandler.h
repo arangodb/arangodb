@@ -31,7 +31,7 @@
 namespace arangodb {
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
-  RestAuthHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestAuthHandler(ArangodServer&, GeneralRequest*,
                   GeneralResponse*);
 
  public:

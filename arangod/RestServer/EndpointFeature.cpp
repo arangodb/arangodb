@@ -40,7 +40,7 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 EndpointFeature::EndpointFeature(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : HttpEndpointProvider(server, "Endpoint"),
       _reuseAddress(true),
       _backlogSize(64) {

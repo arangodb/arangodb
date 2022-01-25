@@ -29,7 +29,7 @@
 namespace arangodb {
 class RestEndpointHandler : public RestVocbaseBaseHandler {
  public:
-  RestEndpointHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestEndpointHandler(ArangodServer&, GeneralRequest*,
                       GeneralResponse*);
 
  public:

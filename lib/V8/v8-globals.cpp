@@ -33,9 +33,7 @@
 #include "Logger/LoggerStream.h"
 
 TRI_v8_global_t::TRI_v8_global_t(
-    arangodb::V8SecurityFeature& v8security,
-    arangodb::HttpEndpointProvider& endpoints,
-    arangodb::application_features::CommunicationFeaturePhase& comm,
+    arangodb::application_features::ApplicationServer& server,
     v8::Isolate* isolate, size_t id)
     : AgencyTempl(),
       AgentTempl(),
@@ -150,9 +148,7 @@ TRI_v8_global_t::TRI_v8_global_t(
       _countOfTimes(0),
       _heapMax(0),
       _heapLow(0),
-      _v8security{v8security},
-      _endpoints{endpoints},
-      _comm(comm) {
+      _server{server} {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));
@@ -246,17 +242,15 @@ TRI_v8_global_t::TRI_v8_global_t(
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
 }
 
-TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(  // constructor
-    v8::Isolate& isolateRef,                                // isolate
-    std::shared_ptr<void> const& value                      // value
-    )
+TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(
+    v8::Isolate& isolateRef, std::shared_ptr<void> const& value)
     : _isolate(isolateRef), _value(value) {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
   _persistent.Reset(isolate, v8::External::New(isolate, value.get()));
-  _persistent.SetWeak(  // set weak reference
-      this,             // parameter
+  _persistent.SetWeak(
+      this,
       [](v8::WeakCallbackInfo<SharedPtrPersistent> const& data)
           -> void {  // callback
         auto isolate = data.GetIsolate();
@@ -274,8 +268,7 @@ TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(  // constructor
         // zero indicates that v8g was probably deallocated
         // before calling the v8::WeakCallbackInfo::Callback
       },
-      v8::WeakCallbackType::kFinalizer  // callback type
-  );
+      v8::WeakCallbackType::kFinalizer);
   v8g->increaseActiveExternals();
 }
 
@@ -289,23 +282,15 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
 }
 
 /*static*/ std::pair<TRI_v8_global_t::SharedPtrPersistent&, bool>
-TRI_v8_global_t::SharedPtrPersistent::emplace(  // emplace a persistent shared
-                                                // pointer
-    v8::Isolate& isolateRef,                    // isolate
-    std::shared_ptr<void> const& value          // persistent pointer
-) {
+TRI_v8_global_t::SharedPtrPersistent::emplace(
+    v8::Isolate& isolateRef, std::shared_ptr<void> const& value) {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
-  auto entry =
-      v8g->JSSharedPtrs.try_emplace(  // ensure shared_ptr is not deallocated
-          value.get(),                // key
-          isolateRef, value           // value
-      );
+  auto entry = v8g->JSSharedPtrs.try_emplace(value.get(), isolateRef, value);
 
-  return std::pair<SharedPtrPersistent&, bool>(  // result
-      entry.first->second, entry.second          // args
-  );
+  return std::pair<SharedPtrPersistent&, bool>(entry.first->second,
+                                               entry.second);
 }
 
 TRI_v8_global_t::~TRI_v8_global_t() = default;

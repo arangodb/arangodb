@@ -515,12 +515,7 @@ struct TRI_v8_global_t {
 
   template<typename Server>
   TRI_v8_global_t(Server& server, v8::Isolate* isolate, size_t id)
-      : TRI_v8_global_t{
-            server.template getFeature<arangodb::V8SecurityFeature>(),
-            server.template getFeature<arangodb::HttpEndpointProvider>(),
-            server.template getFeature<
-                arangodb::application_features::CommunicationFeaturePhase>(),
-            isolate, id} {}
+      : TRI_v8_global_t{server, isolate, id} {}
 
   ~TRI_v8_global_t();
 
@@ -857,18 +852,12 @@ struct TRI_v8_global_t {
 
   std::atomic<size_t> _heapLow;
 
-  arangodb::V8SecurityFeature& _v8security;
-
-  arangodb::HttpEndpointProvider& _endpoints;
-
-  arangodb::application_features::CommunicationFeaturePhase& _comm;
+  arangodb::application_features::ApplicationServer& _server;
 
  private:
   explicit TRI_v8_global_t(
-      arangodb::V8SecurityFeature& v8security,
-      arangodb::HttpEndpointProvider& endpoints,
-      arangodb::application_features::CommunicationFeaturePhase& comm,
-      v8::Isolate*, size_t id);
+      arangodb::application_features::ApplicationServer& comm, v8::Isolate*,
+      size_t id);
 
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8

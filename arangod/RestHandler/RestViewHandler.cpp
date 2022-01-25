@@ -52,7 +52,7 @@ using namespace arangodb::basics;
 namespace arangodb {
 
 RestViewHandler::RestViewHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
+    ArangodServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 

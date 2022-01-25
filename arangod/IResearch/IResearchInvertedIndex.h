@@ -171,7 +171,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   virtual ~IResearchInvertedIndex() = default;
 
-  void toVelocyPack(application_features::ApplicationServer& server,
+  void toVelocyPack(ArangodServer& server,
                     TRI_vocbase_t const* defaultVocbase,
                     velocypack::Builder& builder, bool forPersistence) const;
 

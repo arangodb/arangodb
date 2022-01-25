@@ -911,7 +911,7 @@ IResearchInvertedIndex::IResearchInvertedIndex(
 //  definitions are stored.
 //  - For user -> database-name qualified names. No definitions are stored.
 void IResearchInvertedIndex::toVelocyPack(
-    application_features::ApplicationServer& server,
+    ArangodServer& server,
     TRI_vocbase_t const* defaultVocbase, velocypack::Builder& builder,
     bool forPersistence) const {
   if (!_dataStore._meta.json(builder, nullptr, nullptr)) {

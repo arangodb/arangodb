@@ -33,7 +33,7 @@ class QueryRegistry;
 
 class RestSimpleHandler : public RestCursorHandler {
  public:
-  RestSimpleHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestSimpleHandler(ArangodServer&, GeneralRequest*,
                     GeneralResponse*, aql::QueryRegistry*);
 
  public:

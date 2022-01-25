@@ -38,7 +38,7 @@ class LogicalCollection;
 
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestIndexHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestIndexHandler(ArangodServer&, GeneralRequest*,
                    GeneralResponse*);
 
   ~RestIndexHandler();

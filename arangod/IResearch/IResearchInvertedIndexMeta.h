@@ -43,7 +43,7 @@ struct IResearchInvertedIndexMeta {
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::application_features::ApplicationServer& server,
+  bool init(arangodb::ArangodServer& server,
             VPackSlice const& slice, bool readAnalyzerDefinition,
             std::string& errorField, irs::string_ref const defaultVocbase);
 
@@ -57,7 +57,7 @@ struct IResearchInvertedIndexMeta {
   ///                       nullptr == do not normalize
   /// @param defaultVocbase fallback vocbase
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::application_features::ApplicationServer& server,
+  bool json(arangodb::ArangodServer& server,
             VPackBuilder& builder, bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 

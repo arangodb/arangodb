@@ -49,7 +49,7 @@ std::mutex RestSystemReportHandler::_exclusive;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestSystemReportHandler::RestSystemReportHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
+    ArangodServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       cmds({{"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>&1"},

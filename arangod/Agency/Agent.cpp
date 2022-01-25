@@ -93,8 +93,7 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(application_features::ApplicationServer& server,
-             config_t const& config)
+Agent::Agent(ArangodServer& server, config_t const& config)
     : Thread(server, "Agent"),
       _constituent(server),
       _supervision(server),

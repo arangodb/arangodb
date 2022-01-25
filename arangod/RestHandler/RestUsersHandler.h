@@ -32,7 +32,7 @@ class UserManager;
 
 class RestUsersHandler : public arangodb::RestBaseHandler {
  public:
-  RestUsersHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestUsersHandler(ArangodServer&, GeneralRequest*,
                    GeneralResponse*);
 
  public:

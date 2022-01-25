@@ -29,7 +29,7 @@
 namespace arangodb {
 class RestAdminStatisticsHandler : public RestBaseHandler {
  public:
-  RestAdminStatisticsHandler(application_features::ApplicationServer&,
+  RestAdminStatisticsHandler(ArangodServer&,
                              GeneralRequest*, GeneralResponse*);
 
  public:

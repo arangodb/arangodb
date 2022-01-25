@@ -32,7 +32,7 @@ class PregelFeature;
 }
 class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  explicit RestPregelHandler(application_features::ApplicationServer&,
+  explicit RestPregelHandler(ArangodServer&,
                              GeneralRequest*, GeneralResponse*);
 
  public:

@@ -32,7 +32,7 @@ class Builder;
 
 class RestSupportInfoHandler : public arangodb::RestBaseHandler {
  public:
-  RestSupportInfoHandler(application_features::ApplicationServer&,
+  RestSupportInfoHandler(ArangodServer&,
                          GeneralRequest*, GeneralResponse*);
 
  public:

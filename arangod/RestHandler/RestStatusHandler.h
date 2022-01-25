@@ -30,7 +30,7 @@ class ServerSecurityFeature;
 
 class RestStatusHandler : public arangodb::RestBaseHandler {
  public:
-  RestStatusHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestStatusHandler(ArangodServer&, GeneralRequest*,
                     GeneralResponse*);
 
  public:

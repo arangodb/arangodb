@@ -70,9 +70,13 @@ static void failCallback(std::string const& message) {
 
 std::atomic<bool> ApplicationServer::CTRL_C(false);
 
-ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
-                                     char const* binaryPath)
-    : _state(State::UNINITIALIZED), _options(options), _binaryPath(binaryPath) {
+ApplicationServer::ApplicationServer(
+    std::shared_ptr<ProgramOptions> options, char const* binaryPath,
+    std::span<std::unique_ptr<ApplicationFeature>> features)
+    : _state(State::UNINITIALIZED),
+      _options(options),
+      _features{features},
+      _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
 }

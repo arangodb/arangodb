@@ -29,7 +29,7 @@
 namespace arangodb {
 class RestQueryCacheHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestQueryCacheHandler(application_features::ApplicationServer&,
+  explicit RestQueryCacheHandler(ArangodServer&,
                                  GeneralRequest*, GeneralResponse*);
 
  public:

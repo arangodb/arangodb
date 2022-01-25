@@ -31,7 +31,7 @@
 namespace arangodb {
 class RestSystemReportHandler : public arangodb::RestBaseHandler {
  public:
-  RestSystemReportHandler(application_features::ApplicationServer&,
+  RestSystemReportHandler(ArangodServer&,
                           GeneralRequest*, GeneralResponse*);
   char const* name() const override final { return "RestSystemReportHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }

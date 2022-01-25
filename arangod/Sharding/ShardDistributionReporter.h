@@ -49,7 +49,7 @@ class ShardDistributionReporter {
   /// @brief helper function to create an instance of the
   /// ShardDistributionReporter
   static std::shared_ptr<ShardDistributionReporter> instance(
-      application_features::ApplicationServer&);
+      ArangodServer&);
 
   /// @brief fetch distribution for a single collections in db
   void getCollectionDistributionForDatabase(

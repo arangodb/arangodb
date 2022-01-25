@@ -552,12 +552,9 @@ void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint,
   }
 }
 
-application_features::ApplicationServer& AsyncAgencyCommManager::server() {
-  return _server;
-}
+ArangodServer& AsyncAgencyCommManager::server() { return _server; }
 
-AsyncAgencyCommManager::AsyncAgencyCommManager(
-    application_features::ApplicationServer& server)
+AsyncAgencyCommManager::AsyncAgencyCommManager(ArangodServer& server)
     : _server(server) {}
 
 const char* AGENCY_URL_READ = "/_api/agency/read";

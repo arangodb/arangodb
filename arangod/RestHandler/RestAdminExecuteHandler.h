@@ -28,7 +28,7 @@
 namespace arangodb {
 class RestAdminExecuteHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestAdminExecuteHandler(application_features::ApplicationServer&,
+  RestAdminExecuteHandler(ArangodServer&,
                           GeneralRequest*, GeneralResponse*);
 
  public:

@@ -28,7 +28,7 @@
 namespace arangodb {
 class RestTimeHandler : public arangodb::RestBaseHandler {
  public:
-  RestTimeHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestTimeHandler(ArangodServer&, GeneralRequest*,
                   GeneralResponse*);
 
  public:

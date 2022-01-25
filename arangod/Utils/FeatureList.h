@@ -76,6 +76,8 @@ class TypeList {
 template<typename... T>
 class FeatureList {
  public:
+  static constexpr size_t size() noexcept { return kFeatures.size(); }
+
   template<typename Visitor>
   static constexpr void visit(Visitor&& visitor) {
     Types::visit(std::forward<Visitor>(visitor));

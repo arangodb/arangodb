@@ -122,7 +122,7 @@ namespace arangodb {
 class SupervisedSchedulerThread : virtual public Thread {
  public:
   explicit SupervisedSchedulerThread(
-      application_features::ApplicationServer& server,
+      ArangodServer& server,
       SupervisedScheduler& scheduler)
       : Thread(server, "Scheduler"), _scheduler(scheduler) {}
   ~SupervisedSchedulerThread() =
@@ -136,7 +136,7 @@ class SupervisedSchedulerManagerThread final
     : public SupervisedSchedulerThread {
  public:
   explicit SupervisedSchedulerManagerThread(
-      application_features::ApplicationServer& server,
+      ArangodServer& server,
       SupervisedScheduler& scheduler)
       : Thread(server, "SchedMan"),
         SupervisedSchedulerThread(server, scheduler) {}
@@ -147,7 +147,7 @@ class SupervisedSchedulerManagerThread final
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
   explicit SupervisedSchedulerWorkerThread(
-      application_features::ApplicationServer& server,
+      ArangodServer& server,
       SupervisedScheduler& scheduler)
       : Thread(server, "SchedWorker"),
         SupervisedSchedulerThread(server, scheduler) {}
@@ -207,7 +207,7 @@ DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
 
 SupervisedScheduler::SupervisedScheduler(
-    application_features::ApplicationServer& server, uint64_t minThreads,
+    ArangodServer& server, uint64_t minThreads,
     uint64_t maxThreads, uint64_t maxQueueSize, uint64_t fifo1Size,
     uint64_t fifo2Size, uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
     double unavailabilityQueueFillGrade)

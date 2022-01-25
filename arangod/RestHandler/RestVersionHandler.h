@@ -30,11 +30,11 @@
 namespace arangodb {
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
-  RestVersionHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestVersionHandler(ArangodServer&, GeneralRequest*,
                      GeneralResponse*);
 
  public:
-  static void getVersion(application_features::ApplicationServer& server,
+  static void getVersion(ArangodServer& server,
                          bool allowInfo, bool includeDetails,
                          VPackBuilder& result);
 

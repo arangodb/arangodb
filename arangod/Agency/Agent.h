@@ -36,6 +36,7 @@
 #include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/arangod.h"
 #include "Metrics/Fwd.h"
 
 struct TRI_vocbase_t;
@@ -46,8 +47,7 @@ namespace consensus {
 class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(application_features::ApplicationServer& server,
-                 config_t const&);
+  explicit Agent(ArangodServer& server, config_t const&);
 
   /// @brief Clean up
   ~Agent();

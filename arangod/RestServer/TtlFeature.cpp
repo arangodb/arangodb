@@ -156,7 +156,7 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
 
 class TtlThread final : public Thread {
  public:
-  explicit TtlThread(application_features::ApplicationServer& server,
+  explicit TtlThread(ArangodServer& server,
                      TtlFeature& ttlFeature)
       : Thread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
 

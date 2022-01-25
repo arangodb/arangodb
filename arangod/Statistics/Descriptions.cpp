@@ -111,7 +111,7 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
 }
 
 stats::Descriptions::Descriptions(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : _server(server),
       _requestTimeCuts(statistics::RequestTimeDistributionCuts),
       _connectionTimeCuts(statistics::ConnectionTimeDistributionCuts),

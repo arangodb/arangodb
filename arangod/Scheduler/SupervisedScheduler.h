@@ -43,7 +43,7 @@ class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(application_features::ApplicationServer& server,
+  SupervisedScheduler(ArangodServer& server,
                       uint64_t minThreads, uint64_t maxThreads,
                       uint64_t maxQueueSize, uint64_t fifo1Size,
                       uint64_t fifo2Size, uint64_t fifo3Size,

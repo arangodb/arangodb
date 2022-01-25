@@ -74,7 +74,7 @@ using namespace arangodb::options;
 
 namespace {
 arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(
-    arangodb::application_features::ApplicationServer& server) {
+    arangodb::ArangodServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(
       "Z",
@@ -402,7 +402,7 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::initCalculationVocbase(
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server));
 }

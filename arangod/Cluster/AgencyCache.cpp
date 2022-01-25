@@ -39,7 +39,7 @@ using namespace arangodb::consensus;
 DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t,
               "Current number of entries in agency cache callbacks table");
 
-AgencyCache::AgencyCache(application_features::ApplicationServer& server,
+AgencyCache::AgencyCache(ArangodServer& server,
                          AgencyCallbackRegistry& callbackRegistry,
                          ErrorCode shutdownCode)
     : Thread(server, "AgencyCache"),
@@ -49,7 +49,7 @@ AgencyCache::AgencyCache(application_features::ApplicationServer& server,
       _initialized(false),
       _callbackRegistry(callbackRegistry),
       _lastSnapshot(0),
-      _callbacksCount(_server.getFeature<metrics::MetricsFeature>().add(
+      _callbacksCount(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_cache_callback_number{})) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR ||

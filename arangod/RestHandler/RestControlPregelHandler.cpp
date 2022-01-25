@@ -46,7 +46,7 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 RestControlPregelHandler::RestControlPregelHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
+    ArangodServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _pregel(server.getFeature<pregel::PregelFeature>()) {}

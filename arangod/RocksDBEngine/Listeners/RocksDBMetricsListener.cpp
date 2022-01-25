@@ -38,7 +38,7 @@ namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
 RocksDBMetricsListener::RocksDBMetricsListener(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : _writeStalls(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_rocksdb_write_stalls_total{})),
       _writeStops(server.getFeature<metrics::MetricsFeature>().add(

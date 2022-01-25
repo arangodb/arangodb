@@ -31,6 +31,7 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
+#include <span>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -129,7 +130,8 @@ class ApplicationServer {
 
  public:
   ApplicationServer(std::shared_ptr<options::ProgramOptions>,
-                    char const* binaryPath);
+                    char const* binaryPath,
+                    std::span<std::unique_ptr<ApplicationFeature>> features);
 
   virtual ~ApplicationServer() = default;
 
@@ -208,6 +210,24 @@ class ApplicationServer {
   // for a non-existing feature
   bool hasFeature(size_t type) const noexcept {
     return _features.size() < type && nullptr != _features[type];
+  }
+
+  template<typename T>
+  T& getFeature() const {
+    // FIXME(gnusi)
+    throwFeatureNotFoundException(/*type.name())*/ "");
+  }
+
+  template<typename T>
+  T& getEnabledFeature() const {
+    // FIXME(gnusi)
+    throwFeatureNotFoundException(/*type.name())*/ "");
+  }
+
+  template<typename T>
+  bool isEnabled() const {
+    // FIXME(gnusi)
+    throwFeatureNotFoundException(/*type.name())*/ "");
   }
 
   ApplicationFeature& getFeature(size_t type) const {
@@ -289,7 +309,7 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> _options;
 
   // application features
-  std::vector<std::unique_ptr<ApplicationFeature>> _features;
+  std::span<std::unique_ptr<ApplicationFeature>> _features;
 
   // features order for prepare/start
   std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;
@@ -333,7 +353,7 @@ class ApplicationServerT : public ApplicationServer {
 
   ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
                      char const* binaryPath)
-      : ApplicationServer{opts, binaryPath} {}
+      : ApplicationServer{opts, binaryPath, _features} {}
 
   template<typename T>
   static constexpr size_t id() noexcept {
@@ -428,10 +448,13 @@ class ApplicationServerT : public ApplicationServer {
   AsType& getEnabledFeature() const {
     AsType& feature = getFeature<Type, AsType>();
     if (!feature.isEnabled()) {
-      throwFeatureNotEnabledException(/*typeid(Type).name() FIXME*/ "");
+      throwFeatureNotEnabledException(ctti<Type>());
     }
     return feature;
   }
+
+ private:
+  std::array<std::unique_ptr<ApplicationFeature>, Features::size()> _features;
 };
 
 }  // namespace application_features

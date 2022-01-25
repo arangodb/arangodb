@@ -55,7 +55,7 @@ class DatabaseManagerThread final : public Thread {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  explicit DatabaseManagerThread(application_features::ApplicationServer&);
+  explicit DatabaseManagerThread(ArangodServer&);
   ~DatabaseManagerThread();
 
   void run() override;
@@ -177,7 +177,7 @@ class DatabaseFeature : public ArangodFeature {
 
  private:
   static void initCalculationVocbase(
-      application_features::ApplicationServer& server);
+      ArangodServer& server);
 
   void stopAppliers();
 

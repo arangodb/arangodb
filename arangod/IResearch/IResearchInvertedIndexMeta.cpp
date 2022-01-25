@@ -35,7 +35,7 @@
 namespace arangodb::iresearch {
 
 bool IResearchInvertedIndexMeta::init(
-    arangodb::application_features::ApplicationServer& server,
+    arangodb::ArangodServer& server,
     VPackSlice const& slice, bool readAnalyzerDefinition,
     std::string& errorField, irs::string_ref const defaultVocbase) {
   // copied part begin FIXME: verify and move to common base class if possible
@@ -399,7 +399,7 @@ bool IResearchInvertedIndexMeta::init(
 }
 
 bool IResearchInvertedIndexMeta::json(
-    arangodb::application_features::ApplicationServer& server,
+    arangodb::ArangodServer& server,
     VPackBuilder& builder, bool writeAnalyzerDefinition,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
   if (!builder.isOpenObject()) {

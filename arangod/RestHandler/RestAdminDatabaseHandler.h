@@ -28,7 +28,7 @@
 namespace arangodb {
 class RestAdminDatabaseHandler : public arangodb::RestBaseHandler {
  public:
-  RestAdminDatabaseHandler(application_features::ApplicationServer&,
+  RestAdminDatabaseHandler(ArangodServer&,
                            GeneralRequest*, GeneralResponse*);
 
  public:

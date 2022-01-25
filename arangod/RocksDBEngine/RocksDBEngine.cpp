@@ -256,15 +256,10 @@ RocksDBEngine::RocksDBEngine(Server& server)
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_revision_tree_resurrections_total{})) {
-
-  server.addFeature<RocksDBOptionFeature>();
-
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
   startsAfter<RocksDBOptionFeature>();
-
-  server.addFeature<RocksDBRecoveryManager>();
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }

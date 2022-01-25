@@ -30,7 +30,7 @@ namespace arangodb {
 
 class RestCompactHandler : public arangodb::RestBaseHandler {
  public:
-  RestCompactHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestCompactHandler(ArangodServer&, GeneralRequest*,
                      GeneralResponse*);
 
  public:

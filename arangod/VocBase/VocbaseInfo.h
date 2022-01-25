@@ -168,7 +168,7 @@ struct VocbaseOptions {
   replication::Version replicationVersion = replication::Version::ONE;
 };
 
-VocbaseOptions getVocbaseOptions(ArangodServer, velocypack::Slice);
+VocbaseOptions getVocbaseOptions(ArangodServer&, velocypack::Slice);
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                        std::uint32_t replicationFactor,

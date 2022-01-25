@@ -28,7 +28,7 @@
 namespace arangodb {
 class RestAuthReloadHandler : public arangodb::RestBaseHandler {
  public:
-  RestAuthReloadHandler(application_features::ApplicationServer&,
+  RestAuthReloadHandler(ArangodServer&,
                         GeneralRequest*, GeneralResponse*);
 
  public:

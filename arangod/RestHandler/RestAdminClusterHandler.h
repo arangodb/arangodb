@@ -37,7 +37,7 @@ namespace arangodb {
 
 class RestAdminClusterHandler : public RestVocbaseBaseHandler {
  public:
-  RestAdminClusterHandler(application_features::ApplicationServer&,
+  RestAdminClusterHandler(ArangodServer&,
                           GeneralRequest*, GeneralResponse*);
   ~RestAdminClusterHandler() override = default;
 

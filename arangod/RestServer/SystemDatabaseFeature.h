@@ -49,7 +49,6 @@ class SystemDatabaseFeature final : public ArangodFeature {
   explicit SystemDatabaseFeature(Server& server,
                                  TRI_vocbase_t* vocbase = nullptr);
 
-  static std::string const& name() noexcept;
   void start() override;
   void unprepare() override;
   ptr use() const;

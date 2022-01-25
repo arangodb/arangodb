@@ -73,7 +73,7 @@ network::Headers buildHeaders() {
 }  // namespace
 
 RestSupportInfoHandler::RestSupportInfoHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
+    ArangodServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 

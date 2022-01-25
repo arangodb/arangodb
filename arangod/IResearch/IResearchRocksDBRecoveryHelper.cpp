@@ -236,7 +236,7 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : _server(server) {}
 
 void IResearchRocksDBRecoveryHelper::prepare() {

@@ -74,7 +74,7 @@ void Constituent::configure(Agent* agent) {
 }
 
 // Default ctor
-Constituent::Constituent(application_features::ApplicationServer& server)
+Constituent::Constituent(ArangodServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _term(0),

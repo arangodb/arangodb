@@ -31,7 +31,7 @@ class FoxxFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "FoxxQueues"; }
 
-  explicit FoxxFeature::FoxxFeature(Server& server);
+  explicit FoxxFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

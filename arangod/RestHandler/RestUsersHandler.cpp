@@ -44,7 +44,7 @@ namespace {
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::Result existsCollection(
-    arangodb::application_features::ApplicationServer& server,
+    arangodb::ArangodServer& server,
     std::string const& database, std::string const& collection) {
   if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
@@ -80,7 +80,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestUsersHandler::RestUsersHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
+    ArangodServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 

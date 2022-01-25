@@ -57,7 +57,7 @@ struct SearchHelper {
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
-  RestBatchHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestBatchHandler(ArangodServer&, GeneralRequest*,
                    GeneralResponse*);
   ~RestBatchHandler();
 

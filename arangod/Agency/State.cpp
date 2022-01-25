@@ -67,7 +67,7 @@ DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
 
 /// Constructor:
-State::State(application_features::ApplicationServer& server)
+State::State(ApplicationServer& server)
     : _server(server),
       _agent(nullptr),
       _vocbase(nullptr),

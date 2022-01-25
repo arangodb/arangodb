@@ -66,7 +66,7 @@ network::Headers buildHeaders(
 }  // namespace
 
 RestAdminLogHandler::RestAdminLogHandler(
-    arangodb::application_features::ApplicationServer& server,
+    arangodb::ArangodServer& server,
     GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 

@@ -81,8 +81,7 @@ static bool endpointPathFromUrl(std::string const& url, std::string& endpoint,
 }
 
 /// Ctor with name
-Store::Store(arangodb::application_features::ApplicationServer& server,
-             Agent* agent, std::string const& name)
+Store::Store(ArangodServer& server, Agent* agent, std::string const& name)
     : _server(server), _agent(agent), _node(name, this) {}
 
 /// Copy assignment operator

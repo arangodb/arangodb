@@ -30,7 +30,7 @@ namespace arangodb {
 
 class RestLicenseHandler : public RestBaseHandler {
  public:
-  RestLicenseHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestLicenseHandler(ArangodServer&, GeneralRequest*,
                      GeneralResponse*);
 
  public:

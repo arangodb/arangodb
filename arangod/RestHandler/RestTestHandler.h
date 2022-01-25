@@ -32,7 +32,7 @@ namespace arangodb {
 
 class RestTestHandler : public RestVocbaseBaseHandler {
  public:
-  RestTestHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestTestHandler(ArangodServer&, GeneralRequest*,
                   GeneralResponse*);
   ~RestTestHandler();
 

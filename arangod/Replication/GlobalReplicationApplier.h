@@ -52,7 +52,7 @@ class GlobalReplicationApplier final : public ReplicationApplier {
 
   /// @brief load a persisted configuration for the applier
   static ReplicationApplierConfiguration loadConfiguration(
-      application_features::ApplicationServer&);
+      ArangodServer&);
 
   std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
   std::shared_ptr<TailingSyncer> buildTailingSyncer(

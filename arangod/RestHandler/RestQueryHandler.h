@@ -30,7 +30,7 @@ namespace arangodb {
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestQueryHandler(ArangodServer&, GeneralRequest*,
                    GeneralResponse*);
 
  public:

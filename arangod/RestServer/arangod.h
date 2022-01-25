@@ -129,6 +129,8 @@ class HotBackupFeature;
 #else
 class SslServerFeature;
 #endif
+class RocksDBOptionFeature;
+class RocksDBRecoveryManager;
 namespace transaction {
 class ManagerFeature;
 }
@@ -153,58 +155,51 @@ struct BlackHoleStateMachineFeature;
 
 using namespace application_features;
 
-using ArangodFeatures = FeatureList <
-                        // Adding the Phases
-                        AgencyFeaturePhase,
-      CommunicationFeaturePhase, AqlFeaturePhase, BasicFeaturePhaseServer,
-      ClusterFeaturePhase, DatabaseFeaturePhase, FinalFeaturePhase,
-      FoxxFeaturePhase, GreetingsFeaturePhase, ServerFeaturePhase,
-      V8FeaturePhase,
-      // Adding the features
+using ArangodFeatures = FeatureList<
+    // Adding the Phases
+    AgencyFeaturePhase, CommunicationFeaturePhase, AqlFeaturePhase,
+    BasicFeaturePhaseServer, ClusterFeaturePhase, DatabaseFeaturePhase,
+    FinalFeaturePhase, FoxxFeaturePhase, GreetingsFeaturePhase,
+    ServerFeaturePhase, V8FeaturePhase,
+    // Adding the features
     metrics::MetricsFeature, ActionFeature, AgencyFeature, AqlFeature,
-      AuthenticationFeature, BootstrapFeature, CacheManagerFeature,
-      CheckVersionFeature, ClusterFeature, ClusterUpgradeFeature, ConfigFeature,
-      ConsoleFeature, CpuUsageFeature, DatabaseFeature, DatabasePathFeature,
-      EndpointFeature, HttpEndpointProvider, EngineSelectorFeature,
-      EnvironmentFeature,
-#ifdef TRI_HAVE_GETRLIMIT
-      FileDescriptorsFeature,
-#endif
-      FlushFeature, FortuneFeature, FoxxFeature, FrontendFeature,
-      GeneralServerFeature, GreetingsFeature, InitDatabaseFeature,
-      LanguageCheckFeature, LanguageFeature, TimeZoneFeature, LockfileFeature,
-      LogBufferFeature, LoggerFeature, MaintenanceFeature, MaxMapCountFeature,
-      NetworkFeature, NonceFeature, PrivilegeFeature, QueryRegistryFeature,
-      RandomFeature, ReplicationFeature, ReplicatedLogFeature,
-      ReplicationMetricsFeature, ReplicationTimeoutFeature, SchedulerFeature,
-      ScriptFeature, ServerFeature, ServerIdFeature, ServerSecurityFeature,
-      ShardingFeature, SharedPRNGFeature, ShellColorsFeature, ShutdownFeature,
-      SoftShutdownFeature, SslFeature, StatisticsFeature, StorageEngineFeature,
-      SystemDatabaseFeature, TempFeature, TtlFeature, UpgradeFeature,
-      V8DealerFeature, V8PlatformFeature, V8SecurityFeature,
-      transaction::ManagerFeature, VersionFeature, ViewTypesFeature,
-      aql::AqlFunctionFeature, aql::OptimizerRulesFeature,
-      pregel::PregelFeature,
-#ifdef ARANGODB_HAVE_FORK
-      DaemonFeature, SupervisorFeature,
-#endif
+    AuthenticationFeature, BootstrapFeature, CacheManagerFeature,
+    CheckVersionFeature, ClusterFeature, ClusterUpgradeFeature, ConfigFeature,
+    ConsoleFeature, CpuUsageFeature, DatabaseFeature, DatabasePathFeature,
+    EndpointFeature, HttpEndpointProvider, EngineSelectorFeature,
+    EnvironmentFeature, FlushFeature, FortuneFeature, FoxxFeature,
+    FrontendFeature, GeneralServerFeature, GreetingsFeature,
+    InitDatabaseFeature, LanguageCheckFeature, LanguageFeature, TimeZoneFeature,
+    LockfileFeature, LogBufferFeature, LoggerFeature, MaintenanceFeature,
+    MaxMapCountFeature, NetworkFeature, NonceFeature, PrivilegeFeature,
+    QueryRegistryFeature, RandomFeature, ReplicationFeature,
+    ReplicatedLogFeature, ReplicationMetricsFeature, ReplicationTimeoutFeature,
+    SchedulerFeature, ScriptFeature, ServerFeature, ServerIdFeature,
+    ServerSecurityFeature, ShardingFeature, SharedPRNGFeature,
+    ShellColorsFeature, ShutdownFeature, SoftShutdownFeature, SslFeature,
+    StatisticsFeature, StorageEngineFeature, SystemDatabaseFeature, TempFeature,
+    TtlFeature, UpgradeFeature, V8DealerFeature, V8PlatformFeature,
+    V8SecurityFeature, transaction::ManagerFeature, VersionFeature,
+    ViewTypesFeature, aql::AqlFunctionFeature, aql::OptimizerRulesFeature,
+    pregel::PregelFeature, RocksDBOptionFeature, RocksDBRecoveryManager,
 #ifdef _WIN32
-      WindowsServiceFeature,
+    WindowsServiceFeature,
 #endif
-
+#ifdef TRI_HAVE_GETRLIMIT
+    FileDescriptorsFeature,
+#endif
+#ifdef ARANGODB_HAVE_FORK
+    DaemonFeature, SupervisorFeature,
+#endif
 #ifdef USE_ENTERPRISE
-      // FIXME(gnusi)
-    setupServerEE(server);
+    AuditFeature, LdapFeature, LicenseFeature, RCloneFeature, HotBackupFeature,
 #else
-                            SslServerFeature,
+    SslServerFeature,
 #endif
-
-arangodb::iresearch::IResearchAnalyzerFeature,
-    arangodb::iresearch::IResearchFeature,
-
-    ClusterEngine, RocksDBEngine,
+    arangodb::iresearch::IResearchAnalyzerFeature,
+    arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
     replication2::replicated_state::ReplicatedStateAppFeature,
-    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature > ;
+    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature>;
 
 using ArangodServer = ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = ApplicationFeatureT<ArangodServer>;

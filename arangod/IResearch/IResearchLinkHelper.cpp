@@ -617,7 +617,7 @@ namespace iresearch {
 }
 
 /*static*/ bool IResearchLinkHelper::equal(
-    application_features::ApplicationServer& server, velocypack::Slice lhs,
+    ArangodServer& server, velocypack::Slice lhs,
     velocypack::Slice rhs, irs::string_ref dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;

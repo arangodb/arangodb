@@ -45,8 +45,7 @@ namespace {
 
 using namespace arangodb;
 
-ClusterEngineType getEngineType(
-    application_features::ApplicationServer& server) {
+ClusterEngineType getEngineType(ArangodServer& server) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // during the unit tests there is a mock storage engine which cannot be casted
   // to a ClusterEngine at all. the only sensible way to find out the engine
@@ -115,8 +114,7 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.close();
 }
 
-IResearchLinkCoordinator::IndexFactory::IndexFactory(
-    application_features::ApplicationServer& server)
+IResearchLinkCoordinator::IndexFactory::IndexFactory(ArangodServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchLinkCoordinator::IndexFactory::equal(
@@ -150,8 +148,7 @@ Result IResearchLinkCoordinator::IndexFactory::normalize(
 }
 
 std::shared_ptr<IResearchLinkCoordinator::IndexFactory>
-IResearchLinkCoordinator::createFactory(
-    application_features::ApplicationServer& server) {
+IResearchLinkCoordinator::createFactory(ArangodServer& server) {
   return std::shared_ptr<IResearchLinkCoordinator::IndexFactory>(
       new IResearchLinkCoordinator::IndexFactory(server));
 }

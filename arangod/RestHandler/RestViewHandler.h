@@ -35,7 +35,7 @@ namespace arangodb {
 
 class RestViewHandler : public RestVocbaseBaseHandler {
  public:
-  RestViewHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestViewHandler(ArangodServer&, GeneralRequest*,
                   GeneralResponse*);
 
  public:

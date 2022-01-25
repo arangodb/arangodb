@@ -62,7 +62,7 @@ struct RestImportResult {
 
 class RestImportHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestImportHandler(application_features::ApplicationServer&,
+  explicit RestImportHandler(ArangodServer&,
                              GeneralRequest*, GeneralResponse*);
 
  public:

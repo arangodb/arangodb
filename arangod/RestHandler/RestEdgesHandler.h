@@ -41,7 +41,7 @@ struct Variable;
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestEdgesHandler(application_features::ApplicationServer&,
+  explicit RestEdgesHandler(ArangodServer&,
                             GeneralRequest*, GeneralResponse*);
 
  public:

@@ -137,7 +137,7 @@ struct FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(application_features::ApplicationServer& server,
+  bool init(ArangodServer& server,
             velocypack::Slice const& slice, std::string& errorField,
             irs::string_ref defaultVocbase, LinkVersion version,
             FieldMeta const& defaults,
@@ -158,7 +158,7 @@ struct FieldMeta {
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(application_features::ApplicationServer& server,
+  bool json(ArangodServer& server,
             velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
@@ -244,7 +244,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param defaultVersion fallback version if not present in definition
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(application_features::ApplicationServer& server, VPackSlice slice,
+  bool init(ArangodServer& server, VPackSlice slice,
             std::string& errorField,
             irs::string_ref defaultVocbase = irs::string_ref::NIL,
             LinkVersion defaultVersion = LinkVersion::MIN,
@@ -264,7 +264,7 @@ struct IResearchLinkMeta : public FieldMeta {
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(application_features::ApplicationServer& server,
+  bool json(ArangodServer& server,
             velocypack::Builder& builder, bool writeAnalyzerDefinition,
             IResearchLinkMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,

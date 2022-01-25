@@ -42,7 +42,7 @@ static std::string const ROOT_PATH = "/";
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
-    application_features::ApplicationServer& server,
+    ArangodServer& server,
     std::unique_ptr<GeneralRequest> req,
     std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();

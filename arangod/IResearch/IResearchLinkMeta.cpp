@@ -135,7 +135,7 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
 }
 
 bool FieldMeta::init(
-    application_features::ApplicationServer& server,
+    ArangodServer& server,
     velocypack::Slice const& slice, std::string& errorField,
     irs::string_ref defaultVocbase, LinkVersion version,
     FieldMeta const& defaults,
@@ -399,7 +399,7 @@ bool FieldMeta::init(
   return true;
 }
 
-bool FieldMeta::json(application_features::ApplicationServer& server,
+bool FieldMeta::json(ArangodServer& server,
                      velocypack::Builder& builder,
                      FieldMeta const* ignoreEqual /*= nullptr*/,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
@@ -561,7 +561,7 @@ bool IResearchLinkMeta::operator==(
 }
 
 bool IResearchLinkMeta::init(
-    application_features::ApplicationServer& server, VPackSlice slice,
+    ArangodServer& server, VPackSlice slice,
     std::string& errorField,
     irs::string_ref defaultVocbase /*= irs::string_ref::NIL*/,
     LinkVersion defaultVersion /* = LinkVersion::MIN*/,
@@ -835,7 +835,7 @@ bool IResearchLinkMeta::init(
                          mask);
 }
 
-bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
+bool IResearchLinkMeta::json(ArangodServer& server,
                              velocypack::Builder& builder,
                              bool writeAnalyzerDefinition,
                              IResearchLinkMeta const* ignoreEqual /*= nullptr*/,

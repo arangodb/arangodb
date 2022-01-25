@@ -30,7 +30,7 @@
 namespace arangodb {
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  explicit RestShutdownHandler(application_features::ApplicationServer&,
+  explicit RestShutdownHandler(ArangodServer&,
                                GeneralRequest*, GeneralResponse*);
 
  public:
