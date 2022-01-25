@@ -128,8 +128,7 @@ bool QueryList::insert(Query& query) {
     }
 
     // return whether or not insertion worked
-    bool inserted =
-        _current.insert({query.id(), query.shared_from_this()}).second;
+    bool inserted = _current.insert({query.id(), &query}).second;
     _queryRegistryFeature.trackQueryStart();
     return inserted;
   } catch (...) {
@@ -275,11 +274,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
     return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
   }
 
-  auto query = it->second.lock();
-  if (query) {
-    // if we cannot lock the query, it is already beeing destroyed
-    killQuery(*query, maxLength, false);
-  }
+  killQuery(*it->second, maxLength, false);
 
   return Result();
 }
@@ -295,13 +290,13 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
   READ_LOCKER(readLocker, _lock);
 
   for (auto& it : _current) {
-    auto query = it.second.lock();
+    Query& query = *(it.second);
 
-    if (query == nullptr || !filter(*query)) {
+    if (!filter(query)) {
       continue;
     }
 
-    killQuery(*query, maxLength, silent);
+    killQuery(query, maxLength, silent);
     ++killed;
   }
 
@@ -326,10 +321,9 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
     result.reserve(_current.size());
 
     for (auto const& it : _current) {
-      auto query = it.second.lock();
-      if (query == nullptr) {
-        continue;
-      }
+      Query const* query = it.second;
+
+      TRI_ASSERT(query != nullptr);
 
       // elapsed time since query start
       double const elapsed = elapsedSince(query->startTime());
