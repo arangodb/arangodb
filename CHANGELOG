@@ -1,4 +1,4 @@
-v3.7.17 (XXXX-XX-XX)
+v3.7.17 (2022-01-25)
 --------------------
 
 * Fix creation of satellite graphs with a `numberOfShards` value != 1.
