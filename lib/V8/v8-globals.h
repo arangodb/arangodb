@@ -912,11 +912,7 @@ struct V8Global final : TRI_v8_global_t {
   }
 };
 
-/// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(
-    arangodb::application_features::ApplicationServer&, v8::Isolate*,
-    size_t id);
-
+// Creates a global context
 template<typename Server>
 V8Global<Server>* CreateV8Globals(Server& server, v8::Isolate* isolate,
                                   size_t id) {

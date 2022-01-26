@@ -81,13 +81,8 @@ struct Options;
 
 }  // namespace transaction
 
-// FIXME(gnusi): is it really a feature? why EgnineSelectorFeature isn't
-// sufficient?
 class StorageEngine : public ArangodFeature {
  public:
-  // FIXME(gnusi)
-  static constexpr std::string_view name() noexcept { return "StorageEngine"; }
-
   // create the storage engine
   StorageEngine(Server& server, std::string engineName,
                 std::string_view featureName, size_t registration,
