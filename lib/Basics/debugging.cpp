@@ -123,10 +123,12 @@ void TRI_AddFailurePointDebugging(std::string_view value) {
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     added = ::failurePoints.emplace(value).second;
+    if (added) {
+      ::hasFailurePoints.store(true, std::memory_order_relaxed);
+    }
   }
 
   if (added) {
-    ::hasFailurePoints.store(true, std::memory_order_relaxed);
     LOG_TOPIC("d8a5f", WARN, arangodb::Logger::FIXME)
         << "activating intentional failure point '" << value
         << "'. the server will misbehave!";
@@ -157,8 +159,8 @@ void TRI_ClearFailurePointsDebugging() noexcept {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     numExisting = ::failurePoints.size();
     ::failurePoints.clear();
+    ::hasFailurePoints.store(false, std::memory_order_relaxed);
   }
-  ::hasFailurePoints.store(false, std::memory_order_relaxed);
 
   if (numExisting > 0) {
     LOG_TOPIC("ea4e7", INFO, arangodb::Logger::FIXME)
