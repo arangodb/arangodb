@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include <vector>
 #include <span>
+#include <boost/type_index/ctti_type_index.hpp>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -213,30 +214,30 @@ class ApplicationServer {
   }
 
   ApplicationFeature& getFeature(size_t type) const {
-    auto& feature = _features[type];
-    if (!feature) {
-      // FIXME(gnusi)
-      throwFeatureNotFoundException(/*type.name())*/ "");
+    if (ADB_LIKELY(hasFeature(type))) {
+      return getFeatureUnsafe(type);
     }
-    return *feature;
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "unknown feature '" + std::to_string(type) + "'");
   }
 
   void disableFeatures(std::vector<size_t> const&);
   void forceDisableFeatures(std::vector<size_t> const&);
 
  protected:
-  void addFeature(size_t type, std::unique_ptr<ApplicationFeature> feature) {
+  ApplicationFeature& getFeatureUnsafe(size_t type) const noexcept {
+    TRI_ASSERT(hasFeature(type));
+    return *_features[type];
+  }
+
+  void addFeature(size_t type,
+                  std::unique_ptr<ApplicationFeature> feature) noexcept {
     TRI_ASSERT(feature);
     TRI_ASSERT(_features.size() < type);
     TRI_ASSERT(!hasFeature(type));
     _features[type] = std::move(feature);
   }
-
-  // throws an exception that a requested feature was not found
-  [[noreturn]] static void throwFeatureNotFoundException(char const*);
-
-  // throws an exception that a requested feature is not enabled
-  [[noreturn]] static void throwFeatureNotEnabledException(char const*);
 
  private:
   void disableFeatures(std::vector<size_t> const& types, bool force);
@@ -367,24 +368,21 @@ class ApplicationServerT : public ApplicationServer {
   // adds a feature to the application server. the application server
   // will take ownership of the feature object and destroy it in its
   // destructor
-  template<
-      typename Type, typename Impl = Type, typename... Args,
-      typename std::enable_if<std::is_base_of_v<ApplicationFeature, Type>,
-                              int>::type = 0,
-      typename std::enable_if<std::is_base_of_v<ApplicationFeature, Impl>,
-                              int>::type = 0,
-      typename std::enable_if<std::is_base_of_v<Type, Impl>, int>::type = 0>
+  template<typename Type, typename Impl = Type, typename... Args>
   Impl& addFeature(Args&&... args) {
-    TRI_ASSERT(!hasFeature<Type>());
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
+    static_assert(std::is_base_of_v<Type, Impl>);
     constexpr auto featureId = Features::template id<Type>();
 
+    TRI_ASSERT(!hasFeature<Type>());
     auto feature = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
-    auto* typePtr = feature.get();
+    auto* ptr = feature.get();
     ApplicationServer::addFeature(featureId, std::move(feature));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto asPtr = dynamic_cast<Impl*>(typePtr);
-    TRI_ASSERT(asPtr);
-    return *asPtr;
+    auto impl = dynamic_cast<Impl*>(ptr);
+    TRI_ASSERT(impl);
+    return *impl;
 #else
     return *static_cast<As*>(typePtr);
 #endif
@@ -392,31 +390,30 @@ class ApplicationServerT : public ApplicationServer {
 
   // checks for the existence of a feature. will not throw when used for
   // a non-existing feature
-  template<typename Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
+  template<typename Type>
   bool hasFeature() const noexcept {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+
     constexpr auto featureId = Features::template id<Type>();
     return ApplicationServer::hasFeature(featureId);
   }
 
   // returns a const reference to a feature. will throw when used for
   // a non-existing feature
-  template<typename Type, typename AsType = Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
-                                       std::is_base_of<AsType, Type>::value,
-                                   int>::type = 0>
-  AsType& getFeature() const {
+  template<typename Type, typename Impl = Type>
+  Impl& getFeature() const {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<Type, Impl> ||
+                  std::is_base_of_v<Impl, Type>);
+
     constexpr auto featureId = Features::template id<Type>();
-    auto& feature = ApplicationServer::getFeature(featureId);
+    auto& feature = ApplicationServer::getFeatureUnsafe(featureId);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto obj = dynamic_cast<AsType*>(&feature);
+    auto obj = dynamic_cast<Impl*>(&feature);
     TRI_ASSERT(obj != nullptr);
     return *obj;
 #else
-    return static_cast<AsType&>(feature);
+    return static_cast<Impl&>(feature);
 #endif
   }
 
@@ -424,16 +421,15 @@ class ApplicationServerT : public ApplicationServer {
 
   // returns the feature with the given name if known and enabled
   // throws otherwise
-  template<typename Type, typename AsType = Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
-                                       std::is_base_of<AsType, Type>::value,
-                                   int>::type = 0>
-  AsType& getEnabledFeature() const {
-    AsType& feature = getFeature<Type, AsType>();
+  template<typename Type, typename Impl = Type>
+  Impl& getEnabledFeature() const {
+    auto& feature = getFeature<Type, Impl>();
     if (!feature.isEnabled()) {
-      throwFeatureNotEnabledException("" /*ctti<Type>()*/);  // FIXME(gnusi)
+      const auto featureName =
+          boost::typeindex::ctti_type_index::type_id<Type>().pretty_name();
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "feature '" + featureName + "' is not enabled");
     }
     return feature;
   }

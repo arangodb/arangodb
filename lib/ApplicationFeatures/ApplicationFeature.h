@@ -48,7 +48,7 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationFeature const&) = delete;
   ApplicationFeature& operator=(ApplicationFeature const&) = delete;
 
-  virtual ~ApplicationFeature();
+  virtual ~ApplicationFeature() = default;
 
   enum class State {
     UNINITIALIZED,
@@ -113,6 +113,9 @@ class ApplicationFeature {
   // whether the feature starts before another
   template<typename T, typename Server>
   bool doesStartBefore() const {
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
+    static_assert(std::is_base_of_v<ApplicationServer, Server>);
+
     return doesStartBefore(Server::template id<T>());
   }
 
@@ -275,6 +278,8 @@ class ApplicationFeature {
 template<typename ServerT>
 class ApplicationFeatureT : public ApplicationFeature {
  public:
+  // static_assert(std::is_base_of_v<ApplicationServer, ServerT>);
+
   using Server = ServerT;
 
   Server& server() const noexcept {

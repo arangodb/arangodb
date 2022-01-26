@@ -98,18 +98,6 @@ bool ApplicationServer::isStoppingState(State state) const {
          state == State::ABORTED;
 }
 
-void ApplicationServer::throwFeatureNotFoundException(char const* name) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "unknown feature '" + boost::core::demangle(name) + "'");
-}
-
-void ApplicationServer::throwFeatureNotEnabledException(char const* name) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "feature '" + boost::core::demangle(name) + "' is not enabled");
-}
-
 // FIXME(gnusi) don't use vector
 void ApplicationServer::disableFeatures(std::vector<size_t> const& types) {
   disableFeatures(types, false);
@@ -483,8 +471,8 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
             if (!hasFeature(other)) {
               fail(std::string{"feature '"}
                        .append(feature.name())
-                       .append("' depends on unknown feature '")
-                       /*.append(other.name()) FIXME(gnusi)*/
+                       .append("' depends on unknown feature with id '")
+                       .append(std::to_string(other))
                        .append("'"));
             }
             if (!getFeature(other).isEnabled()) {
@@ -531,11 +519,12 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
     std::string dependencies;
     if (!startsAfter.empty()) {
-      std::function<std::string(std::type_index)> cb =
-          [](std::type_index type) -> std::string { return type.name(); };
+      std::function<std::string(size_t)> cb =
+          [this](size_t type) -> std::string {
+        return std::string{getFeature(type).name()};
+      };
       dependencies =
-          " - depends on: " +
-          StringUtils::join(startsAfter, ", " /*, cb*/);  // FIXME(gnusi)
+          " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
     }
     LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)
         << "feature #" << ++position << ": " << feature.name()
@@ -585,8 +574,8 @@ void ApplicationServer::disableDependentFeatures() {
         LOG_TOPIC("f70cc", TRACE, Logger::STARTUP)
             << "turning off feature '" << feature.name()
             << "' because it is enabled only in conjunction with non-existing "
-               "feature '"
-            << /* other.name() FIXME(gnusi) << */ "'";
+               "feature with id '"
+            << other << "'";
         feature.disable();
         break;
       }

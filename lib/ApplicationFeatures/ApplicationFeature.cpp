@@ -52,8 +52,6 @@ ApplicationFeature::ApplicationFeature(ApplicationServer& server,
       _requiresElevatedPrivileges(false),
       _ancestorsDetermined(false) {}
 
-ApplicationFeature::~ApplicationFeature() = default;
-
 // add the feature's options to the global list of options. this method will be
 // called regardless of whether to feature is enabled or disabled
 void ApplicationFeature::collectOptions(std::shared_ptr<ProgramOptions>) {}
@@ -152,17 +150,16 @@ void ApplicationFeature::addAncestorToAllInPath(
     pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
 
     // helper for string join
-    std::function<std::string(std::type_index)> cb =
-        [](std::type_index type) -> std::string {
-      return boost::core::demangle(type.name());
+    std::function<std::string(size_t)> cb = [this](size_t type) -> std::string {
+      return std::string{server().getFeature(type).name()};
     };
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string{"dependencies for feature '"} +
-            /*boost::core::demangle(pathTypes.begin()->name()) FIXME(gnusi)*/
-            +"' are cyclic: " +
-            basics::StringUtils::join(pathTypes, " <= " /*, cb*/));
+        std::string{"dependencies for feature '"}
+            .append(server().getFeature(pathTypes.front()).name())
+            .append("' are cyclic: ")
+            .append(basics::StringUtils::join(pathTypes, " <= ", cb)));
   }
 
   // not cyclic, go ahead and add
