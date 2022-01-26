@@ -29,6 +29,8 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -45,6 +47,7 @@
 namespace {
 
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 struct DefaultIndexFactory : public IndexTypeFactory {
   std::string const _type;
@@ -144,6 +147,59 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
+struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
+  explicit IResearchInvertedIndexFactory(
+      application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, IRESEARCH_INVERTED_INDEX_TYPE.data()) {}
+
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition, IndexId id,
+                                     bool isClusterConstructor) const override {
+    IResearchViewMeta indexMeta;
+    std::string errField;
+    if (!indexMeta.init(definition, errField)) {
+      LOG_TOPIC("a9cce", ERR, TOPIC)
+          << (errField.empty()
+                  ? ("failed to initialize index meta from definition: " +
+                     definition.toString())
+                  : ("failed to initialize index meta from definition, "
+                     "error in attribute '" +
+                     errField + "': " + definition.toString()));
+      return nullptr;
+    }
+    IResearchInvertedIndexMeta fieldsMeta;
+    if (!fieldsMeta.init(_server, definition, true, errField,
+                         collection.vocbase().name())) {
+      LOG_TOPIC("18c18", ERR, TOPIC)
+          << (errField.empty()
+                  ? ("failed to initialize index fields from "
+                     "definition: " +
+                     definition.toString())
+                  : ("failed to initialize index fields from definition, "
+                     "error in attribute '" +
+                     errField + "': " + definition.toString()));
+      return nullptr;
+    }
+    auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
+    std::string indexName;
+    if (!nameSlice.isNone()) {
+      if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+        LOG_TOPIC("91ebe", ERR, TOPIC)
+            << "failed to initialize index from definition, error in attribute "
+               "'" +
+                   arangodb::StaticStrings::IndexName +
+                   "': " + definition.toString();
+        return nullptr;
+      }
+      indexName = nameSlice.copyString();
+    }
+    auto objectId = basics::VelocyPackHelper::stringUInt64(
+        definition, arangodb::StaticStrings::ObjectId);
+    return std::make_shared<IResearchInvertedClusterIndex>(
+        id, objectId, collection, indexName, std::move(fieldsMeta));
+  }
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -161,6 +217,7 @@ void ClusterIndexFactory::linkIndexFactories(
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
   static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
+  static const IResearchInvertedIndexFactory invertedIndexFactory(server);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -173,6 +230,7 @@ void ClusterIndexFactory::linkIndexFactories(
   factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
   factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
+  factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
 }
 
 ClusterIndexFactory::ClusterIndexFactory(
@@ -296,7 +354,8 @@ void ClusterIndexFactory::prepareIndexes(
   TRI_ASSERT(indexesSlice.isArray());
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
+    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX)
+             .ok()) {
       // We have an error here. Do not add.
       continue;
     }

@@ -83,7 +83,7 @@ class Index {
         bool unique, bool sparse);
 
   Index(IndexId iid, LogicalCollection& collection,
-        arangodb::velocypack::Slice const& slice);
+        arangodb::velocypack::Slice slice);
 
   virtual ~Index();
 
@@ -103,7 +103,8 @@ class Index {
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX,
-    TRI_IDX_TYPE_ZKD_INDEX
+    TRI_IDX_TYPE_ZKD_INDEX,
+    TRI_IDX_TYPE_INVERTED_INDEX
   };
 
   /// @brief: helper struct returned by index methods that determine the costs
@@ -144,10 +145,10 @@ class Index {
   };
 
   /// @brief return the index id
-  inline IndexId id() const { return _iid; }
+  IndexId id() const { return _iid; }
 
   /// @brief return the index name
-  inline std::string const& name() const {
+  std::string const& name() const {
     if (_name == StaticStrings::IndexNameEdgeFrom ||
         _name == StaticStrings::IndexNameEdgeTo) {
       return StaticStrings::IndexNameEdge;
@@ -159,8 +160,8 @@ class Index {
   void name(std::string const&);
 
   /// @brief return the index fields
-  inline std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  fields() const {
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& fields()
+      const {
     return _fields;
   }
 
@@ -173,8 +174,9 @@ class Index {
   }
 
   /// @brief return the index fields names
-  inline std::vector<std::vector<std::string>> fieldNames() const {
+  std::vector<std::vector<std::string>> fieldNames() const {
     std::vector<std::vector<std::string>> result;
+    result.reserve(_fields.size());
 
     for (auto const& it : _fields) {
       std::vector<std::string> parts;
@@ -235,7 +237,7 @@ class Index {
   /// @brief whether or not the index covers all the attributes passed in.
   /// the function may modify the projections by setting the
   /// coveringIndexPosition value in it.
-  bool covers(arangodb::aql::Projections& projections) const;
+  virtual bool covers(arangodb::aql::Projections& projections) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
@@ -250,15 +252,16 @@ class Index {
   inline bool unique() const { return _unique; }
 
   /// @brief validate fields from slice
-  static void validateFields(velocypack::Slice const& slice);
+  static void validateFields(velocypack::Slice slice);
 
   /// @brief return the name of the index
   char const* oldtypeName() const { return oldtypeName(type()); }
 
   /// @brief return the index type based on a type name
-  static IndexType type(char const* type, size_t len);
+  static IndexType type(std::string_view type);
 
-  static IndexType type(std::string const& type);
+  /// @brief checks if the index could be used without explicit hint
+  static bool onlyHintForced(IndexType type);
 
  public:
   virtual char const* typeName() const = 0;
@@ -427,7 +430,7 @@ class Index {
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, aql::AstNode const* node,
       aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites);
+      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,
@@ -448,6 +451,13 @@ class Index {
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
  protected:
+  static std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(
+      arangodb::velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
+
+  static std::vector<std::vector<arangodb::basics::AttributeName>> mergeFields(
+      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields1,
+      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields2);
+
   /// @brief return the name of the (sole) index attribute
   /// it is only allowed to call this method if the index contains a
   /// single attribute

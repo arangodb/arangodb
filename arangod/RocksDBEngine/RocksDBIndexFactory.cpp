@@ -26,6 +26,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
@@ -383,6 +384,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(
                                                Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
   static const ZkdIndexFactory zkdIndexFactory(server);
+  static const iresearch::IResearchRocksDBInvertedIndexFactory
+      iresearchInvertedIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -396,6 +399,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
   emplace("zkd", zkdIndexFactory);
+  emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
+          iresearchInvertedIndexFactory);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
@@ -435,16 +440,15 @@ void RocksDBIndexFactory::prepareIndexes(
   IndexId last = IndexId::primary();
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
+    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX)
+             .ok()) {
       continue;
     }
 
     // check for combined edge index from MMFiles; must split!
     auto typeSlice = v.get(StaticStrings::IndexType);
     if (typeSlice.isString()) {
-      VPackValueLength len;
-      const char* tmp = typeSlice.getStringUnchecked(len);
-      Index::IndexType const type = Index::type(tmp, len);
+      Index::IndexType const type = Index::type(typeSlice.stringView());
 
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         VPackSlice fields = v.get(StaticStrings::IndexFields);
