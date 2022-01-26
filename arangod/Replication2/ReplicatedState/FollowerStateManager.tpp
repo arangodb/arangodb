@@ -96,7 +96,7 @@ void FollowerStateManager<S>::pollNewEntries() {
                 << "forcing rebuild because participant resigned";
             ptr->forceRebuild();
           } else {
-            LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
+            LOG_TOPIC("15cb4", TRACE, Logger::REPLICATED_STATE)
                 << "LogFollower resigned, but Replicated State already gone";
           }
         } catch (basics::Exception const& e) {
@@ -123,7 +123,7 @@ void FollowerStateManager<S>::tryTransferSnapshot(
     try {
       auto& result = tryResult.get();
       if (result.ok()) {
-        LOG_TOPIC("44d58", INFO, Logger::REPLICATED_STATE)
+        LOG_TOPIC("44d58", DEBUG, Logger::REPLICATED_STATE)
             << "snapshot transfer successfully completed";
         self->token->snapshot.updateStatus(SnapshotStatus::kCompleted);
         return self->startService(hiddenState);
@@ -138,12 +138,12 @@ void FollowerStateManager<S>::tryTransferSnapshot(
 template<typename S>
 void FollowerStateManager<S>::checkSnapshot(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  LOG_TOPIC("aee5b", DEBUG, Logger::REPLICATED_STATE)
+  LOG_TOPIC("aee5b", TRACE, Logger::REPLICATED_STATE)
       << "snapshot status is " << token->snapshot.status << ", generation is "
       << token->generation;
   bool needsSnapshot = token->snapshot.status != SnapshotStatus::kCompleted;
   if (needsSnapshot) {
-    LOG_TOPIC("3d0fc", INFO, Logger::REPLICATED_STATE)
+    LOG_TOPIC("3d0fc", DEBUG, Logger::REPLICATED_STATE)
         << "new snapshot is required";
     tryTransferSnapshot(hiddenState);
   } else {
@@ -156,7 +156,7 @@ void FollowerStateManager<S>::checkSnapshot(
 template<typename S>
 void FollowerStateManager<S>::startService(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  LOG_TOPIC("26c55", DEBUG, Logger::REPLICATED_STATE)
+  LOG_TOPIC("26c55", TRACE, Logger::REPLICATED_STATE)
       << "starting service as follower";
   state = hiddenState;
   state->_stream = stream;
@@ -224,7 +224,6 @@ void FollowerStateManager<S>::awaitLeaderShip() {
           }
         });
   } catch (basics::Exception const& e) {
-    LOG_DEVEL << "waiting for leader caused exception: " << e.message();
     if (e.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED) {
       if (auto p = parent.lock(); p) {
         return p->forceRebuild();

@@ -105,6 +105,8 @@ const replicatedStateSuite = function () {
 
   return {
     setUpAll, tearDownAll,
+    setUp: LH.registerAgencyTestBegin,
+    tearDown: LH.registerAgencyTestEnd,
 
     testCreateReplicatedState: function () {
       const logId = LH.nextUniqueLogId();
@@ -171,9 +173,9 @@ const replicatedStateSuite = function () {
         return {state, log};
       });
 
-      const newParticipants = [newFollower, ..._.difference(servers, oldFollower)];
+      const newParticipants = [newFollower, ..._.difference(servers, [oldFollower])];
       LH.waitFor(LH.replicatedLogIsReady(database, logId, 1, newParticipants, leader));
-      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, newParticipants));
     },
   };
 };

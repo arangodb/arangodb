@@ -38,7 +38,7 @@ auto algorithms::updateReplicatedState(
   TRI_ASSERT(id == spec->id);
   TRI_ASSERT(spec->participants.contains(serverId));
   auto expectedGeneration = spec->participants.at(serverId).generation;
-  LOG_TOPIC("b089c", INFO, Logger::REPLICATED_STATE)
+  LOG_TOPIC("b089c", TRACE, Logger::REPLICATED_STATE)
       << "Update replicated log" << id << " for generation "
       << expectedGeneration;
 

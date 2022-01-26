@@ -113,7 +113,7 @@ auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
 
 template<typename S>
 void ReplicatedState<S>::forceRebuild() {
-  LOG_TOPIC("8041a", INFO, Logger::REPLICATED_STATE)
+  LOG_TOPIC("8041a", TRACE, Logger::REPLICATED_STATE)
       << "Force rebuild of replicated state";
   auto action = guardedData.getLockedGuard()->forceRebuild();
   (void)action;
@@ -175,7 +175,8 @@ auto ReplicatedState<S>::GuardedData::runFollower(
 
   return DeferredAction{[manager]() noexcept { manager->run(); }};
 } catch (std::exception const& e) {
-  LOG_DEVEL << "runFollower caught exception: " << e.what();
+  LOG_TOPIC("ab9de", DEBUG, Logger::REPLICATED_STATE)
+      << "runFollower caught exception: " << e.what();
   throw;
 }
 
@@ -192,7 +193,8 @@ auto ReplicatedState<S>::GuardedData::runLeader(
 
   return DeferredAction{[manager]() noexcept { manager->run(); }};
 } catch (std::exception const& e) {
-  LOG_DEVEL << "runFollower caught exception: " << e.what();
+  LOG_TOPIC("016f3", DEBUG, Logger::REPLICATED_STATE)
+      << "run leader caught exception: " << e.what();
   throw;
 }
 
@@ -202,7 +204,8 @@ auto ReplicatedState<S>::GuardedData::forceRebuild() -> DeferredAction {
     auto [core, token] = std::move(*currentManager).resign();
     return rebuild(std::move(core), std::move(token));
   } catch (std::exception const& e) {
-    LOG_DEVEL << "forceRebuild caught exception: " << e.what();
+    LOG_TOPIC("af348", DEBUG, Logger::REPLICATED_STATE)
+        << "forced rebuild caught exception: " << e.what();
     throw;
   }
 }

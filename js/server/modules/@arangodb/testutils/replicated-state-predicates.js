@@ -69,7 +69,7 @@ const replicatedStateIsReady = function (database, logId, servers) {
 
     for (const server of servers) {
       if (plan.participants[server] === undefined) {
-        return Error(`Server ${server} is not in Plan`);
+        return Error(`Server ${server} is not in Plan, all ${servers}`);
       }
 
       const wantedGeneration = plan.participants[server].generation;
