@@ -77,7 +77,7 @@ auto operator<<(std::ostream& out, ClusterProviderStep const& step)
   out << step._vertex.getID();
   return out;
 }
-}  // namespace arangodb
+}  // namespace arangodb::graph
 
 template<class StepImpl>
 ClusterProvider<StepImpl>::ClusterProvider(
