@@ -32,8 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "Logger/LogMacros.h"
-
 #include <algorithm>
 
 using namespace arangodb;
