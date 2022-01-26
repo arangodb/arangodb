@@ -880,4 +880,3 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   }
   return res;
 }
-
