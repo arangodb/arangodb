@@ -217,7 +217,7 @@ struct arangodb::VocBaseLogManager {
 
   [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result {
-    LOG_CTX("658c7", DEBUG, _logContext) << "Dropping replicated state " << id;
+    LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
     return _guardedData.doUnderLock([&](GuardedData& data) {
       if (auto iter = data.states.find(id); iter != data.states.end()) {
         // Now we can drop the persisted log

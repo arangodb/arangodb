@@ -2099,7 +2099,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC("84ee0", WARN, Logger::MAINTENANCE)
+      LOG_TOPIC("84ef0", WARN, Logger::MAINTENANCE)
           << "caught exception in Maintenance for replicated states '" << dbName
           << "': " << ex.what();
       TRI_ASSERT(false);
