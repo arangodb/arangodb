@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8FeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb::application_features {
 

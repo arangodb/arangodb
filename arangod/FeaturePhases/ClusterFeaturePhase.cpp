@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb::application_features {
 

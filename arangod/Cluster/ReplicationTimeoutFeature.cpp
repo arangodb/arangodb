@@ -23,6 +23,7 @@
 
 #include "ReplicationTimeoutFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogTopic.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"

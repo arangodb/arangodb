@@ -373,7 +373,7 @@ class ApplicationServerT : public ApplicationServer {
                               int>::type = 0,
       typename std::enable_if<std::is_base_of<ApplicationFeature, As>::value,
                               int>::type = 0,
-      typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
+      typename std::enable_if<std::is_base_of<Type, As>::value, int>::type = 0>
   As& addFeature(Args&&... args) {
     TRI_ASSERT(!hasFeature<As>());
     constexpr auto featureId = Features::template id<Type>();

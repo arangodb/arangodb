@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SharedPRNGFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/splitmix64.h"
 #include "Basics/xoroshiro128plus.h"
 

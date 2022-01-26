@@ -180,10 +180,6 @@ struct ArangodInitializer {
     server.addFeature<ConfigFeature>(context.binaryName());
   }
 
-  void operator()(TypeTag<EndpointFeature>) {
-    server.addFeature<EndpointFeature>();
-  }
-
   void operator()(TypeTag<InitDatabaseFeature>) {
     std::vector<size_t> nonServerFeatures = {
         ArangodServer::id<ActionFeature>(),
@@ -253,7 +249,7 @@ struct ArangodInitializer {
   }
 
   void operator()(TypeTag<HttpEndpointProvider>) {
-    server.addFeature<EndpointFeature, HttpEndpointProvider>();
+    server.addFeature<HttpEndpointProvider, EndpointFeature>();
   }
 
   int ret;

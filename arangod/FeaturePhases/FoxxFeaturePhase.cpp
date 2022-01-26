@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FoxxFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb::application_features {
 

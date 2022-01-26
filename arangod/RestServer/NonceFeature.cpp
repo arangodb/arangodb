@@ -23,6 +23,7 @@
 
 #include "NonceFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Nonce.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

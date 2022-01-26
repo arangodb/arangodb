@@ -23,6 +23,7 @@
 
 #include "ActionFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/actions.h"
 #include "ProgramOptions/ProgramOptions.h"
 

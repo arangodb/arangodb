@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb::application_features {
 
@@ -30,7 +31,7 @@ ServerFeaturePhase::ServerFeaturePhase(ArangodServer& server)
   setOptional(false);
   startsAfter<AqlFeaturePhase, ArangodServer>();
 
-  startsAfter<EndpointFeature, ArangodServer>();
+  startsAfter<HttpEndpointProvider, ArangodServer>();
   startsAfter<GeneralServerFeature, ArangodServer>();
   startsAfter<NetworkFeature, ArangodServer>();
   startsAfter<ServerFeature, ArangodServer>();

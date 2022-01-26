@@ -28,9 +28,10 @@
 namespace arangodb {
 class HttpEndpointProvider : public application_features::ApplicationFeature {
  public:
-  HttpEndpointProvider(application_features::ApplicationServer& server,
-                       size_t registration, std::string_view name)
-      : ApplicationFeature(server, registration, name) {}
+  template<typename Server, typename Impl>
+  HttpEndpointProvider(Server& server, const Impl& impl)
+      : ApplicationFeature(server, Server::template id<HttpEndpointProvider>(),
+                           Impl::name()) {}
   virtual ~HttpEndpointProvider() = default;
   virtual std::vector<std::string> httpEndpoints() = 0;
 };

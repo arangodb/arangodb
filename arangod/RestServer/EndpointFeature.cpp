@@ -23,6 +23,7 @@
 
 #include "EndpointFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -38,8 +39,7 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 EndpointFeature::EndpointFeature(ArangodServer& server)
-    : HttpEndpointProvider{server, ArangodServer::id<EndpointFeature>(),
-                           name()},
+    : HttpEndpointProvider{server, *this},
       _reuseAddress(true),
       _backlogSize(64) {
   setOptional(true);

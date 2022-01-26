@@ -25,6 +25,7 @@
 
 #include "TimeZoneFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
