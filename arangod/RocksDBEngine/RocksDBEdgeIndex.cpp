@@ -130,7 +130,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
   // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     transaction::BuilderLeaser coveringBuilder(_trx);
     return nextImplementation(
         [&](LocalDocumentId docId, VPackSlice fromTo) {
@@ -141,7 +141,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           coveringBuilder->add(_lastKey);
           coveringBuilder->add(fromTo);
           coveringBuilder->close();
-          cb(docId, coveringBuilder->slice());
+          auto data = SliceCoveringData(coveringBuilder->slice());
+          cb(docId, data);
         },
         limit);
   }
@@ -361,8 +362,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // adding documentId and _from or _to value
       _builder.add(VPackValue(docId.id()));
       std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
-      _builder.add(VPackValuePair(vertexId.data(), vertexId.size(),
-                                  VPackValueType::String));
+      _builder.add(VPackValue(vertexId));
     }
     _builder.close();
 
@@ -514,7 +514,6 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   // always invalidate cache entry for all edges with same _from / _to
   invalidateCacheEntry(fromToRef);
 
-  // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
   if (s.ok()) {
@@ -576,7 +575,7 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);

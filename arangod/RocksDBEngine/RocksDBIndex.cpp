@@ -100,7 +100,7 @@ RocksDBIndex::RocksDBIndex(
 }
 
 RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
-                           arangodb::velocypack::Slice const& info,
+                           arangodb::velocypack::Slice info,
                            rocksdb::ColumnFamilyHandle* cf, bool useCache)
     : RocksDBIndex(id, collection, info, cf, useCache,
                    collection.vocbase()
@@ -409,6 +409,7 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
+    case RocksDBIndex::TRI_IDX_TYPE_INVERTED_INDEX:
       if (unique) {
         return RocksDBKeyBounds::UniqueVPackIndex(objectId, false);
       }

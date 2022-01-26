@@ -104,7 +104,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
-      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) override;
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode* node,

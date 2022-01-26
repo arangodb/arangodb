@@ -167,7 +167,7 @@ class RocksDBIndex : public Index {
                RocksDBEngine& engine);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,
-               arangodb::velocypack::Slice const& info,
+               arangodb::velocypack::Slice info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,

@@ -331,7 +331,7 @@ class EdgeIndexMock final : public arangodb::Index {
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
-      arangodb::ReadOwnWrites) override {
+      arangodb::ReadOwnWrites, int) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
     TRI_ASSERT(node->numMembers() == 1);
@@ -762,9 +762,10 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
 
   char const* typeName() const override { return "hash-index-iterator-mock"; }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
-      cb(_begin->first, _begin->second.slice());
+      auto data = SliceCoveringData(_begin->second.slice());
+      cb(_begin->first, data);
       ++_begin;
       --limit;
     }
@@ -909,7 +910,7 @@ class HashIndexMock final : public arangodb::Index {
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
-      arangodb::ReadOwnWrites) override {
+      arangodb::ReadOwnWrites, int) override {
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
     keys->openArray();
