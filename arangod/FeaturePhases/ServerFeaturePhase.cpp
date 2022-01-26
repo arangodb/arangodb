@@ -24,6 +24,10 @@
 #include "ServerFeaturePhase.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 
+namespace arangodb {
+class SslServerFeature;
+}
+
 namespace arangodb::application_features {
 
 ServerFeaturePhase::ServerFeaturePhase(ArangodServer& server)

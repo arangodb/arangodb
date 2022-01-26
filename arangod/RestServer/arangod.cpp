@@ -127,7 +127,13 @@
 #endif
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/RestServer/arangodEE.h"
+#include "Enterprise/Audit/AuditFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/License/LicenseFeature.h"
+#include "Enterprise/RClone/RCloneFeature.h"
+#include "Enterprise/Ssl/SslServerFeatureEE.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -223,7 +229,7 @@ struct ArangodInitializer {
 
   void operator()(TypeTag<SslServerFeature>) {
 #ifdef USE_ENTERPRISE
-    server.addFeature<SslServerFeatureEE, SslServerFeature>();
+    server.addFeature<SslServerFeature, SslServerFeatureEE>();
 #else
     server.addFeature<SslServerFeature>();
 #endif

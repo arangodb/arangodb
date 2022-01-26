@@ -130,9 +130,8 @@ class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
 class EncryptionFeature;
-#else
-class SslServerFeature;
 #endif
+class SslServerFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
 namespace transaction {
@@ -198,10 +197,8 @@ using ArangodFeatures = TypeList<
 #ifdef USE_ENTERPRISE
     AuditFeature, LdapFeature, LicenseFeature, RCloneFeature, HotBackupFeature,
     EncryptionFeature,
-#else
-    SslServerFeature,
 #endif
-    arangodb::iresearch::IResearchAnalyzerFeature,
+    SslServerFeature, arangodb::iresearch::IResearchAnalyzerFeature,
     arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature>;
