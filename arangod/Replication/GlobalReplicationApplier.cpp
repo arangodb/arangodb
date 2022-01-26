@@ -68,7 +68,7 @@ void GlobalReplicationApplier::forget() {
 void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   VPackBuilder builder;
   builder.openObject();
-  configuration().toVelocyPack(builder, true, true);
+  _configuration.toVelocyPack(builder, true, true);
   builder.close();
 
   LOG_TOPIC("f270b", DEBUG, Logger::REPLICATION)
