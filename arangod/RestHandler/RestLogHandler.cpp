@@ -167,7 +167,7 @@ RestStatus RestLogHandler::handlePostRelease(
 RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
                                       velocypack::Slice specSlice) {
   // create a new log
-  replication2::agency::LogPlanSpecification spec(
+  replication2::agency::LogTarget spec(
       replication2::agency::from_velocypack, specSlice);
   return waitForFuture(
       methods.createReplicatedLog(spec).thenValue([this](Result&& result) {

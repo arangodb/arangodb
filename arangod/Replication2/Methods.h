@@ -37,9 +37,8 @@ class Future;
 namespace arangodb::replication2 {
 
 namespace agency {
-struct LogPlanSpecification;
-struct LogPlanTermSpecification;
-}  // namespace agency
+struct LogTarget;
+}
 
 namespace replicated_log {
 struct LogStatus;
@@ -63,8 +62,8 @@ struct ReplicatedLogMethods {
                    replication2::replicated_log::GlobalStatus>;
 
   virtual ~ReplicatedLogMethods() = default;
-  virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec)
-      const -> futures::Future<Result> = 0;
+  virtual auto createReplicatedLog(agency::LogTarget const& spec) const
+      -> futures::Future<Result> = 0;
   virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
   virtual auto getReplicatedLogs() const

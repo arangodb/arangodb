@@ -203,6 +203,11 @@ struct LogTarget {
 
   static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
   void toVelocyPack(velocypack::Builder&) const;
+
+  LogTarget(from_velocypack_t, VPackSlice);
+  LogTarget() = default;
+
+  LogTarget(LogId id, Participants const& participants, LogConfig const& config);
 };
 
 /* Convenience Wrapper */

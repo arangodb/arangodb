@@ -81,10 +81,10 @@ auto deleteReplicatedLog(DatabaseID const& database, LogId id)
 
 auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
                             DatabaseID const& database,
-                            LogPlanSpecification const& spec)
+                            LogTarget const& spec)
     -> arangodb::agency::envelope;
 auto createReplicatedLog(DatabaseID const& database,
-                         LogPlanSpecification const& spec)
+                         LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>>;
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
