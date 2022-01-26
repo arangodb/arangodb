@@ -840,7 +840,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   }
 };
 
-std::vector<std::string> PLAN_SECTIONS{ANALYZERS, COLLECTIONS, DATABASES, VIEWS,
+std::vector<std::string> PLAN_SECTIONS{ANALYZERS,       COLLECTIONS,
+                                       DATABASES,       VIEWS,
                                        REPLICATED_LOGS, REPLICATED_STATES};
 std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> planToChangeset(
     Node const& plan) {

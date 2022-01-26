@@ -43,7 +43,8 @@ struct ImplementationSpec {
   std::string type;
 
   void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> ImplementationSpec;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
+      -> ImplementationSpec;
 };
 
 struct Plan {
@@ -74,9 +75,8 @@ struct Plan {
 
 struct Current {
   struct ParticipantStatus {
-
     StateGeneration generation;
-    SnapshotInfo snapshot; // TODO might become an array later?
+    SnapshotInfo snapshot;  // TODO might become an array later?
 
     friend auto operator==(ParticipantStatus const&,
                            ParticipantStatus const&) noexcept -> bool = default;
@@ -92,6 +92,5 @@ struct Current {
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
-
 
 }  // namespace arangodb::replication2::replicated_state::agency

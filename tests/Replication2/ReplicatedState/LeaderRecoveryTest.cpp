@@ -118,7 +118,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
-  replicatedState->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  replicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
   {
     auto status = replicatedState->getStatus().value();
@@ -195,7 +196,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
-  replicatedState->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  replicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
   {
     auto status = replicatedState->getStatus().value();

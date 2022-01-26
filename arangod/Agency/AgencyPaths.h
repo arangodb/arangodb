@@ -967,8 +967,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
           class State
               : public DynamicComponent<
-                    State, Database, std::string> {  // TODO Use a different type
-                                                   // than std::string?
+                    State, Database, std::string> {  // TODO Use a different
+                                                     // type than std::string?
            public:
             char const* component() const noexcept { return value().c_str(); }
 
@@ -1668,7 +1668,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return ReplicatedLogs::make_shared(shared_from_this());
       }
 
-      class ReplicatedStates : public StaticComponent<ReplicatedStates, Current> {
+      class ReplicatedStates
+          : public StaticComponent<ReplicatedStates, Current> {
        public:
         constexpr char const* component() const noexcept {
           return "ReplicatedStates";
@@ -1697,15 +1698,21 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               using BaseType::StaticComponent;
 
-              class Participant : public DynamicComponent<Participant, Participants, std::string> {
+              class Participant
+                  : public DynamicComponent<Participant, Participants,
+                                            std::string> {
                public:
-                char const* component() const noexcept { return value().c_str(); }
+                char const* component() const noexcept {
+                  return value().c_str();
+                }
 
                 using BaseType::DynamicComponent;
               };
 
-              std::shared_ptr<Participant const> participant(std::string value) const {
-                return Participant::make_shared(shared_from_this(), std::move(value));
+              std::shared_ptr<Participant const> participant(
+                  std::string value) const {
+                return Participant::make_shared(shared_from_this(),
+                                                std::move(value));
               }
             };
 

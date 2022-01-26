@@ -279,8 +279,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseOne";
 
     tmp = arangodb::maintenance::phaseOne(
-        plan, planIndex, current, currentIndex, dirty, moreDirt, local, serverId, mfeature, rb,
-        currentShardLocks, localLogs, localStates);
+        plan, planIndex, current, currentIndex, dirty, moreDirt, local,
+        serverId, mfeature, rb, currentShardLocks, localLogs, localStates);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)

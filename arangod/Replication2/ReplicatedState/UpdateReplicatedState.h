@@ -45,4 +45,4 @@ auto updateReplicatedState(StateActionContext& ctx, std::string const& serverId,
                            LogId id, replicated_state::agency::Plan const* spec,
                            replicated_state::agency::Current const* current)
     -> Result;
-}  // namespace arangodb::replication2::replicated_state::algorithms
+}  // namespace arangodb::replication2::algorithms

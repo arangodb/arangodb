@@ -329,7 +329,8 @@ struct LogDemultiplexerImplementation
                   << "demultiplexer received follower-resigned exception";
               that->resolveLeaderChange(std::current_exception());
             } catch (basics::Exception const& e) {
-              TRI_ASSERT(e.code() != TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+              TRI_ASSERT(e.code() !=
+                         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
               LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
                   << "demultiplexer received unexpected exception: "
                   << e.what();

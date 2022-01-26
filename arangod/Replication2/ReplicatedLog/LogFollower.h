@@ -64,7 +64,6 @@ class LogFollower final : public ILogFollower,
   [[nodiscard]] auto getLeader() const noexcept
       -> std::optional<ParticipantId> const& override;
 
-
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture override;

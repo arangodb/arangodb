@@ -104,15 +104,13 @@ struct StateStatus {
   }
 
   [[nodiscard]] auto getSnapshotInfo() const noexcept -> SnapshotInfo const& {
-    return std::visit([](auto&& s) -> SnapshotInfo const& {
-      return s.snapshot;
-    }, variant);
+    return std::visit(
+        [](auto&& s) -> SnapshotInfo const& { return s.snapshot; }, variant);
   }
 
   [[nodiscard]] auto getGeneration() const noexcept -> StateGeneration {
-    return std::visit([](auto&& s) -> StateGeneration {
-      return s.generation;
-    }, variant);
+    return std::visit([](auto&& s) -> StateGeneration { return s.generation; },
+                      variant);
   }
 
   void toVelocyPack(velocypack::Builder&) const;

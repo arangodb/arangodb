@@ -139,9 +139,9 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->states.find(id); iter != guard->states.end()) {
       return iter->second;
     }
-    THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        "replicated state %" PRIu64 " not found", id.id());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                  "replicated state %" PRIu64 " not found",
+                                  id.id());
   }
 
   auto resignAll() {
@@ -215,8 +215,7 @@ struct arangodb::VocBaseLogManager {
     return result;
   }
 
-  [[nodiscard]] auto dropReplicatedState(
-                                       arangodb::replication2::LogId id)
+  [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result {
     LOG_CTX("658c7", DEBUG, _logContext) << "Dropping replicated state " << id;
     return _guardedData.doUnderLock([&](GuardedData& data) {

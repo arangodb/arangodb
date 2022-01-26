@@ -233,11 +233,13 @@ TEST_F(ReplicatedStateTest, stream_test) {
 
   auto leaderState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", leaderLog));
-  leaderState->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  leaderState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
   auto followerState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", followerLog));
-  followerState->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+  followerState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
   // make sure we do recovery
   while (follower->hasPendingAppendEntries()) {
