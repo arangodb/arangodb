@@ -59,6 +59,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -67,6 +69,7 @@
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 namespace application_features {
@@ -106,6 +109,7 @@ struct LogMessage {
   int const _line;
   /// @brief log level
   LogLevel const _level;
+
   /// @brief id of log topic
   size_t const _topicId;
   /// @biref the actual log message
@@ -255,11 +259,17 @@ class Logger {
  public:
   static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
+  static std::unordered_set<std::string> structuredLogParams();
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(std::vector<std::string> const&);
-
+  static std::unordered_map<std::string, bool> parseStringParams(
+      std::vector<std::string> const&);
+  static void setLogStructuredParamsOnServerStart(
+      std::vector<std::string> const&);
+  static void setLogStructuredParams(
+      std::unordered_map<std::string, bool> const& paramsAndValues);
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
   static void setHostname(std::string const&);
@@ -267,7 +277,6 @@ class Logger {
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
   static void setShowRole(bool);
-  static bool getShowRole() { return _showRole; };
   static void setShortenFilenames(bool);
   static void setShowProcessIdentifier(bool);
   static void setShowThreadIdentifier(bool);
@@ -314,7 +323,6 @@ class Logger {
                                    : topic.level());
   }
 
- public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
   static void flush() noexcept;
@@ -325,6 +333,10 @@ class Logger {
   static std::atomic<LogLevel> _level;
 
   // these variables must be set before calling initialized
+  static std::unordered_set<std::string>
+      _structuredLogParams;  // if in set, means value is true, else, means it's
+                             // false
+  static arangodb::basics::ReadWriteLock _structuredParamsLock;
   static LogTimeFormats::TimeFormat _timeFormat;
   static bool _showLineNumber;
   static bool _shortenFilenames;
