@@ -76,7 +76,7 @@
         name: 'Nodes'
       },
       'nodeLabel': {
-        type: 'nodeLabels',
+        type: 'string',
         name: 'Label',
         desc: 'Node label. Please choose a valid and available node attribute.',
       },
@@ -141,7 +141,7 @@
         name: 'Edges'
       },
       'edgeLabel': {
-        type: 'egdeLabels',
+        type: 'edgeLabels',
         name: 'Label',
         desc: 'Default edge label.'
       },
@@ -249,7 +249,7 @@
       'change select': 'saveGraphSettings',
       'focus #graphSettingsView input': 'lastFocus',
       'focus #graphSettingsView select': 'lastFocus',
-      'focusout #graphSettingsView input[type="text"]': 'checkinput'
+      'focusout #graphSettingsView input[type="text"]': 'checkinput',
     },
 
     lastFocus: function (e) {
@@ -267,7 +267,7 @@
       }
     },
 
-    getLabels: function (saveOnly, silent, callback, callbackMethod) {
+    getLabels: function () {
       var self = this;
       var data;
 
@@ -296,6 +296,7 @@
         data: data,
 
         success: function (data) {
+          console.log(data);
           var result = data.cursor;
           var edges = [];
           var vertices = [];
@@ -323,8 +324,6 @@
 
           self.nodeLabels = vertices;
           self.edgeLabels = edges;
-
-          callbackMethod(saveOnly, silent, callback);
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not load full graph.');
@@ -364,7 +363,6 @@
 
     saveGraphSettings: function (event, color, nodeStart, overwrite, silent, userCallback) {
       var self = this;
-
       var updateCols = function () {
         var nodes = !$('#g_nodeColor').is(':disabled');
         var edges = !$('#g_edgeColor').is(':disabled');
@@ -388,7 +386,6 @@
           config[combinedName] = overwrite;
         } else {
           var object = {};
-
           var id;
           $('#graphSettingsView select').each(function (key, elem) {
             id = elem.id;
@@ -500,44 +497,41 @@
     },
 
     setDefaults: function (saveOnly, silent, callback) {
-      var successCallback = function () {
-        var obj = {
-          layout: 'force',
-          renderer: 'canvas',
-          depth: '2',
-          limit: '250',
-          nodeColor: '#2ecc71',
-          nodeColorAttribute: '',
-          nodeColorByCollection: 'true',
-          edgeColor: '#cccccc',
-          edgeColorAttribute: '',
-          edgeColorByCollection: 'false',
-          nodeLabel: '_key',
-          edgeLabel: '_key',
-          edgeType: 'arrow',
-          nodeSize: '',
-          nodeSizeByEdges: 'true',
-          edgeEditable: 'true',
-          nodeLabelByCollection: 'false',
-          edgeLabelByCollection: 'false',
-          nodeStart: '',
-          barnesHutOptimize: true
-        };
+      this.getLabels();
+      var obj = {
+        layout: 'force',
+        renderer: 'canvas',
+        depth: '2',
+        limit: '250',
+        nodeColor: '#2ecc71',
+        nodeColorAttribute: '',
+        nodeColorByCollection: 'true',
+        edgeColor: '#cccccc',
+        edgeColorAttribute: '',
+        edgeColorByCollection: 'false',
+        nodeLabel: '_key',
+        edgeLabel: '_key',
+        edgeType: 'arrow',
+        nodeSize: '',
+        nodeSizeByEdges: 'true',
+        edgeEditable: 'true',
+        nodeLabelByCollection: 'false',
+        edgeLabelByCollection: 'false',
+        nodeStart: '',
+        barnesHutOptimize: true
+      };
 
-        if (saveOnly === true) {
-          if (silent) {
-            this.saveGraphSettings(null, null, null, obj, silent, callback);
-          } else {
-            this.saveGraphSettings(null, null, null, obj);
-          }
+      if (saveOnly === true) {
+        if (silent) {
+          this.saveGraphSettings(null, null, null, obj, silent, callback);
         } else {
-          this.saveGraphSettings(null, null, null, obj, null);
-          this.render();
-          window.App.graphViewer.render(this.lastFocussed);
+          this.saveGraphSettings(null, null, null, obj);
         }
-      }.bind(this);
-
-      this.getLabels(saveOnly, silent, callback, successCallback);
+      } else {
+        this.saveGraphSettings(null, null, null, obj, null);
+        this.render();
+        window.App.graphViewer.render(this.lastFocussed);
+      }
     },
 
     toggle: function () {
@@ -561,7 +555,6 @@
         // aql render mode
         this.continueRender();
       } else {
-        // standard gv mode
         this.getGraphSettings(true);
         this.lastSaved = new Date();
       }
@@ -608,7 +601,7 @@
 
     continueRender: function () {
       console.log(this.nodeLabels);
-      console.log(this.edgeLabels);
+      console.log(this.edgeLabels)
       $(this.el).html(this.template.render({
         general: this.general,
         specific: this.specific,
