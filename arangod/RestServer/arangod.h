@@ -129,6 +129,7 @@ class LdapFeature;
 class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
+class EncryptionFeature;
 #else
 class SslServerFeature;
 #endif
@@ -196,6 +197,7 @@ using ArangodFeatures = TypeList<
 #endif
 #ifdef USE_ENTERPRISE
     AuditFeature, LdapFeature, LicenseFeature, RCloneFeature, HotBackupFeature,
+    EncryptionFeature,
 #else
     SslServerFeature,
 #endif
