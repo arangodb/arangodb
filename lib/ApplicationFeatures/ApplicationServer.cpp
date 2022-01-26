@@ -448,9 +448,11 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     for (auto const& other : feature.startsBefore()) {
       if (!hasFeature(other)) {
         if (failOnMissing) {
-          fail("feature '" + std::string{feature.name()} +
-               "' depends on unknown feature '" +
-               /*other.name() FIXME*/ +"'");
+          fail(std::string{"feature '"}
+                   .append(feature.name())
+                   .append("' depends on unknown feature id '")
+                   .append(std::to_string(other))
+                   .append("'"));
         }
         continue;
       }

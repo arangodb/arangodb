@@ -210,7 +210,7 @@ class ApplicationServer {
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
   bool hasFeature(size_t type) const noexcept {
-    return _features.size() < type && nullptr != _features[type];
+    return type < _features.size() && nullptr != _features[type];
   }
 
   ApplicationFeature& getFeature(size_t type) const {

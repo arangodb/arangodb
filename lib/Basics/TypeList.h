@@ -26,7 +26,7 @@
 #include <array>
 
 #include <frozen/string.h>
-#include <frozen/map.h>
+#include <frozen/unordered_map.h>
 
 #include "Basics/system-compiler.h"
 
@@ -90,7 +90,7 @@ class TypeList {
     }
   };
 
-  static constexpr auto kTypes = frozen::make_map(List::toArray());
+  static constexpr auto kTypes = frozen::make_unordered_map(List::toArray());
 };
 
 }  // namespace arangodb
