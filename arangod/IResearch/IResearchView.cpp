@@ -727,10 +727,9 @@ IResearchView::Snapshot const* IResearchView::snapshot(
   TRI_ASSERT(ctx);
   try {
     // collect snapshots from all requested links
-    auto iterate = [&]<typename T>(T const& collections) -> Snapshot const* {
+    auto iterate = [&](auto const& collections, auto h) -> Snapshot const* {
       for (auto const& entry : collections) {
-        constexpr bool kIsShards =
-            std::is_same_v<containers::FlatHashSet<DataSourceId>, T>;
+        constexpr bool kIsShards = std::is_same_v<int, decltype(h)>;
         DataSourceId cid;
         LinkLock linkLock;
         if constexpr (kIsShards) {
@@ -768,7 +767,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
       }
       return ctx;
     };
-    return shards ? iterate(*shards) : iterate(_links);
+    return shards ? iterate(*shards, 0) : iterate(_links, "");
   } catch (basics::Exception& e) {
     LOG_TOPIC("29b30", WARN, TOPIC)
         << "caught exception while collecting readers for snapshot of "
