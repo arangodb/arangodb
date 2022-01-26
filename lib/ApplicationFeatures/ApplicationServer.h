@@ -368,21 +368,21 @@ class ApplicationServerT : public ApplicationServer {
   // will take ownership of the feature object and destroy it in its
   // destructor
   template<
-      typename Type, typename As = Type, typename... Args,
-      typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value,
+      typename Type, typename Impl = Type, typename... Args,
+      typename std::enable_if<std::is_base_of_v<ApplicationFeature, Type>,
                               int>::type = 0,
-      typename std::enable_if<std::is_base_of<ApplicationFeature, As>::value,
+      typename std::enable_if<std::is_base_of_v<ApplicationFeature, Impl>,
                               int>::type = 0,
-      typename std::enable_if<std::is_base_of<Type, As>::value, int>::type = 0>
-  As& addFeature(Args&&... args) {
-    TRI_ASSERT(!hasFeature<As>());
+      typename std::enable_if<std::is_base_of_v<Type, Impl>, int>::type = 0>
+  Impl& addFeature(Args&&... args) {
+    TRI_ASSERT(!hasFeature<Type>());
     constexpr auto featureId = Features::template id<Type>();
 
-    auto feature = std::make_unique<As>(*this, std::forward<Args>(args)...);
+    auto feature = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
     auto* typePtr = feature.get();
     ApplicationServer::addFeature(featureId, std::move(feature));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto asPtr = dynamic_cast<As*>(typePtr);
+    auto asPtr = dynamic_cast<Impl*>(typePtr);
     TRI_ASSERT(asPtr);
     return *asPtr;
 #else
