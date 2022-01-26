@@ -34,8 +34,6 @@
 
 #include "Logger/LogMacros.h"
 
-#include <ranges>
-
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
@@ -472,8 +470,12 @@ auto isEmptyAction(std::unique_ptr<Action>& action) {
 // The main function
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
-  // check whether this log exists in plan;
-  // If it doesn't the action is to create the log
+  // Check whether this log exists in plan;
+  //
+  // If it doesn't the action is to create the log;
+  //
+  // Currently this also checks whether the participants list is empty, and if
+  // so patches Target to contain a list of Followers. This is a temporary fix
   if (auto action = checkLogAdded(log, health); !isEmptyAction(action)) {
     return action;
   }
