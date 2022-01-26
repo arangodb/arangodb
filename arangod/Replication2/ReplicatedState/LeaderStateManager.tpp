@@ -177,8 +177,9 @@ auto LeaderStateManager<S>::resign() && noexcept
 
 template<typename S>
 void LeaderStateManager<S>::waitForParticipantResigned() {
+  using LogIndexValueType = decltype(LogIndex::value);
   logLeader
-      ->waitFor(LogIndex{std::numeric_limits<decltype(LogIndex::value)>::max()})
+      ->waitFor(LogIndex{std::numeric_limits<LogIndexValueType>::max()})
       .thenFinal([weak = this->weak_from_this()](auto&&) {
         if (auto self = weak.lock(); self != nullptr) {
           if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
