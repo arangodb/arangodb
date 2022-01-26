@@ -42,7 +42,7 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
 
   template<typename Server>
   explicit GreetingsFeaturePhase(Server& server, bool isClient)
-      : ApplicationFeaturePhase(server, name()) {
+      : ApplicationFeaturePhase{server, *this} {
     setOptional(false);
 
     startsAfter<ConfigFeature, Server>();

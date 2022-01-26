@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Agency/Agent.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {

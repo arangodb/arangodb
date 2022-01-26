@@ -114,6 +114,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
@@ -175,41 +176,76 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     int ret = EXIT_FAILURE;
 
-    // ArangodServer::Features::visit([&]<typename T>(TypeTag<T>) {
-    //   if constexpr (std::is_same_v<T, GreetingsFeaturePhase>) {
-    //     server.addFeature<T>(false);
-    //   } else if (std::is_same_v<T, CheckVersionFeature>) {
-    //     server.addFeature<T>(&ret, nonServerFeatures);
-    //   } else if (std::is_same_v<T, ConfigFeature>) {
-    //     server.addFeature<T>(&ret, name);
-    //   } else if (std::is_same_v<T, EndpointFeature>) {
-    //     server.addFeature<EndpointFeature, HttpEndpointProvider>();
-    //   } else if (std::is_same_v<T, InitDatabaseFeature>) {
-    //     server.addFeature<T>(nonServerFeatures);
-    //   } else if (std::is_same_v<T, LoggerFeature>) {
-    //     server.addFeature<T>(true);
-    //   } else if (std::is_same_v<T, ScriptFeature>) {
-    //     server.addFeature<T>(&ret);
-    //   } else if (std::is_same_v<T, ServerFeature>) {
-    //     server.addFeature<T>(&ret);
-    //   } else if (std::is_same_v<T, ShutdownFeature>) {
-    //     server.addFeature<T>(
-    //         std::vector<size_t>{ArangodServer::id<ScriptFeature>()});
-    //   } else if (std::is_same_v<T, TempFeature>) {
-    //     server.addFeature<T>(name);
-    //   } else if (std::is_same_v<T, UpgradeFeature>) {
-    //     server.addFeature<T>(&ret, nonServerFeatures);
-    //   } else {
-    //     server.addFeature<T>();
-    //   }
+    ArangodServer::Features::visit([&]<typename T>(TypeTag<T>) {
+      if constexpr (std::is_same_v<T, GreetingsFeaturePhase>) {
+        server.addFeature<T>(false);
+        return;
+      }
+      if constexpr (std::is_same_v<T, CheckVersionFeature>) {
+        server.addFeature<T>(&ret, nonServerFeatures);
+        return;
+      }
+      if constexpr (std::is_same_v<T, ConfigFeature>) {
+        server.addFeature<T>(name);
+        return;
+      }
+      if constexpr (std::is_same_v<T, EndpointFeature>) {
+        server.addFeature<EndpointFeature, HttpEndpointProvider>();
+        return;
+      }
+      if constexpr (std::is_same_v<T, InitDatabaseFeature>) {
+        server.addFeature<T>(nonServerFeatures);
+        return;
+      }
+      if constexpr (std::is_same_v<T, LoggerFeature>) {
+        server.addFeature<T>(true);
+        return;
+      }
+      if constexpr (std::is_same_v<T, ScriptFeature>) {
+        server.addFeature<T>(&ret);
+        return;
+      }
+      if constexpr (std::is_same_v<T, ServerFeature>) {
+        server.addFeature<T>(&ret);
+        return;
+      }
+      if constexpr (std::is_same_v<T, ShutdownFeature>) {
+        server.addFeature<T>(
+            std::vector<size_t>{ArangodServer::id<ScriptFeature>()});
+        return;
+      }
+      if constexpr (std::is_same_v<T, TempFeature>) {
+        server.addFeature<T>(name);
+        return;
+      }
+      if constexpr (std::is_same_v<T, UpgradeFeature>) {
+        server.addFeature<T>(&ret, nonServerFeatures);
+        return;
+      }
 
-    //  // FIXME(gnusi) handle
-    //  // class AuditFeature;
-    //  // class LdapFeature;
-    //  // class LicenseFeature;
-    //  // class RCloneFeature;
-    //  // class HotBackupFeature;
-    //});
+      if constexpr (!std::is_same_v<T, GreetingsFeaturePhase> &&
+                    !std::is_same_v<T, CheckVersionFeature> &&
+                    !std::is_same_v<T, ConfigFeature> &&
+                    !std::is_same_v<T, EndpointFeature> &&
+                    !std::is_same_v<T, InitDatabaseFeature> &&
+                    !std::is_same_v<T, LoggerFeature> &&
+                    !std::is_same_v<T, ScriptFeature> &&
+                    !std::is_same_v<T, ServerFeature> &&
+                    !std::is_same_v<T, ShutdownFeature> &&
+                    !std::is_same_v<T, TempFeature> &&
+                    !std::is_same_v<T, HttpEndpointProvider> &&
+                    !std::is_same_v<T, StorageEngine> &&
+                    !std::is_same_v<T, UpgradeFeature>) {
+        server.addFeature<T>();
+      }
+
+      // FIXME(gnusi) handle
+      // class AuditFeature;
+      // class LdapFeature;
+      // class LicenseFeature;
+      // class RCloneFeature;
+      // class HotBackupFeature;
+    });
 
     try {
       server.run(argc, argv);
