@@ -39,11 +39,13 @@ class Metric {
   [[nodiscard]] std::string_view labels() const noexcept;
 
   virtual std::string_view type() const noexcept = 0;
-  virtual void toPrometheus(std::string& result, std::string_view globals,
-                            std::string_view alternativeName) const = 0;
-  virtual void toPrometheusBegin(std::string& result,
-                                 std::string_view name) const;
+  virtual void toPrometheus(std::string& r, bool first,
+                            std::string_view globals) const = 0;
   virtual ~Metric();
+
+ protected:
+  void addHelpType(std::string& r) const;
+  void addName(std::string& r, std::string_view globals) const;
 
  private:
   std::string_view _name;

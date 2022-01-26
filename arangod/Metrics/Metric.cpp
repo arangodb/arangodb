@@ -37,10 +37,20 @@ std::string_view Metric::name() const noexcept { return _name; }
 
 std::string_view Metric::labels() const noexcept { return _labels; }
 
-void Metric::toPrometheusBegin(std::string& result,
-                               std::string_view name) const {
-  result.append("# HELP ").append(name).append(" ").append(help()).append("\n");
-  result.append("# TYPE ").append(name).append(" ").append(type()).append("\n");
+void Metric::addHelpType(std::string& r) const {
+  (r.append("# HELP ").append(_name) += ' ').append(help()) += '\n';
+  (r.append("# TYPE ").append(_name) += ' ').append(type()) += '\n';
+}
+
+void Metric::addName(std::string& r, std::string_view globals) const {
+  (r.append(name()) += '{').append(globals);
+  if (!labels().empty()) {
+    if (!globals.empty()) {
+      r += ',';
+    }
+    r += labels();
+  }
+  r += '}';
 }
 
 Metric::~Metric() = default;

@@ -343,9 +343,9 @@ class StorageEngine : public ArangodFeature {
 
   void getCapabilities(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(velocypack::Builder& builder, bool v2) const;
+  virtual void getStatistics(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(std::string& result, bool v2) const;
+  virtual void getStatistics(std::string& result) const;
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;

@@ -171,13 +171,8 @@ class IResearchLink : public IResearchDataStore {
   struct LinkStats : Stats {
     LinkStats() = default;
     explicit LinkStats(Stats const& storeStats) : Stats(storeStats) {}
-
-    void needName() const;
-    void toPrometheus(std::string& result, std::string_view globals,
+    void toPrometheus(std::string& r, bool first, std::string_view globals,
                       std::string_view labels) const;
-
-   private:
-    mutable bool _needName{false};
   };
 
   ////////////////////////////////////////////////////////////////////////////////
