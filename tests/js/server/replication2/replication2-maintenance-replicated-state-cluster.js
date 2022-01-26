@@ -172,7 +172,7 @@ const replicatedStateSuite = function () {
       });
 
       const newParticipants = [newFollower, ..._.difference(servers, oldFollower)];
-      LH.waitFor(LH.replicatedLogIsReady(database, logId, 2, newParticipants, leader));
+      LH.waitFor(LH.replicatedLogIsReady(database, logId, 1, newParticipants, leader));
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
   };

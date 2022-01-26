@@ -31,8 +31,6 @@ namespace arangodb::replication2::algorithms {
 
 struct StateActionContext {
   virtual ~StateActionContext() = default;
-  virtual auto getReplicatedLogById(LogId)
-      -> std::shared_ptr<replicated_log::ReplicatedLog> = 0;
 
   virtual auto getReplicatedStateById(LogId)
       -> std::shared_ptr<replicated_state::ReplicatedStateBase> = 0;

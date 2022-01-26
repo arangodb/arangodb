@@ -142,7 +142,10 @@ LeaderStateManager<S>::LeaderStateManager(
       internalState(LeaderInternalState::kWaitingForLeadershipEstablished),
       core(std::move(core)),
       token(std::move(token)),
-      factory(std::move(factory)) {}
+      factory(std::move(factory)) {
+  TRI_ASSERT(this->core != nullptr);
+  TRI_ASSERT(this->token != nullptr);
+}
 
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
@@ -162,9 +165,12 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
 }
 
 template<typename S>
-auto LeaderStateManager<S>::resign() && -> std::pair<
+auto LeaderStateManager<S>::resign() && noexcept -> std::pair<
     std::unique_ptr<ReplicatedStateCore>,
     std::unique_ptr<ReplicatedStateToken>> {
+  LOG_TOPIC("edcf3", TRACE, Logger::REPLICATED_STATE) << "Leader manager resign";
+  TRI_ASSERT(core != nullptr);
+  TRI_ASSERT(token != nullptr);
   return {std::move(core), std::move(token)};
 }
 

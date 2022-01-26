@@ -53,8 +53,9 @@ struct LeaderStateManager
 
   void run();
 
-  auto resign() && -> std::pair<std::unique_ptr<ReplicatedStateCore>,
-                                std::unique_ptr<ReplicatedStateToken>> override;
+  auto resign() && noexcept
+      -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+                   std::unique_ptr<ReplicatedStateToken>> override;
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
   std::shared_ptr<IReplicatedLeaderState<S>> state;

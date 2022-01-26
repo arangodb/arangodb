@@ -215,6 +215,22 @@ struct arangodb::VocBaseLogManager {
     return result;
   }
 
+  [[nodiscard]] auto dropReplicatedState(
+                                       arangodb::replication2::LogId id)
+      -> arangodb::Result {
+    LOG_CTX("658c7", DEBUG, _logContext) << "Dropping replicated state " << id;
+    return _guardedData.doUnderLock([&](GuardedData& data) {
+      if (auto iter = data.states.find(id); iter != data.states.end()) {
+        // Now we can drop the persisted log
+        data.states.erase(iter);
+      } else {
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
+
+      return Result();
+    });
+  }
+
   [[nodiscard]] auto getReplicatedLogs() const
       -> std::unordered_map<arangodb::replication2::LogId,
                             arangodb::replication2::replicated_log::LogStatus> {
@@ -2149,8 +2165,7 @@ auto TRI_vocbase_t::ensureReplicatedState(LogId id, std::string_view type,
 }
 
 auto TRI_vocbase_t::dropReplicatedState(LogId id) -> arangodb::Result {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return _logManager->dropReplicatedState(id);
 }
 
 auto TRI_vocbase_t::getReplicatedStateStatus() const -> std::unordered_map<

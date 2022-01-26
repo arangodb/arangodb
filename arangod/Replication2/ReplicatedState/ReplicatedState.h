@@ -28,6 +28,9 @@
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Streams/Streams.h"
 
+#include "Basics/Guarded.h"
+#include "Replication2/DeferredExecution.h"
+
 namespace arangodb::futures {
 template<typename T>
 class Future;
@@ -40,6 +43,7 @@ namespace replicated_log {
 struct ReplicatedLog;
 struct ILogFollower;
 struct ILogLeader;
+struct ILogParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
@@ -63,6 +67,7 @@ struct ReplicatedStateBase {
   auto getFollower() -> std::shared_ptr<IReplicatedFollowerStateBase> {
     return getFollowerBase();
   }
+
  private:
   virtual auto getLeaderBase()
       -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
@@ -109,8 +114,9 @@ struct ReplicatedState final
   struct StateManagerBase {
     virtual ~StateManagerBase() = default;
     virtual auto getStatus() const -> StateStatus = 0;
-    virtual auto resign() && -> std::pair<std::unique_ptr<ReplicatedStateCore>,
-                             std::unique_ptr<ReplicatedStateToken>> = 0;
+    virtual auto resign() && noexcept
+        -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+                     std::unique_ptr<ReplicatedStateToken>> = 0;
   };
 
  private:
@@ -122,19 +128,32 @@ struct ReplicatedState final
     return getFollower();
   }
 
-  void runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
-                 std::unique_ptr<ReplicatedStateCore>,
-                 std::unique_ptr<ReplicatedStateToken> token);
-  void runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
-                   std::unique_ptr<ReplicatedStateCore>,
-                   std::unique_ptr<ReplicatedStateToken> token);
-
-  void rebuild(std::unique_ptr<ReplicatedStateCore> core,
-               std::unique_ptr<ReplicatedStateToken> token);
-
   std::shared_ptr<Factory> const factory;
-  std::shared_ptr<StateManagerBase> currentManager;
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
+
+  struct GuardedData {
+    auto forceRebuild() -> DeferredAction;
+
+    auto runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
+                   std::unique_ptr<ReplicatedStateCore>,
+                   std::unique_ptr<ReplicatedStateToken> token)
+        -> DeferredAction;
+    auto runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
+                     std::unique_ptr<ReplicatedStateCore>,
+                     std::unique_ptr<ReplicatedStateToken> token)
+        -> DeferredAction;
+
+    auto rebuild(std::unique_ptr<ReplicatedStateCore> core,
+                 std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
+
+    auto flush(StateGeneration planGeneration) -> DeferredAction;
+
+    explicit GuardedData(ReplicatedState& self) : _self(self) {}
+
+    ReplicatedState& _self;
+    std::shared_ptr<StateManagerBase> currentManager = nullptr;
+  };
+  Guarded<GuardedData> guardedData;
 };
 
 template<typename S>

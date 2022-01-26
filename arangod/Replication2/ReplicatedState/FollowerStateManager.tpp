@@ -39,9 +39,11 @@ void FollowerStateManager<S>::applyEntries(
   updateInternalState(FollowerInternalState::kApplyRecentEntries, range);
   state->applyEntries(std::move(iter))
       .thenFinal([weak = this->weak_from_this(),
-                  range](futures::Try<Result> tryResult) {
+                  range](futures::Try<Result> tryResult) noexcept {
         auto self = weak.lock();
         if (self == nullptr) {
+          LOG_TOPIC("a87aa", TRACE, Logger::REPLICATED_STATE)
+              << "replicated state already gone";
           return;
         }
         try {
@@ -81,7 +83,7 @@ void FollowerStateManager<S>::pollNewEntries() {
   updateInternalState(FollowerInternalState::kNothingToApply);
   stream->waitForIterator(nextEntry).thenFinal(
       [weak = this->weak_from_this()](
-          futures::Try<std::unique_ptr<Iterator>> result) {
+          futures::Try<std::unique_ptr<Iterator>> result) noexcept {
         auto self = weak.lock();
         if (self == nullptr) {
           return;
@@ -90,6 +92,8 @@ void FollowerStateManager<S>::pollNewEntries() {
           self->applyEntries(std::move(result).get());
         } catch (replicated_log::ParticipantResignedException const&) {
           if (auto ptr = self->parent.lock(); ptr) {
+            LOG_TOPIC("654fb", TRACE, Logger::REPLICATED_STATE)
+                << "forcing rebuild because participant resigned";
             ptr->forceRebuild();
           } else {
             LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
@@ -110,8 +114,8 @@ void FollowerStateManager<S>::tryTransferSnapshot(
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
   auto f = hiddenState->acquireSnapshot(*leader, logFollower->getCommitIndex());
-  std::move(f).thenFinal([weak = this->weak_from_this(),
-                          hiddenState](futures::Try<Result>&& tryResult) {
+  std::move(f).thenFinal([weak = this->weak_from_this(), hiddenState](
+                             futures::Try<Result>&& tryResult) noexcept {
     auto self = weak.lock();
     if (self == nullptr) {
       return;
@@ -178,44 +182,60 @@ void FollowerStateManager<S>::ingestLogData() {
 template<typename S>
 void FollowerStateManager<S>::awaitLeaderShip() {
   updateInternalState(FollowerInternalState::kWaitForLeaderConfirmation);
-  logFollower->waitForLeaderAcked().thenFinal(
-      [weak = this->weak_from_this()](
-          futures::Try<replicated_log::WaitForResult>&& result) noexcept {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          return;
-        }
-        try {
+  try {
+    logFollower->waitForLeaderAcked().thenFinal(
+        [weak = this->weak_from_this()](
+            futures::Try<replicated_log::WaitForResult>&& result) noexcept {
+          auto self = weak.lock();
+          if (self == nullptr) {
+            return;
+          }
           try {
-            result.throwIfFailed();
-            LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
-                << "leadership acknowledged - ingesting log data";
-            self->ingestLogData();
-          } catch (replicated_log::ParticipantResignedException const&) {
-            if (auto ptr = self->parent.lock(); ptr) {
-              ptr->forceRebuild();
-            } else {
-              LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
-                  << "LogFollower resigned, but Replicated State already "
-                     "gone";
+            try {
+              result.throwIfFailed();
+              LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
+                  << "leadership acknowledged - ingesting log data";
+              self->ingestLogData();
+            } catch (replicated_log::ParticipantResignedException const&) {
+              if (auto ptr = self->parent.lock(); ptr) {
+                LOG_TOPIC("79e37", DEBUG, Logger::REPLICATED_STATE)
+                    << "participant resigned before leadership - force rebuild";
+                ptr->forceRebuild();
+              } else {
+                LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
+                    << "LogFollower resigned, but Replicated State already "
+                       "gone";
+              }
+            } catch (basics::Exception const& e) {
+              LOG_TOPIC("f2188", FATAL, Logger::REPLICATED_STATE)
+                  << "waiting for leader ack failed with unexpected exception: "
+                  << e.message();
+              FATAL_ERROR_EXIT();
             }
-          } catch (basics::Exception const& e) {
-            LOG_TOPIC("f2188", FATAL, Logger::REPLICATED_STATE)
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("c7787", FATAL, Logger::REPLICATED_STATE)
                 << "waiting for leader ack failed with unexpected exception: "
-                << e.message();
+                << ex.what();
+            FATAL_ERROR_EXIT();
+          } catch (...) {
+            LOG_TOPIC("43456", FATAL, Logger::REPLICATED_STATE)
+                << "waiting for leader ack failed with unexpected exception";
             FATAL_ERROR_EXIT();
           }
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("c7787", FATAL, Logger::REPLICATED_STATE)
-              << "waiting for leader ack failed with unexpected exception: "
-              << ex.what();
-          FATAL_ERROR_EXIT();
-        } catch (...) {
-          LOG_TOPIC("43456", FATAL, Logger::REPLICATED_STATE)
-              << "waiting for leader ack failed with unexpected exception";
-          FATAL_ERROR_EXIT();
-        }
-      });
+        });
+  } catch (basics::Exception const& e) {
+    LOG_DEVEL << "waiting for leader caused exception: " << e.message();
+    if (e.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED) {
+      if (auto p = parent.lock(); p) {
+        return p->forceRebuild();
+      } else {
+        LOG_TOPIC("a62cb", TRACE, Logger::REPLICATED_STATE)
+            << "replicated state already gone";
+      }
+    } else {
+      throw;
+    }
+  }
 }
 
 template<typename S>
@@ -238,8 +258,10 @@ FollowerStateManager<S>::FollowerStateManager(
       logFollower(std::move(logFollower)),
       core(std::move(core)),
       token(std::move(token)),
-      factory(std::move(factory)) {}
-
+      factory(std::move(factory)) {
+  TRI_ASSERT(this->core != nullptr);
+  TRI_ASSERT(this->token != nullptr);
+}
 
 template<typename S>
 auto FollowerStateManager<S>::getStatus() const -> StateStatus {
@@ -263,9 +285,13 @@ auto FollowerStateManager<S>::getFollowerState()
 }
 
 template<typename S>
-auto FollowerStateManager<S>::resign() && -> std::pair<
-    std::unique_ptr<ReplicatedStateCore>,
-    std::unique_ptr<ReplicatedStateToken>> {
+auto FollowerStateManager<S>::resign() && noexcept
+    -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+                 std::unique_ptr<ReplicatedStateToken>> {
+  LOG_TOPIC("63622", TRACE, Logger::REPLICATED_STATE)
+      << "Follower manager resigning";
+  TRI_ASSERT(core != nullptr);
+  TRI_ASSERT(token != nullptr);
   return {std::move(core), std::move(token)};
 }
 }  // namespace arangodb::replication2::replicated_state

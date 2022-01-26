@@ -43,11 +43,6 @@ using namespace arangodb::replication2::replicated_state;
 struct StateActionContextImpl : algorithms::StateActionContext {
   explicit StateActionContextImpl(TRI_vocbase_t& vocbase) : vocbase(vocbase) {}
 
-  auto getReplicatedLogById(LogId)
-      -> std::shared_ptr<replicated_log::ReplicatedLog> override {
-    return nullptr;
-  }
-
   auto getReplicatedStateById(LogId id)
       -> std::shared_ptr<replicated_state::ReplicatedStateBase> override {
     try {
@@ -64,8 +59,8 @@ struct StateActionContextImpl : algorithms::StateActionContext {
     return vocbase.createReplicatedState(id, type, data);
   }
 
-  auto dropReplicatedState(LogId) -> Result override {
-    return {TRI_ERROR_NOT_IMPLEMENTED};
+  auto dropReplicatedState(LogId id) -> Result override {
+    return vocbase.dropReplicatedState(id);
   }
 
   TRI_vocbase_t& vocbase;
