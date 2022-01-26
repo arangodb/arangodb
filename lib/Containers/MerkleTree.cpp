@@ -719,8 +719,7 @@ template<typename Hasher, std::uint64_t const BranchingBits>
 std::vector<std::pair<std::uint64_t, std::uint64_t>>
 MerkleTree<Hasher, BranchingBits>::diff(
     MerkleTree<Hasher, BranchingBits>& other) {
-  std::shared_lock<std::shared_mutex> guard1(_dataLock);
-  std::shared_lock<std::shared_mutex> guard2(other._dataLock);
+  std::scoped_lock guard(_dataLock, other._dataLock);
 
   if (this->meta().depth != other.meta().depth) {
     throw std::invalid_argument("Expecting two trees with same depth.");
