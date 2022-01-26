@@ -39,9 +39,10 @@ uint64_t TRI_FnvHashPointer(void const*, size_t);
 uint64_t TRI_FnvHashString(char const*);
 
 /// @brief computes a FNV hash for POD types
-template<typename T>
-uint64_t TRI_FnvHashPod(T input) requires(
-    std::has_unique_object_representations_v<T>) {
+template<
+    typename T,
+    std::enable_if_t<std::has_unique_object_representations_v<T>, bool> = true>
+uint64_t TRI_FnvHashPod(T input) {
   return TRI_FnvHashBlock(0xcbf29ce484222325ULL, &input, sizeof(T));
 }
 
