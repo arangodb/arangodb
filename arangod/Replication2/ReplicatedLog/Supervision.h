@@ -43,7 +43,8 @@ using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
 // Check whether a log has been added to target
-auto checkLogAdded(Log const& log, ParticipantsHealth const& health) -> std::unique_ptr<Action>;
+auto checkLogAdded(Log const& log, ParticipantsHealth const& health)
+    -> std::unique_ptr<Action>;
 
 //
 auto checkLeaderPresent(LogPlanSpecification const& plan,

@@ -49,7 +49,7 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::AddParticipantsToTargetAction: {
       return "AddLogToPlan";
     } break;
-     case Action::ActionType::LeaderElectionAction: {
+    case Action::ActionType::LeaderElectionAction: {
       return "LeaderElection";
     } break;
     case Action::ActionType::CreateInitialTermAction: {
@@ -169,7 +169,7 @@ void AddParticipantsToTargetAction::toVelocyPack(VPackBuilder& builder) const {
 }
 
 auto AddParticipantsToTargetAction::execute(std::string dbName,
-                                 arangodb::agency::envelope envelope)
+                                            arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
   auto path =
       paths::target()->replicatedLogs()->database(dbName)->log(_spec.id)->str();
@@ -179,11 +179,9 @@ auto AddParticipantsToTargetAction::execute(std::string dbName,
           path, [&](VPackBuilder& builder) { _spec.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
       .precs()
-//      .isEmpty(path)
+      //      .isEmpty(path)
       .end();
 };
-
-
 
 /*
  * CreateInitialTermAction
