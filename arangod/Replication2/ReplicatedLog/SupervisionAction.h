@@ -39,6 +39,7 @@ struct Action {
     EmptyAction,
     ErrorAction,
     AddLogToPlanAction,
+    AddParticipantsToTargetAction,
     CreateInitialTermAction,
     UpdateTermAction,
     DictateLeaderAction,
@@ -108,6 +109,22 @@ struct AddLogToPlanAction : Action {
 };
 auto to_string(AddLogToPlanAction const& action) -> std::string;
 auto operator<<(std::ostream& os, AddLogToPlanAction const& action)
+    -> std::ostream&;
+
+// AddParticipantsToTarget
+struct AddParticipantsToTargetAction : Action {
+  AddParticipantsToTargetAction(LogTarget const& spec) : _spec(spec){};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+  ActionType type() const override {
+    return Action::ActionType::AddParticipantsToTargetAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  LogTarget const _spec;
+};
+auto to_string(AddParticipantsToTargetAction const& action) -> std::string;
+auto operator<<(std::ostream& os, AddParticipantsToTargetAction const& action)
     -> std::ostream&;
 
 struct CreateInitialTermAction : Action {

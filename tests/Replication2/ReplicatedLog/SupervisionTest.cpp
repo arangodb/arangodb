@@ -302,7 +302,7 @@ TEST_F(SupervisionLogTest, test_log_created) {
       {"C", ParticipantFlags{.forced = false, .excluded = false}}};
 
   auto r =
-      checkLogAdded(Log{.target = LogTarget(LogId{44}, participants, config)});
+    checkLogAdded(Log{.target = LogTarget(LogId{44}, participants, config)}, ParticipantsHealth{});
 
   EXPECT_NE(r, nullptr);
   EXPECT_EQ(r->type(), Action::ActionType::AddLogToPlanAction) << *r;
@@ -325,7 +325,7 @@ TEST_F(SupervisionLogTest, test_log_present) {
 
   auto r =
       checkLogAdded(Log{.target = LogTarget(LogId{44}, participants, config),
-                        .plan = LogPlanSpecification{}});
+        .plan = LogPlanSpecification{}}, ParticipantsHealth{});
 
   EXPECT_NE(r, nullptr);
   EXPECT_EQ(r->type(), Action::ActionType::EmptyAction) << *r;

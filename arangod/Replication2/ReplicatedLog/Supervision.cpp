@@ -40,9 +40,25 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
+auto checkLogAdded(const Log& log, ParticipantsHealth const& health)
+    -> std::unique_ptr<Action> {
   if (!log.plan) {
-    // action that creates Plan entry for log
+    // TODO: this is a temporary hack
+    if (log.target.participants.empty()) {
+      auto newTarget = log.target;
+
+      for (auto const& [pid, health] : health._health) {
+        if (health.isHealthy) {
+          newTarget.participants.emplace(pid, ParticipantFlags{});
+        }
+        if (log.target.participants.size() ==
+            log.target.config.replicationFactor) {
+          break;
+        }
+      }
+
+      return std::make_unique<AddParticipantsToTargetAction>(newTarget);
+    }
     auto const spec = LogPlanSpecification(
         log.target.id, std::nullopt,
         ParticipantsConfig{.generation = 1,
@@ -458,7 +474,7 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   // check whether this log exists in plan;
   // If it doesn't the action is to create the log
-  if (auto action = checkLogAdded(log); !isEmptyAction(action)) {
+  if (auto action = checkLogAdded(log, health); !isEmptyAction(action)) {
     return action;
   }
 
