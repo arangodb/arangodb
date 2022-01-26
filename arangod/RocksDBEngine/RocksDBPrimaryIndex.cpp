@@ -149,7 +149,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   }
 
   /// @brief extracts just _key. not supported for use with _id
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
     if (limit == 0 || _done) {
       // No limit no data, or we are actually done. The last call should have
@@ -162,7 +162,8 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     LocalDocumentId documentId =
         _index->lookupKey(_trx, _key->slice().stringView(), canReadOwnWrites());
     if (documentId.isSet()) {
-      cb(documentId, _key->slice());
+      auto data = SliceCoveringData(_key->slice());
+      cb(documentId, data);
     }
     return false;
   }
@@ -256,7 +257,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     return true;
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
     if (limit == 0 || !_iterator.valid()) {
       // No limit no data, or we are actually done. The last call should have
@@ -271,7 +272,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
       LocalDocumentId documentId =
           _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
       if (documentId.isSet()) {
-        cb(documentId, *_iterator);
+        auto data = SliceCoveringData(*_iterator);
+        cb(documentId, data);
         --limit;
       }
 
@@ -372,7 +374,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     } while (true);
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
@@ -395,9 +397,9 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       std::string_view key = RocksDBKey::primaryKey(_iterator->key());
 
       builder->clear();
-      builder->add(
-          VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      cb(documentId, builder->slice());
+      builder->add(VPackValue(key));
+      auto data = SliceCoveringData(builder->slice());
+      cb(documentId, data);
 
       --limit;
       if constexpr (reverse) {
@@ -857,7 +859,7 @@ Index::SortCosts RocksDBPrimaryIndex::supportsSortCondition(
 std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   if (node == nullptr) {
     // full range scan

@@ -152,6 +152,7 @@ struct TestReplicatedLog : replicated_log::ReplicatedLog {
   auto becomeLeader(
       ParticipantId const& id, LogTerm term,
       std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&,
-      std::size_t writeConcern) -> std::shared_ptr<replicated_log::LogLeader>;
+      std::size_t writeConcern, bool waitForSync = false)
+      -> std::shared_ptr<replicated_log::LogLeader>;
 };
 }  // namespace arangodb::replication2::test

@@ -26,11 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogContextKeys.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -53,6 +51,39 @@ RestDocumentHandler::RestDocumentHandler(
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
+
+RequestLane RestDocumentHandler::lane() const {
+  if (ServerState::instance()->isDBServer()) {
+    if (_request->requestType() == rest::RequestType::GET) {
+      if (!_request->header(StaticStrings::AqlDocumentCall).empty()) {
+        // DOCUMENT() function call from inside an AQL query. this will only
+        // read data and does not need to wait on other requests. we will
+        // give this somewhat higher priority because finishing this request
+        // can unblock others.
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_DOCUMENT) ==
+                          RequestPriority::MED,
+                      "invalid request lane priority");
+        return RequestLane::CLUSTER_AQL_DOCUMENT;
+      }
+      // fall through for non-DOCUMENT() GET requests
+    } else {
+      // non-GET requests
+      bool isSyncReplication = false;
+      // We do not care for the real value, enough if it is there.
+      std::ignore = _request->value(
+          StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+      if (isSyncReplication) {
+        return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+        // This leads to the high queue, we want replication requests to be
+        // executed with a higher prio than leader requests, even if they
+        // are done from AQL.
+      }
+
+      // fall through for not-GET, non-replication requests
+    }
+  }
+  return RequestLane::CLIENT_SLOW;
+}
 
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
@@ -85,10 +116,10 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   if (isFinalized) {
     // reset the transaction so it releases all locks as early as possible
     _activeTrx.reset();
-
+    TRI_ASSERT(_request != nullptr);
+    TRI_ASSERT(_response != nullptr);
     try {
-      GeneralRequest const* request = _request.get();
-      auto const type = request->requestType();
+      auto const type = _request->requestType();
       auto const result = _response->responseCode();
 
       switch (type) {
@@ -100,7 +131,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
         case rest::RequestType::PATCH:
           break;
         default:
-          events::IllegalDocumentOperation(*request, result);
+          events::IllegalDocumentOperation(*_request, result);
           break;
       }
     } catch (...) {
@@ -180,6 +211,7 @@ RestStatus RestDocumentHandler::insertDocument() {
       }
     }
   }
+
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false) &&
       opOptions.isOverwriteModeUpdateReplace();

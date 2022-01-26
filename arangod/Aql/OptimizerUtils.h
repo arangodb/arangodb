@@ -56,7 +56,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
-    std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted);
+    std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
+    bool& isAllCoveredByIndex);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the caller must have read-locked the underlying collection when

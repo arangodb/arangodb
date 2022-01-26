@@ -1205,7 +1205,7 @@ futures::Future<OperationResult> Collections::revisionId(
 
     iterator->allDocuments(
         [&](LocalDocumentId const&, VPackSlice doc) {
-          cb(doc.resolveExternal());
+          cb(doc);
           return true;
         },
         1000);
