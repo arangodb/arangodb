@@ -7,6 +7,7 @@ import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
 import AddCollectionNameToNodesSelector from './AddCollectionNameToNodesSelector';
 import AddCollectionNameToEdgesSelector from './AddCollectionNameToEdgesSelector';
+import LayoutSelector from './LayoutSelector.js';
 import styles from './graphview.module.css';
 import menustyles from './graphview.menu.css';
 import {
@@ -127,6 +128,7 @@ export class GraphView extends React.Component {
           {
             type: 'tooltip', // Tooltip
             formatText(model) {
+              console.log("model: ", model);
               // The content of tooltip
               const text = 'label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
               return text;
@@ -372,11 +374,16 @@ export class GraphView extends React.Component {
     this.graph.render();
   }
 
-  /*
-  <button onClick={() => this.removeNode('frenchCity/Lyon')}>Remove node "frenchCity/Paris"</button>
-  */
+  changeLayout = (value) => {
+    this.graph.updateLayout({
+      type: value,
+    });
+  }
+  
   render() {
     return <>
+      <LayoutSelector value={this.type} onChange={this.changeLayout} />
+      <button onClick={this.changeLayout}>Change layout</button>
       <button onClick={this.updateNodeModel}>Update "frenchCity/Paris"</button>
       <button onClick={this.addCollectionNameToNodes}>Add collection name (nodes)</button>
       <button onClick={this.getNodes}>Get nodes (new)</button>

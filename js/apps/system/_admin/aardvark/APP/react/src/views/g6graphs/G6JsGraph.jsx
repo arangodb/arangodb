@@ -21,6 +21,11 @@ const G6JsGraph = () => {
   let [graphData, setGraphData] = useState(data);
   const ref = React.useRef(null);
   let graph = null;
+  const [type, setLayout] = React.useState('graphin-force');
+  const handleChange = value => {
+    console.log('handleChange (value): ', value);
+    //setLayout(value);
+  };
 
   // fetching data # start
   const fetchData = useCallback(() => {
@@ -361,12 +366,12 @@ const G6JsGraph = () => {
         <button onClick={() => addEdge()}>Add edge</button>
         <button onClick={() => returnGraph()}>What is graph?</button>
   */
-
+ 
   return (
     <div>
       <button onClick={() => changeGraphData()}>Change graph data (parent)</button>
       <button onClick={() => printGraphData()}>Print graphData</button>
-        <GraphView
+      <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
             onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
@@ -374,7 +379,7 @@ const G6JsGraph = () => {
             onAddSingleEdge={(newEdge) => updateGraphDataWithEdge(newEdge)}
             onRemoveSingleNode={(node) => removeNode(node)}
             onRemoveSingleEdge={(edge) => removeEdge(edge)}
-        />
+      />     
     </div>
   );
 }
