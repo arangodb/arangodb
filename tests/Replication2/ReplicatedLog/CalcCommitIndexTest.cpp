@@ -652,6 +652,9 @@ TEST_F(CalcCommitIndexTest, write_concern_too_big) {
                             .failed = false},
       ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(25),
                             .id = "B",
+                            .flags = {.excluded = false}},
+      ParticipantStateTuple{.lastAckedEntry = createDefaultTermIndexPair(15),
+                            .id = "C",
                             .flags = {.excluded = false}}};
 
   auto expectedLogIndex = LogIndex{1};
@@ -659,8 +662,7 @@ TEST_F(CalcCommitIndexTest, write_concern_too_big) {
       participants, CalculateCommitIndexOptions{100, 100}, LogIndex{1},
       createDefaultTermIndexPair(50));
 
-  EXPECT_TRUE(reason == CommitDetails::withQuorumSizeNotReached("A") ||
-              reason == CommitDetails::withQuorumSizeNotReached("B"));
+  EXPECT_TRUE(reason == CommitDetails::withQuorumSizeNotReached("C"));
   EXPECT_EQ(index, expectedLogIndex);
 }
 
