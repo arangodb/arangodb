@@ -538,6 +538,7 @@ auto algorithms::calculateCommitIndex(
     // anything, even if all participants are eligible.
     TRI_ASSERT(!indexes.empty());
     auto quorum = std::vector<ParticipantId>{};
+    quorum.reserve(eligible.size());
     std::transform(std::begin(eligible), std::end(eligible),
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
     auto const& who = std::min_element(
@@ -545,7 +546,7 @@ auto algorithms::calculateCommitIndex(
           return left.lastAckedEntry.index < right.lastAckedEntry.index;
         });
     return {currentCommitIndex,
-            CommitDetails::withQuorumSizeNotReached(who->id), quorum};
+            CommitDetails::withQuorumSizeNotReached(who->id), std::move(quorum)};
   }
 
   auto const spearhead = lastTermIndex.index;
@@ -593,13 +594,14 @@ auto algorithms::calculateCommitIndex(
         std::min(minForcedCommitIndex, minNonExcludedCommitIndex);
 
     auto quorum = std::vector<ParticipantId>{};
+    quorum.reserve(actualWriteConcern);
     std::transform(std::begin(eligible), std::next(nth),
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
 
     if (spearhead == commitIndex) {
       // The quorum has been reached and any uncommitted entries can now be
       // committed.
-      return {commitIndex, CommitDetails::withSuccessfulQuorum(), quorum};
+      return {commitIndex, CommitDetails::withSuccessfulQuorum(), std::move(quorum)};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
       // The forced participant didn't make the quorum because its index
       // is too low. Return its index, but report that it is dragging down the
@@ -614,7 +616,7 @@ auto algorithms::calculateCommitIndex(
       // id is the furthest away from the spearhead.
       auto const& who = nth->id;
       return {commitIndex, CommitDetails::withQuorumSizeNotReached(who),
-              quorum};
+              std::move(quorum)};
     }
   }
 
