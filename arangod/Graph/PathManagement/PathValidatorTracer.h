@@ -48,8 +48,6 @@ class PathValidatorTracer {
   using Provider = typename PathValidatorImplementation::ProviderImpl;
   using Step = typename Provider::Step;
   using PathStore = typename PathValidatorImplementation::PathStoreImpl;
-  using VertexUniquenessImpl = VertexUniquenessLevel;
-  using EdgeUniquenessImpl = EdgeUniquenessLevel;
 
   PathValidatorTracer(Provider& provider, PathStore& store,
                       PathValidatorOptions opts);

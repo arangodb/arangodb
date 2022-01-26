@@ -62,8 +62,6 @@ class PathValidator {
  public:
   using ProviderImpl = Provider;
   using PathStoreImpl = PathStore;
-  using VertexUniquenessImpl = VertexUniquenessLevel;
-  using EdgeUniquenessImpl = EdgeUniquenessLevel;
 
   PathValidator(Provider& provider, PathStore& store,
                 PathValidatorOptions opts);
