@@ -1,0 +1,631 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>tcp_stream</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__condition.html" title="condition">
+<link rel="next" href="boost__beast__string_view.html" title="string_view">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__condition.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__string_view.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__tcp_stream"></a><a class="link" href="boost__beast__tcp_stream.html" title="tcp_stream">tcp_stream</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm67018"></a>
+      </p>
+<p>
+        A TCP/IP stream socket with timeouts and a polymorphic executor.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.synopsis"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/tcp_stream.hpp" target="_top">boost/beast/core/tcp_stream.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">tcp_stream</span> <span class="special">=</span> <span class="identifier">basic_stream</span><span class="special">&lt;</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">,</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">any_io_executor</span><span class="special">,</span> <span class="identifier">unlimited_rate_policy</span> <span class="special">&gt;;</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.types"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/endpoint_type.html" title="basic_stream::endpoint_type">endpoint_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The endpoint type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/executor_type.html" title="basic_stream::executor_type">executor_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the executor associated with the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/protocol_type.html" title="basic_stream::protocol_type">protocol_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The protocol type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream__rebind_executor.html" title="basic_stream::rebind_executor">rebind_executor</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Rebinds the stream type to another executor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/socket_type.html" title="basic_stream::socket_type">socket_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the underlying socket.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.member_functions"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/async_connect.html" title="basic_stream::async_connect">async_connect</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Connect the stream to the specified endpoint asynchronously. <br>
+                  <span class="silver">—</span><br> Establishes a connection
+                  by trying each endpoint in a sequence asynchronously.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/async_read_some.html" title="basic_stream::async_read_some">async_read_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read some data asynchronously.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/async_write_some.html" title="basic_stream::async_write_some">async_write_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write some data asynchronously.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/basic_stream.html" title="basic_stream::basic_stream">basic_stream</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructor. <br> <span class="silver">—</span><br> Move
+                  constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/cancel.html" title="basic_stream::cancel">cancel</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Cancel all asynchronous operations associated with the socket.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/close.html" title="basic_stream::close">close</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Close the timed stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/connect.html" title="basic_stream::connect">connect</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Connect the stream to the specified endpoint. <br> <span class="silver">—</span><br>
+                  Establishes a connection by trying each endpoint in a sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/expires_after.html" title="basic_stream::expires_after">expires_after</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the timeout for the next logical operation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/expires_at.html" title="basic_stream::expires_at">expires_at</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the timeout for the next logical operation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/expires_never.html" title="basic_stream::expires_never">expires_never</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Disable the timeout for the next logical operation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/get_executor.html" title="basic_stream::get_executor">get_executor</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/operator_eq_.html" title="basic_stream::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment (deleted).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/rate_policy.html" title="basic_stream::rate_policy">rate_policy</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the rate policy associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/read_some.html" title="basic_stream::read_some">read_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read some data.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/release_socket.html" title="basic_stream::release_socket">release_socket</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Release ownership of the underlying socket.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/socket.html" title="basic_stream::socket">socket</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reference to the underlying socket.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/write_some.html" title="basic_stream::write_some">write_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write some data.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__basic_stream/_dtor_basic_stream.html" title="basic_stream::~basic_stream">~basic_stream</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        This stream wraps a <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">basic_stream_socket</span></code> to provide the following
+        features:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            An <span class="emphasis"><em>Executor</em></span> may be associated with the stream, which
+            will be used to invoke any completion handlers which do not already have
+            an associated executor. This achieves support for <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1322r0.html" target="_top">[P1322R0]
+            Networking TS enhancement to enable custom I/O executors</a>.
+          </li>
+<li class="listitem">
+            Timeouts may be specified for each logical asynchronous operation performing
+            any reading, writing, or connecting.
+          </li>
+<li class="listitem">
+            A <span class="emphasis"><em>RatePolicy</em></span> may be associated with the stream,
+            to implement rate limiting through the policy's interface.
+          </li>
+</ul></div>
+<p>
+        Although the stream supports multiple concurrent outstanding asynchronous
+        operations, the stream object is not thread-safe. The caller is responsible
+        for ensuring that the stream is accessed from only one thread at a time.
+        This includes the times when the stream, and its underlying socket, are accessed
+        by the networking implementation. To meet this thread safety requirement,
+        all asynchronous operations must be performed by the stream within the same
+        implicit strand (only one thread <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span><span class="special">::</span><span class="identifier">run</span></code>)
+        or within the same explicit strand, such as an instance of <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">strand</span></code>.
+        Completion handlers with explicit associated executors (such as those arising
+        from use of <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">bind_executor</span></code>) will be invoked by the stream
+        using the associated executor. Otherwise, the completion handler will be
+        invoked by the executor associated with the stream upon construction. The
+        type of executor used with this stream must meet the following requirements:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            Function objects submitted to the executor shall never run concurrently
+            with each other.
+          </li></ul></div>
+<p>
+        The executor type <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">strand</span></code> meets these requirements. Use of
+        a strand as the executor in the stream class template offers an additional
+        notational convenience: the strand does not need to be specified in each
+        individual initiating function call. Unlike other stream wrappers, the underlying
+        socket is accessed through the <a class="link" href="boost__beast__basic_stream/socket.html" title="basic_stream::socket"><code class="computeroutput"><span class="identifier">socket</span></code></a> member function instead of
+        <code class="computeroutput"><span class="identifier">next_layer</span></code>. This causes the
+        <a class="link" href="boost__beast__basic_stream.html" title="basic_stream"><code class="computeroutput"><span class="identifier">basic_stream</span></code></a>
+        to be returned in calls to <a class="link" href="boost__beast__get_lowest_layer.html" title="get_lowest_layer"><code class="computeroutput"><span class="identifier">get_lowest_layer</span></code></a>.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.usage"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.usage">Usage</a>
+      </h5>
+<p>
+        To use this stream declare an instance of the class. Then, before each logical
+        operation for which a timeout is desired, call <a class="link" href="boost__beast__basic_stream/expires_after.html" title="basic_stream::expires_after"><code class="computeroutput"><span class="identifier">expires_after</span></code></a> with a duration, or
+        call <a class="link" href="boost__beast__basic_stream/expires_at.html" title="basic_stream::expires_at"><code class="computeroutput"><span class="identifier">expires_at</span></code></a> with a time point. Alternatively,
+        call <a class="link" href="boost__beast__basic_stream/expires_never.html" title="basic_stream::expires_never"><code class="computeroutput"><span class="identifier">expires_never</span></code></a> to disable the timeout
+        for subsequent logical operations. A logical operation is any series of one
+        or more direct or indirect calls to the timeout stream's asynchronous read,
+        asynchronous write, or asynchronous connect functions. When a timeout is
+        set and a mixed operation is performed (one that includes both reads and
+        writes, for example) the timeout applies to all of the intermediate asynchronous
+        operations used in the enclosing operation. This allows timeouts to be applied
+        to stream algorithms which were not written specifically to allow for timeouts,
+        when those algorithms are passed a timeout stream with a timeout set. When
+        a timeout occurs the socket will be closed, canceling any pending I/O operations.
+        The completion handlers for these canceled operations will be invoked with
+        the error <a class="link" href="boost__beast__error.html" title="error"><code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">timeout</span></code></a>.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.examples"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.examples">Examples</a>
+      </h5>
+<p>
+        This function reads an HTTP request with a timeout, then sends the HTTP response
+        with a different timeout.
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">process_http_1</span> <span class="special">(</span><span class="identifier">tcp_stream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">yield_context</span> <span class="identifier">yield</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">request</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">;</span>
+
+    <span class="comment">// Read the request, with a 15 second timeout</span>
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">expires_after</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">15</span><span class="special">));</span>
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">async_read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">);</span>
+
+    <span class="comment">// Calculate the response</span>
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">res</span> <span class="special">=</span> <span class="identifier">make_response</span><span class="special">(</span><span class="identifier">req</span><span class="special">);</span>
+
+    <span class="comment">// Send the response, with a 30 second timeout.</span>
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">expires_after</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">30</span><span class="special">));</span>
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">async_write</span> <span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">res</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The example above could be expressed using a single timeout with a simple
+        modification. The function that follows first reads an HTTP request then
+        sends the HTTP response, with a single timeout that applies to the entire
+        combined operation of reading and writing:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">process_http_2</span> <span class="special">(</span><span class="identifier">tcp_stream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">yield_context</span> <span class="identifier">yield</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">request</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">;</span>
+
+    <span class="comment">// Require that the read and write combined take no longer than 30 seconds</span>
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">expires_after</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">30</span><span class="special">));</span>
+
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">async_read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">);</span>
+
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">res</span> <span class="special">=</span> <span class="identifier">make_response</span><span class="special">(</span><span class="identifier">req</span><span class="special">);</span>
+    <span class="identifier">http</span><span class="special">::</span><span class="identifier">async_write</span> <span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">res</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Some stream algorithms, such as <code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">async_handshake</span></code>
+        perform both reads and writes. A timeout set before calling the initiating
+        function of such composite stream algorithms will apply to the entire composite
+        operation. For example, a timeout may be set on performing the SSL handshake
+        thusly:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">do_ssl_handshake</span> <span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp_stream</span><span class="special">&gt;&amp;</span> <span class="identifier">stream</span><span class="special">,</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">yield_context</span> <span class="identifier">yield</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Require that the SSL handshake take no longer than 10 seconds</span>
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">expires_after</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">(</span><span class="number">10</span><span class="special">));</span>
+
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">async_handshake</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream_base</span><span class="special">::</span><span class="identifier">client</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h5"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.blocking_i_o"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.blocking_i_o">Blocking
+        I/O</a>
+      </h5>
+<p>
+        Synchronous functions behave identically as that of the wrapped <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">basic_stream_socket</span></code>.
+        Timeouts are not available when performing blocking calls.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h6"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.template_parameters"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.template_parameters">Template
+        Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Protocol</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A type meeting the requirements of <span class="emphasis"><em>Protocol</em></span>
+                  representing the protocol the protocol to use for the basic stream
+                  socket. A common choice is <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Executor</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A type meeting the requirements of <span class="emphasis"><em>Executor</em></span>
+                  to be used for submitting all completion handlers which do not
+                  already have an associated executor. If this type is omitted, the
+                  default of <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">any_io_executor</span></code>
+                  will be used.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h7"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.thread_safety"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Distinct objects</em></span>: Safe.
+      </p>
+<p>
+        <span class="emphasis"><em>Shared objects</em></span>: Unsafe. The application must also ensure
+        that all asynchronous operations are performed within the same implicit or
+        explicit strand.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h8"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.see_also"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.see_also">See
+        Also</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1322r0.html" target="_top">[P1322R0]
+            Networking TS enhancement to enable custom I/O executors</a>.
+          </li></ul></div>
+<p>
+        This rate policy object does not apply any rate limit.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <span class="emphasis"><em>RatePolicy</em></span>
+          </li></ul></div>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h9"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.see_also0"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.see_also0">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__beast__basic_stream.html" title="basic_stream"><code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">basic_stream</span></code></a>,
+        <a class="link" href="boost__beast__tcp_stream.html" title="tcp_stream"><code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">tcp_stream</span></code></a>
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h10"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.description"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.description">Description</a>
+      </h5>
+<h5>
+<a name="beast.ref.boost__beast__tcp_stream.h11"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__tcp_stream.see_also1"></a></span><a class="link" href="boost__beast__tcp_stream.html#beast.ref.boost__beast__tcp_stream.see_also1">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__beast__basic_stream.html" title="basic_stream"><code class="computeroutput"><span class="identifier">basic_stream</span></code></a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__condition.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__string_view.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

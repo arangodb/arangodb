@@ -67,7 +67,7 @@ bool isScorer(aql::Function const& func) noexcept;
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
-  static std::string const& name();
+  static constexpr std::string_view name() noexcept { return "ArangoSearch"; }
 
   explicit IResearchFeature(application_features::ApplicationServer& server);
 

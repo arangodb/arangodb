@@ -24,6 +24,7 @@
 #include "PathValidator.h"
 #include "Aql/AstNode.h"
 #include "Aql/PruneExpressionEvaluator.h"
+#include "Basics/ScopeGuard.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -301,13 +302,15 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     auto& evaluator = _options.getPostFilterEvaluator();
 
     if (evaluator->needsVertex()) {
-      if (vertexBuilder.isEmpty()) { // already added a vertex in case _options.usesPrune() == true
+      if (vertexBuilder.isEmpty()) {  // already added a vertex in case
+                                      // _options.usesPrune() == true
         _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
       }
       evaluator->injectVertex(vertexBuilder.slice());
     }
     if (evaluator->needsEdge()) {
-      if(edgeBuilder.isEmpty()){  // already added an edge in case _options.usesPrune() == true
+      if (edgeBuilder.isEmpty()) {  // already added an edge in case
+                                    // _options.usesPrune() == true
         _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
       }
       evaluator->injectEdge(edgeBuilder.slice());
@@ -338,8 +341,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   auto tmpVar = _options.getTempVar();
   bool mustDestroy = false;
   auto ctx = _options.getExpressionContext();
-  aql::AqlValue tmpVal{value};
-  ctx.setVariableValue(tmpVar, tmpVal);
+  ctx.setVariableValue(tmpVar,
+                       aql::AqlValue{aql::AqlValueHintSliceNoCopy{value}});
+  ScopeGuard defer([&]() noexcept { ctx.clearVariableValue(tmpVar); });
   aql::AqlValue res = expression->execute(&ctx, mustDestroy);
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());

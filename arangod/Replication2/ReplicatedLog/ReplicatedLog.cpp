@@ -69,7 +69,8 @@ replicated_log::ReplicatedLog::~ReplicatedLog() {
 
 auto replicated_log::ReplicatedLog::becomeLeader(
     LogConfig config, ParticipantId id, LogTerm newTerm,
-    std::vector<std::shared_ptr<AbstractFollower>> const& follower)
+    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+    std::shared_ptr<ParticipantsConfig const> participantsConfig)
     -> std::shared_ptr<LogLeader> {
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
@@ -84,9 +85,9 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     auto [logCore, deferred] = std::move(*_participant).resign();
     LOG_CTX("23d7b", DEBUG, _logContext)
         << "becoming leader in term " << newTerm;
-    auto leader = LogLeader::construct(config, std::move(logCore), follower,
-                                       std::move(id), newTerm, _logContext,
-                                       _metrics, _options);
+    auto leader = LogLeader::construct(
+        config, std::move(logCore), follower, participantsConfig, std::move(id),
+        newTerm, _logContext, _metrics, _options);
     _participant = std::static_pointer_cast<ILogParticipant>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
     return std::make_pair(std::move(leader), std::move(deferred));
