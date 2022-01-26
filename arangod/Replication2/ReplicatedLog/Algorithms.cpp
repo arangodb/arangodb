@@ -29,6 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
+#include <algorithm>
 #include <type_traits>
 #include <random>
 #include <tuple>
@@ -539,7 +540,10 @@ auto algorithms::calculateCommitIndex(
     auto quorum = std::vector<ParticipantId>{};
     std::transform(std::begin(eligible), std::end(eligible),
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
-    auto const& who = std::min(std::begin(eligible), std::end(eligible));
+    auto const& who = std::min_element(
+        std::begin(eligible), std::end(eligible), [](auto& left, auto& right) {
+          return left.lastAckedEntry.index < right.lastAckedEntry.index;
+        });
     return {currentCommitIndex,
             CommitDetails::withQuorumSizeNotReached(who->id), quorum};
   }
