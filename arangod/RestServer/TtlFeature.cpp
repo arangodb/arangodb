@@ -154,11 +154,12 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-class TtlThread final : public Thread {
+class TtlThread final : public ServerThread<ArangodServer> {
  public:
-  explicit TtlThread(ArangodServer& server,
-                     TtlFeature& ttlFeature)
-      : Thread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
+  explicit TtlThread(ArangodServer& server, TtlFeature& ttlFeature)
+      : ServerThread<ArangodServer>(server, "TTL"),
+        _ttlFeature(ttlFeature),
+        _working(false) {}
 
   ~TtlThread() { shutdown(); }
 
@@ -263,7 +264,7 @@ class TtlThread final : public Thread {
     uint64_t limitLeft = properties.maxTotalRemoves;
 
     // iterate over all databases
-    auto& db = _server.getFeature<DatabaseFeature>();
+    auto& db = server().getFeature<DatabaseFeature>();
     for (auto const& name : db.getDatabaseNames()) {
       if (!isActive()) {
         // feature deactivated (for example, due to running on current follower

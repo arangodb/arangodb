@@ -73,7 +73,7 @@ void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&
-         _actualEngine->name() == RocksDBEngine::FeatureName;
+         _actualEngine->name() == RocksDBEngine::name();
 }
 
 bool ClusterEngine::isMock() const {

@@ -24,7 +24,6 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/NumberOfCores.h"
@@ -40,6 +39,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/Builder.h"
 #include "Metrics/CounterBuilder.h"
@@ -539,10 +539,10 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public Thread {
+class StatisticsThread final : public ServerThread<ArangodServer> {
  public:
-  explicit StatisticsThread(ApplicationServer& server)
-      : Thread(server, "Statistics") {}
+  explicit StatisticsThread(Server& server)
+      : ServerThread<ArangodServer>(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:

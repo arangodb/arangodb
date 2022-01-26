@@ -135,6 +135,8 @@
 // storage engines
 #include "ClusterEngine/ClusterEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 
 #ifdef _WIN32
 #include <iostream>
@@ -173,41 +175,41 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     int ret = EXIT_FAILURE;
 
-    ArangodServer::Features::visit([&]<typename T>(TypeTag<T>) {
-      if constexpr (std::is_same_v<T, GreetingsFeaturePhase>) {
-        server.addFeature<T>(false);
-      } else if (std::is_same_v<T, CheckVersionFeature>) {
-        server.addFeature<T>(&ret, nonServerFeatures);
-      } else if (std::is_same_v<T, ConfigFeature>) {
-        server.addFeature<T>(&ret, name);
-      } else if (std::is_same_v<T, EndpointFeature>) {
-        server.addFeature<EndpointFeature, HttpEndpointProvider>();
-      } else if (std::is_same_v<T, InitDatabaseFeature>) {
-        server.addFeature<T>(nonServerFeatures);
-      } else if (std::is_same_v<T, LoggerFeature>) {
-        server.addFeature<T>(true);
-      } else if (std::is_same_v<T, ScriptFeature>) {
-        server.addFeature<T>(&ret);
-      } else if (std::is_same_v<T, ServerFeature>) {
-        server.addFeature<T>(&ret);
-      } else if (std::is_same_v<T, ShutdownFeature>) {
-        server.addFeature<T>(
-            std::vector<size_t>{ArangodServer::id<ScriptFeature>()});
-      } else if (std::is_same_v<T, TempFeature>) {
-        server.addFeature<T>(name);
-      } else if (std::is_same_v<T, UpgradeFeature>) {
-        server.addFeature<T>(&ret, nonServerFeatures);
-      } else {
-        server.addFeature<T>();
-      }
+    // ArangodServer::Features::visit([&]<typename T>(TypeTag<T>) {
+    //   if constexpr (std::is_same_v<T, GreetingsFeaturePhase>) {
+    //     server.addFeature<T>(false);
+    //   } else if (std::is_same_v<T, CheckVersionFeature>) {
+    //     server.addFeature<T>(&ret, nonServerFeatures);
+    //   } else if (std::is_same_v<T, ConfigFeature>) {
+    //     server.addFeature<T>(&ret, name);
+    //   } else if (std::is_same_v<T, EndpointFeature>) {
+    //     server.addFeature<EndpointFeature, HttpEndpointProvider>();
+    //   } else if (std::is_same_v<T, InitDatabaseFeature>) {
+    //     server.addFeature<T>(nonServerFeatures);
+    //   } else if (std::is_same_v<T, LoggerFeature>) {
+    //     server.addFeature<T>(true);
+    //   } else if (std::is_same_v<T, ScriptFeature>) {
+    //     server.addFeature<T>(&ret);
+    //   } else if (std::is_same_v<T, ServerFeature>) {
+    //     server.addFeature<T>(&ret);
+    //   } else if (std::is_same_v<T, ShutdownFeature>) {
+    //     server.addFeature<T>(
+    //         std::vector<size_t>{ArangodServer::id<ScriptFeature>()});
+    //   } else if (std::is_same_v<T, TempFeature>) {
+    //     server.addFeature<T>(name);
+    //   } else if (std::is_same_v<T, UpgradeFeature>) {
+    //     server.addFeature<T>(&ret, nonServerFeatures);
+    //   } else {
+    //     server.addFeature<T>();
+    //   }
 
-      // FIXME(gnusi) handle
-      // class AuditFeature;
-      // class LdapFeature;
-      // class LicenseFeature;
-      // class RCloneFeature;
-      // class HotBackupFeature;
-    });
+    //  // FIXME(gnusi) handle
+    //  // class AuditFeature;
+    //  // class LdapFeature;
+    //  // class LicenseFeature;
+    //  // class RCloneFeature;
+    //  // class HotBackupFeature;
+    //});
 
     try {
       server.run(argc, argv);
