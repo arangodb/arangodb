@@ -119,11 +119,12 @@ void logQueueFullEveryNowAndThen(int64_t fifo, uint64_t maxQueueSize) {
 
 namespace arangodb {
 
-class SupervisedSchedulerThread : virtual public Thread {
+class SupervisedSchedulerThread : public Thread {
  public:
   explicit SupervisedSchedulerThread(ArangodServer& server,
-                                     SupervisedScheduler& scheduler)
-      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
+                                     SupervisedScheduler& scheduler,
+                                     std::string const& name = "Scheduler")
+      : Thread(server, name), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SupervisedSchedulerThread() = default;
@@ -137,8 +138,7 @@ class SupervisedSchedulerManagerThread final
  public:
   explicit SupervisedSchedulerManagerThread(ArangodServer& server,
                                             SupervisedScheduler& scheduler)
-      : Thread(server, "SchedMan"),
-        SupervisedSchedulerThread(server, scheduler) {}
+      : SupervisedSchedulerThread(server, scheduler, "SchedMan") {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
   void run() override { _scheduler.runSupervisor(); }
 };
@@ -147,8 +147,7 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
   explicit SupervisedSchedulerWorkerThread(ArangodServer& server,
                                            SupervisedScheduler& scheduler)
-      : Thread(server, "SchedWorker"),
-        SupervisedSchedulerThread(server, scheduler) {}
+      : SupervisedSchedulerThread(server, scheduler, "SchedWorker") {}
   ~SupervisedSchedulerWorkerThread() { shutdown(); }
   void run() override { _scheduler.runWorker(); }
 };

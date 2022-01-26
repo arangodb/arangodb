@@ -48,12 +48,11 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-// FIXME(gnusi) why virtual public???
-class SchedulerThread : virtual public ServerThread<ArangodServer> {
+class SchedulerThread : public ServerThread<ArangodServer> {
  public:
-  explicit SchedulerThread(Server& server, Scheduler& scheduler)
-      : ServerThread<ArangodServer>(server, "Scheduler"),
-        _scheduler(scheduler) {}
+  explicit SchedulerThread(Server& server, Scheduler& scheduler,
+                           std::string const& name = "Scheduler")
+      : ServerThread<ArangodServer>(server, name), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SchedulerThread() = default;
@@ -65,8 +64,7 @@ class SchedulerThread : virtual public ServerThread<ArangodServer> {
 class SchedulerCronThread : public SchedulerThread {
  public:
   explicit SchedulerCronThread(ArangodServer& server, Scheduler& scheduler)
-      : ServerThread<ArangodServer>(server, "SchedCron"),
-        SchedulerThread(server, scheduler) {}
+      : SchedulerThread(server, scheduler, "SchedCron") {}
 
   ~SchedulerCronThread() { shutdown(); }
 
