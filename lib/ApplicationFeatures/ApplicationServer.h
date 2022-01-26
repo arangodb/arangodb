@@ -215,7 +215,7 @@ class ApplicationServer {
 
   ApplicationFeature& getFeature(size_t type) const {
     if (ADB_LIKELY(hasFeature(type))) {
-      return getFeatureUnsafe(type);
+      return *_features[type];
     }
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -224,20 +224,6 @@ class ApplicationServer {
 
   void disableFeatures(std::vector<size_t> const&);
   void forceDisableFeatures(std::vector<size_t> const&);
-
- protected:
-  ApplicationFeature& getFeatureUnsafe(size_t type) const noexcept {
-    TRI_ASSERT(hasFeature(type));
-    return *_features[type];
-  }
-
-  void addFeature(size_t type,
-                  std::unique_ptr<ApplicationFeature> feature) noexcept {
-    TRI_ASSERT(feature);
-    TRI_ASSERT(_features.size() < type);
-    TRI_ASSERT(!hasFeature(type));
-    _features[type] = std::move(feature);
-  }
 
  private:
   void disableFeatures(std::vector<size_t> const& types, bool force);
@@ -369,23 +355,15 @@ class ApplicationServerT : public ApplicationServer {
   // will take ownership of the feature object and destroy it in its
   // destructor
   template<typename Type, typename Impl = Type, typename... Args>
-  Impl& addFeature(Args&&... args) {
+  void addFeature(Args&&... args) {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
     static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
     static_assert(std::is_base_of_v<Type, Impl>);
     constexpr auto featureId = Features::template id<Type>();
 
     TRI_ASSERT(!hasFeature<Type>());
-    auto feature = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
-    auto* ptr = feature.get();
-    ApplicationServer::addFeature(featureId, std::move(feature));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto impl = dynamic_cast<Impl*>(ptr);
-    TRI_ASSERT(impl);
-    return *impl;
-#else
-    return *static_cast<As*>(typePtr);
-#endif
+    _features[featureId] =
+        std::make_unique<Impl>(*this, std::forward<Args>(args)...);
   }
 
   // checks for the existence of a feature. will not throw when used for
@@ -395,7 +373,7 @@ class ApplicationServerT : public ApplicationServer {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
 
     constexpr auto featureId = Features::template id<Type>();
-    return ApplicationServer::hasFeature(featureId);
+    return nullptr != _features[featureId];
   }
 
   // returns a const reference to a feature. will throw when used for
@@ -405,9 +383,10 @@ class ApplicationServerT : public ApplicationServer {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
     static_assert(std::is_base_of_v<Type, Impl> ||
                   std::is_base_of_v<Impl, Type>);
-
     constexpr auto featureId = Features::template id<Type>();
-    auto& feature = ApplicationServer::getFeatureUnsafe(featureId);
+
+    TRI_ASSERT(hasFeature<Type>());
+    auto& feature = *_features[featureId];
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto obj = dynamic_cast<Impl*>(&feature);
     TRI_ASSERT(obj != nullptr);
