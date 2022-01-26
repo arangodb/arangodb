@@ -307,21 +307,6 @@ TRI_v8_global_t::SharedPtrPersistent::emplace(
 
 TRI_v8_global_t::~TRI_v8_global_t() = default;
 
-/// @brief creates a global context
-/* FIXME(gnusi)
-TRI_v8_global_t* TRI_CreateV8Globals(
-    arangodb::application_features::ApplicationServer& server,
-    v8::Isolate* isolate, size_t id) {
-  TRI_GET_GLOBALS();
-
-  TRI_ASSERT(v8g == nullptr);
-  v8g = new TRI_v8_global_t(server, isolate, id);
-  isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
-
-  return v8g;
-}
-*/
-
 /// @brief returns a global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
