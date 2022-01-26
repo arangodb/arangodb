@@ -351,6 +351,12 @@ struct ReplicatedLogGlobalSettings {
 };
 
 namespace replicated_log {
+/*
+ * Indicates why the commit index is not increasing as expected.
+ * Even though some pending entries might have been committed, unless all
+ * pending entries are committed, we say the commit index is behind. This object
+ * gives an indication of why might that be.
+ */
 struct CommitFailReason {
   CommitFailReason() = default;
 
