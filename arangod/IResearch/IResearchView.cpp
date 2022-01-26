@@ -51,10 +51,6 @@
 
 namespace arangodb::iresearch {
 namespace {
-using namespace arangodb;
-using namespace arangodb::iresearch;
-
-using kludge::read_write_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple irs::index_reader
@@ -202,6 +198,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
+      // only we have access to *impl, so don't need lock
       std::unordered_set<DataSourceId> collections;  // TODO remove
       res = IResearchLinkHelper::updateLinks(collections, *impl, links,
                                              getDefaultVersion(isUserRequest));
@@ -363,8 +360,7 @@ Result IResearchView::appendVelocyPackImpl(velocypack::Builder& builder,
   }
   std::vector<std::string> collections;
   {
-    read_write_mutex::read_mutex mutex{_mutex};
-    std::lock_guard lock{mutex};
+    std::shared_lock lock{_mutex};
     velocypack::Builder sanitizedBuilder;
     sanitizedBuilder.openObject();
     IResearchViewMeta::Mask mask{true};
@@ -497,8 +493,7 @@ Result IResearchView::dropImpl() {
 
   // drop all known links
   {
-    read_write_mutex::read_mutex mutex{_mutex};
-    std::lock_guard lock{mutex};
+    std::shared_lock lock{_mutex};
     for (auto& entry : _links) {
       stale.emplace(entry.first);
     }
@@ -520,6 +515,7 @@ Result IResearchView::dropImpl() {
 
     Result res;
     {
+      // TODO Why try lock?
       std::unique_lock lock{_updateLinksLock, std::try_to_lock};
       if (!lock.owns_lock()) {
         return {TRI_ERROR_FAILED,  // FIXME use specific error code
@@ -540,8 +536,7 @@ Result IResearchView::dropImpl() {
   _asyncSelf->reset();
   // the view data-stores are being deallocated, view use is no longer valid
   // (wait for all the view users to finish)
-  read_write_mutex::write_mutex mutex{_mutex};
-  std::lock_guard lock{mutex};
+  std::lock_guard lock{_mutex};  // TODO Why exclusive lock?
   for (auto& entry : _links) {
     collections.emplace(entry.first);
   }
@@ -585,8 +580,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
                 name() + "'"};
   }
   auto const cid = linkLock->collection().id();
-  read_write_mutex::write_mutex mutex{_mutex};
-  std::lock_guard lock{mutex};
+  std::lock_guard lock{_mutex};
   auto it = _links.find(cid);
   if (it == _links.end()) {
     bool inserted = false;
@@ -690,8 +684,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 #else
   auto* ctx = static_cast<ViewTrxState*>(state.cookie(key));
 #endif
-  read_write_mutex::read_mutex mutex{_mutex};
-  std::lock_guard lock{mutex};
+  std::shared_lock lock{_mutex};
   switch (mode) {
       // We want to check ==, but not >= because ctx also is reader
     case SnapshotMode::Find:
@@ -795,8 +788,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
 Result IResearchView::unlink(DataSourceId cid) noexcept {
   try {
-    read_write_mutex::write_mutex mutex{_mutex};
-    std::lock_guard lock{mutex};
+    std::lock_guard lock{_mutex};
     auto it = _links.find(cid);
     if (it == _links.end()) {
       return {};  // already unlinked
@@ -844,11 +836,10 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     if (!res.ok()) {
       return res;
     }
-    read_write_mutex::write_mutex mutex{_mutex};
-    std::unique_lock mtx{mutex};
+    // can be shared, but we can't shared => unique/upgrade
+    boost::upgrade_lock upgradeLock{_mutex};
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (!ExecContext::current().isSuperuser()) {
-      // check existing _links
       for (auto& entry : _links) {
         auto collection = vocbase().lookupCollection(entry.first);
         if (collection &&
@@ -873,11 +864,10 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
                                  : (", error in attribute '" + error + "': ")) +
                   slice.toString()};
     }
+    boost::unique_lock uniqueLock{std::move(upgradeLock)};
     _meta.storePartial(std::move(meta));
-    mutex.unlock(true);  // downgrade to a read-lock
-    // update properties of links
+    boost::shared_lock sharedLock{std::move(uniqueLock)};
     for (auto& entry : _links) {
-      // prevent the link from being deallocated
       auto linkLock = entry.second->lock();
       if (linkLock) {
         IResearchDataStore::properties(std::move(linkLock), _meta);
@@ -901,7 +891,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
         stale.emplace(entry.first);
       }
     }
-    mtx.unlock();
+    sharedLock.unlock();
     std::lock_guard lock{_updateLinksLock};
     return IResearchLinkHelper::updateLinks(
         collections, *this, links, getDefaultVersion(isUserRequest), stale);
@@ -929,8 +919,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
 
 bool IResearchView::visitCollections(
     LogicalView::CollectionVisitor const& visitor) const {
-  read_write_mutex::read_mutex mutex{_mutex};
-  std::lock_guard lock{mutex};
+  std::shared_lock lock{_mutex};
   for (auto& entry : _links) {
     if (!visitor(entry.first)) {
       return false;
@@ -941,8 +930,7 @@ bool IResearchView::visitCollections(
 
 void IResearchView::verifyKnownCollections() {
   bool modified = false;
-  read_write_mutex::write_mutex mutex{_mutex};
-  std::lock_guard lock{mutex};
+  std::lock_guard lock{_mutex};
   for (auto it = _links.begin(), end = _links.end(); it != end;) {
     auto remove = [&] {
       auto it_erase = it++;

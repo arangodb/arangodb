@@ -30,6 +30,8 @@
 #include "Transaction/Status.h"
 #include "VocBase/LogicalView.h"
 
+#include <boost/thread/v2/shared_mutex.hpp>
+
 #include <atomic>
 #include <functional>
 #include <map>
@@ -220,13 +222,12 @@ class IResearchView final : public LogicalView {
 
   AsyncViewPtr _asyncSelf;
   // 'this' for the lifetime of the view (for use with asynchronous calls)
+  // (AsyncLinkPtr may be nullptr on single-server if link did not come up yet)
   using Links = containers::FlatHashMap<DataSourceId, AsyncLinkPtr>;
   Links _links;
-  // (AsyncLinkPtr may be nullptr on single-server if link did not come up yet)
-  IResearchViewMeta _meta;  // the view configuration
-  mutable kludge::read_write_mutex _mutex;
-  // for use with member '_meta', '_links'
-  std::mutex _updateLinksLock;  // prevents simultaneous 'updateLinks'
+  IResearchViewMeta _meta;              // the view configuration
+  mutable boost::upgrade_mutex _mutex;  // for '_meta', '_links'
+  std::mutex _updateLinksLock;          // prevents simultaneous 'updateLinks'
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;  // for snapshot(...)
   std::atomic<bool> _inRecovery;
