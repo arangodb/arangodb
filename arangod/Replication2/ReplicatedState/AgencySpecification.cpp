@@ -36,8 +36,6 @@ using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::agency;
 
 namespace {
-auto const StringMessage = velocypack::StringRef{"message"};
-auto const String_Status = velocypack::StringRef{"status"};
 auto const String_Snapshot = velocypack::StringRef{"snapshot"};
 auto const String_Generation = velocypack::StringRef{"generation"};
 
