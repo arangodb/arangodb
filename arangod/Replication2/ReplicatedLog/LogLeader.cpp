@@ -453,7 +453,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.local = leaderData.getLocalStatistics();
     status.term = term;
     status.largestCommonIndex = leaderData._largestCommonIndex;
-    status.lastCommitDetails = leaderData._lastCommitDetails;
+    status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
     if (auto const config = leaderData.committedParticipantsConfig;
@@ -503,16 +503,16 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
           throw ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
-        auto commitDetails = std::optional<CommitDetails>{};
+        auto commitFailReason = std::optional<CommitFailReason>{};
         if (leaderData.calculateCommitLag() > std::chrono::seconds{20}) {
-          commitDetails = leaderData._lastCommitDetails;
+          commitFailReason = leaderData._lastCommitFailReason;
         }
         return QuickLogStatus{
             .role = ParticipantRole::kLeader,
             .term = term,
             .local = leaderData.getLocalStatistics(),
             .leadershipEstablished = leaderData._leadershipEstablished,
-            .commitDetails = commitDetails,
+            .commitFailReason = commitFailReason,
             .activeParticipantsConfig = leaderData.activeParticipantsConfig,
             .committedParticipantsConfig =
                 leaderData.committedParticipantsConfig};
@@ -916,13 +916,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     _largestCommonIndex = newLargestCommonIndex;
   }
 
-  auto [newCommitIndex, commitDetails, quorum] =
+  auto [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
           indexes,
           algorithms::CalculateCommitIndexOptions{
               _self._config.writeConcern, _self._config.softWriteConcern},
           _commitIndex, _inMemoryLog.getLastTermIndexPair());
-  _lastCommitDetails = commitDetails;
+  _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex

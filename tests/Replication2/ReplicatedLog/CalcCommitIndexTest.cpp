@@ -113,7 +113,7 @@ TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::SuccessfulQuorum>(reason.value));
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   verifyQuorum(participants, quorum, expectedLogIndex);
 }
@@ -140,7 +140,7 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
       createDefaultTermIndexPair(50));
 
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitDetails::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
   EXPECT_EQ(quorum.size(), 2);
@@ -168,7 +168,7 @@ TEST_F(CalcCommitIndexTest, write_concern_0_3_participants) {
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::SuccessfulQuorum>(reason.value));
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -195,7 +195,7 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
       createDefaultTermIndexPair(50));
 
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitDetails::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
   EXPECT_EQ(quorum.size(), 3);
@@ -220,13 +220,14 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::NonEligibleServerRequiredForQuorum>(
-          reason.value));
+      std::holds_alternative<
+          CommitFailReason::NonEligibleServerRequiredForQuorum>(reason.value));
   auto const& details =
-      std::get<CommitDetails::NonEligibleServerRequiredForQuorum>(reason.value);
+      std::get<CommitFailReason::NonEligibleServerRequiredForQuorum>(
+          reason.value);
   EXPECT_EQ(details.candidates.size(), 1);
   EXPECT_EQ(details.candidates.at("A"),
-            CommitDetails::NonEligibleServerRequiredForQuorum::kExcluded);
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -253,7 +254,7 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::ForcedParticipantNotInQuorum>(
+      std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
           reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
@@ -280,10 +281,11 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::NonEligibleServerRequiredForQuorum>(
-          reason.value));
+      std::holds_alternative<
+          CommitFailReason::NonEligibleServerRequiredForQuorum>(reason.value));
   auto const& details =
-      std::get<CommitDetails::NonEligibleServerRequiredForQuorum>(reason.value);
+      std::get<CommitFailReason::NonEligibleServerRequiredForQuorum>(
+          reason.value);
   EXPECT_EQ(details.candidates.size(), 3);
 
   EXPECT_EQ(quorum.size(), 0);
@@ -309,7 +311,7 @@ TEST_F(CalcCommitIndexTest, all_forced) {
       participants, CalculateCommitIndexOptions{3, 3}, LogIndex{1},
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitDetails::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
   EXPECT_EQ(quorum.size(), 3);
@@ -338,7 +340,7 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
       participants, CalculateCommitIndexOptions{2, 3}, LogIndex{1},
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitDetails::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
   EXPECT_EQ(quorum.size(), 3);
@@ -367,7 +369,7 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
       createDefaultTermIndexPair(15));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::SuccessfulQuorum>(reason.value));
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 3);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -392,7 +394,7 @@ TEST_F(CalcCommitIndexTest, failed_participant) {
       participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitDetails::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
   EXPECT_EQ(quorum.size(), 2);
@@ -420,7 +422,7 @@ TEST_F(CalcCommitIndexTest, failed_and_forced) {
       createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::ForcedParticipantNotInQuorum>(
+      std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
           reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
@@ -448,7 +450,7 @@ TEST_F(CalcCommitIndexTest, failed_with_soft_write_concern) {
       participants, CalculateCommitIndexOptions{2, 3}, LogIndex{15},
       createDefaultTermIndexPair(15));
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitDetails::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
   EXPECT_EQ(quorum.size(), 3);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -475,7 +477,7 @@ TEST_F(CalcCommitIndexTest, smallest_failed) {
       participants, CalculateCommitIndexOptions{2, 4}, LogIndex{15},
       createDefaultTermIndexPair(55));
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitDetails::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
   EXPECT_EQ(quorum.size(), 3);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -503,7 +505,7 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
       createDefaultTermIndexPair(15));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::SuccessfulQuorum>(reason.value));
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 3);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -527,7 +529,7 @@ TEST_F(CalcCommitIndexTest, write_concern_0_forced_flag) {
       createDefaultTermIndexPair(55));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::SuccessfulQuorum>(reason.value));
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -562,7 +564,7 @@ TEST_F(CalcCommitIndexTest, DISABLED_more_forced_than_quorum_size) {
       createDefaultTermIndexPair(25));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
-      std::holds_alternative<CommitDetails::SuccessfulQuorum>(reason.value));
+      std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
   EXPECT_EQ(quorum.size(), 4);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -581,7 +583,7 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
       participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
       createDefaultTermIndexPair(50));
 
-  EXPECT_EQ(reason, CommitDetails::withQuorumSizeNotReached("C"));
+  EXPECT_EQ(reason, CommitFailReason::withQuorumSizeNotReached("C"));
 }
 
 TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
@@ -597,9 +599,9 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
       participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
       createDefaultTermIndexPair(50));
 
-  EXPECT_TRUE(reason == CommitDetails::withQuorumSizeNotReached("A") ||
-              reason == CommitDetails::withQuorumSizeNotReached("B") ||
-              reason == CommitDetails::withQuorumSizeNotReached("C"));
+  EXPECT_TRUE(reason == CommitFailReason::withQuorumSizeNotReached("A") ||
+              reason == CommitFailReason::withQuorumSizeNotReached("B") ||
+              reason == CommitFailReason::withQuorumSizeNotReached("C"));
 }
 
 TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
@@ -618,7 +620,7 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
       participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
       createDefaultTermIndexPair(50));
 
-  EXPECT_EQ(reason, CommitDetails::withForcedParticipantNotInQuorum("B"));
+  EXPECT_EQ(reason, CommitFailReason::withForcedParticipantNotInQuorum("B"));
   EXPECT_EQ(index, expectedLogIndex);
 }
 
@@ -639,10 +641,10 @@ TEST_F(CalcCommitIndexTest, who_all_failed_excluded) {
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_EQ(
       reason,
-      (CommitDetails::withNonEligibleServerRequiredForQuorum(
-          {{"A", CommitDetails::NonEligibleServerRequiredForQuorum::kFailed},
-           {"B",
-            CommitDetails::NonEligibleServerRequiredForQuorum::kExcluded}})));
+      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+          {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed},
+           {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                     kExcluded}})));
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_too_big) {
@@ -662,7 +664,7 @@ TEST_F(CalcCommitIndexTest, write_concern_too_big) {
       participants, CalculateCommitIndexOptions{100, 100}, LogIndex{1},
       createDefaultTermIndexPair(50));
 
-  EXPECT_TRUE(reason == CommitDetails::withQuorumSizeNotReached("C"));
+  EXPECT_TRUE(reason == CommitFailReason::withQuorumSizeNotReached("C"));
   EXPECT_EQ(index, expectedLogIndex);
 }
 
@@ -683,7 +685,7 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_in_wrong_term) {
       participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
       TermIndexPair(LogTerm{2}, LogIndex{50}));
 
-  EXPECT_EQ(reason, CommitDetails::withForcedParticipantNotInQuorum("B"));
+  EXPECT_EQ(reason, CommitFailReason::withForcedParticipantNotInQuorum("B"));
   EXPECT_EQ(index, expectedLogIndex);
 }
 
@@ -702,7 +704,7 @@ TEST_F(CalcCommitIndexTest, non_eligible_participant_in_wrong_term) {
       participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
       TermIndexPair(LogTerm{2}, LogIndex{50}));
 
-  EXPECT_EQ(reason, CommitDetails::withSuccessfulQuorum());
+  EXPECT_EQ(reason, CommitFailReason::withNothingToCommit());
   verifyQuorum(participants, quorum, expectedLogIndex, LogTerm{2});
 }
 
@@ -730,9 +732,10 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_EQ(
       reason,
-      (CommitDetails::withNonEligibleServerRequiredForQuorum(
-          {{"A", CommitDetails::NonEligibleServerRequiredForQuorum::kFailed},
-           {"B", CommitDetails::NonEligibleServerRequiredForQuorum::kExcluded},
-           {"C",
-            CommitDetails::NonEligibleServerRequiredForQuorum::kWrongTerm}})));
+      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+          {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed},
+           {"B",
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
+           {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                     kWrongTerm}})));
 }

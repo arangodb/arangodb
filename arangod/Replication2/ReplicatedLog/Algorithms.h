@@ -120,7 +120,7 @@ auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
                           CalculateCommitIndexOptions opt,
                           LogIndex currentCommitIndex,
                           TermIndexPair lastTermIndex)
-    -> std::tuple<LogIndex, replicated_log::CommitDetails,
+    -> std::tuple<LogIndex, replicated_log::CommitFailReason,
                   std::vector<ParticipantId>>;
 
 }  // namespace arangodb::replication2::algorithms

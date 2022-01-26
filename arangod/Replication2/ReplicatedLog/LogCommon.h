@@ -351,14 +351,14 @@ struct ReplicatedLogGlobalSettings {
 };
 
 namespace replicated_log {
-struct CommitDetails {
-  CommitDetails() = default;
+struct CommitFailReason {
+  CommitFailReason() = default;
 
-  struct SuccessfulQuorum {
-    static auto fromVelocyPack(velocypack::Slice) -> SuccessfulQuorum;
+  struct NothingToCommit {
+    static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
     void toVelocyPack(velocypack::Builder& builder) const;
-    friend auto operator==(SuccessfulQuorum const& left,
-                           SuccessfulQuorum const& right) noexcept
+    friend auto operator==(NothingToCommit const& left,
+                           NothingToCommit const& right) noexcept
         -> bool = default;
   };
   struct QuorumSizeNotReached {
@@ -400,31 +400,31 @@ struct CommitDetails {
         NonEligibleServerRequiredForQuorum const& right) noexcept
         -> bool = default;
   };
-  std::variant<SuccessfulQuorum, QuorumSizeNotReached,
+  std::variant<NothingToCommit, QuorumSizeNotReached,
                ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum>
       value;
 
-  static auto withSuccessfulQuorum() noexcept -> CommitDetails;
+  static auto withNothingToCommit() noexcept -> CommitFailReason;
   static auto withQuorumSizeNotReached(ParticipantId who) noexcept
-      -> CommitDetails;
+      -> CommitFailReason;
   static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept
-      -> CommitDetails;
+      -> CommitFailReason;
   static auto withNonEligibleServerRequiredForQuorum(
       NonEligibleServerRequiredForQuorum::CandidateMap) noexcept
-      -> CommitDetails;
+      -> CommitFailReason;
 
-  static auto fromVelocyPack(velocypack::Slice) -> CommitDetails;
+  static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
 
-  friend auto operator==(CommitDetails const& left, CommitDetails const& right)
-      -> bool = default;
+  friend auto operator==(CommitFailReason const& left,
+                         CommitFailReason const& right) -> bool = default;
 
  private:
   template<typename... Args>
-  explicit CommitDetails(std::in_place_t, Args&&... args) noexcept;
+  explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
 
-auto to_string(CommitDetails const&) -> std::string;
+auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
 
 }  // namespace arangodb::replication2

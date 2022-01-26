@@ -516,7 +516,7 @@ auto algorithms::calculateCommitIndex(
     std::vector<ParticipantStateTuple> const& indexes,
     CalculateCommitIndexOptions const opt, LogIndex currentCommitIndex,
     TermIndexPair lastTermIndex)
-    -> std::tuple<LogIndex, CommitDetails, std::vector<ParticipantId>> {
+    -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
   // We keep a vector of participants that are neither excluded nor have failed.
   // All eligible participants have to be in the same term as the leader.
   // Never commit log entries from older terms.
@@ -546,7 +546,8 @@ auto algorithms::calculateCommitIndex(
           return left.lastAckedEntry.index < right.lastAckedEntry.index;
         });
     return {currentCommitIndex,
-            CommitDetails::withQuorumSizeNotReached(who->id), std::move(quorum)};
+            CommitFailReason::withQuorumSizeNotReached(who->id),
+            std::move(quorum)};
   }
 
   auto const spearhead = lastTermIndex.index;
@@ -562,7 +563,7 @@ auto algorithms::calculateCommitIndex(
         // A forced participant has entries from a previous term. We can't use
         // this participant, hence it becomes impossible to commit anything.
         return {currentCommitIndex,
-                CommitDetails::withForcedParticipantNotInQuorum(pt.id),
+                CommitFailReason::withForcedParticipantNotInQuorum(pt.id),
                 {}};
       }
       if (pt.lastAckedEntry.index < minForcedCommitIndex) {
@@ -574,7 +575,7 @@ auto algorithms::calculateCommitIndex(
 
   // While actualWriteConcern == 0 is silly we still allow it.
   if (actualWriteConcern == 0) {
-    return {minForcedCommitIndex, CommitDetails::withSuccessfulQuorum(), {}};
+    return {minForcedCommitIndex, CommitFailReason::withNothingToCommit(), {}};
   }
 
   if (actualWriteConcern <= eligible.size()) {
@@ -601,21 +602,22 @@ auto algorithms::calculateCommitIndex(
     if (spearhead == commitIndex) {
       // The quorum has been reached and any uncommitted entries can now be
       // committed.
-      return {commitIndex, CommitDetails::withSuccessfulQuorum(), std::move(quorum)};
+      return {commitIndex, CommitFailReason::withNothingToCommit(),
+              std::move(quorum)};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
       // The forced participant didn't make the quorum because its index
       // is too low. Return its index, but report that it is dragging down the
       // commit index.
       TRI_ASSERT(minForcedParticipantId.has_value());
       return {commitIndex,
-              CommitDetails::withForcedParticipantNotInQuorum(
+              CommitFailReason::withForcedParticipantNotInQuorum(
                   minForcedParticipantId.value()),
               {}};
     } else {
       // We commit as far away as we can get, but report the participant whose
       // id is the furthest away from the spearhead.
       auto const& who = nth->id;
-      return {commitIndex, CommitDetails::withQuorumSizeNotReached(who),
+      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(who),
               std::move(quorum)};
     }
   }
@@ -624,23 +626,25 @@ auto algorithms::calculateCommitIndex(
   // this certainly means we could not reach a quorum;
   // indexes cannot be empty because this particular case would've been handled
   // above by comparing actualWriteConcern to 0;
-  CommitDetails::NonEligibleServerRequiredForQuorum::CandidateMap candidates;
+  CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap candidates;
   for (auto const& p : indexes) {
     if (p.isFailed()) {
       candidates.emplace(
-          p.id, CommitDetails::NonEligibleServerRequiredForQuorum::kFailed);
+          p.id, CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed);
     } else if (p.isExcluded()) {
       candidates.emplace(
-          p.id, CommitDetails::NonEligibleServerRequiredForQuorum::kExcluded);
+          p.id,
+          CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
     } else if (p.lastTerm() != lastTermIndex.term) {
       candidates.emplace(
-          p.id, CommitDetails::NonEligibleServerRequiredForQuorum::kWrongTerm);
+          p.id,
+          CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm);
     }
   }
 
   TRI_ASSERT(!indexes.empty());
   return {currentCommitIndex,
-          CommitDetails::withNonEligibleServerRequiredForQuorum(
+          CommitFailReason::withNonEligibleServerRequiredForQuorum(
               std::move(candidates)),
           {}};
 }
