@@ -48,7 +48,7 @@ template<typename... T>
 class TypeList {
  private:
  public:
-  static constexpr size_t size() noexcept { return kFeatures.size(); }
+  static constexpr size_t size() noexcept { return kTypes.size(); }
 
   template<typename Visitor>
   static constexpr void visit(Visitor&& visitor) {
@@ -57,9 +57,8 @@ class TypeList {
 
   template<typename U>
   static consteval size_t id() {
-    static_assert(kFeatures.find(ctti<U>()) != kFeatures.end(),
-                  "Feature not found");
-    return kFeatures.find(ctti<U>())->second;
+    static_assert(kTypes.find(ctti<U>()) != kTypes.end(), "Type not found");
+    return kTypes.find(ctti<U>())->second;
   }
 
  private:
@@ -91,7 +90,7 @@ class TypeList {
     }
   };
 
-  static constexpr auto kFeatures = frozen::make_map(List::toArray());
+  static constexpr auto kTypes = frozen::make_map(List::toArray());
 };
 
 }  // namespace arangodb
