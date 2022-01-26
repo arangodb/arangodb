@@ -54,7 +54,7 @@ template<class PathValidatorImplementation>
 PathValidatorTracer<PathValidatorImplementation>::~PathValidatorTracer() {
   LOG_TOPIC("3b86e", INFO, Logger::GRAPHS) << "PathValidator Trace report:";
   for (auto const& [name, trace] : _stats) {
-    LOG_TOPIC("hjg79", INFO, Logger::GRAPHS) << " " << name << ": " << trace;
+    LOG_TOPIC("h879g", INFO, Logger::GRAPHS) << " " << name << ": " << trace;
   }
 };
 
