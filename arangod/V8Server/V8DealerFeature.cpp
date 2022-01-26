@@ -28,6 +28,7 @@
 
 #include "Actions/actions.h"
 #include "Agency/v8-agency.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -1547,7 +1548,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_v8_global_t* v8g = TRI_CreateV8Globals(server(), isolate, id);
+      auto* v8g = CreateV8Globals(server(), isolate, id);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {

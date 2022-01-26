@@ -42,7 +42,7 @@ DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t,
 AgencyCache::AgencyCache(ArangodServer& server,
                          AgencyCallbackRegistry& callbackRegistry,
                          ErrorCode shutdownCode)
-    : Thread(server, "AgencyCache"),
+    : ServerThread(server, "AgencyCache"),
       _commitIndex(0),
       _readDB(server, nullptr, "readDB"),
       _shutdownCode(shutdownCode),

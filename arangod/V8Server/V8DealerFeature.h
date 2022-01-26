@@ -25,6 +25,7 @@
 
 #include <atomic>
 
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ConditionVariable.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"

@@ -34,6 +34,12 @@
 
 TRI_v8_global_t::TRI_v8_global_t(
     arangodb::application_features::ApplicationServer& server,
+    arangodb::V8SecurityFeature& v8security,
+    arangodb::HttpEndpointProvider& endpoints,
+    arangodb::application_features::CommunicationFeaturePhase& comm,
+#ifdef USE_ENTERPRISE
+    arangodb::EncryptionFeature& encryption,
+#endif
     v8::Isolate* isolate, size_t id)
     : AgencyTempl(),
       AgentTempl(),
@@ -148,7 +154,13 @@ TRI_v8_global_t::TRI_v8_global_t(
       _countOfTimes(0),
       _heapMax(0),
       _heapLow(0),
-      _server{server} {
+      _server{server},
+      _v8security{v8security},
+      _endpoints{endpoints},
+#ifdef USE_ENTERPRISE
+      _encryption{encryption},
+#endif
+      _comm{comm} {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));

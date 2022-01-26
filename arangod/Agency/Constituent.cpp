@@ -78,7 +78,7 @@ Constituent::Constituent(ArangodServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _term(0),
-      _gterm(_server.getFeature<metrics::MetricsFeature>().add(
+      _gterm(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_term{})),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),

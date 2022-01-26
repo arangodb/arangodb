@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "RestServer/arangod.h"
 
 #include "Endpoint/EndpointList.h"
 
@@ -31,6 +32,8 @@ namespace arangodb {
 
 class EndpointFeature final : public HttpEndpointProvider {
  public:
+  static constexpr std::string_view name() noexcept { return "Endpoint"; }
+
   explicit EndpointFeature(ArangodServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

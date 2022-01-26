@@ -36,7 +36,7 @@
 
 namespace arangodb {
 
-class AgencyCache final : public arangodb::Thread {
+class AgencyCache final : public ServerThread<ArangodServer> {
  public:
   typedef std::unordered_map<std::string, consensus::query_t> databases_t;
 

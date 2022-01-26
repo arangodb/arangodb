@@ -517,8 +517,20 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  TRI_v8_global_t(arangodb::application_features::ApplicationServer& comm,
-                  v8::Isolate*, size_t id);
+  template<typename Server>
+  TRI_v8_global_t(Server& server, v8::Isolate* isolate, size_t id)
+      : TRI_v8_global_t{
+            server,
+            server.template getFeature<arangodb::V8SecurityFeature>(),
+            server.template getFeature<arangodb::HttpEndpointProvider>(),
+            server.template getFeature<
+                arangodb::application_features::CommunicationFeaturePhase>(),
+#ifdef USE_ENTERPRISE
+            server.template getFeature<arangodb::EncryptionFeature>(),
+#endif
+            isolate,
+            id} {
+  }
 
   ~TRI_v8_global_t();
 
@@ -857,8 +869,26 @@ struct TRI_v8_global_t {
 
   arangodb::application_features::ApplicationServer& _server;
 
+  arangodb::V8SecurityFeature& _v8security;
+  arangodb::HttpEndpointProvider& _endpoints;
+#ifdef USE_ENTERPRISE
+  arangodb::EncryptionFeature& _encrypion;
+#endif
+  arangodb::application_features::CommunicationFeaturePhase& _comm;
+
  private:
-  /// @brief shared pointer mapping for weak pointers, holds shared pointers so
+  TRI_v8_global_t(
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::V8SecurityFeature& v8security,
+      arangodb::HttpEndpointProvider& endpoints,
+      arangodb::application_features::CommunicationFeaturePhase& comm,
+#ifdef USE_ENTERPRISE
+      arangodb::EncryptionFeature& encrypion,
+#endif
+      v8::Isolate* isolate, size_t id);
+
+  /// @brief shared pointer mapping for weak pointers, holds shared pointers
+  /// so
   ///        they don't get deallocated while in use by V8
   /// @note used ONLY by the SharedPtrPersistent class
   std::unordered_map<void*, SharedPtrPersistent> JSSharedPtrs;
@@ -887,15 +917,15 @@ TRI_v8_global_t* TRI_CreateV8Globals(
     size_t id);
 
 template<typename Server>
-TRI_v8_global_t* TRI_CreateV8Globals(Server& server, v8::Isolate* isolate,
-                                     size_t id) {
+V8Global<Server>* CreateV8Globals(Server& server, v8::Isolate* isolate,
+                                  size_t id) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g == nullptr);
   v8g = new TRI_v8_global_t(server, isolate, id);
   isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
 
-  return v8g;
+  return static_cast<V8Global<Server>*>(v8g);
 }
 
 /// @brief gets the global context

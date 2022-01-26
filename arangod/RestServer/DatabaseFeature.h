@@ -50,12 +50,12 @@ class Slice;    // forward declaration
 
 namespace arangodb {
 
-class DatabaseManagerThread final : public Thread {
+class DatabaseManagerThread final : public ServerThread<ArangodServer> {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  explicit DatabaseManagerThread(ArangodServer&);
+  explicit DatabaseManagerThread(Server&);
   ~DatabaseManagerThread();
 
   void run() override;
@@ -176,8 +176,7 @@ class DatabaseFeature : public ArangodFeature {
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
-  static void initCalculationVocbase(
-      ArangodServer& server);
+  static void initCalculationVocbase(ArangodServer& server);
 
   void stopAppliers();
 

@@ -6475,7 +6475,7 @@ void ClusterInfo::SyncerThread::run() {
         return notify(result);
       };
 
-  auto acb = std::make_shared<AgencyCallback>(_server, _section + "/Version",
+  auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
                                               update, true, false);
   Result res = _cr->registerCallback(std::move(acb));
   if (res.fail()) {

@@ -97,9 +97,8 @@ void ArrayOutCache<M>::flushMessages() {
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  application_features::ApplicationServer& server =
-      this->_config->vocbase()->server();
-  auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+  auto& server = this->_config->vocbase()->server();
+  auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
   network::RequestOptions reqOpts;
@@ -214,9 +213,8 @@ void CombiningOutCache<M>::flushMessages() {
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  application_features::ApplicationServer& server =
-      this->_config->vocbase()->server();
-  auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+  auto& server = this->_config->vocbase()->server();
+  auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
   std::vector<futures::Future<network::Response>> responses;

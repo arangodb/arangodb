@@ -152,8 +152,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename,
                                         FSAccessType::READ)) {
@@ -280,8 +280,8 @@ static void JS_ProcessJsonFile(
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename,
                                         FSAccessType::READ)) {

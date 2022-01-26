@@ -106,8 +106,8 @@ TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
 /// @brief database manager thread main loop
 /// the purpose of this thread is to physically remove directories of databases
 /// that have been dropped
-DatabaseManagerThread::DatabaseManagerThread(ApplicationServer& server)
-    : Thread(server, "DatabaseManager") {}
+DatabaseManagerThread::DatabaseManagerThread(Server& server)
+    : ServerThread<ArangodServer>(server, "DatabaseManager") {}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
@@ -401,8 +401,7 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(
-    ArangodServer& server) {
+void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server));
 }

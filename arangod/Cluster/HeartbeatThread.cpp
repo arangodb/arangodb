@@ -270,7 +270,7 @@ void HeartbeatThread::run() {
   if (ServerState::instance()->isCoordinator(role) ||
       ServerState::instance()->isDBServer(role) ||
       (ServerState::instance()->isSingleServer(role) &&
-       _server.getFeature<ReplicationFeature>().isActiveFailoverEnabled())) {
+       server().getFeature<ReplicationFeature>().isActiveFailoverEnabled())) {
     std::function<bool(VPackSlice const& result)> updbs =
         [self = shared_from_this()](VPackSlice const& result) {
           LOG_TOPIC("fe092", DEBUG, Logger::HEARTBEAT)
@@ -429,7 +429,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       }
       LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT)
           << "Updating failed servers list.";
-      auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
     } else {
@@ -567,8 +567,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
   // against concurrent accesses.
 
-  AuthenticationFeature& af = _server.getFeature<AuthenticationFeature>();
-  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  AuthenticationFeature& af = server().getFeature<AuthenticationFeature>();
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   LOG_TOPIC("33452", DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
 
@@ -719,8 +719,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
-      if (_server.hasFeature<pregel::PregelFeature>()) {
-        auto& pregel = _server.getFeature<pregel::PregelFeature>();
+      if (server().hasFeature<pregel::PregelFeature>()) {
+        auto& pregel = server().getFeature<pregel::PregelFeature>();
         pregel::RecoveryManager* mngr = pregel.recoveryManager();
         if (mngr != nullptr) {
           mngr->updatedFailedServers(failedServers);
@@ -759,13 +759,13 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 void HeartbeatThread::runSingleServer() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  ReplicationFeature& replication = _server.getFeature<ReplicationFeature>();
+  ReplicationFeature& replication = server().getFeature<ReplicationFeature>();
 
   GlobalReplicationApplier* applier = replication.globalReplicationApplier();
-  TRI_ASSERT(applier != nullptr && _server.hasFeature<ClusterFeature>());
-  ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_ASSERT(applier != nullptr && server().hasFeature<ClusterFeature>());
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
-  TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
+  TtlFeature& ttlFeature = server().getFeature<TtlFeature>();
 
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
   std::string const transientPath = "AsyncReplication/" + _myId;
@@ -800,7 +800,7 @@ void HeartbeatThread::runSingleServer() {
       // the global version number in the agency in case it changed. this
       // informs other listeners about our local DDL changes
       uint64_t currentVersion =
-          _server.getFeature<DatabaseFeature>().versionTracker()->current();
+          server().getFeature<DatabaseFeature>().versionTracker()->current();
       if (currentVersion != lastSentVersion) {
         AgencyOperation incrementVersion(
             "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
@@ -939,7 +939,7 @@ void HeartbeatThread::runSingleServer() {
         // we are leader now. make sure the applier drops its previous state
         applier->forget();
         lastTick =
-            _server.getFeature<EngineSelectorFeature>().engine().currentTick();
+            server().getFeature<EngineSelectorFeature>().engine().currentTick();
 
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(
@@ -1001,7 +1001,7 @@ void HeartbeatThread::runSingleServer() {
         TRI_ASSERT(!applier->isActive());
         applier->forget();  // make sure applier is doing a resync
 
-        auto& gs = _server.getFeature<GeneralServerFeature>();
+        auto& gs = server().getFeature<GeneralServerFeature>();
         Result res = gs.jobManager().clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC("e0817", WARN, Logger::HEARTBEAT)
@@ -1039,8 +1039,8 @@ void HeartbeatThread::runSingleServer() {
         TRI_ASSERT(!config._skipCreateDrop);
         config._includeFoxxQueues = true;  // sync _queues and _jobs
 
-        if (_server.hasFeature<ReplicationFeature>()) {
-          auto& feature = _server.getFeature<ReplicationFeature>();
+        if (server().hasFeature<ReplicationFeature>()) {
+          auto& feature = server().getFeature<ReplicationFeature>();
           config._connectTimeout =
               feature.checkConnectTimeout(config._connectTimeout);
           config._requestTimeout =
@@ -1271,7 +1271,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
 
 static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
-  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
   LOG_TOPIC("eda7d", TRACE, Logger::HEARTBEAT) << "found a plan update";
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
@@ -1386,7 +1386,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   }
 
   // invalidate our local cache
-  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.flush();
 
   return true;

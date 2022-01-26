@@ -55,9 +55,8 @@ static bool canExpose(v8::Isolate* isolate, v8::Local<v8::Name> property) {
     return true;
   }
 
-  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
-  arangodb::V8SecurityFeature& v8security =
-      v8g->server().getFeature<arangodb::V8SecurityFeature>();
+  TRI_GET_GLOBALS();
+  arangodb::V8SecurityFeature& v8security = v8g->_v8security;
   return v8security.shouldExposeEnvironmentVariable(isolate, utf8String);
 }
 

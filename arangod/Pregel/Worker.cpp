@@ -810,8 +810,7 @@ void Worker<V, E, M>::_callConductorWithResponse(
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
 
-    application_features::ApplicationServer& server =
-        _config.vocbase()->server();
+    auto& server = _config.vocbase()->server();
     auto const& nf = server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
 
