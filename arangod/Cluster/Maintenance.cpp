@@ -686,7 +686,7 @@ void arangodb::maintenance::diffReplicatedStates(
       [&](LogId id, replicated_state::StateStatus const& status,
           replicated_state::agency::Plan const* plan,
           replicated_state::agency::Current const* current) {
-        bool const shouldDeleted = std::invoke([&, id = id] {
+        bool const shouldDeleted = std::invoke([&] {
           return plan == nullptr || !plan->participants.contains(serverId);
         });
 
