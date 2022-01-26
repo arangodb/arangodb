@@ -75,13 +75,13 @@ auto replicated_state::to_string(SnapshotStatus s) noexcept
     -> std::string_view {
   switch (s) {
     case SnapshotStatus::kUninitialized:
-      return "Uninitialized";
+      return String_Uninitialized;
     case SnapshotStatus::kInProgress:
-      return "InProgress";
+      return String_InProgress;
     case SnapshotStatus::kCompleted:
-      return "Completed";
+      return String_Completed;
     case SnapshotStatus::kFailed:
-      return "Failed";
+      return String_Failed;
     default:
       return "(unknown snapshot status)";
   }
@@ -109,6 +109,6 @@ void SnapshotInfo::toVelocyPack(velocypack::Builder& builder) const {
 
 auto SnapshotInfo::fromVelocyPack(velocypack::Slice slice) -> SnapshotInfo {
   SnapshotInfo info;
-  info.status = snapshotStatusFromString(slice.get("status").stringView());
+  info.status = snapshotStatusFromString(slice.get(String_Status).stringView());
   return info;
 }
