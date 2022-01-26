@@ -123,9 +123,7 @@ void TRI_AddFailurePointDebugging(std::string_view value) {
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     added = ::failurePoints.emplace(value).second;
-    if (added) {
-      ::hasFailurePoints.store(true, std::memory_order_relaxed);
-    }
+    ::hasFailurePoints.store(true, std::memory_order_relaxed);
   }
 
   if (added) {
