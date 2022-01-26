@@ -709,12 +709,34 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
   // No variables used, nothing todo
 }
 
+Collection const* GraphNode::getShardingPrototype() const {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  TRI_ASSERT(!_edgeColls.empty());
+  for (auto const* c : _edgeColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the prototype
+    // for this graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(c != nullptr);
+    if (!c->isSatellite()) {
+      return c;
+    }
+  }
+  // We have not found any non-satellite Collection
+  // just return the first satellite then.
+  TRI_ASSERT(_edgeColls.front() != nullptr);
+  return _edgeColls.front();
+}
+
 Collection const* GraphNode::collection() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(!_vertexColls.empty());
+  if (_vertexColls.empty()) {
+    return getShardingPrototype();
+  }
   for (auto const* c : _vertexColls) {
     // We are required to valuate non-satellites above
-    // satellites, as the collection is used as the protoype
+    // satellites, as the collection is used as the prototype
     // for this graphs sharding.
     // The Satellite collection does not have sharding.
     TRI_ASSERT(c != nullptr);
