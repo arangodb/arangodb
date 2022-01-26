@@ -711,8 +711,8 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
 
 Collection const* GraphNode::collection() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  TRI_ASSERT(!_edgeColls.empty());
-  for (auto const* c : _edgeColls) {
+  TRI_ASSERT(!_vertexColls.empty());
+  for (auto const* c : _vertexColls) {
     // We are required to valuate non-satellites above
     // satellites, as the collection is used as the protoype
     // for this graphs sharding.
@@ -724,12 +724,13 @@ Collection const* GraphNode::collection() const {
   }
   // We have not found any non-satellite Collection
   // just return the first satellite then.
-  TRI_ASSERT(_edgeColls.front() != nullptr);
-  return _edgeColls.front();
+  TRI_ASSERT(_vertexColls.front() != nullptr);
+  return _vertexColls.front();
 }
 
 void GraphNode::injectVertexCollection(aql::Collection& other) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+             ServerState::instance()->isSingleServer());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into
