@@ -1,5 +1,11 @@
 devel
 -----
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
 * Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
   determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
   be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
