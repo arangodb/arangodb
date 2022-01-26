@@ -44,6 +44,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class V8SecurityFeature;
 class HttpEndpointProvider;
+class EncryptionFeature;
 namespace application_features {
 class CommunicationFeaturePhase;
 }
@@ -872,7 +873,7 @@ struct TRI_v8_global_t {
   arangodb::V8SecurityFeature& _v8security;
   arangodb::HttpEndpointProvider& _endpoints;
 #ifdef USE_ENTERPRISE
-  arangodb::EncryptionFeature& _encrypion;
+  arangodb::EncryptionFeature& _encryption;
 #endif
   arangodb::application_features::CommunicationFeaturePhase& _comm;
 
@@ -883,7 +884,7 @@ struct TRI_v8_global_t {
       arangodb::HttpEndpointProvider& endpoints,
       arangodb::application_features::CommunicationFeaturePhase& comm,
 #ifdef USE_ENTERPRISE
-      arangodb::EncryptionFeature& encrypion,
+      arangodb::EncryptionFeature& encryption,
 #endif
       v8::Isolate* isolate, size_t id);
 
