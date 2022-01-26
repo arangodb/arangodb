@@ -53,10 +53,10 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ClientFeature::ClientFeature(application_features::ApplicationServer& server,
-                             bool allowJwtSecret, size_t maxNumEndpoints,
-                             double connectionTimeout, double requestTimeout)
-    : HttpEndpointProvider(server, "Client"),
+ClientFeature::ClientFeature(ArangoshServer& server, bool allowJwtSecret,
+                             size_t maxNumEndpoints, double connectionTimeout,
+                             double requestTimeout)
+    : HttpEndpointProvider(server, *this),
       _databaseName(StaticStrings::SystemDatabase),
       _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
       _maxNumEndpoints(maxNumEndpoints),
@@ -81,8 +81,8 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
       _forceJson(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<GreetingsFeaturePhase>();
+  startsAfter<CommunicationFeaturePhase, ArangoshServer>();
+  startsAfter<GreetingsFeaturePhase, ArangoshServer>();
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -305,6 +305,10 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 
+ArangoshServer& ClientFeature::server() const noexcept {
+  return static_cast<ArangoshServer&>(ApplicationFeature::server());
+}
+
 void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -399,9 +403,9 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
-                                       _connectionTimeout, _retries,
-                                       _sslProtocol));
+      GeneralClientConnection::factory(
+          server().getFeature<CommunicationFeaturePhase>(), endpoint,
+          _requestTimeout, _connectionTimeout, _retries, _sslProtocol));
 
   return std::make_unique<SimpleHttpClient>(connection, params);
 }

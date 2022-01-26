@@ -22,26 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8ShellFeaturePhase.h"
-
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "Shell/ShellConsoleFeature.h"
-#include "Shell/V8ShellFeature.h"
-
-namespace arangodb {
-namespace application_features {
-
-V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8ShellPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
-
-  startsAfter<ShellConsoleFeature>();
-  startsAfter<V8ShellFeature>();
-  startsAfter<V8PlatformFeature>();
-  startsAfter<V8SecurityFeature>();
-}
-
-}  // namespace application_features
-}  // namespace arangodb

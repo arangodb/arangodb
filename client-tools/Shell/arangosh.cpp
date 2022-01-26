@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangosh.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -45,6 +47,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
+#include "Shell/arangosh.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
@@ -58,6 +61,46 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
+struct ArangoshInitializer {
+  template<typename T>
+  void operator()(TypeTag<T>) {
+    server.addFeature<T>();
+  }
+
+  void operator()(TypeTag<GreetingsFeaturePhase>) {
+    server.addFeature<GreetingsFeaturePhase>(true);
+  }
+
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    server.addFeature<HttpEndpointProvider, ClientFeature>(true);
+  }
+
+  void operator()(TypeTag<ConfigFeature>) {
+    server.addFeature<ConfigFeature>(context.binaryName());
+  }
+
+  void operator()(TypeTag<LoggerFeature>) {
+    server.addFeature<LoggerFeature>(false);
+  }
+
+  void operator()(TypeTag<TempFeature>) {
+    server.addFeature<TempFeature>(context.binaryName());
+  }
+
+  void operator()(TypeTag<V8ShellFeature>) {
+    server.addFeature<V8ShellFeature>(context.binaryName());
+  }
+
+  void operator()(TypeTag<ShutdownFeature>) {
+    server.addFeature<ShutdownFeature>(
+        std::vector<size_t>{ArangoshServer::id<ShellFeature>()});
+  }
+
+  int ret;
+  ArangoGlobalContext& context;
+  ArangoshServer& server;
+};
+
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -70,53 +113,27 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: " + name + " [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
-    int ret = EXIT_SUCCESS;
+    ArangoshServer server(options, BIN_DIRECTORY);
+    ArangoshInitializer init{EXIT_SUCCESS, context, server};
 
     try {
-      server.addFeature<BasicFeaturePhaseClient>();
-      server.addFeature<CommunicationFeaturePhase>();
-      server.addFeature<GreetingsFeaturePhase>(true);
-      server.addFeature<V8ShellFeaturePhase>();
-
-      server.addFeature<ClientFeature, HttpEndpointProvider>(true);
-      server.addFeature<ConfigFeature>(name);
-      server.addFeature<ShellConsoleFeature>();
-      server.addFeature<LanguageFeature>();
-      server.addFeature<LoggerFeature>(false);
-      server.addFeature<RandomFeature>();
-      server.addFeature<ShellColorsFeature>();
-      server.addFeature<ShellFeature>(&ret);
-      server.addFeature<ShutdownFeature>(
-          std::vector<std::type_index>{std::type_index(typeid(ShellFeature))});
-      server.addFeature<SslFeature>();
-      server.addFeature<TempFeature>(name);
-      server.addFeature<V8PlatformFeature>();
-      server.addFeature<V8SecurityFeature>();
-      server.addFeature<V8ShellFeature>(name);
-      server.addFeature<VersionFeature>();
-
-#ifdef USE_ENTERPRISE
-      server.addFeature<EncryptionFeature>();
-#endif
-
       server.run(argc, argv);
       if (server.helpShown()) {
         // --help was displayed
-        ret = EXIT_SUCCESS;
+        init.ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("da777", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception: "
           << ex.what();
-      ret = EXIT_FAILURE;
+      init.ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("ed049", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception of "
              "unknown type";
-      ret = EXIT_FAILURE;
+      init.ret = EXIT_FAILURE;
     }
 
-    return context.exit(ret);
+    return context.exit(init.ret);
   });
 }

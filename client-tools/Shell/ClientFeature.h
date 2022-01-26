@@ -25,7 +25,7 @@
 
 #include <functional>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Shell/arangosh.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 
 namespace arangodb {
@@ -46,9 +46,10 @@ class ClientFeature final : public HttpEndpointProvider {
   constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
   constexpr static size_t const DEFAULT_RETRIES = 2;
   constexpr static double const LONG_TIMEOUT = 86400.0;
+  constexpr static std::string_view name() noexcept { return "Client"; }
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, size_t maxNumEndpoints = 1,
+  ClientFeature(ArangoshServer& server, bool allowJwtSecret,
+                size_t maxNumEndpoints = 1,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
@@ -99,6 +100,8 @@ class ClientFeature final : public HttpEndpointProvider {
   void setWarnConnect(bool warnConnect) { _warnConnect = warnConnect; }
 
   bool getWarnConnect() { return _warnConnect; }
+
+  ArangoshServer& server() const noexcept;
 
   static std::string buildConnectedMessage(
       std::string const& endpointSpecification, std::string const& version,

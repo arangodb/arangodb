@@ -245,15 +245,10 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 
 namespace arangodb {
 
-ManagedDirectory::ManagedDirectory(
-    application_features::ApplicationServer& server, std::string const& path,
-    bool requireEmpty, bool create, bool writeGzip)
-    :
-#ifdef USE_ENTERPRISE
-      _encryptionFeature{&server.getFeature<EncryptionFeature>()},
-#else
-      _encryptionFeature(nullptr),
-#endif
+ManagedDirectory::ManagedDirectory(EncryptionFeature* encryption,
+                                   std::string const& path, bool requireEmpty,
+                                   bool create, bool writeGzip)
+    : _encryptionFeature{encryption},
       _path{path},
       _encryptionType{::EncryptionTypeNone},
       _writeGzip(writeGzip),
@@ -478,13 +473,9 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-}
+      _status{::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-}
+      _status{::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
@@ -504,13 +495,9 @@ ManagedDirectory::File::File(ManagedDirectory const& directory, int fd,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-}
+      _status{::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-}
+      _status{::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)

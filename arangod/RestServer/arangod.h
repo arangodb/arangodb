@@ -24,7 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/TypeList.h"
+#include "Basics/TypeList.h"
 
 namespace arangodb {
 

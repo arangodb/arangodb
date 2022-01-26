@@ -21,33 +21,4 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <functional>
-
 #include "BasicFeaturePhaseClient.h"
-
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Shell/ClientFeature.h"
-#include "Ssl/SslFeature.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
-
-namespace arangodb {
-namespace application_features {
-
-BasicFeaturePhaseClient::BasicFeaturePhaseClient(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
-
-#ifdef USE_ENTERPRISE
-  startsAfter<EncryptionFeature>();
-#endif
-  startsAfter<SslFeature>();
-
-  startsAfter<ClientFeature>();
-}
-
-}  // namespace application_features
-}  // namespace arangodb

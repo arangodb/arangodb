@@ -73,9 +73,8 @@ static std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
 namespace arangodb {
 
-V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
-                               std::string const& name)
-    : ApplicationFeature(server, "V8Shell"),
+V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
+    : ArangoshFeature(server, *this),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
       _currentModuleDirectory(true),
