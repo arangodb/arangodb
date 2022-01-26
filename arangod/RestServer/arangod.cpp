@@ -227,12 +227,10 @@ struct ArangodInitializer {
 
   void operator()(TypeTag<SslServerFeature>) {
 #ifdef USE_ENTERPRISE
-    using SslFeature = SslServerFeatureEE;
+    server.addFeature<SslServerFeatureEE, SslServerFeature>();
 #else
-    using SslFeature = SslServerFeature;
+    server.addFeature<SslServerFeature>();
 #endif
-
-    server.addFeature<SslFeature>();
   }
 
   void operator()(TypeTag<UpgradeFeature>) {
@@ -254,9 +252,9 @@ struct ArangodInitializer {
     server.addFeature<UpgradeFeature>(&ret, nonServerFeatures);
   }
 
-  // FIXME(gnusi)
-  void operator()(TypeTag<StorageEngine>) {}
-  void operator()(TypeTag<HttpEndpointProvider>) {}
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    server.addFeature<EndpointFeature, HttpEndpointProvider>();
+  }
 
   int ret;
   ArangoGlobalContext& context;

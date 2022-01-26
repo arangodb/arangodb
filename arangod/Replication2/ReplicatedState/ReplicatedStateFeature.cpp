@@ -20,13 +20,14 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "ReplicatedStateFeature.h"
 
-#include "Basics/Exceptions.h"
-
-#include "Logger/LogMacros.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
+#include "Basics/Exceptions.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

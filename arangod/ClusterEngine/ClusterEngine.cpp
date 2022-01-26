@@ -52,7 +52,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 std::string const ClusterEngine::EngineName("Cluster");
-std::string const ClusterEngine::FeatureName("ClusterEngine");
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // fall back to the using the mock storage engine
@@ -60,8 +59,8 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(ArangodServer& server)
-    : StorageEngine(server, EngineName, FeatureName,
+ClusterEngine::ClusterEngine(Server& server)
+    : StorageEngine(server, EngineName, name(), Server::id<ClusterEngine>(),
                     std::make_unique<ClusterIndexFactory>(server)),
       _actualEngine(nullptr) {
   setOptional(true);

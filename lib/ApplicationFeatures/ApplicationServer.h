@@ -378,7 +378,7 @@ class ApplicationServerT : public ApplicationServer {
     TRI_ASSERT(!hasFeature<As>());
     constexpr auto featureId = Features::template id<Type>();
 
-    auto feature = std::make_unique<Type>(*this, std::forward<Args>(args)...);
+    auto feature = std::make_unique<As>(*this, std::forward<Args>(args)...);
     auto* typePtr = feature.get();
     ApplicationServer::addFeature(featureId, std::move(feature));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

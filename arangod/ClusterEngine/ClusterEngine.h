@@ -37,6 +37,8 @@ namespace arangodb {
 
 class ClusterEngine final : public StorageEngine {
  public:
+  static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
+
   // create the storage engine
   explicit ClusterEngine(ArangodServer& server);
   ~ClusterEngine();

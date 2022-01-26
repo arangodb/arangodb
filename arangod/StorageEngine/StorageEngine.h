@@ -81,6 +81,8 @@ struct Options;
 
 }  // namespace transaction
 
+// FIXME(gnusi): is it really a feature? why EgnineSelectorFeature isn't
+// sufficient?
 class StorageEngine : public ArangodFeature {
  public:
   // FIXME(gnusi)
@@ -88,7 +90,7 @@ class StorageEngine : public ArangodFeature {
 
   // create the storage engine
   StorageEngine(Server& server, std::string engineName,
-                std::string_view featureName,
+                std::string_view featureName, size_t registration,
                 std::unique_ptr<IndexFactory>&& indexFactory);
 
   virtual HealthData healthCheck() = 0;

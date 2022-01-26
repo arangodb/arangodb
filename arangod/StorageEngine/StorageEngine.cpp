@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <utility>
@@ -33,10 +34,9 @@
 using namespace arangodb;
 
 StorageEngine::StorageEngine(Server& server, std::string engineName,
-                             std::string_view featureName,
+                             std::string_view featureName, size_t registration,
                              std::unique_ptr<IndexFactory>&& indexFactory)
-    : ArangodFeature{server, Server::id<StorageEngine>(),
-                     featureName},  // FIXME(gnusi): check featureName
+    : ArangodFeature{server, registration, featureName},
       _indexFactory(std::move(indexFactory)),
       _typeName(std::move(engineName)) {
   // each specific storage engine feature is optional. the storage engine

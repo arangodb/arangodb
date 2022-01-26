@@ -23,6 +23,7 @@
 
 #include "FoxxFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::application_features;

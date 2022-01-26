@@ -468,7 +468,6 @@ class RocksDBEngine final : public StorageEngine {
 
  public:
   static std::string const EngineName;
-  static std::string const FeatureName;
 
  private:
   /// single rocksdb database used in this storage engine

@@ -203,7 +203,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(Server& server)
-    : StorageEngine(server, EngineName, name(),
+    : StorageEngine(server, EngineName, name(), Server::id<RocksDBEngine>(),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),

@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Utils/TypeList.h"
 
 namespace arangodb {
@@ -40,6 +40,10 @@ class FoxxFeaturePhase;
 class GreetingsFeaturePhase;
 class ServerFeaturePhase;
 class V8FeaturePhase;
+
+template<typename Features>
+class ApplicationServerT;
+
 }  // namespace application_features
 namespace metrics {
 class MetricsFeature;
@@ -58,7 +62,6 @@ class ConsoleFeature;
 class CpuUsageFeature;
 class DatabaseFeature;
 class DatabasePathFeature;
-class EndpointFeature;  // FIXME(gnusi)
 class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
@@ -111,7 +114,6 @@ class V8PlatformFeature;
 class V8SecurityFeature;
 class VersionFeature;
 class ViewTypesFeature;
-class StorageEngine;  // FIXME(gnusi)
 class ClusterEngine;
 class RocksDBEngine;
 #ifdef ARANGODB_HAVE_FORK
@@ -167,22 +169,22 @@ using ArangodFeatures = TypeList<
     AuthenticationFeature, BootstrapFeature, CacheManagerFeature,
     CheckVersionFeature, ClusterFeature, ClusterUpgradeFeature, ConfigFeature,
     ConsoleFeature, CpuUsageFeature, DatabaseFeature, DatabasePathFeature,
-    EndpointFeature, HttpEndpointProvider, EngineSelectorFeature,
-    EnvironmentFeature, FlushFeature, FortuneFeature, FoxxFeature,
-    FrontendFeature, GeneralServerFeature, GreetingsFeature,
-    InitDatabaseFeature, LanguageCheckFeature, LanguageFeature, TimeZoneFeature,
-    LockfileFeature, LogBufferFeature, LoggerFeature, MaintenanceFeature,
-    MaxMapCountFeature, NetworkFeature, NonceFeature, PrivilegeFeature,
-    QueryRegistryFeature, RandomFeature, ReplicationFeature,
-    ReplicatedLogFeature, ReplicationMetricsFeature, ReplicationTimeoutFeature,
-    SchedulerFeature, ScriptFeature, ServerFeature, ServerIdFeature,
-    ServerSecurityFeature, ShardingFeature, SharedPRNGFeature,
-    ShellColorsFeature, ShutdownFeature, SoftShutdownFeature, SslFeature,
-    StatisticsFeature, StorageEngineFeature, SystemDatabaseFeature, TempFeature,
-    TtlFeature, UpgradeFeature, V8DealerFeature, V8PlatformFeature,
-    V8SecurityFeature, transaction::ManagerFeature, VersionFeature,
-    ViewTypesFeature, aql::AqlFunctionFeature, aql::OptimizerRulesFeature,
-    pregel::PregelFeature, RocksDBOptionFeature, RocksDBRecoveryManager,
+    HttpEndpointProvider, EngineSelectorFeature, EnvironmentFeature,
+    FlushFeature, FortuneFeature, FoxxFeature, FrontendFeature,
+    GeneralServerFeature, GreetingsFeature, InitDatabaseFeature,
+    LanguageCheckFeature, LanguageFeature, TimeZoneFeature, LockfileFeature,
+    LogBufferFeature, LoggerFeature, MaintenanceFeature, MaxMapCountFeature,
+    NetworkFeature, NonceFeature, PrivilegeFeature, QueryRegistryFeature,
+    RandomFeature, ReplicationFeature, ReplicatedLogFeature,
+    ReplicationMetricsFeature, ReplicationTimeoutFeature, SchedulerFeature,
+    ScriptFeature, ServerFeature, ServerIdFeature, ServerSecurityFeature,
+    ShardingFeature, SharedPRNGFeature, ShellColorsFeature, ShutdownFeature,
+    SoftShutdownFeature, SslFeature, StatisticsFeature, StorageEngineFeature,
+    SystemDatabaseFeature, TempFeature, TtlFeature, UpgradeFeature,
+    V8DealerFeature, V8PlatformFeature, V8SecurityFeature,
+    transaction::ManagerFeature, VersionFeature, ViewTypesFeature,
+    aql::AqlFunctionFeature, aql::OptimizerRulesFeature, pregel::PregelFeature,
+    RocksDBOptionFeature, RocksDBRecoveryManager,
 #ifdef _WIN32
     WindowsServiceFeature,
 #endif
@@ -198,11 +200,11 @@ using ArangodFeatures = TypeList<
     SslServerFeature,
 #endif
     arangodb::iresearch::IResearchAnalyzerFeature,
-    arangodb::iresearch::IResearchFeature, StorageEngine, ClusterEngine,
-    RocksDBEngine, replication2::replicated_state::ReplicatedStateAppFeature,
+    arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
+    replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature>;
 
-using ArangodServer = ApplicationServerT<ArangodFeatures>;
-using ArangodFeature = ApplicationFeatureT<ArangodServer>;
+using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
+using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
 
 }  // namespace arangodb
