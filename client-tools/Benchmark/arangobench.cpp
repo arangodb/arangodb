@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangobench.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -54,6 +56,37 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
+struct ArangoBenchInitializer
+    : public ArangoClientInitializer<ArangoBenchServer> {
+ public:
+  ArangoBenchInitializer(int* ret, char const* binaryName,
+                         ArangoBenchServer& client)
+      : ArangoClientInitializer{binaryName, client}, _ret{ret} {}
+
+  using ArangoClientInitializer::operator();
+
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    _client.addFeature<HttpEndpointProvider, ClientFeature>(
+        false, std::numeric_limits<size_t>::max());
+  }
+
+  void operator()(TypeTag<BenchFeature>) {
+    _client.addFeature<BenchFeature>(*_ret);
+  }
+
+  void operator()(TypeTag<ShutdownFeature>) {
+    _client.addFeature<ShutdownFeature>(
+        std::vector<size_t>{ArangoBenchServer::id<BenchFeature>()});
+  }
+
+  void operator()(TypeTag<TempFeature>) {
+    _client.template addFeature<TempFeature>(_binaryName);
+  }
+
+ private:
+  int* _ret;
+};
+
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -65,26 +98,10 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangobench [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
     int ret = EXIT_SUCCESS;
-
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    server.addFeature<BenchFeature>(&ret);
-    server.addFeature<ClientFeature, HttpEndpointProvider>(
-        false,
-        std::numeric_limits<size_t>::max());  // provide max number of endpoints
-    server.addFeature<ConfigFeature>("arangobench");
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<TempFeature>("arangobench");
-    server.addFeature<VersionFeature>();
+    ArangoBenchServer server(options, BIN_DIRECTORY);
+    ArangoBenchInitializer init{&ret, context.binaryName().c_str(), server};
+    ArangoBenchServer::Features::visit(init);
 
     try {
       server.run(argc, argv);

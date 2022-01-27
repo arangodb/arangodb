@@ -49,9 +49,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ImportFeature::ImportFeature(application_features::ApplicationServer& server,
-                             int* result)
-    : ApplicationFeature(server, "Import"),
+ImportFeature::ImportFeature(Server& server, int* result)
+    : ArangoImportFeature{server, *this},
       _filename(""),
       _useBackslash(false),
       _convert(true),

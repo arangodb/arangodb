@@ -331,8 +331,12 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
                                    std::string const& pathName,
                                    std::string const& headersFile,
                                    DelimitedImportType typeImport) {
-  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
-                             false, false, true);
+  auto* encryption = _server.hasFeature<EncryptionFeature>()
+                         ? &_server.getFeature<EncryptionFeature>()
+                         : nullptr;
+
+  ManagedDirectory directory(encryption, TRI_Dirname(pathName), false, false,
+                             true);
   if (directory.status().fail()) {
     _errorMessages.emplace_back(directory.status().errorMessage());
     return false;

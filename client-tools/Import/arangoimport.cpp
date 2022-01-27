@@ -87,8 +87,6 @@ struct ArangoImportInitializer
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
-    int ret = EXIT_SUCCESS;
-
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
@@ -97,6 +95,8 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangoimport [<options>]",
             "For more information use:", BIN_DIRECTORY));
+
+    int ret = EXIT_SUCCESS;
     ArangoImportServer server(options, BIN_DIRECTORY);
     ArangoImportInitializer init{&ret, context.binaryName().c_str(), server};
     ArangoImportServer::Features::visit(init);

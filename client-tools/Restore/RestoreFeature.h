@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Restore/arangorestore.h"
 
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
@@ -50,10 +51,11 @@ class SimpleHttpResult;
 
 class ManagedDirectory;
 
-class RestoreFeature final : public application_features::ApplicationFeature {
+class RestoreFeature final : public ArangoRestoreFeature {
  public:
-  RestoreFeature(application_features::ApplicationServer& server,
-                 int& exitCode);
+  static constexpr std::string_view name() noexcept { return "Restore"; }
+
+  RestoreFeature(Server& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;

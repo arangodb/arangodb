@@ -68,9 +68,6 @@
 
 namespace {
 
-/// @brief name of the feature to report to application server
-constexpr auto FeatureName = "Restore";
-
 /// @brief return the target replication factor for the specified collection
 uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
                               arangodb::velocypack::Slice const& slice,
@@ -209,9 +206,8 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder,
 
 /// @brief Create the database to restore to, connecting manually
 arangodb::Result tryCreateDatabase(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, VPackSlice properties,
-    arangodb::RestoreFeature::Options const& options) {
+    arangodb::ArangoRestoreServer& server, std::string const& name,
+    VPackSlice properties, arangodb::RestoreFeature::Options const& options) {
   using arangodb::httpclient::SimpleHttpClient;
   using arangodb::httpclient::SimpleHttpResult;
   using arangodb::rest::RequestType;
@@ -342,10 +338,9 @@ void getDBProperties(arangodb::ManagedDirectory& directory,
 }
 
 /// @brief Check the database name specified by the dump file
-arangodb::Result checkDumpDatabase(
-    arangodb::application_features::ApplicationServer& server,
-    arangodb::ManagedDirectory& directory, bool forceSameDatabase,
-    bool& useEnvelope) {
+arangodb::Result checkDumpDatabase(arangodb::ArangoRestoreServer& server,
+                                   arangodb::ManagedDirectory& directory,
+                                   bool forceSameDatabase, bool& useEnvelope) {
   using arangodb::ClientFeature;
   using arangodb::HttpEndpointProvider;
   using arangodb::Logger;
@@ -1038,7 +1033,11 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
       std::string path =
           basics::FileUtils::buildFilename(_options.inputPath, it);
       if (basics::FileUtils::isDirectory(path)) {
-        ManagedDirectory dbDirectory(server(), path, false, false, false);
+        auto* encryption = server().hasFeature<EncryptionFeature>()
+                               ? &server().getFeature<EncryptionFeature>()
+                               : nullptr;
+
+        ManagedDirectory dbDirectory(encryption, path, false, false, false);
         databases.push_back({it, VPackBuilder{}, ""});
         getDBProperties(dbDirectory, databases.back().properties);
         try {
@@ -1622,10 +1621,10 @@ Result RestoreFeature::RestoreSendJob::run(
   return res;
 }
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
-                               int& exitCode)
-    : ApplicationFeature(server, RestoreFeature::featureName()),
-      _clientManager{server, Logger::RESTORE},
+RestoreFeature::RestoreFeature(Server& server, int& exitCode)
+    : ArangoRestoreFeature{server, *this},
+      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
+                     Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
@@ -2203,8 +2202,6 @@ void RestoreFeature::start() {
     }
   }
 }
-
-std::string RestoreFeature::featureName() { return ::FeatureName; }
 
 ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
   return _clientTaskQueue;

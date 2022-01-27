@@ -24,56 +24,16 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/TypeList.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
 
-template<typename Features>
-class ApplicationServerT;
-class BasicFeaturePhaseClient;
-class CommunicationFeaturePhase;
-class GreetingsFeaturePhase;
-class V8ShellFeaturePhase;
-}  // namespace application_features
-
-class ClientFeature;
-class ConfigFeature;
-class ShellConsoleFeature;
-class LanguageFeature;
-class LoggerFeature;
-class RandomFeature;
-class ShellColorsFeature;
-class ShellFeature;
-class ShutdownFeature;
-class SslFeature;
 class TempFeature;
-class V8PlatformFeature;
-class V8SecurityFeature;
-class V8ShellFeature;
-class VersionFeature;
-class HttpEndpointProvider;
-#ifdef USE_ENTERPRISE
-class EncryptionFeature;
-#endif
+class BenchFeature;
 
-using namespace application_features;
+using ArangoBenchFeatures = ArangoClientFeatures<TempFeature, BenchFeature>;
 
-using ArangoshFeatures = TypeList<
-    // Phases
-    BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
-    V8ShellFeaturePhase,
-    // Features
-    HttpEndpointProvider, ConfigFeature, ShellConsoleFeature, LanguageFeature,
-    LoggerFeature, RandomFeature, ShellColorsFeature, ShellFeature,
-    ShutdownFeature, SslFeature, TempFeature, V8PlatformFeature,
-    V8SecurityFeature, V8ShellFeature,
-#ifdef USE_ENTERPRISE
-    EncryptionFeature,
-#endif
-    VersionFeature>;
-
-using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
-using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;
+using ArangoBenchServer = ApplicationServerT<ArangoBenchFeatures>;
+using ArangoBenchFeature = ApplicationFeatureT<ArangoBenchServer>;
 
 }  // namespace arangodb
