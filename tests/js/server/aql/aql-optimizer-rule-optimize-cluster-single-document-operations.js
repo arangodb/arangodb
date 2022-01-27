@@ -351,7 +351,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
         [ "UPDATE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
-        [ "UPDATE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
+        [ "UPDATE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 12, 1, true, setupC1, 0],
         [ "UPDATE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "UPDATE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "UPDATE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
@@ -384,6 +384,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
       ];
 
       var expectedNodes = [
@@ -420,7 +421,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
         [ "REPLACE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
-        [ "REPLACE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
+        [ "REPLACE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 13, 1, true, setupC1, 0],
         [ "REPLACE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
         [ "REPLACE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "REPLACE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
@@ -455,6 +456,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
       ];
 
       var expectedNodes = [
