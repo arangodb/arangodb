@@ -518,7 +518,7 @@ TYPED_TEST(PathValidatorTest,
   }
 
   auto branch = this->expandPath(s);
-  ASSERT_EQ(branch.size(), 2);
+  ASSERT_EQ(branch.size(), 1);
   {
     // until the first 2 it's safe
     for (size_t i = 0; i < 1; ++i) {
