@@ -527,8 +527,7 @@ MerkleTree<Hasher, BranchingBits>& MerkleTree<Hasher, BranchingBits>::operator=(
     return *this;
   }
 
-  std::unique_lock<std::shared_mutex> guard1(_dataLock);
-  std::unique_lock<std::shared_mutex> guard2(other->_dataLock);
+  std::scoped_lock guard1(_dataLock, other->_dataLock);
 
   TRI_ASSERT(this->meta().depth == other->meta().depth);
 
@@ -579,12 +578,10 @@ void MerkleTree<Hasher, BranchingBits>::prepareInsertMinMax(
     std::unique_lock<std::shared_mutex>& guard, std::uint64_t minKey,
     std::uint64_t maxKey) {
   if (minKey < meta().rangeMin) {
-    // unlock so we can get exclusive access to grow the range
     growLeft(minKey);
   }
 
   if (maxKey >= meta().rangeMax) {
-    // unlock so we can get exclusive access to grow the range
     growRight(maxKey);
   }
 }
