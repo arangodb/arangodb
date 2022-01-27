@@ -41,7 +41,8 @@ export class GraphView extends React.Component {
         if (evt.target && evt.target.isCanvas && evt.target.isCanvas()) {
           header = 'Canvas ContextMenu';
           menu = `<ul id='graphViewerMenu'>
-            <li title='addNode'>Add node</li>
+            <li title='addNode'>Add node to graph</li>
+            <li title='addNodeToDb'>Add node to database</li>
           </ul>`;
         } else if (evt.item) {
           const itemType = evt.item.getType();
@@ -80,12 +81,16 @@ export class GraphView extends React.Component {
         } else if(chosenAction === 'expandNode') {
           console.log("Trigger expandNode() with node: ", item._cfg);
           console.log("Trigger expandNode() with nodeId: ", item._cfg.id);
+          this.props.onExpandNode(item._cfg.id);
         } else if(chosenAction === 'setAsStartnode') {
           console.log("Trigger setAsStartnode() with node: ", item._cfg);
           console.log("Trigger setAsStartnode() with nodeId: ", item._cfg.id);
         } else if(chosenAction === 'addNode') {
           console.log("Trigger addNode()");
           this.addNode();
+        }  else if(chosenAction === 'addNodeToDb') {
+          console.log("Trigger addNodeToDb()");
+          this.props.onAddNodeToDb();
         } else if(chosenAction === 'deleteEdge') {
           console.log("Trigger deleteEdge() with edge: ", item._cfg);
           console.log("Trigger deleteEdge() with edgeId: ", item._cfg.id);
@@ -132,7 +137,8 @@ export class GraphView extends React.Component {
             formatText(model) {
               console.log("model: ", model);
               // The content of tooltip
-              const text = 'label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
+              //const text = 'Label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
+              const text = '<strong>Label:</strong> ' + model.label;
               return text;
             },
           },
@@ -171,6 +177,9 @@ export class GraphView extends React.Component {
       },
       defaultEdge: {
         type: 'quadratic', // assign the edges to be quadratic bezier curves
+        labelCfg: {
+          autoRotate: true,
+        },
         style: {
           stroke: '#e2e2e2',
         },
@@ -181,6 +190,24 @@ export class GraphView extends React.Component {
     this.graph.render();
 
     this.graph.on('aftercreateedge', (e) => {
+      console.log("Newly added edge (e): ", e);
+      console.log("Newly added edge (e.edge._cfg.model.source): ", e.edge._cfg.model.source);
+      console.log("Newly added edge (e.edge._cfg.model.target): ", e.edge._cfg.model.target);
+      const id = (Math.random() + 1).toString(36).substring(7);
+      const edgeModel = {
+        id: id,
+        source: e.edge._cfg.model.source,
+        target: e.edge._cfg.model.target,
+        data: {
+          type: 'name1',
+          amount: '1000,00',
+          date: '2022-01-13'
+        }
+      };
+      
+      this.graph.addItem('edge', edgeModel);
+      this.props.onAddSingleEdge(edgeModel);
+
       const edges = this.graph.save().edges;
       G6.Util.processParallelEdges(edges);
       this.graph.getEdges().forEach((edge, i) => {
@@ -215,7 +242,8 @@ export class GraphView extends React.Component {
     const maxY = 400;
     const id = (Math.random() + 1).toString(36).substring(7);
     const address = (Math.random() + 1).toString(8).substring(7);
-    const fillColor = `#${Math.floor(Math.random()*16777215).toString(16)}`;
+    //const fillColor = `#${Math.floor(Math.random()*16777215).toString(16)}`;
+    const fillColor = `#FFFFFF`;
     const nodeModel = {
       id: id,
       label: id,
@@ -365,6 +393,7 @@ export class GraphView extends React.Component {
 
   addCollectionNameToEdges = (value) => {
     this.graph.edge((edge) => {
+      console.log("edge:" , edge);
       const slashPos = edge.id.indexOf("/");
       edge.label = edge.id.substring(slashPos + 1) + " - " + edge.id.substring(0, slashPos);
       return {

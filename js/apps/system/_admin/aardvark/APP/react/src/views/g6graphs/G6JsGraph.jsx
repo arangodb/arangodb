@@ -517,6 +517,24 @@ const G6JsGraph = () => {
     setShowNodeToAddModal(true);
   }
 
+  const expandNode = (node) => {
+    console.log(">>>>>>>>>>>> expandNode (node): ", node);
+    const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+      arangoFetch(arangoHelper.databaseUrl(url), {
+        method: "GET"
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Received expanded garph data: ", data);
+        //setNodeToAddData(data.documents[0]);
+        //setNodeDataToEdit(data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    //setShowNodeToAddModal(true);
+  }
+
   const editNodeMode = (node) => {
     console.log('editNodeMode (node): ', node);
     //openeditmodal
@@ -626,6 +644,7 @@ const G6JsGraph = () => {
             onEditNode={(node) => openEditModal(node)}
             onEditEdge={(edge) => openEditEdgeModal(edge)}
             onAddNodeToDb={() => openAddNodeModal()}
+            onExpandNode={(node) => expandNode(node)}
       />     
     </div>
   );
