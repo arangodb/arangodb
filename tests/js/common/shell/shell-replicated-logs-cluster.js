@@ -144,7 +144,6 @@ function ReplicatedLogsWriteSuite () {
       let log = db._replicatedLog(logId);
       let leaderStatus = getLeaderStatus(logId);
       assertEqual(leaderStatus.local.commitIndex, 1);
-      assertTrue(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
       let status = log.status();
       assertEqual(status, globalStatus);
