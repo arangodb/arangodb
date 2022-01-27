@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+  Smart Graph could led to wrong shard location calculation and therefore to
+  wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
+
 * Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
   2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
 
