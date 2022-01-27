@@ -289,9 +289,7 @@ class RocksDBEngine final : public StorageEngine {
                                     LogicalCollection const& collection,
                                     std::string const& oldName) override;
 
-  arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                              arangodb::LogicalView const& view,
-                              bool doSync) override;
+  Result changeView(LogicalView const& view, velocypack::Slice update) final;
 
   arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
                               arangodb::LogicalView const& view) override;
