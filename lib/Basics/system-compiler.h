@@ -58,11 +58,11 @@
 // macro definitions similar to the ones at
 // https://kernelnewbies.org/FAQ/LikelyUnlikely
 #if defined(__GNUC__) || defined(__GNUG__)
-#define ADB_LIKELY(v) __builtin_expect(!!(v), 1)
-#define ADB_UNLIKELY(v) __builtin_expect(!!(v), 0)
+#define ADB_LIKELY_DEPRECATED(v) __builtin_expect(!!(v), 1)
+#define ADB_UNLIKELY_DEPRECATED(v) __builtin_expect(!!(v), 0)
 #else
-#define ADB_LIKELY(v) v
-#define ADB_UNLIKELY(v) v
+#define ADB_LIKELY_DEPRECATED(v) v
+#define ADB_UNLIKELY_DEPRECATED(v) v
 #endif
 
 // sizetint_t

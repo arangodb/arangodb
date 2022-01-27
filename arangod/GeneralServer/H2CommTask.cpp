@@ -659,7 +659,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   // streams)
   unsigned retries = 512;
   try {
-    while (ADB_UNLIKELY(!_responses.push(tmp) && --retries > 0)) {
+    while (ADB_UNLIKELY_DEPRECATED(!_responses.push(tmp) && --retries > 0)) {
       std::this_thread::yield();
     }
   } catch (...) {

@@ -295,7 +295,7 @@ auto AqlItemMatrix::RowIterator::hasMore() const noexcept -> bool {
   TRI_ASSERT((_matrix != nullptr && _blockIndex < _matrix->numberOfBlocks()) ||
              _rowIndex == 0);
   // If _blockIndex is valid, _rowIndex must be, too.
-  return ADB_LIKELY(_matrix != nullptr) &&
+  return ADB_LIKELY_DEPRECATED(_matrix != nullptr) &&
          _blockIndex < _matrix->numberOfBlocks();
 }
 
@@ -347,9 +347,10 @@ AqlItemMatrix::RowIterator::operator bool() const noexcept { return hasMore(); }
 
 bool aql::operator==(AqlItemMatrix::RowIterator const& a,
                      AqlItemMatrix::RowIterator const& b) {
-  return ADB_LIKELY(a._matrix == b._matrix) &&
-         (ADB_UNLIKELY(a._matrix == nullptr /* => b._matrix == nullptr */) ||
-          (ADB_LIKELY(a._blockIndex == b._blockIndex) &&
+  return ADB_LIKELY_DEPRECATED(a._matrix == b._matrix) &&
+         (ADB_UNLIKELY_DEPRECATED(a._matrix ==
+                                  nullptr /* => b._matrix == nullptr */) ||
+          (ADB_LIKELY_DEPRECATED(a._blockIndex == b._blockIndex) &&
            a._rowIndex == b._rowIndex));
 }
 

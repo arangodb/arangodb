@@ -423,7 +423,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // streams)
   unsigned retries = 512;
   try {
-    while (ADB_UNLIKELY(!_writeQueue.push(resItem.get()) && --retries > 0)) {
+    while (ADB_UNLIKELY_DEPRECATED(!_writeQueue.push(resItem.get()) &&
+                                   --retries > 0)) {
       std::this_thread::yield();
       --retries;
     }

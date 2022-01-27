@@ -272,7 +272,7 @@ struct AssertionLogger {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \
-  (ADB_LIKELY(expr))                                                          \
+  (ADB_LIKELY_DEPRECATED(expr))                                               \
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \

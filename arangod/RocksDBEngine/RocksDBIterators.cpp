@@ -85,7 +85,8 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb,
   TRI_ASSERT(_trx->state()->isRunning());
   TRI_ASSERT(_iterator != nullptr);
 
-  if (limit == 0 || ADB_UNLIKELY(!_iterator->Valid()) || outOfRange()) {
+  if (limit == 0 || ADB_UNLIKELY_DEPRECATED(!_iterator->Valid()) ||
+      outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken

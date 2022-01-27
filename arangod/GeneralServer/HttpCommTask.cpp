@@ -272,7 +272,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
         }
         nparsed += datasize;
         data += datasize;
-      } while (ADB_UNLIKELY(data < end));
+      } while (ADB_UNLIKELY_DEPRECATED(data < end));
     }
 
     TRI_ASSERT(nparsed < std::numeric_limits<size_t>::max());
