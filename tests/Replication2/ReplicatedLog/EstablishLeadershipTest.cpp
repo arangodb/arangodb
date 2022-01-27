@@ -117,7 +117,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>();
+    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     newConfig->participants["follower"] = replication2::ParticipantFlags{};
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
