@@ -46,9 +46,6 @@ class ShutdownFeature;
 class SslFeature;
 class VersionFeature;
 class HttpEndpointProvider;
-#ifdef USE_ENTERPRISE
-class EncryptionFeature;
-#endif
 class ArangoGlobalContext;
 
 using namespace application_features;
@@ -61,9 +58,6 @@ using ArangoClientFeatures = TypeList<
     HttpEndpointProvider, ConfigFeature,
     LoggerFeature, RandomFeature, ShellColorsFeature,
     ShutdownFeature, SslFeature,
-#ifdef USE_ENTERPRISE
-    EncryptionFeature,
-#endif
     VersionFeature, T...>;
 
 template<typename Client>

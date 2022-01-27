@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangoexport.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -52,6 +54,36 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
+struct ArangoExportInitializer
+    : public ArangoClientInitializer<ArangoExportServer> {
+ public:
+  ArangoExportInitializer(int* ret, char const* binaryName,
+                          ArangoExportServer& client)
+      : ArangoClientInitializer{binaryName, client}, _ret{ret} {}
+
+  using ArangoClientInitializer::operator();
+
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    _client.addFeature<HttpEndpointProvider, ClientFeature>(false);
+  }
+
+  void operator()(TypeTag<ExportFeature>) {
+    _client.addFeature<ExportFeature>(*_ret);
+  }
+
+  void operator()(TypeTag<ShutdownFeature>) {
+    _client.addFeature<ShutdownFeature>(
+        std::vector<size_t>{ArangoExportServer::id<ExportFeature>()});
+  }
+
+  void operator()(TypeTag<TempFeature>) {
+    _client.template addFeature<TempFeature>(_binaryName);
+  }
+
+ private:
+  int* _ret;
+};
+
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -63,28 +95,11 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangoexport [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
+
     int ret = EXIT_SUCCESS;
-
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
-    server.addFeature<ConfigFeature>("arangoexport");
-    server.addFeature<ExportFeature>(&ret);
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(ExportFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<TempFeature>("arangoexport");
-    server.addFeature<VersionFeature>();
-
-#ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>();
-#endif
+    ArangoExportServer server(options, BIN_DIRECTORY);
+    ArangoExportInitializer init{&ret, context.binaryName().c_str(), server};
+    ArangoExportServer::Features::visit(init);
 
     try {
       server.run(argc, argv);

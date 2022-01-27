@@ -24,56 +24,23 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/TypeList.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
 
-template<typename Features>
-class ApplicationServerT;
-class BasicFeaturePhaseClient;
-class CommunicationFeaturePhase;
-class GreetingsFeaturePhase;
-class V8ShellFeaturePhase;
-}  // namespace application_features
-
-class ClientFeature;
-class ConfigFeature;
-class ShellConsoleFeature;
-class LanguageFeature;
-class LoggerFeature;
-class RandomFeature;
-class ShellColorsFeature;
-class ImportFeature;
-class ShutdownFeature;
-class SslFeature;
 class TempFeature;
-class V8PlatformFeature;
-class V8SecurityFeature;
-class V8ShellFeature;
-class VersionFeature;
-class HttpEndpointProvider;
+class ImportFeature;
 #ifdef USE_ENTERPRISE
 class EncryptionFeature;
 #endif
 
-using namespace application_features;
-
-using ArangoimpFeatures = TypeList<
-    // Phases
-    BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
-    V8ShellFeaturePhase,
-    // Features
-    HttpEndpointProvider, ConfigFeature, ShellConsoleFeature, LanguageFeature,
-    LoggerFeature, RandomFeature, ShellColorsFeature, ImportFeature,
-    ShutdownFeature, SslFeature, TempFeature, V8PlatformFeature,
-    V8SecurityFeature, V8ShellFeature,
+using ArangoImportFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
-    VersionFeature>;
+    TempFeature, ImportFeature>;
 
-using ArangoimpServer = ApplicationServerT<ArangoimpFeatures>;
-using ArangoimpFeature = ApplicationFeatureT<ArangoimpServer>;
+using ArangoImportServer = ApplicationServerT<ArangoImportFeatures>;
+using ArangoImportFeature = ApplicationFeatureT<ArangoImportServer>;
 
 }  // namespace arangodb
