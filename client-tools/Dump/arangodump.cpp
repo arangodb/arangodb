@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangodump.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -51,9 +53,38 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
+struct ArangoDumpInitializer
+    : public ArangoClientInitializer<ArangoDumpServer> {
+ public:
+  ArangoDumpInitializer(int* ret, char const* binaryName,
+                        ArangoDumpServer& client)
+      : ArangoClientInitializer{binaryName, client}, _ret{ret} {}
+
+  using ArangoClientInitializer::operator();
+
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    _client.addFeature<HttpEndpointProvider, ClientFeature>(
+        true, std::numeric_limits<size_t>::max());
+  }
+
+  void operator()(TypeTag<DumpFeature>) {
+    _client.addFeature<DumpFeature>(*_ret);
+  }
+
+  void operator()(TypeTag<ShutdownFeature>) {
+    _client.addFeature<ShutdownFeature>(
+        std::vector<size_t>{ArangoDumpServer::id<DumpFeature>()});
+  }
+
+ private:
+  int* _ret;
+};
+
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
+    int ret = EXIT_SUCCESS;
+
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
@@ -67,28 +98,9 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangodump [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
-    int ret = EXIT_SUCCESS;
-
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    server.addFeature<ClientFeature, HttpEndpointProvider>(
-        true, std::numeric_limits<size_t>::max());
-    server.addFeature<ConfigFeature>("arangodump");
-    server.addFeature<DumpFeature>(ret);
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(DumpFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<VersionFeature>();
-
-#ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>();
-#endif
+    ArangoDumpServer server(options, BIN_DIRECTORY);
+    ArangoDumpInitializer init{&ret, context.binaryName().c_str(), server};
+    ArangoDumpServer::Features::visit(init);
 
     try {
       server.run(argc, argv);

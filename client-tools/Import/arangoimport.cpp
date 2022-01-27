@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangoimport.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"

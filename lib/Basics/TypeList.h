@@ -56,8 +56,13 @@ class TypeList {
   }
 
   template<typename U>
-  static consteval size_t id() {
-    static_assert(kTypes.find(ctti<U>()) != kTypes.end(), "Type not found");
+  static consteval bool has() noexcept {
+    return kTypes.find(ctti<U>()) != kTypes.end();
+  }
+
+  template<typename U>
+  static consteval size_t id() noexcept {
+    static_assert(has<U>(), "Type not found");
     return kTypes.find(ctti<U>())->second;
   }
 

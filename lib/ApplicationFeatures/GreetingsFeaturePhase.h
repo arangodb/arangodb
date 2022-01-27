@@ -40,8 +40,9 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "GreetingsPhase"; }
 
-  template<typename Server>
-  explicit GreetingsFeaturePhase(Server& server, bool isClient)
+  template<typename Server, bool IsClient>
+  explicit GreetingsFeaturePhase(Server& server,
+                                 std::integral_constant<bool, IsClient>)
       : ApplicationFeaturePhase{server, *this} {
     setOptional(false);
 
@@ -51,7 +52,7 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
     startsAfter<ShellColorsFeature, Server>();
     startsAfter<VersionFeature, Server>();
 
-    if (!isClient) {
+    if constexpr (!IsClient) {
       // These are server only features
       startsAfter<GreetingsFeature, Server>();
     }

@@ -23,6 +23,8 @@
 
 #include "arangod.h"
 
+#include <type_traits>
+
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 #include "Basics/operating-system.h"
@@ -159,7 +161,7 @@ struct ArangodInitializer {
   }
 
   void operator()(TypeTag<GreetingsFeaturePhase>) {
-    server.addFeature<GreetingsFeaturePhase>(false);
+    server.addFeature<GreetingsFeaturePhase>(std::false_type{});
   }
 
   void operator()(TypeTag<CheckVersionFeature>) {

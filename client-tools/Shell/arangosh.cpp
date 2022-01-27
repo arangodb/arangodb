@@ -61,79 +61,67 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-struct ArangoshInitializer {
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    server.addFeature<T>();
-  }
+struct ArangoshInitializer : public ArangoClientInitializer<ArangoshServer> {
+ public:
+  ArangoshInitializer(int* ret, char const* binaryName, ArangoshServer& client)
+      : ArangoClientInitializer{binaryName, client}, _ret{ret} {}
 
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    server.addFeature<GreetingsFeaturePhase>(true);
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    server.addFeature<HttpEndpointProvider, ClientFeature>(true);
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    server.addFeature<ConfigFeature>(context.binaryName());
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    server.addFeature<LoggerFeature>(false);
-  }
-
-  void operator()(TypeTag<TempFeature>) {
-    server.addFeature<TempFeature>(context.binaryName());
+  void operator()(TypeTag<ShellFeature>) {
+    _client.addFeature<ShellFeature>(_ret);
   }
 
   void operator()(TypeTag<V8ShellFeature>) {
-    server.addFeature<V8ShellFeature>(context.binaryName());
+    _client.addFeature<V8ShellFeature>(_binaryName);
+  }
+
+  void operator()(TypeTag<TempFeature>) {
+    _client.template addFeature<TempFeature>(_binaryName);
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    server.addFeature<ShutdownFeature>(
+    _client.addFeature<ShutdownFeature>(
         std::vector<size_t>{ArangoshServer::id<ShellFeature>()});
   }
 
-  int ret;
-  ArangoGlobalContext& context;
-  ArangoshServer& server;
+ private:
+  int* _ret;
 };
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
+    int ret{EXIT_SUCCESS};
+
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
-    std::string name = context.binaryName();
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(
-            argv[0], "Usage: " + name + " [<options>]",
+            argv[0], "Usage: " + context.binaryName() + " [<options>]",
             "For more information use:", BIN_DIRECTORY));
     ArangoshServer server(options, BIN_DIRECTORY);
-    ArangoshInitializer init{EXIT_SUCCESS, context, server};
+    ArangoshInitializer init{&ret, context.binaryName().c_str(), server};
+    ArangoshServer::Features::visit(init);
 
     try {
       server.run(argc, argv);
       if (server.helpShown()) {
         // --help was displayed
-        init.ret = EXIT_SUCCESS;
+        ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("da777", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception: "
           << ex.what();
-      init.ret = EXIT_FAILURE;
+      ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("ed049", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception of "
              "unknown type";
-      init.ret = EXIT_FAILURE;
+      ret = EXIT_FAILURE;
     }
 
-    return context.exit(init.ret);
+    return context.exit(ret);
   });
 }

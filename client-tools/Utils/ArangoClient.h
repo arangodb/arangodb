@@ -1,0 +1,102 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Andrey Abramov
+////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+#include "Basics/TypeList.h"
+#include "Utils/ArangoClient.h"
+
+namespace arangodb {
+namespace application_features {
+
+template<typename Features>
+class ApplicationServerT;
+class BasicFeaturePhaseClient;
+class CommunicationFeaturePhase;
+class GreetingsFeaturePhase;
+}  // namespace application_features
+
+class ClientFeature;
+class ConfigFeature;
+class ShellConsoleFeature;
+class LoggerFeature;
+class RandomFeature;
+class ShellColorsFeature;
+class ShutdownFeature;
+class SslFeature;
+class VersionFeature;
+class HttpEndpointProvider;
+#ifdef USE_ENTERPRISE
+class EncryptionFeature;
+#endif
+class ArangoGlobalContext;
+
+using namespace application_features;
+
+template<typename... T>
+using ArangoClientFeatures = TypeList<
+    // Phases
+    BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
+    // Features
+    HttpEndpointProvider, ConfigFeature,
+    LoggerFeature, RandomFeature, ShellColorsFeature,
+    ShutdownFeature, SslFeature,
+#ifdef USE_ENTERPRISE
+    EncryptionFeature,
+#endif
+    VersionFeature, T...>;
+
+template<typename Client>
+class ArangoClientInitializer {
+ public:
+  ArangoClientInitializer(char const* binaryName, Client& client)
+    : _binaryName{binaryName}, _client{client} {
+  }
+
+  template<typename T>
+  void operator()(TypeTag<T>) {
+    _client.template addFeature<T>();
+  }
+
+  void operator()(TypeTag<GreetingsFeaturePhase>) {
+    _client.template addFeature<GreetingsFeaturePhase>(std::true_type{});
+  }
+
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    _client.template addFeature<HttpEndpointProvider, ClientFeature>(true);
+  }
+
+  void operator()(TypeTag<ConfigFeature>) {
+    _client.template addFeature<ConfigFeature>(_binaryName);
+  }
+
+  void operator()(TypeTag<LoggerFeature>) {
+    _client.template addFeature<LoggerFeature>(false);
+  }
+
+ protected:
+  char const* _binaryName;
+  Client& _client;
+};
+
+}  // namespace arangodb

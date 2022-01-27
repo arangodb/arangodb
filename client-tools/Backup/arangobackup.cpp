@@ -65,7 +65,8 @@ int main(int argc, char* argv[]) {
 
     server.addFeature<CommunicationFeaturePhase>();
     server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
+    server.addFeature<GreetingsFeaturePhase>(
+        GreetingsFeaturePhase::ClientTag{});
 
     server.addFeature<BackupFeature>(ret);
     server.addFeature<ClientFeature, HttpEndpointProvider>(false);

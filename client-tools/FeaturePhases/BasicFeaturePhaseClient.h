@@ -28,7 +28,7 @@
 namespace arangodb {
 class EncryptionFeature;
 class SslFeature;
-class ClientFeature;
+class HttpEndpointProvider;
 namespace application_features {
 class GreetingsFeaturePhase;
 
@@ -37,7 +37,7 @@ class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
   static constexpr std::string_view name() noexcept { return "BasicsPhase"; }
 
   template<typename Server>
-  explicit BasicFeaturePhaseClient(ApplicationServer& server)
+  explicit BasicFeaturePhaseClient(Server& server)
       : ApplicationFeaturePhase(server, *this) {
     setOptional(false);
     startsAfter<GreetingsFeaturePhase, Server>();
@@ -46,7 +46,7 @@ class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
     startsAfter<EncryptionFeature, Server>();
 #endif
     startsAfter<SslFeature, Server>();
-    startsAfter<ClientFeature, Server>();
+    startsAfter<HttpEndpointProvider, Server>();
   }
 };
 
