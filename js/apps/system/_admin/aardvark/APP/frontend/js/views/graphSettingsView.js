@@ -80,6 +80,18 @@
         name: 'Label',
         desc: 'Node label. Please choose a valid and available node attribute.',
       },
+      "singleNode": {
+        type: "singleLabel",
+        name: "Update sigle node",
+        desc: "Add different node label to different collections.",
+        nodeIds: {
+          0: { id: "frenchCity/Lyon" },
+          1: { id: "frenchCity/Paris" },
+          2: { id: "germanCity/Berlin" },
+          3: { id: "germanCity/Hamburg" },
+          4: { id: "germanCity/Cologne" }
+        },
+      },
 
       'nodeLabelByCollection': {
         type: 'select',
@@ -246,7 +258,7 @@
       'keyup #graphSettingsView select': 'checkEnterKey',
       'change input[type="range"]': 'saveGraphSettings',
       'change input[type="color"]': 'checkColor',
-      'change select': 'saveGraphSettings',
+      'change select': 'checkAllEvents',
       'focus #graphSettingsView input': 'lastFocus',
       'focus #graphSettingsView select': 'lastFocus',
       'focusout #graphSettingsView input[type="text"]': 'checkinput',
@@ -267,9 +279,60 @@
       }
     },
 
+    checkAllEvents: function (e) {
+      //console.log(e.target);
+      var self = this;
+      if (e.type === "change" && e.target.id !== "g_singleNode") {
+        self.saveGraphSettings(self.getLabels());
+      } else if (e.target.id === "g_singleNode") {
+        this.updateSingleNode(e);
+      }
+    },
+
+    updateSingleNode: function (e) {
+      //get the selected nodeId;
+      // check if node label contains a delimeter
+      // loop through all existing node and update the node label with the entered nodeLabel
+      var self = this;
+      var newNodeLabel = $("#g_nodeLabel").val();
+      var nodeId = $(`#${e.target.id}`).val();
+      var graphNodes = window.App.graphViewer.currentGraph.graph.nodes();
+
+
+      /**
+       * returns an array of string entered
+       * as a search query for the update.
+       * @param {string} str
+       * @returns {Array} strArr;
+       */
+      let formatNodeLabel = (str) => {
+        let strArr;
+        if (str.includes(",")) {
+          return strArr = str.split(",");
+        }
+      }
+
+      for (let n = 0; n < graphNodes.length; n++) {
+        if (n.id === nodeId) {
+          console.log(n);
+          graphNodes[n].label === newNodeLabel;
+        }
+      }
+      console.log(graphNodes);
+
+      // _.each(graphNodes, function (n) {
+      //   //console.log(n);
+      //   if (n.id === nodeId) {
+      //     console.log(n);
+      //   }
+      // });
+      debugger;
+    },
+
     getLabels: function () {
       var self = this;
       var data;
+      // debugger
 
       // let countIdex = function (arr, n) {
       //   let cnt = 0;
@@ -296,12 +359,14 @@
         data: data,
 
         success: function (data) {
-          console.log(data);
+          // console.log(data);
           var result = data.cursor;
           var edges = [];
           var vertices = [];
+          var nodes = [];
 
           _.each(result.json, function (obj) {
+            nodes.push(obj.vertices);
 
             for (let i = 0; i < obj.edges.length; i++) {
               if (edges.length == 0) {
@@ -497,7 +562,6 @@
     },
 
     setDefaults: function (saveOnly, silent, callback) {
-      this.getLabels();
       var obj = {
         layout: 'force',
         renderer: 'canvas',
@@ -551,6 +615,7 @@
     },
 
     render: function () {
+      this.getLabels();
       if (this.noDefinedGraph) {
         // aql render mode
         this.continueRender();

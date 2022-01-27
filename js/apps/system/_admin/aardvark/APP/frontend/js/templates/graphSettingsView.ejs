@@ -99,6 +99,16 @@
                     <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
                   <% } %>
 
+                  <% if (val.type === 'singleLabel') { %>
+                    <select id="g_<%=key%>">
+                      <% _.each(val.nodeIds, function(id, optKey) { %>
+                        <% if (id) { %>
+                          <option value="<%=id.id%>"> <%=id.id%> </option>
+                        <% } %>
+                      <% }); %>
+                    </select>
+                  <% } %>
+
                   <% if (val.type === 'select') { %>
                     <select id="g_<%=key%>">
                       <% _.each(val, function(option, optKey) { %>
