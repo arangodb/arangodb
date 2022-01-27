@@ -76,6 +76,7 @@ export class GraphView extends React.Component {
         } else if(chosenAction === 'editNode') {
           console.log("Trigger editNode() with node: ", item._cfg);
           console.log("Trigger editNode() with nodeId: ", item._cfg.id);
+          this.props.onEditNode(item._cfg.id);
         } else if(chosenAction === 'expandNode') {
           console.log("Trigger expandNode() with node: ", item._cfg);
           console.log("Trigger expandNode() with nodeId: ", item._cfg.id);
@@ -379,7 +380,7 @@ export class GraphView extends React.Component {
       type: value,
     });
   }
-  
+
   render() {
     return <>
       <LayoutSelector value={this.type} onChange={this.changeLayout} />

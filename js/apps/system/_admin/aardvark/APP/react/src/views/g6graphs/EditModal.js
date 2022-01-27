@@ -1,8 +1,8 @@
 /* global arangoHelper, arangoFetch, frontendConfig, document, $ */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from "styled-components";
-import { Modal, Button } from 'antd';
 import { JsonEditor as Editor } from 'jsoneditor-react';
+import { Modal, Button, notification, Space } from 'antd';
 
 
 const ModalBackground = styled.div`
@@ -27,72 +27,76 @@ const ModalBody = styled.div`
 
     const [visible, setVisibility] = useState(shouldShow);
     const [loading, setLoading] = useState(false);
+    const jsonEditorRef = useRef();
+    const [json, setJson] = useState(nodeData);
+    const [isModalVisible, setIsModalVisible] = useState(shouldShow);
+
+    const openNotificationWithIcon = type => {
+      notification[type]({
+        message: 'Node updates',
+        description:
+          `The node ${node} was successfully updated`,
+      });
+    };
 
     const updateNode = (graphData, updateNodeId) => {
-      console.log("#################");
-      console.log("EditModal - updateNode (node): ", node);
-      console.log("#################");
-
-      const model = {
-        "_key": "Cologne",
-        "_id": "germanCity/Cologne",
-        "_rev": "_dlGzD4u--B",
-        "population": 13000,
-        "isCapital": false,
-        "geometry": {
-          "type": "Point",
-          "coordinates": [
-            6.9528,
-            50.9364
-          ]
-        }
-      };
-
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/document/germanCity?returnNew=true'),
-        data: JSON.stringify([model]),
+        url: arangoHelper.databaseUrl('/_api/document/' + nodeCollection + '?returnNew=true'),
+        data: JSON.stringify([json]),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
+          openNotificationWithIcon('success');
           console.log("Successfully document saved: ", data);
         },
         error: function (data) {
           console.log("Error saving document: ", data);
         }
       });
-      /*
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/document/' + encodeURIComponent(colid) + '?returnNew=true'),
-        data: JSON.stringify([model]),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(false, data);
-        },
-        error: function (data) {
-          callback(true, data);
-        }
-      });
-      */
-
       onRequestClose();
       
       //onUpdateNode(mergedGraphData);
     }
 
-    const okClicked = () => {
-      setVisibility(false);
-      console.log("OK clicked in ANTD modal");
-    }
+    const showModal = () => {
+      setIsModalVisible(true);
+    };
 
-    const cancelClicked = () => {
-      setVisibility(false);
-      console.log("CANCEL clicked in ANTD modal");
-    }
+    const handleOk = () => {
+      setIsModalVisible(false);
+    };
+
+    const handleCancel = () => {
+      setIsModalVisible(false);
+    };
+
+    /*
+  return (
+    <>
+      <Modal title="Basic Modal" visible={isModalVisible} onOk={handleOk} onCancel={handleCancel}>
+      <div>
+            {children}<br />
+          </div>
+          <div>
+            {
+              nodeData ? (
+                <Editor
+                  ref={jsonEditorRef}
+                  value={nodeData}
+                  onChange={(value) => {
+                    console.log('Data in jsoneditor changed: ', value);
+                    setJson(value);
+                  }}
+                  mode={'code'}
+                  history={true} />
+              ) : 'Data is loading...'
+            }
+          </div>
+      </Modal>
+    </> );
+    */
 
   return shouldShow ? (
       <ModalBackground onClick={onRequestClose}>
@@ -103,48 +107,23 @@ const ModalBody = styled.div`
           <div>
             {
               nodeData ? (
-                <Editor value={nodeData} onChange={() => console.log('Data in jsoneditor changed')} mode={'code'} history={true} />
+                <Editor
+                  ref={jsonEditorRef}
+                  value={nodeData}
+                  onChange={(value) => {
+                    console.log('Data in jsoneditor changed: ', value);
+                    setJson(value);
+                  }}
+                  mode={'code'}
+                  history={true} />
               ) : 'Data is loading...'
             }
           </div>
-          <div>
-            <button onClick={onRequestClose}>Cancel</button>
+          <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
+            <button className="button-close" onClick={onRequestClose}>Cancel</button>
             <button className="button-success" onClick={() => { updateNode(node) }}>Update</button>
           </div>
         </ModalBody>
       </ModalBackground>
   ) : null;
- /*
-  return (
-  <Modal
-  visible={visible}
-  title="Title"
-  onOk={() => okClicked()}
-  onCancel={() => cancelClicked()}
-  footer={[
-    <Button key="back" onClick={() => cancelClicked()}>
-      Return
-    </Button>,
-    <Button key="submit" type="primary" loading={loading} onClick={() => okClicked()}>
-      Submit
-    </Button>,
-    <Button
-      key="link"
-      href="https://google.com"
-      type="primary"
-      loading={loading}
-      onClick={() => okClicked()}
-    >
-      Search on Google
-    </Button>,
-  ]}
->
-  <p>Some contents...</p>
-  <p>Some contents...</p>
-  <p>Some contents...</p>
-  <p>Some contents...</p>
-  <p>Some contents...</p>
-</Modal>
-  )
-  */
 };
