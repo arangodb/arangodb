@@ -248,7 +248,7 @@
 // NOTE: the alias points to a compile time finction not a preprocessor macro
 #if defined(__FUNCSIG__)
   #define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
-#elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__)
+#elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__) || defined(__clang__)
   #define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__
 #else
   #error "compiler is not supported"
