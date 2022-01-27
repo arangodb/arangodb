@@ -497,7 +497,8 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
     ASSERT_TRUE(link);
-    irs::directory_reader const snapshotReader = link->snapshot();
+    irs::directory_reader const snapshotReader =
+        link->snapshot().getDirectoryReader();
     std::string const columns[] = {
         arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER +
             std::string("_id"),
@@ -660,7 +661,8 @@ TEST_P(IResearchQueryNoMaterializationTest,
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *logicalCollection, *view);
     ASSERT_TRUE(link);
-    irs::directory_reader const snapshotReader = link->snapshot();
+    irs::directory_reader const snapshotReader =
+        link->snapshot().getDirectoryReader();
     std::string const columns[] = {
         arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER +
             std::string("_id"),
