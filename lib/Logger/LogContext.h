@@ -261,12 +261,12 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, void, 1> {
         *this, std::forward<Value>(v));
   }
   std::shared_ptr<Values> share() && {
-    return std::make_shared<ValuesImpl<ValueTypes, Keys>>(std::move(_value));
+    return std::make_shared<ValuesImpl<ValueTypesT, KeysT>>(std::move(_value));
   }
 
  private:
-  using ValueTypes = ValueTypes<std::decay_t<std::remove_reference_t<V>>>;
-  using Keys = Keys<K>;
+  using ValueTypesT = ValueTypes<std::decay_t<std::remove_reference_t<V>>>;
+  using KeysT = Keys<K>;
 
   template<std::size_t Idx>
   V&& value() {
@@ -299,15 +299,15 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
   std::shared_ptr<Values> share() && {
     return std::move(*this).passValues([]<class... Args>(Args && ... args) {
       return std::make_shared<
-          ValuesImpl<typename ValueBuilder::ValueTypes, Keys>>(
+          ValuesImpl<ValueTypesT, KeysT>>(
           std::forward<Args>(args)...);
     });
   }
 
  private:
-  using ValueTypes = typename Base::ValueTypes::template With<
+  using ValueTypesT = typename Base::ValueTypesT::template With<
       std::decay_t<std::remove_reference_t<V>>>;
-  using Keys = typename Base::Keys::template With<K>;
+  using KeysT = typename Base::Keys::template With<K>;
 
   template<class F>
   auto passValues(F&& func) && {
@@ -554,8 +554,8 @@ struct LogContext::Accessor::ScopedValue {
   explicit ScopedValue(ValueBuilder<KV, Base, Depth>&& v) {
     std::move(v).passValues([this]<class... Args>(Args && ... args) {
       this->appendEntry<
-          ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypes,
-                     typename ValueBuilder<KV, Base, Depth>::Keys>>(
+          ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
+                     typename ValueBuilder<KV, Base, Depth>::KeysT>>(
           std::forward<Args>(args)...);
     });
   }
@@ -707,8 +707,8 @@ inline LogContext::EntryPtr LogContext::Current::pushValues(
     ValueBuilder<KV, Base, Depth>&& v) {
   return std::move(v).passValues([]<class... Args>(Args && ... args) {
       return Current::appendEntry<
-          ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypes,
-                     typename ValueBuilder<KV, Base, Depth>::Keys>>(
+          ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
+                     typename ValueBuilder<KV, Base, Depth>::KeysT>>(
           std::forward<Args>(args)...);
     });
 }
