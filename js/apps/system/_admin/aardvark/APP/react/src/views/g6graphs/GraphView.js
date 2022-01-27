@@ -411,6 +411,23 @@ export class GraphView extends React.Component {
     });
   }
 
+  /*
+  <button onClick={this.changeLayout}>Change layout</button>
+      <button onClick={this.updateNodeModel}>Update "frenchCity/Paris"</button>
+      <button onClick={this.addCollectionNameToNodes}>Add collection name (nodes)</button>
+      <button onClick={this.getNodes}>Get nodes (new)</button>
+      <button onClick={this.getEdges}>Get edges (new)</button>
+      <button onClick={this.addNode}>Add node (new)</button>
+      <button onClick={this.addEdge}>Add edge (new)</button>
+      <button onClick={this.updateNodeGraphData}>Update node graph data (new)</button>
+      <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
+
+      <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
+      <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
+      <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
+      <AddCollectionNameToEdgesSelector onAddCollectionNameToEdgesChange={(value) => this.addCollectionNameToEdges(value)} />
+      */
+
   render() {
     return <>
       <LayoutSelector value={this.type} onChange={this.changeLayout} />
@@ -423,12 +440,14 @@ export class GraphView extends React.Component {
       <button onClick={this.addEdge}>Add edge (new)</button>
       <button onClick={this.updateNodeGraphData}>Update node graph data (new)</button>
       <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
+
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
       <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
       <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
       <AddCollectionNameToEdgesSelector onAddCollectionNameToEdgesChange={(value) => this.addCollectionNameToEdges(value)} />
+      
       <Card
-          title="Pure JS G6 Graph"
+          title={this.props.graphName}
         >
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>

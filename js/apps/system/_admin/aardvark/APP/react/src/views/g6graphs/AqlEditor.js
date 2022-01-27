@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from 'antd';
 
 const AqlEditor = ({
   queryString, onQueryChange, onNewSearch, onOnclickHandler, onAqlQueryHandler
@@ -10,6 +11,18 @@ const AqlEditor = ({
   let [formData, setFormData] = useState(clearData);
   let textInput = React.createRef();
   let nodesInput = React.createRef();
+
+  /*
+  <button
+        className="button-primary"
+        onClick={
+          () => {
+            const myString = `/_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Paris&depth=${formData.depth}&limit=${formData.limit}&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true`;
+            onAqlQueryHandler(myString)}
+        }>
+          Load AQL Query
+      </button>
+      */
 
   return (
     <>
@@ -25,15 +38,13 @@ const AqlEditor = ({
         value={formData.depth}
         placeholder="depth"
         style={{width: '90%'}} /><br />
-      <button
-        className="button-primary"
-        onClick={
+      <Button type="primary" onClick={
           () => {
             const myString = `/_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Paris&depth=${formData.depth}&limit=${formData.limit}&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true`;
             onAqlQueryHandler(myString)}
         }>
-          Load AQL Query
-      </button>
+        Load graph
+      </Button>
     </>
   );
   /*

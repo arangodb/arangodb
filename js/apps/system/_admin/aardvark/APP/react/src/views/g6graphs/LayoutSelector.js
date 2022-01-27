@@ -81,7 +81,7 @@ const LayoutSelector = props => {
         })}
         */
   return (
-    <div style={{ position: "absolute", top: 10, left: 10 }}>
+    <div style={{ position: "absolute", top: 62, left: 10 }}>
       <Select style={{ width: "200px" }} value={value} onChange={onChange}>
         <SelectOption key='graphin-force' value='graphin-force'>
         </SelectOption>

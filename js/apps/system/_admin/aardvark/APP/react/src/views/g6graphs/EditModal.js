@@ -28,6 +28,7 @@ const ModalBody = styled.div`
     const [visible, setVisibility] = useState(shouldShow);
     const [loading, setLoading] = useState(false);
     const jsonEditorRef = useRef();
+    const jsonEditorRef2 = useRef();
     const [json, setJson] = useState(nodeData);
     const [isModalVisible, setIsModalVisible] = useState(shouldShow);
 
@@ -40,24 +41,24 @@ const ModalBody = styled.div`
     };
 
     const updateNode = (graphData, updateNodeId) => {
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/document/' + nodeCollection + '?returnNew=true'),
-        data: JSON.stringify([json]),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          openNotificationWithIcon('success');
-          console.log("Successfully document saved: ", data);
-        },
-        error: function (data) {
-          console.log("Error saving document: ", data);
-        }
-      });
-      onRequestClose();
-      
-      //onUpdateNode(mergedGraphData);
+          $.ajax({
+            cache: false,
+            type: 'PUT',
+            url: arangoHelper.databaseUrl('/_api/document/' + nodeCollection + '?returnNew=true'),
+            data: JSON.stringify([json]),
+            contentType: 'application/json',
+            processData: false,
+            success: function (data) {
+              openNotificationWithIcon('success');
+              console.log("Successfully document saved: ", data);
+            },
+            error: function (data) {
+              console.log("Error saving document: ", data);
+            }
+          });
+          onRequestClose();
+          
+          //onUpdateNode(mergedGraphData);
     }
 
     const showModal = () => {
@@ -116,7 +117,7 @@ const ModalBody = styled.div`
                   }}
                   mode={'code'}
                   history={true} />
-              ) : 'Data is loading...'
+              ) : 'Loading data...'
             }
           </div>
           <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>

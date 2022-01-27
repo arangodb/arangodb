@@ -66,26 +66,36 @@ const NodeStyleSelector = ({ onNodeStyleChange} ) => {
   };
 
   return <>
-          <h4>Node style</h4>
-          <label for="fillcolor">Fill color</label>
-          <input name="fillcolor" type="color" style={{ width: '200px', height: '20px' }} ref={fillColorInput} />
-          <label for="strokecolor">Stroke color</label>
-          <input name="strokecolor" type="color" style={{ width: '200px', height: '20px' }} ref={strokeColorInput} />
-          <label for="width">Width</label>
-          <input name="width" type="input" style={{ width: '200px' }} placeholder="20" ref={widthInput} />
-          <label for="height">Height</label>
-          <input name="height" type="input" style={{ width: '200px' }} placeholder="20" ref={heightInput} />
-          <label for="nodetype">Type</label>
-          <Select name="nodeType" style={{ width: '200px' }} value={type} onChange={handleChange}>
-            {styles.map(style => {
-              const { type } = style;
-              return (
-                <SelectOption key={type} value={type}>
-                  {type}
-                </SelectOption>
-              );
-            })}
-          </Select>
+          <h5>Node style</h5>
+          <div style={{ float: 'left' }}>
+            <label for="fillcolor">Fill color</label>
+            <input name="fillcolor" type="color" style={{ width: '200px', height: '20px' }} ref={fillColorInput} />
+          </div>
+          <div style={{ float: 'left' }}>
+            <label for="strokecolor">Stroke color</label>
+            <input name="strokecolor" type="color" style={{ width: '200px', height: '20px' }} ref={strokeColorInput} />
+          </div>
+          <div style={{ float: 'left' }}>
+            <label for="width">Width</label>
+            <input name="width" type="input" style={{ width: '200px' }} placeholder="20" ref={widthInput} />
+          </div>
+          <div style={{ float: 'left' }}>
+            <label for="height">Height</label>
+            <input name="height" type="input" style={{ width: '200px' }} placeholder="20" ref={heightInput} />
+          </div>
+          <div style={{ float: 'left' }}>
+            <label for="nodetype">Type</label>
+            <Select name="nodeType" style={{ width: '200px' }} value={type} onChange={handleChange}>
+              {styles.map(style => {
+                const { type } = style;
+                return (
+                  <SelectOption key={type} value={type}>
+                    {type}
+                  </SelectOption>
+                );
+              })}
+            </Select>
+          </div>
   </>;
 }
 

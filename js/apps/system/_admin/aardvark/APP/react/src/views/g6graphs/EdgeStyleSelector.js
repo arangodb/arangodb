@@ -61,22 +61,30 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
   };
 
   return <>
-          <h4>Edge style</h4>
-          <label for="strokecolor">Stroke color</label>
-          <input name="strokecolor" type="color" style={{ width: '200px', height: '20px' }} ref={strokeColorInput} />
-          <label for="linewidth">Line width</label>
-          <input name="linewidth" type="input" style={{ width: '200px' }} placeholder="5" ref={lineWidthInput} />
-          <label for="edgetype">Type</label>
-          <Select name="edgeType" style={{ width: '200px' }} value={type} onChange={handleChange}>
-            {styles.map(style => {
-              const { type } = style;
-              return (
-                <SelectOption key={type} value={type}>
-                  {type}
-                </SelectOption>
-              );
-            })}
-          </Select>
+          <div style={{ clear: 'both' }}>
+            <h5>Edge style</h5>
+          </div>
+          <div style={{ float: 'left' }}>
+            <label for="strokecolor">Stroke color</label>
+            <input name="strokecolor" type="color" style={{ width: '200px', height: '20px' }} ref={strokeColorInput} />
+          </div>
+          <div style={{ float: 'left' }}>
+            <label for="linewidth">Line width</label>
+            <input name="linewidth" type="input" style={{ width: '200px' }} placeholder="5" ref={lineWidthInput} />
+          </div>
+          <div style={{ float: 'left' }}>
+            <label for="edgetype">Type</label>
+            <Select name="edgeType" style={{ width: '200px' }} value={type} onChange={handleChange}>
+              {styles.map(style => {
+                const { type } = style;
+                return (
+                  <SelectOption key={type} value={type}>
+                    {type}
+                  </SelectOption>
+                );
+              })}
+            </Select>
+          </div>
   </>;
 }
 

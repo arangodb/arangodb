@@ -8,6 +8,8 @@ import { data2 } from './data2';
 import G6 from '@antv/g6';
 import { Card } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
+import { NodeList } from './components/node-list/node-list.component';
+import { EdgeList } from './components/edge-list/edge-list.component';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
 import NodeLabelContentSelector from './NodeLabelContentSelector.js';
 import { EditNodeModal } from './EditNodeModal';
@@ -15,6 +17,8 @@ import { LoadDocument } from './LoadDocument';
 import { EditModal } from './EditModal';
 import { EditEdgeModal } from './EditEdgeModal';
 import { AddNodeModal2 } from './AddNodeModal2';
+import AqlEditor from './AqlEditor';
+import { SlideInMenu } from './SlideInMenu';
 import omit from "lodash";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import './tooltip.css';
@@ -60,6 +64,7 @@ const G6JsGraph = () => {
   const [isNewNodeToEdit, setIsNewNodeToEdit] = useState(false);
   const [showNodeToAddModal, setShowNodeToAddModal] = useState();
   const [type, setLayout] = React.useState('graphin-force');
+  let [aqlQueryString, setAqlQueryString] = useState("/_admin/aardvark/g6graph/routeplanner");
   const handleChange = value => {
     console.log('handleChange (value): ', value);
     //setLayout(value);
@@ -183,6 +188,11 @@ const G6JsGraph = () => {
     graph.render();
   }, []);
   */
+
+  const changeCollection = (myString) => {
+    console.log('in changeCollection');
+    setAqlQueryString(`/_admin/aardvark/g6graph/${myString}`);
+  }
 
   const getNodes = () => {
     const nodes = graph.getNodes();
@@ -526,8 +536,7 @@ const G6JsGraph = () => {
       .then(response => response.json())
       .then(data => {
         console.log("Received expanded garph data: ", data);
-        //setNodeToAddData(data.documents[0]);
-        //setNodeDataToEdit(data);
+        setGraphData(data);
       })
       .catch((err) => {
         console.log(err);
@@ -538,6 +547,28 @@ const G6JsGraph = () => {
   const editNodeMode = (node) => {
     console.log('editNodeMode (node): ', node);
     //openeditmodal
+  }
+
+
+  const changeGraphNodes = () => {
+    console.log("changeGraphNodes");
+  }
+
+  const getNewGraphData = (myString) => {
+    console.log("getExpandedGraphData (myString): ", myString);
+    //let url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+    let url = myString;
+    arangoFetch(arangoHelper.databaseUrl(url), {
+      method: "GET"
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("Received new graph data: ", data);
+      setGraphData(data);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
   }
 
   /*
@@ -555,12 +586,36 @@ const G6JsGraph = () => {
  
         //<Editor value={selectedNodeData} onChange={() => console.log('Data in jsoneditor changed')} mode={'code'} history={true}/>
         //<LoadDocument node={nodeToEdit} />
-  return (
-    <div>
-      <button onClick={() => changeGraphData()}>Change graph data (parent)</button>
+
+        /*
+        <button onClick={() => changeGraphData()}>Change graph data (parent)</button>
       <button onClick={() => printGraphData()}>Print graphData</button>
       <button onClick={() => openEditNodeModal()}>Open edit node modal</button>
       <button onClick={() => openEditModal()}>Open edit modal</button>
+      <LayoutSelector options={layouts} value={type} onChange={handleChange} />
+      */
+  return (
+    <div>
+      <SlideInMenu>
+        <h5>Graph</h5>
+        <AqlEditor
+            queryString={queryString}
+            onNewSearch={(myString) => {setQueryString(myString)}}
+            onQueryChange={(myString) => {setQueryString(myString)}}
+            onOnclickHandler={(myString) => changeCollection(myString)}
+            onReduceNodes={(nodes) => changeGraphNodes(nodes)}
+            onAqlQueryHandler={(myString) => getNewGraphData(myString)}
+        />
+        <h5>Nodes</h5>
+        <NodeList
+          nodes={graphData.nodes}
+          graphData={graphData}
+          onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
+        />
+        <h5>Edges</h5>
+        <EdgeList edges={graphData.edges} />
+                    
+      </SlideInMenu>
       <EditModal
         shouldShow={showEditModal}
         onRequestClose={() => {
@@ -645,6 +700,7 @@ const G6JsGraph = () => {
             onEditEdge={(edge) => openEditEdgeModal(edge)}
             onAddNodeToDb={() => openAddNodeModal()}
             onExpandNode={(node) => expandNode(node)}
+            graphName={graphName}
       />     
     </div>
   );
