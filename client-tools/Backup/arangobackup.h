@@ -30,7 +30,8 @@ namespace arangodb {
 
 class BackupFeature;
 
-using ArangoBackupFeatures = ArangoClientFeatures<BackupFeature>;
+using ArangoBackupFeatures =
+    ArangoClientFeatures<BasicFeaturePhaseClient, BackupFeature>;
 using ArangoBackupServer = ApplicationServerT<ArangoBackupFeatures>;
 using ArangoBackupFeature = ApplicationFeatureT<ArangoBackupServer>;
 

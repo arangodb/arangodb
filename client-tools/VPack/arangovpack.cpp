@@ -55,11 +55,11 @@ struct ArangoVPackInitializer {
 
   template<typename T>
   void operator()(TypeTag<T>) {
-    _client.template addFeature<T>();
+    _client.addFeature<T>();
   }
 
   void operator()(TypeTag<VPackFeature>) {
-    _client.addFeature<VPackFeature>(*_ret);
+    _client.addFeature<VPackFeature>(_ret);
   }
 
   void operator()(TypeTag<ConfigFeature>) {
@@ -74,14 +74,6 @@ struct ArangoVPackInitializer {
 
   void operator()(TypeTag<GreetingsFeaturePhase>) {
     _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    _client.addFeature<HttpEndpointProvider, ClientFeature>(true);
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.addFeature<ConfigFeature>(_binaryName);
   }
 
   void operator()(TypeTag<LoggerFeature>) {

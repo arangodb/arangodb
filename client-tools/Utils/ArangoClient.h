@@ -53,19 +53,16 @@ using namespace application_features;
 template<typename... T>
 using ArangoClientFeatures = TypeList<
     // Phases
-    BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
+    CommunicationFeaturePhase, GreetingsFeaturePhase,
     // Features
-    HttpEndpointProvider, ConfigFeature,
-    LoggerFeature, RandomFeature, ShellColorsFeature,
-    ShutdownFeature, SslFeature,
-    VersionFeature, T...>;
+    HttpEndpointProvider, ConfigFeature, LoggerFeature, RandomFeature,
+    ShellColorsFeature, ShutdownFeature, SslFeature, VersionFeature, T...>;
 
 template<typename Client>
 class ArangoClientInitializer {
  public:
   ArangoClientInitializer(char const* binaryName, Client& client)
-    : _binaryName{binaryName}, _client{client} {
-  }
+      : _binaryName{binaryName}, _client{client} {}
 
   template<typename T>
   void operator()(TypeTag<T>) {
@@ -74,10 +71,6 @@ class ArangoClientInitializer {
 
   void operator()(TypeTag<GreetingsFeaturePhase>) {
     _client.template addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    _client.template addFeature<HttpEndpointProvider, ClientFeature>(true);
   }
 
   void operator()(TypeTag<ConfigFeature>) {

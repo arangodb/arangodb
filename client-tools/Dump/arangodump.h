@@ -37,7 +37,7 @@ using ArangoDumpFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
-    DumpFeature>;
+    BasicFeaturePhaseClient, DumpFeature>;
 
 using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
 using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;

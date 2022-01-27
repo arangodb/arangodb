@@ -243,7 +243,11 @@ void ExportFeature::validateOptions(
 }
 
 void ExportFeature::prepare() {
-  _directory = std::make_unique<ManagedDirectory>(server(), _outputDirectory,
+  auto* encryption = server().hasFeature<EncryptionFeature>()
+                         ? &server().getFeature<EncryptionFeature>()
+                         : nullptr;
+
+  _directory = std::make_unique<ManagedDirectory>(encryption, _outputDirectory,
                                                   !_overwrite, true, _useGzip);
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {

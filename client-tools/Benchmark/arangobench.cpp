@@ -56,22 +56,33 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
-struct ArangoBenchInitializer
-    : public ArangoClientInitializer<ArangoBenchServer> {
+class ArangoBenchInitializer {
  public:
   ArangoBenchInitializer(int* ret, char const* binaryName,
                          ArangoBenchServer& client)
-      : ArangoClientInitializer{binaryName, client}, _ret{ret} {}
+      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
 
-  using ArangoClientInitializer::operator();
+  template<typename T>
+  void operator()(TypeTag<T>) {
+    _client.addFeature<T>();
+  }
+
+  void operator()(TypeTag<GreetingsFeaturePhase>) {
+    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
+  }
+
+  void operator()(TypeTag<ConfigFeature>) {
+    _client.addFeature<ConfigFeature>(_binaryName);
+  }
 
   void operator()(TypeTag<HttpEndpointProvider>) {
+    // provide max number of endpoints
     _client.addFeature<HttpEndpointProvider, ClientFeature>(
         false, std::numeric_limits<size_t>::max());
   }
 
   void operator()(TypeTag<BenchFeature>) {
-    _client.addFeature<BenchFeature>(*_ret);
+    _client.addFeature<BenchFeature>(_ret);
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
@@ -80,11 +91,13 @@ struct ArangoBenchInitializer
   }
 
   void operator()(TypeTag<TempFeature>) {
-    _client.template addFeature<TempFeature>(_binaryName);
+    _client.addFeature<TempFeature>(_binaryName);
   }
 
  private:
   int* _ret;
+  char const* _binaryName;
+  ArangoBenchServer& _client;
 };
 
 int main(int argc, char* argv[]) {

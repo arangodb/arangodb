@@ -61,10 +61,31 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-struct ArangoshInitializer : public ArangoClientInitializer<ArangoshServer> {
+struct ArangoshInitializer {
  public:
   ArangoshInitializer(int* ret, char const* binaryName, ArangoshServer& client)
-      : ArangoClientInitializer{binaryName, client}, _ret{ret} {}
+      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
+
+  template<typename T>
+  void operator()(TypeTag<T>) {
+    _client.addFeature<T>();
+  }
+
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    _client.addFeature<HttpEndpointProvider, ClientFeature>(true);
+  }
+
+  void operator()(TypeTag<GreetingsFeaturePhase>) {
+    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
+  }
+
+  void operator()(TypeTag<ConfigFeature>) {
+    _client.addFeature<ConfigFeature>(_binaryName);
+  }
+
+  void operator()(TypeTag<LoggerFeature>) {
+    _client.addFeature<LoggerFeature>(false);
+  }
 
   void operator()(TypeTag<ShellFeature>) {
     _client.addFeature<ShellFeature>(_ret);
@@ -75,7 +96,7 @@ struct ArangoshInitializer : public ArangoClientInitializer<ArangoshServer> {
   }
 
   void operator()(TypeTag<TempFeature>) {
-    _client.template addFeature<TempFeature>(_binaryName);
+    _client.addFeature<TempFeature>(_binaryName);
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
@@ -85,6 +106,8 @@ struct ArangoshInitializer : public ArangoClientInitializer<ArangoshServer> {
 
  private:
   int* _ret;
+  char const* _binaryName;
+  ArangoshServer& _client;
 };
 
 int main(int argc, char* argv[]) {

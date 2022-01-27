@@ -38,7 +38,7 @@ using ArangoRestoreFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
-    TempFeature, RestoreFeature>;
+    BasicFeaturePhaseClient, TempFeature, RestoreFeature>;
 
 using ArangoRestoreServer = ApplicationServerT<ArangoRestoreFeatures>;
 using ArangoRestoreFeature = ApplicationFeatureT<ArangoRestoreServer>;

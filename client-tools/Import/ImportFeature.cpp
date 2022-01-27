@@ -477,9 +477,14 @@ void ImportFeature::start() {
 
   _httpClient->disconnect();  // we do not reuse this anymore
 
+  auto* encryption = server().hasFeature<EncryptionFeature>()
+                         ? &server().getFeature<EncryptionFeature>()
+                         : nullptr;
+
   SimpleHttpClientParams params = _httpClient->params();
-  arangodb::import::ImportHelper ih(client, client.endpoint(), params,
-                                    _chunkSize, _threadCount, _autoChunkSize);
+  arangodb::import::ImportHelper ih(encryption, client, client.endpoint(),
+                                    params, _chunkSize, _threadCount,
+                                    _autoChunkSize);
 
   // create colletion
   if (_createCollection) {

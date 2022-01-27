@@ -158,12 +158,13 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const& client,
+ImportHelper::ImportHelper(EncryptionFeature* encryption,
+                           ClientFeature const& client,
                            std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount,
                            bool autoUploadSize)
-    : _clientFeature(client),
+    : _encryption{encryption},
       _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
@@ -239,8 +240,8 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   TRI_ASSERT(!headersFile.empty());
   TRI_ASSERT(!_headersSeen);
 
-  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(headersFile),
-                             false, false, false);
+  ManagedDirectory directory(_encryption, TRI_Dirname(headersFile), false,
+                             false, false);
   if (directory.status().fail()) {
     _errorMessages.emplace_back(directory.status().errorMessage());
     return false;
@@ -331,11 +332,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
                                    std::string const& pathName,
                                    std::string const& headersFile,
                                    DelimitedImportType typeImport) {
-  auto* encryption = _server.hasFeature<EncryptionFeature>()
-                         ? &_server.getFeature<EncryptionFeature>()
-                         : nullptr;
-
-  ManagedDirectory directory(encryption, TRI_Dirname(pathName), false, false,
+  ManagedDirectory directory(_encryption, TRI_Dirname(pathName), false, false,
                              true);
   if (directory.status().fail()) {
     _errorMessages.emplace_back(directory.status().errorMessage());
@@ -458,8 +455,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 bool ImportHelper::importJson(std::string const& collectionName,
                               std::string const& pathName,
                               bool assumeLinewise) {
-  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
-                             false, false, true);
+  ManagedDirectory directory(_encryption, TRI_Dirname(pathName), false, false,
+                             true);
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";

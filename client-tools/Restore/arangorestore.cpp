@@ -51,14 +51,28 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-struct ArangoRestoreInitializer
-    : public ArangoClientInitializer<ArangoRestoreServer> {
+class ArangoRestoreInitializer {
  public:
   ArangoRestoreInitializer(int* ret, char const* binaryName,
                            ArangoRestoreServer& client)
-      : ArangoClientInitializer{binaryName, client}, _ret{ret} {}
+      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
 
-  using ArangoClientInitializer::operator();
+  template<typename T>
+  void operator()(TypeTag<T>) {
+    _client.addFeature<T>();
+  }
+
+  void operator()(TypeTag<GreetingsFeaturePhase>) {
+    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
+  }
+
+  void operator()(TypeTag<ConfigFeature>) {
+    _client.addFeature<ConfigFeature>(_binaryName);
+  }
+
+  void operator()(TypeTag<LoggerFeature>) {
+    _client.addFeature<LoggerFeature>(false);
+  }
 
   void operator()(TypeTag<HttpEndpointProvider>) {
     _client.addFeature<HttpEndpointProvider, ClientFeature>(
@@ -80,6 +94,8 @@ struct ArangoRestoreInitializer
 
  private:
   int* _ret;
+  char const* _binaryName;
+  ArangoRestoreServer& _client;
 };
 
 int main(int argc, char* argv[]) {

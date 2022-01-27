@@ -36,7 +36,7 @@ using ArangoVPackFeatures = TypeList<
     BasicFeaturePhaseClient, GreetingsFeaturePhase,
     ConfigFeature,
     LoggerFeature, RandomFeature, ShellColorsFeature,
-    ShutdownFeature, VPackFeature
+    ShutdownFeature, VPackFeature,
     VersionFeature>;
 
 using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;

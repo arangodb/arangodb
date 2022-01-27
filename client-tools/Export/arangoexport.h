@@ -38,7 +38,7 @@ using ArangoExportFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
-    TempFeature, ExportFeature>;
+    BasicFeaturePhaseClient, TempFeature, ExportFeature>;
 
 using ArangoExportServer = ApplicationServerT<ArangoExportFeatures>;
 using ArangoExportFeature = ApplicationFeatureT<ArangoExportServer>;
