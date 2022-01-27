@@ -266,10 +266,8 @@ exports.manage = function () {
     // compare to our locally stored version
     let localQueueVersion = BigInt(global.KEY_GET('queue-control', 'version') || 0);
 
-    console.warn("hello from foxx queue manager. clusterQueueVersion:", clusterQueueVersion.toString(), "localQueueVersion:", localQueueVersion.toString());
     if (clusterQueueVersion > localQueueVersion) {
       // queue was updated on another coordinator
-    console.warn("will need to recheck all queues!");
       recheckAllQueues = true;
     }
   }
@@ -319,7 +317,6 @@ exports.manage = function () {
     if (recheckAllQueues) {
       // once we have rechecked all queues, we can update our local queue version
       // to the version we checked for
-    console.warn("storing our updated queue version:", clusterQueueVersion.toString());
       global.KEY_SET('queue-control', 'version', clusterQueueVersion.toString());
     }
 
