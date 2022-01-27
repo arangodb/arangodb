@@ -22,20 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel3/Query.h"
-#include "VocBase/VocbaseInfo.h"
-#include "Futures/Future.h"
-#include <memory>
 
 namespace arangodb::pregel3 {
+  using ExecutionId = uint64_t;
 
-struct Pregel3Methods {
-  virtual ~Pregel3Methods() = default;
-  static auto createInstance(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<Pregel3Methods>;
+  // A Pregel3 Query
+  struct Query {
 
-  virtual auto createQuery(GraphSpecification const& graph) const
-      -> futures::Future<Result> = 0;
-};
-
-}  // namespace arangodb::pregel3
+  };
+}

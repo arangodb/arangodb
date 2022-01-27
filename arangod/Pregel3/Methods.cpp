@@ -22,3 +22,39 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel3/Methods.h"
+
+#include <Basics/Exceptions.h>
+#include <Basics/Result.h>
+#include <VocBase/vocbase.h>
+#include <Basics/voc-errors.h>
+#include <ApplicationFeatures/ApplicationServer.h>
+#include <Pregel3/Pregel3Feature.h>
+#include "Cluster/ServerState.h"
+
+using namespace arangodb::pregel3;
+
+struct Pregel3MethodsSingleServer final
+    : Pregel3Methods,
+      std::enable_shared_from_this<Pregel3MethodsSingleServer> {
+  explicit Pregel3MethodsSingleServer(TRI_vocbase_t& vocbase)
+      : vocbase(vocbase) {}
+
+  auto createQuery(GraphSpecification const& graph) const
+      -> arangodb::futures::Future<arangodb::Result> override {
+    vocbase.server().getFeature<Pregel3Feature>().createQuery(graph);
+  }
+
+  TRI_vocbase_t& vocbase;
+};
+
+auto arangodb::pregel3::Pregel3Methods::createInstance(TRI_vocbase_t& vocbase)
+    -> std::shared_ptr<Pregel3Methods> {
+  switch (ServerState::instance()->getRole()) {
+    case ServerState::ROLE_SINGLE:
+      return std::make_shared<Pregel3MethodsSingleServer>(vocbase);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "api only on available coordinators or dbservers");
+  }
+}

@@ -22,20 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel3/Query.h"
-#include "VocBase/VocbaseInfo.h"
-#include "Futures/Future.h"
-#include <memory>
 
 namespace arangodb::pregel3 {
 
-struct Pregel3Methods {
-  virtual ~Pregel3Methods() = default;
-  static auto createInstance(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<Pregel3Methods>;
+// These settings are initialised by the ReplicatedLogFeature based on command
+// line arguments
+struct GlobalSettings {
+ public:
+  static inline constexpr std::size_t defaultParallelism{128};
 
-  virtual auto createQuery(GraphSpecification const& graph) const
-      -> futures::Future<Result> = 0;
+  std::size_t _parallelism{defaultParallelism};
 };
 
-}  // namespace arangodb::pregel3
+}

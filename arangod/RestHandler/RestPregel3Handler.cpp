@@ -42,10 +42,11 @@ RestPregel3Handler::RestPregel3Handler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-auto RestPregel3Handler::execute() -> RestStatus {
-  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+RestPregel3Handler::~RestPregel3Handler() = default;
 
-  return RestStatus::DONE;
+auto RestPregel3Handler::execute() -> RestStatus {
+  auto methods = Pregel3Methods::createInstance(_vocbase);
+  return executeByMethod(*methods);
 }
 
 auto RestPregel3Handler::executeByMethod(Pregel3Methods const& methods)
@@ -63,11 +64,12 @@ auto RestPregel3Handler::executeByMethod(Pregel3Methods const& methods)
 auto RestPregel3Handler::handleGetRequest(Pregel3Methods const& methods)
     -> RestStatus {
   VPackBuilder builder;
-  VPackObjectBuilder ob(&builder);
+  {
+    VPackObjectBuilder ob(&builder);
 
-  builder.add(VPackValue("version"));
-  builder.add(VPackValue("v3"));
-
+    builder.add(VPackValue("version"));
+    builder.add(VPackValue("v3"));
+  }
   generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }

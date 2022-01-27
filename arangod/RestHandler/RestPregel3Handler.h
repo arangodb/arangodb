@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Pregel3/Methods.h"
 
 namespace arangodb {
 
@@ -31,6 +32,12 @@ class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
  public:
   explicit RestPregel3Handler(application_features::ApplicationServer&,
                               GeneralRequest*, GeneralResponse*);
+
+  ~RestPregel3Handler();
+
+ private:
+  auto executeByMethod(pregel3::Pregel3Methods const& methods) -> RestStatus;
+  auto handleGetRequest(pregel3::Pregel3Methods const& methods) -> RestStatus;
 
  public:
   RestStatus execute() override;

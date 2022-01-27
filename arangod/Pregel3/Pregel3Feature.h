@@ -22,20 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Pregel3/GlobalSettings.h"
 #include "Pregel3/Query.h"
-#include "VocBase/VocbaseInfo.h"
-#include "Futures/Future.h"
-#include <memory>
 
-namespace arangodb::pregel3 {
+#include <cstdint>
 
-struct Pregel3Methods {
-  virtual ~Pregel3Methods() = default;
-  static auto createInstance(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<Pregel3Methods>;
+namespace arangodb {
+class Pregel3Feature final : public application_features::ApplicationFeature {
+ public:
+  explicit Pregel3Feature(application_features::ApplicationServer& server);
+  ~Pregel3Feature() override;
 
-  virtual auto createQuery(GraphSpecification const& graph) const
-      -> futures::Future<Result> = 0;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override;
+
+  void createQuery(pregel3::GraphSpecification const& graph);
+
+ private:
+  std::unordered_map<pregel3::QueryId, pregel3::Query> _queries;
+  std::shared_ptr<pregel3::GlobalSettings> _settings;
 };
 
-}  // namespace arangodb::pregel3
+}  // namespace arangodb
