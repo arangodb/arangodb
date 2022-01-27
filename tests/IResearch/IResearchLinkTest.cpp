@@ -2807,7 +2807,6 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
 
 TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
        test_init_in_recovery_no_name) {
-  // collection registered with view (collection initially not in view)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         R"({ "name": "testCollection", "id": 100 })");
@@ -2824,7 +2823,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 
     // no collections in view before
     {
-      std::unordered_set<arangodb::DataSourceId> expected;
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
@@ -2832,11 +2830,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
             actual.emplace(cid);
             return true;
           })));
-
-      for (auto& cid : expected) {
-        EXPECT_EQ(1, actual.erase(cid));
-      }
-
       EXPECT_TRUE((actual.empty()));
     }
 
@@ -2860,7 +2853,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
 }
 
 TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
-  // collection registered with view (collection initially not in view)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         R"({ "name": "testCollection", "id": 100 })");
@@ -2877,7 +2869,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
 
     // no collections in view before
     {
-      std::unordered_set<arangodb::DataSourceId> expected;
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
@@ -2885,11 +2876,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
             actual.emplace(cid);
             return true;
           })));
-
-      for (auto& cid : expected) {
-        EXPECT_EQ(1, actual.erase(cid));
-      }
-
       EXPECT_TRUE((actual.empty()));
     }
 
@@ -2899,7 +2885,8 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
 
     // Data store should contain at least segments file
     ASSERT_GT(link->stats().numFiles, 0);
-    // collection in view after
+
+    // no collection in view after
     {
       std::set<arangodb::DataSourceId> actual;
 
