@@ -63,7 +63,7 @@ struct LogPlanSpecification {
   auto toVelocyPack(velocypack::Builder&) const -> void;
   static auto fromVelocyPack(velocypack::Slice) -> LogPlanSpecification;
   LogPlanSpecification(from_velocypack_t, VPackSlice);
-  LogPlanSpecification() = default;
+  LogPlanSpecification();
 
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term);
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,

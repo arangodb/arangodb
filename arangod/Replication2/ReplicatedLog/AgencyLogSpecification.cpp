@@ -71,6 +71,7 @@ LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
   }
 }
 
+LogPlanSpecification::LogPlanSpecification() = default;
 auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Id, VPackValue(id.id()));
