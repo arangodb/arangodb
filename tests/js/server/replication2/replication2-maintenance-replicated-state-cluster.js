@@ -29,7 +29,7 @@ const _ = require('lodash');
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const SH = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
-const {dbservers} = require("../../../../js/server/modules/@arangodb/testutils/replicated-logs-helper");
+const {dbservers} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "Replicated_StateMaintenanceTestDB";
 
