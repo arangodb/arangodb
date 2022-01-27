@@ -42,18 +42,16 @@ class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
   explicit BasicFeaturePhaseClient(Server& server)
       : ApplicationFeaturePhase(server, *this) {
     setOptional(false);
-    using Features = typename Server::Features;
-
-    if constexpr (Features::template has<GreetingsFeaturePhase>()) {
+    if constexpr (Server::template has<GreetingsFeaturePhase>()) {
       startsAfter<GreetingsFeaturePhase, Server>();
     }
-    if constexpr (Features::template has<EncryptionFeature>()) {
+    if constexpr (Server::template has<EncryptionFeature>()) {
       startsAfter<EncryptionFeature, Server>();
     }
-    if constexpr (Features::template has<SslFeature>()) {
+    if constexpr (Server::template has<SslFeature>()) {
       startsAfter<SslFeature, Server>();
     }
-    if constexpr (Features::template has<HttpEndpointProvider>()) {
+    if constexpr (Server::template has<HttpEndpointProvider>()) {
       startsAfter<HttpEndpointProvider, Server>();
     }
   }

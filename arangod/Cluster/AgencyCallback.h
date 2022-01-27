@@ -28,7 +28,6 @@
 #include <functional>
 #include <memory>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionVariable.h"
 #include "RestServer/arangod.h"
 

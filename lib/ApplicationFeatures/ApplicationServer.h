@@ -330,6 +330,11 @@ class ApplicationServerT : public ApplicationServer {
     return Features::template id<T>();
   }
 
+  template<typename T>
+  static constexpr bool has() noexcept {
+    return Features::template has<T>();
+  }
+
   // return whether or not a feature is enabled
   // will throw when called for a non-existing feature
   template<typename T>

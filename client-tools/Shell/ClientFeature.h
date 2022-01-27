@@ -62,9 +62,7 @@ class ClientFeature final : public HttpEndpointProvider {
     startsAfter<CommunicationFeaturePhase, Server>();
     startsAfter<GreetingsFeaturePhase, Server>();
 
-    using Features = typename Server::Features;
-
-    if constexpr (Features::template has<ShellConsoleFeature>()) {
+    if constexpr (Server::template has<ShellConsoleFeature>()) {
       _console = &server.template getFeature<ShellConsoleFeature>();
     }
   }
