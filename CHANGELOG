@@ -1,5 +1,8 @@
 devel
 -----
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
+  in upgrade mode in the same time.
+
 * Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
   determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
   be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
