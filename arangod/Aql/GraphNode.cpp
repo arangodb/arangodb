@@ -51,6 +51,7 @@
 #include "Enterprise/Aql/LocalKShortestPathsNode.h"
 #include "Enterprise/Aql/LocalShortestPathNode.h"
 #include "Enterprise/Aql/LocalTraversalNode.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <velocypack/Iterator.h>
@@ -740,10 +741,33 @@ Collection const* GraphNode::collection() const {
     // for this graphs sharding.
     // The Satellite collection does not have sharding.
     TRI_ASSERT(c != nullptr);
-    if (!c->isSatellite()) {
+    if (!c->isSatellite() &&
+        c->type() == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT) {
       return c;
     }
   }
+
+  TRI_ASSERT(!_edgeColls.empty());
+  for (auto const* eC : _edgeColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the prototype
+    // for this graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(eC != nullptr);
+    if (eC->isSmart()) {
+      TRI_ASSERT(!eC->isSatellite());
+      std::shared_ptr<LogicalCollection> collection =
+          vocbase()->lookupCollection(eC->name());
+      TRI_ASSERT(collection.get() != nullptr);
+      auto sC = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(
+          collection.get());
+      if (!sC->isSmartToSatEdgeCollection() &&
+          !sC->isSatToSmartEdgeCollection()) {
+        return eC;
+      }
+    }
+  }
+
   // We have not found any non-satellite Collection
   // just return the first satellite then.
   TRI_ASSERT(_vertexColls.front() != nullptr);
