@@ -836,8 +836,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     if (!res.ok()) {
       return res;
     }
-    // can be shared, but we can't shared => unique/upgrade
-    boost::upgrade_lock upgradeLock{_mutex};
+    boost::unique_lock uniqueLock{_mutex};
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (!ExecContext::current().isSuperuser()) {
       for (auto& entry : _links) {
@@ -864,7 +863,6 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
                                  : (", error in attribute '" + error + "': ")) +
                   slice.toString()};
     }
-    boost::unique_lock uniqueLock{std::move(upgradeLock)};
     _meta.storePartial(std::move(meta));
     boost::shared_lock sharedLock{std::move(uniqueLock)};
     for (auto& entry : _links) {
