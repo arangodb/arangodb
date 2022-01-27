@@ -290,6 +290,6 @@ function ReplicatedLogsWriteSuite () {
 }
 
 jsunity.run(ReplicatedLogsSuite);
-// jsunity.run(ReplicatedLogsWriteSuite);
+jsunity.run(ReplicatedLogsWriteSuite);
 
 return jsunity.done();
