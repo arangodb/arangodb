@@ -771,7 +771,7 @@ void HeartbeatThread::handleFoxxQueueVersionChange(
     // there is a UserVersion
     uint64_t version = 0;
     try {
-      version = slice.getUInt();
+      version = slice.getNumber<uint64_t>();
     } catch (...) {
     }
 

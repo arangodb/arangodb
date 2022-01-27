@@ -1597,6 +1597,11 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     // track that we have done a local insert into a Foxx queue.
     // this information will be broadcasted to other coordinators
     // in the cluster eventually via the agency.
+    // because the agency update is posted asynchronously, there is the
+    // possibility that this coordinator dies before the update is
+    // broadcasted to the agency. this is a rather unlikely edge case,
+    // and we currently do not optimize for that (i.e. posting updates
+    // to the agency is currently best effort).
     if (isJobsCollection && trx.vocbase().server().hasFeature<FoxxFeature>()) {
       trx.vocbase().server().getFeature<FoxxFeature>().trackLocalQueueInsert();
     }

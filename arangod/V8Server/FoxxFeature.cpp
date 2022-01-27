@@ -111,16 +111,29 @@ void FoxxFeature::trackLocalQueueInsert() noexcept {
 
 void FoxxFeature::bumpQueueVersionIfRequired() {
   uint64_t localQueueInserts = 0;
+  // fetch value from _localQueueInserts and set it to 0 under the lock
   {
-    std::shared_lock lock(_queueLock);
+    std::unique_lock lock(_queueLock);
     localQueueInserts = _localQueueInserts;
     _localQueueInserts = 0;
   }
 
   bool success = true;
+  // if any queue updates have been posted on this coordinator, inform
+  // other coordinators about it by increasing the shared counter in the
+  // agency.
   if (localQueueInserts > 0) {
     try {
-      double timeout = 10.0;
+      // this is a magic constant, but there seems little value in making it
+      // configurable. if we can't contact the agency within 10 seconds,
+      // something seems wrong anyway and all sorts of other things will
+      // start failing. if we set the timeout too low we may see a lot of
+      // warnings in the log, which we also want to avoid.
+      // if agency communication fails here, it is not a large problem, as
+      // we will simply try to inform the agency in the next iteration. the
+      // counter value is preserved in this case.
+      constexpr double timeout = 10.0;
+
       AgencyComm agency(server());
       AgencyOperation incrementVersion("Sync/FoxxQueueVersion",
                                        AgencySimpleOperationType::INCREMENT_OP);
@@ -134,7 +147,9 @@ void FoxxFeature::bumpQueueVersionIfRequired() {
     }
 
     if (!success) {
-      // restore old value
+      // if updating the shared counter in the agency failed, we restore
+      // the previous value to our counter. we intentionally use += here
+      // because new queue jobs may have been posted in the meantime.
       std::unique_lock lock(_queueLock);
       _localQueueInserts += localQueueInserts;
     }
