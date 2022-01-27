@@ -903,7 +903,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // Replicated Logs and States
   for (auto const& dbname : dirty) {
     using namespace arangodb::replication2;
-    if (!plan.contains(dbname) || !current.contains(dbname)) {
+    if (!plan.contains(dbname) || !current.contains(dbname) ||
+        !localLogsByDatabase.contains(dbname)) {
       continue;
     }
 
@@ -969,6 +970,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 
     diffReplicatedLogs(dbname, localLogs, planLogs, serverId, errors, makeDirty,
                        callNotify, actions);
+
+    if (!localStatesByDatabase.contains(dbname)) {
+      continue;
+    }
 
     auto const& [localStates, planStates, currentStates] =
         collectStateInformation();
