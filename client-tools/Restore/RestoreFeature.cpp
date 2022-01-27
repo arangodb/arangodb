@@ -2191,15 +2191,17 @@ void RestoreFeature::start() {
 
     if (_options.importData) {
       LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s, "
-          << "read " << formatSize(_stats.totalRead) << " from datafiles, "
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " databases in "
+          << Logger::FIXED(totalTime, 6) << " s total time. Read "
+          << formatSize(_stats.totalRead) << " from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
-          << formatSize(_stats.totalSent) << " total size";
+          << formatSize(_stats.totalSent) << " total size.";
     } else if (_options.importStructure) {
       LOG_TOPIC("147ca", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s";
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " databases in "
+          << Logger::FIXED(totalTime, 6) << " s total time.";
     }
   }
 }
