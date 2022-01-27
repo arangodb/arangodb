@@ -60,17 +60,7 @@
 #include <sys/types.h>
 #define _SSIZE_T_DEFINED 1
 #endif
-#ifdef __clang__
-#pragma clang diagnostic push
-// Suppress the warning
-//   3rdParty\rocksdb\6.27\util/dynamic_bloom.h(145,10): error : unused variable
-//   'a' [-Werror,-Wunused-variable]
-#pragma clang diagnostic ignored "-Wunused-variable"
-#endif
 #include <db/db_impl/db_impl.h>
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 #include <db/write_controller.h>
 
 namespace arangodb {

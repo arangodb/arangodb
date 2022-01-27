@@ -26,19 +26,7 @@
 
 #include "src/objects/objects.h"  // must be included before src/api/api.h to avoid errors with MSVC
 
-#ifdef __clang__
-#pragma clang diagnostic push
-// Suppress the warning
-//   3rdParty\V8\v7.9.317\src/objects/contexts.h(654,26): error : arithmetic
-//   between different enumeration types ('v8::internal::ElementsKind' and
-//   'v8::internal::Context::Field') is deprecated
-//   [-Werror,-Wdeprecated-enum-enum-conversion]
-#pragma clang diagnostic ignored "-Wdeprecated-enum-enum-conversion"
-#endif
 #include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 // #include "src/objects-inl.h"  // (required to avoid compile warnings) must
 // inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken

@@ -64,19 +64,7 @@
 // I have not dug into which header included by ClusterInfo.h will finally
 // include mwsockdef.h. Nor did I check whether all of the following headers
 // will include V8's "src/base/win32-headers.h".
-#ifdef __clang__
-#pragma clang diagnostic push
-// Suppress the warning
-//   3rdParty\V8\v7.9.317\src/objects/contexts.h(654,26): error : arithmetic
-//   between different enumeration types ('v8::internal::ElementsKind' and
-//   'v8::internal::Context::Field') is deprecated
-//   [-Werror,-Wdeprecated-enum-enum-conversion]
-#pragma clang diagnostic ignored "-Wdeprecated-enum-enum-conversion"
-#endif
 #include "src/api/api.h"
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 // #include "src/objects-inl.h"
 #include "src/objects/scope-info.h"
 

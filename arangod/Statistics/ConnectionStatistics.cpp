@@ -25,25 +25,7 @@
 
 #include "Rest/CommonDefines.h"
 
-#ifdef __clang__
-// Suppress the warning
-//   3rdParty\boost\1.78.0\boost/lockfree/queue.hpp(339,35): error : ISO C++20
-//   considers use of overloaded operator '==' (with operand types
-//   'boost::lockfree::queue<arangodb::LogThread::MessageEnvelope>::tagged_node_handle'
-//   (aka
-//   'tagged_ptr<boost::lockfree::queue<arangodb::LogThread::MessageEnvelope>::node>')
-//   and
-//   'boost::lockfree::queue<arangodb::LogThread::MessageEnvelope>::tagged_node_handle')
-//   to be ambiguous despite there being a unique best viable function
-//   [-Werror,-Wambiguous-reversed-operator]
-// .
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wambiguous-reversed-operator"
-#endif
 #include <boost/lockfree/queue.hpp>
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 using namespace arangodb;
 
