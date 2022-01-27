@@ -283,11 +283,13 @@ Result IResearchLink::init(velocypack::Slice definition,
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
-      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-      clusterWideLink =
-          _collection.id() == _collection.planId() && _collection.isAStub();
+    clusterWideLink =
+        _collection.id() == _collection.planId() && _collection.isAStub();
+
+    auto const clusterIsEnabled = vocbase.server().getFeature<ClusterFeature>().isEnabled();
+    if (clusterIsEnabled) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
       // upgrade step for old link definition without collection name
       // this could be received from  agency while shard of the collection was
@@ -321,18 +323,28 @@ Result IResearchLink::init(velocypack::Slice definition,
         }
 #endif
       }
+    }
 
-      if (!clusterWideLink) {
-        // prepare data-store which can then update options
-        // via the IResearchView::link(...) call
-        auto res = initDataStore(initCallback, meta._version, sorted,
-                                 storedValuesColumns, primarySortCompression);
-
-        if (!res.ok()) {
-          return res;
-        }
+    if (!clusterWideLink) {
+      
+      if (meta._collectionName.empty() && !clusterIsEnabled &&
+          vocbase.server().getFeature<EngineSelectorFeature>().engine().inRecovery()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+          "Upgrade conflicts with recovering ArangoSearch link."
+          " Please rollback the updated arangodb binary and finish recovery first.");
       }
+      // prepare data-store which can then update options
+      // via the IResearchView::link(...) call
+      auto res = initDataStore(initCallback, meta._version, sorted,
+                               storedValuesColumns, primarySortCompression);
 
+      if (!res.ok()) {
+        return res;
+      }
+    }
+
+    if (clusterIsEnabled) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
       // valid to call ClusterInfo (initialized in ClusterFeature::prepare())
       // even from DatabaseFeature::start()
       auto logicalView = ci.getView(vocbase.name(), viewId);

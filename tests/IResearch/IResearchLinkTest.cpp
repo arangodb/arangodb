@@ -2794,9 +2794,12 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
     std::string systemErrorStr;
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError,
                         systemErrorStr);
+    // simulate running recovery
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
   }
 
   ~IResearchLinkInRecoveryDBServerOnUpgradeTest() override {
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     TRI_RemoveDirectory(testFilesystemPath.c_str());
   }
 };
@@ -2835,9 +2838,9 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery_no_na
       EXPECT_TRUE((actual.empty()));
     }
 
-    auto link = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
-    EXPECT_EQ(nullptr, link.get());
+    EXPECT_THROW(StorageEngineMock::buildLinkMock(
+        arangodb::IndexId{1}, *logicalCollection, linkJson->slice()),
+       arangodb::basics::Exception);
 
     // collection in view on destruct
     {
@@ -2893,12 +2896,8 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
 
     // Data store should contain at least segments file
     ASSERT_GT(link->stats().numFiles, 0);
-    // EXPECT_TRUE((false == !link));
-
     // collection in view after
     {
-      std::unordered_set<arangodb::DataSourceId> expected = {
-          arangodb::DataSourceId{100}};
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
@@ -2906,10 +2905,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
             actual.emplace(cid);
             return true;
           })));
-
-      for (auto& cid : expected) {
-        EXPECT_EQ(1, actual.erase(cid));
-      }
 
       EXPECT_TRUE((actual.empty()));
     }
@@ -2918,8 +2913,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
 
     // collection in view on destruct
     {
-      std::unordered_set<arangodb::DataSourceId> expected = {
-          arangodb::DataSourceId{100}};
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
@@ -2927,11 +2920,6 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
             actual.emplace(cid);
             return true;
           })));
-
-      for (auto& cid : expected) {
-        EXPECT_EQ(1, actual.erase(cid));
-      }
-
       EXPECT_TRUE((actual.empty()));
     }
   }
