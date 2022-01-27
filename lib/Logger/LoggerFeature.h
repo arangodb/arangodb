@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace application_features {
@@ -66,6 +67,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _fileMode;
   std::string _fileGroup;
   std::string _timeFormatString;
+  std::vector<std::string> _structuredLogParams;
   uint32_t _maxEntryLength = 128U * 1048576U;
   bool _useJson = false;
   bool _useLocalTime = false;
