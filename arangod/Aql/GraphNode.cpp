@@ -743,7 +743,8 @@ Collection const* GraphNode::collection() const {
     TRI_ASSERT(vC != nullptr);
     if (!vC->isSatellite() && vC->type() == TRI_COL_TYPE_DOCUMENT) {
       auto const& shardID = vC->shardKeys(false);
-      if (shardID.size() == 1 && shardID.at(0) == StaticStrings::PrefixOfKeyString) {
+      if (shardID.size() == 1 &&
+          shardID.at(0) == StaticStrings::PrefixOfKeyString) {
         return vC;
       }
     }
@@ -757,7 +758,8 @@ Collection const* GraphNode::collection() const {
     TRI_ASSERT(eC != nullptr);
     if (!eC->isSatellite() && eC->type() == TRI_COL_TYPE_EDGE) {
       auto const& shardID = eC->shardKeys(false);
-      if (shardID.size() == 1 && shardID.at(0) == StaticStrings::PrefixOfKeyString) {
+      if (shardID.size() == 1 &&
+          shardID.at(0) == StaticStrings::PrefixOfKeyString) {
         return eC;
       }
     }
