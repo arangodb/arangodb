@@ -34,19 +34,28 @@ class GreetingsFeaturePhase;
 
 class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
  public:
-  static constexpr std::string_view name() noexcept { return "BasicsPhase"; }
+  static constexpr std::string_view name() noexcept {
+    return "BasicsPhaseClient";
+  }
 
   template<typename Server>
   explicit BasicFeaturePhaseClient(Server& server)
       : ApplicationFeaturePhase(server, *this) {
     setOptional(false);
-    startsAfter<GreetingsFeaturePhase, Server>();
+    using Features = typename Server::Features;
 
-#ifdef USE_ENTERPRISE
-    startsAfter<EncryptionFeature, Server>();
-#endif
-    startsAfter<SslFeature, Server>();
-    startsAfter<HttpEndpointProvider, Server>();
+    if constexpr (Features::template has<GreetingsFeaturePhase>()) {
+      startsAfter<GreetingsFeaturePhase, Server>();
+    }
+    if constexpr (Features::template has<EncryptionFeature>()) {
+      startsAfter<EncryptionFeature, Server>();
+    }
+    if constexpr (Features::template has<SslFeature>()) {
+      startsAfter<SslFeature, Server>();
+    }
+    if constexpr (Features::template has<HttpEndpointProvider>()) {
+      startsAfter<HttpEndpointProvider, Server>();
+    }
   }
 };
 

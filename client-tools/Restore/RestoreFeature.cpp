@@ -1904,9 +1904,14 @@ void RestoreFeature::start() {
 
   double const start = TRI_microtime();
 
+  auto* encryption = server().hasFeature<EncryptionFeature>()
+                         ? &server().getFeature<EncryptionFeature>()
+                         : nullptr;
+
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(server(), _options.inputPath,
-                                                  false, false, true);
+  _directory = std::make_unique<ManagedDirectory>(
+      encryption, _options.inputPath, false, false, true);
+
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
       case static_cast<int>(TRI_ERROR_FILE_NOT_FOUND):
@@ -2067,8 +2072,13 @@ void RestoreFeature::start() {
       client.setDatabaseName(db.name);
       LOG_TOPIC("36075", INFO, Logger::RESTORE)
           << "Restoring database '" << db.name << "'";
+
+      auto* encryption = server().hasFeature<EncryptionFeature>()
+                             ? &server().getFeature<EncryptionFeature>()
+                             : nullptr;
+
       _directory = std::make_unique<ManagedDirectory>(
-          server(),
+          encryption,
           basics::FileUtils::buildFilename(_options.inputPath, db.directory),
           false, false, true);
 

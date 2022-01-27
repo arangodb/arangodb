@@ -81,6 +81,10 @@ class ArangoBenchInitializer {
         false, std::numeric_limits<size_t>::max());
   }
 
+  void operator()(TypeTag<LoggerFeature>) {
+    _client.addFeature<LoggerFeature>(false);
+  }
+
   void operator()(TypeTag<BenchFeature>) {
     _client.addFeature<BenchFeature>(_ret);
   }

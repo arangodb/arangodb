@@ -31,7 +31,8 @@ namespace arangodb {
 class TempFeature;
 class BenchFeature;
 
-using ArangoBenchFeatures = ArangoClientFeatures<TempFeature, BenchFeature>;
+using ArangoBenchFeatures =
+    ArangoClientFeatures<BasicFeaturePhaseClient, TempFeature, BenchFeature>;
 
 using ArangoBenchServer = ApplicationServerT<ArangoBenchFeatures>;
 using ArangoBenchFeature = ApplicationFeatureT<ArangoBenchServer>;

@@ -31,7 +31,9 @@ namespace application_features {
 
 class BasicFeaturePhaseServer : public ApplicationFeaturePhase {
  public:
-  static constexpr std::string_view name() noexcept { return "BasicsPhase"; }
+  static constexpr std::string_view name() noexcept {
+    return "BasicsPhaseServer";
+  }
 
   explicit BasicFeaturePhaseServer(ArangodServer& server);
 };
