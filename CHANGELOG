@@ -17,6 +17,14 @@ devel
   previous versions. In case there is still unused RAM capacity available, it
   may be sensible to increase the total size of the RocksDB block cache.
 
+* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
+  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
 * Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
   multiple Coordinators.
 
