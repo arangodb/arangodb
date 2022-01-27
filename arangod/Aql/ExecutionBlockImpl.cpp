@@ -2436,6 +2436,9 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
   }
 }
 
+// Avoid compiling everything again in the tests
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+
 template class ::arangodb::aql::ExecutionBlockImpl<
     CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
@@ -2603,3 +2606,5 @@ template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+
+#endif
