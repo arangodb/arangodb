@@ -93,6 +93,7 @@ export class GraphView extends React.Component {
         } else if(chosenAction === 'editEdge') {
           console.log("Trigger editEdge() with edge: ", item._cfg);
           console.log("Trigger editEdge() with edgeId: ", item._cfg.id);
+          this.props.onEditEdge(item._cfg.id);
         } 
       },
       offsetX: 16 + 10,
