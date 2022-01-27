@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangovpack.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -45,6 +47,53 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
+struct ArangoVPackInitializer {
+ public:
+  ArangoVPackInitializer(int* ret, char const* binaryName,
+                         ArangoVPackServer& client)
+      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
+
+  template<typename T>
+  void operator()(TypeTag<T>) {
+    _client.template addFeature<T>();
+  }
+
+  void operator()(TypeTag<VPackFeature>) {
+    _client.addFeature<VPackFeature>(*_ret);
+  }
+
+  void operator()(TypeTag<ConfigFeature>) {
+    // default is to use no config file
+    _client.addFeature<ConfigFeature>(_binaryName, "none");
+  }
+
+  void operator()(TypeTag<ShutdownFeature>) {
+    _client.addFeature<ShutdownFeature>(
+        std::vector<size_t>{ArangoVPackServer::id<VPackFeature>()});
+  }
+
+  void operator()(TypeTag<GreetingsFeaturePhase>) {
+    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
+  }
+
+  void operator()(TypeTag<HttpEndpointProvider>) {
+    _client.addFeature<HttpEndpointProvider, ClientFeature>(true);
+  }
+
+  void operator()(TypeTag<ConfigFeature>) {
+    _client.addFeature<ConfigFeature>(_binaryName);
+  }
+
+  void operator()(TypeTag<LoggerFeature>) {
+    _client.addFeature<LoggerFeature>(false);
+  }
+
+ private:
+  int* _ret;
+  char const* _binaryName;
+  ArangoVPackServer& _client;
+};
+
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -56,21 +105,11 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangovpack [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
+
     int ret = EXIT_SUCCESS;
-
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    // default is to use no config file
-    server.addFeature<ConfigFeature>("arangovpack", "none");
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(VPackFeature))});
-    server.addFeature<VPackFeature>(&ret);
-    server.addFeature<VersionFeature>();
+    ArangoVPackServer server(options, BIN_DIRECTORY);
+    ArangoVPackInitializer init{&ret, context.binaryName().c_str(), server};
+    ArangoVPackServer::Features::visit(init);
 
     try {
       server.run(argc, argv);
