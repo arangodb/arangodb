@@ -31,7 +31,6 @@
 
 #include <v8.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
@@ -46,8 +45,9 @@ class V8SecurityFeature;
 class HttpEndpointProvider;
 class EncryptionFeature;
 namespace application_features {
+class ApplicationServer;
 class CommunicationFeaturePhase;
-}
+}  // namespace application_features
 }  // namespace arangodb
 
 /// @brief shortcut for fetching the isolate from the thread context
@@ -919,7 +919,7 @@ V8Global<Server>* CreateV8Globals(Server& server, v8::Isolate* isolate,
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g == nullptr);
-  v8g = new TRI_v8_global_t(server, isolate, id);
+  v8g = new V8Global<Server>(server, isolate, id);
   isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
 
   return static_cast<V8Global<Server>*>(v8g);

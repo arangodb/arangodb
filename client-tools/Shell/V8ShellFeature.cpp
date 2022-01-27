@@ -21,11 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangosh.h"
+
 #include "V8ShellFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -167,7 +171,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(server(), isolate, 0);
+  v8g = CreateV8Globals(server(), isolate, 0);
   v8g->_securityContext =
       arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
@@ -1126,8 +1130,8 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  TRI_GET_GLOBALS();
-  ShellFeature& shell = v8g->_server.getFeature<ShellFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  ShellFeature& shell = v8g->server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));
 

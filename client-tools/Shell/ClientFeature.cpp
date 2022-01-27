@@ -431,6 +431,10 @@ void ClientFeature::setDatabaseName(std::string const& databaseName) {
   _databaseName = normalizeUtf8ToNFC(databaseName);
 }
 
+ApplicationServer& ClientFeature::server() const noexcept {
+  return _comm.server();
+}
+
 std::string ClientFeature::buildConnectedMessage(
     std::string const& endpointSpecification, std::string const& version,
     std::string const& role, std::string const& mode,

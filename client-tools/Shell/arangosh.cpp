@@ -92,7 +92,7 @@ struct ArangoshInitializer {
   }
 
   void operator()(TypeTag<V8ShellFeature>) {
-    _client.addFeature<V8ShellFeature>(_binaryName);
+    _client.addFeature<V8ShellFeature>(std::string{_binaryName});
   }
 
   void operator()(TypeTag<TempFeature>) {

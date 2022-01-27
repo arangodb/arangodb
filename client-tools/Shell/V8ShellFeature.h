@@ -33,7 +33,6 @@
 
 namespace arangodb {
 
-class ConsoleFeature;
 class V8ClientConnection;
 
 class V8ShellFeature final : public ArangoshFeature {

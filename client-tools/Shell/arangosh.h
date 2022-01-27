@@ -37,6 +37,7 @@ class V8SecurityFeature;
 class V8PlatformFeature;
 class LanguageFeature;
 class ShellConsoleFeature;
+class TempFeature;
 #ifdef USE_ENTERPRISE
 class EncryptionFeature;
 #endif
@@ -47,8 +48,9 @@ using ArangoshFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
-    BasicFeaturePhaseClient, V8ShellFeaturePhase, ShellFeature, V8ShellFeature,
-    LanguageFeature, ShellConsoleFeature, V8SecurityFeature, V8PlatformFeature>;
+    BasicFeaturePhaseClient, V8ShellFeaturePhase, ShellFeature,
+    V8PlatformFeature, V8ShellFeature, LanguageFeature, ShellConsoleFeature,
+    V8SecurityFeature, TempFeature>;
 using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
 using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;
 
