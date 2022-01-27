@@ -456,17 +456,10 @@ void UpdateLogConfigAction::toVelocyPack(VPackBuilder& builder) const {
 auto UpdateLogConfigAction::execute(std::string dbName,
                                     arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
-  auto path = paths::plan()
-                  ->replicatedLogs()
-                  ->database(dbName)
-                  ->log(_id)
-                  ->targetConfig()
-                  ->str();
-  return envelope.write()
-      .emplace_object(
-          path, [&](VPackBuilder& builder) { _config.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
-      .end();
+  // It is currently undefined what should happen if someone changes
+  // the configuration
+  TRI_ASSERT(false);
+  return envelope;
 }
 
 }  // namespace arangodb::replication2::replicated_log
