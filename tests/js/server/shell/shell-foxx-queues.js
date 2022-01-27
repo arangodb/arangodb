@@ -3,8 +3,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test foxx queues
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -29,31 +27,20 @@
 
 "use strict";
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var db = require("internal").db;
-var queues = require('@arangodb/foxx/queues');
-var FoxxManager = require('org/arangodb/foxx/manager');
-var fs = require('fs');
-var basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
+const jsunity = require("jsunity");
+const internal = require("internal");
+const db = require("internal").db;
+const queues = require('@arangodb/foxx/queues');
+const FoxxManager = require('org/arangodb/foxx/manager');
+const fs = require('fs');
+const { deriveTestSuite } = require('@arangodb/test-helper');
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
+  
+const cn = "UnitTestsFoxx";
+const qn = "UnitTestFoxxQueue";
 
-function foxxQueuesSuite () {
-  var cn = "UnitTestsFoxx";
-  var qn = "FoxxCircus";
-
+function BaseTestConfig () {
   return {
-
-    setUp : function () {
-      db._drop(cn);
-      db._create(cn);
-      queues.delete(qn);
-    },
-
-    tearDown : function () {
-      db._drop(cn);
-      queues.delete(qn);
-    },
-    
     testCreateQueueInsideTransactionNoCollectionDeclaration : function () {
       try {
         db._executeTransaction({
@@ -79,12 +66,12 @@ function foxxQueuesSuite () {
     },
 
     testCreateEmptyQueue : function () {
-      var queue = queues.create(qn);
+      let queue = queues.create(qn);
       assertEqual([], queue.all());
     },
     
     testCreateQueueAndFetch : function () {
-      var queue = queues.create(qn);
+      let queue = queues.create(qn);
       assertEqual(qn, queues.get(qn).name);
     },
 
@@ -113,14 +100,14 @@ function foxxQueuesSuite () {
     },
     
     testCreateDelayedJob : function () {
-      var delay = { delayUntil: Date.now() + 1000 * 86400 };
-      var queue = queues.create(qn);
-      var id = queue.push({
+      const delay = { delayUntil: Date.now() + 1000 * 86400 };
+      let queue = queues.create(qn);
+      let id = queue.push({
         name: 'testi',
         mount: '/test'
       }, {}, delay);
       assertEqual(1, queue.all().length);
-      var job = db._jobs.document(id);
+      let job = db._jobs.document(id);
       assertEqual(id, job._id);
       assertEqual("pending", job.status);
       assertEqual(qn, job.queue);
@@ -136,13 +123,13 @@ function foxxQueuesSuite () {
     },
     
     testCreateAndExecuteJobThatWillFail : function () {
-      var queue = queues.create(qn);
-      var id = queue.push({
+      let queue = queues.create(qn);
+      let id = queue.push({
         name: 'testi',
         mount: '/test-this-does-not-exist-please-ignore'
       }, {});
 
-      var tries = 0;
+      let tries = 0;
       while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
@@ -155,14 +142,14 @@ function foxxQueuesSuite () {
     },
     
     testPreprocessJobData : function () {
-      var queue = queues.create(qn);
-      var id = queue.push({
+      let queue = queues.create(qn);
+      let id = queue.push({
         name: 'peng',
         mount: '/_admin/aardvark',
         preprocess: function(data) { data.hund = 'hans'; delete data.meow; return data; }
       }, { a: 1, b: 2, meow: true });
 
-      var job = db._jobs.document(id);
+      let job = db._jobs.document(id);
       assertEqual(1, job.data.a);
       assertEqual(2, job.data.b);
       assertEqual('hans', job.data.hund);
@@ -176,15 +163,15 @@ function foxxQueuesSuite () {
 
       FoxxManager.install(fs.join(basePath, 'queues-test'), '/unittest/queues-test');
       try {
-        var queue = queues.create(qn);
-        var id = queue.push({
+        let queue = queues.create(qn);
+        let id = queue.push({
           name: 'job',
           mount: '/unittest/queues-test'
         }, {});
 
-        var tries = 0;
+        let tries = 0;
         while (++tries < 240) {
-          var result = db._jobs.document(id);
+          let result = db._jobs.document(id);
           if (result.status === 'pending') {
             internal.wait(0.5, false);
           } else {
@@ -200,17 +187,17 @@ function foxxQueuesSuite () {
     
     testExecuteJob : function () {
       assertEqual(0, db.UnitTestsFoxx.count());
-      var queue = queues.create(qn);
-      var id = queue.push({
+      let queue = queues.create(qn);
+      let id = queue.push({
         name: 'peng',
         mount: '/_admin/aardvark'
       }, {}, { failure: function() { 
         require("internal").db.UnitTestsFoxx.insert({ failed: true }); 
       }});
 
-      var tries = 0;
+      let tries = 0;
       while (++tries < 240) {
-        var result = db._jobs.document(id);
+        let result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
           internal.wait(0.5, false);
         } else {
@@ -234,8 +221,8 @@ function foxxQueuesSuite () {
     
     testExecuteRepeatedJob : function () {
       assertEqual(0, db.UnitTestsFoxx.count());
-      var queue = queues.create(qn);
-      var id = queue.push({
+      let queue = queues.create(qn);
+      let id = queue.push({
         name: 'peng',
         mount: '/_admin/aardvark',
         repeatDelay: 1, // milliseconds
@@ -244,7 +231,7 @@ function foxxQueuesSuite () {
         require("internal").db.UnitTestsFoxx.insert({ failed: true }); 
       }});
 
-      var tries = 0;
+      let tries = 0;
       while (++tries < 240) {
         var result = db._jobs.document(id);
         if (result.status === 'pending' || result.status === 'progress') {
@@ -270,8 +257,8 @@ function foxxQueuesSuite () {
 
     testExecuteInfinitelyFailingJob : function () {
       assertEqual(0, db.UnitTestsFoxx.count());
-      var queue = queues.create(qn);
-      var id = queue.push({
+      let queue = queues.create(qn);
+      let id = queue.push({
         name: 'peng',
         mount: '/_admin/aardvark',
         maxFailures: -1
@@ -280,7 +267,7 @@ function foxxQueuesSuite () {
       }});
 
       for (let tries = 0; tries < 60; tries++) {
-        var result = db.UnitTestsFoxx.count();
+        let result = db.UnitTestsFoxx.count();
         if (result < 2) {
           internal.wait(0.5, false);
           continue;
@@ -294,6 +281,86 @@ function foxxQueuesSuite () {
   };
 }
 
+function foxxQueuesSuite () {
+  'use strict';
+
+  let suite = {
+    setUp : function () {
+      db._useDatabase('_system');
+      db._drop(cn);
+      db._create(cn);
+      queues.delete(qn);
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+      queues.delete(qn);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_SystemDatabase');
+  return suite;
+}
+    
+function foxxQueuesOtherDatabaseSuite () {
+  'use strict';
+
+  let suite = {
+    setUp : function () {
+      db._useDatabase('_system');
+      db._createDatabase(cn);
+      db._useDatabase(cn);
+      db._create(cn);
+    },
+
+    tearDown : function () {
+      db._useDatabase('_system');
+      db._dropDatabase(cn);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_OtherDatabase');
+  return suite;
+}
+
+function foxxQueuesMultipleDatabasesSuite () {
+  'use strict';
+
+  let suite = {
+    setUp : function () {
+      db._useDatabase('_system');
+      db._create(cn);
+      // create a queue in _system as well
+      let queue = queues.create(qn);
+      queue.push({
+        name: 'peng',
+        mount: '/_admin/aardvark',
+        repeatDelay: 1, // milliseconds
+      }, {}, { failure: function() { 
+        require("internal").db.UnitTestsFoxx.insert({ failed: true }); 
+      }});
+
+      db._createDatabase(cn);
+      db._useDatabase(cn);
+      db._create(cn);
+    },
+
+    tearDown : function () {
+      db._useDatabase('_system');
+      db._dropDatabase(cn);
+      try {
+        queues.delete(qn);
+      } catch (err) {}
+      db._drop(cn);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_MultipleDatabases');
+  return suite;
+}
+
 jsunity.run(foxxQueuesSuite);
+jsunity.run(foxxQueuesOtherDatabaseSuite);
+jsunity.run(foxxQueuesMultipleDatabasesSuite);
 
 return jsunity.done();
