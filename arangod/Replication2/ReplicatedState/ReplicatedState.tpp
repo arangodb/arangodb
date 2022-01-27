@@ -103,10 +103,12 @@ auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
 template<typename S>
 auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
   return guardedData.doUnderLock(
-      [&](GuardedData& data) -> std::optional<StateStatus> {
+      [&](GuardedData& data) noexcept -> std::optional<StateStatus> {
         if (data.currentManager == nullptr) {
           return std::nullopt;
         }
+        // This is guaranteed to not throw in case the currentManager is not
+        // resigned.
         return data.currentManager->getStatus();
       });
 }

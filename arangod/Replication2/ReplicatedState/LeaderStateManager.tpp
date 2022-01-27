@@ -149,6 +149,11 @@ LeaderStateManager<S>::LeaderStateManager(
 
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
+  if (token == nullptr || core == nullptr) {
+    TRI_ASSERT(core == nullptr && token == nullptr);
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+  }
   LeaderStatus status;
   status.managerState.state = internalState;
   status.managerState.lastChange = lastInternalStateChange;
