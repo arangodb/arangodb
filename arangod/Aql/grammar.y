@@ -36,11 +36,6 @@
 #include <algorithm>
 #include <string_view>
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-#endif
-
 %}
 
 %union {

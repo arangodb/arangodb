@@ -102,11 +102,6 @@
 #include <algorithm>
 #include <string_view>
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-#endif
-
 #line 108 "Aql/grammar.cpp"
 
 #ifndef YY_CAST
