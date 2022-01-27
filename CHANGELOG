@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+  multiple Coordinators.
+
 * Fix creation of satellite graphs with a `numberOfShards` value != 1.
 
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
