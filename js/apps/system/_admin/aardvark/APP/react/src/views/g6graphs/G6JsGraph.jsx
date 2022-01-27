@@ -14,6 +14,7 @@ import { EditNodeModal } from './EditNodeModal';
 import { LoadDocument } from './LoadDocument';
 import { EditModal } from './EditModal';
 import { EditEdgeModal } from './EditEdgeModal';
+import { AddNodeModal2 } from './AddNodeModal2';
 import omit from "lodash";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import './tooltip.css';
@@ -52,6 +53,12 @@ const G6JsGraph = () => {
   const [nodeCollection, setNodeCollection] = useState('germanCity');
   const [edgeCollection, setEdgeCollection] = useState('germanCity');
   const [selectedNodeData, setSelectedNodeData] = useState();
+  const [nodeToAdd, setNodeToAdd] = useState();
+  const [nodeToAddKey, setNodeToAddKey] = useState("Munich");
+  const [nodeToAddCollection, setNodeToAddCollection] = useState("germanCity");
+  const [nodeToAddData, setNodeToAddData] = useState();
+  const [isNewNodeToEdit, setIsNewNodeToEdit] = useState(false);
+  const [showNodeToAddModal, setShowNodeToAddModal] = useState();
   const [type, setLayout] = React.useState('graphin-force');
   const handleChange = value => {
     console.log('handleChange (value): ', value);
@@ -292,6 +299,7 @@ const G6JsGraph = () => {
   }
 
   const updateGraphDataWithNode = (newNode) => {
+    console.log("...........updateGraphDataWithNode (newNode): ", newNode);
     const currentEdges = graphData.edges;
     const newGraphData = {
       nodes: [
@@ -306,6 +314,7 @@ const G6JsGraph = () => {
   }
 
   const updateGraphDataWithEdge = (newEdge) => {
+    console.log("...........updateGraphDataWithEdge (newEdge): ", newEdge);
     const currentNodes = graphData.nodes;
     const newGraphData = {
       nodes: [
@@ -431,6 +440,7 @@ const G6JsGraph = () => {
         console.log(err);
       });
     console.log("openEditModal: change nodeToEdit now");
+    setIsNewNodeToEdit(true);
     //return <LoadDocument node={node} />
     setShowEditModal(true);
   }
@@ -469,6 +479,42 @@ const G6JsGraph = () => {
     console.log("openEditEdgeModal: change edgeToEdit now");
 
     setShowEditEdgeModal(true);
+  }
+
+  const openAddNodeModal = () => {
+    console.log(">>>>>>>>>>>> openAddNodeModal");
+    const data = [{
+      "keys": [
+        "Munich"
+      ],
+      "collection": "germanCity"
+    }];
+    setNodeToAdd(data);
+    setNodeToAddKey("Munich");
+    setNodeToAddCollection("germanCity");
+    const nodeToAddDataObject = {
+      "keys": [
+        "Munich"
+      ],
+      "collection": "germanCity"
+    };
+      arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+        method: "POST",
+        body: JSON.stringify(nodeToAddDataObject),
+      })
+      .then(response => response.json())
+      .then(data => {
+        const allowedDocuments = omit(data.documents[0], '_id', '_key');
+        console.log("allowedDocuments: ", allowedDocuments);
+        setNodeToAddData(data.documents[0]);
+        //setNodeDataToEdit(data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    console.log("openEditModal: change nodeToEdit now");
+    //return <LoadDocument node={node} />
+    setShowNodeToAddModal(true);
   }
 
   const editNodeMode = (node) => {
@@ -550,6 +596,25 @@ const G6JsGraph = () => {
         <strong>Really edit node: {editNode}</strong>
         <strong>Edit node (object): {JSON.stringify(selectedNodeData, null, 2)}</strong>
       </EditNodeModal>
+      <AddNodeModal2
+        shouldShow={showNodeToAddModal}
+        onRequestClose={() => {
+          setShowNodeToAddModal(false);
+          //setNodeDataToEdit(undefined);
+        }}
+        node={'nodeToEdit'}
+        nodeData={[]}
+        editorContent={'nodeToEdit'}
+        onAddNode={() => {
+          //setGraphData(newGraphData);
+          setShowNodeToAddModal(false);
+        }}
+        nodeKey={'Munich'}
+        nodeCollection={'germanCity'}
+        onNodeCreation={(newNode) => updateGraphDataWithNode(newNode)}
+      >
+        <strong>Add node</strong>
+      </AddNodeModal2>
       <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
@@ -560,6 +625,7 @@ const G6JsGraph = () => {
             onRemoveSingleEdge={(edge) => removeEdge(edge)}
             onEditNode={(node) => openEditModal(node)}
             onEditEdge={(edge) => openEditEdgeModal(edge)}
+            onAddNodeToDb={() => openAddNodeModal()}
       />     
     </div>
   );
