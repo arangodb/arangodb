@@ -734,16 +734,37 @@ Collection const* GraphNode::collection() const {
   if (_vertexColls.empty()) {
     return getShardingPrototype();
   }
-  for (auto const* c : _vertexColls) {
+
+  for (auto const* vC : _vertexColls) {
     // We are required to valuate non-satellites above
     // satellites, as the collection is used as the prototype
-    // for this graphs sharding.
+    // for these graphs sharding.
     // The Satellite collection does not have sharding.
-    TRI_ASSERT(c != nullptr);
-    if (!c->isSatellite()) {
-      return c;
+    TRI_ASSERT(vC != nullptr);
+    if (!vC->isSatellite() && vC->type() == TRI_COL_TYPE_DOCUMENT) {
+      auto const& shardID = vC->shardKeys(false);
+      if (shardID.size() == 1 &&
+          shardID.at(0) == StaticStrings::PrefixOfKeyString) {
+        return vC;
+      }
     }
   }
+
+  for (auto const* eC : _edgeColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the prototype
+    // for these graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(eC != nullptr);
+    if (!eC->isSatellite() && eC->type() == TRI_COL_TYPE_EDGE) {
+      auto const& shardID = eC->shardKeys(false);
+      if (shardID.size() == 1 &&
+          shardID.at(0) == StaticStrings::PrefixOfKeyString) {
+        return eC;
+      }
+    }
+  }
+
   // We have not found any non-satellite Collection
   // just return the first satellite then.
   TRI_ASSERT(_vertexColls.front() != nullptr);
