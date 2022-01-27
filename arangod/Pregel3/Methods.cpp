@@ -31,6 +31,7 @@
 #include <Pregel3/Pregel3Feature.h>
 #include "Cluster/ServerState.h"
 
+using namespace arangodb;
 using namespace arangodb::pregel3;
 
 struct Pregel3MethodsSingleServer final
@@ -40,8 +41,9 @@ struct Pregel3MethodsSingleServer final
       : vocbase(vocbase) {}
 
   auto createQuery(GraphSpecification const& graph) const
-      -> arangodb::futures::Future<arangodb::Result> override {
+      -> arangodb::futures::Future<Result> override {
     vocbase.server().getFeature<Pregel3Feature>().createQuery(graph);
+    return Result{};
   }
 
   TRI_vocbase_t& vocbase;

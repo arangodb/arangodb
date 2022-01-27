@@ -44,12 +44,14 @@ struct GraphSpecification {
 
 using QueryId = std::size_t;
 struct Query {
-  Query(QueryId id, GraphSpecification const& graph);
+  Query(QueryId id, GraphSpecification const& graphSpec)
+      : id{id}, graphSpec{graphSpec} {};
 
   void loadGraph();
 
  private:
   QueryId id;
+  GraphSpecification graphSpec;
   std::shared_ptr<Graph> graph{nullptr};
 };
 
