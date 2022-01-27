@@ -2745,7 +2745,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
 
 class IResearchLinkInRecoveryDBServerOnUpgradeTest
     : public ::testing::Test,
-  public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
                                             arangodb::LogLevel::FATAL>,
@@ -2758,7 +2758,7 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
 
   IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false, true) {
     arangodb::tests::init();
-    
+
     // ensure ArangoSearch start 1 maintenance for each group
     auto opts = server.server().options();
     auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
@@ -2795,7 +2795,8 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError,
                         systemErrorStr);
     // simulate running recovery
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult =
+        arangodb::RecoveryState::IN_PROGRESS;
   }
 
   ~IResearchLinkInRecoveryDBServerOnUpgradeTest() override {
@@ -2804,7 +2805,8 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
   }
 };
 
-TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery_no_name) {
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name) {
   // collection registered with view (collection initially not in view)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -2838,9 +2840,10 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery_no_na
       EXPECT_TRUE((actual.empty()));
     }
 
-    EXPECT_THROW(StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{1}, *logicalCollection, linkJson->slice()),
-       arangodb::basics::Exception);
+    EXPECT_THROW(
+        StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
+                                         *logicalCollection, linkJson->slice()),
+        arangodb::basics::Exception);
 
     // collection in view on destruct
     {
@@ -2924,4 +2927,3 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
     }
   }
 }
-

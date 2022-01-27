@@ -287,7 +287,8 @@ Result IResearchLink::init(velocypack::Slice definition,
     clusterWideLink =
         _collection.id() == _collection.planId() && _collection.isAStub();
 
-    auto const clusterIsEnabled = vocbase.server().getFeature<ClusterFeature>().isEnabled();
+    auto const clusterIsEnabled =
+        vocbase.server().getFeature<ClusterFeature>().isEnabled();
     if (clusterIsEnabled) {
       auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -326,12 +327,16 @@ Result IResearchLink::init(velocypack::Slice definition,
     }
 
     if (!clusterWideLink) {
-      
       if (meta._collectionName.empty() && !clusterIsEnabled &&
-          vocbase.server().getFeature<EngineSelectorFeature>().engine().inRecovery()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-          "Upgrade conflicts with recovering ArangoSearch link."
-          " Please rollback the updated arangodb binary and finish recovery first.");
+          vocbase.server()
+              .getFeature<EngineSelectorFeature>()
+              .engine()
+              .inRecovery()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "Upgrade conflicts with recovering ArangoSearch link."
+            " Please rollback the updated arangodb binary and finish recovery "
+            "first.");
       }
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
