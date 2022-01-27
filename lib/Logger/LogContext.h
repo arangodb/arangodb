@@ -307,7 +307,7 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
  private:
   using ValueTypesT = typename Base::ValueTypesT::template With<
       std::decay_t<std::remove_reference_t<V>>>;
-  using KeysT = typename Base::Keys::template With<K>;
+  using KeysT = typename Base::KeysT::template With<K>;
 
   template<class F>
   auto passValues(F&& func) && {
