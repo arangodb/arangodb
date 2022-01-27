@@ -51,7 +51,6 @@
 #include "Enterprise/Aql/LocalKShortestPathsNode.h"
 #include "Enterprise/Aql/LocalShortestPathNode.h"
 #include "Enterprise/Aql/LocalTraversalNode.h"
-#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <velocypack/Iterator.h>
@@ -735,34 +734,30 @@ Collection const* GraphNode::collection() const {
   if (_vertexColls.empty()) {
     return getShardingPrototype();
   }
-  for (auto const* c : _vertexColls) {
+
+  for (auto const* vC : _vertexColls) {
     // We are required to valuate non-satellites above
     // satellites, as the collection is used as the prototype
-    // for this graphs sharding.
+    // for these graphs sharding.
     // The Satellite collection does not have sharding.
-    TRI_ASSERT(c != nullptr);
-    if (!c->isSatellite() &&
-        c->type() == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT) {
-      return c;
+    TRI_ASSERT(vC != nullptr);
+    if (!vC->isSatellite() && vC->type() == TRI_COL_TYPE_DOCUMENT) {
+      auto const& shardID = vC->shardKeys(false);
+      if (shardID.size() == 1 && shardID.at(0) == StaticStrings::PrefixOfKeyString) {
+        return vC;
+      }
     }
   }
 
-  TRI_ASSERT(!_edgeColls.empty());
   for (auto const* eC : _edgeColls) {
     // We are required to valuate non-satellites above
     // satellites, as the collection is used as the prototype
-    // for this graphs sharding.
+    // for these graphs sharding.
     // The Satellite collection does not have sharding.
     TRI_ASSERT(eC != nullptr);
-    if (eC->isSmart()) {
-      TRI_ASSERT(!eC->isSatellite());
-      std::shared_ptr<LogicalCollection> collection =
-          vocbase()->lookupCollection(eC->name());
-      TRI_ASSERT(collection.get() != nullptr);
-      auto sC = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(
-          collection.get());
-      if (!sC->isSmartToSatEdgeCollection() &&
-          !sC->isSatToSmartEdgeCollection()) {
+    if (!eC->isSatellite() && eC->type() == TRI_COL_TYPE_EDGE) {
+      auto const& shardID = eC->shardKeys(false);
+      if (shardID.size() == 1 && shardID.at(0) == StaticStrings::PrefixOfKeyString) {
         return eC;
       }
     }
