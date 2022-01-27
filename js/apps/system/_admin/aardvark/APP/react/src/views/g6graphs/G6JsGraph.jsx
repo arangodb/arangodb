@@ -10,6 +10,11 @@ import { Card } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
 import NodeLabelContentSelector from './NodeLabelContentSelector.js';
+import { EditNodeModal } from './EditNodeModal';
+import { LoadDocument } from './LoadDocument';
+import { EditModal } from './EditModal';
+import omit from "lodash";
+import { JsonEditor as Editor } from 'jsoneditor-react';
 import './tooltip.css';
 
 const G6JsGraph = () => {
@@ -21,6 +26,21 @@ const G6JsGraph = () => {
   let [graphData, setGraphData] = useState(data);
   const ref = React.useRef(null);
   let graph = null;
+  const [showEditNodeModal, setShowEditNodeModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editNode, setEditNode] = useState();
+  //const [nodeToEdit, setNodeToEdit] = useState('germanCity/Hamburg');
+  const [nodeToEdit, setNodeToEdit] = useState(
+  {
+    "keys": [
+      "Hamburg"
+    ],
+    "collection": "germanCity"
+  });
+  const [nodeDataToEdit, setNodeDataToEdit] = useState();
+  const [nodeKey, setNodeKey] = useState('Hamburg');
+  const [nodeCollection, setNodeCollection] = useState('germanCity');
+  const [selectedNodeData, setSelectedNodeData] = useState();
   const [type, setLayout] = React.useState('graphin-force');
   const handleChange = value => {
     console.log('handleChange (value): ', value);
@@ -354,6 +374,61 @@ const G6JsGraph = () => {
     setGraphData(newGraphData);
   }
 
+  const openEditNodeModal = () => {
+    setShowEditNodeModal(true);
+  }
+
+  const openEditModal = (node) => {
+    console.log(">>>>>>>>>>>> openEditModal (node): ", node);
+    const slashPos = node.indexOf("/");
+    const label = node.substring(slashPos + 1) + " - " + node.substring(0, slashPos);
+    const data = [{
+      "keys": [
+        "Berlin"
+      ],
+      "collection": "germanCity"
+    }];
+    setNodeToEdit(node);
+    //setNodeKey('Paris');
+    console.log(">>>>>>>>>>>> openEditModal (nodeKey): ", node.substring(slashPos + 1));
+    setNodeKey(node.substring(slashPos + 1));
+    //setNodeCollection('frenchCity');
+    console.log(">>>>>>>>>>>> openEditModal (nodeCollection): ", node.substring(0, slashPos));
+    setNodeCollection(node.substring(0, slashPos));
+    const nodeDataObject = {
+      "keys": [
+        node.substring(slashPos + 1)
+      ],
+      "collection": node.substring(0, slashPos)
+    };
+      arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+        method: "PUT",
+        body: JSON.stringify(nodeDataObject),
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Document info loaded before opening EditModal component: ");
+        console.log("Document info loaded before opening EditModal component (data): ", data);
+        console.log("Document info loaded before opening EditModal component (data.documents): ", data.documents);
+        console.log("Document info loaded before opening EditModal component (data.documents[0]): ", data.documents[0]);
+        const allowedDocuments = omit(data.documents[0], '_id', '_key');
+        console.log("allowedDocuments: ", allowedDocuments);
+        setNodeDataToEdit(data.documents[0]);
+        //setNodeDataToEdit(data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    console.log("openEditModal: change nodeToEdit now");
+    //return <LoadDocument node={node} />
+    setShowEditModal(true);
+  }
+
+  const editNodeMode = (node) => {
+    console.log('editNodeMode (node): ', node);
+    //openeditmodal
+  }
+
   /*
   <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
         <EdgeStyleSelector onEdgeStyleChange={(typeModel) => changeEdgeStyle(typeModel)} />
@@ -367,10 +442,49 @@ const G6JsGraph = () => {
         <button onClick={() => returnGraph()}>What is graph?</button>
   */
  
+        //<Editor value={selectedNodeData} onChange={() => console.log('Data in jsoneditor changed')} mode={'code'} history={true}/>
+        //<LoadDocument node={nodeToEdit} />
   return (
     <div>
       <button onClick={() => changeGraphData()}>Change graph data (parent)</button>
       <button onClick={() => printGraphData()}>Print graphData</button>
+      <button onClick={() => openEditNodeModal()}>Open edit node modal</button>
+      <button onClick={() => openEditModal()}>Open edit modal</button>
+      <EditModal
+        shouldShow={showEditModal}
+        onRequestClose={() => {
+          setShowEditModal(false);
+          setNodeDataToEdit(undefined);
+        }}
+        node={nodeToEdit}
+        nodeData={nodeDataToEdit}
+        editorContent={nodeToEdit}
+        onUpdateNode={() => {
+          //setGraphData(newGraphData);
+          setShowEditModal(false);
+        }}
+        nodeKey={nodeKey}
+        nodeCollection={nodeCollection}
+      >
+        <strong>Edit node: {nodeToEdit}</strong>
+      </EditModal>
+      <EditNodeModal
+        graphData={graphData}
+        shouldShow={showEditNodeModal}
+        onRequestClose={() => {
+          setShowEditNodeModal(false);
+        }}
+        node={editNode}
+        onUpdateNode={(newGraphData) => {
+          console.log('newGraphData in EditNode: ', newGraphData);
+          //setGraphData(newGraphData);
+          setShowEditNodeModal(false);
+        }}
+      >
+        <strong>Edit Node (new)</strong>
+        <strong>Really edit node: {editNode}</strong>
+        <strong>Edit node (object): {JSON.stringify(selectedNodeData, null, 2)}</strong>
+      </EditNodeModal>
       <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
@@ -379,6 +493,7 @@ const G6JsGraph = () => {
             onAddSingleEdge={(newEdge) => updateGraphDataWithEdge(newEdge)}
             onRemoveSingleNode={(node) => removeNode(node)}
             onRemoveSingleEdge={(edge) => removeEdge(edge)}
+            onEditNode={(node) => openEditModal(node)}
       />     
     </div>
   );
