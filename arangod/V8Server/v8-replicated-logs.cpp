@@ -132,8 +132,7 @@ static void JS_CreateReplicatedLog(
   auto spec = std::invoke([&] {
     VPackBuilder builder;
     TRI_V8ToVPack(isolate, builder, args[0], false, false);
-    return agency::LogTarget(agency::from_velocypack,
-                                        builder.slice());
+    return agency::LogTarget(agency::from_velocypack, builder.slice());
   });
 
   auto res = ReplicatedLogMethods::createInstance(vocbase)
