@@ -1564,9 +1564,6 @@ function shutdownArangod (arangod, options, forceTerminate) {
 function shutDownOneInstance(options, arangod, fullInstance, counters, forceTerminate, timeout) {
   let shutdownTime = internal.time();
   if (!arangod.hasOwnProperty('exitStatus')) {
-    if ((counters.nonAgenciesCount > 0) && (arangod.role === 'agent')) {
-      return true;
-    }
     shutdownArangod(arangod, options, forceTerminate);
     if (forceTerminate) {
       print(Date() + " FORCED shut down: " + JSON.stringify(arangod));
