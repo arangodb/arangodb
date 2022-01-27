@@ -104,12 +104,12 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 
 std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer()
     const {
-  return arangodb::GlobalInitialSyncer::create(configuration());
+  return arangodb::GlobalInitialSyncer::create(_configuration);
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::GlobalTailingSyncer::create(configuration(), initialTick,
+  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick,
                                                useTick);
 }
 
