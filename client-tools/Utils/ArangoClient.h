@@ -58,32 +58,4 @@ using ArangoClientFeatures = TypeList<
     HttpEndpointProvider, ConfigFeature, LoggerFeature, RandomFeature,
     ShellColorsFeature, ShutdownFeature, SslFeature, VersionFeature, T...>;
 
-template<typename Client>
-class ArangoClientInitializer {
- public:
-  ArangoClientInitializer(char const* binaryName, Client& client)
-      : _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.template addFeature<T>();
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.template addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.template addFeature<ConfigFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.template addFeature<LoggerFeature>(false);
-  }
-
- protected:
-  char const* _binaryName;
-  Client& _client;
-};
-
 }  // namespace arangodb
