@@ -545,7 +545,7 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
 
   if (value.isNumber()) {
     int64_t v = value.toInt64();
-    if (ADB_UNLIKELY(v < -62167219200000 || v > 253402300799999)) {
+    if (v < -62167219200000 || v > 253402300799999) [[unlikely]] {
       // check if value is between "0000-01-01T00:00:00.000Z" and
       // "9999-12-31T23:59:59.999Z" -62167219200000: "0000-01-01T00:00:00.000Z"
       // 253402300799999: "9999-12-31T23:59:59.999Z"
@@ -1644,7 +1644,7 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
   }
 
   auto const& attribute = extractFunctionParameterValue(args, 0);
-  if (ADB_UNLIKELY(!attribute.isString())) {
+  if (!attribute.isString()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
@@ -1652,20 +1652,20 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
       arangodb::iresearch::getStringRef(attribute.slice());
 
   auto const& target = extractFunctionParameterValue(args, 1);
-  if (ADB_UNLIKELY(!target.isString())) {
+  if (!target.isString()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
   auto const targetValue = arangodb::iresearch::getStringRef(target.slice());
 
   auto const& ngramSize = extractFunctionParameterValue(args, 2);
-  if (ADB_UNLIKELY(!ngramSize.isNumber())) {
+  if (!ngramSize.isNumber()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
   auto const ngramSizeValue = ngramSize.toInt64();
 
-  if (ADB_UNLIKELY(ngramSizeValue < 1)) {
+  if (ngramSizeValue < 1) [[unlikely]] {
     arangodb::aql::registerWarning(
         ctx, AFN,
         arangodb::Result{TRI_ERROR_BAD_PARAMETER,
@@ -1720,14 +1720,14 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   }
 
   auto const& attribute = extractFunctionParameterValue(args, 0);
-  if (ADB_UNLIKELY(!attribute.isString())) {
+  if (!attribute.isString()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
   auto const attributeValue = iresearch::getStringRef(attribute.slice());
 
   auto const& target = extractFunctionParameterValue(args, 1);
-  if (ADB_UNLIKELY(!target.isString())) {
+  if (!target.isString()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
@@ -1739,7 +1739,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   if (argc > 3) {  // 4 args given. 3rd is threshold
     auto const& thresholdArg = extractFunctionParameterValue(args, 2);
     analyzerPosition = 3;
-    if (ADB_UNLIKELY(!thresholdArg.isNumber())) {
+    if (!thresholdArg.isNumber()) [[unlikely]] {
       arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
       return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
     }
@@ -1754,7 +1754,7 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
 
   auto const& analyzerArg =
       extractFunctionParameterValue(args, analyzerPosition);
-  if (ADB_UNLIKELY(!analyzerArg.isString())) {
+  if (!analyzerArg.isString()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
@@ -1830,7 +1830,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
 
   auto const& maxDistance = extractFunctionParameterValue(args, 2);
 
-  if (ADB_UNLIKELY(!maxDistance.isNumber())) {
+  if (!maxDistance.isNumber()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
@@ -1841,7 +1841,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
   if (args.size() > 3) {
     auto const& withTranspositions = extractFunctionParameterValue(args, 3);
 
-    if (ADB_UNLIKELY(!withTranspositions.isBoolean())) {
+    if (!withTranspositions.isBoolean()) [[unlikely]] {
       registerInvalidArgumentWarning(ctx, AFN);
       return AqlValue{AqlValueHintNull{}};
     }
@@ -1872,7 +1872,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
       static_cast<irs::byte_type>(unsignedMaxDistanceValue),
       withTranspositionsValue);
 
-  if (ADB_UNLIKELY(!description)) {
+  if (!description) [[unlikely]] {
     registerInvalidArgumentWarning(ctx, AFN);
     return AqlValue{AqlValueHintNull{}};
   }
@@ -1911,12 +1911,12 @@ AqlValue Functions::InRange(ExpressionContext* ctx, AstNode const&,
   auto const& includeLowerVal = extractFunctionParameterValue(args, 3);
   auto const& includeUpperVal = extractFunctionParameterValue(args, 4);
 
-  if (ADB_UNLIKELY(!includeLowerVal.isBoolean())) {
+  if (!includeLowerVal.isBoolean()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
 
-  if (ADB_UNLIKELY(!includeUpperVal.isBoolean())) {
+  if (!includeUpperVal.isBoolean()) [[unlikely]] {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
@@ -5666,7 +5666,7 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx, AstNode const&,
 
   AqlValue const& lhs = extractFunctionParameterValue(args, 0);
 
-  if (ADB_UNLIKELY(!lhs.isArray())) {
+  if (!lhs.isArray()) [[unlikely]] {
     // not an array
     registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
@@ -5674,7 +5674,7 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx, AstNode const&,
 
   AqlValue const& rhs = extractFunctionParameterValue(args, 1);
 
-  if (ADB_UNLIKELY(!rhs.isArray())) {
+  if (!rhs.isArray()) [[unlikely]] {
     // not an array
     registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());

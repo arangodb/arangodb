@@ -38,7 +38,7 @@ using namespace arangodb::replication2::replicated_log;
 
 replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
     : _persistedLog(std::move(persistedLog)) {
-  if (ADB_UNLIKELY(_persistedLog == nullptr)) {
+  if (_persistedLog == nullptr) [[unlikely]] {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "When instantiating ReplicatedLog: "

@@ -120,7 +120,7 @@ static std::string typeToString(ShortestPathExecutorInfos::OutputName type) {
 RegisterId ShortestPathExecutorInfos::findRegisterChecked(
     OutputName type) const {
   auto const& it = _registerMapping.find(type);
-  if (ADB_UNLIKELY(it == _registerMapping.end())) {
+  if (it == _registerMapping.end()) [[unlikely]] {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "Logic error: requested unused register type " + typeToString(type));

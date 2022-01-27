@@ -306,7 +306,7 @@ Result IResearchLink::init(velocypack::Slice definition,
               << "Setting collection name '" << meta._collectionName
               << "' for new link '" << this->id().id() << "'";
         }
-        if (ADB_UNLIKELY(meta._collectionName.empty())) {
+        if (meta._collectionName.empty()) [[unlikely]] {
           LOG_TOPIC("67da6", WARN, TOPIC)
               << "Failed to init collection name for the link '"
               << this->id().id()
@@ -316,7 +316,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 
 #ifdef USE_ENTERPRISE
         // enterprise name is not used in _id so should not be here!
-        if (ADB_LIKELY(!meta._collectionName.empty())) {
+        if (!meta._collectionName.empty()) [[likely]] {
           ClusterMethods::realNameFromSmartName(meta._collectionName);
         }
 #endif

@@ -123,7 +123,7 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 
   auto handleBuffer = [this, options](VPackBuffer<uint8_t>&& buff) {
-    if (ADB_UNLIKELY(_contentType == rest::ContentType::JSON)) {
+    if (_contentType == rest::ContentType::JSON) [[unlikely]] {
       // simon: usually we escape unicode char sequences,
       // but JSON over VST is not consumed by node.js or browsers
       velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);

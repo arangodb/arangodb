@@ -145,7 +145,7 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr, const irs::order::prepared& order,
       const irs::attribute_provider* ctx) const override {
-    if (ADB_UNLIKELY(!ctx)) {
+    if (!ctx) [[unlikely]] {
       // no context provided
       return irs::doc_iterator::empty();
     }
@@ -183,7 +183,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& segment, const irs::order::prepared& order,
       const irs::attribute_provider* ctx) const override {
-    if (ADB_UNLIKELY(!ctx)) {
+    if (!ctx) [[unlikely]] {
       // no context provided
       return irs::doc_iterator::empty();
     }

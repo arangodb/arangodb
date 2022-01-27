@@ -129,7 +129,7 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
     // or we have piled up changes by lots of small allocations so far. time for
     // some memory expensive checks now...
 
-    if (_limit > 0 && ADB_UNLIKELY(current > _limit)) {
+    if (_limit > 0 && current > _limit) [[unlikely]] {
       // we would use more memory than dictated by the instance's own limit.
       // because we will throw an exception directly afterwards, we now need to
       // revert the change that we already made to the instance's own counter.

@@ -321,7 +321,7 @@ bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
 static inline int8_t TypeWeight(VPackSlice& slice) {
 again:
   int8_t w = ::typeWeights[slice.head()];
-  if (ADB_UNLIKELY(w == -50)) {
+  if (w == -50) [[unlikely]] {
     slice = slice.resolveExternal();
     goto again;
   }

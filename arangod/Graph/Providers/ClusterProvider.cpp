@@ -429,7 +429,7 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   auto const relations = _vertexConnectedEdges.find(vertex.getID());
   TRI_ASSERT(relations != _vertexConnectedEdges.end());
 
-  if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
+  if (relations != _vertexConnectedEdges.end()) [[likely]] {
     for (auto const& relation : relations->second) {
       bool const fetched = _vertexConnectedEdges.contains(relation.second);
       callback(Step{relation.second, relation.first, previous, fetched});

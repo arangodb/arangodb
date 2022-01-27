@@ -191,10 +191,10 @@ void RocksDBMetadata::removeBlocker(TransactionId trxId) noexcept try {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
 
-  if (ADB_LIKELY(_blockers.end() != it)) {
+  if (_blockers.end() != it) [[likely]] {
     auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
     TRI_ASSERT(_blockersBySeq.end() != cross);
-    if (ADB_LIKELY(_blockersBySeq.end() != cross)) {
+    if (_blockersBySeq.end() != cross) [[likely]] {
       _blockersBySeq.erase(cross);
     }
     _blockers.erase(it);

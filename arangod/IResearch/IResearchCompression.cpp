@@ -33,7 +33,7 @@ namespace iresearch {
 
 irs::string_ref columnCompressionToString(
     irs::type_info::type_id type) noexcept {
-  if (ADB_UNLIKELY(type == nullptr)) {
+  if (type == nullptr) [[unlikely]] {
     TRI_ASSERT(false);
     return irs::string_ref::EMPTY;
   }

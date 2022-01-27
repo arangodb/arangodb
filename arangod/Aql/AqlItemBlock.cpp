@@ -362,7 +362,7 @@ void AqlItemBlock::shrink(size_t numRows) {
     return;
   }
 
-  if (ADB_UNLIKELY(numRows > _numRows)) {
+  if (numRows > _numRows) [[unlikely]] {
     // cannot use shrink() to increase the size of the block
     std::string errorMessage("cannot use shrink() to increase block");
     errorMessage.append(". numRows: ");
@@ -1062,7 +1062,7 @@ void AqlItemBlock::eraseAll() {
 
   size_t totalUsed = 0;
   for (auto const& it : _valueCount) {
-    if (ADB_LIKELY(it.second.refCount > 0)) {
+    if (it.second.refCount > 0) [[likely]] {
       totalUsed += it.second.memoryUsage;
     }
   }
@@ -1267,7 +1267,7 @@ bool AqlItemBlock::ShadowRows::is(size_t row) const noexcept {
 
 size_t AqlItemBlock::ShadowRows::getDepth(size_t row) const noexcept {
   TRI_ASSERT(_depths.size() > row);
-  if (ADB_UNLIKELY(_depths.size() <= row)) {
+  if (_depths.size() <= row) [[unlikely]] {
     // should not happen
     return 0;
   }
@@ -1301,14 +1301,13 @@ void AqlItemBlock::ShadowRows::resize(size_t numRows) {
 
 void AqlItemBlock::ShadowRows::make(size_t row, size_t depth) {
   TRI_ASSERT(row < _numRows);
-  if (ADB_UNLIKELY(depth >=
-                   std::numeric_limits<decltype(_depths)::value_type>::max() -
-                       1U)) {
+  if (depth >= std::numeric_limits<decltype(_depths)::value_type>::max() - 1U)
+      [[unlikely]] {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid subquery depth");
   }
-  if (ADB_UNLIKELY(
-          row > std::numeric_limits<decltype(_indexes)::value_type>::max())) {
+  if (row > std::numeric_limits<decltype(_indexes)::value_type>::max())
+      [[unlikely]] {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid subquery row");
   }

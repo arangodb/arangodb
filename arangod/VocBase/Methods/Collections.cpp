@@ -1084,7 +1084,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
       << "error while dropping collection: '" << collName << "' error: '"
       << res.errorMessage() << "'";
 
-  if (ADB_LIKELY(!keepUserRights)) {
+  if (!keepUserRights) [[likely]] {
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
     if (res.ok() && um != nullptr) {

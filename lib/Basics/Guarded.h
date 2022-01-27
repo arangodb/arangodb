@@ -108,7 +108,7 @@ class MutexGuard {
 template<class T, class L>
 MutexGuard<T, L>::MutexGuard(T& value, L mutexLock)
     : _value(&value), _mutexLock(std::move(mutexLock)) {
-  if (ADB_UNLIKELY(!_mutexLock.owns_lock())) {
+  if (!_mutexLock.owns_lock()) [[unlikely]] {
     throw std::invalid_argument("Lock not owned");
   }
 }

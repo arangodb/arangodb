@@ -200,8 +200,8 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto upstreamCall = calculateUpstreamCall(call);
 
-  if (ADB_UNLIKELY(inputRange.skippedInFlight() < upstreamCall.getOffset() &&
-                   inputRange.hasDataRow())) {
+  if (inputRange.skippedInFlight() < upstreamCall.getOffset() &&
+      inputRange.hasDataRow()) [[unlikely]] {
     static_assert(
         Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
         "For LIMIT with passthrough to work, there must no input "

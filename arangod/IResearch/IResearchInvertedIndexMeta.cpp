@@ -331,7 +331,7 @@ bool IResearchInvertedIndexMeta::init(
                 analyzer = *it;
                 found = static_cast<bool>(analyzer);
 
-                if (ADB_UNLIKELY(!found)) {
+                if (!found) [[unlikely]] {
                   TRI_ASSERT(false);               // should not happen
                   _analyzerDefinitions.erase(it);  // remove null analyzer
                 }
@@ -515,7 +515,7 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
     TRI_ASSERT(fieldSlice.isObject());  // We expect only normalized definitions
                                         // here. Otherwise we will need vocbase
                                         // to properly match analyzers.
-    if (ADB_UNLIKELY(!fieldSlice.isObject())) {
+    if (!fieldSlice.isObject()) [[unlikely]] {
       return false;
     }
 
@@ -525,7 +525,7 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
         name.isString() &&     // We expect only normalized definitions here.
         analyzer.isString());  // Otherwise we will need vocbase to properly
                                // match analyzers.
-    if (ADB_UNLIKELY(!name.isString() || !analyzer.isString())) {
+    if (!name.isString() || !analyzer.isString()) [[unlikely]] {
       return false;
     }
 

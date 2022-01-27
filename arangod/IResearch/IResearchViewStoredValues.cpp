@@ -64,7 +64,7 @@ bool IResearchViewStoredValues::toVelocyPack(
     irs::string_ref encodedCompression =
         columnCompressionToString(column.compression);
     TRI_ASSERT(!encodedCompression.null());
-    if (ADB_LIKELY(!encodedCompression.null())) {
+    if (!encodedCompression.null()) [[likely]] {
       addStringRef(builder, COMPRESSION_COLUMN_PARAM, encodedCompression);
     }
   }
@@ -176,14 +176,14 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
     for (auto columnSlice : VPackArrayIterator(slice)) {
       ++idx;
       if (columnSlice.isObject()) {
-        if (ADB_LIKELY(columnSlice.hasKey(FIELD_COLUMN_PARAM))) {
+        if (columnSlice.hasKey(FIELD_COLUMN_PARAM)) [[likely]] {
           auto compression = getDefaultCompression();
           if (columnSlice.hasKey(COMPRESSION_COLUMN_PARAM)) {
             auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
-            if (ADB_LIKELY(compressionKey.isString())) {
+            if (compressionKey.isString()) [[likely]] {
               auto decodedCompression = columnCompressionFromString(
                   iresearch::getStringRef(compressionKey));
-              if (ADB_LIKELY(decodedCompression != nullptr)) {
+              if (decodedCompression != nullptr) [[likely]] {
                 compression = decodedCompression;
               } else {
                 errorField =

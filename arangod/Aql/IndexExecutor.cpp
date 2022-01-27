@@ -97,8 +97,8 @@ IndexIterator::CoveringCallback getCallback(
     auto indexId = index->id();
     TRI_ASSERT(indexId == outNonMaterializedIndRegs.first &&
                indexId == outNonMaterializedIndVars.first);
-    if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first ||
-                     indexId != outNonMaterializedIndVars.first)) {
+    if (indexId != outNonMaterializedIndRegs.first ||
+        indexId != outNonMaterializedIndVars.first) [[unlikely]] {
       return false;
     }
 
@@ -114,14 +114,14 @@ IndexIterator::CoveringCallback getCallback(
         auto const& fc = *reinterpret_cast<filterContext const*>(ctx);
         auto const it = fc.outNonMaterializedIndVars.second.find(var);
         TRI_ASSERT(fc.outNonMaterializedIndVars.second.cend() != it);
-        if (ADB_UNLIKELY(fc.outNonMaterializedIndVars.second.cend() == it)) {
+        if (fc.outNonMaterializedIndVars.second.cend() == it) [[unlikely]] {
           return AqlValue();
         }
         velocypack::Slice s;
         // hash/skiplist/persistent
         if (fc.covering.isArray()) {
           TRI_ASSERT(it->second < fc.covering.length());
-          if (ADB_UNLIKELY(it->second >= fc.covering.length())) {
+          if (it->second >= fc.covering.length()) [[unlikely]] {
             return AqlValue();
           }
           s = fc.covering.at(it->second);
@@ -153,7 +153,7 @@ IndexIterator::CoveringCallback getCallback(
     if (covering.isArray()) {
       for (auto const& indReg : outNonMaterializedIndRegs.second) {
         TRI_ASSERT(indReg.first < covering.length());
-        if (ADB_UNLIKELY(indReg.first >= covering.length())) {
+        if (indReg.first >= covering.length()) [[unlikely]] {
           return false;
         }
         auto s = covering.at(indReg.first);
@@ -165,7 +165,7 @@ IndexIterator::CoveringCallback getCallback(
     } else {  // primary/edge
       auto indReg = outNonMaterializedIndRegs.second.cbegin();
       TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
-      if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
+      if (indReg == outNonMaterializedIndRegs.second.cend()) [[unlikely]] {
         return false;
       }
       AqlValue v(covering.value());

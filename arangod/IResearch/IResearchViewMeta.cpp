@@ -599,7 +599,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
         _primarySortCompression =
             columnCompressionFromString(field.copyString());
       }
-      if (ADB_UNLIKELY(nullptr == _primarySortCompression)) {
+      if (nullptr == _primarySortCompression) [[unlikely]] {
         errorField += ".primarySortCompression";
         return false;
       }

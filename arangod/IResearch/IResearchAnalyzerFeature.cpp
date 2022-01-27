@@ -145,7 +145,7 @@ bool normalize(std::string& out, irs::string_ref const& type,
 aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
                           aql::AstNode const&,
                           aql::VPackFunctionParameters const& args) {
-  if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
+  if (args.empty() || args.size() > 2) [[unlikely]] {
     irs::string_ref const message =
         "invalid arguments count while computing result for function 'TOKENS'";
     LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC) << message;
@@ -202,7 +202,7 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
   auto* token = irs::get<irs::term_attribute>(*analyzer);
   auto* vpack_token = irs::get<VPackTermAttribute>(*analyzer);
 
-  if (ADB_UNLIKELY(!token && !vpack_token)) {
+  if (!token && !vpack_token) [[unlikely]] {
     auto const message =
         "failure to retrieve values from arangosearch analyzer name '"s +
         static_cast<std::string>(name) +
@@ -230,7 +230,7 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
       if (!numeric_analyzer) {
         numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
         numeric_token = irs::get<irs::term_attribute>(*numeric_analyzer);
-        if (ADB_UNLIKELY(!numeric_token)) {
+        if (!numeric_token) [[unlikely]] {
           auto const message =
               "failure to retrieve values from arangosearch numeric analyzer "
               "while computing result for function 'TOKENS'";
@@ -422,8 +422,8 @@ bool equalAnalyzer(AnalyzerPool const& pool, irs::string_ref const& type,
   // #9652) To make sure properties really differ, let`s re-normalize and
   // re-check
   std::string reNormalizedProperties;
-  if (ADB_UNLIKELY(!::normalize(reNormalizedProperties, pool.type(),
-                                pool.properties()))) {
+  if (!::normalize(reNormalizedProperties, pool.type(), pool.properties()))
+      [[unlikely]] {
     // failed to re-normalize definition - strange. It was already normalized
     // once. Some bug in load/store?
     TRI_ASSERT(FALSE);
@@ -505,7 +505,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       }
 
       auto shards = collection->shardIds();
-      if (ADB_UNLIKELY(!shards)) {
+      if (!shards) [[unlikely]] {
         TRI_ASSERT(FALSE);
         return {};  // treat missing collection as if there are no analyzers
       }
@@ -1447,7 +1447,7 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
         auto cached = _lastLoad.find(static_cast<std::string>(
             split.first));  // FIXME: remove cast after C++20
         TRI_ASSERT(cached != _lastLoad.end());
-        if (ADB_LIKELY(cached != _lastLoad.end())) {
+        if (cached != _lastLoad.end()) [[likely]] {
           cached->second =
               transaction->buildingRevision();  // as we already "updated cache"
                                                 // to this revision
@@ -1691,7 +1691,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
         }
       }
     }
-    if (ADB_UNLIKELY(inserted.empty())) {
+    if (inserted.empty()) [[unlikely]] {
       // nothing changed. So nothing to commit;
       return {};
     }
@@ -1703,7 +1703,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
       }
       auto cached = _lastLoad.find(vocbase.name());
       TRI_ASSERT(cached != _lastLoad.end());
-      if (ADB_LIKELY(cached != _lastLoad.end())) {
+      if (cached != _lastLoad.end()) [[likely]] {
         cached->second =
             transaction->buildingRevision();  // as we already "updated cache"
                                               // to this revision
@@ -2735,7 +2735,7 @@ Result IResearchAnalyzerFeature::remove(irs::string_ref const& name,
       auto cached = _lastLoad.find(static_cast<std::string>(
           split.first));  // FIXME: remove cast after C++20
       TRI_ASSERT(cached != _lastLoad.end());
-      if (ADB_LIKELY(cached != _lastLoad.end())) {
+      if (cached != _lastLoad.end()) [[likely]] {
         // we are hodling writelock so nobody should be able reload analyzers
         // and update cache.
         TRI_ASSERT(cached->second <
@@ -2997,7 +2997,7 @@ bool IResearchAnalyzerFeature::visit(
 }
 
 void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref database) {
-  if (ADB_UNLIKELY(database.empty())) {
+  if (database.empty()) [[unlikely]] {
     TRI_ASSERT(FALSE);
     return;
   }

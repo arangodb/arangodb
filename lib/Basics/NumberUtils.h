@@ -87,7 +87,7 @@ inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
 // this function will not modify errno.
 template<typename T>
 inline T atoi_unchecked(char const* p, char const* e) noexcept {
-  if (ADB_UNLIKELY(p == e)) {
+  if (p == e) [[unlikely]] {
     return T();
   }
 
@@ -97,7 +97,7 @@ inline T atoi_unchecked(char const* p, char const* e) noexcept {
     }
     return atoi_negative_unchecked<T>(++p, e);
   }
-  if (ADB_UNLIKELY(*p == '+')) {
+  if (*p == '+') [[unlikely]] {
     ++p;
   }
 
@@ -115,7 +115,7 @@ inline T atoi_unchecked(char const* p, char const* e) noexcept {
 // this function will not modify errno.
 template<typename T>
 inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
-  if (ADB_UNLIKELY(p == e)) {
+  if (p == e) [[unlikely]] {
     valid = false;
     return T();
   }
@@ -127,14 +127,14 @@ inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
   do {
     char c = *p;
     // we expect only '0' to '9'. everything else is unexpected
-    if (ADB_UNLIKELY(c < '0' || c > '9')) {
+    if (c < '0' || c > '9') [[unlikely]] {
       valid = false;
       return result;
     }
 
     c -= '0';
     // we expect the bulk of values to not hit the bounds restrictions
-    if (ADB_UNLIKELY(result < cutoff || (result == cutoff && c > cutlim))) {
+    if (result < cutoff || (result == cutoff && c > cutlim)) [[unlikely]] {
       valid = false;
       return result;
     }
@@ -157,7 +157,7 @@ inline T atoi_negative(char const* p, char const* e, bool& valid) noexcept {
 // this function will not modify errno.
 template<typename T>
 inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
-  if (ADB_UNLIKELY(p == e)) {
+  if (p == e) [[unlikely]] {
     valid = false;
     return T();
   }
@@ -170,14 +170,14 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
     char c = *p;
 
     // we expect only '0' to '9'. everything else is unexpected
-    if (ADB_UNLIKELY(c < '0' || c > '9')) {
+    if (c < '0' || c > '9') [[unlikely]] {
       valid = false;
       return result;
     }
 
     c -= '0';
     // we expect the bulk of values to not hit the bounds restrictions
-    if (ADB_UNLIKELY(result > cutoff || (result == cutoff && c > cutlim))) {
+    if (result > cutoff || (result == cutoff && c > cutlim)) [[unlikely]] {
       valid = false;
       return result;
     }
@@ -203,7 +203,7 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
 template<typename T>
 inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(
     char const* p, char const* e, bool& valid) noexcept {
-  if (ADB_UNLIKELY(p == e)) {
+  if (p == e) [[unlikely]] {
     valid = false;
     return T();
   }
@@ -211,7 +211,7 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(
   if (*p == '-') {
     return atoi_negative<T>(++p, e, valid);
   }
-  if (ADB_UNLIKELY(*p == '+')) {
+  if (*p == '+') [[unlikely]] {
     ++p;
   }
 
@@ -221,7 +221,7 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type atoi(
 template<typename T>
 inline typename std::enable_if<std::is_unsigned<T>::value, T>::type atoi(
     char const* p, char const* e, bool& valid) noexcept {
-  if (ADB_UNLIKELY(p == e)) {
+  if (p == e) [[unlikely]] {
     valid = false;
     return T();
   }
@@ -230,7 +230,7 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type atoi(
     valid = false;
     return T();
   }
-  if (ADB_UNLIKELY(*p == '+')) {
+  if (*p == '+') [[unlikely]] {
     ++p;
   }
 

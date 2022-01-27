@@ -108,7 +108,7 @@ void AqlExecuteResult::toVelocyPack(
 auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
                                       AqlItemBlockManager& itemBlockManager)
     -> ResultT<AqlExecuteResult> {
-  if (ADB_UNLIKELY(!slice.isObject())) {
+  if (!slice.isObject()) [[unlikely]] {
     using namespace std::string_literals;
     return Result(
         TRI_ERROR_TYPE_ERROR,
@@ -127,7 +127,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
 
   auto const readState =
       [](velocypack::Slice slice) -> ResultT<ExecutionState> {
-    if (ADB_UNLIKELY(!slice.isString())) {
+    if (!slice.isString()) [[unlikely]] {
       auto message = std::string{
           "When deserializing AqlExecuteResult: When reading state: "
           "Unexpected type "};
@@ -161,15 +161,15 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
 
   for (auto const it : velocypack::ObjectIterator(slice)) {
     auto const keySlice = it.key;
-    if (ADB_UNLIKELY(!keySlice.isString())) {
+    if (!keySlice.isString()) [[unlikely]] {
       return Result(TRI_ERROR_TYPE_ERROR,
                     "When deserializing AqlExecuteResult: Key is not a string");
     }
     auto const key = getStringView(keySlice);
 
     if (auto propIt = expectedPropertiesFound.find(key);
-        ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
+        propIt != expectedPropertiesFound.end()) [[likely]] {
+      if (propIt->second) [[unlikely]] {
         return Result(TRI_ERROR_TYPE_ERROR,
                       "When deserializing AqlExecuteResult: "
                       "Encountered duplicate key");
@@ -208,7 +208,7 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   }
 
   for (auto const& it : expectedPropertiesFound) {
-    if (ADB_UNLIKELY(!it.second)) {
+    if (!it.second) [[unlikely]] {
       auto message =
           std::string{"When deserializing AqlExecuteResult: missing key "};
       message += it.first;

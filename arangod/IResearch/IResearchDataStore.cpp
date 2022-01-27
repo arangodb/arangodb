@@ -1066,7 +1066,7 @@ Result IResearchDataStore::initDataStore(
   // as values provided may be temporary
   std::map<std::string, irs::type_info::type_id> compressionMap;
   for (auto const& c : storedColumns) {
-    if (ADB_LIKELY(c.compression != nullptr)) {
+    if (c.compression != nullptr) [[likely]] {
       compressionMap.emplace(c.name, c.compression);
     } else {
       TRI_ASSERT(false);

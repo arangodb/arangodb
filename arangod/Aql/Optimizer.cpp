@@ -228,7 +228,7 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
 
 void Optimizer::initializeRules(ExecutionPlan* plan,
                                 QueryOptions const& queryOptions) {
-  if (ADB_LIKELY(_rules.empty())) {
+  if (_rules.empty()) [[likely]] {
     auto const& rules = OptimizerRulesFeature::rules();
     _rules.reserve(rules.size());
 

@@ -410,7 +410,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(
              VelocyPackHelper::getNumericValue<ErrorCode>(
                  slice, StaticStrings::Code, TRI_ERROR_INTERNAL));
 
-  if (ADB_UNLIKELY(!slice.isObject())) {
+  if (!slice.isObject()) [[unlikely]] {
     using namespace std::string_literals;
     return Result{TRI_ERROR_TYPE_ERROR,
                   "When parsing execute result: expected object, got "s +

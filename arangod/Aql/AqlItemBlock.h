@@ -96,7 +96,7 @@ class AqlItemBlock {
       // This case will be very rare and likely will cause a lot of other
       // issues upfront. If we get such huge value, we count it as using
       // 4 GB of memory and ignore the rest.
-      if (ADB_UNLIKELY(value > std::numeric_limits<uint32_t>::max())) {
+      if (value > std::numeric_limits<uint32_t>::max()) [[unlikely]] {
         memoryUsage = std::numeric_limits<uint32_t>::max();
       } else {
         memoryUsage = static_cast<uint32_t>(value);

@@ -381,7 +381,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   TRI_ASSERT(postCommitSeq != 0);
   TRI_ASSERT(postCommitSeq >= previousSeqNo);
 
-  if (ADB_LIKELY(numOps > 0)) {
+  if (numOps > 0) [[likely]] {
     // we now need to add 1 for each write operation carried out in the trx
     // to get to the transaction's last operation's seqno
     postCommitSeq += numOps - 1;  // add to get to the next batch

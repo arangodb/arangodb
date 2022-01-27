@@ -489,16 +489,15 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow,
       if (ignoreMissing && itemId.value() >= sourceRow.getNumRegisters()) {
         continue;
       }
-      if (ADB_LIKELY(!_allowSourceRowUninitialized ||
-                     sourceRow.isInitialized())) {
+      if (!_allowSourceRowUninitialized || sourceRow.isInitialized())
+          [[likely]] {
         doCopyOrMoveValue<ItemRowType, copyOrMove>(sourceRow, itemId);
       }
     }
     adjustShadowRowDepth(sourceRow);
   } else {
     TRI_ASSERT(_baseIndex > 0);
-    if (ADB_LIKELY(!_allowSourceRowUninitialized ||
-                   sourceRow.isInitialized())) {
+    if (!_allowSourceRowUninitialized || sourceRow.isInitialized()) [[likely]] {
       block().referenceValuesFromRow(_baseIndex, regsToKeep, _lastBaseIndex);
     }
   }

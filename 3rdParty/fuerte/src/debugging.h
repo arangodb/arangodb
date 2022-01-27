@@ -25,21 +25,6 @@
 
 #include <fuerte/FuerteLogger.h>
 
-#ifndef ADB_LIKELY
-
-// likely/unlikely branch indicator
-// macro definitions similar to the ones at
-// https://kernelnewbies.org/FAQ/LikelyUnlikely
-#if defined(__GNUC__) || defined(__GNUG__)
-#define ADB_LIKELY(v) __builtin_expect(!!(v), 1)
-#define ADB_UNLIKELY(v) __builtin_expect(!!(v), 0)
-#else
-#define ADB_LIKELY(v) v
-#define ADB_UNLIKELY(v) v
-#endif
-
-#endif  // ADB_LIKELY
-
 /// @brief assert
 #ifndef FUERTE_ASSERT
 
@@ -47,7 +32,7 @@
 
 #define FUERTE_ASSERT(expr)                                                 \
   do {                                                                      \
-    if (!(ADB_LIKELY(expr))) {                                              \
+    if (!(expr)) [[unlikely]] {                                             \
       std::cout << "broken assert (" << #expr << ") in " << __FILE__ << ":" \
                 << __LINE__ << std::endl;                                   \
       std::abort();                                                         \

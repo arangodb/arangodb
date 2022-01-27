@@ -120,15 +120,14 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
 
   TRI_ASSERT(blockPtr->numRegisters() == getNumRegisters());
   // Test if we have more than uint32_t many blocks
-  if (ADB_UNLIKELY(_blocks.size() == std::numeric_limits<uint32_t>::max())) {
+  if (_blocks.size() == std::numeric_limits<uint32_t>::max()) [[unlikely]] {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_RESOURCE_LIMIT,
         "Reaching the limit of AqlItems to SORT, please consider using a "
         "limit after sorting.");
   }
   // Test if we have more than uint32_t many rows within a block
-  if (ADB_UNLIKELY(blockPtr->numRows() >
-                   std::numeric_limits<uint32_t>::max())) {
+  if (blockPtr->numRows() > std::numeric_limits<uint32_t>::max()) [[unlikely]] {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_RESOURCE_LIMIT,
         "Reaching the limit of AqlItems to SORT, please consider lowering "

@@ -84,13 +84,13 @@ void AqlCallStack::pushCall(AqlCallList const& call) {
 
 auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice)
     -> ResultT<AqlCallStack> {
-  if (ADB_UNLIKELY(!slice.isArray())) {
+  if (!slice.isArray()) [[unlikely]] {
     using namespace std::string_literals;
     return Result(TRI_ERROR_TYPE_ERROR,
                   "When deserializing AqlCallStack: expected array, got "s +
                       slice.typeName());
   }
-  if (ADB_UNLIKELY(slice.isEmptyArray())) {
+  if (slice.isEmptyArray()) [[unlikely]] {
     return Result(TRI_ERROR_TYPE_ERROR,
                   "When deserializing AqlCallStack: stack is empty");
   }
@@ -101,7 +101,7 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice)
   for (auto const entry : VPackArrayIterator(slice)) {
     auto maybeAqlCall = AqlCallList::fromVelocyPack(entry);
 
-    if (ADB_UNLIKELY(maybeAqlCall.fail())) {
+    if (maybeAqlCall.fail()) [[unlikely]] {
       auto message = std::string{"When deserializing AqlCallStack: entry "};
       message += std::to_string(i);
       message += ": ";

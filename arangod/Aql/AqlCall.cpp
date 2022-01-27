@@ -40,7 +40,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
-  if (ADB_UNLIKELY(!slice.isObject())) {
+  if (!slice.isObject()) [[unlikely]] {
     using namespace std::string_literals;
     return Result(TRI_ERROR_TYPE_ERROR,
                   "When deserializating AqlCall: Expected object, got "s +
@@ -93,7 +93,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     if (slice.isNull()) {
       return {std::nullopt};
     }
-    if (ADB_UNLIKELY(!slice.isString())) {
+    if (!slice.isString()) [[unlikely]] {
       auto message = std::string{
           "When deserializating AqlCall: When reading limitType: "
           "Unexpected type "};
@@ -116,7 +116,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   };
 
   auto const readFullCount = [](velocypack::Slice slice) -> ResultT<bool> {
-    if (ADB_UNLIKELY(!slice.isBool())) {
+    if (!slice.isBool()) [[unlikely]] {
       auto message = std::string{
           "When deserializating AqlCall: When reading fullCount: "
           "Unexpected type "};
@@ -147,15 +147,15 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
 
   for (auto const it : velocypack::ObjectIterator(slice)) {
     auto const keySlice = it.key;
-    if (ADB_UNLIKELY(!keySlice.isString())) {
+    if (!keySlice.isString()) [[unlikely]] {
       return Result(TRI_ERROR_TYPE_ERROR,
                     "When deserializating AqlCall: Key is not a string");
     }
     auto const key = keySlice.stringView();
 
     if (auto propIt = expectedPropertiesFound.find(key);
-        ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
+        propIt != expectedPropertiesFound.end()) [[likely]] {
+      if (propIt->second) [[unlikely]] {
         return Result(
             TRI_ERROR_TYPE_ERROR,
             "When deserializating AqlCall: Encountered duplicate key");
@@ -197,7 +197,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   }
 
   for (auto const& it : expectedPropertiesFound) {
-    if (ADB_UNLIKELY(!it.second)) {
+    if (!it.second) [[unlikely]] {
       auto message = std::string{"When deserializating AqlCall: missing key "};
       message += it.first;
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
@@ -215,7 +215,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
         call.hardLimit = limit;
         break;
     }
-  } else if (ADB_UNLIKELY(!std::holds_alternative<Infinity>(limit))) {
+  } else if (!std::holds_alternative<Infinity>(limit)) [[unlikely]] {
     return Result(
         TRI_ERROR_TYPE_ERROR,
         "When deserializating AqlCall: limit set, but limitType is missing.");

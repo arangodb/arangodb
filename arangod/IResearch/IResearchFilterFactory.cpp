@@ -3288,7 +3288,7 @@ Result processPhraseArgObjectType(char const* funcName,
                                   irs::analysis::analyzer* analyzer = nullptr) {
   TRI_ASSERT(object.isObject());
   VPackObjectIterator itr(object);
-  if (ADB_LIKELY(itr.valid())) {
+  if (itr.valid()) [[likely]] {
     auto key = itr.key();
     auto value = itr.value();
     if (!key.isString()) {

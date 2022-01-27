@@ -520,7 +520,7 @@ bool parseDateTime(std::string_view dateTime, ParsedDateTime& result) {
   if (length == 0 || result.year > 9999) {
     return false;
   }
-  if (ADB_UNLIKELY(length > 4)) {
+  if (length > 4) [[unlikely]] {
     // we must have at least 4 digits for the year, however, we
     // allow any amount of leading zeroes
     size_t i = 0;

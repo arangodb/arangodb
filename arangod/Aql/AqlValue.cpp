@@ -875,9 +875,9 @@ int64_t AqlValue::toInt64() const {
       return basics::littleToHost(
           _data.longNumberMeta.data.intLittleEndian.val);
     case VPACK_INLINE_UINT64:
-      if (ADB_UNLIKELY(
-              _data.longNumberMeta.data.uintLittleEndian.val >
-              static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))) {
+      if (_data.longNumberMeta.data.uintLittleEndian.val >
+          static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
+          [[unlikely]] {
         throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
       }
       return basics::littleToHost(
@@ -887,8 +887,8 @@ int64_t AqlValue::toInt64() const {
       auto const hostVal =
           basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
       memcpy(&val, &hostVal, sizeof(val));
-      if (ADB_UNLIKELY(
-              val > static_cast<double>(std::numeric_limits<int64_t>::max()))) {
+      if (val > static_cast<double>(std::numeric_limits<int64_t>::max()))
+          [[unlikely]] {
         throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
       }
       return static_cast<int64_t>(val);
@@ -998,7 +998,7 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot,
                                    arangodb::velocypack::ValueLength length) {
   TRI_ASSERT(length > 0);
   TRI_ASSERT(mot == MemoryOriginType::New || mot == MemoryOriginType::Malloc);
-  if (ADB_UNLIKELY(length > 0x0000ffffffffffffULL)) {
+  if (length > 0x0000ffffffffffffULL) [[unlikely]] {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
                                    "invalid AqlValue length");
   }
@@ -1407,7 +1407,7 @@ AqlValue::AqlValue(AqlValueHintDouble v) noexcept {
     // a "real" double
     _data.longNumberMeta.data.slice.slice[0] = 0x1b;
     // unify +0.0 and -0.0 to +0.0
-    if (ADB_UNLIKELY(value == -0.0)) {
+    if (value == -0.0) [[unlikely]] {
       value = 0.0;
     }
     uint64_t uintVal;

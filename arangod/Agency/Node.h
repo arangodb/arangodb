@@ -353,7 +353,7 @@ class Node final {
 
   template<typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {
-    if (ADB_LIKELY(!lifetimeExpired())) {
+    if (!lifetimeExpired()) [[likely]] {
       try {
         return this->slice().getNumber<T>();
       } catch (...) {

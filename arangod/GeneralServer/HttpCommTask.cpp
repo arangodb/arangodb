@@ -457,7 +457,7 @@ void HttpCommTask<T>::doProcessRequest() {
   }
 
   // we may have gotten an H2 Upgrade request
-  if (ADB_UNLIKELY(_parser.upgrade)) {
+  if (_parser.upgrade) [[unlikely]] {
     LOG_TOPIC("5a660", INFO, Logger::REQUESTS)
         << "detected an 'Upgrade' header";
     bool found;

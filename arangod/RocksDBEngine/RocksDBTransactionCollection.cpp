@@ -231,13 +231,13 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
-    if (ADB_UNLIKELY(idx == nullptr)) {
+    if (idx == nullptr) [[unlikely]] {
       TRI_ASSERT(false);  // Index reported estimates, but does not exist
       continue;
     }
     auto ridx = static_cast<RocksDBIndex*>(idx.get());
     auto est = ridx->estimator();
-    if (ADB_LIKELY(est != nullptr)) {
+    if (est != nullptr) [[likely]] {
       est->bufferUpdates(commitSeq, std::move(pair.second.inserts),
                          std::move(pair.second.removals));
     } else {

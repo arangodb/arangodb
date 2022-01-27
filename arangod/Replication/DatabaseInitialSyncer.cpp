@@ -609,7 +609,7 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 Result DatabaseInitialSyncer::parseCollectionDumpMarker(
     transaction::Methods& trx, LogicalCollection* coll, VPackSlice marker,
     FormatHint& hint) {
-  if (!ADB_LIKELY(marker.isObject())) {
+  if (!marker.isObject()) [[unlikely]] {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -646,7 +646,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(
     doc = marker;
   }
 
-  if (!ADB_LIKELY(doc.isObject())) {
+  if (!doc.isObject()) [[unlikely]] {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 

@@ -203,7 +203,7 @@ uint32_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
     return 0;
   }
 
-  if (ADB_UNLIKELY(targetSize >= (1ULL << numBuckets))) {
+  if (targetSize >= (1ULL << numBuckets)) [[unlikely]] {
     return (numBuckets - 1);
   }
 

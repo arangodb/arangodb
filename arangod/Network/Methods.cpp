@@ -372,7 +372,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   // scheduler requests that are due
   void startRequest() {
     TRI_ASSERT(_tmp_req != nullptr);
-    if (ADB_UNLIKELY(!_pool)) {
+    if (!_pool) [[unlikely]] {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
       _tmp_err = Error::ConnectionCanceled;
@@ -581,7 +581,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         << "'";
 
     auto* sch = SchedulerFeature::SCHEDULER;
-    if (ADB_UNLIKELY(sch == nullptr)) {
+    if (sch == nullptr) [[unlikely]] {
       _promise.setValue(Response{std::move(_destination),
                                  fuerte::Error::ConnectionCanceled, nullptr,
                                  nullptr});

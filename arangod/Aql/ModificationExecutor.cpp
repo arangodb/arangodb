@@ -387,7 +387,7 @@ auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::
     upstreamState(typename FetcherType::DataRange& input) const noexcept
     -> ExecutorState {
   if constexpr (inputIsMatrix) {
-    if (ADB_UNLIKELY(!_iterator.isInitialized())) {
+    if (!_iterator.isInitialized()) [[unlikely]] {
       // As long as the iterator isn't initialized, we need to pass the upstream
       // state. In particular if the input is completely empty, we need to
       // return DONE.

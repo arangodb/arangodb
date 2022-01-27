@@ -204,7 +204,7 @@ bool FieldMeta::init(
           analyzer = *it;
           found = static_cast<bool>(analyzer);
 
-          if (ADB_UNLIKELY(!found)) {
+          if (!found) [[unlikely]] {
             TRI_ASSERT(false);              // should not happen
             referencedAnalyzers.erase(it);  // remove null analyzer
           }

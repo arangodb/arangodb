@@ -88,7 +88,7 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
 static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
                                                         void const* ptr,
                                                         std::size_t length) {
-  if (ADB_UNLIKELY(length > (unsigned int)std::numeric_limits<int>::max())) {
+  if (length > (unsigned int)std::numeric_limits<int>::max()) [[unlikely]] {
     throw std::overflow_error("string length out of range");
   }
   return v8Utf8StringFactory(isolate, ptr, static_cast<int>(length));

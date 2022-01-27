@@ -120,7 +120,7 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
   int result =
       _coll->compareUTF8(icu::StringPiece(left, (int32_t)leftLength),
                          icu::StringPiece(right, (int32_t)rightLength), status);
-  if (ADB_UNLIKELY(U_FAILURE(status))) {
+  if (U_FAILURE(status)) [[unlikely]] {
     TRI_ASSERT(false);
     return (strncmp(left, right,
                     leftLength < rightLength ? leftLength : rightLength));

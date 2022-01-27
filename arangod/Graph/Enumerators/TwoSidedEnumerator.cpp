@@ -419,13 +419,13 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   while (_results.empty() && !searchDone()) {
     _resultsFetched = false;
     if (_searchLeft) {
-      if (ADB_UNLIKELY(_left.doneWithDepth())) {
+      if (_left.doneWithDepth()) [[unlikely]] {
         startNextDepth();
       } else {
         _left.computeNeighbourhoodOfNextVertex(_right, _results);
       }
     } else {
-      if (ADB_UNLIKELY(_right.doneWithDepth())) {
+      if (_right.doneWithDepth()) [[unlikely]] {
         startNextDepth();
       } else {
         _right.computeNeighbourhoodOfNextVertex(_left, _results);

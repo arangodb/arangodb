@@ -245,13 +245,13 @@ struct CoveringValue {
     // FIXME: this is cheap. Keep it here?
     auto extraValuesReader = column.empty() ? rdr.sort() : rdr.column(column);
     // FIXME: this is expensive - move it to get and do lazily?
-    if (ADB_LIKELY(extraValuesReader)) {
+    if (extraValuesReader) [[likely]] {
       itr = extraValuesReader->iterator(false);
       TRI_ASSERT(itr);
-      if (ADB_LIKELY(itr)) {
+      if (itr) [[likely]] {
         value = irs::get<irs::payload>(*itr);
         TRI_ASSERT(value);
-        if (ADB_UNLIKELY(!value)) {
+        if (!value) [[unlikely]] {
           value = &NoPayload;
         }
       }
@@ -271,10 +271,10 @@ struct CoveringValue {
       VPackSlice slice(value->value.c_str());
       TRI_ASSERT(slice.byteSize() <= totalSize);
       while (i < index) {
-        if (ADB_LIKELY(size < totalSize)) {
+        if (size < totalSize) [[likely]] {
           size += slice.byteSize();
           TRI_ASSERT(size <= totalSize);
-          if (ADB_UNLIKELY(size > totalSize)) {
+          if (size > totalSize) [[unlikely]] {
             slice = VPackSlice::noneSlice();
             break;
           }
@@ -428,7 +428,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                  arangodb::aql::Variable const*,
                  IndexIteratorOptions const&) override {
     TRI_ASSERT(node);
-    if (ADB_LIKELY(node)) {
+    if (node) [[likely]] {
       reset();
       resetFilter(node);
       return true;
@@ -493,8 +493,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       } else {
         TRI_ASSERT(static_cast<int64_t>(condition->numMembers()) >
                    _mutableConditionIdx);
-        if (ADB_UNLIKELY(static_cast<int64_t>(condition->numMembers()) <=
-                         _mutableConditionIdx)) {
+        if (static_cast<int64_t>(condition->numMembers()) <=
+            _mutableConditionIdx) [[unlikely]] {
           arangodb::velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
           THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -560,7 +560,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     }
     _filter = root.prepare(*_reader, _order, irs::no_boost(), nullptr);
     TRI_ASSERT(_filter);
-    if (ADB_UNLIKELY(!_filter)) {
+    if (!_filter) [[unlikely]] {
       if (condition) {
         arangodb::velocypack::Builder builder;
         condition->toVelocyPack(builder, true);
@@ -653,7 +653,7 @@ class IResearchInvertedIndexIterator final
         // skip-next-covering mixture of the calls
         _pkDocItr = ::pkColumn(segmentReader);
         _pkValue = irs::get<irs::payload>(*_pkDocItr);
-        if (ADB_UNLIKELY(!_pkValue)) {
+        if (!_pkValue) [[unlikely]] {
           _pkValue = &NoPayload;
         }
         _projections.reset(segmentReader);
@@ -837,9 +837,9 @@ class IResearchInvertedIndexMergeIterator final
       TRI_ASSERT(doc);
       pkDocItr = ::pkColumn(segment);
       TRI_ASSERT(pkDocItr);
-      if (ADB_LIKELY(pkDocItr)) {
+      if (pkDocItr) [[likely]] {
         pkValue = irs::get<irs::payload>(*pkDocItr);
-        if (ADB_UNLIKELY(!pkValue)) {
+        if (!pkValue) [[unlikely]] {
           pkValue = &NoPayload;
         }
       }

@@ -104,7 +104,7 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                                           bool onlyId, ResultType& result) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
-  if (ADB_UNLIKELY(col == nullptr)) {
+  if (col == nullptr) [[unlikely]] {
     // collection gone... should not happen
     LOG_TOPIC("c4d78", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document. collection not found";
@@ -132,7 +132,7 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
               },
               ReadOwnWrites::no)
           .ok();
-  if (ADB_UNLIKELY(!res)) {
+  if (!res) [[unlikely]] {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "

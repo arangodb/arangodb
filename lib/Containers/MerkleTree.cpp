@@ -611,7 +611,7 @@ void MerkleTree<Hasher, BranchingBits>::insert(
     return this->insert(keys[0]);
   }
 
-  if (ADB_UNLIKELY(keys.empty())) {
+  if (keys.empty()) [[unlikely]] {
     return;
   }
 
@@ -648,7 +648,7 @@ void MerkleTree<Hasher, BranchingBits>::remove(
     return remove(keys[0]);
   }
 
-  if (ADB_UNLIKELY(keys.empty())) {
+  if (keys.empty()) [[unlikely]] {
     return;
   }
 
@@ -1278,7 +1278,7 @@ void MerkleTree<Hasher, BranchingBits>::modify(std::uint64_t key,
 
   // adjust bucket node
   bool success = modifyLocal(key, value, isInsert);
-  if (ADB_UNLIKELY(!success)) {
+  if (!success) [[unlikely]] {
     throw std::invalid_argument("Tried to remove key that is not present.");
   }
 
@@ -1296,7 +1296,7 @@ void MerkleTree<Hasher, BranchingBits>::modify(
   for (std::uint64_t key : keys) {
     std::uint64_t value = h.hash(key);
     bool success = modifyLocal(key, value, isInsert);
-    if (ADB_UNLIKELY(!success)) {
+    if (!success) [[unlikely]] {
       // roll back the changes we already made, using best effort
       for (std::uint64_t k : keys) {
         if (k == key) {
@@ -1324,7 +1324,7 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(Node& node,
   if (isInsert) {
     node.count += count;
   } else {
-    if (ADB_UNLIKELY(node.count < count)) {
+    if (node.count < count) [[unlikely]] {
       return false;
     }
     node.count -= count;

@@ -230,7 +230,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   std::string generate() override final {
     uint64_t tick = generateValue();
 
-    if (ADB_UNLIKELY(tick == 0)) {
+    if (tick == 0) [[unlikely]] {
       // unlikely case we have run out of keys
       // returning an empty string will trigger an error on the call site
       return std::string();
@@ -300,7 +300,7 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
   uint64_t generateValue() override {
     uint64_t tick = TRI_NewTickServer();
 
-    if (ADB_UNLIKELY(tick == UINT64_MAX)) {
+    if (tick == UINT64_MAX) [[unlikely]] {
       // out of keys
       return 0;
     }
@@ -308,7 +308,7 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
     // keep track of last assigned value, and make sure the value
     // we hand out is always higher than it
     auto lastValue = _lastValue.load(std::memory_order_relaxed);
-    if (ADB_UNLIKELY(lastValue >= UINT64_MAX - 1ULL)) {
+    if (lastValue >= UINT64_MAX - 1ULL) [[unlikely]] {
       // oops, out of keys!
       return 0;
     }
@@ -379,14 +379,14 @@ class PaddedKeyGenerator : public KeyGenerator {
   std::string generate() override {
     uint64_t tick = generateValue();
 
-    if (ADB_UNLIKELY(tick == 0 || tick == UINT64_MAX)) {
+    if (tick == 0 || tick == UINT64_MAX) [[unlikely]] {
       // unlikely case we have run out of keys
       // returning an empty string will trigger an error on the call site
       return std::string();
     }
 
     auto lastValue = _lastValue.load(std::memory_order_relaxed);
-    if (ADB_UNLIKELY(lastValue >= UINT64_MAX - 1ULL)) {
+    if (lastValue >= UINT64_MAX - 1ULL) [[unlikely]] {
       // oops, out of keys!
       return std::string();
     }

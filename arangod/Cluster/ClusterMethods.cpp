@@ -2356,7 +2356,7 @@ void fetchVerticesFromEngines(
     bool cached = false;
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
       arangodb::velocypack::HashedStringRef key(pair.key);
-      if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
+      if (vertexIds.erase(key) == 0) [[unlikely]] {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
         // Anyways something somewhere went seriously wrong

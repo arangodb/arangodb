@@ -293,7 +293,7 @@ auto replicated_log::LogLeader::construct(
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options)
     -> std::shared_ptr<LogLeader> {
-  if (ADB_UNLIKELY(logCore == nullptr)) {
+  if (logCore == nullptr) [[unlikely]] {
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(),
                    std::back_inserter(followerIds),

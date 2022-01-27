@@ -126,7 +126,7 @@ void SharedQueryState::queueHandler() {
   }
 
   auto scheduler = SchedulerFeature::SCHEDULER;
-  if (ADB_UNLIKELY(scheduler == nullptr)) {
+  if (scheduler == nullptr) [[unlikely]] {
     // We are shutting down
     return;
   }

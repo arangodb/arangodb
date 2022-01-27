@@ -169,7 +169,7 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
                           tp_sys_clock_ms& tp) {
   if (value.isNumber()) {
     int64_t v = value.toInt64();
-    if (ADB_UNLIKELY(v < -62167219200000 || v > 253402300799999)) {
+    if (v < -62167219200000 || v > 253402300799999) [[unlikely]] {
       // check if value is between "0000-01-01T00:00:00.000Z" and
       // "9999-12-31T23:59:59.999Z" -62167219200000: "0000-01-01T00:00:00.000Z"
       // 253402300799999: "9999-12-31T23:59:59.999Z"

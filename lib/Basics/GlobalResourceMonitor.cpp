@@ -83,7 +83,7 @@ bool GlobalResourceMonitor::increaseMemoryUsage(std::int64_t value) noexcept {
     std::int64_t next;
     do {
       next = cur + value;
-      if (ADB_UNLIKELY(next > _limit)) {
+      if (next > _limit) [[unlikely]] {
         return false;
       }
     } while (

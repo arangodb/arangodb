@@ -162,9 +162,8 @@ auto checkCurrentTerm(
     if (numberOfAvailableParticipants >=
         requiredNumberOfAvailableParticipants) {
       auto const numParticipants = newLeaderSet.size();
-      if (ADB_UNLIKELY(numParticipants == 0 ||
-                       numParticipants >
-                           std::numeric_limits<uint16_t>::max())) {
+      if (numParticipants == 0 ||
+          numParticipants > std::numeric_limits<uint16_t>::max()) [[unlikely]] {
         abortOrThrow(
             TRI_ERROR_NUMERIC_OVERFLOW,
             basics::StringUtils::concatT(

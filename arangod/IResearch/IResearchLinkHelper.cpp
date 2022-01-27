@@ -861,7 +861,7 @@ namespace iresearch {
         const auto& currentVocbase = vocbase.name();
         for (const auto& analyzer : meta._analyzerDefinitions) {
           TRI_ASSERT(analyzer);  // should be checked in meta init
-          if (ADB_UNLIKELY(!analyzer)) {
+          if (!analyzer) [[unlikely]] {
             continue;
           }
           auto* pool = analyzer.get();

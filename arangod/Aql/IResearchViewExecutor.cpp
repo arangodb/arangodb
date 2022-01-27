@@ -73,7 +73,7 @@ size_t calculateSkipAllCount(CountApproximate approximation, size_t currentPos,
   switch (approximation) {
     case CountApproximate::Cost: {
       auto* cost = irs::get<irs::cost>(*docs);
-      if (ADB_LIKELY(cost)) {
+      if (cost) [[likely]] {
         skipped = cost->estimate();
         skipped -= std::min(skipped, currentPos);
         break;
@@ -134,7 +134,7 @@ inline void reset(ColumnIterator& column,
   TRI_ASSERT(itr);
   column.itr = std::move(itr);
   column.value = irs::get<irs::payload>(*column.itr);
-  if (ADB_UNLIKELY(!column.value)) {
+  if (!column.value) [[unlikely]] {
     column.value = &NoPayload;
   }
 }
@@ -543,7 +543,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx) {
 
     IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
 
-    if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
+    if ((impl.writeRow(ctx, bufferEntry))) [[likely]] {
       break;
     } else {
       // to get correct stats we should continue looking for
@@ -652,7 +652,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     LogicalCollection const& collection) {
   // we will need collection Id also as View could produce documents from
   // multiple collections
-  if (ADB_LIKELY(documentId.isSet())) {
+  if ((documentId.isSet())) [[likely]] {
     {
       // For sake of performance we store raw pointer to collection
       // It is safe as pipeline work inside one process
@@ -690,7 +690,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
     while (i < fieldNum) {
       size += slice.byteSize();
       TRI_ASSERT(size <= totalSize);
-      if (ADB_UNLIKELY(size > totalSize)) {
+      if (size > totalSize) [[unlikely]] {
         return false;
       }
       slice = VPackSlice{slice.end()};
@@ -710,10 +710,9 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(
-            !collection.getPhysical()
-                 ->read(&_trx, documentId, ctx.callback, ReadOwnWrites::no)
-                 .ok())) {
+    if (!collection.getPhysical()
+             ->read(&_trx, documentId, ctx.callback, ReadOwnWrites::no)
+             .ok()) [[unlikely]] {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType &
@@ -721,7 +720,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
                        MaterializeType::LateMaterialize) {
     // no need to look into collection. Somebody down the stream will do
     // materialization. Just emit LocalDocumentIds
-    if (ADB_UNLIKELY(!writeLocalDocumentId(ctx, documentId, collection))) {
+    if (!writeLocalDocumentId(ctx, documentId, collection)) [[unlikely]] {
       return false;
     }
   }
@@ -734,8 +733,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
     TRI_ASSERT(index < storedValues.size());
     for (auto it = columnsFieldsRegs.cbegin(); it != columnsFieldsRegs.cend();
          ++it) {
-      if (ADB_UNLIKELY(
-              !writeStoredValue(ctx, storedValues, index++, it->second))) {
+      if (!writeStoredValue(ctx, storedValues, index++, it->second))
+          [[unlikely]] {
         return false;
       }
     }
@@ -801,7 +800,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
     auto index = storedValuesIndex * columnsFieldsRegs.size();
     if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
       auto sortReader = ::sortColumn(segmentReader);
-      if (ADB_UNLIKELY(!sortReader)) {
+      if (!sortReader) [[unlikely]] {
         LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
             << "encountered a sub-reader without a sort column while "
                "executing a query, ignoring";
@@ -822,7 +821,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
         TRI_ASSERT(storedColumnNumber < columns.size());
         auto const* storedValuesReader =
             segmentReader.column(columns[storedColumnNumber].name);
-        if (ADB_UNLIKELY(!storedValuesReader)) {
+        if (!storedValuesReader) [[unlikely]] {
           LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
               << "encountered a sub-reader without a stored value column while "
                  "executing a query, ignoring";
@@ -886,7 +885,7 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::readPK(
 
       TRI_ASSERT(readSuccess == documentId.isSet());
 
-      if (ADB_UNLIKELY(!readSuccess)) {
+      if (!readSuccess) [[unlikely]] {
         LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
             << "failed to read document primary key while reading document "
                "from arangosearch view, doc_id '"
@@ -1020,7 +1019,7 @@ bool IResearchViewExecutor<copyStored, ordered,
 
   auto it = ::pkColumn(segmentReader);
 
-  if (ADB_UNLIKELY(!it)) {
+  if (!it) [[unlikely]] {
     LOG_TOPIC("bd01b", WARN, arangodb::iresearch::TOPIC)
         << "encountered a sub-reader without a primary key column while "
            "executing a query, ignoring";
@@ -1031,7 +1030,7 @@ bool IResearchViewExecutor<copyStored, ordered,
 
   if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
                 MaterializeType::UseStoredValues) {
-    if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader))) {
+    if (!this->getStoredValuesReaders(segmentReader)) [[unlikely]] {
       return false;
     }
   }
@@ -1319,7 +1318,7 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
 
     auto pkReader = ::pkColumn(segment);
 
-    if (ADB_UNLIKELY(!pkReader)) {
+    if (!pkReader) [[unlikely]] {
       LOG_TOPIC("ee041", WARN, arangodb::iresearch::TOPIC)
           << "encountered a sub-reader without a primary key column while "
              "executing a query, ignoring";
@@ -1328,7 +1327,7 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
 
     if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
-      if (ADB_UNLIKELY(!this->getStoredValuesReaders(segment, i))) {
+      if (!this->getStoredValuesReaders(segment, i)) [[unlikely]] {
         continue;
       }
     } else {
@@ -1345,7 +1344,7 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
     } else {
       auto itr = ::sortColumn(segment);
 
-      if (ADB_UNLIKELY(!itr)) {
+      if (!itr) [[unlikely]] {
         LOG_TOPIC("af4cd", WARN, arangodb::iresearch::TOPIC)
             << "encountered a sub-reader without a sort column while "
                "executing a query, ignoring";
@@ -1353,7 +1352,7 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
       }
 
       irs::payload const* sortValue = irs::get<irs::payload>(*itr);
-      if (ADB_UNLIKELY(!sortValue)) {
+      if (!sortValue) [[unlikely]] {
         sortValue = &NoPayload;
       }
 
@@ -1383,7 +1382,7 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::readPK(
 
     TRI_ASSERT(readSuccess == documentId.isSet());
 
-    if (ADB_UNLIKELY(!readSuccess)) {
+    if (!readSuccess) [[unlikely]] {
       LOG_TOPIC("6423f", WARN, arangodb::iresearch::TOPIC)
           << "failed to read document primary key while reading document "
              "from arangosearch view, doc_id '"

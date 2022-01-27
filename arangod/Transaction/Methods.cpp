@@ -281,7 +281,7 @@ bool transaction::Methods::removeStatusChangeCallback(
     auto it = std::find(statusChangeCallbacks->begin(),
                         statusChangeCallbacks->end(), callback);
     TRI_ASSERT(it != statusChangeCallbacks->end());
-    if (ADB_LIKELY(it != statusChangeCallbacks->end())) {
+    if (it != statusChangeCallbacks->end()) [[likely]] {
       statusChangeCallbacks->erase(it);
     }
   }
@@ -333,7 +333,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               transaction::Options const& options)
     : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
   TRI_ASSERT(_transactionContext != nullptr);
-  if (ADB_UNLIKELY(_transactionContext == nullptr)) {
+  if (_transactionContext == nullptr) [[unlikely]] {
     // in production, we must not go on with undefined behavior, so we bail out
     // here with an exception as last resort
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2227,7 +2227,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
     ReadOwnWrites readOwnWrites) {
   // For now we assume indexId is the iid part of the index.
 
-  if (ADB_UNLIKELY(_state->isCoordinator())) {
+  if (_state->isCoordinator()) [[unlikely]] {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }

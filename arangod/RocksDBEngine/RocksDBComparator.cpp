@@ -79,8 +79,7 @@ int RocksDBVPackComparator::compareIndexValues(
     return r;
   }
 
-  if (ADB_UNLIKELY(lhs.size() == objectIDLength ||
-                   rhs.size() == objectIDLength)) {
+  if (lhs.size() == objectIDLength || rhs.size() == objectIDLength) [[likely]] {
     if (lhs.size() == rhs.size()) {
       return 0;
     }

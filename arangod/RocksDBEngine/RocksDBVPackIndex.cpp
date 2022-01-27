@@ -1259,7 +1259,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
 
-  if (ADB_UNLIKELY(searchValues.length() == 0)) {
+  if (searchValues.length() == 0) [[unlikely]] {
     // full range search
     RocksDBKeyBounds bounds =
         _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), reverse)

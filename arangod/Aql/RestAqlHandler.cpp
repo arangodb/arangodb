@@ -104,7 +104,7 @@ void RestAqlHandler::setupClusterQuery() {
   // on the wrong server. So fail during maintanence.
   // On user setup reply gracefully.
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  if (ADB_UNLIKELY(!ServerState::instance()->isDBServer())) {
+  if (!ServerState::instance()->isDBServer()) [[unlikely]] {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
     return;
@@ -320,7 +320,7 @@ void RestAqlHandler::setupClusterQuery() {
 
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
-  if (ADB_UNLIKELY(revisionRes.fail())) {
+  if (revisionRes.fail()) [[unlikely]] {
     LOG_TOPIC("b2a37", ERR, arangodb::Logger::AQL)
         << "Failed to read ArangoSearch analyzers revision "
         << revisionRes.errorMessage();
@@ -600,7 +600,7 @@ auto getStringView(velocypack::Slice slice) -> std::string_view {
 // TODO Use the deserializer when available
 auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
     -> ResultT<AqlExecuteCall> {
-  if (ADB_UNLIKELY(!slice.isObject())) {
+  if (!slice.isObject()) [[unlikely]] {
     using namespace std::string_literals;
     return Result(
         TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
@@ -615,15 +615,15 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 
   for (auto const it : VPackObjectIterator(slice)) {
     auto const keySlice = it.key;
-    if (ADB_UNLIKELY(!keySlice.isString())) {
+    if (!keySlice.isString()) [[unlikely]] {
       return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                     "When deserializating AqlExecuteCall: Key is not a string");
     }
     auto const key = getStringView(keySlice);
 
     if (auto propIt = expectedPropertiesFound.find(key);
-        ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
+        propIt != expectedPropertiesFound.end()) [[likely]] {
+      if (propIt->second) [[unlikely]] {
         return Result(
             TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "When deserializating AqlExecuteCall: Encountered duplicate key");
@@ -633,7 +633,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 
     if (key == StaticStrings::AqlRemoteCallStack) {
       auto maybeCallStack = AqlCallStack::fromVelocyPack(it.value);
-      if (ADB_UNLIKELY(maybeCallStack.fail())) {
+      if (maybeCallStack.fail()) [[unlikely]] {
         auto message = std::string{
             "When deserializating AqlExecuteCall: failed to deserialize "};
         message += StaticStrings::AqlRemoteCallStack;
@@ -654,7 +654,7 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
   }
 
   for (auto const& it : expectedPropertiesFound) {
-    if (ADB_UNLIKELY(!it.second)) {
+    if (!it.second) [[unlikely]] {
       auto message =
           std::string{"When deserializating AqlExecuteCall: missing key "};
       message += it.first;

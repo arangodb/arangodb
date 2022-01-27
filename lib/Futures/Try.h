@@ -130,9 +130,9 @@ class Try {
   }
 
   ~Try() {
-    if (ADB_LIKELY(_content == Content::Value)) {
+    if (_content == Content::Value) [[likely]] {
       _value.~T();
-    } else if (ADB_UNLIKELY(_content == Content::Exception)) {
+    } else if (_content == Content::Exception) [[unlikely]] {
       _exception.~exception_ptr();
     }
   }
@@ -289,9 +289,9 @@ class Try {
   void destroy() noexcept {
     auto old = _content;
     _content = Content::None;
-    if (ADB_LIKELY(old == Content::Value)) {
+    if (old == Content::Value) [[likely]] {
       _value.~T();
-    } else if (ADB_UNLIKELY(old == Content::Exception)) {
+    } else if (old == Content::Exception) [[unlikely]] {
       _exception.~exception_ptr();
     }
   }

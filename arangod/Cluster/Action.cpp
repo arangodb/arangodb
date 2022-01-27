@@ -136,7 +136,7 @@ void Action::create(MaintenanceFeature& feature,
                     ActionDescription const& description) {
   auto factory = factories.find(description.name());
 
-  if (ADB_UNLIKELY(factory == factories.end())) {
+  if (factory == factories.end()) [[unlikely]] {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "invalid action type: " + description.name());
   }

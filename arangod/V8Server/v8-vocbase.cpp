@@ -780,7 +780,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder.slice());
-  if (ADB_UNLIKELY(revisionRes.fail())) {
+  if (revisionRes.fail()) [[unlikely]] {
     TRI_V8_THROW_EXCEPTION(revisionRes);
   }
 

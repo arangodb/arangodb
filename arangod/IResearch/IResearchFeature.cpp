@@ -193,7 +193,7 @@ aql::AqlValue minMatchFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
 
   TRI_ASSERT(args.size() > 1);  // ensured by function signature
   auto& minMatchValue = args.back();
-  if (ADB_UNLIKELY(!minMatchValue.isNumber())) {
+  if (!minMatchValue.isNumber()) [[unlikely]] {
     return errorAqlValue(ctx, AFN);
   }
 

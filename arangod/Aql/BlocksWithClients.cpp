@@ -178,7 +178,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
     AqlCallStack stack, std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(!clientId.empty());
-  if (ADB_UNLIKELY(clientId.empty())) {
+  if (clientId.empty()) [[unlikely]] {
     // Security bailout to avoid UB
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "got empty distribution id");
@@ -186,7 +186,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
 
   auto it = _clientBlockData.find(clientId);
   TRI_ASSERT(it != _clientBlockData.end());
-  if (ADB_UNLIKELY(it == _clientBlockData.end())) {
+  if (it == _clientBlockData.end()) [[unlikely]] {
     // Security bailout to avoid UB
     std::string message("AQL: unknown distribution id ");
     message.append(clientId);

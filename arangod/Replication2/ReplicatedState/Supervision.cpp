@@ -193,8 +193,8 @@ auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
   // uint16_t::max participants at the moment)
   //
   // TODO: should this really be throwing or just erroring?
-  if (ADB_UNLIKELY(numElectible == 0 ||
-                   numElectible > std::numeric_limits<uint16_t>::max())) {
+  if (numElectible == 0 || numElectible > std::numeric_limits<uint16_t>::max())
+      [[unlikely]] {
     abortOrThrow(TRI_ERROR_NUMERIC_OVERFLOW,
                  basics::StringUtils::concatT(
                      "Number of participants electible for leadership out "

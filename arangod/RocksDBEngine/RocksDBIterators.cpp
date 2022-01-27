@@ -103,7 +103,7 @@ bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb,
     --limit;
     _iterator->Next();
 
-    if (ADB_UNLIKELY(!_iterator->Valid())) {
+    if (!_iterator->Valid()) [[unlikely]] {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
@@ -140,7 +140,7 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(
     --limit;
     _iterator->Next();
 
-    if (ADB_UNLIKELY(!_iterator->Valid())) {
+    if (!_iterator->Valid()) [[unlikely]] {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
