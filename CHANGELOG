@@ -1,5 +1,8 @@
 devel
 -----
+
+* Slightly improve the explain output of SingleRemoteOperationNodes.
+
 * Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
   determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
   be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
