@@ -256,6 +256,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
 set(LIB_ARANGO_PREGEL3_SOURCES
   Pregel3/Methods.cpp
   Pregel3/Pregel3Feature.cpp
+  Pregel3/Query.cpp
   RestHandler/RestPregel3Handler.cpp)
 
 set(LIB_ARANGO_AQL_SOURCES
