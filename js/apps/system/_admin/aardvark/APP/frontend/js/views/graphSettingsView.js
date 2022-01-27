@@ -289,14 +289,16 @@
       }
     },
 
+    /**
+     * returns an event object
+     * @param {event} e
+     */
     updateSingleNode: function (e) {
-      //get the selected nodeId;
-      // check if node label contains a delimeter
-      // loop through all existing node and update the node label with the entered nodeLabel
       var self = this;
       var newNodeLabel = $("#g_nodeLabel").val();
       var nodeId = $(`#${e.target.id}`).val();
-      var graphNodes = window.App.graphViewer.currentGraph.graph.nodes();
+      var graphViewer = window.App.graphViewer;
+      var graphNodes = graphViewer.currentGraph.graph.nodes();
 
 
       /**
@@ -312,20 +314,16 @@
         }
       }
 
-      for (let n = 0; n < graphNodes.length; n++) {
+      _.each(graphNodes, function (n, k) {
+        //console.log(n);
         if (n.id === nodeId) {
-          console.log(n);
-          graphNodes[n].label === newNodeLabel;
+          console.log(graphNodes[k]);
+          if (graphNodes[k].label !== newNodeLabel) {
+            graphNodes[k].label = newNodeLabel;
+          }
         }
-      }
-      console.log(graphNodes);
-
-      // _.each(graphNodes, function (n) {
-      //   //console.log(n);
-      //   if (n.id === nodeId) {
-      //     console.log(n);
-      //   }
-      // });
+      });
+      graphViewer.currentGraph.refresh({ skipIndexation: true });
       debugger;
     },
 
