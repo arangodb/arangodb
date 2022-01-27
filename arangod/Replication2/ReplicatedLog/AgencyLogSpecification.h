@@ -207,7 +207,8 @@ struct LogTarget {
   LogTarget(from_velocypack_t, VPackSlice);
   LogTarget() = default;
 
-  LogTarget(LogId id, Participants const& participants, LogConfig const& config);
+  LogTarget(LogId id, Participants const& participants,
+            LogConfig const& config);
 };
 
 /* Convenience Wrapper */
