@@ -332,10 +332,17 @@ Result IResearchLink::init(velocypack::Slice definition,
               .getFeature<EngineSelectorFeature>()
               .engine()
               .inRecovery()) {
+        LOG_TOPIC("f25ce", FATAL, TOPIC)
+            << "Upgrade conflicts with recovering ArangoSearch link '"
+            << this->id().id()
+            << "' Please rollback the updated arangodb binary and finish the "
+               "recovery "
+               "first.";
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
             "Upgrade conflicts with recovering ArangoSearch link."
-            " Please rollback the updated arangodb binary and finish recovery "
+            " Please rollback the updated arangodb binary and finish the "
+            "recovery "
             "first.");
       }
       // prepare data-store which can then update options
