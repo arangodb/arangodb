@@ -909,16 +909,8 @@ size_t IResearchLinkMeta::memory() const noexcept {
 }
 
 bool IResearchLinkMeta::willIndexIdAttribute() const noexcept {
-  if (_includeAllFields) {
-    return true;
-  }
-  // check only root level of fields as _id is on the root level
-  for (auto const& field : _fields) {
-    if (field.key() == arangodb::StaticStrings::IdString) {
-      return true;
-    }
-  }
-  return false;
+  return _includeAllFields ||
+         _fields.find(arangodb::StaticStrings::IdString) != _fields.end();
 }
 
 }  // namespace iresearch
