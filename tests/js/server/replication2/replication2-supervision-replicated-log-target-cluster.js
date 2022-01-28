@@ -572,28 +572,27 @@ const replicatedLogSuite = function () {
     },
 
     testLogStatus: function () {
-      const {logId, servers, leader, term} = createReplicatedLog(database);
+      const {logId, servers, leader, term, followers} = createReplicatedLogAndWaitForLeader(database);
 
       waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
       waitForReplicatedLogAvailable(logId);
 
       let log = db._replicatedLog(logId);
       let globalStatus = log.status();
-//      assertEqual(globalStatus.supervision, { });
       assertEqual(globalStatus.leaderId, leader);
       let localStatus = helper.getLocalStatus(database, logId, leader);
       assertEqual(localStatus.role, "leader");
       assertEqual(globalStatus.participants[leader], localStatus);
-      localStatus = helper.getLocalStatus(database, logId, servers[1]);
+      localStatus = helper.getLocalStatus(database, logId, followers[1]);
       assertEqual(localStatus.role, "follower");
 
       stopServer(leader);
-      stopServer(servers[1]);
+      stopServer(followers[0]);
 
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 3, {
+      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
         [leader]: 1,
-        [servers[1]]: 1,
-        [servers[2]]: 0,
+        [followers[0]]: 1,
+        [followers[1]]: 0,
       }));
 
       globalStatus = log.status();
