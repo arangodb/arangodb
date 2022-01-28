@@ -51,6 +51,12 @@ auto RestPregel3Handler::execute() -> RestStatus {
   return executeByMethod(*methods);
 }
 
+auto RestPregel3Handler::_generateErrorWrongInput(std::string const& info)
+    -> void {
+  generateError(rest::ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
+                Utils::wrongRequestBody + std::string(" ") + info);
+};
+
 auto RestPregel3Handler::executeByMethod(Pregel3Methods const& methods)
     -> RestStatus {
   switch (_request->requestType()) {
@@ -68,18 +74,18 @@ auto RestPregel3Handler::executeByMethod(Pregel3Methods const& methods)
 auto RestPregel3Handler::handlePostRequest(
     pregel3::Pregel3Methods const& methods) -> RestStatus {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  // todo check that suffixes = ["query"]
-
-  auto generateErrorWrongInput = [&](std::string const& info = "") -> void {
-    generateError(rest::ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
-                  Utils::wrongRequestBody + std::string(" ") + info);
-  };
+  // this has to be change when the API has more POST queries
+  if (suffixes.size() != 1 || suffixes[0] != "query") {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  ErrorCode(TRI_ERROR_NOT_IMPLEMENTED),
+                  "Call with .../_api_pregel3/query.");
+  }
 
   // get the body of the request
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || !body.isObject()) {
-    generateErrorWrongInput("Malformed JSON document.");
+    _generateErrorWrongInput("Malformed JSON document.");
     return RestStatus::DONE;
   }
 
@@ -89,22 +95,22 @@ auto RestPregel3Handler::handlePostRequest(
   if (body.hasKey(Utils::queryId)) {
     auto queryIdSlice = body.get(Utils::queryId);
     if (!queryIdSlice.isString()) {
-      generateErrorWrongInput("The value of " + std::string(Utils::queryId) +
-                              " is not of type String.");
+      _generateErrorWrongInput("The value of " + std::string(Utils::queryId) +
+                               " is not of type String.");
       return RestStatus::DONE;
     }
     if (methods.getPregel3Feature()->hasQueryId(queryId)) {
-      generateErrorWrongInput(" Query id " + queryId +
-                              " exists already. Please, choose another one.");
+      _generateErrorWrongInput(" Query id " + queryId +
+                               " exists already. Please, choose another one.");
     }
   } else {
     // otherwise generate a new queryId
-    queryId = methods.getPregel3Feature()->generateQueryId();
+    queryId = _pregel3Feature.generateQueryId();
   }
 
   // read the graph specification
   if (!body.hasKey(Utils::graphSpec)) {
-    generateErrorWrongInput("The graph is not specified.");
+    _generateErrorWrongInput("The graph is not specified.");
     return RestStatus::DONE;
   }
   auto graphSpec =
@@ -124,6 +130,31 @@ auto RestPregel3Handler::handlePostRequest(
 
 auto RestPregel3Handler::handleGetRequest(
     const pregel3::Pregel3Methods& methods) -> RestStatus {
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  if (suffixes.size() < 2 || suffixes[0] != "queries") {
+    _generateErrorWrongInput("Call with .../_api/pregel3/queries/...");
+    return RestStatus::DONE;
+  }
+
+  if (suffixes.size() == 2) {
+    auto queryId = suffixes[1];
+    if (!_pregel3Feature.hasQueryId(queryId)) {
+      _generateErrorWrongInput("This query id is not known.");
+      return RestStatus::DONE;
+    }
+    // todo get info about the query
+    auto query = _pregel3Feature.getQuery(queryId);
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+
+      builder.add(Utils::state, VPackValue(uint(query->getState())));
+      builder.add(Utils::graphSpec, VPackValue(""));  // todo
+    }
+    generateOk(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+  }
+
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);

@@ -47,5 +47,6 @@ class Utils {
   static constexpr auto graphName = "graphName";
   static constexpr auto vertexCollectionNames = "vertexCollectionNames";
   static constexpr auto edgeCollectionNames = "edgeCollectionNames";
+  static constexpr auto state = "state";
 };
 }  // namespace arangodb::pregel3

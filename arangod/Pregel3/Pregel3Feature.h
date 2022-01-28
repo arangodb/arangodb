@@ -60,6 +60,14 @@ class Pregel3Feature final : public application_features::ApplicationFeature {
     return _queries.contains(queryId);
   }
 
+  auto getQuery(std::string const& queryId) -> std::shared_ptr<Query> {
+    auto const& it = _queries.find(queryId);
+    if (it == _queries.end()) {
+      return nullptr;
+    }
+    return it->second.shared_from_this();
+  }
+
  private:
   std::unordered_map<pregel3::QueryId, pregel3::Query> _queries;
   uint64_t nextFreeQueryId = 0;

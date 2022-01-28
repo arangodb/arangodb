@@ -35,6 +35,7 @@ auto GraphSpecification::fromVelocyPack(VPackSlice slice)
 
   } else if (!slice.isObject()) {
     // todo: trow an appropriate error with Utils::wrongGraphSpecErrMsg
+    return GraphSpecification("");
   } else {
     // slice is an object
     if (slice.length() != 2) {
@@ -86,10 +87,10 @@ auto GraphSpecification::fromVelocyPack(VPackSlice slice)
       gSBC.edgeCollectionNames.emplace_back(eCollName.copyString());
     }
 
-    //_graphSpec = std::move(gSBC);
+    return GraphSpecification(std::move(gSBC));
   }
-  // todo implement the other case
-  TRI_ASSERT(false);
-  return GraphSpecification("");
+}
+auto GraphSpecification::toVelocyPack() -> VPackBuilder {
+  return VPackBuilder{};  // todo
 }
 }  // namespace arangodb::pregel3

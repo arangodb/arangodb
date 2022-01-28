@@ -46,7 +46,7 @@ struct Graph {
 };
 
 using QueryId = std::string;
-struct Query {
+struct Query : std::enable_shared_from_this<Query> {
   Query(QueryId id, GraphSpecification graphSpec)
       : id{std::move(id)}, graphSpec{std::move(graphSpec)} {};
 
@@ -54,9 +54,12 @@ struct Query {
 
   enum class State { CREATED, LOADING, RUNNING, STORING, ERROR, DONE };
 
+  auto getState() const -> State { return _state; }
+
  private:
   QueryId id;
   GraphSpecification graphSpec;
   std::shared_ptr<Graph> graph{nullptr};
+  State _state = State::CREATED;
 };
 }  // namespace arangodb::pregel3

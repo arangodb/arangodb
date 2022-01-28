@@ -27,6 +27,7 @@
 #include <vector>
 #include <variant>
 #include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
 
 namespace arangodb::pregel3 {
 
@@ -71,5 +72,7 @@ struct GraphSpecification {
    *               { "vertexCollNames": [Strings], {"edgeCollNames": [Strings] }
    */
   static auto fromVelocyPack(VPackSlice slice) -> GraphSpecification;
+
+  static auto toVelocyPack() -> VPackBuilder;
 };
 }  // namespace arangodb::pregel3

@@ -40,6 +40,7 @@ class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
   auto executeByMethod(pregel3::Pregel3Methods const& methods) -> RestStatus;
   auto handleGetRequest(pregel3::Pregel3Methods const& methods) -> RestStatus;
   auto handlePostRequest(pregel3::Pregel3Methods const& methods) -> RestStatus;
+  auto _generateErrorWrongInput(std::string const& info = "") -> void;
 
  public:
   RestStatus execute() override;
