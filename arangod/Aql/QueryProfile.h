@@ -41,7 +41,7 @@ struct QueryProfile {
   QueryProfile(QueryProfile const&) = delete;
   QueryProfile& operator=(QueryProfile const&) = delete;
 
-  explicit QueryProfile(Query* query);
+  explicit QueryProfile(Query& query);
 
   ~QueryProfile();
 
@@ -65,7 +65,7 @@ struct QueryProfile {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
  private:
-  Query* _query;
+  Query& _query;
   std::array<double,
              static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)>
       _timers;
