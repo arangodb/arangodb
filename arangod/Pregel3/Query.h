@@ -48,17 +48,21 @@ struct Graph {
 using QueryId = std::string;
 struct Query : std::enable_shared_from_this<Query> {
   Query(QueryId id, GraphSpecification graphSpec)
-      : id{std::move(id)}, graphSpec{std::move(graphSpec)} {};
+      : id{std::move(id)}, _graphSpec{std::move(graphSpec)} {};
 
   void loadGraph();
 
   enum class State { CREATED, LOADING, RUNNING, STORING, ERROR, DONE };
 
   auto getState() const -> State { return _state; }
+  void setState(State state) { _state = state; }
+  auto getGraphSpecification() const -> GraphSpecification {
+    return _graphSpec;
+  }
 
  private:
   QueryId id;
-  GraphSpecification graphSpec;
+  GraphSpecification _graphSpec;
   std::shared_ptr<Graph> graph{nullptr};
   State _state = State::CREATED;
 };

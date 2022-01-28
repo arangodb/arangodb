@@ -38,6 +38,16 @@ class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   auto executeByMethod(pregel3::Pregel3Methods const& methods) -> RestStatus;
+  /**
+   * Possible inputs are
+   * (1) .../_api/pregel3/queries/<queryId> : get the status
+   * (2) .../_api/pregel3/queries/<queryId>/loadGraph : load the graph
+   * (3) .../_api/pregel3/queries/<queryId>/start : start the computation
+   * (4) .../_api/pregel3/queries/<queryId>/store : store the results
+   * For all other inputs returns 404.
+   * @param methods
+   * @return
+   */
   auto handleGetRequest(pregel3::Pregel3Methods const& methods) -> RestStatus;
   auto handlePostRequest(pregel3::Pregel3Methods const& methods) -> RestStatus;
   auto _generateErrorWrongInput(std::string const& info = "") -> void;

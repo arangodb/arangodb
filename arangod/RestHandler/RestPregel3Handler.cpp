@@ -99,9 +99,11 @@ auto RestPregel3Handler::handlePostRequest(
                                " is not of type String.");
       return RestStatus::DONE;
     }
+    queryId = queryIdSlice.copyString();
     if (methods.getPregel3Feature()->hasQueryId(queryId)) {
       _generateErrorWrongInput(" Query id " + queryId +
                                " exists already. Please, choose another one.");
+      return RestStatus::DONE;
     }
   } else {
     // otherwise generate a new queryId
@@ -116,6 +118,7 @@ auto RestPregel3Handler::handlePostRequest(
   auto graphSpec =
       GraphSpecification::fromVelocyPack(body.get(Utils::graphSpec));
 
+  // create a query
   _pregel3Feature.createQuery(queryId, graphSpec);
 
   // send the answer
@@ -131,37 +134,55 @@ auto RestPregel3Handler::handlePostRequest(
 auto RestPregel3Handler::handleGetRequest(
     const pregel3::Pregel3Methods& methods) -> RestStatus {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if (suffixes.size() < 2 || suffixes[0] != "queries") {
+  if (suffixes.size() < 2 || suffixes.size() > 3 || suffixes[0] != "queries") {
     _generateErrorWrongInput("Call with .../_api/pregel3/queries/...");
     return RestStatus::DONE;
   }
 
+  auto queryId = suffixes[1];
+  if (!_pregel3Feature.hasQueryId(queryId)) {
+    _generateErrorWrongInput("This query id is not known.");
+    return RestStatus::DONE;
+  }
+  auto query = _pregel3Feature.getQuery(queryId);
+
   if (suffixes.size() == 2) {
-    auto queryId = suffixes[1];
-    if (!_pregel3Feature.hasQueryId(queryId)) {
-      _generateErrorWrongInput("This query id is not known.");
-      return RestStatus::DONE;
-    }
-    // todo get info about the query
-    auto query = _pregel3Feature.getQuery(queryId);
+    // get the status: currently, only the status and graph specification
     VPackBuilder builder;
     {
       VPackObjectBuilder ob(&builder);
-
-      builder.add(Utils::state, VPackValue(uint(query->getState())));
-      builder.add(Utils::graphSpec, VPackValue(""));  // todo
+      builder.add(Utils::state,
+                  VPackValue(static_cast<uint8_t>(query->getState())));
+      VPackBuilder graphSpecBuilder;
+      query->getGraphSpecification().toVelocyPack(graphSpecBuilder);
+      builder.add(Utils::graphSpec, graphSpecBuilder.slice());
     }
     generateOk(rest::ResponseCode::OK, builder.slice());
     return RestStatus::DONE;
   }
 
+  // now suffixes.size() == 3
+  if (suffixes[2] == "loadGraph") {
+    query->setState(Query::State::LOADING);
+    // todo
+  } else if (suffixes[2] == "start") {
+    query->setState(Query::State::RUNNING);
+    // todo
+  } else if (suffixes[2] == "store") {
+    query->setState(Query::State::STORING);
+    // todo
+  } else {
+    _generateErrorWrongInput("Command " + suffixes[2] + " is unknown.");
+    return RestStatus::DONE;
+  }
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);
-
-    builder.add(VPackValue("version"));
-    builder.add(VPackValue("v3"));
+    builder.add(Utils::state,
+                VPackValue(static_cast<uint8_t>(query->getState())));
+    VPackBuilder graphSpecBuilder;
+    query->getGraphSpecification().toVelocyPack(graphSpecBuilder);
+    builder.add(Utils::graphSpec, graphSpecBuilder.slice());
   }
-  generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }

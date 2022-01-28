@@ -90,5 +90,25 @@ auto GraphSpecification::fromVelocyPack(VPackSlice slice)
     return GraphSpecification(std::move(gSBC));
   }
 }
-void GraphSpecification::toVelocyPack(VPackBuilder& builder) {}
+void GraphSpecification::toVelocyPack(VPackBuilder& builder) {
+  if (std::holds_alternative<GraphName>(_graphSpec)) {
+    builder.add(Utils::graphName,
+                VPackValue(std::get<std::string>(_graphSpec)));
+  } else {
+    auto graphSpec = std::get<GraphSpecificationByCollections>(_graphSpec);
+    // add vertex collections names
+    builder.add(Utils::vertexCollNames, VPackValue(VPackValueType::Array));
+    for (auto const& vName : graphSpec.vertexCollectionNames) {
+      builder.add(VPackValue(vName));
+    }
+    builder.close();
+
+    // add edge collections names
+    builder.add(Utils::edgeCollNames, VPackValue(VPackValueType::Array));
+    for (auto const& eName : graphSpec.edgeCollectionNames) {
+      builder.add(VPackValue(eName));
+    }
+    builder.close();
+  }
+}
 }  // namespace arangodb::pregel3

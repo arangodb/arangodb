@@ -65,7 +65,7 @@ class Pregel3Feature final : public application_features::ApplicationFeature {
     if (it == _queries.end()) {
       return nullptr;
     }
-    return it->second.shared_from_this();
+    return it->second.shared_from_this();  // todo: error here
   }
 
  private:
