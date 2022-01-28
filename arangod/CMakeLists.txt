@@ -254,10 +254,13 @@ set(LIB_ARANGO_PREGEL_SOURCES
 )
 
 set(LIB_ARANGO_PREGEL3_SOURCES
-  Pregel3/Methods.cpp
-  Pregel3/Pregel3Feature.cpp
-  Pregel3/Query.cpp
-  RestHandler/RestPregel3Handler.cpp)
+        Pregel3/Methods.cpp
+        Pregel3/Pregel3Feature.cpp
+        Pregel3/Query.cpp
+        Pregel3/Utils.cpp
+        RestHandler/RestPregel3Handler.cpp
+        Pregel3/GraphSpecification.cpp
+        Pregel3/GraphSpecification.h)
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp

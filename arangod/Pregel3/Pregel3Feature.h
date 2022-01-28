@@ -24,7 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Pregel3/GlobalSettings.h"
-#include "Pregel3/Query.h"
+#include "Query.h"
 
 #include <cstdint>
 
@@ -34,14 +34,34 @@ class Pregel3Feature final : public application_features::ApplicationFeature {
   explicit Pregel3Feature(application_features::ApplicationServer& server);
   ~Pregel3Feature() override;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() override;
 
   void createQuery(pregel3::GraphSpecification const& graph);
 
+  /**
+   * Generate the id from the next number not already in use.
+   * @return
+   */
+  std::string generateQueryId() {
+    while (_queries.contains(std::to_string(nextFreeQueryId))) {
+      ++nextFreeQueryId;
+    }
+    if (nextFreeQueryId == std::numeric_limits<uint64_t>::max()) {
+      // actually should never happen
+      // todo throw an appropriate error
+    }
+    return std::to_string(nextFreeQueryId++);
+  }
+
+  bool hasQueryId(std::string const& queryId) {
+    return _queries.contains(queryId);
+  }
+
  private:
   std::unordered_map<pregel3::QueryId, pregel3::Query> _queries;
+  uint64_t nextFreeQueryId = 0;
   std::shared_ptr<pregel3::GlobalSettings> _settings;
 };
 

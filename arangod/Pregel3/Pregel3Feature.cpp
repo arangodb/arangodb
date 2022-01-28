@@ -75,6 +75,6 @@ void Pregel3Feature::createQuery(const pregel3::GraphSpecification& graph) {
   LOG_DEVEL << "Create a query now";
 
   // TODO: KAPUTT
-  auto id = 0;
+  std::string id = 0;
   _queries.emplace(id, Query(id, graph));
 }

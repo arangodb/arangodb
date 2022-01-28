@@ -25,6 +25,10 @@
 #include "Pregel3/Query.h"
 #include "VocBase/VocbaseInfo.h"
 #include "Futures/Future.h"
+#include "Pregel3Feature.h"
+#include <VocBase/vocbase.h>
+#include <ApplicationFeatures/ApplicationServer.h>
+
 #include <memory>
 
 namespace arangodb::pregel3 {
@@ -36,6 +40,27 @@ struct Pregel3Methods {
 
   virtual auto createQuery(GraphSpecification const& graph) const
       -> futures::Future<Result> = 0;
+
+  virtual Pregel3Feature* getPregel3Feature() const = 0;
+};
+
+struct Pregel3MethodsSingleServer final
+    : Pregel3Methods,
+      std::enable_shared_from_this<Pregel3MethodsSingleServer> {
+  explicit Pregel3MethodsSingleServer(TRI_vocbase_t& vocbase)
+      : vocbase(vocbase) {}
+
+  auto createQuery(GraphSpecification const& graph) const
+      -> arangodb::futures::Future<Result> override {
+    vocbase.server().getFeature<Pregel3Feature>().createQuery(graph);
+    return Result{};
+  }
+
+  Pregel3Feature* getPregel3Feature() const final {
+    return &(vocbase.server().getFeature<Pregel3Feature>());
+  }
+
+  TRI_vocbase_t& vocbase;
 };
 
 }  // namespace arangodb::pregel3

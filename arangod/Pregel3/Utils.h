@@ -18,8 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Roman Rabinovich
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Query.h"
+#pragma once
 
+#include <string>
+
+struct TRI_vocbase_t;
+
+namespace arangodb::pregel3 {
+
+class Utils {
+ public:
+  Utils() = delete;
+
+  // constants
+  static std::string const vertexCollNames;
+  static std::string const edgeCollNames;
+  static std::string const wrongGraphSpecErrMsg;
+  static std::string const wrongRequestBody;
+  static std::string const queryId;
+  static std::string const graphSpec;
+  static std::string const graphName;
+  static std::string const vertexCollectionNames;
+  static std::string const edgeCollectionNames;
+};
+}  // namespace arangodb::pregel3

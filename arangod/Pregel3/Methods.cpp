@@ -23,33 +23,16 @@
 
 #include "Pregel3/Methods.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/Result.h>
-#include <VocBase/vocbase.h>
-#include <Basics/voc-errors.h>
-#include <ApplicationFeatures/ApplicationServer.h>
-#include <Pregel3/Pregel3Feature.h>
+//#include <Basics/Exceptions.h>
+//#include <Basics/Result.h>
+//#include <VocBase/vocbase.h>
+//#include <Basics/voc-errors.h>
 #include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel3;
 
-struct Pregel3MethodsSingleServer final
-    : Pregel3Methods,
-      std::enable_shared_from_this<Pregel3MethodsSingleServer> {
-  explicit Pregel3MethodsSingleServer(TRI_vocbase_t& vocbase)
-      : vocbase(vocbase) {}
-
-  auto createQuery(GraphSpecification const& graph) const
-      -> arangodb::futures::Future<Result> override {
-    vocbase.server().getFeature<Pregel3Feature>().createQuery(graph);
-    return Result{};
-  }
-
-  TRI_vocbase_t& vocbase;
-};
-
-auto arangodb::pregel3::Pregel3Methods::createInstance(TRI_vocbase_t& vocbase)
+auto Pregel3Methods::createInstance(TRI_vocbase_t& vocbase)
     -> std::shared_ptr<Pregel3Methods> {
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_SINGLE:

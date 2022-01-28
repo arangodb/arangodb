@@ -23,8 +23,15 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <vector>
 #include <string>
+#include <variant>
+#include "velocypack/Slice.h"
+#include "Basics/debugging.h"
+#include "velocypack/Iterator.h"
+#include "Utils.h"
+#include "GraphSpecification.h"
 
 namespace arangodb::pregel3 {
 
@@ -38,21 +45,18 @@ struct Graph {
   std::vector<Vertex> vertices;
 };
 
-struct GraphSpecification {
-  // ...
-};
-
-using QueryId = std::size_t;
+using QueryId = std::string;
 struct Query {
-  Query(QueryId id, GraphSpecification const& graphSpec)
-      : id{id}, graphSpec{graphSpec} {};
+  Query(QueryId id, GraphSpecification graphSpec)
+      : id{std::move(id)}, graphSpec{std::move(graphSpec)} {};
 
   void loadGraph();
+
+  enum class State { CREATED, LOADING, RUNNING, STORING, ERROR, DONE };
 
  private:
   QueryId id;
   GraphSpecification graphSpec;
   std::shared_ptr<Graph> graph{nullptr};
 };
-
 }  // namespace arangodb::pregel3

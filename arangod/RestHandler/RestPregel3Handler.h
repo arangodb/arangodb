@@ -33,15 +33,19 @@ class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
   explicit RestPregel3Handler(application_features::ApplicationServer&,
                               GeneralRequest*, GeneralResponse*);
 
-  ~RestPregel3Handler();
+  ~RestPregel3Handler() override;
 
  private:
   auto executeByMethod(pregel3::Pregel3Methods const& methods) -> RestStatus;
   auto handleGetRequest(pregel3::Pregel3Methods const& methods) -> RestStatus;
+  auto handlePostRequest(pregel3::Pregel3Methods const& methods) -> RestStatus;
 
  public:
   RestStatus execute() override;
   char const* name() const override { return "Pregel3 Rest Handler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
+
+ private:
+  Pregel3Feature& _pregel3Feature;
 };
 }  // namespace arangodb
