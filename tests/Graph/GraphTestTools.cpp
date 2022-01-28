@@ -26,6 +26,7 @@
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "IResearch/common.h"
+#include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
 
 using namespace arangodb;
@@ -37,7 +38,7 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-GraphTestSetup::GraphTestSetup() : engine(server), server(nullptr, nullptr) {
+GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
   arangodb::ClusterEngine::Mocking = true;
   arangodb::RandomGenerator::initialize(

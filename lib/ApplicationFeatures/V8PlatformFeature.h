@@ -48,13 +48,12 @@ class ProgramOptions;
 
 class V8PlatformFeature final
     : public application_features::ApplicationFeature {
- private:
+ public:
   struct IsolateData {
     bool _outOfMemory = false;
     size_t _heapSizeAtStart = 0;
   };
 
- public:
   static IsolateData* getIsolateData(v8::Isolate* isolate) {
     return reinterpret_cast<IsolateData*>(isolate->GetData(V8_INFO));
   }

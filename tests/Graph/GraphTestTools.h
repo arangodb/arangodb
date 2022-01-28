@@ -71,8 +71,8 @@ namespace graph {
 struct GraphTestSetup
     : public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
                                             arangodb::LogLevel::ERR> {
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
-  arangodb::ArangodServer& server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>

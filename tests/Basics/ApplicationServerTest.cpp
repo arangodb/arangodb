@@ -26,8 +26,8 @@
 
 #include "gtest/gtest.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Exceptions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
@@ -37,13 +37,8 @@ using namespace arangodb;
 class TestFeatureA;
 class TestFeatureB;
 
-struct TestApplicationServer
-    : ApplicationServerT<TypeList<TestFeatureA, TestFeatureB>> {
-  TestApplicationServer(std::shared_ptr<arangodb::options::ProgramOptions> opts,
-                        char const* binaryPath)
-      : ApplicationServerT{opts, binaryPath} {}
-};
-
+using TestFeatures = TypeList<TestFeatureA, TestFeatureB>;
+using TestApplicationServer = ApplicationServerT<TestFeatures>;
 using TestApplicationFeature = ApplicationFeatureT<TestApplicationServer>;
 
 class TestFeatureA : public TestApplicationFeature {
