@@ -47,7 +47,6 @@ namespace transaction {
 class Methods;
 
 }  // namespace transaction
-
 namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -79,7 +78,7 @@ class AsyncValue;
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchView final : public LogicalView {
-  typedef std::shared_ptr<AsyncLinkHandle> AsyncLinkPtr;
+  using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -186,7 +185,7 @@ class IResearchView final : public LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sort column compression method
   ///////////////////////////////////////////////////////////////////////////////
-  auto const& primarySortCompression() const noexcept {
+  irs::type_info::type_id const& primarySortCompression() const noexcept {
     return _meta._primarySortCompression;
   }
 
@@ -197,13 +196,13 @@ class IResearchView final : public LogicalView {
     return _meta._storedValues;
   }
 
- protected:
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  Result appendVelocyPackImpl(velocypack::Builder& builder,
-                              Serialization context) const final;
+  Result appendVPackImpl(velocypack::Builder& build, Serialization ctx,
+                         bool safe) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -216,7 +215,6 @@ class IResearchView final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result renameImpl(std::string const& oldName) final;
 
- private:
   using AsyncViewPtr = std::shared_ptr<AsyncValue<IResearchView>>;
   struct ViewFactory;
 
