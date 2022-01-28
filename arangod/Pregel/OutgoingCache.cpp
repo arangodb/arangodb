@@ -28,6 +28,7 @@
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"

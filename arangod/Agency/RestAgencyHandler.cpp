@@ -28,6 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"

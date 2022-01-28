@@ -24,6 +24,7 @@
 
 #include "RocksDBRestReplicationHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"

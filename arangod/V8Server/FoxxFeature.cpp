@@ -23,6 +23,7 @@
 
 #include "FoxxFeature.h"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"

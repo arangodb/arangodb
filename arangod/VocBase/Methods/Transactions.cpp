@@ -24,6 +24,7 @@
 #include <v8.h>
 #include "Transactions.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"

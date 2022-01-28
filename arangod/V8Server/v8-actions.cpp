@@ -1874,9 +1874,9 @@ static void JS_FoxxQueueVersion(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_GET_GLOBALS();
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-    auto& feature = v8g->_server.getFeature<FoxxFeature>();
+    auto& feature = v8g->server().getFeature<FoxxFeature>();
 
     if (args.Length() == 1) {
       // set version
@@ -1907,9 +1907,9 @@ static void JS_FoxxQueueVersionBump(
 
   if (ServerState::instance()->isCoordinator()) {
     // only necessary in coordinator
-    TRI_GET_GLOBALS();
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-    auto& feature = v8g->_server.getFeature<FoxxFeature>();
+    auto& feature = v8g->server().getFeature<FoxxFeature>();
     feature.bumpQueueVersionIfRequired();
   }
   TRI_V8_RETURN_NULL();

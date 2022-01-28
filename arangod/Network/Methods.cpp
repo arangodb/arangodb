@@ -23,6 +23,7 @@
 
 #include "Methods.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "Basics/Common.h"

@@ -27,6 +27,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"

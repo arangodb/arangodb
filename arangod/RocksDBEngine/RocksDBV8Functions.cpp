@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBV8Functions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"

@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"

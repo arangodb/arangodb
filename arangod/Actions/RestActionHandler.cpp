@@ -23,6 +23,7 @@
 
 #include "RestActionHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"

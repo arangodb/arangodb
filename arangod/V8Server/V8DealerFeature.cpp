@@ -28,6 +28,7 @@
 
 #include "Actions/actions.h"
 #include "Agency/v8-agency.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"

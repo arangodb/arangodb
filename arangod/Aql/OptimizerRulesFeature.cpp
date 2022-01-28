@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRulesFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"

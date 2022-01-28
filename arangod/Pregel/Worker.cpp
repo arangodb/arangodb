@@ -31,6 +31,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/VertexComputation.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
 #include "Network/Methods.h"
 #include "Scheduler/SchedulerFeature.h"

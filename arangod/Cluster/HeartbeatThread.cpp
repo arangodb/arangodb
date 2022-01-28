@@ -567,7 +567,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   // ATTENTION: This method will usually be run in a scheduler thread and
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
   // against concurrent accesses.
-  AuthenticationFeature& af = server().getFeature<AuthenticationFeature>();
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   LOG_TOPIC("33452", DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
@@ -744,7 +743,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  AuthenticationFeature& af = _server.getFeature<AuthenticationFeature>();
+  AuthenticationFeature& af = server().getFeature<AuthenticationFeature>();
 
   VPackSlice slice = userVersion[0].get(std::vector<std::string>(
       {AgencyCommHelper::path(), "Sync", "UserVersion"}));
@@ -785,7 +784,7 @@ void HeartbeatThread::handleFoxxQueueVersionChange(
       // coordinator can update this any time. the setQueueVersion
       // method makes sure we are not going below a value that
       // we have already seen.
-      _server.getFeature<FoxxFeature>().setQueueVersion(version);
+      server().getFeature<FoxxFeature>().setQueueVersion(version);
     }
   }
 }

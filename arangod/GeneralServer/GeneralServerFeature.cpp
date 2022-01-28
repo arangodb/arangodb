@@ -25,6 +25,7 @@
 
 #include <stdexcept>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"

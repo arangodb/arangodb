@@ -34,6 +34,7 @@
 
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"

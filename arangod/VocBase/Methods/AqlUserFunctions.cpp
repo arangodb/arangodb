@@ -23,6 +23,7 @@
 
 #include "AqlUserFunctions.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
