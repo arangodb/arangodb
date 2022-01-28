@@ -194,12 +194,13 @@ class ApplicationServer {
 
   void registerFailCallback(
       std::function<void(std::string const&)> const& callback) {
-    fail = callback;
+    _fail = callback;
   }
 
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
+  // FIXME(gnusi) rerturn span
   std::vector<std::reference_wrapper<ApplicationFeature>> const&
   getOrderedFeatures() {
     return _orderedFeatures;
@@ -209,12 +210,14 @@ class ApplicationServer {
   void setStateUnsafe(State ss) { _state = ss; }
 #endif
 
+  // FIXME(gnusi) make private
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
   bool hasFeature(size_t type) const noexcept {
     return type < _features.size() && nullptr != _features[type];
   }
 
+  // FIXME(gnusi) make private
   ApplicationFeature& getFeature(size_t type) const {
     if (ADB_LIKELY(hasFeature(type))) {
       return *_features[type];
@@ -224,6 +227,7 @@ class ApplicationServer {
         TRI_ERROR_INTERNAL, "unknown feature '" + std::to_string(type) + "'");
   }
 
+  // FIXME(gnusi) use span
   void disableFeatures(std::vector<size_t> const&);
   void forceDisableFeatures(std::vector<size_t> const&);
 
@@ -299,7 +303,7 @@ class ApplicationServer {
   std::string _helpSection;
 
   // fail callback
-  std::function<void(std::string const&)> fail;
+  std::function<void(std::string const&)> _fail;
 
   // the install directory of this program:
   char const* _binaryPath;
@@ -413,16 +417,15 @@ class ApplicationServerT : public ApplicationServer {
   Impl& getEnabledFeature() const {
     auto& feature = getFeature<Type, Impl>();
     if (!feature.isEnabled()) {
-      const auto featureName =
-          boost::typeindex::ctti_type_index::type_id<Type>().pretty_name();
-
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "feature '" + featureName + "' is not enabled");
+          TRI_ERROR_INTERNAL,
+          "feature '" + std::string{feature.name()} + "' is not enabled");
     }
     return feature;
   }
 
  private:
+  // FIXME(gnusi) consider tuple
   std::array<std::unique_ptr<ApplicationFeature>, Features::size()> _features;
 };
 
