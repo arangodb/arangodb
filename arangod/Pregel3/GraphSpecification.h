@@ -73,6 +73,6 @@ struct GraphSpecification {
    */
   static auto fromVelocyPack(VPackSlice slice) -> GraphSpecification;
 
-  static auto toVelocyPack() -> VPackBuilder;
+  static void toVelocyPack(VPackBuilder&);
 };
 }  // namespace arangodb::pregel3
