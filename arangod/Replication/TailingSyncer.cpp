@@ -1804,8 +1804,7 @@ void TailingSyncer::fetchLeaderLog(
     setProgress(std::string("fetching leader log from tick ") +
                 StringUtils::itoa(fetchTick) + ", last scanned tick " +
                 StringUtils::itoa(lastScannedTick) + ", first regular tick " +
-                StringUtils::itoa(firstRegularTick) + ", open transactions: " +
-                std::to_string(_ongoingTransactions.size()) + ", chunk size " +
+                StringUtils::itoa(firstRegularTick) + ", chunk size " +
                 std::to_string(_state.applier._chunkSize));
 
     // stringify list of open transactions

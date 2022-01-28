@@ -843,6 +843,14 @@ Testing a single rspec test:
 
     scripts/unittest http_server --test api-users-spec.rb
 
+Testing a single rspec test, using SSL:
+
+    scripts/unittest ssl_server --test api-users-spec.rb
+
+Testing a single rspec test, with and without SSL (`http_server` and `ssl_server`):
+
+    scripts/unittest auto --test api-users-spec.rb
+
 Running a test against a server you started (instead of letting the script start its own server):
 
     scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
