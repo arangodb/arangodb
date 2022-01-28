@@ -528,7 +528,7 @@ module.exports = exports =
 
       for (const [status, def] of this._responses.entries()) {
         const response = {};
-        if (def.contentTypes.length) {
+        if (def.contentTypes && def.contentTypes.length) {
           response.schema = joi2schema(def.model.schema);
         }
         if (def.model.schema._description) {
