@@ -26,18 +26,4 @@
 using namespace arangodb;
 namespace arangodb::pregel3 {
 
-std::string const Utils::vertexCollNames = "vertexCollNames";
-std::string const Utils::edgeCollNames = "edgeCollNames";
-std::string const Utils::wrongGraphSpecErrMsg =
-    "The graph specification is "
-    "either the graph name or an object containing a list of vertex collection "
-    "names and a list of edge collection names.";
-std::string const wrongRequestBody = "Could not parse the body of the request.";
-
-std::string const queryId = "queryId";
-std::string const graphName = "graphName";
-std::string const graphSpec = "graphSpec";
-std::string const vertexCollectionNames = "vertexCollectionNames";
-std::string const edgeCollectionNames = "edgeCollectionNames";
-
 }  // namespace arangodb::pregel3

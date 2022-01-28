@@ -72,7 +72,7 @@ auto RestPregel3Handler::handlePostRequest(
 
   auto generateErrorWrongInput = [&](std::string const& info = "") -> void {
     generateError(rest::ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
-                  Utils::wrongRequestBody + " " + info);
+                  Utils::wrongRequestBody + std::string(" ") + info);
   };
 
   // get the body of the request
@@ -89,7 +89,7 @@ auto RestPregel3Handler::handlePostRequest(
   if (body.hasKey(Utils::queryId)) {
     auto queryIdSlice = body.get(Utils::queryId);
     if (!queryIdSlice.isString()) {
-      generateErrorWrongInput("The value of " + Utils::queryId +
+      generateErrorWrongInput("The value of " + std::string(Utils::queryId) +
                               " is not of type String.");
       return RestStatus::DONE;
     }
@@ -110,7 +110,7 @@ auto RestPregel3Handler::handlePostRequest(
   auto graphSpec =
       GraphSpecification::fromVelocyPack(body.get(Utils::graphSpec));
 
-  _pregel3Feature.createQuery(graphSpec);
+  _pregel3Feature.createQuery(queryId, graphSpec);
 
   // send the answer
   VPackBuilder builder;

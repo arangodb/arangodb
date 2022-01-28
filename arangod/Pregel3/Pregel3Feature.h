@@ -28,7 +28,7 @@
 
 #include <cstdint>
 
-namespace arangodb {
+namespace arangodb::pregel3 {
 class Pregel3Feature final : public application_features::ApplicationFeature {
  public:
   explicit Pregel3Feature(application_features::ApplicationServer& server);
@@ -38,7 +38,8 @@ class Pregel3Feature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() override;
 
-  void createQuery(pregel3::GraphSpecification const& graph);
+  void createQuery(std::string queryId,
+                   pregel3::GraphSpecification const& graph);
 
   /**
    * Generate the id from the next number not already in use.

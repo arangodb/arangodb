@@ -70,11 +70,10 @@ void Pregel3Feature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 Pregel3Feature::~Pregel3Feature() = default;
 
-void Pregel3Feature::createQuery(const pregel3::GraphSpecification& graph) {
+void Pregel3Feature::createQuery(std::string queryId,
+                                 const pregel3::GraphSpecification& graph) {
   // TODO: setup query
   LOG_DEVEL << "Create a query now";
 
-  // TODO: KAPUTT
-  std::string id = 0;
-  _queries.emplace(id, Query(id, graph));
+  _queries.emplace(queryId, Query(queryId, graph));
 }

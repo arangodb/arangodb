@@ -27,6 +27,7 @@
 #include "Pregel3/Methods.h"
 
 namespace arangodb {
+using namespace pregel3;
 
 class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
  public:

@@ -34,14 +34,18 @@ class Utils {
   Utils() = delete;
 
   // constants
-  static std::string const vertexCollNames;
-  static std::string const edgeCollNames;
-  static std::string const wrongGraphSpecErrMsg;
-  static std::string const wrongRequestBody;
-  static std::string const queryId;
-  static std::string const graphSpec;
-  static std::string const graphName;
-  static std::string const vertexCollectionNames;
-  static std::string const edgeCollectionNames;
+  static constexpr auto vertexCollNames = "vertexCollNames";
+  static constexpr auto edgeCollNames = "edgeCollNames";
+  static constexpr auto wrongGraphSpecErrMsg =
+      "The graph specification is either the graph name or an object "
+      "containing a list of vertex collection names and a list of edge "
+      "collection names.";
+  static constexpr auto wrongRequestBody =
+      "Could not parse the body of the request.";
+  static constexpr auto queryId = "queryId";
+  static constexpr auto graphSpec = "graphSpec";
+  static constexpr auto graphName = "graphName";
+  static constexpr auto vertexCollectionNames = "vertexCollectionNames";
+  static constexpr auto edgeCollectionNames = "edgeCollectionNames";
 };
 }  // namespace arangodb::pregel3

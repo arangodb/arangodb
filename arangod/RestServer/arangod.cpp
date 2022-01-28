@@ -72,6 +72,7 @@
 #include "Logger/LoggerFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel3/Pregel3Feature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -165,6 +166,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(HttpEndpointProvider)),
         std::type_index(typeid(LogBufferFeature)),
         std::type_index(typeid(pregel::PregelFeature)),
+        std::type_index(typeid(pregel3::Pregel3Feature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
         std::type_index(typeid(StatisticsFeature)),
@@ -258,6 +260,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<aql::AqlFunctionFeature>();
     server.addFeature<aql::OptimizerRulesFeature>();
     server.addFeature<pregel::PregelFeature>();
+    server.addFeature<pregel3::Pregel3Feature>();
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature<DaemonFeature>();

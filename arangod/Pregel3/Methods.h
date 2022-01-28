@@ -38,7 +38,8 @@ struct Pregel3Methods {
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<Pregel3Methods>;
 
-  virtual auto createQuery(GraphSpecification const& graph) const
+  virtual auto createQuery(std::string queryId,
+                           GraphSpecification const& graph) const
       -> futures::Future<Result> = 0;
 
   virtual Pregel3Feature* getPregel3Feature() const = 0;
@@ -50,9 +51,9 @@ struct Pregel3MethodsSingleServer final
   explicit Pregel3MethodsSingleServer(TRI_vocbase_t& vocbase)
       : vocbase(vocbase) {}
 
-  auto createQuery(GraphSpecification const& graph) const
+  auto createQuery(std::string queryId, GraphSpecification const& graph) const
       -> arangodb::futures::Future<Result> override {
-    vocbase.server().getFeature<Pregel3Feature>().createQuery(graph);
+    vocbase.server().getFeature<Pregel3Feature>().createQuery(queryId, graph);
     return Result{};
   }
 
