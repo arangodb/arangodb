@@ -47,9 +47,9 @@ struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
       : arangodb::LogicalView(*this, vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
-                                                Serialization) const override {
-    return arangodb::Result();
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
+                                   Serialization, bool) const override {
+    return {};
   }
   virtual arangodb::Result dropImpl() override {
     return arangodb::storage_helper::drop(*this);

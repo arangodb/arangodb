@@ -1623,20 +1623,11 @@ void StorageEngineMock::changeCollection(
 }
 
 arangodb::Result StorageEngineMock::changeView(
-    TRI_vocbase_t& vocbase, arangodb::LogicalView const& view, bool doSync) {
+    arangodb::LogicalView const& view, arangodb::velocypack::Slice update) {
   before();
-  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) !=
-             views.end());
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  auto res = view.properties(
-      builder, arangodb::LogicalDataSource::Serialization::Persistence);
-  if (!res.ok()) {
-    return res;
-  }
-  builder.close();
-  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
+  std::pair key{view.vocbase().id(), view.id()};
+  TRI_ASSERT(views.find(key) != views.end());
+  views.emplace(key, update);
   return {};
 }
 

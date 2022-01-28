@@ -231,9 +231,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void changeCollection(TRI_vocbase_t& vocbase,
                                 arangodb::LogicalCollection const& collection,
                                 bool doSync) override;
-  virtual arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                                      arangodb::LogicalView const& view,
-                                      bool doSync) override;
+  arangodb::Result changeView(arangodb::LogicalView const& view,
+                              arangodb::velocypack::Slice update) override;
+
   virtual void createCollection(
       TRI_vocbase_t& vocbase,
       arangodb::LogicalCollection const& collection) override;
