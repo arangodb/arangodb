@@ -908,5 +908,18 @@ size_t IResearchLinkMeta::memory() const noexcept {
   return size;
 }
 
+bool IResearchLinkMeta::willIndexIdAttribute() const noexcept {
+  if (_includeAllFields) {
+    return true;
+  }
+  // check only root level of fields as _id is on the root level
+  for (auto const& field : _fields) {
+    if (field.key() == arangodb::StaticStrings::IdString) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace iresearch
 }  // namespace arangodb

@@ -310,7 +310,7 @@ Result IResearchLink::init(velocypack::Slice definition,
               << "' for new link '" << this->id().id() << "'";
         }
         if (ADB_UNLIKELY(meta._collectionName.empty())) {
-          LOG_TOPIC("67da6", WARN, TOPIC)
+          LOG_TOPIC_IF("67da6", WARN, TOPIC, meta.willIndexIdAttribute())
               << "Failed to init collection name for the link '"
               << this->id().id()
               << "'. Link will not index '_id' attribute. Please recreate the "
@@ -331,7 +331,8 @@ Result IResearchLink::init(velocypack::Slice definition,
           vocbase.server()
               .getFeature<EngineSelectorFeature>()
               .engine()
-              .inRecovery()) {
+              .inRecovery() &&
+          meta.willIndexIdAttribute()) {
         LOG_TOPIC("f25ce", FATAL, TOPIC)
             << "Upgrade conflicts with recovering ArangoSearch link '"
             << this->id().id()
