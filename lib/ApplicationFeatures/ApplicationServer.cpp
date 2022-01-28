@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
+#include <atomic>
 #include <chrono>
 #include <exception>
 #include <iostream>
@@ -129,7 +130,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // collect options from all features
   // in this phase, all features are order-independent
-  _state.store(State::IN_COLLECT_OPTIONS, std::memory_order_relaxed);
+  _state.store(State::IN_COLLECT_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_COLLECT_OPTIONS);
   collectOptions();
 
@@ -149,7 +150,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   // validate options of all features
-  _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_relaxed);
+  _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
@@ -168,7 +169,7 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // furthermore, they must not write any files under elevated privileges
   // if they want other features to access them, or if they want to access
   // these files with dropped privileges
-  _state.store(State::IN_PREPARE, std::memory_order_relaxed);
+  _state.store(State::IN_PREPARE, std::memory_order_release);
   reportServerProgress(State::IN_PREPARE);
   prepare();
 
@@ -181,29 +182,29 @@ void ApplicationServer::run(int argc, char* argv[]) {
   dropPrivilegesPermanently();
 
   // start features. now features are allowed to start threads, write files etc.
-  _state.store(State::IN_START, std::memory_order_relaxed);
+  _state.store(State::IN_START, std::memory_order_release);
   reportServerProgress(State::IN_START);
   start();
 
   // wait until we get signaled the shutdown request
-  _state.store(State::IN_WAIT, std::memory_order_relaxed);
+  _state.store(State::IN_WAIT, std::memory_order_release);
   reportServerProgress(State::IN_WAIT);
   wait();
 
   // beginShutdown is called asynchronously ----------
 
   // stop all features
-  _state.store(State::IN_STOP, std::memory_order_relaxed);
+  _state.store(State::IN_STOP, std::memory_order_release);
   reportServerProgress(State::IN_STOP);
   stop();
 
   // unprepare all features
-  _state.store(State::IN_UNPREPARE, std::memory_order_relaxed);
+  _state.store(State::IN_UNPREPARE, std::memory_order_release);
   reportServerProgress(State::IN_UNPREPARE);
   unprepare();
 
   // stopped
-  _state.store(State::STOPPED, std::memory_order_relaxed);
+  _state.store(State::STOPPED, std::memory_order_release);
   reportServerProgress(State::STOPPED);
 }
 
@@ -239,16 +240,16 @@ void ApplicationServer::initiateSoftShutdown() {
 void ApplicationServer::beginShutdown() {
   // fetch the old state, check if somebody already called shutdown, and only
   // proceed if not.
-  State old = State::UNINITIALIZED;
+  State old = state();
   do {
-    old = state();
     if (isStoppingState(old)) {
       // beginShutdown already called, nothing to do now
       return;
     }
     // try to enter the new state, but make sure nobody changed it in between
   } while (!_state.compare_exchange_weak(old, State::IN_SHUTDOWN,
-                                         std::memory_order_relaxed));
+                                         std::memory_order_release,
+                                         std::memory_order_acquire));
 
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP)
       << "ApplicationServer::beginShutdown";

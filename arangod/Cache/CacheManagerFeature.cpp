@@ -126,13 +126,14 @@ void CacheManagerFeature::start() {
 
 void CacheManagerFeature::beginShutdown() {
   if (_manager != nullptr) {
-    _manager->beginShutdown();
     _rebalancer->beginShutdown();
+    _manager->beginShutdown();
   }
 }
 
 void CacheManagerFeature::stop() {
   if (_manager != nullptr) {
+    _rebalancer->shutdown();
     _manager->shutdown();
   }
 }
