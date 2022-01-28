@@ -53,11 +53,11 @@ struct TestView : public arangodb::LogicalView {
     return arangodb::Result();
   }
   virtual arangodb::Result dropImpl() override {
-    return arangodb::LogicalViewHelperStorageEngine::drop(*this);
+    return arangodb::storage_helper::drop(*this);
   }
   virtual void open() override {}
   virtual arangodb::Result renameImpl(std::string const& oldName) override {
-    return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
+    return arangodb::storage_helper::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice, bool,
                                       bool) override {
