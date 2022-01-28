@@ -197,11 +197,12 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (!_restServer) {
-    server().disableFeatures(std::vector<size_t>{
-        Server::id<DaemonFeature>(), Server::id<HttpEndpointProvider>(),
+    constexpr size_t kDisabledFeatures[]{
+        Server::id<DaemonFeature>(),        Server::id<HttpEndpointProvider>(),
         Server::id<GeneralServerFeature>(), Server::id<SslServerFeature>(),
-        Server::id<StatisticsFeature>(), Server::id<SupervisorFeature>()});
+        Server::id<StatisticsFeature>(),    Server::id<SupervisorFeature>()};
 
+    server().disableFeatures(kDisabledFeatures);
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
       // but only if the config option is not explicitly set (the recovery
@@ -213,8 +214,9 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
-    server().disableFeatures(std::vector<size_t>{
-        Server::id<DaemonFeature>(), Server::id<SupervisorFeature>()});
+    constexpr size_t kDisabledFeatures[]{Server::id<DaemonFeature>(),
+                                         Server::id<SupervisorFeature>()};
+    server().disableFeatures(kDisabledFeatures);
     v8dealer.setMinimumContexts(2);
   }
 

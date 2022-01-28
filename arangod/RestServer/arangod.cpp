@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangod.h"
+#include "RestServer/arangod.h"
 
 #include <type_traits>
 
@@ -32,6 +32,7 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -154,6 +155,22 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
+constexpr size_t kNonServerFeatures[]{
+    ArangodServer::id<ActionFeature>(),
+    ArangodServer::id<AgencyFeature>(),
+    ArangodServer::id<ClusterFeature>(),
+    ArangodServer::id<DaemonFeature>(),
+    ArangodServer::id<FoxxFeature>(),
+    ArangodServer::id<GeneralServerFeature>(),
+    ArangodServer::id<GreetingsFeature>(),
+    ArangodServer::id<HttpEndpointProvider>(),
+    ArangodServer::id<LogBufferFeature>(),
+    ArangodServer::id<pregel::PregelFeature>(),
+    ArangodServer::id<ServerFeature>(),
+    ArangodServer::id<SslServerFeature>(),
+    ArangodServer::id<StatisticsFeature>(),
+    ArangodServer::id<SupervisorFeature>()};
+
 struct ArangodInitializer {
   template<typename T>
   void operator()(TypeTag<T>) {
@@ -165,23 +182,7 @@ struct ArangodInitializer {
   }
 
   void operator()(TypeTag<CheckVersionFeature>) {
-    std::vector<size_t> nonServerFeatures = {
-        ArangodServer::id<ActionFeature>(),
-        ArangodServer::id<AgencyFeature>(),
-        ArangodServer::id<ClusterFeature>(),
-        ArangodServer::id<DaemonFeature>(),
-        ArangodServer::id<FoxxFeature>(),
-        ArangodServer::id<GeneralServerFeature>(),
-        ArangodServer::id<GreetingsFeature>(),
-        ArangodServer::id<HttpEndpointProvider>(),
-        ArangodServer::id<LogBufferFeature>(),
-        ArangodServer::id<pregel::PregelFeature>(),
-        ArangodServer::id<ServerFeature>(),
-        ArangodServer::id<SslServerFeature>(),
-        ArangodServer::id<StatisticsFeature>(),
-        ArangodServer::id<SupervisorFeature>()};
-
-    server.addFeature<CheckVersionFeature>(&ret, nonServerFeatures);
+    server.addFeature<CheckVersionFeature>(&ret, kNonServerFeatures);
   }
 
   void operator()(TypeTag<ConfigFeature>) {
@@ -189,23 +190,7 @@ struct ArangodInitializer {
   }
 
   void operator()(TypeTag<InitDatabaseFeature>) {
-    std::vector<size_t> nonServerFeatures = {
-        ArangodServer::id<ActionFeature>(),
-        ArangodServer::id<AgencyFeature>(),
-        ArangodServer::id<ClusterFeature>(),
-        ArangodServer::id<DaemonFeature>(),
-        ArangodServer::id<FoxxFeature>(),
-        ArangodServer::id<GeneralServerFeature>(),
-        ArangodServer::id<GreetingsFeature>(),
-        ArangodServer::id<HttpEndpointProvider>(),
-        ArangodServer::id<LogBufferFeature>(),
-        ArangodServer::id<pregel::PregelFeature>(),
-        ArangodServer::id<ServerFeature>(),
-        ArangodServer::id<SslServerFeature>(),
-        ArangodServer::id<StatisticsFeature>(),
-        ArangodServer::id<SupervisorFeature>()};
-
-    server.addFeature<InitDatabaseFeature>(nonServerFeatures);
+    server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
   }
 
   void operator()(TypeTag<LoggerFeature>) {
@@ -238,22 +223,7 @@ struct ArangodInitializer {
   }
 
   void operator()(TypeTag<UpgradeFeature>) {
-    std::vector<size_t> nonServerFeatures = {
-        ArangodServer::id<ActionFeature>(),
-        ArangodServer::id<AgencyFeature>(),
-        ArangodServer::id<ClusterFeature>(),
-        ArangodServer::id<DaemonFeature>(),
-        ArangodServer::id<FoxxFeature>(),
-        ArangodServer::id<GeneralServerFeature>(),
-        ArangodServer::id<GreetingsFeature>(),
-        ArangodServer::id<HttpEndpointProvider>(),
-        ArangodServer::id<LogBufferFeature>(),
-        ArangodServer::id<pregel::PregelFeature>(),
-        ArangodServer::id<ServerFeature>(),
-        ArangodServer::id<SslServerFeature>(),
-        ArangodServer::id<StatisticsFeature>(),
-        ArangodServer::id<SupervisorFeature>()};
-    server.addFeature<UpgradeFeature>(&ret, nonServerFeatures);
+    server.addFeature<UpgradeFeature>(&ret, kNonServerFeatures);
   }
 
   void operator()(TypeTag<HttpEndpointProvider>) {

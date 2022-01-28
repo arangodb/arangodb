@@ -84,8 +84,8 @@ class ArangoRestoreInitializer {
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    _client.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangoRestoreServer::id<RestoreFeature>()});
+    constexpr size_t kFeatures[]{ArangoRestoreServer::id<RestoreFeature>()};
+    _client.addFeature<ShutdownFeature>(kFeatures);
   }
 
   void operator()(TypeTag<TempFeature>) {

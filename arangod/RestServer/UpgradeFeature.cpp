@@ -58,7 +58,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 UpgradeFeature::UpgradeFeature(Server& server, int* result,
-                               std::vector<size_t> const& nonServerFeatures)
+                               std::span<const size_t> nonServerFeatures)
     : ArangodFeature{server, *this},
       _upgrade(false),
       _upgradeCheck(true),
@@ -132,15 +132,15 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
-    std::vector<size_t> otherFeaturesToDisable = {
+    constexpr size_t kOtherFeaturesToDisable[]{
         Server::id<DaemonFeature>(), Server::id<GreetingsFeature>(),
         Server::id<pregel::PregelFeature>(), Server::id<SupervisorFeature>()};
-    server().forceDisableFeatures(otherFeaturesToDisable);
+    server().forceDisableFeatures(kOtherFeaturesToDisable);
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
-    std::vector<size_t> otherFeaturesToDisable = {
+    constexpr size_t kOtherFeaturesToDisable[]{
         Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()};
-    server().forceDisableFeatures(otherFeaturesToDisable);
+    server().forceDisableFeatures(kOtherFeaturesToDisable);
   }
 
   ReplicationFeature& replicationFeature =

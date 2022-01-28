@@ -48,7 +48,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CheckVersionFeature::CheckVersionFeature(
-    Server& server, int* result, std::vector<size_t> const& nonServerFeatures)
+    Server& server, int* result, std::span<const size_t> nonServerFeatures)
     : ArangodFeature{server, *this},
       _checkVersion(false),
       _result(result),
@@ -99,8 +99,8 @@ void CheckVersionFeature::validateOptions(
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  server().disableFeatures(
-      std::vector<size_t>{ArangodServer::id<EnvironmentFeature>()});
+  constexpr size_t kDisabledFeature[]{ArangodServer::id<EnvironmentFeature>()};
+  server().disableFeatures(kDisabledFeature);
 }
 
 void CheckVersionFeature::start() {

@@ -86,8 +86,8 @@ class ArangoDumpInitializer {
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    _client.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangoDumpServer::id<DumpFeature>()});
+    constexpr size_t kFeatures[]{ArangoDumpServer::id<DumpFeature>()};
+    _client.addFeature<ShutdownFeature>(kFeatures);
   }
 
  private:

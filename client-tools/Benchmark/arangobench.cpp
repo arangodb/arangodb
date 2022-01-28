@@ -90,8 +90,8 @@ class ArangoBenchInitializer {
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    _client.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangoBenchServer::id<BenchFeature>()});
+    constexpr size_t kFeatures[]{ArangoBenchServer::id<BenchFeature>()};
+    _client.addFeature<ShutdownFeature>(kFeatures);
   }
 
   void operator()(TypeTag<TempFeature>) {

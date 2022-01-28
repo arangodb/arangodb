@@ -100,8 +100,8 @@ struct ArangoshInitializer {
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    _client.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangoshServer::id<ShellFeature>()});
+    constexpr size_t kFeatures[]{ArangoshServer::id<ShellFeature>()};
+    _client.addFeature<ShutdownFeature>(kFeatures);
   }
 
  private:

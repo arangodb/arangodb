@@ -86,8 +86,8 @@ class ArangoExportInitializer {
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    _client.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangoExportServer::id<ExportFeature>()});
+    constexpr size_t kFeatures[]{ArangoExportServer::id<ExportFeature>()};
+    _client.addFeature<ShutdownFeature>(kFeatures);
   }
 
   void operator()(TypeTag<TempFeature>) {

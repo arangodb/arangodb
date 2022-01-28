@@ -61,7 +61,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(
-    Server& server, std::vector<size_t> const& nonServerFeatures)
+    Server& server, std::span<const size_t> nonServerFeatures)
     : ArangodFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
@@ -99,8 +99,10 @@ void InitDatabaseFeature::validateOptions(
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures(
-        std::vector<size_t>{ArangodServer::id<EnvironmentFeature>()});
+    constexpr size_t kDisabledFeatures {
+      ArangodServer::id<EnvironmentFeature>();
+    };
+    server().disableFeatures(kDisabledFeatures);
   }
 }
 

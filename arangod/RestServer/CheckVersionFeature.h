@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <span>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/arangod.h"
 
@@ -35,7 +37,7 @@ class CheckVersionFeature final : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "CheckVersion"; }
 
   explicit CheckVersionFeature(Server& server, int* result,
-                               std::vector<size_t> const& nonServerFeatures);
+                               std::span<const size_t> nonServerFeatures);
 
  private:
   bool _checkVersion;
@@ -49,7 +51,7 @@ class CheckVersionFeature final : public ArangodFeature {
   void checkVersion();
 
   int* _result;
-  std::vector<size_t> _nonServerFeatures;
+  std::span<const size_t> _nonServerFeatures;
 };
 
 }  // namespace arangodb

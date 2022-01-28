@@ -81,8 +81,8 @@ struct ArangoBackupInitializer {
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    _client.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangoBackupServer::id<BackupFeature>()});
+    constexpr size_t kFeatures[]{ArangoBackupServer::id<BackupFeature>()};
+    _client.addFeature<ShutdownFeature>(kFeatures);
   }
 
  private:

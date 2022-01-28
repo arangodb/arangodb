@@ -296,24 +296,25 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - ArangoSearch: not needed by agency
   // - IResearchAnalyzer: analyzers are not needed by agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
-
-  std::vector<size_t> disabledFeatures(
-      {ArangodServer::id<iresearch::IResearchFeature>(),
-       ArangodServer::id<iresearch::IResearchAnalyzerFeature>(),
-       ArangodServer::id<ActionFeature>(), ArangodServer::id<FoxxFeature>(),
-       ArangodServer::id<FrontendFeature>()});
+  {
+    constexpr size_t kDisabledFeatures[]{
+        ArangodServer::id<iresearch::IResearchFeature>(),
+        ArangodServer::id<iresearch::IResearchAnalyzerFeature>(),
+        ArangodServer::id<ActionFeature>(), ArangodServer::id<FoxxFeature>(),
+        ArangodServer::id<FrontendFeature>()};
+    server().disableFeatures(kDisabledFeatures);
+  }
 
   if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
     // specifying --console requires JavaScript, so we can only turn Javascript
     // off if not requested
 
     // console mode inactive. so we can turn off V8
-    disabledFeatures.emplace_back(ArangodServer::id<ScriptFeature>());
-    disabledFeatures.emplace_back(ArangodServer::id<V8PlatformFeature>());
-    disabledFeatures.emplace_back(ArangodServer::id<V8DealerFeature>());
+    constexpr size_t kDisabledFeatures[]{ArangodServer::id<ScriptFeature>(),
+                                         ArangodServer::id<V8PlatformFeature>(),
+                                         ArangodServer::id<V8DealerFeature>()};
+    server().disableFeatures(kDisabledFeatures);
   }
-
-  server().disableFeatures(disabledFeatures);
 }
 
 void AgencyFeature::prepare() {

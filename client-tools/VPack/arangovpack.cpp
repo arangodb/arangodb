@@ -68,8 +68,8 @@ struct ArangoVPackInitializer {
   }
 
   void operator()(TypeTag<ShutdownFeature>) {
-    _client.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangoVPackServer::id<VPackFeature>()});
+    constexpr size_t kFeatures[]{ArangoVPackServer::id<VPackFeature>()};
+    _client.addFeature<ShutdownFeature>(kFeatures);
   }
 
   void operator()(TypeTag<GreetingsFeaturePhase>) {

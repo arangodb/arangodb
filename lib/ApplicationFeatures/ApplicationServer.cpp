@@ -108,16 +108,15 @@ bool ApplicationServer::isStoppingState(State state) const {
          state == State::ABORTED;
 }
 
-// FIXME(gnusi) don't use vector
-void ApplicationServer::disableFeatures(std::vector<size_t> const& types) {
+void ApplicationServer::disableFeatures(std::span<const size_t> types) {
   disableFeatures(types, false);
 }
 
-void ApplicationServer::forceDisableFeatures(std::vector<size_t> const& types) {
+void ApplicationServer::forceDisableFeatures(std::span<const size_t> types) {
   disableFeatures(types, true);
 }
 
-void ApplicationServer::disableFeatures(std::vector<size_t> const& types,
+void ApplicationServer::disableFeatures(std::span<const size_t> types,
                                         bool force) {
   for (size_t const type : types) {
     if (hasFeature(type)) {

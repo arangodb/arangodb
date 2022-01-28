@@ -200,9 +200,7 @@ class ApplicationServer {
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
-  // FIXME(gnusi) rerturn span
-  std::vector<std::reference_wrapper<ApplicationFeature>> const&
-  getOrderedFeatures() {
+  std::span<std::reference_wrapper<ApplicationFeature>> getOrderedFeatures() {
     return _orderedFeatures;
   }
 
@@ -227,12 +225,11 @@ class ApplicationServer {
         TRI_ERROR_INTERNAL, "unknown feature '" + std::to_string(type) + "'");
   }
 
-  // FIXME(gnusi) use span
-  void disableFeatures(std::vector<size_t> const&);
-  void forceDisableFeatures(std::vector<size_t> const&);
+  void disableFeatures(std::span<const size_t>);
+  void forceDisableFeatures(std::span<const size_t>);
 
  private:
-  void disableFeatures(std::vector<size_t> const& types, bool force);
+  void disableFeatures(std::span<const size_t> types, bool force);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature&)>, bool enabledOnly);
