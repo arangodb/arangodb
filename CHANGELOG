@@ -5,6 +5,14 @@ v3.9.0 (XXXX-XX-XX)
   Smart Graph could led to wrong shard location calculation and therefore to
   wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
 
+* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
+  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
 * Fix creation of satellite graphs with a `numberOfShards` value != 1.
 
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
