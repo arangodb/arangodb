@@ -3,6 +3,18 @@ devel
 
 * Slightly improve the explain output of SingleRemoteOperationNodes.
 
+* Added more detail to the log messages that display the total time consumption
+  and total amount of data parsed for the client tools arangodump and 
+  arangorestore. 
+
+* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
+  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
 * Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
   multiple Coordinators.
 
