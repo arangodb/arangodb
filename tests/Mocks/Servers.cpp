@@ -23,13 +23,14 @@
 
 #include <algorithm>
 
+#include "Servers.h"
+
 #include "Agency/AgencyStrings.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
@@ -59,21 +60,22 @@
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "Metrics/MetricsFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -102,6 +104,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
+
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::tests;
@@ -109,7 +112,7 @@ using namespace arangodb::tests::mocks;
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      false, false);
+      false, std::false_type{});
   server.addFeature<arangodb::metrics::MetricsFeature>(false);
   server.addFeature<arangodb::SharedPRNGFeature>(false);
   server.addFeature<arangodb::SoftShutdownFeature>(false);
@@ -134,8 +137,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<arangodb::EngineSelectorFeature>(false);
   server.addFeature<arangodb::StorageEngineFeature>(false);
   server.addFeature<arangodb::SystemDatabaseFeature>(true);
-  server.addFeature<arangodb::InitDatabaseFeature>(
-      true, std::vector<std::type_index>{});
+  server.addFeature<arangodb::InitDatabaseFeature>(true, std::vector<size_t>{});
   server.addFeature<arangodb::ViewTypesFeature>(false);  // true ??
 
 #if USE_ENTERPRISE
@@ -218,9 +220,7 @@ MockServer::~MockServer() {
   arangodb::ServerState::instance()->setRebootId(_oldRebootId);
 }
 
-application_features::ApplicationServer& MockServer::server() {
-  return _server;
-}
+ArangodServer& MockServer::server() { return _server; }
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();
@@ -497,8 +497,7 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   _server.getFeature<ClusterFeature>().allocateMembers();
 
-  addFeature<arangodb::UpgradeFeature>(false, &_dummy,
-                                       std::vector<std::type_index>{});
+  addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<size_t>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
 
   arangodb::network::ConnectionPool::Config config(

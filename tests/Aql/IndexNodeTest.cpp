@@ -54,8 +54,7 @@ class IndexNodeTest
 
 };  // IndexNodeTest
 
-arangodb::CreateDatabaseInfo createInfo(
-    arangodb::application_features::ApplicationServer& server) {
+arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {
@@ -559,57 +558,49 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     }
 
     // clone
-    {
-      // without properties
-      {
-        auto indNodeClone =
-            dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
-                const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), true,
-                false));
+    {// without properties
+     {auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
+          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), true,
+          false));
 
-        EXPECT_EQ(indNode.getType(), indNodeClone->getType());
-        EXPECT_EQ(indNode.outVariable(), indNodeClone->outVariable());
-        EXPECT_EQ(indNode.plan(), indNodeClone->plan());
-        EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
-        EXPECT_EQ(indNode.isLateMaterialized(),
-                  indNodeClone->isLateMaterialized());
+    EXPECT_EQ(indNode.getType(), indNodeClone->getType());
+    EXPECT_EQ(indNode.outVariable(), indNodeClone->outVariable());
+    EXPECT_EQ(indNode.plan(), indNodeClone->plan());
+    EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
+    EXPECT_EQ(indNode.isLateMaterialized(), indNodeClone->isLateMaterialized());
 
-        ASSERT_TRUE(indNodeClone->isLateMaterialized());
-      }
-
-      // with properties
-      {
-        auto ctx =
-            std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-        auto queryClone = arangodb::aql::Query::create(
-            ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
-            nullptr);
-        queryClone->prepareQuery(
-            arangodb::aql::SerializationFormat::SHADOWROWS);
-        indNode.invalidateVarUsage();
-        auto indNodeClone =
-            dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
-                const_cast<arangodb::aql::ExecutionPlan*>(queryClone->plan()),
-                true, true));
-
-        EXPECT_EQ(indNode.getType(), indNodeClone->getType());
-        EXPECT_NE(indNode.outVariable(), indNodeClone->outVariable());
-        EXPECT_NE(indNode.plan(), indNodeClone->plan());
-        EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
-        EXPECT_EQ(indNode.isLateMaterialized(),
-                  indNodeClone->isLateMaterialized());
-
-        ASSERT_TRUE(indNodeClone->isLateMaterialized());
-      }
-    }
-
-    // not materialized
-    {
-      indNode.setLateMaterialized(nullptr, arangodb::IndexId::primary(),
-                                  arangodb::aql::IndexNode::IndexVarsInfo());
-      ASSERT_FALSE(indNode.isLateMaterialized());
-    }
+    ASSERT_TRUE(indNodeClone->isLateMaterialized());
   }
+
+  // with properties
+  {
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto queryClone = arangodb::aql::Query::create(
+        ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
+    queryClone->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    indNode.invalidateVarUsage();
+    auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
+        const_cast<arangodb::aql::ExecutionPlan*>(queryClone->plan()), true,
+        true));
+
+    EXPECT_EQ(indNode.getType(), indNodeClone->getType());
+    EXPECT_NE(indNode.outVariable(), indNodeClone->outVariable());
+    EXPECT_NE(indNode.plan(), indNodeClone->plan());
+    EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
+    EXPECT_EQ(indNode.isLateMaterialized(), indNodeClone->isLateMaterialized());
+
+    ASSERT_TRUE(indNodeClone->isLateMaterialized());
+  }
+}
+
+// not materialized
+{
+  indNode.setLateMaterialized(nullptr, arangodb::IndexId::primary(),
+                              arangodb::aql::IndexNode::IndexVarsInfo());
+  ASSERT_FALSE(indNode.isLateMaterialized());
+}
+}  // namespace
 }
 
 TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {

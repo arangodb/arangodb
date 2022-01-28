@@ -309,6 +309,16 @@ class ApplicationFeatureT : public ApplicationFeature {
     ApplicationFeature::onlyEnabledWith<T, Server>();
   }
 
+  template<typename T>
+  bool doesStartBefore() const {
+    return ApplicationFeature::doesStartBefore<T, Server>();
+  }
+
+  template<typename T>
+  bool doesStartAfter() const {
+    return ApplicationFeature::doesStartAfter<T, Server>();
+  }
+
  protected:
   template<typename Impl>
   ApplicationFeatureT(Server& server, const Impl&)

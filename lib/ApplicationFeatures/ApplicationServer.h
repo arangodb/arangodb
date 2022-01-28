@@ -362,15 +362,17 @@ class ApplicationServerT : public ApplicationServer {
   // will take ownership of the feature object and destroy it in its
   // destructor
   template<typename Type, typename Impl = Type, typename... Args>
-  void addFeature(Args&&... args) {
+  Impl& addFeature(Args&&... args) {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
     static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
     static_assert(std::is_base_of_v<Type, Impl>);
     constexpr auto featureId = Features::template id<Type>();
 
     TRI_ASSERT(!hasFeature<Type>());
-    _features[featureId] =
-        std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+    auto& slot = _features[featureId];
+    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+
+    return static_cast<Impl&>(*slot);
   }
 
   // checks for the existence of a feature. will not throw when used for
