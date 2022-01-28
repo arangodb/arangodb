@@ -60,7 +60,7 @@ void Pregel3Feature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--pregel3.parallelism",
                      "magic number for fastness. Much Good. So Parallel.",
-                     new SizeTParameter(&_settings->_parallelism));
+                     new SizeTParameter(&_settings._parallelism));
 #endif
 }
 

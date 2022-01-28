@@ -62,7 +62,7 @@ class Pregel3Feature final : public application_features::ApplicationFeature {
  private:
   std::unordered_map<pregel3::QueryId, pregel3::Query> _queries;
   uint64_t nextFreeQueryId = 0;
-  std::shared_ptr<pregel3::GlobalSettings> _settings;
+  pregel3::GlobalSettings _settings;
 };
 
 }  // namespace arangodb
