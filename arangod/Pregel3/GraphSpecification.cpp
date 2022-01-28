@@ -90,7 +90,5 @@ auto GraphSpecification::fromVelocyPack(VPackSlice slice)
     return GraphSpecification(std::move(gSBC));
   }
 }
-void GraphSpecification::toVelocyPack(VPackBuilder& builder) {
-  return VPackBuilder{};  // todo
-}
+void GraphSpecification::toVelocyPack(VPackBuilder& builder) {}
 }  // namespace arangodb::pregel3
