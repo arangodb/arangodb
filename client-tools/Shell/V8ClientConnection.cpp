@@ -1354,9 +1354,13 @@ static void ClientConnection_importJson(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   ArangoshServer& server = v8connection->server();
-  auto* encryption = server.hasFeature<EncryptionFeature>()
-                         ? &server.getFeature<EncryptionFeature>()
-                         : nullptr;
+
+  EncryptionFeature* encryption{};
+  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
+    if (server.hasFeature<EncryptionFeature>()) {
+      encryption = &server.getFeature<EncryptionFeature>();
+    }
+  }
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());

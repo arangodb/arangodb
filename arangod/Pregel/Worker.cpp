@@ -812,7 +812,7 @@ void Worker<V, E, M>::_callConductorWithResponse(
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
 
     auto& server = _config.vocbase()->server();
-    auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+    auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
 
     VPackBuffer<uint8_t> buffer;
