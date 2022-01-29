@@ -165,8 +165,8 @@ v8::Local<v8::Object> getAnalyzersInstance(TRI_v8_global_t* v8g,
 }
 
 v8::Local<v8::Function> getAnalyzersMethodFunction(
-    TRI_v8_global_t* v8g, v8::Isolate* isolate,
-    v8::Local<v8::Object>& analyzerObj, const char* name) {
+    v8::Isolate* isolate, v8::Local<v8::Object>& analyzerObj,
+    const char* name) {
   auto fn = analyzerObj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, name))
                 .FromMaybe(v8::Local<v8::Value>());
   bool isFunction = fn->IsFunction();
@@ -175,6 +175,16 @@ v8::Local<v8::Function> getAnalyzersMethodFunction(
 }
 
 TEST_F(V8AnalyzerTest, test_instance_accessors) {
+  using namespace arangodb;
+  using namespace arangodb::application_features;
+
+  ASSERT_TRUE(server.server().hasFeature<CommunicationFeaturePhase>());
+  ASSERT_TRUE(server.server().hasFeature<V8SecurityFeature>());
+  ASSERT_TRUE(server.server().hasFeature<HttpEndpointProvider>());
+#ifdef USE_ENTERPRISE
+  ASSERT_TRUE(server.server().hasFeature<EncryptionFeature>());
+#endif
+
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
@@ -243,14 +253,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8Analyzer = getAnalyzersInstance(v8g.get(), isolate.get());
-  auto fn_name =
-      getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
-  auto fn_type =
-      getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
-  auto fn_properties = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
-                                                  v8Analyzer, "properties");
-  auto fn_features = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
-                                                v8Analyzer, "features");
+  auto fn_name = getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "name");
+  auto fn_type = getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "type");
+  auto fn_properties =
+      getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "properties");
+  auto fn_features =
+      getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "features");
 
   v8Analyzer->SetInternalField(
       SLOT_CLASS_TYPE,
@@ -575,8 +583,8 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
-                                            v8AnalyzerManager, "save");
+  auto fn_save =
+      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "save");
 
   // invalid params (no args)
   {
@@ -1085,8 +1093,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
-                                                v8AnalyzerManager, "analyzer");
+  auto fn_analyzer =
+      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "analyzer");
 
   // invalid params (no name)
   {
@@ -1542,8 +1550,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
-                                               v8AnalyzerManager, "toArray");
+  auto fn_toArray =
+      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "toArray");
   // system database (authorised)
   {
     v8g->_vocbase = &systemDBVocbase;
@@ -1950,8 +1958,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
-                                              v8AnalyzerManager, "remove");
+  auto fn_remove =
+      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "remove");
 
   // invalid params (no name)
   {
