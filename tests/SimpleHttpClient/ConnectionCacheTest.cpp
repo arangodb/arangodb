@@ -320,7 +320,7 @@ TEST(ConnectionCacheTest, testDropSuperfluous) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{3});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("tcp://127.0.0.1:12345");
