@@ -28,6 +28,7 @@
 #include <windows.h>
 #include <iostream>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/win-utils.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -83,7 +84,7 @@ WindowsServiceFeature::WindowsServiceFeature(Server& server)
       _shutdownNoted(false) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  startsAfter<application_features::GreetingsFeaturePhase>();
 
   ArangoInstance = this;
 
