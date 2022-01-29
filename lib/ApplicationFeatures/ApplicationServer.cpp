@@ -520,28 +520,28 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     features.insert(insertPosition, us);
   }
 
-  //  if (Logger::isEnabled(LogLevel::TRACE, Logger::STARTUP)) {
-  LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::STARTUP)) {
+    LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
 
-  int position = 0;
-  for (ApplicationFeature& feature : features) {
-    auto const& startsAfter = feature.startsAfter();
+    int position = 0;
+    for (ApplicationFeature& feature : features) {
+      auto const& startsAfter = feature.startsAfter();
 
-    std::string dependencies;
-    if (!startsAfter.empty()) {
-      std::function<std::string(size_t)> cb =
-          [this](size_t type) -> std::string {
-        return hasFeature(type) ? std::string{getFeature(type).name()}
-                                : "unknown";
-      };
-      dependencies =
-          " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
+      std::string dependencies;
+      if (!startsAfter.empty()) {
+        std::function<std::string(size_t)> cb =
+            [this](size_t type) -> std::string {
+          return hasFeature(type) ? std::string{getFeature(type).name()}
+                                  : "unknown";
+        };
+        dependencies =
+            " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
+      }
+      LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)
+          << "feature #" << ++position << ": " << feature.name()
+          << (feature.isEnabled() ? "" : " (disabled)") << dependencies;
     }
-    LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)
-        << "feature #" << ++position << ": " << feature.name()
-        << (feature.isEnabled() ? "" : " (disabled)") << dependencies;
   }
-  //  }
 
   // remove all inactive features
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
