@@ -24,6 +24,9 @@
 #include "RestServer/arangod.h"
 
 #include <type_traits>
+#ifdef _WIN32
+#include <iostream>
+#endif
 
 #include "Basics/Common.h"
 #include "Basics/directories.h"
@@ -123,6 +126,12 @@
 #include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 
 #ifdef _WIN32
 #include "ApplicationFeatures/WindowsServiceFeature.h"
@@ -137,19 +146,6 @@
 #include "Enterprise/RClone/RCloneFeature.h"
 #include "Enterprise/Ssl/SslServerFeatureEE.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
-#endif
-
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
-
-// storage engines
-#include "ClusterEngine/ClusterEngine.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
-
-#ifdef _WIN32
-#include <iostream>
 #endif
 
 using namespace arangodb;
@@ -185,9 +181,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     ServerState state{server};
 
     server.init(Visitor{
-        //        []<typename T>(ArangodServer& server, TypeTag<T>) {
-        //          server.addFeature<T>();
-        //        },
         [](ArangodServer& server, TypeTag<GreetingsFeaturePhase>) {
           server.addFeature<GreetingsFeaturePhase>(std::false_type{});
         },
