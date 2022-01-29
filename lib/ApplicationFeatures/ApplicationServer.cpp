@@ -186,9 +186,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // off even in the prepare phase
   disableDependentFeatures();
 
-  // permanently drop the privileges
-  dropPrivilegesPermanently();
-
   // start features. now features are allowed to start threads, write files etc.
   _state.store(State::IN_START, std::memory_order_release);
   reportServerProgress(State::IN_START);
@@ -608,24 +605,8 @@ void ApplicationServer::disableDependentFeatures() {
 void ApplicationServer::prepare() {
   LOG_TOPIC("04e8f", TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
 
-  // we start with elevated privileges
-  bool privilegesElevated = true;
-
   for (ApplicationFeature& feature : _orderedFeatures) {
     if (feature.isEnabled()) {
-      bool const requiresElevated = feature.requiresElevatedPrivileges();
-
-      if (requiresElevated != privilegesElevated) {
-        // must change privileges for the feature
-        if (requiresElevated) {
-          raisePrivilegesTemporarily();
-          privilegesElevated = true;
-        } else {
-          dropPrivilegesTemporarily();
-          privilegesElevated = false;
-        }
-      }
-
       try {
         LOG_TOPIC("d4e57", TRACE, Logger::STARTUP)
             << feature.name() << "::prepare";
@@ -635,19 +616,11 @@ void ApplicationServer::prepare() {
         LOG_TOPIC("37921", ERR, Logger::STARTUP)
             << "caught exception during prepare of feature '" << feature.name()
             << "': " << ex.what();
-        // restore original privileges
-        if (!privilegesElevated) {
-          raisePrivilegesTemporarily();
-        }
         throw;
       } catch (...) {
         LOG_TOPIC("a1b9f", ERR, Logger::STARTUP)
             << "caught unknown exception during preparation of feature '"
             << feature.name() << "'";
-        // restore original privileges
-        if (!privilegesElevated) {
-          raisePrivilegesTemporarily();
-        }
         throw;
       }
 
@@ -861,55 +834,20 @@ void ApplicationServer::wait() {
   }
 }
 
-// temporarily raise privileges
-void ApplicationServer::raisePrivilegesTemporarily() {
-  if (_privilegesDropped) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "must not raise privileges after dropping them");
-  }
-
-  LOG_TOPIC("34163", TRACE, Logger::STARTUP) << "raising privileges";
-  // TODO: raising privileges not implemented
-}
-
-// temporarily drop privileges
-void ApplicationServer::dropPrivilegesTemporarily() {
-  if (_privilegesDropped) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "must not try to drop privileges after dropping them");
-  }
-
-  LOG_TOPIC("8d23d", TRACE, Logger::STARTUP) << "dropping privileges";
-  // TODO: dropping privileges not implemented
-}
-
-// permanently dropped privileges
-void ApplicationServer::dropPrivilegesPermanently() {
-  if (_privilegesDropped) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "must not try to drop privileges after having dropped them");
-  }
-
-  // FIXME(gnusi) implement
-  //   if (hasFeature<PrivilegeFeature>()) {
-  //     getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
-  //   }
-
-  _privilegesDropped = true;
-}
-
 void ApplicationServer::reportServerProgress(State state) {
-  for (auto reporter : _progressReports) {
-    reporter._state(state);
+  for (auto& reporter : _progressReports) {
+    if (reporter._state) {
+      reporter._state(state);
+    }
   }
 }
 
 void ApplicationServer::reportFeatureProgress(State state,
                                               std::string_view name) {
-  for (auto reporter : _progressReports) {
-    reporter._feature(state, name);
+  for (auto& reporter : _progressReports) {
+    if (reporter._feature) {
+      reporter._feature(state, name);
+    }
   }
 }
 

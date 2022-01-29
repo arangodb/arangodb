@@ -70,30 +70,31 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoBenchServer server(options, BIN_DIRECTORY);
 
-    server.init(Visitor{
+    server.addFeatures(Visitor{
         [](ArangoBenchServer& server, TypeTag<GreetingsFeaturePhase>) {
-          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
         },
         [&](ArangoBenchServer& server, TypeTag<ConfigFeature>) {
-          server.addFeature<ConfigFeature>(context.binaryName());
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
         },
         [](ArangoBenchServer& server, TypeTag<HttpEndpointProvider>) {
           // provide max number of endpoints
-          server.addFeature<HttpEndpointProvider, ClientFeature>(
-              false, std::numeric_limits<size_t>::max());
+          return std::make_unique<ClientFeature>(
+              server, false, std::numeric_limits<size_t>::max());
         },
         [](ArangoBenchServer& server, TypeTag<LoggerFeature>) {
-          server.addFeature<LoggerFeature>(false);
+          return std::make_unique<LoggerFeature>(server, false);
         },
         [&](ArangoBenchServer& server, TypeTag<BenchFeature>) {
-          server.addFeature<BenchFeature>(&ret);
+          return std::make_unique<BenchFeature>(server, &ret);
         },
         [](ArangoBenchServer& server, TypeTag<ShutdownFeature>) {
           constexpr size_t kFeatures[]{ArangoBenchServer::id<BenchFeature>()};
-          server.addFeature<ShutdownFeature>(kFeatures);
+          return std::make_unique<ShutdownFeature>(server, kFeatures);
         },
         [&](ArangoBenchServer& server, TypeTag<TempFeature>) {
-          server.addFeature<TempFeature>(context.binaryName());
+          return std::make_unique<TempFeature>(server, context.binaryName());
         }});
 
     try {

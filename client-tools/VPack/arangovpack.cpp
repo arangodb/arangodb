@@ -62,23 +62,25 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoVPackServer server(options, BIN_DIRECTORY);
 
-    server.init(Visitor{
+    server.addFeatures(Visitor{
         [&](ArangoVPackServer& server, TypeTag<VPackFeature>) {
-          server.addFeature<VPackFeature>(&ret);
+          return std::make_unique<VPackFeature>(server, &ret);
         },
         [&](ArangoVPackServer& server, TypeTag<ConfigFeature>) {
           // default is to use no config file
-          server.addFeature<ConfigFeature>(context.binaryName(), "none");
+          return std::make_unique<ConfigFeature>(server, context.binaryName(),
+                                                 "none");
         },
         [](ArangoVPackServer& server, TypeTag<ShutdownFeature>) {
           constexpr size_t kFeatures[]{ArangoVPackServer::id<VPackFeature>()};
-          server.addFeature<ShutdownFeature>(kFeatures);
+          return std::make_unique<ShutdownFeature>(server, kFeatures);
         },
         [](ArangoVPackServer& server, TypeTag<GreetingsFeaturePhase>) {
-          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
         },
         [](ArangoVPackServer& server, TypeTag<LoggerFeature>) {
-          server.addFeature<LoggerFeature>(false);
+          return std::make_unique<LoggerFeature>(server, false);
         }});
 
     try {

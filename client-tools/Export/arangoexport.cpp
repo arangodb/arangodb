@@ -69,28 +69,29 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoExportServer server(options, BIN_DIRECTORY);
 
-    server.init(Visitor{
+    server.addFeatures(Visitor{
         [](ArangoExportServer& server, TypeTag<GreetingsFeaturePhase>) {
-          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
         },
         [&context](ArangoExportServer& server, TypeTag<ConfigFeature>) {
-          server.addFeature<ConfigFeature>(context.binaryName());
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
         },
         [](ArangoExportServer& server, TypeTag<LoggerFeature>) {
-          server.addFeature<LoggerFeature>(false);
+          return std::make_unique<LoggerFeature>(server, false);
         },
         [](ArangoExportServer& server, TypeTag<HttpEndpointProvider>) {
-          server.addFeature<HttpEndpointProvider, ClientFeature>(false);
+          return std::make_unique<ClientFeature>(server, false);
         },
         [&ret](ArangoExportServer& server, TypeTag<ExportFeature>) {
-          server.addFeature<ExportFeature>(&ret);
+          return std::make_unique<ExportFeature>(server, &ret);
         },
         [](ArangoExportServer& server, TypeTag<ShutdownFeature>) {
           constexpr size_t kFeatures[]{ArangoExportServer::id<ExportFeature>()};
-          server.addFeature<ShutdownFeature>(kFeatures);
+          return std::make_unique<ShutdownFeature>(server, kFeatures);
         },
         [&context](ArangoExportServer& server, TypeTag<TempFeature>) {
-          server.addFeature<TempFeature>(context.binaryName());
+          return std::make_unique<TempFeature>(server, context.binaryName());
         }});
 
     try {

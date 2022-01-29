@@ -66,30 +66,31 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoRestoreServer server(options, BIN_DIRECTORY);
 
-    server.init(Visitor{
+    server.addFeatures(Visitor{
         [](ArangoRestoreServer& server, TypeTag<GreetingsFeaturePhase>) {
-          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
         },
         [&](ArangoRestoreServer& server, TypeTag<ConfigFeature>) {
-          server.addFeature<ConfigFeature>(context.binaryName());
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
         },
         [](ArangoRestoreServer& server, TypeTag<LoggerFeature>) {
-          server.addFeature<LoggerFeature>(false);
+          return std::make_unique<LoggerFeature>(server, false);
         },
         [](ArangoRestoreServer& server, TypeTag<HttpEndpointProvider>) {
-          server.addFeature<HttpEndpointProvider, ClientFeature>(
-              true, std::numeric_limits<size_t>::max());
+          return std::make_unique<ClientFeature>(
+              server, true, std::numeric_limits<size_t>::max());
         },
         [&ret](ArangoRestoreServer& server, TypeTag<RestoreFeature>) {
-          server.addFeature<RestoreFeature>(ret);
+          return std::make_unique<RestoreFeature>(server, ret);
         },
         [](ArangoRestoreServer& server, TypeTag<ShutdownFeature>) {
           constexpr size_t kFeatures[]{
               ArangoRestoreServer::id<RestoreFeature>()};
-          server.addFeature<ShutdownFeature>(kFeatures);
+          return std::make_unique<ShutdownFeature>(server, kFeatures);
         },
         [&](ArangoRestoreServer& server, TypeTag<TempFeature>) {
-          server.addFeature<TempFeature>(context.binaryName());
+          return std::make_unique<TempFeature>(server, context.binaryName());
         }});
 
     try {

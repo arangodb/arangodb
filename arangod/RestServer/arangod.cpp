@@ -180,47 +180,60 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     ArangodServer server{options, SBIN_DIRECTORY};
     ServerState state{server};
 
-    server.init(Visitor{
-        [](ArangodServer& server, TypeTag<GreetingsFeaturePhase>) {
-          server.addFeature<GreetingsFeaturePhase>(std::false_type{});
+    server.addReporter(
+        {[&](ArangodServer::State state) {
+           if (state == ArangodServer::State::IN_START) {
+             // drop priveleges before starting features
+             server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
+           }
+         },
+         {}});
+
+    server.addFeatures(Visitor{
+        [](auto& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::false_type{});
         },
-        [&ret](ArangodServer& server, TypeTag<CheckVersionFeature>) {
-          server.addFeature<CheckVersionFeature>(&ret, kNonServerFeatures);
+        [&ret](auto& server, TypeTag<CheckVersionFeature>) {
+          return std::make_unique<CheckVersionFeature>(server, &ret,
+                                                       kNonServerFeatures);
         },
-        [&name](ArangodServer& server, TypeTag<ConfigFeature>) {
-          server.addFeature<ConfigFeature>(name);
+        [&name](auto& server, TypeTag<ConfigFeature>) {
+          return std::make_unique<ConfigFeature>(server, name);
         },
-        [](ArangodServer& server, TypeTag<InitDatabaseFeature>) {
-          server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
+        [](auto& server, TypeTag<InitDatabaseFeature>) {
+          return std::make_unique<InitDatabaseFeature>(server,
+                                                       kNonServerFeatures);
         },
-        [](ArangodServer& server, TypeTag<LoggerFeature>) {
-          server.addFeature<LoggerFeature>(true);
+        [](auto& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, true);
         },
-        [&ret](ArangodServer& server, TypeTag<ScriptFeature>) {
-          server.addFeature<ScriptFeature>(&ret);
+        [&ret](auto& server, TypeTag<ScriptFeature>) {
+          return std::make_unique<ScriptFeature>(server, &ret);
         },
-        [&ret](ArangodServer& server, TypeTag<ServerFeature>) {
-          server.addFeature<ServerFeature>(&ret);
+        [&ret](auto& server, TypeTag<ServerFeature>) {
+          return std::make_unique<ServerFeature>(server, &ret);
         },
-        [](ArangodServer& server, TypeTag<ShutdownFeature>) {
+        [](auto& server, TypeTag<ShutdownFeature>) {
           constexpr size_t kFeatures[]{ArangodServer::id<ScriptFeature>()};
-          server.addFeature<ShutdownFeature>(kFeatures);
+          return std::make_unique<ShutdownFeature>(server, kFeatures);
         },
-        [&name](ArangodServer& server, TypeTag<TempFeature>) {
-          server.addFeature<TempFeature>(name);
+        [&name](auto& server, TypeTag<TempFeature>) {
+          return std::make_unique<TempFeature>(server, name);
         },
-        [](ArangodServer& server, TypeTag<SslServerFeature>) {
+        [](auto& server, TypeTag<SslServerFeature>) {
 #ifdef USE_ENTERPRISE
-          server.addFeature<SslServerFeature, SslServerFeatureEE>();
+          return std::make_unique<SslServerFeatureEE>(server);
 #else
-          server.addFeature<SslServerFeature>();
+          return std::make_unique<SslServerFeature>(server);
 #endif
         },
-        [&ret](ArangodServer& server, TypeTag<UpgradeFeature>) {
-          server.addFeature<UpgradeFeature>(&ret, kNonServerFeatures);
+        [&ret](auto& server, TypeTag<UpgradeFeature>) {
+          return std::make_unique<UpgradeFeature>(server, &ret,
+                                                  kNonServerFeatures);
         },
-        [](ArangodServer& server, TypeTag<HttpEndpointProvider>) {
-          server.addFeature<HttpEndpointProvider, EndpointFeature>();
+        [](auto& server, TypeTag<HttpEndpointProvider>) {
+          return std::make_unique<EndpointFeature>(server);
         }});
 
     try {

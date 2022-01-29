@@ -117,31 +117,27 @@ int main(int argc, char* argv[]) {
 
     ArangoDumpServer server(options, BIN_DIRECTORY);
 
-    server.init(Visitor{
+    server.addFeatures(Visitor{
         [](ArangoDumpServer& server, TypeTag<GreetingsFeaturePhase>) {
-          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
         },
-
         [&context](ArangoDumpServer& server, TypeTag<ConfigFeature>) {
-          server.addFeature<ConfigFeature>(context.binaryName());
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
         },
-
         [](ArangoDumpServer& server, TypeTag<LoggerFeature>) {
-          server.addFeature<LoggerFeature>(false);
+          return std::make_unique<LoggerFeature>(server, false);
         },
-
         [](ArangoDumpServer& server, TypeTag<HttpEndpointProvider>) {
-          server.addFeature<HttpEndpointProvider, ClientFeature>(
-              true, std::numeric_limits<size_t>::max());
+          return std::make_unique<ClientFeature>(
+              server, true, std::numeric_limits<size_t>::max());
         },
-
         [&ret](ArangoDumpServer& server, TypeTag<DumpFeature>) {
-          server.addFeature<DumpFeature>(ret);
+          return std::make_unique<DumpFeature>(server, ret);
         },
-
         [](ArangoDumpServer& server, TypeTag<ShutdownFeature>) {
           constexpr size_t kFeatures[]{ArangoDumpServer::id<DumpFeature>()};
-          server.addFeature<ShutdownFeature>(kFeatures);
+          return std::make_unique<ShutdownFeature>(server, kFeatures);
         }});
 
     try {

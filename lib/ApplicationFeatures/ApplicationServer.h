@@ -271,10 +271,6 @@ class ApplicationServer {
   // beginShutdown is called
   void wait();
 
-  void raisePrivilegesTemporarily();
-  void dropPrivilegesTemporarily();
-  void dropPrivilegesPermanently();
-
   void reportServerProgress(State);
   void reportFeatureProgress(State, std::string_view);
 
@@ -313,9 +309,6 @@ class ApplicationServer {
   /// the flag is set to true when beginShutdown finishes
   bool _abortWaiting = false;
 
-  // whether or not privileges have been dropped permanently
-  bool _privilegesDropped = false;
-
   // whether or not to dump dependencies
   bool _dumpDependencies = false;
 
@@ -340,18 +333,42 @@ class ApplicationServerT : public ApplicationServer {
                      char const* binaryPath)
       : ApplicationServer{opts, binaryPath, _features} {}
 
-  // FIXME(gnusi): general initalization logic
+  // adds all registered features to the application server.
   template<typename Initializer>
-  void init(Initializer&& initializer) {
+  void addFeatures(Initializer&& initializer) {
     Features::visit([&]<typename T>(TypeTag<T>) {
+      static_assert(std::is_base_of_v<ApplicationFeature, T>);
+      constexpr auto featureId = Features::template id<T>();
+
+      TRI_ASSERT(!hasFeature<T>());
       if constexpr (std::is_constructible_v<T, ApplicationServerT&>) {
-        addFeature<T>();
+        _features[featureId] = std::make_unique<T>(*this);
       } else {
-        initializer(*this, TypeTag<T>{});
+        _features[featureId] =
+            std::forward<Initializer>(initializer)(*this, TypeTag<T>{});
       }
       TRI_ASSERT(hasFeature<T>());
     });
   }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // adds a feature to the application server. the application server
+  // will take ownership of the feature object and destroy it in its
+  // destructor
+  template<typename Type, typename Impl = Type, typename... Args>
+  Impl& addFeature(Args&&... args) {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
+    static_assert(std::is_base_of_v<Type, Impl>);
+    constexpr auto featureId = Features::template id<Type>();
+
+    TRI_ASSERT(!hasFeature<Type>());
+    auto& slot = _features[featureId];
+    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+
+    return static_cast<Impl&>(*slot);
+  }
+#endif
 
   // return whether or not a feature is enabled
   // will throw when called for a non-existing feature
@@ -372,23 +389,6 @@ class ApplicationServerT : public ApplicationServer {
   template<typename T>
   bool isRequired() const {
     return getFeature<T>().isRequired();
-  }
-
-  // adds a feature to the application server. the application server
-  // will take ownership of the feature object and destroy it in its
-  // destructor
-  template<typename Type, typename Impl = Type, typename... Args>
-  Impl& addFeature(Args&&... args) {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
-    static_assert(std::is_base_of_v<Type, Impl>);
-    constexpr auto featureId = Features::template id<Type>();
-
-    TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[featureId];
-    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
-
-    return static_cast<Impl&>(*slot);
   }
 
   // checks for the existence of a feature. will not throw when used for

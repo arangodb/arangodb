@@ -76,31 +76,32 @@ int main(int argc, char* argv[]) {
             "For more information use:", BIN_DIRECTORY));
     ArangoshServer server(options, BIN_DIRECTORY);
 
-    server.init(Visitor{
+    server.addFeatures(Visitor{
         [](ArangoshServer& server, TypeTag<HttpEndpointProvider>) {
-          server.addFeature<HttpEndpointProvider, ClientFeature>(true);
+          return std::make_unique<ClientFeature>(server, true);
         },
         [](ArangoshServer& server, TypeTag<GreetingsFeaturePhase>) {
-          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
         },
         [&](ArangoshServer& server, TypeTag<ConfigFeature>) {
-          server.addFeature<ConfigFeature>(context.binaryName());
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
         },
         [](ArangoshServer& server, TypeTag<LoggerFeature>) {
-          server.addFeature<LoggerFeature>(false);
+          return std::make_unique<LoggerFeature>(server, false);
         },
         [&](ArangoshServer& server, TypeTag<ShellFeature>) {
-          server.addFeature<ShellFeature>(&ret);
+          return std::make_unique<ShellFeature>(server, &ret);
         },
         [&](ArangoshServer& server, TypeTag<V8ShellFeature>) {
-          server.addFeature<V8ShellFeature>(context.binaryName());
+          return std::make_unique<V8ShellFeature>(server, context.binaryName());
         },
         [&](ArangoshServer& server, TypeTag<TempFeature>) {
-          server.addFeature<TempFeature>(context.binaryName());
+          return std::make_unique<TempFeature>(server, context.binaryName());
         },
         [](ArangoshServer& server, TypeTag<ShutdownFeature>) {
           constexpr size_t kFeatures[]{ArangoshServer::id<ShellFeature>()};
-          server.addFeature<ShutdownFeature>(kFeatures);
+          return std::make_unique<ShutdownFeature>(server, kFeatures);
         }});
 
     try {

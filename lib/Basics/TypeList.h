@@ -40,8 +40,6 @@ constexpr frozen::string ctti() noexcept {
 template<typename T>
 struct TypeTag {
   using type = T;
-
-  size_t index;
 };
 
 template<typename... Visitors>
@@ -102,7 +100,7 @@ class TypeList {
     template<typename Visitor, size_t... Idx>
     static constexpr void visitImpl(Visitor&& visitor,
                                     std::integer_sequence<size_t, Idx...>) {
-      (std::forward<Visitor>(visitor)(TypeTag<T>{Idx}), ...);
+      (std::forward<Visitor>(visitor)(TypeTag<T>{}), ...);
     }
   };
 
