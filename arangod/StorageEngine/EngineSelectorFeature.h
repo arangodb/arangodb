@@ -54,9 +54,9 @@ class EngineSelectorFeature final : public ArangodFeature {
                                    int>::type = 0>
   As& engine();
 
-  std::string const& engineName();
+  std::string_view engineName();
 
-  static std::string const& defaultEngine();
+  static std::string_view defaultEngine();
 
   /// @brief note that this will return true for the ClusterEngine too, in case
   /// the underlying engine is the RocksDB engine.

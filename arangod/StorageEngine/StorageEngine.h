@@ -84,7 +84,7 @@ struct Options;
 class StorageEngine : public ArangodFeature {
  public:
   // create the storage engine
-  StorageEngine(Server& server, std::string engineName,
+  StorageEngine(Server& server, std::string_view engineName,
                 std::string_view featureName, size_t registration,
                 std::unique_ptr<IndexFactory>&& indexFactory);
 
@@ -109,7 +109,7 @@ class StorageEngine : public ArangodFeature {
   // --------------------
 
   // return the name of the specific storage engine e.g. rocksdb
-  virtual std::string const& typeName() const;
+  virtual std::string_view typeName() const;
 
   // inventory functionality
   // -----------------------
@@ -367,7 +367,7 @@ class StorageEngine : public ArangodFeature {
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
-  std::string const _typeName;
+  std::string_view _typeName;
 };
 
 }  // namespace arangodb

@@ -673,8 +673,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
 
   // RocksDBEngine
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
-  std::string const& engineName = es.typeName();
-  if (engineName == RocksDBEngine::EngineName) {
+  if (es.typeName() == RocksDBEngine::kEngineName) {
     es.getStatistics(result, v2);
   }
 }

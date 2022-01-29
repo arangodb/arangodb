@@ -46,9 +46,13 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   ConfigFeature(Server& server, std::string const& progname,
                 std::string const& configFilename = "")
       : application_features::ApplicationFeature{server, *this},
+        _version{[&server]() {
+          return server.template hasFeature<VersionFeature>()
+                     ? &server.template getFeature<VersionFeature>()
+                     : nullptr;
+        }},
         _file(configFilename),
         _progname(progname),
-        _versionFeatureId{Server::template id<VersionFeature>()},
         _checkConfiguration(false) {
     setOptional(false);
     startsAfter<LoggerFeature, Server>();
@@ -63,10 +67,10 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname, char const* binaryPath);
 
+  std::function<VersionFeature*()> _version;
   std::string _file;
   std::string _progname;
   std::vector<std::string> _defines;
-  size_t _versionFeatureId;
   bool _checkConfiguration;
 };
 

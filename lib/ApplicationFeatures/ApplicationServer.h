@@ -208,14 +208,18 @@ class ApplicationServer {
   void setStateUnsafe(State ss) { _state = ss; }
 #endif
 
-  // FIXME(gnusi) make private
+  void disableFeatures(std::span<const size_t>);
+  void forceDisableFeatures(std::span<const size_t>);
+
+ private:
+  friend class ApplicationFeature;
+
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
   bool hasFeature(size_t type) const noexcept {
     return type < _features.size() && nullptr != _features[type];
   }
 
-  // FIXME(gnusi) make private
   ApplicationFeature& getFeature(size_t type) const {
     if (ADB_LIKELY(hasFeature(type))) {
       return *_features[type];
@@ -225,10 +229,6 @@ class ApplicationServer {
         TRI_ERROR_INTERNAL, "unknown feature '" + std::to_string(type) + "'");
   }
 
-  void disableFeatures(std::span<const size_t>);
-  void forceDisableFeatures(std::span<const size_t>);
-
- private:
   void disableFeatures(std::span<const size_t> types, bool force);
 
   // walks over all features and runs a callback function for them
@@ -405,8 +405,6 @@ class ApplicationServerT : public ApplicationServer {
     return static_cast<Impl&>(feature);
 #endif
   }
-
-  using ApplicationServer::getFeature;
 
   // returns the feature with the given name if known and enabled
   // throws otherwise

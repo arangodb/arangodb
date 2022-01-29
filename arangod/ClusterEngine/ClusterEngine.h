@@ -52,8 +52,8 @@ class ClusterEngine final : public StorageEngine {
   // storage engine overrides
   // ------------------------
 
-  std::string const& typeName() const override {
-    return _actualEngine ? _actualEngine->typeName() : StaticStrings::Empty;
+  std::string_view typeName() const override {
+    return _actualEngine ? _actualEngine->typeName() : std::string_view{};
   }
 
   // inherited from ApplicationFeature

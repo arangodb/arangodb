@@ -32,12 +32,10 @@ class VPackFeature;
 
 using namespace application_features;
 
-using ArangoVPackFeatures = TypeList<
-    BasicFeaturePhaseClient, GreetingsFeaturePhase,
-    ConfigFeature,
-    LoggerFeature, RandomFeature, ShellColorsFeature,
-    ShutdownFeature, VPackFeature,
-    VersionFeature>;
+using ArangoVPackFeatures =
+    TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
+             ConfigFeature, LoggerFeature, RandomFeature, ShellColorsFeature,
+             ShutdownFeature, VPackFeature>;
 
 using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
 using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;

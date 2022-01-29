@@ -342,7 +342,7 @@ bool upgradeArangoSearchLinkCollectionName(
               LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
                   << "Setting collection name '" << clusterCollectionName
                   << "' for link " << indexPtr->id().id();
-              if (selector.engineName() == RocksDBEngine::EngineName) {
+              if (selector.engineName() == RocksDBEngine::kEngineName) {
                 auto& engine = selector.engine<RocksDBEngine>();
                 auto builder = collection->toVelocyPackIgnore(
                     {"path", "statusString"}, LogicalDataSource::Serialization::

@@ -467,7 +467,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
 
  public:
-  static std::string const EngineName;
+  static constexpr std::string_view kEngineName = "rocksdb";
 
  private:
   /// single rocksdb database used in this storage engine

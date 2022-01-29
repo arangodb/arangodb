@@ -99,9 +99,8 @@ void InitDatabaseFeature::validateOptions(
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    constexpr size_t kDisabledFeatures {
-      ArangodServer::id<EnvironmentFeature>();
-    };
+    constexpr size_t kDisabledFeatures[]{
+        ArangodServer::id<EnvironmentFeature>()};
     server().disableFeatures(kDisabledFeatures);
   }
 }

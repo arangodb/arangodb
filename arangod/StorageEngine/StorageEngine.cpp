@@ -33,12 +33,12 @@
 
 using namespace arangodb;
 
-StorageEngine::StorageEngine(Server& server, std::string engineName,
+StorageEngine::StorageEngine(Server& server, std::string_view engineName,
                              std::string_view featureName, size_t registration,
                              std::unique_ptr<IndexFactory>&& indexFactory)
     : ArangodFeature{server, registration, featureName},
       _indexFactory(std::move(indexFactory)),
-      _typeName(std::move(engineName)) {
+      _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
   // selection feature will make sure that exactly one engine is selected at
   // startup
@@ -119,7 +119,7 @@ void StorageEngine::registerReplicatedLog(
   vocbase.registerReplicatedLog(id, std::move(log));
 }
 
-std::string const& StorageEngine::typeName() const { return _typeName; }
+std::string_view StorageEngine::typeName() const { return _typeName; }
 
 void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
