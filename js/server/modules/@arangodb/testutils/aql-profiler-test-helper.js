@@ -219,6 +219,7 @@ function getCompactStatsNodes (profile) {
       type: translateType(profile.plan.nodes, node),
       calls: node.fromStats.calls,
       items: node.fromStats.items,
+      filtered: node.fromStats.filtered || 0,
     })
   );
 }
@@ -495,10 +496,17 @@ function assertNodesItemsAndCalls (expected, actual, details = {}) {
     details
   );
 
-  // assert call count last.
+  // assert call count next
   assertFuzzyNumArrayEquality(
     expected.map(node => node.calls),
     actual.map(node => node.calls),
+    details
+  );
+  
+  // assert filtered count last
+  assertFuzzyNumArrayEquality(
+    expected.map(node => node.filtered),
+    actual.map(node => node.filtered),
     details
   );
 }
@@ -540,6 +548,7 @@ function runDefaultChecks (
   testRowCounts = _.uniq(testRowCounts.concat(additionalTestRowCounts).sort());
   for (const rows of testRowCounts) {
     prepare(rows);
+    
     const queryResults = db._query(query, bind(rows),
       _.merge(options, {profile, defaultBatchSize})
     ).getExtra();
@@ -674,14 +683,14 @@ function createBinaryTree (vertexCol, edgeCol, numVertices) {
   edgeCol.truncate();
 
   // add vertices
-  vertexCol.insert(_.range(1, numVertices + 1).map((i) => ({_key: ""+i})));
+  vertexCol.insert(_.range(1, numVertices + 1).map((i) => ({_key: "" + i})));
 
   // create a balanced binary tree on edgeCol
   edgeCol.insert(
     // for every v._key from col
     _.range(1, numVertices + 1)
-    // calculate child indices of (potential) children
-      .map(i => [{from: i, to: 2*i}, {from: i, to: 2*i+1}])
+      // calculate child indices of (potential) children
+      .map(i => [{from: i, to: 2 * i}, {from: i, to: 2 * i + 1}])
       // flatten
       .reduce((accum, cur) => accum.concat(cur), [])
       // omit edges to non-existent vertices

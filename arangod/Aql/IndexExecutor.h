@@ -45,6 +45,7 @@ class IndexIterator;
 namespace aql {
 
 class ExecutionEngine;
+class ExecutorExpressionContext;
 class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
@@ -273,6 +274,7 @@ class IndexExecutor {
 
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   Infos& _infos;
+  std::unique_ptr<ExecutorExpressionContext> _expressionContext;
 
   /// @brief a vector of cursors for the index block
   /// cursors can be reused

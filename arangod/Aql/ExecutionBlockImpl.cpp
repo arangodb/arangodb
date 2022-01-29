@@ -347,6 +347,19 @@ ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
 }
 
 template<class Executor>
+void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
+  // some node types provide info about how many documents have been
+  // filtered. if so, use the info and add it to the node stats.
+  if constexpr (is_one_of_v<typename Executor::Stats, IndexStats,
+                            EnumerateCollectionStats, FilterStats,
+                            TraversalStats>) {
+    _execNodeStats.filtered += _blockStats.getFiltered();
+  }
+  ExecutionBlock::collectExecStats(stats);
+  stats += _blockStats;  // additional stats;
+}
+
+template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   if (getQuery().killed()) {

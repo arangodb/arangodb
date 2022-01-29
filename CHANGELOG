@@ -1,6 +1,13 @@
 devel
 -----
 
+* Add "filtered" column to AQL query profiling output.
+  This column shows how many documents were filtered by the node and thus
+  provides insights into if additional indexes could help.
+
+* Reuse ExecutorExpressionContext inside IndexExecutor, so that repeated
+  setup and teardown of expression contexts can be avoided.
+
 * Slightly improve the explain output of SingleRemoteOperationNodes.
 
 * Added more detail to the log messages that display the total time consumption
