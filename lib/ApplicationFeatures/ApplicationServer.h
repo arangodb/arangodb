@@ -41,6 +41,10 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
+template<typename T>
+struct TypeTag;
+
 namespace options {
 class ProgramOptions;
 }
@@ -319,23 +323,34 @@ class ApplicationServer {
   bool _dumpOptions = false;
 };
 
-template<typename FeatureList>
+template<typename Features>
 class ApplicationServerT : public ApplicationServer {
  public:
-  using Features = FeatureList;
-
-  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
-                     char const* binaryPath)
-      : ApplicationServer{opts, binaryPath, _features} {}
-
   template<typename T>
   static constexpr size_t id() noexcept {
     return Features::template id<T>();
   }
 
   template<typename T>
-  static constexpr bool has() noexcept {
-    return Features::template has<T>();
+  static constexpr bool contains() noexcept {
+    return Features::template contains<T>();
+  }
+
+  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
+                     char const* binaryPath)
+      : ApplicationServer{opts, binaryPath, _features} {}
+
+  // FIXME(gnusi): general initalization logic
+  template<typename Initializer>
+  void init(Initializer&& initializer) {
+    Features::visit([&]<typename T>(TypeTag<T>) {
+      if constexpr (std::is_constructible_v<T, ApplicationServerT&>) {
+        addFeature<T>();
+      } else {
+        initializer(*this, TypeTag<T>{});
+      }
+      TRI_ASSERT(hasFeature<T>());
+    });
   }
 
   // return whether or not a feature is enabled

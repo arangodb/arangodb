@@ -34,9 +34,6 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   startsAfter<DaemonFeature, ArangodServer>();
   startsAfter<DatabasePathFeature, ArangodServer>();
   startsAfter<EnvironmentFeature, ArangodServer>();
-#ifdef TRI_HAVE_GETRLIMIT
-  startsAfter<FileDescriptorsFeature, ArangodServer>();
-#endif
   startsAfter<LanguageFeature, ArangodServer>();
   startsAfter<MaxMapCountFeature, ArangodServer>();
   startsAfter<NonceFeature, ArangodServer>();
@@ -47,14 +44,18 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   startsAfter<SupervisorFeature, ArangodServer>();
   startsAfter<TempFeature, ArangodServer>();
 
-#ifdef _WIN32
-  startsAfter<WindowsServiceFeature, ArangodServer>();
-#endif
-
-#ifdef USE_ENTERPRISE
-  startsAfter<AuditFeature, ArangodServer>();
-  startsAfter<EncryptionFeature, ArangodServer>();
-#endif
+  if constexpr (ArangodServer::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<WindowsServiceFeature>()) {
+    startsAfter<WindowsServiceFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<AuditFeature>()) {
+    startsAfter<AuditFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<EncryptionFeature>()) {
+    startsAfter<EncryptionFeature, ArangodServer>();
+  }
 }
 
 }  // namespace arangodb::application_features

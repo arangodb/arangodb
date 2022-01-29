@@ -477,9 +477,12 @@ void ImportFeature::start() {
 
   _httpClient->disconnect();  // we do not reuse this anymore
 
-  auto* encryption = server().hasFeature<EncryptionFeature>()
-                         ? &server().getFeature<EncryptionFeature>()
-                         : nullptr;
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
 
   SimpleHttpClientParams params = _httpClient->params();
   arangodb::import::ImportHelper ih(encryption, client, client.endpoint(),

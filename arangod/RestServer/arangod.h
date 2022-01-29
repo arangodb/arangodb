@@ -65,9 +65,7 @@ class DatabasePathFeature;
 class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
-#ifdef TRI_HAVE_GETRLIMIT
 class FileDescriptorsFeature;
-#endif
 class FlushFeature;
 class FortuneFeature;
 class FoxxFeature;
@@ -116,21 +114,15 @@ class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
 class RocksDBEngine;
-#ifdef ARANGODB_HAVE_FORK
 class DaemonFeature;
 class SupervisorFeature;
-#endif
-#ifdef _WIN32
 class WindowsServiceFeature;
-#endif
-#ifdef USE_ENTERPRISE
 class AuditFeature;
 class LdapFeature;
 class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
 class EncryptionFeature;
-#endif
 class SslServerFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
@@ -165,26 +157,26 @@ using ArangodFeatures = TypeList<
     FinalFeaturePhase, FoxxFeaturePhase, GreetingsFeaturePhase,
     ServerFeaturePhase, V8FeaturePhase,
     // Adding the features
-    metrics::MetricsFeature, ActionFeature, AgencyFeature, AqlFeature,
-    AuthenticationFeature, BootstrapFeature, CacheManagerFeature,
-    CheckVersionFeature, ClusterFeature, ClusterUpgradeFeature, ConfigFeature,
-    ConsoleFeature, CpuUsageFeature, DatabaseFeature, DatabasePathFeature,
-    HttpEndpointProvider, EngineSelectorFeature, EnvironmentFeature,
-    FlushFeature, FortuneFeature, FoxxFeature, FrontendFeature,
-    GeneralServerFeature, GreetingsFeature, InitDatabaseFeature,
-    LanguageCheckFeature, LanguageFeature, TimeZoneFeature, LockfileFeature,
-    LogBufferFeature, LoggerFeature, MaintenanceFeature, MaxMapCountFeature,
-    NetworkFeature, NonceFeature, PrivilegeFeature, QueryRegistryFeature,
-    RandomFeature, ReplicationFeature, ReplicatedLogFeature,
-    ReplicationMetricsFeature, ReplicationTimeoutFeature, SchedulerFeature,
-    ScriptFeature, ServerFeature, ServerIdFeature, ServerSecurityFeature,
-    ShardingFeature, SharedPRNGFeature, ShellColorsFeature, ShutdownFeature,
-    SoftShutdownFeature, SslFeature, StatisticsFeature, StorageEngineFeature,
-    SystemDatabaseFeature, TempFeature, TtlFeature, UpgradeFeature,
-    V8DealerFeature, V8PlatformFeature, V8SecurityFeature,
-    transaction::ManagerFeature, VersionFeature, ViewTypesFeature,
-    aql::AqlFunctionFeature, aql::OptimizerRulesFeature, pregel::PregelFeature,
-    RocksDBOptionFeature, RocksDBRecoveryManager,
+    metrics::MetricsFeature,  // MetricsFeature must go first
+    ActionFeature, AgencyFeature, AqlFeature, AuthenticationFeature,
+    BootstrapFeature, CacheManagerFeature, CheckVersionFeature, ClusterFeature,
+    ClusterUpgradeFeature, ConfigFeature, ConsoleFeature, CpuUsageFeature,
+    DatabaseFeature, DatabasePathFeature, HttpEndpointProvider,
+    EngineSelectorFeature, EnvironmentFeature, FlushFeature, FortuneFeature,
+    FoxxFeature, FrontendFeature, GeneralServerFeature, GreetingsFeature,
+    InitDatabaseFeature, LanguageCheckFeature, LanguageFeature, TimeZoneFeature,
+    LockfileFeature, LogBufferFeature, LoggerFeature, MaintenanceFeature,
+    MaxMapCountFeature, NetworkFeature, NonceFeature, PrivilegeFeature,
+    QueryRegistryFeature, RandomFeature, ReplicationFeature,
+    ReplicatedLogFeature, ReplicationMetricsFeature, ReplicationTimeoutFeature,
+    SchedulerFeature, ScriptFeature, ServerFeature, ServerIdFeature,
+    ServerSecurityFeature, ShardingFeature, SharedPRNGFeature,
+    ShellColorsFeature, ShutdownFeature, SoftShutdownFeature, SslFeature,
+    StatisticsFeature, StorageEngineFeature, SystemDatabaseFeature, TempFeature,
+    TtlFeature, UpgradeFeature, V8DealerFeature, V8PlatformFeature,
+    V8SecurityFeature, transaction::ManagerFeature, VersionFeature,
+    ViewTypesFeature, aql::AqlFunctionFeature, aql::OptimizerRulesFeature,
+    pregel::PregelFeature, RocksDBOptionFeature, RocksDBRecoveryManager,
 #ifdef _WIN32
     WindowsServiceFeature,
 #endif

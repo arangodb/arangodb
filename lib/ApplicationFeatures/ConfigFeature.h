@@ -50,7 +50,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
           return server.template hasFeature<VersionFeature>()
                      ? &server.template getFeature<VersionFeature>()
                      : nullptr;
-        }},
+        }()},
         _file(configFilename),
         _progname(progname),
         _checkConfiguration(false) {
@@ -67,7 +67,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname, char const* binaryPath);
 
-  std::function<VersionFeature*()> _version;
+  VersionFeature* _version;
   std::string _file;
   std::string _progname;
   std::vector<std::string> _defines;

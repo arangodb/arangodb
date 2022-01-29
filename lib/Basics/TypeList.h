@@ -44,6 +44,17 @@ struct TypeTag {
   size_t index;
 };
 
+template<typename... Visitors>
+struct Visitor : Visitors... {
+  template<typename... T>
+  Visitor(T&&... visitors) : Visitors{std::forward<T>(visitors)}... {}
+
+  using Visitors::operator()...;
+};
+
+template<typename... T>
+Visitor(T...) -> Visitor<std::decay_t<T>...>;
+
 template<typename... T>
 class TypeList {
  private:
@@ -56,13 +67,13 @@ class TypeList {
   }
 
   template<typename U>
-  static consteval bool has() noexcept {
+  static consteval bool contains() noexcept {
     return kTypes.find(ctti<U>()) != kTypes.end();
   }
 
   template<typename U>
   static consteval size_t id() noexcept {
-    static_assert(has<U>(), "Type not found");
+    static_assert(contains<U>(), "Type not found");
     return kTypes.find(ctti<U>())->second;
   }
 

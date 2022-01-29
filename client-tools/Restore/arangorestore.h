@@ -30,9 +30,7 @@ namespace arangodb {
 
 class TempFeature;
 class RestoreFeature;
-#ifdef USE_ENTERPRISE
 class EncryptionFeature;
-#endif
 
 using ArangoRestoreFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE

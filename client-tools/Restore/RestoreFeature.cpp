@@ -288,9 +288,9 @@ arangodb::Result tryCreateDatabase(
 
 /// @check If directory is encrypted, check that key option is specified
 void checkEncryption(arangodb::ManagedDirectory& directory) {
+#ifdef USE_ENTERPRISE
   using arangodb::Logger;
   if (directory.isEncrypted()) {
-#ifdef USE_ENTERPRISE
     if (!directory.encryptionFeature()->keyOptionSpecified()) {
       LOG_TOPIC("cc58e", WARN, Logger::RESTORE)
           << "the dump data seems to be encrypted with "
@@ -305,8 +305,8 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
           << "# using encryption type " << directory.encryptionType()
           << " for reading dump";
     }
-#endif
   }
+#endif
 }
 
 void getDBProperties(arangodb::ManagedDirectory& directory,
@@ -1033,9 +1033,12 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
       std::string path =
           basics::FileUtils::buildFilename(_options.inputPath, it);
       if (basics::FileUtils::isDirectory(path)) {
-        auto* encryption = server().hasFeature<EncryptionFeature>()
-                               ? &server().getFeature<EncryptionFeature>()
-                               : nullptr;
+        EncryptionFeature* encryption{};
+        if constexpr (Server::contains<EncryptionFeature>()) {
+          if (server().hasFeature<EncryptionFeature>()) {
+            encryption = &server().getFeature<EncryptionFeature>();
+          }
+        }
 
         ManagedDirectory dbDirectory(encryption, path, false, false, false);
         databases.push_back({it, VPackBuilder{}, ""});
@@ -1904,9 +1907,12 @@ void RestoreFeature::start() {
 
   double const start = TRI_microtime();
 
-  auto* encryption = server().hasFeature<EncryptionFeature>()
-                         ? &server().getFeature<EncryptionFeature>()
-                         : nullptr;
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
 
   // set up the output directory, not much else
   _directory = std::make_unique<ManagedDirectory>(
@@ -2073,9 +2079,12 @@ void RestoreFeature::start() {
       LOG_TOPIC("36075", INFO, Logger::RESTORE)
           << "Restoring database '" << db.name << "'";
 
-      auto* encryption = server().hasFeature<EncryptionFeature>()
-                             ? &server().getFeature<EncryptionFeature>()
-                             : nullptr;
+      EncryptionFeature* encryption{};
+      if constexpr (Server::contains<EncryptionFeature>()) {
+        if (server().hasFeature<EncryptionFeature>()) {
+          encryption = &server().getFeature<EncryptionFeature>();
+        }
+      }
 
       _directory = std::make_unique<ManagedDirectory>(
           encryption,

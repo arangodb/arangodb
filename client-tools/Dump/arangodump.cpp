@@ -114,9 +114,35 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangodump [<options>]",
             "For more information use:", BIN_DIRECTORY));
+
     ArangoDumpServer server(options, BIN_DIRECTORY);
-    ArangoDumpInitializer init{&ret, context.binaryName().c_str(), server};
-    ArangoDumpServer::Features::visit(init);
+
+    server.init(Visitor{
+        [](ArangoDumpServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+        },
+
+        [&context](ArangoDumpServer& server, TypeTag<ConfigFeature>) {
+          server.addFeature<ConfigFeature>(context.binaryName());
+        },
+
+        [](ArangoDumpServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(false);
+        },
+
+        [](ArangoDumpServer& server, TypeTag<HttpEndpointProvider>) {
+          server.addFeature<HttpEndpointProvider, ClientFeature>(
+              true, std::numeric_limits<size_t>::max());
+        },
+
+        [&ret](ArangoDumpServer& server, TypeTag<DumpFeature>) {
+          server.addFeature<DumpFeature>(ret);
+        },
+
+        [](ArangoDumpServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{ArangoDumpServer::id<DumpFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        }});
 
     try {
       server.run(argc, argv);

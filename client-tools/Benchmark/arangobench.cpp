@@ -56,54 +56,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
-class ArangoBenchInitializer {
- public:
-  ArangoBenchInitializer(int* ret, char const* binaryName,
-                         ArangoBenchServer& client)
-      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.addFeature<T>();
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.addFeature<ConfigFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    // provide max number of endpoints
-    _client.addFeature<HttpEndpointProvider, ClientFeature>(
-        false, std::numeric_limits<size_t>::max());
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.addFeature<LoggerFeature>(false);
-  }
-
-  void operator()(TypeTag<BenchFeature>) {
-    _client.addFeature<BenchFeature>(_ret);
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    constexpr size_t kFeatures[]{ArangoBenchServer::id<BenchFeature>()};
-    _client.addFeature<ShutdownFeature>(kFeatures);
-  }
-
-  void operator()(TypeTag<TempFeature>) {
-    _client.addFeature<TempFeature>(_binaryName);
-  }
-
- private:
-  int* _ret;
-  char const* _binaryName;
-  ArangoBenchServer& _client;
-};
-
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -117,8 +69,32 @@ int main(int argc, char* argv[]) {
             "For more information use:", BIN_DIRECTORY));
     int ret = EXIT_SUCCESS;
     ArangoBenchServer server(options, BIN_DIRECTORY);
-    ArangoBenchInitializer init{&ret, context.binaryName().c_str(), server};
-    ArangoBenchServer::Features::visit(init);
+
+    server.init(Visitor{
+        [](ArangoBenchServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+        },
+        [&](ArangoBenchServer& server, TypeTag<ConfigFeature>) {
+          server.addFeature<ConfigFeature>(context.binaryName());
+        },
+        [](ArangoBenchServer& server, TypeTag<HttpEndpointProvider>) {
+          // provide max number of endpoints
+          server.addFeature<HttpEndpointProvider, ClientFeature>(
+              false, std::numeric_limits<size_t>::max());
+        },
+        [](ArangoBenchServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(false);
+        },
+        [&](ArangoBenchServer& server, TypeTag<BenchFeature>) {
+          server.addFeature<BenchFeature>(&ret);
+        },
+        [](ArangoBenchServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{ArangoBenchServer::id<BenchFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        },
+        [&](ArangoBenchServer& server, TypeTag<TempFeature>) {
+          server.addFeature<TempFeature>(context.binaryName());
+        }});
 
     try {
       server.run(argc, argv);

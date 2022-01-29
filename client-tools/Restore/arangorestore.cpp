@@ -51,53 +51,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-class ArangoRestoreInitializer {
- public:
-  ArangoRestoreInitializer(int* ret, char const* binaryName,
-                           ArangoRestoreServer& client)
-      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.addFeature<T>();
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.addFeature<ConfigFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.addFeature<LoggerFeature>(false);
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    _client.addFeature<HttpEndpointProvider, ClientFeature>(
-        true, std::numeric_limits<size_t>::max());
-  }
-
-  void operator()(TypeTag<RestoreFeature>) {
-    _client.addFeature<RestoreFeature>(*_ret);
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    constexpr size_t kFeatures[]{ArangoRestoreServer::id<RestoreFeature>()};
-    _client.addFeature<ShutdownFeature>(kFeatures);
-  }
-
-  void operator()(TypeTag<TempFeature>) {
-    _client.addFeature<TempFeature>(_binaryName);
-  }
-
- private:
-  int* _ret;
-  char const* _binaryName;
-  ArangoRestoreServer& _client;
-};
-
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -112,8 +65,32 @@ int main(int argc, char* argv[]) {
 
     int ret = EXIT_SUCCESS;
     ArangoRestoreServer server(options, BIN_DIRECTORY);
-    ArangoRestoreInitializer init{&ret, context.binaryName().c_str(), server};
-    ArangoRestoreServer::Features::visit(init);
+
+    server.init(Visitor{
+        [](ArangoRestoreServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+        },
+        [&](ArangoRestoreServer& server, TypeTag<ConfigFeature>) {
+          server.addFeature<ConfigFeature>(context.binaryName());
+        },
+        [](ArangoRestoreServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(false);
+        },
+        [](ArangoRestoreServer& server, TypeTag<HttpEndpointProvider>) {
+          server.addFeature<HttpEndpointProvider, ClientFeature>(
+              true, std::numeric_limits<size_t>::max());
+        },
+        [&ret](ArangoRestoreServer& server, TypeTag<RestoreFeature>) {
+          server.addFeature<RestoreFeature>(ret);
+        },
+        [](ArangoRestoreServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{
+              ArangoRestoreServer::id<RestoreFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        },
+        [&](ArangoRestoreServer& server, TypeTag<TempFeature>) {
+          server.addFeature<TempFeature>(context.binaryName());
+        }});
 
     try {
       server.run(argc, argv);

@@ -47,45 +47,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-struct ArangoVPackInitializer {
- public:
-  ArangoVPackInitializer(int* ret, char const* binaryName,
-                         ArangoVPackServer& client)
-      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.addFeature<T>();
-  }
-
-  void operator()(TypeTag<VPackFeature>) {
-    _client.addFeature<VPackFeature>(_ret);
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    // default is to use no config file
-    _client.addFeature<ConfigFeature>(_binaryName, "none");
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    constexpr size_t kFeatures[]{ArangoVPackServer::id<VPackFeature>()};
-    _client.addFeature<ShutdownFeature>(kFeatures);
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.addFeature<LoggerFeature>(false);
-  }
-
- private:
-  int* _ret;
-  char const* _binaryName;
-  ArangoVPackServer& _client;
-};
-
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -100,8 +61,25 @@ int main(int argc, char* argv[]) {
 
     int ret = EXIT_SUCCESS;
     ArangoVPackServer server(options, BIN_DIRECTORY);
-    ArangoVPackInitializer init{&ret, context.binaryName().c_str(), server};
-    ArangoVPackServer::Features::visit(init);
+
+    server.init(Visitor{
+        [&](ArangoVPackServer& server, TypeTag<VPackFeature>) {
+          server.addFeature<VPackFeature>(&ret);
+        },
+        [&](ArangoVPackServer& server, TypeTag<ConfigFeature>) {
+          // default is to use no config file
+          server.addFeature<ConfigFeature>(context.binaryName(), "none");
+        },
+        [](ArangoVPackServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{ArangoVPackServer::id<VPackFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        },
+        [](ArangoVPackServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+        },
+        [](ArangoVPackServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(false);
+        }});
 
     try {
       server.run(argc, argv);

@@ -243,9 +243,12 @@ void ExportFeature::validateOptions(
 }
 
 void ExportFeature::prepare() {
-  auto* encryption = server().hasFeature<EncryptionFeature>()
-                         ? &server().getFeature<EncryptionFeature>()
-                         : nullptr;
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
 
   _directory = std::make_unique<ManagedDirectory>(encryption, _outputDirectory,
                                                   !_overwrite, true, _useGzip);

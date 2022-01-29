@@ -38,9 +38,7 @@ class V8PlatformFeature;
 class LanguageFeature;
 class ShellConsoleFeature;
 class TempFeature;
-#ifdef USE_ENTERPRISE
 class EncryptionFeature;
-#endif
 
 using application_features::V8ShellFeaturePhase;
 

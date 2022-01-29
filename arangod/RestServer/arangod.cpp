@@ -171,70 +171,6 @@ constexpr size_t kNonServerFeatures[]{
     ArangodServer::id<StatisticsFeature>(),
     ArangodServer::id<SupervisorFeature>()};
 
-struct ArangodInitializer {
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    server.addFeature<T>();
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    server.addFeature<GreetingsFeaturePhase>(std::false_type{});
-  }
-
-  void operator()(TypeTag<CheckVersionFeature>) {
-    server.addFeature<CheckVersionFeature>(&ret, kNonServerFeatures);
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    server.addFeature<ConfigFeature>(context.binaryName());
-  }
-
-  void operator()(TypeTag<InitDatabaseFeature>) {
-    server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    server.addFeature<LoggerFeature>(true);
-  }
-
-  void operator()(TypeTag<ScriptFeature>) {
-    server.addFeature<ScriptFeature>(&ret);
-  }
-
-  void operator()(TypeTag<ServerFeature>) {
-    server.addFeature<ServerFeature>(&ret);
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    server.addFeature<ShutdownFeature>(
-        std::vector<size_t>{ArangodServer::id<ScriptFeature>()});
-  }
-
-  void operator()(TypeTag<TempFeature>) {
-    server.addFeature<TempFeature>(context.binaryName());
-  }
-
-  void operator()(TypeTag<SslServerFeature>) {
-#ifdef USE_ENTERPRISE
-    server.addFeature<SslServerFeature, SslServerFeatureEE>();
-#else
-    server.addFeature<SslServerFeature>();
-#endif
-  }
-
-  void operator()(TypeTag<UpgradeFeature>) {
-    server.addFeature<UpgradeFeature>(&ret, kNonServerFeatures);
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    server.addFeature<HttpEndpointProvider, EndpointFeature>();
-  }
-
-  int ret;
-  ArangoGlobalContext& context;
-  ArangodServer& server;
-};
-
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
     CrashHandler::installCrashHandler();
@@ -244,30 +180,74 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         argv[0], "Usage: " + name + " [<options>]",
         "For more information use:", SBIN_DIRECTORY);
 
+    int ret{EXIT_FAILURE};
     ArangodServer server{options, SBIN_DIRECTORY};
     ServerState state{server};
 
-    ArangodInitializer init{EXIT_FAILURE, context, server};
-    ArangodServer::Features::visit(init);
+    server.init(Visitor{
+        //        []<typename T>(ArangodServer& server, TypeTag<T>) {
+        //          server.addFeature<T>();
+        //        },
+        [](ArangodServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::false_type{});
+        },
+        [&ret](ArangodServer& server, TypeTag<CheckVersionFeature>) {
+          server.addFeature<CheckVersionFeature>(&ret, kNonServerFeatures);
+        },
+        [&name](ArangodServer& server, TypeTag<ConfigFeature>) {
+          server.addFeature<ConfigFeature>(name);
+        },
+        [](ArangodServer& server, TypeTag<InitDatabaseFeature>) {
+          server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
+        },
+        [](ArangodServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(true);
+        },
+        [&ret](ArangodServer& server, TypeTag<ScriptFeature>) {
+          server.addFeature<ScriptFeature>(&ret);
+        },
+        [&ret](ArangodServer& server, TypeTag<ServerFeature>) {
+          server.addFeature<ServerFeature>(&ret);
+        },
+        [](ArangodServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{ArangodServer::id<ScriptFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        },
+        [&name](ArangodServer& server, TypeTag<TempFeature>) {
+          server.addFeature<TempFeature>(name);
+        },
+        [](ArangodServer& server, TypeTag<SslServerFeature>) {
+#ifdef USE_ENTERPRISE
+          server.addFeature<SslServerFeature, SslServerFeatureEE>();
+#else
+          server.addFeature<SslServerFeature>();
+#endif
+        },
+        [&ret](ArangodServer& server, TypeTag<UpgradeFeature>) {
+          server.addFeature<UpgradeFeature>(&ret, kNonServerFeatures);
+        },
+        [](ArangodServer& server, TypeTag<HttpEndpointProvider>) {
+          server.addFeature<HttpEndpointProvider, EndpointFeature>();
+        }});
 
     try {
       server.run(argc, argv);
       if (server.helpShown()) {
         // --help was displayed
-        init.ret = EXIT_SUCCESS;
+        ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();
-      init.ret = EXIT_FAILURE;
+      ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("3c63a", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception of "
              "unknown type";
-      init.ret = EXIT_FAILURE;
+      ret = EXIT_FAILURE;
     }
     Logger::flush();
-    return context.exit(init.ret);
+    return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an exception: " << ex.what();

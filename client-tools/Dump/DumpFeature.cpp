@@ -863,9 +863,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     LOG_TOPIC("4af42", INFO, Logger::DUMP)
         << "Dumping database '" << dbName << "' (" << dbId << ")";
 
-    auto* encryption = server().hasFeature<EncryptionFeature>()
-                           ? &server().getFeature<EncryptionFeature>()
-                           : nullptr;
+    EncryptionFeature* encryption{};
+    if constexpr (Server::contains<EncryptionFeature>()) {
+      if (server().hasFeature<EncryptionFeature>()) {
+        encryption = &server().getFeature<EncryptionFeature>();
+      }
+    }
 
     _directory = std::make_unique<ManagedDirectory>(
         encryption,
@@ -1143,9 +1146,12 @@ void DumpFeature::start() {
 
   double const start = TRI_microtime();
 
-  auto* encryption = server().hasFeature<EncryptionFeature>()
-                         ? &server().getFeature<EncryptionFeature>()
-                         : nullptr;
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
 
   // set up the output directory, not much else
   _directory = std::make_unique<ManagedDirectory>(

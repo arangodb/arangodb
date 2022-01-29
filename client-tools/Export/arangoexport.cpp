@@ -54,52 +54,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-class ArangoExportInitializer {
- public:
-  ArangoExportInitializer(int* ret, char const* binaryName,
-                          ArangoExportServer& client)
-      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.addFeature<T>();
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.addFeature<ConfigFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.addFeature<LoggerFeature>(false);
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    _client.addFeature<HttpEndpointProvider, ClientFeature>(false);
-  }
-
-  void operator()(TypeTag<ExportFeature>) {
-    _client.addFeature<ExportFeature>(_ret);
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    constexpr size_t kFeatures[]{ArangoExportServer::id<ExportFeature>()};
-    _client.addFeature<ShutdownFeature>(kFeatures);
-  }
-
-  void operator()(TypeTag<TempFeature>) {
-    _client.addFeature<TempFeature>(_binaryName);
-  }
-
- private:
-  int* _ret;
-  char const* _binaryName;
-  ArangoExportServer& _client;
-};
-
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -114,8 +68,30 @@ int main(int argc, char* argv[]) {
 
     int ret = EXIT_SUCCESS;
     ArangoExportServer server(options, BIN_DIRECTORY);
-    ArangoExportInitializer init{&ret, context.binaryName().c_str(), server};
-    ArangoExportServer::Features::visit(init);
+
+    server.init(Visitor{
+        [](ArangoExportServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+        },
+        [&context](ArangoExportServer& server, TypeTag<ConfigFeature>) {
+          server.addFeature<ConfigFeature>(context.binaryName());
+        },
+        [](ArangoExportServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(false);
+        },
+        [](ArangoExportServer& server, TypeTag<HttpEndpointProvider>) {
+          server.addFeature<HttpEndpointProvider, ClientFeature>(false);
+        },
+        [&ret](ArangoExportServer& server, TypeTag<ExportFeature>) {
+          server.addFeature<ExportFeature>(&ret);
+        },
+        [](ArangoExportServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{ArangoExportServer::id<ExportFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        },
+        [&context](ArangoExportServer& server, TypeTag<TempFeature>) {
+          server.addFeature<TempFeature>(context.binaryName());
+        }});
 
     try {
       server.run(argc, argv);

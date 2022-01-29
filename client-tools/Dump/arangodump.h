@@ -29,9 +29,7 @@
 namespace arangodb {
 
 class DumpFeature;
-#ifdef USE_ENTERPRISE
 class EncryptionFeature;
-#endif
 
 using ArangoDumpFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE

@@ -49,48 +49,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-struct ArangoBackupInitializer {
- public:
-  ArangoBackupInitializer(int* ret, char const* binaryName,
-                          ArangoBackupServer& client)
-      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.addFeature<T>();
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.addFeature<ConfigFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.addFeature<LoggerFeature>(false);
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    _client.addFeature<HttpEndpointProvider, ClientFeature>(false);
-  }
-
-  void operator()(TypeTag<BackupFeature>) {
-    _client.addFeature<BackupFeature>(*_ret);
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    constexpr size_t kFeatures[]{ArangoBackupServer::id<BackupFeature>()};
-    _client.addFeature<ShutdownFeature>(kFeatures);
-  }
-
- private:
-  int* _ret;
-  char const* _binaryName;
-  ArangoBackupServer& _client;
-};
-
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -107,8 +65,27 @@ int main(int argc, char* argv[]) {
                 " [<options>]",
             "For more information use:", BIN_DIRECTORY));
     ArangoBackupServer server(options, BIN_DIRECTORY);
-    ArangoBackupInitializer init{&ret, context.binaryName().c_str(), server};
-    ArangoBackupServer::Features::visit(init);
+
+    server.init(Visitor{
+        [](ArangoBackupServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+        },
+        [&](ArangoBackupServer& server, TypeTag<ConfigFeature>) {
+          server.addFeature<ConfigFeature>(context.binaryName());
+        },
+        [](ArangoBackupServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(false);
+        },
+        [](ArangoBackupServer& server, TypeTag<HttpEndpointProvider>) {
+          server.addFeature<HttpEndpointProvider, ClientFeature>(false);
+        },
+        [&](ArangoBackupServer& server, TypeTag<BackupFeature>) {
+          server.addFeature<BackupFeature>(ret);
+        },
+        [](ArangoBackupServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{ArangoBackupServer::id<BackupFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        }});
 
     try {
       server.run(argc, argv);

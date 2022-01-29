@@ -61,55 +61,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-struct ArangoshInitializer {
- public:
-  ArangoshInitializer(int* ret, char const* binaryName, ArangoshServer& client)
-      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.addFeature<T>();
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    _client.addFeature<HttpEndpointProvider, ClientFeature>(true);
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.addFeature<ConfigFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.addFeature<LoggerFeature>(false);
-  }
-
-  void operator()(TypeTag<ShellFeature>) {
-    _client.addFeature<ShellFeature>(_ret);
-  }
-
-  void operator()(TypeTag<V8ShellFeature>) {
-    _client.addFeature<V8ShellFeature>(std::string{_binaryName});
-  }
-
-  void operator()(TypeTag<TempFeature>) {
-    _client.addFeature<TempFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    constexpr size_t kFeatures[]{ArangoshServer::id<ShellFeature>()};
-    _client.addFeature<ShutdownFeature>(kFeatures);
-  }
-
- private:
-  int* _ret;
-  char const* _binaryName;
-  ArangoshServer& _client;
-};
-
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
@@ -124,8 +75,33 @@ int main(int argc, char* argv[]) {
             argv[0], "Usage: " + context.binaryName() + " [<options>]",
             "For more information use:", BIN_DIRECTORY));
     ArangoshServer server(options, BIN_DIRECTORY);
-    ArangoshInitializer init{&ret, context.binaryName().c_str(), server};
-    ArangoshServer::Features::visit(init);
+
+    server.init(Visitor{
+        [](ArangoshServer& server, TypeTag<HttpEndpointProvider>) {
+          server.addFeature<HttpEndpointProvider, ClientFeature>(true);
+        },
+        [](ArangoshServer& server, TypeTag<GreetingsFeaturePhase>) {
+          server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+        },
+        [&](ArangoshServer& server, TypeTag<ConfigFeature>) {
+          server.addFeature<ConfigFeature>(context.binaryName());
+        },
+        [](ArangoshServer& server, TypeTag<LoggerFeature>) {
+          server.addFeature<LoggerFeature>(false);
+        },
+        [&](ArangoshServer& server, TypeTag<ShellFeature>) {
+          server.addFeature<ShellFeature>(&ret);
+        },
+        [&](ArangoshServer& server, TypeTag<V8ShellFeature>) {
+          server.addFeature<V8ShellFeature>(context.binaryName());
+        },
+        [&](ArangoshServer& server, TypeTag<TempFeature>) {
+          server.addFeature<TempFeature>(context.binaryName());
+        },
+        [](ArangoshServer& server, TypeTag<ShutdownFeature>) {
+          constexpr size_t kFeatures[]{ArangoshServer::id<ShellFeature>()};
+          server.addFeature<ShutdownFeature>(kFeatures);
+        }});
 
     try {
       server.run(argc, argv);

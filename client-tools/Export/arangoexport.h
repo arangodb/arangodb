@@ -30,9 +30,7 @@ namespace arangodb {
 
 class ExportFeature;
 class TempFeature;
-#ifdef USE_ENTERPRISE
 class EncryptionFeature;
-#endif
 
 using ArangoExportFeatures = ArangoClientFeatures<
 #ifdef USE_ENTERPRISE

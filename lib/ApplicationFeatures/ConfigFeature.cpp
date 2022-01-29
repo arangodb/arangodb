@@ -93,9 +93,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  auto* versionFeature = _version();
-  if (versionFeature) {
-    fatal = !versionFeature->printVersion();
+  if (_version) {
+    fatal = !_version->printVersion();
   }
 
   // always prefer an explicitly given config file
