@@ -352,6 +352,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/Mocks/PersistedLog.cpp
   Replication2/Mocks/PersistedLog.h
+  Replication2/Serialization/AgencyLogSpecificationTest.cpp
   Replication2/Serialization/LogCommonTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/Streams/LogMultiplexerTest.cpp
@@ -365,14 +366,12 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeFollower.h
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
-  Replication2/Serialization/LogStatusTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
-  Replication2/Serialization/LogCommonTest.cpp
   Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
   Replication2/Mocks/AsyncLeader.cpp
   Replication2/ReplicatedLog/LogStatusTest.cpp
