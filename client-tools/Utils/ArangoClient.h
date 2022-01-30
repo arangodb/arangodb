@@ -56,7 +56,7 @@ using ArangoClientFeatures = TypeList<
     CommunicationFeaturePhase, GreetingsFeaturePhase,
     // Features
     VersionFeature,  // VersionFeature must go first
-    HttpEndpointProvider, ConfigFeature, LoggerFeature, RandomFeature,
-    ShellColorsFeature, ShutdownFeature, SslFeature, T...>;
+    T..., HttpEndpointProvider, ConfigFeature, LoggerFeature, RandomFeature,
+    ShellColorsFeature, ShutdownFeature, SslFeature>;
 
 }  // namespace arangodb
