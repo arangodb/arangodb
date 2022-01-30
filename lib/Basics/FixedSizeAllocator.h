@@ -53,14 +53,7 @@ class FixedSizeAllocator {
       TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % 64u == 0);
     }
 
-    ~MemoryBlock() noexcept {
-      // destroy all items
-      for (size_t i = 0; i < _numUsed; ++i) {
-        T* p = _data + i;
-        // call destructor for each item
-        p->~T();
-      }
-    }
+    ~MemoryBlock() noexcept { clear(); }
 
     MemoryBlock* getNextBlock() const noexcept { return _next; }
 
@@ -83,6 +76,12 @@ class FixedSizeAllocator {
     size_t numUsed() const noexcept { return _numUsed; }
 
     void clear() noexcept {
+      // destroy all items
+      for (size_t i = 0; i < _numUsed; ++i) {
+        T* p = _data + i;
+        // call destructor for each item
+        p->~T();
+      }
       _numUsed = 0;
       TRI_ASSERT(!full());
     }
