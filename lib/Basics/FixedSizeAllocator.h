@@ -66,13 +66,13 @@ class FixedSizeAllocator {
 
     void setNextBlock(MemoryBlock* next) noexcept { _next = next; }
 
-    /// @brief return memory address for next in-place object construction.
+    // return memory address for next in-place object construction.
     T* nextSlot() noexcept {
       TRI_ASSERT(_numUsed < _numAllocated);
       return _data + _numUsed++;
     }
 
-    /// @brief roll back the effect of nextSlot()
+    // roll back the effect of nextSlot()
     void rollbackSlot() noexcept {
       TRI_ASSERT(_numUsed > 0);
       --_numUsed;
@@ -82,10 +82,15 @@ class FixedSizeAllocator {
 
     size_t numUsed() const noexcept { return _numUsed; }
 
+    void clear() noexcept {
+      _numUsed = 0;
+      TRI_ASSERT(!full());
+    }
+
    private:
     size_t _numAllocated;
     size_t _numUsed;
-    T* _data;
+    T* const _data;
     MemoryBlock* _next;
   };
 
@@ -113,6 +118,26 @@ class FixedSizeAllocator {
     }
   }
 
+  // clears all blocks but the last one (to avoid later
+  // re-allocations)
+  void clearMost() noexcept {
+    auto* block = _head;
+    while (block != nullptr) {
+      auto* next = block->getNextBlock();
+      if (next == nullptr) {
+        // we are at the last block
+        block->clear();
+        _head = block;
+        break;
+      }
+
+      block->~MemoryBlock();
+      ::operator delete(block);
+      block = next;
+      _head = next;
+    }
+  }
+
   void clear() noexcept {
     auto* block = _head;
     while (block != nullptr) {
@@ -124,7 +149,7 @@ class FixedSizeAllocator {
     _head = nullptr;
   }
 
-  /// @brief return the total number of used elements, in all blocks
+  // return the total number of used elements, in all blocks
   size_t numUsed() const noexcept {
     size_t used = 0;
     auto* block = _head;

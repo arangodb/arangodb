@@ -43,33 +43,40 @@ class ShortStringStorage {
 
   ~ShortStringStorage();
 
-  /// @brief register a short string
+  // register a short string
   char* registerString(char const* p, size_t length);
 
-  /// @brief register a short string, unescaping it
+  // register a short string, unescaping it
   char* unescape(char const* p, size_t length, size_t* outLength);
 
+  // frees all blocks
+  void clear() noexcept;
+
+  // frees all blocks but the first one. we keep one block to avoid
+  // later memory re-allocations.
+  void clearMost() noexcept;
+
  private:
-  /// @brief allocate a new block of memory
+  // allocate a new block of memory
   void allocateBlock();
 
  public:
-  /// @brief maximum length of strings in short string storage
+  // maximum length of strings in short string storage
   static constexpr size_t maxStringLength = 127;
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;
 
-  /// @brief already allocated string blocks
+  // already allocated string blocks
   std::vector<std::unique_ptr<char[]>> _blocks;
 
-  /// @brief size of each block
+  // size of each block
   size_t const _blockSize;
 
-  /// @brief offset into current block
+  // offset into current block
   char* _current;
 
-  /// @brief end of current block
+  // end of current block
   char* _end;
 };
 }  // namespace aql
