@@ -56,15 +56,18 @@ class ShortStringStorage {
   // later memory re-allocations.
   void clearMost() noexcept;
 
- private:
-  // allocate a new block of memory
-  void allocateBlock();
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  size_t usedBlocks() const noexcept { return _blocks.size(); }
+#endif
 
- public:
   // maximum length of strings in short string storage
   static constexpr size_t maxStringLength = 127;
 
  private:
+  // allocate a new block of memory
+  void allocateBlock();
+
+  // resource monitor used for tracking allocations/deallocations
   arangodb::ResourceMonitor& _resourceMonitor;
 
   // already allocated string blocks

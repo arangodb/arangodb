@@ -79,20 +79,24 @@ class AstResources {
   }
 
   // register a potentially UTF-8-escaped string
-  /// the string is freed when the query is destroyed
+  // the string is freed when the query is destroyed
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
+  // return the memory usage for a block of strings
+  constexpr static size_t memoryUsageForStringBlock() { return sizeof(char*); }
+
+  // return the minimum capacity for long strings container
+  constexpr static size_t kMinCapacityForLongStrings = 8;
+
  private:
+  // calculate the new capacity for the container
   template<typename T>
   size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
 
   // registers a long string and takes over the ownership for it
   char* registerLongString(char* copy, size_t length);
 
-  // return the memory usage for a block of strings
-  constexpr size_t memoryUsageForStringBlock() const noexcept;
-
- private:
+  // resource monitor used for tracking allocations/deallocations
   arangodb::ResourceMonitor& _resourceMonitor;
 
   // all nodes created in the AST - will be used for freeing them later

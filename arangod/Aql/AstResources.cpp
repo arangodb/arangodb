@@ -88,8 +88,9 @@ size_t AstResources::newCapacity(T const& container,
 
   size_t capacity = container.size() + 1;
   if (capacity > container.capacity()) {
-    capacity *= 2;
+    capacity = container.size() * 2;
   }
+  TRI_ASSERT(container.size() + 1 <= capacity);
   return capacity;
 }
 
@@ -172,7 +173,7 @@ char* AstResources::registerLongString(char* copy, size_t length) {
     TRI_FreeString(copy);
   });
 
-  size_t capacity = newCapacity(_strings, 8);
+  size_t capacity = newCapacity(_strings, kMinCapacityForLongStrings);
 
   // reserve space
   if (capacity > _strings.capacity()) {
@@ -200,8 +201,4 @@ char* AstResources::registerLongString(char* copy, size_t length) {
   guard.cancel();
 
   return copy;
-}
-
-constexpr size_t AstResources::memoryUsageForStringBlock() const noexcept {
-  return sizeof(char*);
 }

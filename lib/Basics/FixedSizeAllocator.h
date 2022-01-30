@@ -117,6 +117,11 @@ class FixedSizeAllocator {
     }
   }
 
+  // calculate the capacity for a block at the given index
+  static constexpr size_t capacityForBlock(size_t blockIndex) {
+    return 64 << std::min<size_t>(6, blockIndex);
+  }
+
   // clears all blocks but the last one (to avoid later
   // re-allocations)
   void clearMost() noexcept {
@@ -159,11 +164,22 @@ class FixedSizeAllocator {
     return used;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  size_t usedBlocks() const noexcept {
+    size_t used = 0;
+    auto* block = _head;
+    while (block != nullptr) {
+      block = block->getNextBlock();
+      ++used;
+    }
+    return used;
+  }
+#endif
+
  private:
   void allocateBlock() {
     // minimum block size is for 64 items
-    // maximum block size is for 4096 items
-    size_t const numItems = 64 << std::min<size_t>(6, _numBlocks);
+    size_t numItems = capacityForBlock(_numBlocks);
 
     // assumption is that the size of a cache line is at least 64,
     // so we are allocating 64 bytes in addition
