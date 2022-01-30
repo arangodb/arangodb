@@ -808,12 +808,12 @@ Builder& Builder::close() {
 }
 
 // checks whether an Object value has a specific key attribute
-bool Builder::hasKey(std::string const& key) const {
+bool Builder::hasKey(std::string_view key) const {
   return !getKey(key).isNone();
 }
 
 // return the value for a specific key of an Object value
-Slice Builder::getKey(std::string const& key) const {
+Slice Builder::getKey(std::string_view key) const {
   if (VELOCYPACK_UNLIKELY(_stack.empty())) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
