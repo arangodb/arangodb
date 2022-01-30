@@ -829,6 +829,10 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/Status.cpp
 )
 
+if (MSVC)
+  list(APPEND LIB_ARANGOSERVER_SOURCES RestServer/WindowsServiceFeature.cpp)
+endif()
+
 set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
   RestHandler/RestCollectionHandler.cpp
   RestHandler/RestReplicationHandler.cpp

@@ -134,7 +134,7 @@
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 
 #ifdef _WIN32
-#include "ApplicationFeatures/WindowsServiceFeature.h"
+#include "RestServer/WindowsServiceFeature.h"
 #include "Basics/win-utils.h"
 #endif
 
