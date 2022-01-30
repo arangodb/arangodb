@@ -40,15 +40,18 @@ class ShellConsoleFeature;
 class TempFeature;
 class EncryptionFeature;
 
-using application_features::V8ShellFeaturePhase;
-
-using ArangoshFeatures = ArangoClientFeatures<
+using ArangoshFeatures = TypeList<
+    // Phases
+    BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
+    // Features
+    VersionFeature,  // VersionFeature must go first
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
-    BasicFeaturePhaseClient, V8ShellFeaturePhase, ShellFeature,
-    V8PlatformFeature, V8ShellFeature, LanguageFeature, ShellConsoleFeature,
-    V8SecurityFeature, TempFeature>;
+    ShellConsoleFeature, HttpEndpointProvider, ConfigFeature, LoggerFeature,
+    RandomFeature, ShellColorsFeature, ShutdownFeature, SslFeature,
+    V8ShellFeaturePhase, ShellFeature, V8PlatformFeature, V8ShellFeature,
+    LanguageFeature, V8SecurityFeature, TempFeature>;
 using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
 using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;
 
