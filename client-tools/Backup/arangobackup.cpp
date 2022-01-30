@@ -87,8 +87,8 @@ int main(int argc, char* argv[]) {
           return std::make_unique<BackupFeature>(server, ret);
         },
         [](ArangoBackupServer& server, TypeTag<ShutdownFeature>) {
-          constexpr size_t kFeatures[]{ArangoBackupServer::id<BackupFeature>()};
-          return std::make_unique<ShutdownFeature>(server, kFeatures);
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoBackupServer::id<BackupFeature>()});
         }});
 
     try {

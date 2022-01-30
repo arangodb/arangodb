@@ -127,24 +127,21 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (ServerState::instance()->isCoordinator()) {
     auto disableDeamonAndSupervisor = [&]() {
       if constexpr (Server::contains<DaemonFeature>()) {
-        constexpr size_t kDisabledFeatures[]{Server::id<DaemonFeature>()};
-        server().forceDisableFeatures(kDisabledFeatures);
+        server().forceDisableFeatures(std::array{Server::id<DaemonFeature>()});
       }
       if constexpr (Server::contains<SupervisorFeature>()) {
-        constexpr size_t kDisabledFeatures[]{Server::id<SupervisorFeature>()};
-        server().forceDisableFeatures(kDisabledFeatures);
+        server().forceDisableFeatures(
+            std::array{Server::id<SupervisorFeature>()});
       }
     };
 
-    constexpr size_t kOtherFeaturesToDisable[]{
-        Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()};
-    server().forceDisableFeatures(kOtherFeaturesToDisable);
+    server().forceDisableFeatures(std::array{
+        Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()});
     disableDeamonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
-    constexpr size_t kOtherFeaturesToDisable[]{
-        Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()};
-    server().forceDisableFeatures(kOtherFeaturesToDisable);
+    server().forceDisableFeatures(std::array{
+        Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()});
   }
 
   ReplicationFeature& replicationFeature =

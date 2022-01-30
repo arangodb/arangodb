@@ -103,8 +103,8 @@ int main(int argc, char* argv[]) {
           return std::make_unique<TempFeature>(server, context.binaryName());
         },
         [](ArangoshServer& server, TypeTag<ShutdownFeature>) {
-          constexpr size_t kFeatures[]{ArangoshServer::id<ShellFeature>()};
-          return std::make_unique<ShutdownFeature>(server, kFeatures);
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoshServer::id<ShellFeature>()});
         }});
 
     try {

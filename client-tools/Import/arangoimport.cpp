@@ -90,8 +90,8 @@ int main(int argc, char* argv[]) {
           return std::make_unique<ImportFeature>(server, &ret);
         },
         [](ArangoImportServer& server, TypeTag<ShutdownFeature>) {
-          constexpr size_t kFeatures[]{ArangoImportServer::id<ImportFeature>()};
-          return std::make_unique<ShutdownFeature>(server, kFeatures);
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoImportServer::id<ImportFeature>()});
         },
         [&](ArangoImportServer& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, context.binaryName());

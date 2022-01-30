@@ -93,8 +93,8 @@ int main(int argc, char* argv[]) {
           return std::make_unique<BenchFeature>(server, &ret);
         },
         [](ArangoBenchServer& server, TypeTag<ShutdownFeature>) {
-          constexpr size_t kFeatures[]{ArangoBenchServer::id<BenchFeature>()};
-          return std::make_unique<ShutdownFeature>(server, kFeatures);
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoBenchServer::id<BenchFeature>()});
         },
         [&](ArangoBenchServer& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, context.binaryName());

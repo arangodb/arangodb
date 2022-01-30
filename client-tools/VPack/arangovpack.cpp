@@ -75,8 +75,8 @@ int main(int argc, char* argv[]) {
                                                  "none");
         },
         [](ArangoVPackServer& server, TypeTag<ShutdownFeature>) {
-          constexpr size_t kFeatures[]{ArangoVPackServer::id<VPackFeature>()};
-          return std::make_unique<ShutdownFeature>(server, kFeatures);
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoVPackServer::id<VPackFeature>()});
         },
         [](ArangoVPackServer& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,

@@ -99,8 +99,7 @@ void CheckVersionFeature::validateOptions(
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  constexpr size_t kDisabledFeature[]{ArangodServer::id<EnvironmentFeature>()};
-  server().disableFeatures(kDisabledFeature);
+  server().disableFeatures(std::array{ArangodServer::id<EnvironmentFeature>()});
 }
 
 void CheckVersionFeature::start() {

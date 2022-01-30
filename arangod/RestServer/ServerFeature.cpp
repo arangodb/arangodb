@@ -198,24 +198,20 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   auto disableDeamonAndSupervisor = [&]() {
     if constexpr (Server::contains<DaemonFeature>()) {
-      constexpr size_t kDisabledFeatures[]{Server::id<DaemonFeature>()};
-      server().disableFeatures(kDisabledFeatures);
+      server().disableFeatures(std::array{Server::id<DaemonFeature>()});
     }
     if constexpr (Server::contains<SupervisorFeature>()) {
-      constexpr size_t kDisabledFeatures[]{Server::id<SupervisorFeature>()};
-      server().disableFeatures(kDisabledFeatures);
+      server().disableFeatures(std::array{Server::id<SupervisorFeature>()});
     }
   };
 
   if (!_restServer) {
-    constexpr size_t kDisabledFeatures[]{
+    server().disableFeatures(std::array{
         Server::id<HttpEndpointProvider>(),
         Server::id<GeneralServerFeature>(),
         Server::id<SslServerFeature>(),
         Server::id<StatisticsFeature>(),
-    };
-
-    server().disableFeatures(kDisabledFeatures);
+    });
     disableDeamonAndSupervisor();
 
     if (!options->processingResult().touched("replication.auto-start")) {
