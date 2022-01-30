@@ -155,7 +155,10 @@ constexpr size_t kNonServerFeatures[]{
     ArangodServer::id<ActionFeature>(),
     ArangodServer::id<AgencyFeature>(),
     ArangodServer::id<ClusterFeature>(),
+#ifdef ARANGODB_HAVE_FORK
+    ArangodServer::id<SupervisorFeature>(),
     ArangodServer::id<DaemonFeature>(),
+#endif
     ArangodServer::id<FoxxFeature>(),
     ArangodServer::id<GeneralServerFeature>(),
     ArangodServer::id<GreetingsFeature>(),
@@ -164,8 +167,7 @@ constexpr size_t kNonServerFeatures[]{
     ArangodServer::id<pregel::PregelFeature>(),
     ArangodServer::id<ServerFeature>(),
     ArangodServer::id<SslServerFeature>(),
-    ArangodServer::id<StatisticsFeature>(),
-    ArangodServer::id<SupervisorFeature>()};
+    ArangodServer::id<StatisticsFeature>()};
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {

@@ -48,9 +48,9 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
   startsAfter<transaction::ManagerFeature, ArangodServer>();
   startsAfter<ViewTypesFeature, ArangodServer>();
 
-#ifdef USE_ENTERPRISE
-  startsAfter<LdapFeature, ArangodServer>();
-#endif
+  if constexpr (ArangodServer::contains<LdapFeature>()) {
+    startsAfter<LdapFeature, ArangodServer>();
+  }
 }
 
 }  // namespace arangodb::application_features

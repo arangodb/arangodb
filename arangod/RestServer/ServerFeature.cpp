@@ -196,13 +196,28 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  auto disableDeamonAndSupervisor = [&]() {
+    if constexpr (Server::contains<DaemonFeature>()) {
+      constexpr size_t kDisabledFeatures[]{Server::id<DaemonFeature>()};
+      server().disableFeatures(kDisabledFeatures);
+    }
+    if constexpr (Server::contains<SupervisorFeature>()) {
+      constexpr size_t kDisabledFeatures[]{Server::id<SupervisorFeature>()};
+      server().disableFeatures(kDisabledFeatures);
+    }
+  };
+
   if (!_restServer) {
     constexpr size_t kDisabledFeatures[]{
-        Server::id<DaemonFeature>(),        Server::id<HttpEndpointProvider>(),
-        Server::id<GeneralServerFeature>(), Server::id<SslServerFeature>(),
-        Server::id<StatisticsFeature>(),    Server::id<SupervisorFeature>()};
+        Server::id<HttpEndpointProvider>(),
+        Server::id<GeneralServerFeature>(),
+        Server::id<SslServerFeature>(),
+        Server::id<StatisticsFeature>(),
+    };
 
     server().disableFeatures(kDisabledFeatures);
+    disableDeamonAndSupervisor();
+
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
       // but only if the config option is not explicitly set (the recovery
@@ -214,9 +229,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
-    constexpr size_t kDisabledFeatures[]{Server::id<DaemonFeature>(),
-                                         Server::id<SupervisorFeature>()};
-    server().disableFeatures(kDisabledFeatures);
+    disableDeamonAndSupervisor();
     v8dealer.setMinimumContexts(2);
   }
 

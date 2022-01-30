@@ -76,9 +76,9 @@ SchedulerFeature::SchedulerFeature(Server& server)
     : ArangodFeature{server, *this}, _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
-#ifdef TRI_HAVE_GETRLIMIT
-  startsAfter<FileDescriptorsFeature>();
-#endif
+  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature>();
+  }
 }
 
 SchedulerFeature::~SchedulerFeature() = default;

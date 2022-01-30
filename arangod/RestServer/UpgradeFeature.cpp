@@ -24,12 +24,9 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
@@ -40,14 +37,10 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Pregel/PregelFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "RestServer/BootstrapFeature.h"
-#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
-#include "RestServer/SupervisorFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -132,10 +125,21 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
+    auto disableDeamonAndSupervisor = [&]() {
+      if constexpr (Server::contains<DaemonFeature>()) {
+        constexpr size_t kDisabledFeatures[]{Server::id<DaemonFeature>()};
+        server().forceDisableFeatures(kDisabledFeatures);
+      }
+      if constexpr (Server::contains<SupervisorFeature>()) {
+        constexpr size_t kDisabledFeatures[]{Server::id<SupervisorFeature>()};
+        server().forceDisableFeatures(kDisabledFeatures);
+      }
+    };
+
     constexpr size_t kOtherFeaturesToDisable[]{
-        Server::id<DaemonFeature>(), Server::id<GreetingsFeature>(),
-        Server::id<pregel::PregelFeature>(), Server::id<SupervisorFeature>()};
+        Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()};
     server().forceDisableFeatures(kOtherFeaturesToDisable);
+    disableDeamonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
     constexpr size_t kOtherFeaturesToDisable[]{
@@ -150,10 +154,11 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   DatabaseFeature& database = server().getFeature<DatabaseFeature>();
   database.enableUpgrade();
 
-#ifdef USE_ENTERPRISE
-  HotBackupFeature& hotBackupFeature = server().getFeature<HotBackupFeature>();
-  hotBackupFeature.forceDisable();
-#endif
+  if constexpr (Server::contains<HotBackupFeature>()) {
+    HotBackupFeature& hotBackupFeature =
+        server().getFeature<HotBackupFeature>();
+    hotBackupFeature.forceDisable();
+  }
 }
 
 void UpgradeFeature::prepare() {

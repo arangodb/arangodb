@@ -31,7 +31,12 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   setOptional(false);
   startsAfter<GreetingsFeaturePhase, ArangodServer>();
 
-  startsAfter<DaemonFeature, ArangodServer>();
+  if constexpr (ArangodServer::contains<DaemonFeature>()) {
+    startsAfter<DaemonFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<SupervisorFeature>()) {
+    startsAfter<SupervisorFeature, ArangodServer>();
+  }
   startsAfter<DatabasePathFeature, ArangodServer>();
   startsAfter<EnvironmentFeature, ArangodServer>();
   startsAfter<LanguageFeature, ArangodServer>();
@@ -41,7 +46,6 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   startsAfter<SchedulerFeature, ArangodServer>();
   startsAfter<ShardingFeature, ArangodServer>();
   startsAfter<SslFeature, ArangodServer>();
-  startsAfter<SupervisorFeature, ArangodServer>();
   startsAfter<TempFeature, ArangodServer>();
 
   if constexpr (ArangodServer::contains<FileDescriptorsFeature>()) {

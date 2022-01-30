@@ -1925,15 +1925,15 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-#ifdef USE_ENTERPRISE
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  TRI_ASSERT(v8g->server().hasFeature<LdapFeature>());
-  auto& ldap = v8g->server().getFeature<LdapFeature>();
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
-#else
-  // LDAP only enabled in Enterprise Edition
-  TRI_V8_RETURN(v8::False(isolate));
-#endif
+  if constexpr (ArangodServer::contains<LdapFeature>()) {
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_ASSERT(v8g->server().hasFeature<LdapFeature>());
+    auto& ldap = v8g->server().getFeature<LdapFeature>();
+    TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
+  } else {
+    // LDAP only enabled in Enterprise Edition
+    TRI_V8_RETURN(v8::False(isolate));
+  }
 
   TRI_V8_TRY_CATCH_END
 }

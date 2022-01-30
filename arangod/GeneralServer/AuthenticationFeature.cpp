@@ -62,9 +62,9 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
-#ifdef USE_ENTERPRISE
-  startsAfter<LdapFeature>();
-#endif
+  if constexpr (Server::contains<LdapFeature>()) {
+    startsAfter<LdapFeature>();
+  }
 }
 
 void AuthenticationFeature::collectOptions(

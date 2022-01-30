@@ -48,9 +48,9 @@ DatabasePathFeature::DatabasePathFeature(Server& server)
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
-#ifdef TRI_HAVE_GETRLIMIT
-  startsAfter<FileDescriptorsFeature>();
-#endif
+  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature>();
+  }
   startsAfter<LanguageFeature>();
   startsAfter<TempFeature>();
 }

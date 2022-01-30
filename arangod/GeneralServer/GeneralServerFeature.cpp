@@ -429,9 +429,6 @@ void GeneralServerFeature::defineHandlers() {
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
   AuthenticationFeature& authentication =
       server().getFeature<AuthenticationFeature>();
-#ifdef USE_ENTERPRISE
-  HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
-#endif
 
   // ...........................................................................
   // /_api
@@ -743,13 +740,14 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/license",
       RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 
-#ifdef USE_ENTERPRISE
-  if (backup.isAPIEnabled()) {
-    _handlerFactory->addPrefixHandler(
-        "/_admin/backup",
-        RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+  if constexpr (Server::contains<HotBackupFeature>()) {
+    HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
+    if (backup.isAPIEnabled()) {
+      _handlerFactory->addPrefixHandler(
+          "/_admin/backup",
+          RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+    }
   }
-#endif
 
   // ...........................................................................
   // test handler
