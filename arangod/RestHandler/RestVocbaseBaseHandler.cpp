@@ -222,7 +222,9 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
       _context(*static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context.vocbase()),
       _scopeVocbaseValues(
-          LogContext::makeValue().with<structuredParams::DatabaseName>(_vocbase.name()).share()) {
+          LogContext::makeValue()
+              .with<structuredParams::DatabaseName>(_vocbase.name())
+              .share()) {
   TRI_ASSERT(request->requestContext());
 }
 

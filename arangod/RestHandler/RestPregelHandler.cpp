@@ -37,9 +37,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestPregelHandler::RestPregelHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _pregel(server.getFeature<PregelFeature>()) {}
 

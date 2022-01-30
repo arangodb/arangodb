@@ -32,8 +32,7 @@ class UserManager;
 
 class RestUsersHandler : public arangodb::RestBaseHandler {
  public:
-  RestUsersHandler(ArangodServer&, GeneralRequest*,
-                   GeneralResponse*);
+  RestUsersHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   virtual char const* name() const override { return "RestUsersHandler"; }

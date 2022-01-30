@@ -37,9 +37,9 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-RestGraphHandler::RestGraphHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestGraphHandler::RestGraphHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _graphManager(_vocbase) {}
 

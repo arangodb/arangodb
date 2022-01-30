@@ -44,9 +44,9 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestTasksHandler::RestTasksHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {

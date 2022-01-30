@@ -30,8 +30,7 @@ namespace arangodb {
 
 class RestLicenseHandler : public RestBaseHandler {
  public:
-  RestLicenseHandler(ArangodServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestLicenseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestLicenseHandler"; }

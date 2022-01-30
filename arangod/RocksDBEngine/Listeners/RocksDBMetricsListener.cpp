@@ -37,8 +37,7 @@ DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBMetricsListener::RocksDBMetricsListener(
-    ArangodServer& server)
+RocksDBMetricsListener::RocksDBMetricsListener(ArangodServer& server)
     : _writeStalls(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_rocksdb_write_stalls_total{})),
       _writeStops(server.getFeature<metrics::MetricsFeature>().add(

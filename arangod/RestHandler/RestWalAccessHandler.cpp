@@ -77,9 +77,9 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
   CollectionNameResolver resolver;
 };
 
-RestWalAccessHandler::RestWalAccessHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestWalAccessHandler::RestWalAccessHandler(ArangodServer& server,
+                                           GeneralRequest* request,
+                                           GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {

@@ -39,8 +39,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(ArangodServer& server,
-                               GeneralRequest* request,
+RestJobHandler::RestJobHandler(ArangodServer& server, GeneralRequest* request,
                                GeneralResponse* response,
                                AsyncJobManager* jobManager)
     : RestBaseHandler(server, request, response), _jobManager(jobManager) {

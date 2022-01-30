@@ -261,9 +261,9 @@ void buildHealthResult(
 
 }  // namespace
 
-RestAdminClusterHandler::RestAdminClusterHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAdminClusterHandler::RestAdminClusterHandler(ArangodServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 std::string const RestAdminClusterHandler::Health = "health";

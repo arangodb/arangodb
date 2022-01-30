@@ -33,8 +33,7 @@ class QueryRegistry;
 
 class RestSimpleQueryHandler : public RestCursorHandler {
  public:
-  RestSimpleQueryHandler(ArangodServer&,
-                         GeneralRequest*, GeneralResponse*,
+  RestSimpleQueryHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                          arangodb::aql::QueryRegistry*);
 
  public:

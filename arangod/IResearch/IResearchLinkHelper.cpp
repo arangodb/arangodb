@@ -616,9 +616,10 @@ namespace iresearch {
   return builder;
 }
 
-/*static*/ bool IResearchLinkHelper::equal(
-    ArangodServer& server, velocypack::Slice lhs,
-    velocypack::Slice rhs, irs::string_ref dbname) {
+/*static*/ bool IResearchLinkHelper::equal(ArangodServer& server,
+                                           velocypack::Slice lhs,
+                                           velocypack::Slice rhs,
+                                           irs::string_ref dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }

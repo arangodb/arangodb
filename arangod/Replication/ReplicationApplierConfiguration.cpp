@@ -220,8 +220,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder,
 
 /// @brief create a configuration object from velocypack
 ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
-    ArangodServer& server, VPackSlice slice,
-    std::string const& databaseName) {
+    ArangodServer& server, VPackSlice slice, std::string const& databaseName) {
   return fromVelocyPack(ReplicationApplierConfiguration(server), slice,
                         databaseName);
 }

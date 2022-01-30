@@ -60,10 +60,11 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
-      _logContextScopeValues(LogContext::makeValue()
-                                 .with<structuredParams::UrlName>(_request->fullUrl())
-                                 .with<structuredParams::UserName>(_request->user())
-                                 .share()),
+      _logContextScopeValues(
+          LogContext::makeValue()
+              .with<structuredParams::UrlName>(_request->fullUrl())
+              .with<structuredParams::UserName>(_request->user())
+              .share()),
       _canceled(false) {}
 
 RestHandler::~RestHandler() {

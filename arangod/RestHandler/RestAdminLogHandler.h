@@ -34,8 +34,8 @@ namespace arangodb {
 
 class RestAdminLogHandler : public RestBaseHandler {
  public:
-  explicit RestAdminLogHandler(ArangodServer&,
-                               GeneralRequest*, GeneralResponse*);
+  explicit RestAdminLogHandler(ArangodServer&, GeneralRequest*,
+                               GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAdminLogHandler"; }

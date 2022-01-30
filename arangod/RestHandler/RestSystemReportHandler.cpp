@@ -48,9 +48,9 @@ std::mutex RestSystemReportHandler::_exclusive;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSystemReportHandler::RestSystemReportHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestSystemReportHandler::RestSystemReportHandler(ArangodServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       cmds({{"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>&1"},
             {"dmesg", "time dmesg 2>&1"},

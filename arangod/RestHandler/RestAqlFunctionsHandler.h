@@ -34,8 +34,8 @@ namespace arangodb {
 
 class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestAqlFunctionsHandler(ArangodServer&,
-                                   GeneralRequest*, GeneralResponse*);
+  explicit RestAqlFunctionsHandler(ArangodServer&, GeneralRequest*,
+                                   GeneralResponse*);
 
  public:
   RestStatus execute() override;

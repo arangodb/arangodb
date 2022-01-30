@@ -910,10 +910,10 @@ IResearchInvertedIndex::IResearchInvertedIndex(
 //  - forPersistence ::<analyzer> from system and <analyzer> for local and
 //  definitions are stored.
 //  - For user -> database-name qualified names. No definitions are stored.
-void IResearchInvertedIndex::toVelocyPack(
-    ArangodServer& server,
-    TRI_vocbase_t const* defaultVocbase, velocypack::Builder& builder,
-    bool forPersistence) const {
+void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
+                                          TRI_vocbase_t const* defaultVocbase,
+                                          velocypack::Builder& builder,
+                                          bool forPersistence) const {
   if (!_dataStore._meta.json(builder, nullptr, nullptr)) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,

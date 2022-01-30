@@ -43,11 +43,10 @@ class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(ArangodServer& server,
-                      uint64_t minThreads, uint64_t maxThreads,
-                      uint64_t maxQueueSize, uint64_t fifo1Size,
-                      uint64_t fifo2Size, uint64_t fifo3Size,
-                      uint64_t ongoingLowPriorityLimit,
+  SupervisedScheduler(ArangodServer& server, uint64_t minThreads,
+                      uint64_t maxThreads, uint64_t maxQueueSize,
+                      uint64_t fifo1Size, uint64_t fifo2Size,
+                      uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade);
   ~SupervisedScheduler() final;
 

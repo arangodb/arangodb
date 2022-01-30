@@ -35,8 +35,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAqlUserFunctionsHandler::execute() {

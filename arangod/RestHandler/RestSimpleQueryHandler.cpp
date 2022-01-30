@@ -39,8 +39,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
 RestStatus RestSimpleQueryHandler::execute() {

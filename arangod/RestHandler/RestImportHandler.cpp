@@ -45,9 +45,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestImportHandler::RestImportHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}

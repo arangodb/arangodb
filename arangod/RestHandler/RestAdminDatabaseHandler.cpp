@@ -33,9 +33,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminDatabaseHandler::RestAdminDatabaseHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAdminDatabaseHandler::RestAdminDatabaseHandler(ArangodServer& server,
+                                                   GeneralRequest* request,
+                                                   GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminDatabaseHandler::execute() {

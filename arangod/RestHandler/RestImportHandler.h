@@ -62,8 +62,7 @@ struct RestImportResult {
 
 class RestImportHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestImportHandler(ArangodServer&,
-                             GeneralRequest*, GeneralResponse*);
+  explicit RestImportHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;

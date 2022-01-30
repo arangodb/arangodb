@@ -42,8 +42,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestSupervisionStateHandler::RestSupervisionStateHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestSupervisionStateHandler::execute() {

@@ -45,9 +45,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(
-    ArangodServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestDocumentHandler::RestDocumentHandler(ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;

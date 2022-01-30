@@ -171,8 +171,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   virtual ~IResearchInvertedIndex() = default;
 
-  void toVelocyPack(ArangodServer& server,
-                    TRI_vocbase_t const* defaultVocbase,
+  void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
                     velocypack::Builder& builder, bool forPersistence) const;
 
   bool isSorted() const { return !_meta._sort.empty(); }

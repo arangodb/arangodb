@@ -135,10 +135,9 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
 }
 
 bool FieldMeta::init(
-    ArangodServer& server,
-    velocypack::Slice const& slice, std::string& errorField,
-    irs::string_ref defaultVocbase, LinkVersion version,
-    FieldMeta const& defaults,
+    ArangodServer& server, velocypack::Slice const& slice,
+    std::string& errorField, irs::string_ref defaultVocbase,
+    LinkVersion version, FieldMeta const& defaults,
     std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
     Mask* mask) {
   if (!slice.isObject()) {
@@ -399,8 +398,7 @@ bool FieldMeta::init(
   return true;
 }
 
-bool FieldMeta::json(ArangodServer& server,
-                     velocypack::Builder& builder,
+bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
                      FieldMeta const* ignoreEqual /*= nullptr*/,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
                      Mask const* mask /*= nullptr*/) const {
@@ -561,8 +559,7 @@ bool IResearchLinkMeta::operator==(
 }
 
 bool IResearchLinkMeta::init(
-    ArangodServer& server, VPackSlice slice,
-    std::string& errorField,
+    ArangodServer& server, VPackSlice slice, std::string& errorField,
     irs::string_ref defaultVocbase /*= irs::string_ref::NIL*/,
     LinkVersion defaultVersion /* = LinkVersion::MIN*/,
     Mask* mask /*= nullptr*/) {

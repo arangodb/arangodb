@@ -33,8 +33,7 @@ class Methods;
 
 class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
-  RestDocumentHandler(ArangodServer&, GeneralRequest*,
-                      GeneralResponse*);
+  RestDocumentHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestDocumentHandler();
 
  public:

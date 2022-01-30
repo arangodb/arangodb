@@ -32,8 +32,7 @@ class PregelFeature;
 }
 class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestControlPregelHandler(ArangodServer&,
-                           GeneralRequest*, GeneralResponse*);
+  RestControlPregelHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestControlPregelHandler"; }
