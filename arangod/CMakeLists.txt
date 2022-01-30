@@ -560,6 +560,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/LogStatus.cpp
   Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
   Replication2/ReplicatedLog/NetworkMessages.cpp
+  Replication2/ReplicatedLog/ParticipantsCacheFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLog.cpp
   Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp

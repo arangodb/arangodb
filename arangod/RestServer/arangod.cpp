@@ -76,6 +76,7 @@
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/ReplicatedLog/ParticipantsCacheFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
@@ -224,6 +225,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<MaxMapCountFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
+    server.addFeature<replication2::ParticipantsCacheFeature>();
     server.addFeature<PrivilegeFeature>();
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();
