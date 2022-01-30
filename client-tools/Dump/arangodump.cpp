@@ -53,49 +53,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-class ArangoDumpInitializer {
- public:
-  ArangoDumpInitializer(int* ret, char const* binaryName,
-                        ArangoDumpServer& client)
-      : _ret{ret}, _binaryName{binaryName}, _client{client} {}
-
-  template<typename T>
-  void operator()(TypeTag<T>) {
-    _client.addFeature<T>();
-  }
-
-  void operator()(TypeTag<GreetingsFeaturePhase>) {
-    _client.addFeature<GreetingsFeaturePhase>(std::true_type{});
-  }
-
-  void operator()(TypeTag<ConfigFeature>) {
-    _client.addFeature<ConfigFeature>(_binaryName);
-  }
-
-  void operator()(TypeTag<LoggerFeature>) {
-    _client.addFeature<LoggerFeature>(false);
-  }
-
-  void operator()(TypeTag<HttpEndpointProvider>) {
-    _client.addFeature<HttpEndpointProvider, ClientFeature>(
-        true, std::numeric_limits<size_t>::max());
-  }
-
-  void operator()(TypeTag<DumpFeature>) {
-    _client.addFeature<DumpFeature>(*_ret);
-  }
-
-  void operator()(TypeTag<ShutdownFeature>) {
-    constexpr size_t kFeatures[]{ArangoDumpServer::id<DumpFeature>()};
-    _client.addFeature<ShutdownFeature>(kFeatures);
-  }
-
- private:
-  int* _ret;
-  char const* _binaryName;
-  ArangoDumpServer& _client;
-};
-
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
