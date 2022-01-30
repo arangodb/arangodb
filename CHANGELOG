@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade VelocyPack library to latest version.
+
 * Slightly improve the explain output of SingleRemoteOperationNodes.
 
 * Added more detail to the log messages that display the total time consumption
