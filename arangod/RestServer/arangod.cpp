@@ -190,6 +190,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          {}});
 
     server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
         [](auto& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});

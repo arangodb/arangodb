@@ -63,6 +63,9 @@ int main(int argc, char* argv[]) {
     ArangoVPackServer server(options, BIN_DIRECTORY);
 
     server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
         [&](ArangoVPackServer& server, TypeTag<VPackFeature>) {
           return std::make_unique<VPackFeature>(server, &ret);
         },

@@ -278,8 +278,6 @@ class ApplicationFeature {
 template<typename ServerT>
 class ApplicationFeatureT : public ApplicationFeature {
  public:
-  // static_assert(std::is_base_of_v<ApplicationServer, ServerT>);
-
   using Server = ServerT;
 
   Server& server() const noexcept {

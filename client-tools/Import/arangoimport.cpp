@@ -70,6 +70,9 @@ int main(int argc, char* argv[]) {
     ArangoImportServer server(options, BIN_DIRECTORY);
 
     server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
         [](ArangoImportServer& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});

@@ -71,6 +71,9 @@ int main(int argc, char* argv[]) {
     ArangoBenchServer server(options, BIN_DIRECTORY);
 
     server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
         [](ArangoBenchServer& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});

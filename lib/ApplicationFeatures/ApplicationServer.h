@@ -341,12 +341,8 @@ class ApplicationServerT : public ApplicationServer {
       constexpr auto featureId = Features::template id<T>();
 
       TRI_ASSERT(!hasFeature<T>());
-      if constexpr (std::is_constructible_v<T, ApplicationServerT&>) {
-        _features[featureId] = std::make_unique<T>(*this);
-      } else {
-        _features[featureId] =
-            std::forward<Initializer>(initializer)(*this, TypeTag<T>{});
-      }
+      _features[featureId] =
+          std::forward<Initializer>(initializer)(*this, TypeTag<T>{});
       TRI_ASSERT(hasFeature<T>());
     });
   }
@@ -435,7 +431,6 @@ class ApplicationServerT : public ApplicationServer {
   }
 
  private:
-  // FIXME(gnusi) consider tuple
   std::array<std::unique_ptr<ApplicationFeature>, Features::size()> _features;
 };
 

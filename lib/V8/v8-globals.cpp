@@ -288,9 +288,9 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   auto* isolate = &_isolate;
   TRI_GET_GLOBALS();
   v8g->decreaseActiveExternals();
-  _persistent
-      .Reset();  // dispose and clear the persistent handle (SIGSEGV here may
-                 // indicate that v8::Isolate was already deallocated)
+  // dispose and clear the persistent handle (SIGSEGV here may
+  // indicate that v8::Isolate was already deallocated)
+  _persistent.Reset();
 }
 
 /*static*/ std::pair<TRI_v8_global_t::SharedPtrPersistent&, bool>

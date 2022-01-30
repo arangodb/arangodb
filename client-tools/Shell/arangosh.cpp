@@ -77,6 +77,9 @@ int main(int argc, char* argv[]) {
     ArangoshServer server(options, BIN_DIRECTORY);
 
     server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
         [](ArangoshServer& server, TypeTag<HttpEndpointProvider>) {
           return std::make_unique<ClientFeature>(server, true);
         },

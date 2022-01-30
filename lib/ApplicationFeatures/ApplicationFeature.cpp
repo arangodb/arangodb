@@ -21,8 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/core/demangle.hpp>
-
 #include <algorithm>
 #include <chrono>
 #include <thread>
