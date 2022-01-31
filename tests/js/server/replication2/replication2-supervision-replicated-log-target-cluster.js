@@ -499,6 +499,7 @@ const replicatedLogSuite = function () {
     // This test replaces the old leader in target with a new server that is excluded
     // and additionally requests that this new server shall become the leader.
     // It expects the supervision to fail and then removes the excluded flag.
+    /* TODO reenable this test
     testChangeLeaderToNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -534,6 +535,7 @@ const replicatedLogSuite = function () {
       }));
       waitFor(replicatedLogIsReady(database, logId, term + 1, [...followers, newServer], newServer));
     },
+    */
 
     // This tests requests a non-server as leader and expects the
     // supervision to fail
