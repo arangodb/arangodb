@@ -23,6 +23,7 @@
 
 #include "TraverserDocumentCache.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/QueryContext.h"
 #include "Basics/VelocyPackHelper.h"

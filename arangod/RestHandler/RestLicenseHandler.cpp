@@ -39,9 +39,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestLicenseHandler::RestLicenseHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestLicenseHandler::RestLicenseHandler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 #ifndef USE_ENTERPRISE

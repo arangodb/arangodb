@@ -42,7 +42,6 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -145,9 +144,6 @@ DECLARE_COUNTER(arangodb_revision_tree_hibernations_total,
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total,
                 "Number of revision tree resurrections");
 
-std::string const RocksDBEngine::EngineName("rocksdb");
-std::string const RocksDBEngine::FeatureName("RocksDBEngine");
-
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
 
@@ -204,8 +200,8 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 }
 
 // create the storage engine
-RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
-    : StorageEngine(server, EngineName, FeatureName,
+RocksDBEngine::RocksDBEngine(Server& server)
+    : StorageEngine(server, kEngineName, name(), Server::id<RocksDBEngine>(),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
@@ -258,15 +254,10 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _metricsTreeResurrections(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_revision_tree_resurrections_total{})) {
-
-  server.addFeature<RocksDBOptionFeature>();
-
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
   startsAfter<RocksDBOptionFeature>();
-
-  server.addFeature<RocksDBRecoveryManager>();
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
@@ -1131,8 +1122,7 @@ void RocksDBEngine::start() {
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
 
   struct SchedulerExecutor : RocksDBLogPersistor::Executor {
-    explicit SchedulerExecutor(
-        arangodb::application_features::ApplicationServer& server)
+    explicit SchedulerExecutor(ArangodServer& server)
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
@@ -3051,7 +3041,7 @@ void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (name.front() != 'r') {
-        name = EngineName + "_" + name;
+        name = std::string{kEngineName}.append("_").append(name);
       }
       result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
                 " gauge\n" + name + " " +
@@ -3311,7 +3301,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   builder.add("version", VPackValue(ARANGODB_VERSION));
   builder.add("serverId",
               VPackValue(std::to_string(ServerIdFeature::getId().id())));
-  builder.add("engine", VPackValue(EngineName));  // "rocksdb"
+  builder.add("engine", VPackValue(kEngineName));  // "rocksdb"
   builder.close();
 
   // "clients" part

@@ -32,11 +32,8 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -51,7 +48,6 @@
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -71,9 +67,8 @@ namespace arangodb {
 
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
-RocksDBRecoveryManager::RocksDBRecoveryManager(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, featureName()),
+RocksDBRecoveryManager::RocksDBRecoveryManager(Server& server)
+    : ArangodFeature{server, *this},
       _db(nullptr),
       _tick(0),
       _recoveryState(RecoveryState::BEFORE) {
@@ -125,7 +120,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   WBReader(WBReader const&) = delete;
   WBReader const& operator=(WBReader const&) = delete;
 
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   // used to track used IDs for key-generators
   std::map<uint64_t, uint64_t> _generators;
@@ -144,7 +139,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(application_features::ApplicationServer& server,
+  explicit WBReader(ArangodServer& server,
                     rocksdb::SequenceNumber& currentSequence)
       : _server(server),
         _maxTick(TRI_NewTickServer()),

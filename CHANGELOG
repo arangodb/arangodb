@@ -24,6 +24,11 @@ devel
   This drastically reduces peak memory usage for queries that use index lookups
   in inner loops and that get lots of different inputs from outer loops.
 
+* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+  column family, setting it from `false` to `true`. This should reduce memory
+  and disk space requirements for the bottom-most .sst files of the documents
+  column family.
+
 * Upgrade VelocyPack library to latest version.
 
 * Slightly improve the explain output of SingleRemoteOperationNodes.

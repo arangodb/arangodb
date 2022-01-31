@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SharedPRNGFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/splitmix64.h"
 #include "Basics/xoroshiro128plus.h"
 
@@ -68,13 +70,10 @@ static thread_local SeededPRNG threadLocalPRNG;
 
 namespace arangodb {
 
-SharedPRNGFeature::SharedPRNGFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "SharedPRNG") {
+SharedPRNGFeature::SharedPRNGFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
 }
-
-SharedPRNGFeature::~SharedPRNGFeature() = default;
 
 void SharedPRNGFeature::prepare() {}
 
