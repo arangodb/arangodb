@@ -62,6 +62,7 @@ extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const planRepLogPrefix;
+extern std::string const targetRepLogPrefix;
 extern std::string const curColPrefix;
 extern std::string const planDBPrefix;
 extern std::string const curServersKnown;

@@ -28,23 +28,20 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -63,6 +60,10 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
+      _logContextScopeValues(LogContext::makeValue()
+                                 .with<structuredParams::UrlName>(_request->fullUrl())
+                                 .with<structuredParams::UserName>(_request->user())
+                                 .share()),
       _canceled(false) {}
 
 RestHandler::~RestHandler() {
@@ -425,7 +426,8 @@ void RestHandler::runHandlerStateMachine() {
         _statistics.SET_REQUEST_END();
         // Callback may stealStatistics!
         _callback(this);
-        // No need to finalize here!
+
+        shutdownExecute(false);
         return;
 
       case HandlerState::DONE:
@@ -466,6 +468,14 @@ void RestHandler::prepareEngine() {
   }
 
   _state = HandlerState::FAILED;
+}
+
+void RestHandler::prepareExecute(bool isContinue) {
+  _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
+}
+
+void RestHandler::shutdownExecute(bool isFinalized) noexcept {
+  LogContext::Current::popEntry(_logContextEntry);
 }
 
 /// Execute the rest handler state machine. Retry the wakeup,

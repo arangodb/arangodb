@@ -1,9 +1,33 @@
 devel
 -----
+
+* Upgrade VelocyPack library to latest version.
+
+* Slightly improve the explain output of SingleRemoteOperationNodes.
+
+* Added more detail to the log messages that display the total time consumption
+  and total amount of data parsed for the client tools arangodump and 
+  arangorestore. 
+
+* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
+  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+  multiple Coordinators.
+
 * Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
-  determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
+  determining the shard in SingleRemoteModification nodes was incorrect. E.g. this could
   be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
-  contained this bug
+  contained this bug.
+
+* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+  Smart Graph could led to wrong shard location calculation and therefore to
+  wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
 
 * Upgraded bundled version of RocksDB to 6.29.
 
@@ -29,7 +53,40 @@ devel
   now opt-in and turned off if not needed. Apart from performance, there should 
   be no end user visible changes.
 
+* APM-24: Log messages can be displayed together with some other useful 
+  parameters, e.g., the name of the database, username, query id, and so on. 
+  There are some predefined parameters that we consider displaying, but, 
+  for the moment, only database, username and url are being displayed.
+  The usage upon starting the server is, for example: 
+  `arangod --log.structured-param database --log.structured-param username`
+
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
+
+* Add optional "storedValues" attribute for persistent indexes.
+
+  This will add the specified extra fields to the index, so that they can be
+  used for projections, but not for lookups or sorting.
+
+  Example:
+
+      db.<collection>.ensureIndex({ 
+        type: "persistent", 
+        fields: ["value1"], 
+        storedValues: ["value2"] 
+      });
+
+  This will index `value1` in the traditional sense, so the index can be
+  used for looking up by `value1` or for sorting by `value1`. The index also
+  supports projections on `value1` as usual.
+  In addition, due to `storedValues` being used here, the index can now also 
+  supply the values for the `value2` attribute for projections.
+
+  This allows covering index scans in more cases and helps to avoid making
+  extra document lookups in the documents column family. This can have a
+  great positive effect on index scan performance if the number of scanned 
+  index entries is large.
+
+  The maximum number of attributes to store in `storedValues` is 32.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
