@@ -44,8 +44,9 @@ class collation_token_stream final
  public:
   struct options_t {
     icu::Locale locale;
+    bool forceUtf8;
 
-    options_t() : locale{"C"} {
+    options_t() : locale{"C"}, forceUtf8{true} {
       locale.setToBogus();
     }
   };

@@ -510,8 +510,7 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
   // place) with the same TraversalExecutorInfos as before. Those
   // infos contain the traverser which might contain state from a previous run.
   if (infos.isRefactor()) {
-    _traversalEnumerator.clear(
-        false);
+    _traversalEnumerator.clear(false);
   } else {
     _traverser.done();
   }
@@ -775,6 +774,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
           input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
       TRI_ASSERT(_inputRow.isInitialized());
 
+      // register temporary variables in expression context
       for (auto const& pair : _infos.filterConditionVariables()) {
         opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
       }

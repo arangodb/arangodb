@@ -24,48 +24,10 @@
 
 #include "IResearchCommon.h"
 
-namespace {
-static const char* TYPE = "arangosearch";
-}
-
 namespace arangodb {
 namespace iresearch {
 
-LogTopic TOPIC(::TYPE, LogLevel::INFO);
-
-arangodb::LogicalDataSource::Type const& dataSourceType() {
-  static auto& type =
-      arangodb::LogicalDataSource::Type::emplace(std::string_view(TYPE));
-
-  return type;
-}
-
-arangodb::LogTopic& logTopic() { return TOPIC; }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     StaticStrings
-// -----------------------------------------------------------------------------
-
-/*static*/ std::string const StaticStrings::LinksField("links");
-/*static*/ std::string const StaticStrings::VersionField("version");
-/*static*/ std::string const StaticStrings::ViewIdField("view");
-/*static*/ std::string const StaticStrings::AnalyzerDefinitionsField(
-    "analyzerDefinitions");
-/*static*/ std::string const StaticStrings::AnalyzerFeaturesField("features");
-/*static*/ std::string const StaticStrings::AnalyzerNameField("name");
-/*static*/ std::string const StaticStrings::AnalyzerPropertiesField(
-    "properties");
-/*static*/ std::string const StaticStrings::AnalyzerTypeField("type");
-/*static*/ std::string const StaticStrings::PrimarySortField("primarySort");
-/*static*/ std::string const StaticStrings::PrimarySortCompressionField(
-    "primarySortCompression");
-/*static*/ std::string const StaticStrings::StoredValuesField("storedValues");
-/*static*/ std::string const StaticStrings::CollectionNameField(
-    "collectionName");
+LogTopic TOPIC{std::string{StaticStrings::DataSourceType}, LogLevel::INFO};
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

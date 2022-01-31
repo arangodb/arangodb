@@ -69,7 +69,7 @@ struct IResearchLinkHelper {
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(application_features::ApplicationServer& server,
                     velocypack::Slice lhs, velocypack::Slice rhs,
-                    irs::string_ref const& dbname);
+                    irs::string_ref dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
@@ -98,11 +98,6 @@ struct IResearchLinkHelper {
       IResearchViewStoredValues const* storedValues = nullptr,
       velocypack::Slice idSlice = velocypack::Slice(),
       irs::string_ref collectionName = irs::string_ref::NIL);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief IResearch Link index type string value
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::string const& type() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate the link specifications for:
