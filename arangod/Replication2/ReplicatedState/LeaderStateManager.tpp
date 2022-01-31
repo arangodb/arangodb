@@ -88,7 +88,7 @@ void LeaderStateManager<S>::run() {
                         self->updateInternalState(
                             LeaderInternalState::kServiceAvailable);
                         self->state->_stream = self->stream;
-                        self->waitForParticipantResigned();
+                        self->beginWaitingForParticipantResigned();
                         return result;
                       } else {
                         LOG_TOPIC("3fd49", FATAL, Logger::REPLICATED_STATE)
@@ -181,7 +181,7 @@ auto LeaderStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-void LeaderStateManager<S>::waitForParticipantResigned() {
+void LeaderStateManager<S>::beginWaitingForParticipantResigned() {
   logLeader->waitFor(LogIndex{std::numeric_limits<std::uint64_t>::max()})
       .thenFinal([weak = this->weak_from_this()](auto&&) {
         if (auto self = weak.lock(); self != nullptr) {
