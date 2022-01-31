@@ -61,10 +61,8 @@ void ShortStringStorage::clearMost() noexcept {
     return;
   }
 
-  while (_blocks.size() > 1) {
-    _resourceMonitor.decreaseMemoryUsage(_blockSize);
-    _blocks.pop_back();
-  }
+  _resourceMonitor.decreaseMemoryUsage(_blockSize * (_blocks.size() - 1));
+  _blocks.resize(1);
   TRI_ASSERT(!_blocks.empty());
   // reset _current and _end
   _current = _blocks.back().get();
