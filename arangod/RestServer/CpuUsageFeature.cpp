@@ -167,6 +167,8 @@ void CpuUsageFeature::prepare() {
   }
 }
 
+CpuUsageFeature::~CpuUsageFeature() = default;
+
 CpuUsageSnapshot CpuUsageFeature::snapshot() {
   CpuUsageSnapshot lastSnapshot, lastDelta;
 

@@ -35,6 +35,7 @@ class CpuUsageFeature final : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "CpuUsage"; }
 
   explicit CpuUsageFeature(Server& server);
+  ~CpuUsageFeature();
 
   void prepare() override final;
 
