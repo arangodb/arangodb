@@ -22,11 +22,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Supervision.h"
+#include <memory>
 
+#include "Logger/LogMacros.h"
+
+using namespace arangodb;
 using namespace arangodb::replication2::replicated_state;
+
+auto checkStateAdded(replication2::replicated_state::agency::State const& state)
+    -> std::unique_ptr<Action> {
+  if (!state.plan) {
+    auto const spec = replication2::replicated_state::agency::Plan{};
+    return std::make_unique<AddStateToPlanAction>(spec);
+  } else {
+    return std::make_unique<EmptyAction>();
+  }
+}
+
+auto isEmptyAction(std::unique_ptr<Action>& action) {
+  return (action->type() == Action::ActionType::EmptyAction);
+}
 
 auto checkReplicatedState(
     std::optional<arangodb::replication2::agency::Log> const& log,
-    agency::State const& state) -> std::unique_ptr<Action> {
+    replication2::replicated_state::agency::State const& state)
+    -> std::unique_ptr<Action> {
+
+    LOG_DEVEL << " check replicated state";
+
+  if (auto action = checkStateAdded(state); !isEmptyAction(action)) {
+    return action;
+  }
+
   return std::make_unique<EmptyAction>();
 };

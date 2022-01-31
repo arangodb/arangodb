@@ -47,16 +47,16 @@ struct ImplementationSpec {
       -> ImplementationSpec;
 };
 
+struct Properties {
+  ImplementationSpec implementation;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
+};
+
 struct Plan {
   LogId id;
   StateGeneration generation;
-
-  struct Properties {
-    ImplementationSpec implementation;
-
-    void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
-  };
 
   Properties properties;
 
@@ -93,7 +93,21 @@ struct Current {
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
 
-struct Target {};
+struct Target {
+  LogId id;
+
+  Properties properties;
+
+  struct Participant {
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
+  };
+
+  std::unordered_map<ParticipantId, Participant> participants;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;
+};
 
 struct State {
   Target target;

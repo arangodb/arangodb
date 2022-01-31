@@ -26,14 +26,41 @@
 #include <Agency/TransactionBuilder.h>
 #include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
 #include <Replication2/ReplicatedState/AgencySpecification.h>
-#include <Replication2/ReplicatedState/SupervisionAction.h>
 
 #include <memory>
 
 namespace arangodb::replication2::replicated_state {
+struct Action {
+  enum class ActionType {
+    EmptyAction,
+    AddStateToPlanAction,
+  };
+  virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope = 0;
 
-auto checkReplicatedState(
-    std::optional<arangodb::replication2::agency::Log> const& log,
-    agency::State const& state) -> std::unique_ptr<Action>;
+  virtual ActionType type() const = 0;
+  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
+  virtual ~Action() = default;
+};
+
+struct EmptyAction : Action {
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+
+  ActionType type() const override { return ActionType::EmptyAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+
+struct AddStateToPlanAction : Action {
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+
+  ActionType type() const override { return ActionType::EmptyAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  AddStateToPlanAction(agency::Plan const& spec) : spec{spec} {};
+
+  agency::Plan spec;
+};
 
 }  // namespace arangodb::replication2::replicated_state

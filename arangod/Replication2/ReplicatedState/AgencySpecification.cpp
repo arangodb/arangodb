@@ -122,14 +122,13 @@ auto Plan::fromVelocyPack(velocypack::Slice slice) -> Plan {
               .participants = std::move(participants)};
 }
 
-void Plan::Properties::toVelocyPack(velocypack::Builder& builder) const {
+void Properties::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add(velocypack::Value("implementation"));
   implementation.toVelocyPack(builder);
 }
 
-auto Plan::Properties::fromVelocyPack(velocypack::Slice slice)
-    -> Plan::Properties {
+auto Properties::fromVelocyPack(velocypack::Slice slice) -> Properties {
   auto impl = ImplementationSpec::fromVelocyPack(slice.get("implementation"));
   return Properties{.implementation = std::move(impl)};
 }
@@ -143,4 +142,44 @@ auto ImplementationSpec::fromVelocyPack(velocypack::Slice slice)
     -> ImplementationSpec {
   return ImplementationSpec{
       .type = slice.get(StaticStrings::IndexType).copyString()};
+}
+
+auto Target::Participant::fromVelocyPack(velocypack::Slice slice)
+    -> Participant {
+  return Participant{};
+}
+
+void Target::Participant::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+}
+
+void Target::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Id, velocypack::Value(id));
+  {
+    velocypack::ObjectBuilder pob(&builder, StaticStrings::Participants);
+    for (auto const& [pid, state] : participants) {
+      builder.add(velocypack::Value(pid));
+      state.toVelocyPack(builder);
+    }
+  }
+  builder.add(velocypack::Value(StaticStrings::Properties));
+  properties.toVelocyPack(builder);
+}
+
+auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
+  auto id = slice.get(StaticStrings::Id).extract<LogId>();
+  auto participants = std::unordered_map<ParticipantId, Participant>{};
+  for (auto [key, value] :
+       velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
+    auto status = Participant::fromVelocyPack(value);
+    participants.emplace(key.copyString(), status);
+  }
+
+  auto properties =
+      Properties::fromVelocyPack(slice.get(StaticStrings::Properties));
+
+  return Target{.id = id,
+                .properties = std::move(properties),
+                .participants = std::move(participants)};
 }
