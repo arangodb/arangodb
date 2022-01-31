@@ -81,22 +81,22 @@ RestStatus RestLicenseHandler::execute() {
 
 /// @brief check for administrator rights
 arangodb::Result RestLicenseHandler::verifyPermitted() {
-  if constexpr (ArangodServer::contains<LicenseFeature>()) {
-    auto& feature = server().getFeature<LicenseFeature>();
+#ifdef USE_ENTERPRISE
+  auto& feature = server().getFeature<arangodb::LicenseFeature>();
 
-    // do we have admin rights (if rights are active)
-    if (feature.onlySuperUser()) {
-      if (!ExecContext::current().isSuperuser()) {
-        return arangodb::Result(
-            TRI_ERROR_HTTP_FORBIDDEN,
-            "you need super user rights for license operations");
-      }
-    } else {
-      if (!ExecContext::current().isAdminUser()) {
-        return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
-                                "you need admin rights for license operations");
-      }
+  // do we have admin rights (if rights are active)
+  if (feature.onlySuperUser()) {
+    if (!ExecContext::current().isSuperuser()) {
+      return arangodb::Result(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          "you need super user rights for license operations");
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser()) {
+      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
+                              "you need admin rights for license operations");
     }
   }
+#endif
   return arangodb::Result();
 }

@@ -740,14 +740,14 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/license",
       RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 
-  if constexpr (Server::contains<HotBackupFeature>()) {
-    HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
-    if (backup.isAPIEnabled()) {
-      _handlerFactory->addPrefixHandler(
-          "/_admin/backup",
-          RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
-    }
+#ifdef USE_ENTERPRISE
+  HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
+  if (backup.isAPIEnabled()) {
+    _handlerFactory->addPrefixHandler(
+        "/_admin/backup",
+        RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
+#endif
 
   // ...........................................................................
   // test handler
