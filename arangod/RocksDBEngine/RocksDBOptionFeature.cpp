@@ -717,6 +717,12 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
       break;
 
     case RocksDBColumnFamilyManager::Family::Documents:
+      // in the documents column family, it is totally unexpected to not
+      // find a document by local document id. that means even in the lowest
+      // levels we expect to find the document when looking it up.
+      options.optimize_filters_for_hits = true;
+      [[fallthrough]];
+
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
     case RocksDBColumnFamilyManager::Family::FulltextIndex:
