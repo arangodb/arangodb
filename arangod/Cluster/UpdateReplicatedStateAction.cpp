@@ -86,7 +86,6 @@ bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
 
   auto logId = LogId{StringUtils::uint64(_description.get(REPLICATED_LOG_ID))};
   auto serverId = ServerState::instance()->getId();
-  // auto rebootId = ServerState::instance()->getRebootId();
 
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -99,14 +98,14 @@ bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
         current.has_value() ? &current.value() : nullptr);
     if (result.fail()) {
       LOG_TOPIC("ba776", ERR, Logger::REPLICATION2)
-          << "failed to modify replicated state " << _description.get(DATABASE)
+          << "failed to modify replicated state " << database
           << '/' << logId << "; " << result.errorMessage();
     }
-    _feature.addDirty(_description.get(DATABASE));
+    _feature.addDirty(database);
   } catch (std::exception const& e) {
     LOG_TOPIC("f824e", ERR, Logger::REPLICATION2)
         << "exception during update of replicated state "
-        << _description.get(DATABASE) << '/' << logId << "; " << e.what();
+        << database << '/' << logId << "; " << e.what();
   }
 
   return false;
