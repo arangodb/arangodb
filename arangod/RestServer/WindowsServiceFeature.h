@@ -70,7 +70,7 @@ class WindowsServiceFeature final : public ArangodFeature {
   bool _stopService = false;
   bool _stopWaitService = false;
 
-  application_features::ApplicationServer* _server;
+  ArangodServer* _server;
 
  private:
   uint16_t _progress;
