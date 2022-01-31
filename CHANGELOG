@@ -1,5 +1,5 @@
-v3.9.0 (XXXX-XX-XX)
--------------------
+v3.9.0-rc.1 (2022-01-31)
+------------------------
 
 * Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
   determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
