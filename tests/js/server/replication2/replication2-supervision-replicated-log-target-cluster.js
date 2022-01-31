@@ -467,6 +467,7 @@ const replicatedLogSuite = function () {
     // This tests replaces the leader in Target with a new server that has the
     // excluded flag set. It then waits for the replicated log to converge and
     // then removes the excluded flag.
+    /* TODO reenable this test
     testReplaceLeaderWithNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -495,6 +496,7 @@ const replicatedLogSuite = function () {
       // we expect to have a new leader and the new follower
       waitFor(replicatedLogLeaderEstablished(database, logId, term + 1, [...followers, newServer]));
     },
+    */
 
     // This test replaces the old leader in target with a new server that is excluded
     // and additionally requests that this new server shall become the leader.
