@@ -85,6 +85,7 @@ export class GraphView extends React.Component {
         } else if(chosenAction === 'setAsStartnode') {
           console.log("Trigger setAsStartnode() with node: ", item._cfg);
           console.log("Trigger setAsStartnode() with nodeId: ", item._cfg.id);
+          this.props.onSetStartnode(item._cfg.id);
         } else if(chosenAction === 'addNode') {
           console.log("Trigger addNode()");
           this.addNode();
@@ -105,9 +106,11 @@ export class GraphView extends React.Component {
       offsetY: 0,
       itemTypes: ['node', 'edge', 'canvas'],
     });
+    
     const toolbar = new G6.ToolBar({
       position: { x: 10, y: 10 },
     });
+
     const container = ReactDOM.findDOMNode(this.ref.current);
     console.log(`Size: ${container.offsetWidth} x ${container.offsetHeight}`);
     this.graph = new G6.Graph({

@@ -544,6 +544,20 @@ const G6JsGraph = () => {
     //setShowNodeToAddModal(true);
   }
 
+  const setStartnode = (node) => {
+    const url = `/_admin/aardvark/graph/${graphName}?nodeLabelByCollection=true&nodeColorByCollection=false&nodeSizeByEdges=true&edgeLabelByCollection=true&edgeColorByCollection=false&nodeStart=${node}&depth=1&limit=2&nodeLabel=&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true`;
+      arangoFetch(arangoHelper.databaseUrl(url), {
+        method: "GET"
+      })
+      .then(response => response.json())
+      .then(data => {
+        setGraphData(data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }
+
   const editNodeMode = (node) => {
     console.log('editNodeMode (node): ', node);
     //openeditmodal
@@ -700,6 +714,7 @@ const G6JsGraph = () => {
             onEditEdge={(edge) => openEditEdgeModal(edge)}
             onAddNodeToDb={() => openAddNodeModal()}
             onExpandNode={(node) => expandNode(node)}
+            onSetStartnode={(node) => setStartnode(node)}
             graphName={graphName}
       />     
     </div>
