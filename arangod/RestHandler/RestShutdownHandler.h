@@ -25,13 +25,11 @@
 
 #include "RestHandler/RestBaseHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-
 namespace arangodb {
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  explicit RestShutdownHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
+  explicit RestShutdownHandler(ArangodServer&, GeneralRequest*,
+                               GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestShutdownHandler"; }

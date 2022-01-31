@@ -74,7 +74,7 @@ class LogicalViewImpl : public arangodb::LogicalView {
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;

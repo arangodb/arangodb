@@ -18,38 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Dominik Jung
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
-#include <string>
-
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
-namespace options {
-class ProgramOptions;
-}
 
-class TimeZoneFeature final : public application_features::ApplicationFeature {
- public:
-  explicit TimeZoneFeature(application_features::ApplicationServer& server);
-  ~TimeZoneFeature();
+class TempFeature;
+class BenchFeature;
 
-  void prepare() override final;
-  void start() override final;
+using ArangoBenchFeatures =
+    ArangoClientFeatures<BasicFeaturePhaseClient, TempFeature, BenchFeature>;
 
-  static void prepareTimeZoneData(std::string const& binaryPath,
-                                  std::string const& binaryExecutionPath,
-                                  std::string const& binaryName);
-
- private:
-  char const* _binaryPath;
-};
+using ArangoBenchServer = ApplicationServerT<ArangoBenchFeatures>;
+using ArangoBenchFeature = ApplicationFeatureT<ArangoBenchServer>;
 
 }  // namespace arangodb

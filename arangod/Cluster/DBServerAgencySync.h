@@ -27,10 +27,9 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include "RestServer/arangod.h"
+
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
 namespace replication2 {
 namespace replicated_log {
@@ -62,7 +61,7 @@ class DBServerAgencySync {
   DBServerAgencySync& operator=(DBServerAgencySync const&) = delete;
 
  public:
-  explicit DBServerAgencySync(application_features::ApplicationServer& server,
+  explicit DBServerAgencySync(ArangodServer& server,
                               HeartbeatThread* heartbeat);
 
  public:
@@ -87,7 +86,7 @@ class DBServerAgencySync {
   DBServerAgencySyncResult execute();
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   HeartbeatThread* _heartbeat;
 };
 }  // namespace arangodb

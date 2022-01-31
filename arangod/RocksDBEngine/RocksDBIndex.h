@@ -41,7 +41,8 @@ class ColumnFamilyHandle;
 namespace arangodb {
 namespace cache {
 class Cache;
-}
+class Manager;
+}  // namespace cache
 
 class LogicalCollection;
 class RocksDBEngine;

@@ -34,7 +34,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -119,9 +118,8 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 }  // namespace
 
-RocksDBOptionFeature::RocksDBOptionFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "RocksDBOption"),
+RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
+    : ArangodFeature{server, *this},
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),

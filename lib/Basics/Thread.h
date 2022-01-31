@@ -186,4 +186,26 @@ class Thread {
 
   std::atomic<ThreadState> _state;
 };
+
+template<typename ServerT>
+class ServerThread : public Thread {
+ public:
+  using Server = ServerT;
+
+  ServerThread(Server& server, std::string const& name,
+               bool deleteOnExit = false,
+               std::uint32_t terminationTimeout = INFINITE)
+      : Thread{server, name, deleteOnExit, terminationTimeout} {}
+
+  Server& server() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* p = dynamic_cast<Server*>(&Thread::server());
+    TRI_ASSERT(p);
+    return *p;
+#else
+    return static_cast<Server&>(Thread::server());
+#endif
+  }
+};
+
 }  // namespace arangodb
