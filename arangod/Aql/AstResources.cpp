@@ -69,7 +69,8 @@ void AstResources::clearMost() noexcept {
   _shortStringStorage.clearMost();
 }
 
-// clears dynamic string data
+// clears dynamic string data. resets _strings and _stringsLength,
+// but does not update _resourceMonitor!
 void AstResources::clearStrings() noexcept {
   for (auto& it : _strings) {
     TRI_FreeString(it);

@@ -59,9 +59,6 @@ class AstResources {
   // re-allocations)
   void clearMost() noexcept;
 
-  // clears dynamic string data
-  void clearStrings() noexcept;
-
   // create and register an AstNode
   AstNode* registerNode(AstNodeType type);
 
@@ -89,6 +86,10 @@ class AstResources {
   constexpr static size_t kMinCapacityForLongStrings = 8;
 
  private:
+  // clears dynamic string data. resets _strings and _stringsLength,
+  // but does not update _resourceMonitor!
+  void clearStrings() noexcept;
+
   // calculate the new capacity for the container
   template<typename T>
   size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
