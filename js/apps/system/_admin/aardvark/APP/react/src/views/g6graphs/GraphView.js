@@ -107,8 +107,56 @@ export class GraphView extends React.Component {
       itemTypes: ['node', 'edge', 'canvas'],
     });
     
+    /*
     const toolbar = new G6.ToolBar({
       position: { x: 10, y: 10 },
+    });
+    */
+
+    const tc = document.createElement('div');
+    tc.id = 'toolbarContainer';
+    document.body.appendChild(tc);
+    
+    const toolbar = new G6.ToolBar({
+      //container: tc,
+      position: { x: 10, y: 10 },
+      getContent: () => {
+        return `
+          <ul id="toolbar-design">
+            <li code='redo'>Redo</li>
+            <li code='undo'>Undo</li>
+            <li code='zoomin'>Zoom In</li>
+            <li code='zoomout'>Zoom Out</li>
+            <li code='dontknow'>Don't know</li>
+            <li code='fit'>Fit</li>
+            <li code='add'>Add</li>
+          </ul>
+        `
+      },
+      handleClick: (code, graph) => {
+        if (code === 'add') {
+          graph.addItem('node', {
+            id: 'node2',
+            label: 'node2',
+            x: 300,
+            y: 150
+          })
+        } else if (code === 'redo') {
+          toolbar.redo();
+        } else if (code === 'undo') {
+          toolbar.undo();
+        } else if (code === 'zoomin') {
+          console.log("zoom in");
+          toolbar.zoomIn();
+        } else if (code === 'zoomout') {
+          console.log("zoom out");
+          toolbar.zoomOut();
+        } else if (code === 'dontknow') {
+          console.log("Do not know");
+        } else if (code === 'fit') {
+          console.log("fit");
+        }
+      }
     });
 
     const container = ReactDOM.findDOMNode(this.ref.current);
