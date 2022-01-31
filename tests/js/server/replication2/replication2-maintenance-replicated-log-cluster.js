@@ -40,6 +40,7 @@ const {
   dbservers,
   nextUniqueLogId,
   registerAgencyTestBegin, registerAgencyTestEnd,
+  replicatedLogParticipantsFlag,
 } = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = 'ReplLogsMaintenanceTest';
@@ -58,48 +59,13 @@ const replicatedLogParticipantGeneration = function (logId, generation) {
     }
     if (current.leader.committedParticipantsConfig.generation < generation) {
       return Error("Leader has not yet acked new generation; "
-        + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
-    }
-
-    return true;
-  };
-};
-
-const replicatedLogParticipantsFlag = function (logId, flags, generation = undefined) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-    if (current === undefined) {
-      return Error("current not yet defined");
-    }
-    if (!current.leader) {
-      return Error("Leader has not yet established its term");
-    }
-    if (!current.leader.committedParticipantsConfig) {
-      return Error("Leader has not yet committed any participants config");
-    }
-    if (generation !== undefined) {
-      if (current.leader.committedParticipantsConfig.generation < generation) {
-        return Error("Leader has not yet acked new generation; "
           + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
-      }
-    }
-
-    const participants = current.leader.committedParticipantsConfig.participants;
-    for (const [p, v] of Object.entries(flags)) {
-      if (v === null) {
-        if (participants[p] !== undefined) {
-          return Error(`Entry for server ${p} still present in participants flags`);
-        }
-      } else {
-        if (!_.isEqual(v, participants[p])) {
-          return Error(`Flags for participant ${p} are not as expected: ${JSON.stringify(v)} vs. ${JSON.stringify(participants[p])}`);
-        }
-      }
     }
 
     return true;
   };
 };
+
 
 const replicatedLogLeaderCommitFail = function (database, logId, expected) {
   return function () {
@@ -317,7 +283,12 @@ const replicatedLogSuite = function () {
           forced: false
         }
       });
-      waitFor(replicatedLogParticipantsFlag(logId, {[follower]: {excluded: true, forced: false}}, newGeneration));
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [follower]: {
+          excluded: true,
+          forced: false
+        }
+      }, newGeneration));
 
       newGeneration = replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
         [follower]: {
@@ -327,7 +298,12 @@ const replicatedLogSuite = function () {
       });
       waitFor(replicatedLogParticipantGeneration(logId, newGeneration));
 
-      waitFor(replicatedLogParticipantsFlag(logId, {[follower]: {excluded: false, forced: false}}, newGeneration));
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [follower]: {
+          excluded: false,
+          forced: false
+        }
+      }, newGeneration));
       replicatedLogDeletePlan(database, logId);
     },
 
@@ -425,7 +401,7 @@ const replicatedLogSuite = function () {
       replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
         [toBeRemoved]: null
       });
-      waitFor(replicatedLogParticipantsFlag(logId, {[toBeRemoved]: null}));
+      waitFor(replicatedLogParticipantsFlag(database, logId, {[toBeRemoved]: null}));
       replicatedLogDeletePlan(database, logId);
     },
   };
