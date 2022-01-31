@@ -24,7 +24,6 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/NumberOfCores.h"
@@ -35,12 +34,12 @@
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/Builder.h"
 #include "Metrics/CounterBuilder.h"
@@ -540,10 +539,10 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public Thread {
+class StatisticsThread final : public ServerThread<ArangodServer> {
  public:
-  explicit StatisticsThread(ApplicationServer& server)
-      : Thread(server, "Statistics") {}
+  explicit StatisticsThread(Server& server)
+      : ServerThread<ArangodServer>(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -592,9 +591,8 @@ class StatisticsThread final : public Thread {
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
-StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Statistics"),
+StatisticsFeature::StatisticsFeature(Server& server)
+    : ArangodFeature{server, *this},
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
@@ -653,8 +651,6 @@ StatisticsFeature::StatisticsFeature(
   }
 #endif
 }
-
-StatisticsFeature::~StatisticsFeature() = default;
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {

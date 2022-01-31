@@ -33,6 +33,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "Agency/AgencyPaths.h"

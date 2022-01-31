@@ -59,7 +59,7 @@ class PhysicalCollectionTest
                                      arangodb::LogLevel::WARN> {
  protected:
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   std::vector<std::reference_wrapper<
       arangodb::application_features::ApplicationFeature>>
       features;

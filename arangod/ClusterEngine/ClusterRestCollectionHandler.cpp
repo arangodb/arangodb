@@ -28,8 +28,7 @@
 using namespace arangodb;
 
 ClusterRestCollectionHandler::ClusterRestCollectionHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
 Result ClusterRestCollectionHandler::handleExtraCommandPut(

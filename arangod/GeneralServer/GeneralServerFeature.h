@@ -23,22 +23,22 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Metrics/Counter.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 class RestServerThread;
 
-class GeneralServerFeature final
-    : public application_features::ApplicationFeature {
+class GeneralServerFeature final : public ArangodFeature {
  public:
-  explicit GeneralServerFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "GeneralServer"; }
+
+  explicit GeneralServerFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

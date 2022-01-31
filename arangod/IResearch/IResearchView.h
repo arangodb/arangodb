@@ -38,11 +38,11 @@
 
 namespace arangodb {
 
-struct ViewFactory;  // forward declaration
+struct ViewFactory;
 
 namespace transaction {
 
-class Methods;  // forward declaration
+class Methods;
 
 }  // namespace transaction
 
@@ -216,7 +216,7 @@ class IResearchView final : public LogicalView {
 
  private:
   using AsyncViewPtr = std::shared_ptr<AsyncValue<IResearchView>>;
-  struct ViewFactory;  // forward declaration
+  struct ViewFactory;
 
   AsyncViewPtr _asyncSelf;
   // 'this' for the lifetime of the view (for use with asynchronous calls)

@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyCache.h"
+#include "Metrics/MetricsFeature.h"
 #include "IResearch/AgencyMock.h"
 #include "IResearch/RestHandlerMock.h"
 
