@@ -185,6 +185,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/PathManagement/PathValidatorTracer.cpp
   Graph/PathManagement/PathValidatorOptions.cpp
   Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp

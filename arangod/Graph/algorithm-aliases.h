@@ -34,6 +34,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/PathManagement/PathValidatorTracer.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Types/UniquenessLevel.h"
 
@@ -70,8 +71,11 @@ struct BFSConfiguration {
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>,
                                 PathStore<Step>>::type;
-  using Validator =
-      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
+  using Validator = typename std::conditional<
+      useTracing,
+      PathValidatorTracer<
+          PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>,
+      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>::type;
 };
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
@@ -87,8 +91,11 @@ struct DFSConfiguration {
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>,
                                 PathStore<Step>>::type;
-  using Validator =
-      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
+  using Validator = typename std::conditional<
+      useTracing,
+      PathValidatorTracer<
+          PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>,
+      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>::type;
 };
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
@@ -104,8 +111,11 @@ struct WeightedConfiguration {
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>,
                                 PathStore<Step>>::type;
-  using Validator =
-      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
+  using Validator = typename std::conditional<
+      useTracing,
+      PathValidatorTracer<
+          PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>,
+      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>::type;
 };
 
 // BFS Traversal Enumerator implementation
@@ -133,7 +143,7 @@ using TracedDFSEnumerator = OneSidedEnumerator<
     DFSConfiguration<Provider, vertexUniqueness, edgeUniqueness, true>>;
 
 // Weighted Traversal Enumerator implementation
-// TODO: Needs to be renamed as soon as we replace the existing variant, whic
+// TODO: Needs to be renamed as soon as we replace the existing variant, which
 // occupies this name
 template<class Provider, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
