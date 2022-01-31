@@ -151,11 +151,10 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   DatabaseFeature& database = server().getFeature<DatabaseFeature>();
   database.enableUpgrade();
 
-  if constexpr (Server::contains<HotBackupFeature>()) {
-    HotBackupFeature& hotBackupFeature =
-        server().getFeature<HotBackupFeature>();
-    hotBackupFeature.forceDisable();
-  }
+#ifdef USE_ENTERPRISE
+  HotBackupFeature& hotBackupFeature = server().getFeature<HotBackupFeature>();
+  hotBackupFeature.forceDisable();
+#endif
 }
 
 void UpgradeFeature::prepare() {
