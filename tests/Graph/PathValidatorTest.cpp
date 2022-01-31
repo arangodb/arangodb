@@ -60,18 +60,22 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
 using Step = typename graph::MockGraphProvider::Step;
 
-// TODO [GraphRefactor]: Add matrix out of all variants we have here (added
-// EdgeUniquenessLevel)
 using TypesToTest = ::testing::Types<
     PathValidator<graph::MockGraphProvider,
                   PathStore<graph::MockGraphProvider::Step>,
                   VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>,
     PathValidator<graph::MockGraphProvider,
                   PathStore<graph::MockGraphProvider::Step>,
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>,
+    PathValidator<graph::MockGraphProvider,
+                  PathStore<graph::MockGraphProvider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>,
     PathValidator<graph::MockGraphProvider,
                   PathStore<graph::MockGraphProvider::Step>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::GLOBAL>>;
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::NONE>,
+    PathValidator<graph::MockGraphProvider,
+                  PathStore<graph::MockGraphProvider::Step>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template<class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
@@ -128,7 +132,7 @@ class PathValidatorTest : public ::testing::Test {
     }
   }
 
-  EdgeUniquenessLevel getEdgeUniquness() {
+  EdgeUniquenessLevel getEdgeUniqueness() {
     if constexpr (std::is_same_v<
                       ValidatorType,
                       PathValidator<graph::MockGraphProvider, PathStore<Step>,
@@ -136,7 +140,7 @@ class PathValidatorTest : public ::testing::Test {
                                     EdgeUniquenessLevel::NONE>>) {
       return EdgeUniquenessLevel::NONE;
     } else {
-      return EdgeUniquenessLevel::GLOBAL;
+      return EdgeUniquenessLevel::PATH;
     }
   }
 
@@ -175,7 +179,7 @@ class PathValidatorTest : public ::testing::Test {
 
   // Add a path defined by the given vector. We start a first() and end in
   // last()
-  void addPath(std::vector<size_t> path) {
+  void addEdgesOfPath(std::vector<size_t> path) {
     // This function can only add paths of length 1 or more
     TRI_ASSERT(path.size() >= 2);
     for (size_t i = 0; i < path.size() - 1; ++i) {
@@ -216,7 +220,7 @@ TYPED_TEST_CASE(PathValidatorTest, TypesToTest);
 TYPED_TEST(PathValidatorTest,
            it_should_honor_uniqueness_on_single_path_first_duplicate) {
   // We add a loop that ends in the start vertex (0) again.
-  this->addPath({0, 1, 2, 3, 0});
+  this->addEdgesOfPath({0, 1, 2, 3, 0});
   auto validator = this->testee();
 
   Step s = this->startPath(0);
@@ -259,7 +263,7 @@ TYPED_TEST(PathValidatorTest,
 TYPED_TEST(PathValidatorTest,
            it_should_honor_uniqueness_on_single_path_last_duplicate) {
   // We add a loop that loops on the last vertex(3).
-  this->addPath({0, 1, 2, 3, 3});
+  this->addEdgesOfPath({0, 1, 2, 3, 3});
   auto validator = this->testee();
 
   Step s = this->startPath(0);
@@ -302,7 +306,7 @@ TYPED_TEST(PathValidatorTest,
 TYPED_TEST(PathValidatorTest,
            it_should_honor_uniqueness_on_single_path_interior_duplicate) {
   // We add a loop that loops on the last vertex(2).
-  this->addPath({0, 1, 2, 3, 2});
+  this->addEdgesOfPath({0, 1, 2, 3, 2});
   auto validator = this->testee();
 
   Step s = this->startPath(0);
@@ -345,8 +349,8 @@ TYPED_TEST(PathValidatorTest,
 TYPED_TEST(PathValidatorTest,
            it_should_honor_uniqueness_on_global_paths_last_duplicate) {
   // We add a two paths, that share the same start and end vertex (3)
-  this->addPath({0, 1, 2, 3});
-  this->addPath({0, 4, 5, 3});
+  this->addEdgesOfPath({0, 1, 2, 3});
+  this->addEdgesOfPath({0, 4, 5, 3});
 
   auto validator = this->testee();
 
@@ -424,8 +428,8 @@ TYPED_TEST(PathValidatorTest,
 TYPED_TEST(PathValidatorTest,
            it_should_honor_uniqueness_on_global_paths_interior_duplicate) {
   // We add a two paths, that share the same start and end vertex (3)
-  this->addPath({0, 1, 2, 3});
-  this->addPath({0, 4, 5, 1});
+  this->addEdgesOfPath({0, 1, 2, 3});
+  this->addEdgesOfPath({0, 4, 5, 1});
 
   auto validator = this->testee();
 
@@ -505,7 +509,7 @@ TYPED_TEST(PathValidatorTest,
 TYPED_TEST(PathValidatorTest,
            it_should_honor_edge_uniqueness_on_one_path_interior_duplicate) {
   // We add a path with a duplicate edge (4)
-  this->addPath({0, 1, 2, 1, 2});
+  this->addEdgesOfPath({0, 1, 2, 1});
 
   auto validator = this->testee();
 
@@ -521,11 +525,11 @@ TYPED_TEST(PathValidatorTest,
   ASSERT_EQ(branch.size(), 1);
   {
     // until the first 2 it's safe
-    for (size_t i = 0; i < 1; ++i) {
+    for (size_t i = 0; i < 2; ++i) {
       auto neighbors = this->expandPath(s);
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
-      s = neighbors.at(0);
+      s = neighbors.at(0);  //  s == 1, s == 2
       auto res = validator.validatePath(s);
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
@@ -533,24 +537,25 @@ TYPED_TEST(PathValidatorTest,
 
     // extend to the second 1; pruning and filtering
     // depends only on VertexUniqueness, the edge (2,1) is new
-    auto neighbors = this->expandPath(s);
+    auto neighbors = this->expandPath(s);  // {1}
     ASSERT_EQ(neighbors.size(), 1)
         << "Not enough connections after step " << s.getVertexIdentifier();
+    s = neighbors.at(0);  // s == 1 (second time)
     auto res = validator.validatePath(s);
     if (this->getVertexUniqueness() == VertexUniquenessLevel::PATH ||
         this->getVertexUniqueness() == VertexUniquenessLevel::GLOBAL) {
       EXPECT_TRUE(res.isFiltered());
       EXPECT_TRUE(res.isPruned());
-    } else {
+    } else {  // VertexUniquenessLevel::NONE
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
       // extend to the second 2, the edge repeats
-      s = neighbors.at(0);
-      neighbors = this->expandPath(s);
+      neighbors = this->expandPath(s);  // {2} (second time)
+      s = neighbors.at(0);              // 2
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       res = validator.validatePath(s);
-      if (this->getEdgeUniquness() == EdgeUniquenessLevel::NONE) {
+      if (this->getEdgeUniqueness() == EdgeUniquenessLevel::NONE) {
         EXPECT_FALSE(res.isFiltered());
         EXPECT_FALSE(res.isPruned());
       } else {
@@ -568,9 +573,9 @@ TYPED_TEST(PathValidatorTest,
   // We add a two paths, that diverge, then immediately converge and
   // then have the same edge  (5)
   // 0 -> 1 -> 2 -> 3
-  //   -> 4 -> |
-  this->addPath({0, 1, 2, 3});
-  this->addPath({0, 4, 2, 3});
+  // ↳    4 -> |
+  this->addEdgesOfPath({0, 1, 2, 3});
+  this->addEdgesOfPath({0, 4, 2});
 
   auto validator = this->testee();
 
@@ -605,7 +610,7 @@ TYPED_TEST(PathValidatorTest,
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
-  }
+  }  // s == 3, the longer path is finished
   {
     // The second branch is good until vertex 2
     {
@@ -616,7 +621,7 @@ TYPED_TEST(PathValidatorTest,
       EXPECT_FALSE(res.isPruned());
 
       // extend to vertex 2
-      auto neighbors = this->expandPath(s);
+      auto neighbors = this->expandPath(s);  // {2}
       res = validator.validatePath(s);
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
@@ -628,11 +633,11 @@ TYPED_TEST(PathValidatorTest,
         EXPECT_FALSE(res.isPruned());
         // extend to vertex 3
         neighbors = this->expandPath(s);
-        res = validator.validatePath(s);
         ASSERT_EQ(neighbors.size(), 1)
             << "Not enough connections after step " << s.getVertexIdentifier();
-        if (this->getEdgeUniquness() == EdgeUniquenessLevel::NONE ||
-            this->getEdgeUniquness() == EdgeUniquenessLevel::PATH) {
+        res = validator.validatePath(s);
+        if (this->getEdgeUniqueness() == EdgeUniquenessLevel::NONE ||
+            this->getEdgeUniqueness() == EdgeUniquenessLevel::PATH) {
           EXPECT_FALSE(res.isFiltered());
           EXPECT_FALSE(res.isPruned());
         } else {  // EdgeUniquenessLevel::GLOBAL
@@ -641,40 +646,11 @@ TYPED_TEST(PathValidatorTest,
         }
       }
     }
-    for (size_t i = 0; i < 1; ++i) {
-      auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1)
-          << "Not enough connections after step " << s.getVertexIdentifier();
-      s = neighbors.at(0);
-      auto res = validator.validatePath(s);
-      EXPECT_FALSE(res.isFiltered());
-      EXPECT_FALSE(res.isPruned());
-    }
-
-    // Now we move to the duplicate vertex
-    {
-      auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1);
-      s = neighbors.at(0);
-      auto res = validator.validatePath(s);
-
-      if (this->getVertexUniqueness() != VertexUniquenessLevel::GLOBAL) {
-        // The vertex is visited twice, but not on same path.
-        // As long as we are not GLOBAL this is okay.
-        // No uniqueness check, take the vertex
-        EXPECT_FALSE(res.isFiltered());
-        EXPECT_FALSE(res.isPruned());
-      } else {
-        // With GLOBAL uniqueness this vertex is illegal
-        EXPECT_TRUE(res.isFiltered());
-        EXPECT_TRUE(res.isPruned());
-      }
-    }
   }
 }
 
 TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
-  this->addPath({0, 1});
+  this->addEdgesOfPath({0, 1});
   std::string keyToMatch = "1";
 
   auto expression = this->conditionKeyMatches(keyToMatch);
