@@ -98,14 +98,14 @@ bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
         current.has_value() ? &current.value() : nullptr);
     if (result.fail()) {
       LOG_TOPIC("ba776", ERR, Logger::REPLICATION2)
-          << "failed to modify replicated state " << database
-          << '/' << logId << "; " << result.errorMessage();
+          << "failed to modify replicated state " << database << '/' << logId
+          << "; " << result.errorMessage();
     }
     _feature.addDirty(database);
   } catch (std::exception const& e) {
     LOG_TOPIC("f824e", ERR, Logger::REPLICATION2)
-        << "exception during update of replicated state "
-        << database << '/' << logId << "; " << e.what();
+        << "exception during update of replicated state " << database << '/'
+        << logId << "; " << e.what();
   }
 
   return false;
