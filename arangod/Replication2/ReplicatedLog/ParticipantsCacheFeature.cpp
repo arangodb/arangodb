@@ -27,16 +27,70 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/FinalFeaturePhase.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
+#include "Cluster/ClusterFeature.h"
 
 namespace arangodb::replication2 {
+
+const std::string_view ParticipantsCacheFeature::kParticipantsHealthPath =
+    "arango/Supervision/Health";
 
 ParticipantsCacheFeature::ParticipantsCacheFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ParticipantsCache") {
+  agencyCallback = std::make_shared<AgencyCallback>(
+      server, std::string(kParticipantsHealthPath),
+      [self = weak_from_this()](VPackSlice const& result) {
+        auto watcher = self.lock();
+        if (watcher) {
+          if (result.isNone()) {
+            LOG_DEVEL << "result is None";
+          } else {
+            LOG_DEVEL << result.toString();
+          }
+        } else {
+          LOG_DEVEL << "watcher destroyed";
+        }
+        return true;
+      },
+      true, false);
+
   setOptional(true);
   startsAfter<application_features::CommunicationFeaturePhase>();
   startsAfter<application_features::DatabaseFeaturePhase>();
+  startsAfter<application_features::ClusterFeaturePhase>();
+  startsAfter<application_features::FinalFeaturePhase>();
+  startsAfter<application_features::AgencyFeaturePhase>();
+  startsAfter<application_features::ServerFeaturePhase>();
+  startsAfter<ClusterFeature>();
+}
+
+ParticipantsCacheFeature::~ParticipantsCacheFeature() {
+  try {
+    auto x = server().getFeature<ClusterFeature>().agencyCallbackRegistry();
+    x->unregisterCallback(agencyCallback);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("42af2", WARN, Logger::REPLICATION2)
+        << "caught unexpected exception while unregistering agency callback in "
+           "ParticipantsCacheFeature: "
+        << ex.what();
+  }
+}
+
+void ParticipantsCacheFeature::start() {
+  auto x = server().getFeature<ClusterFeature>().agencyCallbackRegistry();
+
+  Result res = x->registerCallback(agencyCallback, true);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 void ParticipantsCacheFeature::prepare() {
@@ -55,39 +109,6 @@ auto ParticipantsCacheFeature::isServerFailed(
     return status->second;
   }
   return false;
-}
-
-CollectionWatcher::CollectionWatcher(
-    AgencyCallbackRegistry* agencyCallbackRegistry,
-    LogicalCollection const& collection)
-    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-  std::string databaseName = collection.vocbase().name();
-  std::string collectionID = std::to_string(collection.id().id());
-  std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
-
-  _agencyCallback = std::make_shared<AgencyCallback>(
-      collection.vocbase().server(), where,
-      [self = weak_from_this()](VPackSlice const& result) {
-        auto watcher = self.lock();
-        if (result.isNone() && watcher) {
-          watcher->_present.store(false);
-        }
-        return true;
-      },
-      true, false);
-  Result res = _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-}
-
-CollectionWatcher::~CollectionWatcher() {
-  try {
-    _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("42af2", WARN, Logger::CLUSTER)
-        << "caught unexpected exception in CollectionWatcher: " << ex.what();
-  }
 }
 
 }  // namespace arangodb::replication2

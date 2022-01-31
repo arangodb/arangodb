@@ -26,24 +26,42 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Replication2/ReplicatedLog/FailureOracle.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 
 #include <unordered_map>
 
 namespace arangodb::replication2 {
+
 class ParticipantsCacheFeature final
     : public application_features::ApplicationFeature,
-      public FailureOracle {
+      public FailureOracle,
+      public std::enable_shared_from_this<ParticipantsCacheFeature> {
+  static const std::string_view kParticipantsHealthPath;
+
  public:
   explicit ParticipantsCacheFeature(
       application_features::ApplicationServer& server);
+
+  ~ParticipantsCacheFeature() override;
 
   void prepare() override;
 
   auto isServerFailed(std::string_view serverId) const noexcept
       -> bool override;
 
+  void start() override;
+
  private:
   std::unordered_map<std::string, bool> isFailed;
+  // ApplicationServer& agencyCallbackRegistry;
+  // application_features::ApplicationServer& server;
+  std::shared_ptr<AgencyCallback> agencyCallback;
 };
 
 }  // namespace arangodb::replication2
