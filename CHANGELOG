@@ -1,6 +1,14 @@
 devel
 -----
 
+* Upgrade VelocyPack library to latest version.
+
+* Slightly improve the explain output of SingleRemoteOperationNodes.
+
+* Added more detail to the log messages that display the total time consumption
+  and total amount of data parsed for the client tools arangodump and 
+  arangorestore. 
+
 * Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
   2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
 

@@ -162,22 +162,25 @@ auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
 
 auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database,
-                                     LogPlanSpecification const& spec)
+                                     LogTarget const& spec)
     -> arangodb::agency::envelope {
-  auto path =
-      paths::plan()->replicatedLogs()->database(database)->log(spec.id)->str();
+  auto path = paths::target()
+                  ->replicatedLogs()
+                  ->database(database)
+                  ->log(spec.id)
+                  ->str();
 
   return envelope.write()
       .emplace_object(
           path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
+      .inc(paths::target()->version()->str())
       .precs()
       .isEmpty(path)
       .end();
 }
 
 auto methods::createReplicatedLog(DatabaseID const& database,
-                                  LogPlanSpecification const& spec)
+                                  LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {

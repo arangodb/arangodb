@@ -29,6 +29,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Serializable.h>
 #include <velocypack/Slice.h>
+
+#include <atomic>
 #include <optional>
 
 namespace arangodb {
@@ -42,6 +44,10 @@ struct ClusterCollectionCreationInfo {
                                 velocypack::Slice const& slice,
                                 std::string coordinatorId, RebootId rebootId);
 
+  // TODO - remove this copy constructor and use atomic_ref instead of making
+  // `state` an atomic once we have fixed the Mac build
+  ClusterCollectionCreationInfo(ClusterCollectionCreationInfo const& r);
+
   std::string const collectionID;
   uint64_t numberOfShards;
   uint64_t replicationFactor;
@@ -49,7 +55,7 @@ struct ClusterCollectionCreationInfo {
   bool waitForReplication;
   velocypack::Slice const json;
   std::string name;
-  ClusterCollectionCreationState state;
+  std::atomic<ClusterCollectionCreationState> state;
 
   class CreatorInfo : public velocypack::Serializable {
    public:
