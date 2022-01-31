@@ -43,16 +43,16 @@
  *  }
  */
 
+#include <folly/CPortability.h>
+#include <folly/Traits.h>
+#include <folly/Utility.h>
+
 #include <cstddef>
 #include <functional>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-
-#include <folly/CPortability.h>
-#include <folly/Traits.h>
-#include <folly/Utility.h>
 
 namespace folly {
 
@@ -62,7 +62,7 @@ class Optional;
 namespace detail {
 template <class Value>
 struct OptionalPromiseReturn;
-} // namespace detail
+}  // namespace detail
 
 struct None {
   enum class _secret { _token };
@@ -86,12 +86,10 @@ class Optional {
  public:
   typedef Value value_type;
 
-  static_assert(
-      !std::is_reference<Value>::value,
-      "Optional may not be used with reference types");
-  static_assert(
-      !std::is_abstract<Value>::value,
-      "Optional may not be used with abstract types");
+  static_assert(!std::is_reference<Value>::value,
+                "Optional may not be used with reference types");
+  static_assert(!std::is_abstract<Value>::value,
+                "Optional may not be used with abstract types");
 
   Optional() noexcept {}
 
@@ -129,12 +127,10 @@ class Optional {
 
   template <typename U, typename... Args>
   explicit Optional(
-      in_place_t,
-      std::initializer_list<U> il,
+      in_place_t, std::initializer_list<U> il,
       Args&&... args) noexcept(std::
                                    is_nothrow_constructible<
-                                       Value,
-                                       std::initializer_list<U>,
+                                       Value, std::initializer_list<U>,
                                        Args...>::value)
       : Optional{PrivateConstructor{}, il, std::forward<Args>(args)...} {}
 
@@ -144,9 +140,7 @@ class Optional {
     p.promise_->value_ = this;
   }
 
-  void assign(const None&) {
-    clear();
-  }
+  void assign(const None&) { clear(); }
 
   void assign(Optional&& src) {
     if (this != &src) {
@@ -223,13 +217,9 @@ class Optional {
     return value();
   }
 
-  void reset() noexcept {
-    storage_.clear();
-  }
+  void reset() noexcept { storage_.clear(); }
 
-  void clear() noexcept {
-    reset();
-  }
+  void clear() noexcept { reset(); }
 
   void swap(Optional& that) noexcept(IsNothrowSwappable<Value>::value) {
     if (hasValue() && that.hasValue()) {
@@ -272,37 +262,19 @@ class Optional {
   }
   Value* get_pointer() && = delete;
 
-  bool has_value() const noexcept {
-    return storage_.hasValue;
-  }
+  bool has_value() const noexcept { return storage_.hasValue; }
 
-  bool hasValue() const noexcept {
-    return has_value();
-  }
+  bool hasValue() const noexcept { return has_value(); }
 
-  explicit operator bool() const noexcept {
-    return has_value();
-  }
+  explicit operator bool() const noexcept { return has_value(); }
 
-  const Value& operator*() const& {
-    return value();
-  }
-  Value& operator*() & {
-    return value();
-  }
-  const Value&& operator*() const&& {
-    return std::move(value());
-  }
-  Value&& operator*() && {
-    return std::move(value());
-  }
+  const Value& operator*() const& { return value(); }
+  Value& operator*() & { return value(); }
+  const Value&& operator*() const&& { return std::move(value()); }
+  Value&& operator*() && { return std::move(value()); }
 
-  const Value* operator->() const {
-    return &value();
-  }
-  Value* operator->() {
-    return &value();
-  }
+  const Value* operator->() const { return &value(); }
+  Value* operator->() { return &value(); }
 
   // Return a copy of the value if set, or a given default if not.
   template <class U>
@@ -369,11 +341,8 @@ class Optional {
     };
     bool hasValue;
 
-    StorageTriviallyDestructible()
-        : emptyState('\0'), hasValue{false} {}
-    void clear() {
-      hasValue = false;
-    }
+    StorageTriviallyDestructible() : emptyState('\0'), hasValue{false} {}
+    void clear() { hasValue = false; }
   };
 
   struct StorageNonTriviallyDestructible {
@@ -384,9 +353,7 @@ class Optional {
     bool hasValue;
 
     StorageNonTriviallyDestructible() : hasValue{false} {}
-    ~StorageNonTriviallyDestructible() {
-      clear();
-    }
+    ~StorageNonTriviallyDestructible() { clear(); }
 
     void clear() {
       if (hasValue) {
@@ -396,10 +363,10 @@ class Optional {
     }
   };
 
-  using Storage = typename std::conditional<
-      std::is_trivially_destructible<Value>::value,
-      StorageTriviallyDestructible,
-      StorageNonTriviallyDestructible>::type;
+  using Storage =
+      typename std::conditional<std::is_trivially_destructible<Value>::value,
+                                StorageTriviallyDestructible,
+                                StorageNonTriviallyDestructible>::type;
 
   Storage storage_;
 };
@@ -433,9 +400,7 @@ folly::Optional<T> make_optional(Args&&... args) {
 }
 
 template <class T, class U, class... Args>
-folly::Optional<T> make_optional(
-    std::initializer_list<U> il,
-    Args&&... args) {
+folly::Optional<T> make_optional(std::initializer_list<U> il, Args&&... args) {
   using PrivateConstructor = typename folly::Optional<T>::PrivateConstructor;
   return {PrivateConstructor{}, il, std::forward<Args>(args)...};
 }
@@ -567,4 +532,4 @@ bool operator>=(None, const Optional<V>& a) noexcept {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-} // namespace folly
+}  // namespace folly

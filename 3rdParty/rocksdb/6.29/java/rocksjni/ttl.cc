@@ -10,6 +10,7 @@
 #include <jni.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,9 +24,9 @@
  * Method:    open
  * Signature: (JLjava/lang/String;IZ)J
  */
-jlong Java_org_rocksdb_TtlDB_open(
-    JNIEnv* env, jclass, jlong joptions_handle, jstring jdb_path, jint jttl,
-    jboolean jread_only) {
+jlong Java_org_rocksdb_TtlDB_open(JNIEnv* env, jclass, jlong joptions_handle,
+                                  jstring jdb_path, jint jttl,
+                                  jboolean jread_only) {
   const char* db_path = env->GetStringUTFChars(jdb_path, nullptr);
   if (db_path == nullptr) {
     // exception thrown: OutOfMemoryError
@@ -53,10 +54,11 @@ jlong Java_org_rocksdb_TtlDB_open(
  * Method:    openCF
  * Signature: (JLjava/lang/String;[[B[J[IZ)[J
  */
-jlongArray Java_org_rocksdb_TtlDB_openCF(
-    JNIEnv* env, jclass, jlong jopt_handle, jstring jdb_path,
-    jobjectArray jcolumn_names, jlongArray jcolumn_options,
-    jintArray jttls, jboolean jread_only) {
+jlongArray Java_org_rocksdb_TtlDB_openCF(JNIEnv* env, jclass, jlong jopt_handle,
+                                         jstring jdb_path,
+                                         jobjectArray jcolumn_names,
+                                         jlongArray jcolumn_options,
+                                         jintArray jttls, jboolean jread_only) {
   const char* db_path = env->GetStringUTFChars(jdb_path, nullptr);
   if (db_path == nullptr) {
     // exception thrown: OutOfMemoryError
@@ -151,8 +153,7 @@ jlongArray Java_org_rocksdb_TtlDB_openCF(
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_TtlDB_disposeInternal(
-    JNIEnv*, jobject, jlong jhandle) {
+void Java_org_rocksdb_TtlDB_disposeInternal(JNIEnv*, jobject, jlong jhandle) {
   auto* ttl_db = reinterpret_cast<ROCKSDB_NAMESPACE::DBWithTTL*>(jhandle);
   assert(ttl_db != nullptr);
   delete ttl_db;
@@ -163,14 +164,15 @@ void Java_org_rocksdb_TtlDB_disposeInternal(
  * Method:    closeDatabase
  * Signature: (J)V
  */
-void Java_org_rocksdb_TtlDB_closeDatabase(
-    JNIEnv* /* env */, jclass, jlong /* jhandle */) {
+void Java_org_rocksdb_TtlDB_closeDatabase(JNIEnv* /* env */, jclass,
+                                          jlong /* jhandle */) {
   // auto* ttl_db = reinterpret_cast<ROCKSDB_NAMESPACE::DBWithTTL*>(jhandle);
   // assert(ttl_db != nullptr);
   // ROCKSDB_NAMESPACE::Status s = ttl_db->Close();
   // ROCKSDB_NAMESPACE::RocksDBExceptionJni::ThrowNew(env, s);
 
-  //TODO(AR) this is disabled until https://github.com/facebook/rocksdb/issues/4818 is resolved!
+  // TODO(AR) this is disabled until
+  // https://github.com/facebook/rocksdb/issues/4818 is resolved!
 }
 
 /*
@@ -178,9 +180,11 @@ void Java_org_rocksdb_TtlDB_closeDatabase(
  * Method:    createColumnFamilyWithTtl
  * Signature: (JLorg/rocksdb/ColumnFamilyDescriptor;[BJI)J;
  */
-jlong Java_org_rocksdb_TtlDB_createColumnFamilyWithTtl(
-    JNIEnv* env, jobject, jlong jdb_handle, jbyteArray jcolumn_name,
-    jlong jcolumn_options, jint jttl) {
+jlong Java_org_rocksdb_TtlDB_createColumnFamilyWithTtl(JNIEnv* env, jobject,
+                                                       jlong jdb_handle,
+                                                       jbyteArray jcolumn_name,
+                                                       jlong jcolumn_options,
+                                                       jint jttl) {
   jbyte* cfname = env->GetByteArrayElements(jcolumn_name, nullptr);
   if (cfname == nullptr) {
     // exception thrown: OutOfMemoryError

@@ -26,10 +26,8 @@ namespace folly {
  * incompatibility with this interface and calls Atomic::fetch_or()
  */
 template <typename Atomic>
-bool atomic_fetch_set(
-    Atomic& atomic,
-    std::size_t bit,
-    std::memory_order order = std::memory_order_seq_cst);
+bool atomic_fetch_set(Atomic& atomic, std::size_t bit,
+                      std::memory_order order = std::memory_order_seq_cst);
 
 /**
  * Resets a bit at the given index in the binary representation of the integer
@@ -42,11 +40,9 @@ bool atomic_fetch_set(
  * where an optimization is not possible
  */
 template <typename Atomic>
-bool atomic_fetch_reset(
-    Atomic& atomic,
-    std::size_t bit,
-    std::memory_order order = std::memory_order_seq_cst);
+bool atomic_fetch_reset(Atomic& atomic, std::size_t bit,
+                        std::memory_order order = std::memory_order_seq_cst);
 
-} // namespace folly
+}  // namespace folly
 
 #include <folly/synchronization/AtomicUtil-inl.h>

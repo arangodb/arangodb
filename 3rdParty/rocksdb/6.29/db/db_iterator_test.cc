@@ -1034,7 +1034,8 @@ TEST_P(DBIteratorTest, DBIteratorBoundTest) {
     iter->Next();
 
     ASSERT_TRUE(iter->Valid());
-    ASSERT_EQ(static_cast<int>(get_perf_context()->internal_delete_skipped_count), 2);
+    ASSERT_EQ(
+        static_cast<int>(get_perf_context()->internal_delete_skipped_count), 2);
 
     // now testing with iterate_bound
     Slice prefix("c");
@@ -1057,7 +1058,8 @@ TEST_P(DBIteratorTest, DBIteratorBoundTest) {
     // even though the key is deleted
     // hence internal_delete_skipped_count should be 0
     ASSERT_TRUE(!iter->Valid());
-    ASSERT_EQ(static_cast<int>(get_perf_context()->internal_delete_skipped_count), 0);
+    ASSERT_EQ(
+        static_cast<int>(get_perf_context()->internal_delete_skipped_count), 0);
   }
 }
 
@@ -1533,7 +1535,7 @@ class DBIteratorTestForPinnedData : public DBIteratorTest {
     }
 
     delete iter;
-}
+  }
 };
 
 #if !defined(ROCKSDB_VALGRIND_RUN) || defined(ROCKSDB_FULL_VALGRIND_RUN)
@@ -2177,8 +2179,8 @@ TEST_P(DBIteratorTest, IteratorWithLocalStatistics) {
   ASSERT_EQ(TestGetTickerCount(options, NUMBER_DB_PREV), (uint64_t)total_prev);
   ASSERT_EQ(TestGetTickerCount(options, NUMBER_DB_PREV_FOUND),
             (uint64_t)total_prev_found);
-  ASSERT_EQ(TestGetTickerCount(options, ITER_BYTES_READ), (uint64_t)total_bytes);
-
+  ASSERT_EQ(TestGetTickerCount(options, ITER_BYTES_READ),
+            (uint64_t)total_bytes);
 }
 
 TEST_P(DBIteratorTest, ReadAhead) {
@@ -2307,8 +2309,8 @@ TEST_P(DBIteratorTest, DBIteratorSkipRecentDuplicatesTest) {
   EXPECT_EQ(get_perf_context()->internal_merge_count, 0);
   EXPECT_GE(get_perf_context()->internal_recent_skipped_count, 2);
   EXPECT_GE(get_perf_context()->seek_on_memtable_count, 2);
-  EXPECT_EQ(1, options.statistics->getTickerCount(
-                 NUMBER_OF_RESEEKS_IN_ITERATION));
+  EXPECT_EQ(1,
+            options.statistics->getTickerCount(NUMBER_OF_RESEEKS_IN_ITERATION));
 }
 
 TEST_P(DBIteratorTest, Refresh) {
@@ -2589,7 +2591,7 @@ TEST_P(DBIteratorTest, SkipStatistics) {
   }
   ASSERT_EQ(count, 3);
   delete iter;
-  skip_count += 8; // 3 deletes + 3 original keys + 2 lower in sequence
+  skip_count += 8;  // 3 deletes + 3 original keys + 2 lower in sequence
   ASSERT_EQ(skip_count, TestGetTickerCount(options, NUMBER_ITER_SKIP));
 
   iter = NewIterator(ReadOptions());
@@ -2600,7 +2602,7 @@ TEST_P(DBIteratorTest, SkipStatistics) {
   }
   ASSERT_EQ(count, 3);
   delete iter;
-  skip_count += 8; // Same as above, but in reverse order
+  skip_count += 8;  // Same as above, but in reverse order
   ASSERT_EQ(skip_count, TestGetTickerCount(options, NUMBER_ITER_SKIP));
 
   ASSERT_OK(Put("aa", "1"));
@@ -2618,18 +2620,18 @@ TEST_P(DBIteratorTest, SkipStatistics) {
 
   iter = NewIterator(ro);
   count = 0;
-  for(iter->Seek("aa"); iter->Valid(); iter->Next()) {
+  for (iter->Seek("aa"); iter->Valid(); iter->Next()) {
     ASSERT_OK(iter->status());
     count++;
   }
   ASSERT_EQ(count, 1);
   delete iter;
-  skip_count += 6; // 3 deletes + 3 original keys
+  skip_count += 6;  // 3 deletes + 3 original keys
   ASSERT_EQ(skip_count, TestGetTickerCount(options, NUMBER_ITER_SKIP));
 
   iter = NewIterator(ro);
   count = 0;
-  for(iter->SeekToLast(); iter->Valid(); iter->Prev()) {
+  for (iter->SeekToLast(); iter->Valid(); iter->Prev()) {
     ASSERT_OK(iter->status());
     count++;
   }

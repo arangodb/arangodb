@@ -13,10 +13,12 @@
 #include <sys/uio.h>
 #endif
 #include <unistd.h>
+
 #include <atomic>
 #include <functional>
 #include <map>
 #include <string>
+
 #include "port/port.h"
 #include "rocksdb/env.h"
 #include "rocksdb/file_system.h"
@@ -132,8 +134,7 @@ class PosixSequentialFile : public FSSequentialFile {
 
  public:
   PosixSequentialFile(const std::string& fname, FILE* file, int fd,
-                      size_t logical_block_size,
-                      const EnvOptions& options);
+                      size_t logical_block_size, const EnvOptions& options);
   virtual ~PosixSequentialFile();
 
   virtual IOStatus Read(size_t n, const IOOptions& opts, Slice* result,
@@ -181,8 +182,7 @@ class PosixRandomAccessFile : public FSRandomAccessFile {
 
  public:
   PosixRandomAccessFile(const std::string& fname, int fd,
-                        size_t logical_block_size,
-                        const EnvOptions& options
+                        size_t logical_block_size, const EnvOptions& options
 #if defined(ROCKSDB_IOURING_PRESENT)
                         ,
                         ThreadLocalPtr* thread_local_io_urings

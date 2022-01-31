@@ -73,13 +73,11 @@ class ProxyLockableUniqueLock {
    * Timed locking constructors
    */
   template <typename Rep, typename Period>
-  ProxyLockableUniqueLock(
-      mutex_type& mtx,
-      const std::chrono::duration<Rep, Period>& duration);
+  ProxyLockableUniqueLock(mutex_type& mtx,
+                          const std::chrono::duration<Rep, Period>& duration);
   template <typename Clock, typename Duration>
-  ProxyLockableUniqueLock(
-      mutex_type& mtx,
-      const std::chrono::time_point<Clock, Duration>& time);
+  ProxyLockableUniqueLock(mutex_type& mtx,
+                          const std::chrono::time_point<Clock, Duration>& time);
 
   /**
    * Lock and unlock methods
@@ -158,7 +156,7 @@ class ProxyLockableLockGuard : private ProxyLockableUniqueLock<Mutex> {
   ProxyLockableLockGuard& operator=(const ProxyLockableLockGuard&) = delete;
 };
 
-} // namespace detail
-} // namespace folly
+}  // namespace detail
+}  // namespace folly
 
 #include <folly/synchronization/detail/ProxyLockable-inl.h>

@@ -11,7 +11,7 @@
 #include "db_stress_tool/db_stress_common.h"
 #ifndef NDEBUG
 #include "utilities/fault_injection_fs.h"
-#endif // NDEBUG
+#endif  // NDEBUG
 
 namespace ROCKSDB_NAMESPACE {
 class NonBatchedOpsStressTest : public StressTest {
@@ -195,13 +195,13 @@ class NonBatchedOpsStressTest : public StressTest {
       fault_fs_guard->EnableErrorInjection();
       SharedState::ignore_read_error = false;
     }
-#endif // NDEBUG
+#endif  // NDEBUG
     Status s = db_->Get(read_opts, cfh, key, &from_db);
 #ifndef NDEBUG
     if (fault_fs_guard) {
       error_count = fault_fs_guard->GetAndResetErrorCount();
     }
-#endif // NDEBUG
+#endif  // NDEBUG
     if (s.ok()) {
 #ifndef NDEBUG
       if (fault_fs_guard) {
@@ -215,7 +215,7 @@ class NonBatchedOpsStressTest : public StressTest {
           std::terminate();
         }
       }
-#endif // NDEBUG
+#endif  // NDEBUG
       // found case
       thread->stats.AddGets(1, 1);
     } else if (s.IsNotFound()) {
@@ -233,7 +233,7 @@ class NonBatchedOpsStressTest : public StressTest {
     if (fault_fs_guard) {
       fault_fs_guard->DisableErrorInjection();
     }
-#endif // NDEBUG
+#endif  // NDEBUG
     return s;
   }
 
@@ -323,14 +323,14 @@ class NonBatchedOpsStressTest : public StressTest {
         fault_fs_guard->EnableErrorInjection();
         SharedState::ignore_read_error = false;
       }
-#endif // NDEBUG
+#endif  // NDEBUG
       db_->MultiGet(readoptionscopy, cfh, num_keys, keys.data(), values.data(),
                     statuses.data());
 #ifndef NDEBUG
       if (fault_fs_guard) {
         error_count = fault_fs_guard->GetAndResetErrorCount();
       }
-#endif // NDEBUG
+#endif  // NDEBUG
     } else {
 #ifndef ROCKSDB_LITE
       txn->MultiGet(readoptionscopy, cfh, num_keys, keys.data(), values.data(),
@@ -362,7 +362,7 @@ class NonBatchedOpsStressTest : public StressTest {
     if (fault_fs_guard) {
       fault_fs_guard->DisableErrorInjection();
     }
-#endif // NDEBUG
+#endif  // NDEBUG
 
     for (size_t i = 0; i < statuses.size(); ++i) {
       Status s = statuses[i];

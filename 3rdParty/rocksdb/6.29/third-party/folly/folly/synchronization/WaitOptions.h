@@ -42,9 +42,7 @@ class WaitOptions {
         std::chrono::microseconds(2);
   };
 
-  std::chrono::nanoseconds spin_max() const {
-    return spin_max_;
-  }
+  std::chrono::nanoseconds spin_max() const { return spin_max_; }
   WaitOptions& spin_max(std::chrono::nanoseconds dur) {
     spin_max_ = dur;
     return *this;
@@ -54,4 +52,4 @@ class WaitOptions {
   std::chrono::nanoseconds spin_max_ = Defaults::spin_max;
 };
 
-} // namespace folly
+}  // namespace folly

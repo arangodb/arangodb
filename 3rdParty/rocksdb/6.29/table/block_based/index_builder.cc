@@ -10,8 +10,8 @@
 #include "table/block_based/index_builder.h"
 
 #include <assert.h>
-#include <cinttypes>
 
+#include <cinttypes>
 #include <list>
 #include <string>
 

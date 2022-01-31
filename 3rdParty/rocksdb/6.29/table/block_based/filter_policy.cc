@@ -1559,7 +1559,7 @@ FilterBuildingContext::FilterBuildingContext(
     const BlockBasedTableOptions& _table_options)
     : table_options(_table_options) {}
 
-FilterPolicy::~FilterPolicy() { }
+FilterPolicy::~FilterPolicy() {}
 
 Status FilterPolicy::CreateFromString(
     const ConfigOptions& /*options*/, const std::string& value,

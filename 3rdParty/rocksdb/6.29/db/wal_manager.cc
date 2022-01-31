@@ -105,7 +105,6 @@ Status WalManager::GetUpdatesSince(
     SequenceNumber seq, std::unique_ptr<TransactionLogIterator>* iter,
     const TransactionLogIterator::ReadOptions& read_options,
     VersionSet* version_set) {
-
   //  Get all sorted Wal Files.
   //  Do binary search and open files and find the seq number.
 
@@ -312,11 +311,11 @@ Status WalManager::GetSortedWalsOfType(const std::string& path,
       TEST_SYNC_POINT("WalManager::GetSortedWalsOfType:2");
 
       // In the following code we handle the following "special" situations:
-      // - an alive logfile was found by GetChildren(), but was moved to 
+      // - an alive logfile was found by GetChildren(), but was moved to
       //   archive before GetFileSize() was called. If the archived logfile
       //   still exists and we can read its filesize, all is good.
       // - an alive logfile was found by GetChildren(), but was moved to the
-      //   archive *and* already deleted before GetFileSize() was called. In 
+      //   archive *and* already deleted before GetFileSize() was called. In
       //   this case we don't report any error, but silently move on, ignoring
       //   the file.
       // - an archived logfile was found by GetChildren(), but was deleted from
@@ -338,8 +337,10 @@ Status WalManager::GetSortedWalsOfType(const std::string& path,
       }
       if (!s.ok()) {
         if (log_type == kArchivedLogFile &&
-            (s.IsNotFound() || 
-             (s.IsIOError() && env_->FileExists(ArchivedLogFileName(path, number)).IsNotFound()))) {
+            (s.IsNotFound() ||
+             (s.IsIOError() &&
+              env_->FileExists(ArchivedLogFileName(path, number))
+                  .IsNotFound()))) {
           // It may happen that the iteration performed by GetChildren() found
           // a logfile in the archive, but that this file has been deleted by
           // another thread in the meantime. In this case just ignore it.
@@ -370,7 +371,8 @@ Status WalManager::RetainProbableWalFiles(VectorLogPtr& all_logs,
   // Binary Search. avoid opening all files.
   while (end >= start) {
     int64_t mid = start + (end - start) / 2;  // Avoid overflow.
-    SequenceNumber current_seq_num = all_logs.at(static_cast<size_t>(mid))->StartSequence();
+    SequenceNumber current_seq_num =
+        all_logs.at(static_cast<size_t>(mid))->StartSequence();
     if (current_seq_num == target) {
       end = mid;
       break;
@@ -381,7 +383,8 @@ Status WalManager::RetainProbableWalFiles(VectorLogPtr& all_logs,
     }
   }
   // end could be -ve.
-  size_t start_index = static_cast<size_t>(std::max(static_cast<int64_t>(0), end));
+  size_t start_index =
+      static_cast<size_t>(std::max(static_cast<int64_t>(0), end));
   // The last wal file is always included
   all_logs.erase(all_logs.begin(), all_logs.begin() + start_index);
   return Status::OK();
@@ -394,8 +397,7 @@ Status WalManager::ReadFirstRecord(const WalFileType type,
   if (type != kAliveLogFile && type != kArchivedLogFile) {
     ROCKS_LOG_ERROR(db_options_.info_log, "[WalManger] Unknown file type %s",
                     ToString(type).c_str());
-    return Status::NotSupported(
-        "File Type Not Known " + ToString(type));
+    return Status::NotSupported("File Type Not Known " + ToString(type));
   }
   {
     MutexLock l(&read_first_record_cache_mutex_);
@@ -484,9 +486,8 @@ Status WalManager::ReadFirstLine(const std::string& fname,
   };
 
   std::unique_ptr<FSSequentialFile> file;
-  Status status = fs_->NewSequentialFile(fname,
-                                         fs_->OptimizeForLogRead(file_options_),
-                                         &file, nullptr);
+  Status status = fs_->NewSequentialFile(
+      fname, fs_->OptimizeForLogRead(file_options_), &file, nullptr);
   std::unique_ptr<SequentialFileReader> file_reader(
       new SequentialFileReader(std::move(file), fname, io_tracer_));
 

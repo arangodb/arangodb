@@ -18,6 +18,6 @@ namespace atomic_notification {
 // allocation-sensitive contexts.
 ParkingLot<std::uint32_t> parkingLot;
 
-} // namespace atomic_notification
-} // namespace detail
-} // namespace folly
+}  // namespace atomic_notification
+}  // namespace detail
+}  // namespace folly

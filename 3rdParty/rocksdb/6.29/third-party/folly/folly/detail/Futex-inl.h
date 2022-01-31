@@ -42,51 +42,39 @@ typename TargetClock::time_point time_point_conv(
  * because ADL lookup finds the definitions of these functions when you pass
  * the relevant arguments
  */
-int futexWakeImpl(
-    const Futex<std::atomic>* futex,
-    int count,
-    uint32_t wakeMask);
+int futexWakeImpl(const Futex<std::atomic>* futex, int count,
+                  uint32_t wakeMask);
 FutexResult futexWaitImpl(
-    const Futex<std::atomic>* futex,
-    uint32_t expected,
+    const Futex<std::atomic>* futex, uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTime,
     std::chrono::steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask);
 
-int futexWakeImpl(
-    const Futex<EmulatedFutexAtomic>* futex,
-    int count,
-    uint32_t wakeMask);
+int futexWakeImpl(const Futex<EmulatedFutexAtomic>* futex, int count,
+                  uint32_t wakeMask);
 FutexResult futexWaitImpl(
-    const Futex<EmulatedFutexAtomic>* futex,
-    uint32_t expected,
+    const Futex<EmulatedFutexAtomic>* futex, uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTime,
     std::chrono::steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask);
 
 template <typename Futex, typename Deadline>
 typename std::enable_if<Deadline::clock::is_steady, FutexResult>::type
-futexWaitImpl(
-    Futex* futex,
-    uint32_t expected,
-    Deadline const& deadline,
-    uint32_t waitMask) {
+futexWaitImpl(Futex* futex, uint32_t expected, Deadline const& deadline,
+              uint32_t waitMask) {
   return futexWaitImpl(futex, expected, nullptr, &deadline, waitMask);
 }
 
 template <typename Futex, typename Deadline>
 typename std::enable_if<!Deadline::clock::is_steady, FutexResult>::type
-futexWaitImpl(
-    Futex* futex,
-    uint32_t expected,
-    Deadline const& deadline,
-    uint32_t waitMask) {
+futexWaitImpl(Futex* futex, uint32_t expected, Deadline const& deadline,
+              uint32_t waitMask) {
   return futexWaitImpl(futex, expected, &deadline, nullptr, waitMask);
 }
 
 template <typename Futex>
-FutexResult
-futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask) {
+FutexResult futexWait(const Futex* futex, uint32_t expected,
+                      uint32_t waitMask) {
   auto rv = futexWaitImpl(futex, expected, nullptr, nullptr, waitMask);
   assert(rv != FutexResult::TIMEDOUT);
   return rv;
@@ -99,19 +87,17 @@ int futexWake(const Futex* futex, int count, uint32_t wakeMask) {
 
 template <typename Futex, class Clock, class Duration>
 FutexResult futexWaitUntil(
-    const Futex* futex,
-    uint32_t expected,
+    const Futex* futex, uint32_t expected,
     std::chrono::time_point<Clock, Duration> const& deadline,
     uint32_t waitMask) {
-  using Target = typename std::conditional<
-      Clock::is_steady,
-      std::chrono::steady_clock,
-      std::chrono::system_clock>::type;
+  using Target =
+      typename std::conditional<Clock::is_steady, std::chrono::steady_clock,
+                                std::chrono::system_clock>::type;
   auto const converted = time_point_conv<Target>(deadline);
   return converted == Target::time_point::max()
-      ? futexWaitImpl(futex, expected, nullptr, nullptr, waitMask)
-      : futexWaitImpl(futex, expected, converted, waitMask);
+             ? futexWaitImpl(futex, expected, nullptr, nullptr, waitMask)
+             : futexWaitImpl(futex, expected, converted, waitMask);
 }
 
-} // namespace detail
-} // namespace folly
+}  // namespace detail
+}  // namespace folly

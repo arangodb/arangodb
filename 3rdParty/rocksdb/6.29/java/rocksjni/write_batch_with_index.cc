@@ -7,6 +7,7 @@
 // calling c++ ROCKSDB_NAMESPACE::WriteBatchWithIndex methods from Java side.
 
 #include "rocksdb/utilities/write_batch_with_index.h"
+
 #include "include/org_rocksdb_WBWIRocksIterator.h"
 #include "include/org_rocksdb_WriteBatchWithIndex.h"
 #include "rocksdb/comparator.h"
@@ -871,6 +872,7 @@ jlongArray Java_org_rocksdb_WBWIRocksIterator_entry1(JNIEnv* env,
  * Signature: (J)V
  */
 void Java_org_rocksdb_WBWIRocksIterator_refresh0(JNIEnv* env) {
-  ROCKSDB_NAMESPACE::Status s = ROCKSDB_NAMESPACE::Status::NotSupported("Refresh() is not supported");
+  ROCKSDB_NAMESPACE::Status s =
+      ROCKSDB_NAMESPACE::Status::NotSupported("Refresh() is not supported");
   ROCKSDB_NAMESPACE::RocksDBExceptionJni::ThrowNew(env, s);
 }

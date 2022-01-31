@@ -10,6 +10,7 @@
 #include "db/log_writer.h"
 
 #include <stdint.h>
+
 #include "file/writable_file_writer.h"
 #include "rocksdb/env.h"
 #include "util/coding.h"

@@ -8,8 +8,10 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "table/merging_iterator.h"
+
 #include <string>
 #include <vector>
+
 #include "db/dbformat.h"
 #include "db/pinned_iterators_manager.h"
 #include "memory/arena.h"

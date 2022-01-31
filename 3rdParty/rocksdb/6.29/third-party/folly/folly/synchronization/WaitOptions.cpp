@@ -9,4 +9,4 @@ namespace folly {
 
 constexpr std::chrono::nanoseconds WaitOptions::Defaults::spin_max;
 
-} // namespace folly
+}  // namespace folly

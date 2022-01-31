@@ -19,9 +19,9 @@ const uint32_t SharedState::DELETION_SENTINEL = 0xffffffff;
 __thread bool SharedState::ignore_read_error;
 #else
 thread_local bool SharedState::ignore_read_error;
-#endif // OS_SOLARIS
+#endif  // OS_SOLARIS
 #else
 bool SharedState::ignore_read_error;
-#endif // ROCKSDB_SUPPORT_THREAD_LOCAL
+#endif  // ROCKSDB_SUPPORT_THREAD_LOCAL
 }  // namespace ROCKSDB_NAMESPACE
 #endif  // GFLAGS

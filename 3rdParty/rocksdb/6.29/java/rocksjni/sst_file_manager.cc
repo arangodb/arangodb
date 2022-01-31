@@ -7,11 +7,13 @@
 // calling C++ ROCKSDB_NAMESPACE::SstFileManager methods
 // from Java side.
 
+#include "rocksdb/sst_file_manager.h"
+
 #include <jni.h>
+
 #include <memory>
 
 #include "include/org_rocksdb_SstFileManager.h"
-#include "rocksdb/sst_file_manager.h"
 #include "rocksjni/portal.h"
 
 /*

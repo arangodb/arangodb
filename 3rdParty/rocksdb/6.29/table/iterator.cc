@@ -8,6 +8,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "rocksdb/iterator.h"
+
 #include "memory/arena.h"
 #include "table/internal_iterator.h"
 #include "table/iterator_wrapper.h"
@@ -21,9 +22,7 @@ Cleanable::Cleanable() {
 
 Cleanable::~Cleanable() { DoCleanup(); }
 
-Cleanable::Cleanable(Cleanable&& other) {
-  *this = std::move(other);
-}
+Cleanable::Cleanable(Cleanable&& other) { *this = std::move(other); }
 
 Cleanable& Cleanable::operator=(Cleanable&& other) {
   if (this != &other) {
@@ -109,7 +108,7 @@ Status Iterator::GetProperty(std::string prop_name, std::string* prop) {
 namespace {
 class EmptyIterator : public Iterator {
  public:
-  explicit EmptyIterator(const Status& s) : status_(s) { }
+  explicit EmptyIterator(const Status& s) : status_(s) {}
   bool Valid() const override { return false; }
   void Seek(const Slice& /*target*/) override {}
   void SeekForPrev(const Slice& /*target*/) override {}

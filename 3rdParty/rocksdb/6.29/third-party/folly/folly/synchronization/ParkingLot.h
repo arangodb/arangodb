@@ -5,13 +5,13 @@
 
 #pragma once
 
+#include <folly/Indestructible.h>
+#include <folly/Unit.h>
+#include <folly/hash/Hash.h>
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-
-#include <folly/hash/Hash.h>
-#include <folly/Indestructible.h>
-#include <folly/Unit.h>
 
 namespace folly {
 
@@ -51,9 +51,7 @@ struct WaitNodeBase {
     cond_.notify_one();
   }
 
-  bool signaled() {
-    return signaled_;
-  }
+  bool signaled() { return signaled_; }
 };
 
 extern std::atomic<uint64_t> idallocator;
@@ -110,7 +108,7 @@ struct Bucket {
   }
 };
 
-} // namespace parking_lot_detail
+}  // namespace parking_lot_detail
 
 enum class UnparkControl {
   RetainContinue,
@@ -174,47 +172,25 @@ class ParkingLot {
    */
   template <typename Key, typename D, typename ToPark, typename PreWait>
   ParkResult park(const Key key, D&& data, ToPark&& toPark, PreWait&& preWait) {
-    return park_until(
-        key,
-        std::forward<D>(data),
-        std::forward<ToPark>(toPark),
-        std::forward<PreWait>(preWait),
-        std::chrono::steady_clock::time_point::max());
+    return park_until(key, std::forward<D>(data), std::forward<ToPark>(toPark),
+                      std::forward<PreWait>(preWait),
+                      std::chrono::steady_clock::time_point::max());
   }
 
-  template <
-      typename Key,
-      typename D,
-      typename ToPark,
-      typename PreWait,
-      typename Clock,
-      typename Duration>
-  ParkResult park_until(
-      const Key key,
-      D&& data,
-      ToPark&& toPark,
-      PreWait&& preWait,
-      std::chrono::time_point<Clock, Duration> deadline);
+  template <typename Key, typename D, typename ToPark, typename PreWait,
+            typename Clock, typename Duration>
+  ParkResult park_until(const Key key, D&& data, ToPark&& toPark,
+                        PreWait&& preWait,
+                        std::chrono::time_point<Clock, Duration> deadline);
 
-  template <
-      typename Key,
-      typename D,
-      typename ToPark,
-      typename PreWait,
-      typename Rep,
-      typename Period>
-  ParkResult park_for(
-      const Key key,
-      D&& data,
-      ToPark&& toPark,
-      PreWait&& preWait,
-      std::chrono::duration<Rep, Period>& timeout) {
-    return park_until(
-        key,
-        std::forward<D>(data),
-        std::forward<ToPark>(toPark),
-        std::forward<PreWait>(preWait),
-        timeout + std::chrono::steady_clock::now());
+  template <typename Key, typename D, typename ToPark, typename PreWait,
+            typename Rep, typename Period>
+  ParkResult park_for(const Key key, D&& data, ToPark&& toPark,
+                      PreWait&& preWait,
+                      std::chrono::duration<Rep, Period>& timeout) {
+    return park_until(key, std::forward<D>(data), std::forward<ToPark>(toPark),
+                      std::forward<PreWait>(preWait),
+                      timeout + std::chrono::steady_clock::now());
   }
 
   /*
@@ -233,18 +209,10 @@ class ParkingLot {
 };
 
 template <typename Data>
-template <
-    typename Key,
-    typename D,
-    typename ToPark,
-    typename PreWait,
-    typename Clock,
-    typename Duration>
+template <typename Key, typename D, typename ToPark, typename PreWait,
+          typename Clock, typename Duration>
 ParkResult ParkingLot<Data>::park_until(
-    const Key bits,
-    D&& data,
-    ToPark&& toPark,
-    PreWait&& preWait,
+    const Key bits, D&& data, ToPark&& toPark, PreWait&& preWait,
     std::chrono::time_point<Clock, Duration> deadline) {
   auto key = hash::twang_mix64(uint64_t(bits));
   auto& bucket = parking_lot_detail::Bucket::bucketFor(key);
@@ -263,7 +231,7 @@ ParkResult ParkingLot<Data>::park_until(
     }
 
     bucket.push_back(&node);
-  } // bucketLock scope
+  }  // bucketLock scope
 
   std::forward<PreWait>(preWait)();
 
@@ -315,4 +283,4 @@ void ParkingLot<Data>::unpark(const Key bits, Func&& func) {
   }
 }
 
-} // namespace folly
+}  // namespace folly

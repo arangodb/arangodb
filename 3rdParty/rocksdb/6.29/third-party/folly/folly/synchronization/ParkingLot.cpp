@@ -22,5 +22,5 @@ Bucket& Bucket::bucketFor(uint64_t key) {
 
 std::atomic<uint64_t> idallocator{0};
 
-} // namespace parking_lot_detail
-} // namespace folly
+}  // namespace parking_lot_detail
+}  // namespace folly

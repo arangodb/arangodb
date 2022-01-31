@@ -16,11 +16,11 @@
 
 #pragma once
 
+#include <folly/ConstexprMath.h>
+#include <folly/Portability.h>
+
 #include <cstddef>
 #include <cstdint>
-
-#include <folly/Portability.h>
-#include <folly/ConstexprMath.h>
 
 // Work around bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56019
 #ifdef __GNUC__
@@ -53,22 +53,12 @@ namespace detail {
 // wrong result for `alignof` a `union` with a field of each scalar type.
 // Modified for RocksDB to use C++11 only
 constexpr std::size_t max_align_v = constexpr_max(
-    alignof(long double),
-    alignof(double),
-    alignof(float),
-    alignof(long long int),
-    alignof(long int),
-    alignof(int),
-    alignof(short int),
-    alignof(bool),
-    alignof(char),
-    alignof(char16_t),
-    alignof(char32_t),
-    alignof(wchar_t),
-    alignof(void*),
-    alignof(std::max_align_t));
+    alignof(long double), alignof(double), alignof(float),
+    alignof(long long int), alignof(long int), alignof(int), alignof(short int),
+    alignof(bool), alignof(char), alignof(char16_t), alignof(char32_t),
+    alignof(wchar_t), alignof(void*), alignof(std::max_align_t));
 
-} // namespace detail
+}  // namespace detail
 
 // max_align_v is the alignment of max_align_t.
 //
@@ -136,9 +126,9 @@ static_assert(hardware_constructive_interference_size >= max_align_v, "math?");
 //  A value corresponding to hardware_constructive_interference_size but which
 //  may be used with alignas, since hardware_constructive_interference_size may
 //  be too large on some platforms to be used with alignas.
-constexpr std::size_t cacheline_align_v = has_extended_alignment
-    ? hardware_constructive_interference_size
-    : max_align_v;
+constexpr std::size_t cacheline_align_v =
+    has_extended_alignment ? hardware_constructive_interference_size
+                           : max_align_v;
 struct alignas(cacheline_align_v) cacheline_align_t {};
 
-} // namespace folly
+}  // namespace folly

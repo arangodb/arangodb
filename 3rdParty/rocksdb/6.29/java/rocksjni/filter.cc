@@ -9,6 +9,7 @@
 #include <jni.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <string>
 
 #include "include/org_rocksdb_BloomFilter.h"

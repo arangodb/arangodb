@@ -6,6 +6,7 @@
 #include "db/db_info_dumper.h"
 
 #include <stdio.h>
+
 #include <algorithm>
 #include <cinttypes>
 #include <string>
@@ -37,8 +38,7 @@ void DumpDBFileSummary(const ImmutableDBOptions& options,
 
   // Get files in dbname dir
   if (!env->GetChildren(dbname, &files).ok()) {
-    Error(options.info_log,
-          "Error when reading %s dir\n", dbname.c_str());
+    Error(options.info_log, "Error when reading %s dir\n", dbname.c_str());
   }
   std::sort(files.begin(), files.end());
   for (const std::string& file : files) {
@@ -87,9 +87,8 @@ void DumpDBFileSummary(const ImmutableDBOptions& options,
   for (auto& db_path : options.db_paths) {
     if (dbname.compare(db_path.path) != 0) {
       if (!env->GetChildren(db_path.path, &files).ok()) {
-        Error(options.info_log,
-            "Error when reading %s dir\n",
-            db_path.path.c_str());
+        Error(options.info_log, "Error when reading %s dir\n",
+              db_path.path.c_str());
         continue;
       }
       std::sort(files.begin(), files.end());

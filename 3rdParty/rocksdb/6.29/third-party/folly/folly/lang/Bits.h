@@ -13,18 +13,15 @@
 
 namespace folly {
 
-template <
-    typename To,
-    typename From,
-    _t<std::enable_if<
-        sizeof(From) == sizeof(To) && std::is_trivial<To>::value &&
-            is_trivially_copyable<From>::value,
-        int>> = 0>
+template <typename To, typename From,
+          _t<std::enable_if<sizeof(From) == sizeof(To) &&
+                                std::is_trivial<To>::value &&
+                                is_trivially_copyable<From>::value,
+                            int>> = 0>
 To bit_cast(const From& src) noexcept {
   To to;
   std::memcpy(&to, &src, sizeof(From));
   return to;
 }
 
-} // namespace folly
-
+}  // namespace folly

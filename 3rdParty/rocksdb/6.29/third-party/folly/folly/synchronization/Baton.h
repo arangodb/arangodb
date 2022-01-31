@@ -7,14 +7,14 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <stdint.h>
-#include <atomic>
-#include <thread>
-
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/WaitOptions.h>
 #include <folly/synchronization/detail/Spin.h>
+#include <stdint.h>
+
+#include <atomic>
+#include <thread>
 
 namespace folly {
 
@@ -42,9 +42,7 @@ namespace folly {
 template <bool MayBlock = true, template <typename> class Atom = std::atomic>
 class Baton {
  public:
-  static constexpr WaitOptions wait_options() {
-    return {};
-  }
+  static constexpr WaitOptions wait_options() { return {}; }
 
   constexpr Baton() noexcept : state_(INIT) {}
 
@@ -111,9 +109,8 @@ class Baton {
     if (!MayBlock) {
       /// Spin-only version
       ///
-      assert(
-          ((1 << state_.load(std::memory_order_relaxed)) &
-           ((1 << INIT) | (1 << EARLY_DELIVERY))) != 0);
+      assert(((1 << state_.load(std::memory_order_relaxed)) &
+              ((1 << INIT) | (1 << EARLY_DELIVERY))) != 0);
       state_.store(EARLY_DELIVERY, std::memory_order_release);
       return;
     }
@@ -124,12 +121,9 @@ class Baton {
 
     assert(before == INIT || before == WAITING || before == TIMED_OUT);
 
-    if (before == INIT &&
-        state_.compare_exchange_strong(
-            before,
-            EARLY_DELIVERY,
-            std::memory_order_release,
-            std::memory_order_relaxed)) {
+    if (before == INIT && state_.compare_exchange_strong(
+                              before, EARLY_DELIVERY, std::memory_order_release,
+                              std::memory_order_relaxed)) {
       return;
     }
 
@@ -173,9 +167,7 @@ class Baton {
   ///   call wait, try_wait or timed_wait on the same baton without resetting
   ///
   /// @return       true if baton has been posted, false othewise
-  bool try_wait() const noexcept {
-    return ready();
-  }
+  bool try_wait() const noexcept { return ready(); }
 
   /// Similar to wait, but with a timeout. The thread is unblocked if the
   /// timeout expires.
@@ -189,9 +181,8 @@ class Baton {
   /// @return               true if the baton was posted to before timeout,
   ///                       false otherwise
   template <typename Rep, typename Period>
-  bool try_wait_for(
-      const std::chrono::duration<Rep, Period>& timeout,
-      const WaitOptions& opt = wait_options()) noexcept {
+  bool try_wait_for(const std::chrono::duration<Rep, Period>& timeout,
+                    const WaitOptions& opt = wait_options()) noexcept {
     if (try_wait()) {
       return true;
     }
@@ -212,9 +203,8 @@ class Baton {
   /// @return               true if the baton was posted to before deadline,
   ///                       false otherwise
   template <typename Clock, typename Duration>
-  bool try_wait_until(
-      const std::chrono::time_point<Clock, Duration>& deadline,
-      const WaitOptions& opt = wait_options()) noexcept {
+  bool try_wait_until(const std::chrono::time_point<Clock, Duration>& deadline,
+                      const WaitOptions& opt = wait_options()) noexcept {
     if (try_wait()) {
       return true;
     }
@@ -224,8 +214,7 @@ class Baton {
 
   /// Alias to try_wait_for. Deprecated.
   template <typename Rep, typename Period>
-  bool timed_wait(
-      const std::chrono::duration<Rep, Period>& timeout) noexcept {
+  bool timed_wait(const std::chrono::duration<Rep, Period>& timeout) noexcept {
     return try_wait_for(timeout);
   }
 
@@ -246,9 +235,8 @@ class Baton {
   };
 
   template <typename Clock, typename Duration>
-  bool tryWaitSlow(
-      const std::chrono::time_point<Clock, Duration>& deadline,
-      const WaitOptions& opt) noexcept {
+  bool tryWaitSlow(const std::chrono::time_point<Clock, Duration>& deadline,
+                   const WaitOptions& opt) noexcept {
     switch (
         detail::spin_pause_until(deadline, opt, [this] { return ready(); })) {
       case detail::spin_result::success:
@@ -272,11 +260,9 @@ class Baton {
 
     // guess we have to block :(
     uint32_t expected = INIT;
-    if (!state_.compare_exchange_strong(
-            expected,
-            WAITING,
-            std::memory_order_relaxed,
-            std::memory_order_relaxed)) {
+    if (!state_.compare_exchange_strong(expected, WAITING,
+                                        std::memory_order_relaxed,
+                                        std::memory_order_relaxed)) {
       // CAS failed, last minute reprieve
       assert(expected == EARLY_DELIVERY);
       // TODO: move the acquire to the compare_exchange failure load after C++17
@@ -325,4 +311,4 @@ class Baton {
   detail::Futex<Atom> state_;
 };
 
-} // namespace folly
+}  // namespace folly

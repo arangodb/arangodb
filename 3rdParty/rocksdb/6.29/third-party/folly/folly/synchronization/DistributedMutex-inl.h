@@ -3,8 +3,6 @@
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
 
-#include <folly/synchronization/DistributedMutex.h>
-
 #include <folly/ConstexprMath.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
@@ -16,6 +14,7 @@
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicUtil.h>
+#include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 #include <folly/synchronization/detail/Sleeper.h>
 
@@ -152,11 +151,9 @@ constexpr auto kMaxCombineIterations = 2;
 template <template <typename> class Atomic>
 class WakerMetadata {
  public:
-  explicit WakerMetadata(
-      std::uintptr_t waker = 0,
-      std::uintptr_t waiters = 0,
-      std::uint32_t sleeper = kUninitialized)
-    : waker_{waker}, waiters_{waiters}, sleeper_{sleeper} {}
+  explicit WakerMetadata(std::uintptr_t waker = 0, std::uintptr_t waiters = 0,
+                         std::uint32_t sleeper = kUninitialized)
+      : waker_{waker}, waiters_{waiters}, sleeper_{sleeper} {}
 
   // This is the thread that initiated wakeups for the contention chain.
   // There can only ever be one thread that initiates the wakeup for a
@@ -388,9 +385,7 @@ class RequestWithReturn {
     // note that the invariant here is that this function is only called if the
     // requesting thread had it's critical section combined, and the value_
     // member constructed through detach()
-    SCOPE_EXIT {
-      value_.~ReturnType();
-    };
+    SCOPE_EXIT { value_.~ReturnType(); };
     return std::move(value_);
   }
 
@@ -433,8 +428,7 @@ class RequestWithoutReturn {
 template <typename Func>
 using Request = _t<std::conditional<
     std::is_void<decltype(std::declval<const Func&>()())>::value,
-    RequestWithoutReturn<Func>,
-    RequestWithReturn<Func>>>;
+    RequestWithoutReturn<Func>, RequestWithReturn<Func>>>;
 
 /**
  * A template that helps us to transform a callable returning a value to one
@@ -492,9 +486,7 @@ class TaskWithoutCoalesce {
   using StorageType = folly::Unit;
   explicit TaskWithoutCoalesce(Func func, Waiter&) : func_{std::move(func)} {}
 
-  void operator()() const {
-    func_();
-  }
+  void operator()() const { func_(); }
 
  private:
   Func func_;
@@ -512,11 +504,11 @@ class TaskWithBigReturnValue {
   // ensure we avoid false-sharing with the metadata used while the waiter
   // waits
   using ReturnType = decltype(std::declval<const Func&>()());
-  static const auto kReturnValueAlignment = folly::kIsMsvc
-      ? 8
-      : folly::constexpr_max(
-            alignof(ReturnType),
-            folly::hardware_destructive_interference_size);
+  static const auto kReturnValueAlignment =
+      folly::kIsMsvc
+          ? 8
+          : folly::constexpr_max(alignof(ReturnType),
+                                 folly::hardware_destructive_interference_size);
   using StorageType = _t<std::aligned_storage<
       sizeof(
           _t<std::aligned_storage<sizeof(ReturnType), kReturnValueAlignment>>),
@@ -560,11 +552,10 @@ template <typename Func, typename Waiter>
 using CoalescedTask = _t<std::conditional<
     std::is_void<decltype(std::declval<const Func&>()())>::value,
     TaskWithoutCoalesce<Func, Waiter>,
-    _t<std::conditional<
-        Sizeof<decltype(std::declval<const Func&>()())>::value <=
-            sizeof(Waiter::storage_),
-        TaskWithCoalesce<Func, Waiter>,
-        TaskWithBigReturnValue<Func, Waiter>>>>>;
+    _t<std::conditional<Sizeof<decltype(std::declval<const Func&>()())>::
+                                value <= sizeof(Waiter::storage_),
+                        TaskWithCoalesce<Func, Waiter>,
+                        TaskWithBigReturnValue<Func, Waiter>>>>>;
 
 /**
  * Given a request and a wait node, coalesce them into a CoalescedTask that
@@ -578,10 +569,8 @@ std::nullptr_t coalesce(std::nullptr_t&, Waiter&) {
   return nullptr;
 }
 
-template <
-    typename Request,
-    typename Waiter,
-    typename Func = typename Request::F>
+template <typename Request, typename Waiter,
+          typename Func = typename Request::F>
 CoalescedTask<Func, Waiter> coalesce(Request& request, Waiter& waiter) {
   static_assert(!std::is_same<Request, std::nullptr_t>{}, "");
   return CoalescedTask<Func, Waiter>{request.func_, waiter};
@@ -592,13 +581,10 @@ CoalescedTask<Func, Waiter> coalesce(Request& request, Waiter& waiter) {
  * of CoalescedTask, this returns an instance of CoalescedTask::StorageType.
  * std::nullptr_t otherwise
  */
-inline std::nullptr_t makeReturnValueStorageFor(std::nullptr_t&) {
-  return {};
-}
+inline std::nullptr_t makeReturnValueStorageFor(std::nullptr_t&) { return {}; }
 
-template <
-    typename CoalescedTask,
-    typename StorageType = typename CoalescedTask::StorageType>
+template <typename CoalescedTask,
+          typename StorageType = typename CoalescedTask::StorageType>
 StorageType makeReturnValueStorageFor(CoalescedTask&) {
   return {};
 }
@@ -611,15 +597,13 @@ StorageType makeReturnValueStorageFor(CoalescedTask&) {
  */
 template <typename Task, typename Storage>
 void attach(Task&, Storage&) {
-  static_assert(
-      std::is_same<Storage, std::nullptr_t>{} ||
-          std::is_same<Storage, folly::Unit>{},
-      "");
+  static_assert(std::is_same<Storage, std::nullptr_t>{} ||
+                    std::is_same<Storage, folly::Unit>{},
+                "");
 }
 
 template <
-    typename R,
-    typename W,
+    typename R, typename W,
     typename StorageType = typename TaskWithBigReturnValue<R, W>::StorageType>
 void attach(TaskWithBigReturnValue<R, W>& task, StorageType& storage) {
   task.attach(&storage);
@@ -659,20 +643,14 @@ void detach(std::nullptr_t&, Waiter&, bool exception, std::nullptr_t&) {
 }
 
 template <typename Waiter, typename F>
-void detach(
-    RequestWithoutReturn<F>& request,
-    Waiter& waiter,
-    bool exception,
-    folly::Unit&) {
+void detach(RequestWithoutReturn<F>& request, Waiter& waiter, bool exception,
+            folly::Unit&) {
   throwIfExceptionOccurred(request, waiter, exception);
 }
 
 template <typename Waiter, typename F>
-void detach(
-    RequestWithReturn<F>& request,
-    Waiter& waiter,
-    bool exception,
-    folly::Unit&) {
+void detach(RequestWithReturn<F>& request, Waiter& waiter, bool exception,
+            folly::Unit&) {
   throwIfExceptionOccurred(request, waiter, exception);
 
   using ReturnType = typename RequestWithReturn<F>::ReturnType;
@@ -685,11 +663,8 @@ void detach(
 }
 
 template <typename Waiter, typename F, typename Storage>
-void detach(
-    RequestWithReturn<F>& request,
-    Waiter& waiter,
-    bool exception,
-    Storage& storage) {
+void detach(RequestWithReturn<F>& request, Waiter& waiter, bool exception,
+            Storage& storage) {
   throwIfExceptionOccurred(request, waiter, exception);
 
   using ReturnType = typename RequestWithReturn<F>::ReturnType;
@@ -745,9 +720,7 @@ inline std::uint64_t strip(std::chrono::nanoseconds t) {
  * Recover the timestamp value from an integer that has the timestamp encoded
  * in it
  */
-inline std::uint64_t recover(std::uint64_t from) {
-  return from >> 8;
-}
+inline std::uint64_t recover(std::uint64_t from) { return from >> 8; }
 
 template <template <typename> class Atomic, bool TimePublishing>
 class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
@@ -774,23 +747,18 @@ class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
 
   // The proxy is valid when a mutex acquisition attempt was successful,
   // lock() is guaranteed to return a valid proxy, try_lock() is not
-  explicit operator bool() const {
-    return expected_;
-  }
+  explicit operator bool() const { return expected_; }
 
   // private:
   // friend the mutex class, since that will be accessing state private to
   // this class
   friend class DistributedMutex<Atomic, TimePublishing>;
 
-  DistributedMutexStateProxy(
-      Waiter<Atomic>* next,
-      std::uintptr_t expected,
-      bool timedWaiter = false,
-      bool combined = false,
-      std::uintptr_t waker = 0,
-      Waiter<Atomic>* waiters = nullptr,
-      Waiter<Atomic>* ready = nullptr)
+  DistributedMutexStateProxy(Waiter<Atomic>* next, std::uintptr_t expected,
+                             bool timedWaiter = false, bool combined = false,
+                             std::uintptr_t waker = 0,
+                             Waiter<Atomic>* waiters = nullptr,
+                             Waiter<Atomic>* ready = nullptr)
       : next_{next},
         expected_{expected},
         timedWaiters_{timedWaiter},
@@ -847,12 +815,9 @@ DistributedMutex<Atomic, TimePublishing>::DistributedMutex()
     : state_{kUnlocked} {}
 
 template <typename Waiter>
-std::uint64_t publish(
-    std::uint64_t spins,
-    bool& shouldPublish,
-    std::chrono::nanoseconds& previous,
-    Waiter& waiter,
-    std::uint32_t waitMode) {
+std::uint64_t publish(std::uint64_t spins, bool& shouldPublish,
+                      std::chrono::nanoseconds& previous, Waiter& waiter,
+                      std::uint32_t waitMode) {
   // time publishing has some overhead because it executes an atomic exchange on
   // the futex word.  If this line is in a remote thread (eg.  the combiner),
   // then each time we publish a timestamp, this thread has to submit an RFO to
@@ -880,9 +845,9 @@ std::uint64_t publish(
   // then if we are under the maximum number of spins allowed before sleeping,
   // we publish the exact timestamp, otherwise we publish the minimum possible
   // timestamp to force the waking thread to skip us
-  auto now = ((waitMode == kCombineWaiting) && !spins)
-      ? decltype(time())::max()
-      : (spins < kMaxSpins) ? previous : decltype(time())::zero();
+  auto now = ((waitMode == kCombineWaiting) && !spins) ? decltype(time())::max()
+             : (spins < kMaxSpins)                     ? previous
+                                   : decltype(time())::zero();
 
   // the wait mode information is published in the bottom 8 bits of the futex
   // word, the rest contains time information as computed above.  Overflows are
@@ -892,8 +857,8 @@ std::uint64_t publish(
   // neither a performance nor correctness concern
   auto data = strip(now) | waitMode;
   auto signal = (shouldPublish || !spins || (waitMode != kCombineWaiting))
-      ? waiter.futex_.exchange(data, std::memory_order_acq_rel)
-      : waiter.futex_.load(std::memory_order_acquire);
+                    ? waiter.futex_.exchange(data, std::memory_order_acq_rel)
+                    : waiter.futex_.load(std::memory_order_acquire);
   return signal & std::numeric_limits<std::uint8_t>::max();
 }
 
@@ -1024,9 +989,8 @@ bool wait(Waiter* waiter, std::uint32_t mode, Waiter*& next, uint32_t& signal) {
   return spin(*waiter, signal, mode);
 }
 
-inline void recordTimedWaiterAndClearTimedBit(
-    bool& timedWaiter,
-    std::uintptr_t& previous) {
+inline void recordTimedWaiterAndClearTimedBit(bool& timedWaiter,
+                                              std::uintptr_t& previous) {
   // the previous value in the mutex can never be kTimedWaiter, timed waiters
   // always set (kTimedWaiter | kLocked) in the mutex word when they try and
   // acquire the mutex
@@ -1064,9 +1028,7 @@ auto DistributedMutex<Atomic, TimePublishing>::lock_combine(Func func)
     // to avoid having to play a return-value dance when the combinable
     // returns void, we use a scope exit to perform the unlock after the
     // function return has been processed
-    SCOPE_EXIT {
-      unlock(std::move(state));
-    };
+    SCOPE_EXIT { unlock(std::move(state)); };
     return func();
   }
 
@@ -1093,8 +1055,8 @@ DistributedMutex<Atomic, TimePublishing>::lock() {
 }
 
 template <typename Atomic, template <typename> class A, bool T>
-auto tryLockNoLoad(Atomic& atomic, DistributedMutex<A, T>&)
-    -> typename DistributedMutex<A, T>::DistributedMutexStateProxy {
+auto tryLockNoLoad(Atomic& atomic, DistributedMutex<A, T>&) ->
+    typename DistributedMutex<A, T>::DistributedMutexStateProxy {
   // Try and set the least significant bit of the centralized lock state to 1,
   // if this succeeds, it must have been the case that we had a kUnlocked (or
   // 0) in the central storage before, since that is the only case where a 0
@@ -1127,16 +1089,11 @@ DistributedMutex<Atomic, TimePublishing>::try_lock() {
   return tryLockNoLoad(state_, *this);
 }
 
-template <
-    template <typename> class Atomic,
-    bool TimePublishing,
-    typename State,
-    typename Request>
+template <template <typename> class Atomic, bool TimePublishing, typename State,
+          typename Request>
 typename DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy
-lockImplementation(
-    DistributedMutex<Atomic, TimePublishing>& mutex,
-    State& atomic,
-    Request& request) {
+lockImplementation(DistributedMutex<Atomic, TimePublishing>& mutex,
+                   State& atomic, Request& request) {
   // first try and acquire the lock as a fast path, the underlying
   // implementation is slightly faster than using std::atomic::exchange() as
   // is used in this function.  So we get a small perf boost in the
@@ -1264,12 +1221,10 @@ inline bool preempted(std::uint64_t value, std::chrono::nanoseconds now) {
   // also if it is neither uninitialized nor skipped
   assert(value != kSkipped);
   return (preempted) && (value != kUninitialized) &&
-      (value != kCombineUninitialized);
+         (value != kCombineUninitialized);
 }
 
-inline bool isSleeper(std::uintptr_t value) {
-  return (value == kAboutToWait);
-}
+inline bool isSleeper(std::uintptr_t value) { return (value == kAboutToWait); }
 
 inline bool isInitialized(std::uintptr_t value) {
   return (value != kUninitialized) && (value != kCombineUninitialized);
@@ -1304,13 +1259,10 @@ void transferCurrentException(Waiter* waiter) {
 }
 
 template <template <typename> class Atomic>
-inline std::uintptr_t tryCombine(
-    Waiter<Atomic>* waiter,
-    std::uintptr_t value,
-    std::uintptr_t next,
-    std::uint64_t iteration,
-    std::chrono::nanoseconds now,
-    CombineFunction task) {
+inline std::uintptr_t tryCombine(Waiter<Atomic>* waiter, std::uintptr_t value,
+                                 std::uintptr_t next, std::uint64_t iteration,
+                                 std::chrono::nanoseconds now,
+                                 CombineFunction task) {
 #ifndef ROCKSDB_LITE
   // if the waiter has asked for a combine operation, we should combine its
   // critical section and move on to the next waiter
@@ -1345,15 +1297,10 @@ inline std::uintptr_t tryCombine(
 }
 
 template <typename Waiter>
-inline std::uintptr_t tryWake(
-    bool publishing,
-    Waiter* waiter,
-    std::uintptr_t value,
-    std::uintptr_t next,
-    std::uintptr_t waker,
-    Waiter*& sleepers,
-    std::uint64_t iteration,
-    CombineFunction task) {
+inline std::uintptr_t tryWake(bool publishing, Waiter* waiter,
+                              std::uintptr_t value, std::uintptr_t next,
+                              std::uintptr_t waker, Waiter*& sleepers,
+                              std::uint64_t iteration, CombineFunction task) {
   // try and combine the waiter's request first, if that succeeds that means
   // we have successfully executed their critical section and can move on to
   // the rest of the chain
@@ -1453,12 +1400,8 @@ inline std::uintptr_t tryWake(
 }
 
 template <typename Waiter>
-bool wake(
-    bool publishing,
-    Waiter& waiter,
-    std::uintptr_t waker,
-    Waiter*& sleepers,
-    std::uint64_t iter) {
+bool wake(bool publishing, Waiter& waiter, std::uintptr_t waker,
+          Waiter*& sleepers, std::uint64_t iter) {
   // loop till we find a node that is either at the end of the list (as
   // specified by waker) or we find a node that is active (as specified by
   // the last published timestamp of the node)
@@ -1502,11 +1445,9 @@ template <typename Atomic, typename Proxy, typename Sleepers>
 bool tryUnlockClean(Atomic& state, Proxy& proxy, Sleepers sleepers) {
   auto expected = proxy.expected_;
   while (true) {
-    if (state.compare_exchange_strong(
-            expected,
-            kUnlocked,
-            std::memory_order_release,
-            std::memory_order_relaxed)) {
+    if (state.compare_exchange_strong(expected, kUnlocked,
+                                      std::memory_order_release,
+                                      std::memory_order_relaxed)) {
       // if we were able to commit an unlocked, we need to wake up the futex
       // waiters, if any
       doFutexWake(sleepers);
@@ -1671,8 +1612,7 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_until(
   // fall back to the timed locking algorithm
   using Proxy = DistributedMutexStateProxy;
   return timedLock(
-      state_,
-      deadline,
+      state_, deadline,
       [](Waiter<Atomic>* next, std::uintptr_t expected, bool timedWaiter) {
         return Proxy{next, expected, timedWaiter};
       });
@@ -1693,12 +1633,11 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_for(
   using Proxy = DistributedMutexStateProxy;
   auto deadline = std::chrono::steady_clock::now() + duration;
   return timedLock(
-      state_,
-      deadline,
+      state_, deadline,
       [](Waiter<Atomic>* next, std::uintptr_t expected, bool timedWaiter) {
         return Proxy{next, expected, timedWaiter};
       });
 }
-} // namespace distributed_mutex
-} // namespace detail
-} // namespace folly
+}  // namespace distributed_mutex
+}  // namespace detail
+}  // namespace folly

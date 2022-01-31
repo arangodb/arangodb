@@ -9,7 +9,6 @@
 #include <jni.h>
 
 #include "include/org_rocksdb_OptimisticTransactionOptions.h"
-
 #include "rocksdb/comparator.h"
 #include "rocksdb/utilities/optimistic_transaction_db.h"
 

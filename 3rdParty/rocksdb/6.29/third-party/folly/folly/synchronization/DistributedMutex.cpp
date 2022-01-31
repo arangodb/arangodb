@@ -11,6 +11,6 @@ namespace distributed_mutex {
 
 template class DistributedMutex<std::atomic, true>;
 
-} // namespace distributed_mutex
-} // namespace detail
-} // namespace folly
+}  // namespace distributed_mutex
+}  // namespace detail
+}  // namespace folly

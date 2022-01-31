@@ -7,8 +7,8 @@
 
 #include <folly/Traits.h>
 
-#include <utility>
 #include <type_traits>
+#include <utility>
 
 namespace folly {
 namespace scope_guard_detail {
@@ -16,9 +16,7 @@ template <typename F>
 class ScopeGuardImpl {
  public:
   explicit ScopeGuardImpl(F&& f) : f_{std::forward<F>(f)} {}
-  ~ScopeGuardImpl() {
-    f_();
-  }
+  ~ScopeGuardImpl() { f_(); }
 
  private:
   F f_;
@@ -29,8 +27,8 @@ template <typename Func, typename DecayedFunc = _t<std::decay<Func>>>
 ScopeGuardImpl<DecayedFunc> operator+(ScopeGuardEnum, Func&& func) {
   return ScopeGuardImpl<DecayedFunc>{std::forward<Func>(func)};
 }
-} // namespace scope_guard_detail
-} // namespace folly
+}  // namespace scope_guard_detail
+}  // namespace folly
 
 /**
  * FB_ANONYMOUS_VARIABLE(str) introduces an identifier starting with
@@ -48,7 +46,7 @@ ScopeGuardImpl<DecayedFunc> operator+(ScopeGuardEnum, Func&& func) {
 #endif
 
 #ifndef SCOPE_EXIT
-#define SCOPE_EXIT                                    \
-    auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) =    \
-        ::folly::scope_guard_detail::ScopeGuardEnum{} + [&]() noexcept
+#define SCOPE_EXIT                               \
+  auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = \
+      ::folly::scope_guard_detail::ScopeGuardEnum{} + [&]() noexcept
 #endif

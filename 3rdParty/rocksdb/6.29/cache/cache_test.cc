@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "cache/clock_cache.h"
 #include "cache/lru_cache.h"
 #include "test_util/testharness.h"
@@ -125,29 +126,21 @@ class CacheTest : public testing::TestWithParam<std::string> {
     cache->Erase(EncodeKey(key));
   }
 
-  int Lookup(int key) {
-    return Lookup(cache_, key);
-  }
+  int Lookup(int key) { return Lookup(cache_, key); }
 
   void Insert(int key, int value, int charge = 1) {
     Insert(cache_, key, value, charge);
   }
 
-  void Erase(int key) {
-    Erase(cache_, key);
-  }
+  void Erase(int key) { Erase(cache_, key); }
 
-  int Lookup2(int key) {
-    return Lookup(cache2_, key);
-  }
+  int Lookup2(int key) { return Lookup(cache2_, key); }
 
   void Insert2(int key, int value, int charge = 1) {
     Insert(cache2_, key, value, charge);
   }
 
-  void Erase2(int key) {
-    Erase(cache2_, key);
-  }
+  void Erase2(int key) { Erase(cache2_, key); }
 };
 CacheTest* CacheTest::current_;
 
@@ -289,18 +282,18 @@ TEST_P(CacheTest, HitAndMiss) {
 
   Insert(100, 101);
   ASSERT_EQ(101, Lookup(100));
-  ASSERT_EQ(-1,  Lookup(200));
-  ASSERT_EQ(-1,  Lookup(300));
+  ASSERT_EQ(-1, Lookup(200));
+  ASSERT_EQ(-1, Lookup(300));
 
   Insert(200, 201);
   ASSERT_EQ(101, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
-  ASSERT_EQ(-1,  Lookup(300));
+  ASSERT_EQ(-1, Lookup(300));
 
   Insert(100, 102);
   ASSERT_EQ(102, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
-  ASSERT_EQ(-1,  Lookup(300));
+  ASSERT_EQ(-1, Lookup(300));
 
   ASSERT_EQ(1U, deleted_keys_.size());
   ASSERT_EQ(100, deleted_keys_[0]);
@@ -320,14 +313,14 @@ TEST_P(CacheTest, Erase) {
   Insert(100, 101);
   Insert(200, 201);
   Erase(100);
-  ASSERT_EQ(-1,  Lookup(100));
+  ASSERT_EQ(-1, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
   ASSERT_EQ(1U, deleted_keys_.size());
   ASSERT_EQ(100, deleted_keys_[0]);
   ASSERT_EQ(101, deleted_values_[0]);
 
   Erase(100);
-  ASSERT_EQ(-1,  Lookup(100));
+  ASSERT_EQ(-1, Lookup(100));
   ASSERT_EQ(201, Lookup(200));
   ASSERT_EQ(1U, deleted_keys_.size());
 }
@@ -368,7 +361,7 @@ TEST_P(CacheTest, EvictionPolicy) {
 
   // Frequently used entry must be kept around
   for (int i = 0; i < kCacheSize * 2; i++) {
-    Insert(1000+i, 2000+i);
+    Insert(1000 + i, 2000 + i);
     ASSERT_EQ(101, Lookup(100));
   }
   ASSERT_EQ(101, Lookup(100));
@@ -496,9 +489,9 @@ TEST_P(CacheTest, HeavyEntries) {
   const int kHeavy = 10;
   int added = 0;
   int index = 0;
-  while (added < 2*kCacheSize) {
+  while (added < 2 * kCacheSize) {
     const int weight = (index & 1) ? kLight : kHeavy;
-    Insert(index, 1000+index, weight);
+    Insert(index, 1000 + index, weight);
     added += weight;
     index++;
   }
@@ -509,10 +502,10 @@ TEST_P(CacheTest, HeavyEntries) {
     int r = Lookup(i);
     if (r >= 0) {
       cached_weight += weight;
-      ASSERT_EQ(1000+i, r);
+      ASSERT_EQ(1000 + i, r);
     }
   }
-  ASSERT_LE(cached_weight, kCacheSize + kCacheSize/10);
+  ASSERT_LE(cached_weight, kCacheSize + kCacheSize / 10);
 }
 
 TEST_P(CacheTest, NewId) {
@@ -521,17 +514,16 @@ TEST_P(CacheTest, NewId) {
   ASSERT_NE(a, b);
 }
 
-
 class Value {
  public:
-  explicit Value(size_t v) : v_(v) { }
+  explicit Value(size_t v) : v_(v) {}
 
   size_t v_;
 };
 
 namespace {
 void deleter(const Slice& /*key*/, void* value) {
-  delete static_cast<Value *>(value);
+  delete static_cast<Value*>(value);
 }
 }  // namespace
 
@@ -575,7 +567,7 @@ TEST_P(CacheTest, SetCapacity) {
   std::vector<Cache::Handle*> handles(10);
   // Insert 5 entries, but not releasing.
   for (size_t i = 0; i < 5; i++) {
-    std::string key = ToString(i+1);
+    std::string key = ToString(i + 1);
     Status s = cache->Insert(key, new Value(i + 1), 1, &deleter, &handles[i]);
     ASSERT_TRUE(s.ok());
   }
@@ -590,7 +582,7 @@ TEST_P(CacheTest, SetCapacity) {
   // then decrease capacity to 7, final capacity should be 7
   // and usage should be 7
   for (size_t i = 5; i < 10; i++) {
-    std::string key = ToString(i+1);
+    std::string key = ToString(i + 1);
     Status s = cache->Insert(key, new Value(i + 1), 1, &deleter, &handles[i]);
     ASSERT_TRUE(s.ok());
   }
@@ -671,18 +663,18 @@ TEST_P(CacheTest, OverCapacity) {
   // a LRUCache with n entries and one shard only
   std::shared_ptr<Cache> cache = NewCache(n, 0, false);
 
-  std::vector<Cache::Handle*> handles(n+1);
+  std::vector<Cache::Handle*> handles(n + 1);
 
   // Insert n+1 entries, but not releasing.
   for (size_t i = 0; i < n + 1; i++) {
-    std::string key = ToString(i+1);
+    std::string key = ToString(i + 1);
     Status s = cache->Insert(key, new Value(i + 1), 1, &deleter, &handles[i]);
     ASSERT_TRUE(s.ok());
   }
 
   // Guess what's in the cache now?
   for (size_t i = 0; i < n + 1; i++) {
-    std::string key = ToString(i+1);
+    std::string key = ToString(i + 1);
     auto h = cache->Lookup(key);
     ASSERT_TRUE(h != nullptr);
     if (h) cache->Release(h);
@@ -703,7 +695,7 @@ TEST_P(CacheTest, OverCapacity) {
   // This is consistent with the LRU policy since the element 0
   // was released first
   for (size_t i = 0; i < n + 1; i++) {
-    std::string key = ToString(i+1);
+    std::string key = ToString(i + 1);
     auto h = cache->Lookup(key);
     if (h) {
       ASSERT_NE(i, 0U);
@@ -720,7 +712,7 @@ void legacy_callback(void* value, size_t charge) {
   legacy_callback_state.push_back(
       {DecodeValue(value), static_cast<int>(charge)});
 }
-};
+};  // namespace
 
 TEST_P(CacheTest, ApplyToAllCacheEntriesTest) {
   std::vector<std::pair<int, int>> inserted;

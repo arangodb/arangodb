@@ -7,6 +7,7 @@
 #ifndef ROCKSDB_LITE
 #include <string>
 #include <vector>
+
 #include "db/db_impl/db_impl.h"
 
 namespace ROCKSDB_NAMESPACE {
@@ -30,10 +31,9 @@ class CompactedDBImpl : public DBImpl {
                      PinnableSlice* value) override;
   using DB::MultiGet;
   virtual std::vector<Status> MultiGet(
-      const ReadOptions& options,
-      const std::vector<ColumnFamilyHandle*>&,
-      const std::vector<Slice>& keys, std::vector<std::string>* values)
-    override;
+      const ReadOptions& options, const std::vector<ColumnFamilyHandle*>&,
+      const std::vector<Slice>& keys,
+      std::vector<std::string>* values) override;
 
   using DBImpl::Put;
   virtual Status Put(const WriteOptions& /*options*/,

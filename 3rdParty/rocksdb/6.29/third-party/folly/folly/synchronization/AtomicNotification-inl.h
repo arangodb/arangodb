@@ -38,9 +38,8 @@ inline std::cv_status toCvStatus(ParkResult result) {
 extern ParkingLot<std::uint32_t> parkingLot;
 
 template <template <typename...> class Atom, typename... Args>
-void atomic_wait_impl(
-    const Atom<std::uint32_t, Args...>* atomic,
-    std::uint32_t expected) {
+void atomic_wait_impl(const Atom<std::uint32_t, Args...>* atomic,
+                      std::uint32_t expected) {
   futexWait(atomic, expected);
   return;
 }
@@ -52,27 +51,18 @@ void atomic_wait_impl(const Atom<Integer, Args...>* atomic, Integer expected) {
       atomic, -1, [&] { return atomic->load() == expected; }, [] {});
 }
 
-template <
-    template <typename...> class Atom,
-    typename... Args,
-    typename Clock,
-    typename Duration>
+template <template <typename...> class Atom, typename... Args, typename Clock,
+          typename Duration>
 std::cv_status atomic_wait_until_impl(
-    const Atom<std::uint32_t, Args...>* atomic,
-    std::uint32_t expected,
+    const Atom<std::uint32_t, Args...>* atomic, std::uint32_t expected,
     const std::chrono::time_point<Clock, Duration>& deadline) {
   return toCvStatus(futexWaitUntil(atomic, expected, deadline));
 }
 
-template <
-    template <typename...> class Atom,
-    typename Integer,
-    typename... Args,
-    typename Clock,
-    typename Duration>
+template <template <typename...> class Atom, typename Integer, typename... Args,
+          typename Clock, typename Duration>
 std::cv_status atomic_wait_until_impl(
-    const Atom<Integer, Args...>* atomic,
-    Integer expected,
+    const Atom<Integer, Args...>* atomic, Integer expected,
     const std::chrono::time_point<Clock, Duration>& deadline) {
   static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
   return toCvStatus(parkingLot.park_until(
@@ -108,8 +98,8 @@ void atomic_notify_all_impl(const Atom<Integer, Args...>* atomic) {
     return UnparkControl::RemoveContinue;
   });
 }
-} // namespace atomic_notification
-} // namespace detail
+}  // namespace atomic_notification
+}  // namespace detail
 
 template <typename Integer>
 void atomic_wait(const std::atomic<Integer>* atomic, Integer expected) {
@@ -118,11 +108,10 @@ void atomic_wait(const std::atomic<Integer>* atomic, Integer expected) {
 
 template <typename Integer, typename Clock, typename Duration>
 std::cv_status atomic_wait_until(
-    const std::atomic<Integer>* atomic,
-    Integer expected,
+    const std::atomic<Integer>* atomic, Integer expected,
     const std::chrono::time_point<Clock, Duration>& deadline) {
-  return detail::atomic_notification::atomic_wait_until_impl(
-      atomic, expected, deadline);
+  return detail::atomic_notification::atomic_wait_until_impl(atomic, expected,
+                                                             deadline);
 }
 
 template <typename Integer>
@@ -135,4 +124,4 @@ void atomic_notify_all(const std::atomic<Integer>* atomic) {
   detail::atomic_notification::atomic_notify_all_impl(atomic);
 }
 
-} // namespace folly
+}  // namespace folly

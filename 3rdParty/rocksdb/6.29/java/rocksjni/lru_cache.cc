@@ -6,9 +6,10 @@
 // This file implements the "bridge" between Java and C++ for
 // ROCKSDB_NAMESPACE::LRUCache.
 
+#include "cache/lru_cache.h"
+
 #include <jni.h>
 
-#include "cache/lru_cache.h"
 #include "include/org_rocksdb_LRUCache.h"
 
 /*

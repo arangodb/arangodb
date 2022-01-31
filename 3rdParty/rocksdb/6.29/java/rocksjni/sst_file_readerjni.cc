@@ -8,6 +8,7 @@
 // from Java side.
 
 #include <jni.h>
+
 #include <string>
 
 #include "include/org_rocksdb_SstFileReader.h"

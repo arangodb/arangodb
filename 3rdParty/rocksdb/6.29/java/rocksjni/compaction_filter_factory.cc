@@ -7,6 +7,7 @@
 // ROCKSDB_NAMESPACE::CompactionFilterFactory.
 
 #include <jni.h>
+
 #include <memory>
 
 #include "include/org_rocksdb_AbstractCompactionFilterFactory.h"

@@ -7,6 +7,7 @@
 // calling C++ ROCKSDB_NAMESPACE::BackupEngine methods from the Java side.
 
 #include <jni.h>
+
 #include <vector>
 
 #include "include/org_rocksdb_BackupEngine.h"

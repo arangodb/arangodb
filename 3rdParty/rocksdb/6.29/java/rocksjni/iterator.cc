@@ -6,13 +6,15 @@
 // This file implements the "bridge" between Java and C++ and enables
 // calling c++ ROCKSDB_NAMESPACE::Iterator methods from Java side.
 
+#include "rocksdb/iterator.h"
+
 #include <jni.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <algorithm>
 
 #include "include/org_rocksdb_RocksIterator.h"
-#include "rocksdb/iterator.h"
 #include "rocksjni/portal.h"
 
 /*
@@ -87,7 +89,7 @@ void Java_org_rocksdb_RocksIterator_prev0(JNIEnv* /*env*/, jobject /*jobj*/,
  * Signature: (J)V
  */
 void Java_org_rocksdb_RocksIterator_refresh0(JNIEnv* env, jobject /*jobj*/,
-                                            jlong handle) {
+                                             jlong handle) {
   auto* it = reinterpret_cast<ROCKSDB_NAMESPACE::Iterator*>(handle);
   ROCKSDB_NAMESPACE::Status s = it->Refresh();
 

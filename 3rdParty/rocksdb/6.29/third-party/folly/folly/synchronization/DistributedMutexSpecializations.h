@@ -17,23 +17,23 @@ template <template <typename> class Atom, bool TimePublishing>
 class unique_lock<
     ::folly::detail::distributed_mutex::DistributedMutex<Atom, TimePublishing>>
     : public ::folly::detail::ProxyLockableUniqueLock<
-          ::folly::detail::distributed_mutex::
-              DistributedMutex<Atom, TimePublishing>> {
+          ::folly::detail::distributed_mutex::DistributedMutex<
+              Atom, TimePublishing>> {
  public:
   using ::folly::detail::ProxyLockableUniqueLock<
-      ::folly::detail::distributed_mutex::
-          DistributedMutex<Atom, TimePublishing>>::ProxyLockableUniqueLock;
+      ::folly::detail::distributed_mutex::DistributedMutex<
+          Atom, TimePublishing>>::ProxyLockableUniqueLock;
 };
 
 template <template <typename> class Atom, bool TimePublishing>
 class lock_guard<
     ::folly::detail::distributed_mutex::DistributedMutex<Atom, TimePublishing>>
     : public ::folly::detail::ProxyLockableLockGuard<
-          ::folly::detail::distributed_mutex::
-              DistributedMutex<Atom, TimePublishing>> {
+          ::folly::detail::distributed_mutex::DistributedMutex<
+              Atom, TimePublishing>> {
  public:
   using ::folly::detail::ProxyLockableLockGuard<
-      ::folly::detail::distributed_mutex::
-          DistributedMutex<Atom, TimePublishing>>::ProxyLockableLockGuard;
+      ::folly::detail::distributed_mutex::DistributedMutex<
+          Atom, TimePublishing>>::ProxyLockableLockGuard;
 };
-} // namespace std
+}  // namespace std

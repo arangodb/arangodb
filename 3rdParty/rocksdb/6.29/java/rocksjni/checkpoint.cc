@@ -6,14 +6,16 @@
 // This file implements the "bridge" between Java and C++ and enables
 // calling c++ ROCKSDB_NAMESPACE::Checkpoint methods from Java side.
 
+#include "rocksdb/utilities/checkpoint.h"
+
 #include <jni.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <string>
 
 #include "include/org_rocksdb_Checkpoint.h"
 #include "rocksdb/db.h"
-#include "rocksdb/utilities/checkpoint.h"
 #include "rocksjni/portal.h"
 /*
  * Class:     org_rocksdb_Checkpoint

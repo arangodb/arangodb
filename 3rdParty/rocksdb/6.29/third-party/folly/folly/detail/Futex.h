@@ -17,9 +17,9 @@ namespace detail {
 
 enum class FutexResult {
   VALUE_CHANGED, /* futex value didn't match expected */
-  AWOKEN, /* wakeup by matching futex wake, or spurious wakeup */
-  INTERRUPTED, /* wakeup by interrupting signal */
-  TIMEDOUT, /* wakeup by expiring deadline */
+  AWOKEN,        /* wakeup by matching futex wake, or spurious wakeup */
+  INTERRUPTED,   /* wakeup by interrupting signal */
+  TIMEDOUT,      /* wakeup by expiring deadline */
 };
 
 /**
@@ -43,8 +43,8 @@ using Futex = Atom<std::uint32_t>;
  * other return (signal, this->load() != expected, or spurious wakeup).
  */
 template <typename Futex>
-FutexResult
-futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
+FutexResult futexWait(const Futex* futex, uint32_t expected,
+                      uint32_t waitMask = -1);
 
 /**
  * Similar to futexWait but also accepts a deadline until when the wait call
@@ -58,8 +58,7 @@ futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
  */
 template <typename Futex, class Clock, class Duration>
 FutexResult futexWaitUntil(
-    const Futex* futex,
-    uint32_t expected,
+    const Futex* futex, uint32_t expected,
     std::chrono::time_point<Clock, Duration> const& deadline,
     uint32_t waitMask = -1);
 
@@ -73,10 +72,8 @@ FutexResult futexWaitUntil(
  * https://sourceware.org/bugzilla/show_bug.cgi?id=13690
  */
 template <typename Futex>
-int futexWake(
-    const Futex* futex,
-    int count = std::numeric_limits<int>::max(),
-    uint32_t wakeMask = -1);
+int futexWake(const Futex* futex, int count = std::numeric_limits<int>::max(),
+              uint32_t wakeMask = -1);
 
 /** A std::atomic subclass that can be used to force Futex to emulate
  *  the underlying futex() syscall.  This is primarily useful to test or
@@ -90,7 +87,7 @@ struct EmulatedFutexAtomic : public std::atomic<T> {
   EmulatedFutexAtomic(EmulatedFutexAtomic&& rhs) = delete;
 };
 
-} // namespace detail
-} // namespace folly
+}  // namespace detail
+}  // namespace folly
 
 #include <folly/detail/Futex-inl.h>

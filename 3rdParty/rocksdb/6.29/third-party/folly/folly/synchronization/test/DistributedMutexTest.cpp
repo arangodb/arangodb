@@ -3,9 +3,9 @@
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
 
-#include <folly/synchronization/DistributedMutex.h>
 #include <folly/container/Array.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/DistributedMutex.h>
 
 #ifdef OS_AIX
 #include "gtest/gtest.h"
@@ -25,16 +25,14 @@ namespace test {
 template <template <typename> class Atomic>
 using TestDistributedMutex =
     folly::detail::distributed_mutex::DistributedMutex<Atomic, false>;
-} // namespace test
+}  // namespace test
 
 namespace {
 constexpr auto kStressFactor = 1000;
 constexpr auto kStressTestSeconds = 2;
 constexpr auto kForever = std::chrono::hours{100};
 
-int sum(int n) {
-  return (n * (n + 1)) / 2;
-}
+int sum(int n) { return (n * (n + 1)) / 2; }
 
 template <template <typename> class Atom = std::atomic>
 void basicNThreads(int numThreads, int iterations = kStressFactor) {
@@ -70,9 +68,8 @@ void basicNThreads(int numThreads, int iterations = kStressFactor) {
 }
 
 template <template <typename> class Atom = std::atomic>
-void lockWithTryAndTimedNThreads(
-    int numThreads,
-    std::chrono::seconds duration) {
+void lockWithTryAndTimedNThreads(int numThreads,
+                                 std::chrono::seconds duration) {
   auto&& mutex = folly::detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& barrier = std::atomic<int>{0};
   auto&& threads = std::vector<std::thread>{};
@@ -299,9 +296,8 @@ void combineWithTryLockNThreads(int numThreads, std::chrono::seconds duration) {
 }
 
 template <template <typename> class Atom = std::atomic>
-void combineWithLockTryAndTimedNThreads(
-    int numThreads,
-    std::chrono::seconds duration) {
+void combineWithLockTryAndTimedNThreads(int numThreads,
+                                        std::chrono::seconds duration) {
   auto&& mutex = folly::detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& barrier = std::atomic<int>{0};
   auto&& threads = std::vector<std::thread>{};
@@ -334,13 +330,8 @@ void combineWithLockTryAndTimedNThreads(
 
         // return a non-trivially-copyable object that occupies all the
         // storage we use to coalesce returns to test that codepath
-        return folly::make_array(
-            iteration,
-            iteration + 1,
-            iteration + 2,
-            iteration + 3,
-            iteration + 4,
-            iteration + 5);
+        return folly::make_array(iteration, iteration + 1, iteration + 2,
+                                 iteration + 3, iteration + 4, iteration + 5);
       });
 
       EXPECT_EQ(expected, current[0] + 1);
@@ -398,7 +389,7 @@ void combineWithLockTryAndTimedNThreads(
     thread.join();
   }
 }
-} // namespace
+}  // namespace
 
 TEST(DistributedMutex, InternalDetailTestOne) {
   auto value = 0;
@@ -426,39 +417,17 @@ TEST(DistributedMutex, BasicTryLock) {
   }
 }
 
-TEST(DistributedMutex, StressTwoThreads) {
-  basicNThreads(2);
-}
-TEST(DistributedMutex, StressThreeThreads) {
-  basicNThreads(3);
-}
-TEST(DistributedMutex, StressFourThreads) {
-  basicNThreads(4);
-}
-TEST(DistributedMutex, StressFiveThreads) {
-  basicNThreads(5);
-}
-TEST(DistributedMutex, StressSixThreads) {
-  basicNThreads(6);
-}
-TEST(DistributedMutex, StressSevenThreads) {
-  basicNThreads(7);
-}
-TEST(DistributedMutex, StressEightThreads) {
-  basicNThreads(8);
-}
-TEST(DistributedMutex, StressSixteenThreads) {
-  basicNThreads(16);
-}
-TEST(DistributedMutex, StressThirtyTwoThreads) {
-  basicNThreads(32);
-}
-TEST(DistributedMutex, StressSixtyFourThreads) {
-  basicNThreads(64);
-}
-TEST(DistributedMutex, StressHundredThreads) {
-  basicNThreads(100);
-}
+TEST(DistributedMutex, StressTwoThreads) { basicNThreads(2); }
+TEST(DistributedMutex, StressThreeThreads) { basicNThreads(3); }
+TEST(DistributedMutex, StressFourThreads) { basicNThreads(4); }
+TEST(DistributedMutex, StressFiveThreads) { basicNThreads(5); }
+TEST(DistributedMutex, StressSixThreads) { basicNThreads(6); }
+TEST(DistributedMutex, StressSevenThreads) { basicNThreads(7); }
+TEST(DistributedMutex, StressEightThreads) { basicNThreads(8); }
+TEST(DistributedMutex, StressSixteenThreads) { basicNThreads(16); }
+TEST(DistributedMutex, StressThirtyTwoThreads) { basicNThreads(32); }
+TEST(DistributedMutex, StressSixtyFourThreads) { basicNThreads(64); }
+TEST(DistributedMutex, StressHundredThreads) { basicNThreads(100); }
 TEST(DistributedMutex, StressHardwareConcurrencyThreads) {
   basicNThreads(std::thread::hardware_concurrency());
 }
@@ -482,9 +451,8 @@ TEST(DistributedMutex, StressSixtyFourThreadsLockTryAndTimed) {
   lockWithTryAndTimedNThreads(64, std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressHwConcThreadsLockTryAndTimed) {
-  lockWithTryAndTimedNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+  lockWithTryAndTimedNThreads(std::thread::hardware_concurrency(),
+                              std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressTwoThreadsCombine) {
@@ -521,9 +489,8 @@ TEST(DistributedMutex, StressHundredThreadsCombine) {
   combineNThreads(100, std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombine) {
-  combineNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+  combineNThreads(std::thread::hardware_concurrency(),
+                  std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressTwoThreadsCombineAndLock) {
@@ -545,9 +512,8 @@ TEST(DistributedMutex, StressSixtyFourThreadsCombineAndLock) {
   combineWithLockNThreads(64, std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombineAndLock) {
-  combineWithLockNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+  combineWithLockNThreads(std::thread::hardware_concurrency(),
+                          std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressThreeThreadsCombineTryLockAndLock) {
@@ -569,39 +535,37 @@ TEST(DistributedMutex, StressSixtyFourThreadsCombineTryLockAndLock) {
   combineWithTryLockNThreads(64, std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombineTryLockAndLock) {
-  combineWithTryLockNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+  combineWithTryLockNThreads(std::thread::hardware_concurrency(),
+                             std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressThreeThreadsCombineTryLockLockAndTimed) {
-  combineWithLockTryAndTimedNThreads(
-      3, std::chrono::seconds{kStressTestSeconds});
+  combineWithLockTryAndTimedNThreads(3,
+                                     std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressSixThreadsCombineTryLockLockAndTimed) {
-  combineWithLockTryAndTimedNThreads(
-      6, std::chrono::seconds{kStressTestSeconds});
+  combineWithLockTryAndTimedNThreads(6,
+                                     std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressTwelveThreadsCombineTryLockLockAndTimed) {
-  combineWithLockTryAndTimedNThreads(
-      12, std::chrono::seconds{kStressTestSeconds});
+  combineWithLockTryAndTimedNThreads(12,
+                                     std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressTwentyFourThreadsCombineTryLockLockAndTimed) {
-  combineWithLockTryAndTimedNThreads(
-      24, std::chrono::seconds{kStressTestSeconds});
+  combineWithLockTryAndTimedNThreads(24,
+                                     std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressFourtyEightThreadsCombineTryLockLockAndTimed) {
-  combineWithLockTryAndTimedNThreads(
-      48, std::chrono::seconds{kStressTestSeconds});
+  combineWithLockTryAndTimedNThreads(48,
+                                     std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressSixtyFourThreadsCombineTryLockLockAndTimed) {
-  combineWithLockTryAndTimedNThreads(
-      64, std::chrono::seconds{kStressTestSeconds});
+  combineWithLockTryAndTimedNThreads(64,
+                                     std::chrono::seconds{kStressTestSeconds});
 }
 TEST(DistributedMutex, StressHwConcurrencyThreadsCombineTryLockLockAndTimed) {
-  combineWithLockTryAndTimedNThreads(
-      std::thread::hardware_concurrency(),
-      std::chrono::seconds{kStressTestSeconds});
+  combineWithLockTryAndTimedNThreads(std::thread::hardware_concurrency(),
+                                     std::chrono::seconds{kStressTestSeconds});
 }
 
 TEST(DistributedMutex, StressTryLock) {
@@ -657,9 +621,8 @@ TEST(DistributedMutex, TimedLockAcquireAfterUnlock) {
 
 namespace {
 template <template <typename> class Atom = std::atomic>
-void stressTryLockWithConcurrentLocks(
-    int numThreads,
-    int iterations = kStressFactor) {
+void stressTryLockWithConcurrentLocks(int numThreads,
+                                      int iterations = kStressFactor) {
   auto&& threads = std::vector<std::thread>{};
   auto&& mutex = folly::detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& atomic = std::atomic<std::uint64_t>{0};
@@ -687,7 +650,7 @@ void stressTryLockWithConcurrentLocks(
     thread.join();
   }
 }
-} // namespace
+}  // namespace
 
 TEST(DistributedMutex, StressTryLockWithConcurrentLocksTwoThreads) {
   stressTryLockWithConcurrentLocks(2);
@@ -731,20 +694,12 @@ void concurrentTryLocks(int numThreads, int iterations = kStressFactor) {
     thread.join();
   }
 }
-} // namespace
+}  // namespace
 
-TEST(DistributedMutex, StressTryLockWithTwoThreads) {
-  concurrentTryLocks(2);
-}
-TEST(DistributedMutex, StressTryLockFourThreads) {
-  concurrentTryLocks(4);
-}
-TEST(DistributedMutex, StressTryLockEightThreads) {
-  concurrentTryLocks(8);
-}
-TEST(DistributedMutex, StressTryLockSixteenThreads) {
-  concurrentTryLocks(16);
-}
+TEST(DistributedMutex, StressTryLockWithTwoThreads) { concurrentTryLocks(2); }
+TEST(DistributedMutex, StressTryLockFourThreads) { concurrentTryLocks(4); }
+TEST(DistributedMutex, StressTryLockEightThreads) { concurrentTryLocks(8); }
+TEST(DistributedMutex, StressTryLockSixteenThreads) { concurrentTryLocks(16); }
 TEST(DistributedMutex, StressTryLockThirtyTwoThreads) {
   concurrentTryLocks(32);
 }
@@ -773,9 +728,7 @@ class TestConstruction {
     moveAssigns().fetch_add(1, std::memory_order_relaxed);
     return *this;
   }
-  ~TestConstruction() {
-    destructs().fetch_add(1, std::memory_order_relaxed);
-  }
+  ~TestConstruction() { destructs().fetch_add(1, std::memory_order_relaxed); }
 
   static std::atomic<std::uint64_t>& defaultConstructs() {
     static auto&& atomic = std::atomic<std::uint64_t>{0};
@@ -810,7 +763,7 @@ class TestConstruction {
     destructs().store(0);
   }
 };
-} // namespace
+}  // namespace
 
 TEST(DistributedMutex, TestAppropriateDestructionAndConstructionWithCombine) {
   auto&& mutex = folly::DistributedMutex{};
@@ -923,7 +876,7 @@ void concurrentLocksManyMutexes(int numThreads, std::chrono::seconds duration) {
     thread.join();
   }
 }
-} // namespace
+}  // namespace
 
 TEST(DistributedMutex, StressWithManyMutexesAlternatingTwoThreads) {
   concurrentLocksManyMutexes(2, std::chrono::seconds{kStressTestSeconds});
@@ -950,15 +903,13 @@ class ExceptionWithConstructionTrack : public std::exception {
   explicit ExceptionWithConstructionTrack(int id)
       : id_{std::to_string(id)}, constructionTrack_{id} {}
 
-  const char* what() const noexcept override {
-    return id_.c_str();
-  }
+  const char* what() const noexcept override { return id_.c_str(); }
 
  private:
   std::string id_;
   TestConstruction constructionTrack_;
 };
-} // namespace
+}  // namespace
 
 TEST(DistributedMutex, TestExceptionPropagationUncontended) {
   TestConstruction::reset();
@@ -971,17 +922,16 @@ TEST(DistributedMutex, TestExceptionPropagationUncontended) {
       EXPECT_EQ(integer, 46);
       EXPECT_GT(TestConstruction::defaultConstructs(), 0);
     }
-    EXPECT_EQ(
-        TestConstruction::defaultConstructs(), TestConstruction::destructs());
+    EXPECT_EQ(TestConstruction::defaultConstructs(),
+              TestConstruction::destructs());
   }};
   thread.join();
 }
 
 namespace {
 template <template <typename> class Atom = std::atomic>
-void concurrentExceptionPropagationStress(
-    int numThreads,
-    std::chrono::milliseconds t) {
+void concurrentExceptionPropagationStress(int numThreads,
+                                          std::chrono::milliseconds t) {
   // this test fails under with a false negative under older versions of TSAN
   // for some reason so disable it when TSAN is enabled
   if (folly::kIsSanitizeThread) {
@@ -1031,7 +981,7 @@ void concurrentExceptionPropagationStress(
     thread.join();
   }
 }
-} // namespace
+}  // namespace
 
 TEST(DistributedMutex, TestExceptionPropagationStressTwoThreads) {
   concurrentExceptionPropagationStress(
@@ -1061,14 +1011,15 @@ TEST(DistributedMutex, TestExceptionPropagationStressSixtyFourThreads) {
 namespace {
 std::array<std::uint64_t, 8> makeMonotonicArray(int start) {
   auto array = std::array<std::uint64_t, 8>{};
-  for (auto& element : array) { element = start++; }
+  for (auto& element : array) {
+    element = start++;
+  }
   return array;
 }
 
 template <template <typename> class Atom = std::atomic>
-void concurrentBigValueReturnStress(
-    int numThreads,
-    std::chrono::milliseconds t) {
+void concurrentBigValueReturnStress(int numThreads,
+                                    std::chrono::milliseconds t) {
   auto&& mutex = folly::detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& threads = std::vector<std::thread>{};
   auto&& stop = std::atomic<bool>{false};
@@ -1107,7 +1058,7 @@ void concurrentBigValueReturnStress(
     thread.join();
   }
 }
-} // namespace
+}  // namespace
 
 TEST(DistributedMutex, StressBigValueReturnTwoThreads) {
   concurrentBigValueReturnStress(2, std::chrono::seconds{kStressTestSeconds});

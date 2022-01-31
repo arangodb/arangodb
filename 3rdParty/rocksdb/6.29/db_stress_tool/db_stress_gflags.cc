@@ -39,8 +39,8 @@ DEFINE_string(key_len_percent_dist, "",
               "24 bytes. If not specified, it will be evenly distributed");
 
 DEFINE_int32(key_window_scale_factor, 10,
-              "This value will be multiplied by 100 to come up with a window "
-              "size for varying the key length");
+             "This value will be multiplied by 100 to come up with a window "
+             "size for varying the key length");
 
 DEFINE_int32(column_families, 10, "Number of column families");
 
@@ -806,7 +806,7 @@ DEFINE_int32(approximate_size_one_in, 64,
              " random key ranges.");
 
 DEFINE_int32(read_fault_one_in, 1000,
-            "On non-zero, enables fault injection on read");
+             "On non-zero, enables fault injection on read");
 
 DEFINE_int32(get_property_one_in, 1000,
              "If non-zero, then DB::GetProperty() will be called to get various"

@@ -25,4 +25,4 @@ inline void asm_volatile_pause() {
   asm volatile("or 27,27,27");
 #endif
 }
-} // namespace folly
+}  // namespace folly

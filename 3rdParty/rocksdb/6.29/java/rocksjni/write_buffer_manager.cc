@@ -3,12 +3,12 @@
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
 
+#include "rocksdb/write_buffer_manager.h"
+
 #include <jni.h>
 
 #include "include/org_rocksdb_WriteBufferManager.h"
-
 #include "rocksdb/cache.h"
-#include "rocksdb/write_buffer_manager.h"
 
 /*
  * Class:     org_rocksdb_WriteBufferManager
@@ -33,8 +33,9 @@ jlong Java_org_rocksdb_WriteBufferManager_newWriteBufferManager(
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_WriteBufferManager_disposeInternal(
-        JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle) {
+void Java_org_rocksdb_WriteBufferManager_disposeInternal(JNIEnv* /*env*/,
+                                                         jobject /*jobj*/,
+                                                         jlong jhandle) {
   auto* write_buffer_manager =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::WriteBufferManager>*>(
           jhandle);

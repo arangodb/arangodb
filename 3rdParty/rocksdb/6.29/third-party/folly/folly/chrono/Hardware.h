@@ -29,5 +29,4 @@ inline std::uint64_t hardware_timestamp() {
 #endif
 }
 
-} // namespace folly
-
+}  // namespace folly

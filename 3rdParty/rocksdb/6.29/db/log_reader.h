@@ -8,8 +8,9 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #pragma once
-#include <memory>
 #include <stdint.h>
+
+#include <memory>
 
 #include "db/log_format.h"
 #include "file/sequence_file_reader.h"
@@ -77,9 +78,7 @@ class Reader {
   uint64_t LastRecordEnd();
 
   // returns true if the reader has encountered an eof condition.
-  bool IsEOF() {
-    return eof_;
-  }
+  bool IsEOF() { return eof_; }
 
   // returns true if the reader has encountered read error.
   bool hasReadError() const { return read_error_; }
@@ -110,8 +109,8 @@ class Reader {
 
   // Internal state variables used for reading records
   Slice buffer_;
-  bool eof_;   // Last Read() indicated EOF by returning < kBlockSize
-  bool read_error_;   // Error occurred while reading from file
+  bool eof_;         // Last Read() indicated EOF by returning < kBlockSize
+  bool read_error_;  // Error occurred while reading from file
 
   // Offset of the file position indicator within the last block when an
   // EOF was detected.
@@ -150,7 +149,7 @@ class Reader {
   unsigned int ReadPhysicalRecord(Slice* result, size_t* drop_size);
 
   // Read some more
-  bool ReadMore(size_t* drop_size, int *error);
+  bool ReadMore(size_t* drop_size, int* error);
 
   void UnmarkEOFInternal();
 

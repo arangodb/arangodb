@@ -8,7 +8,7 @@
 #include <sys/types.h>
 
 #ifdef _WIN32
-#include <basetsd.h> // @manual
+#include <basetsd.h>  // @manual
 
 #define HAVE_MODE_T 1
 

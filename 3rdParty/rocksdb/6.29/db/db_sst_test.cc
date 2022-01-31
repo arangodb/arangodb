@@ -907,7 +907,6 @@ TEST_F(DBSSTTest, OpenDBWithExistingTrash) {
   ASSERT_NOK(env_->FileExists(dbname_ + "/" + "003.sst.trash"));
 }
 
-
 // Create a DB with 2 db_paths, and generate multiple files in the 2
 // db_paths using CompactRangeOptions, make sure that files that were
 // deleted from first db_path were deleted using DeleteScheduler and
@@ -1179,7 +1178,9 @@ TEST_F(DBSSTTest, CancellingCompactionsWorks) {
   ASSERT_GT(completed_compactions, 0);
   ASSERT_EQ(sfm->GetCompactionsReservedSize(), 0);
   // Make sure the stat is bumped
-  ASSERT_GT(dbfull()->immutable_db_options().statistics.get()->getTickerCount(COMPACTION_CANCELLED), 0);
+  ASSERT_GT(dbfull()->immutable_db_options().statistics.get()->getTickerCount(
+                COMPACTION_CANCELLED),
+            0);
   ASSERT_EQ(0,
             dbfull()->immutable_db_options().statistics.get()->getTickerCount(
                 FILES_MARKED_TRASH));

@@ -5,27 +5,26 @@
 
 #pragma once
 
+#include <folly/portability/Asm.h>
+#include <folly/synchronization/WaitOptions.h>
+
 #include <algorithm>
 #include <chrono>
 #include <thread>
-
-#include <folly/portability/Asm.h>
-#include <folly/synchronization/WaitOptions.h>
 
 namespace folly {
 namespace detail {
 
 enum class spin_result {
-  success, // condition passed
-  timeout, // exceeded deadline
-  advance, // exceeded current wait-options component timeout
+  success,  // condition passed
+  timeout,  // exceeded deadline
+  advance,  // exceeded current wait-options component timeout
 };
 
 template <typename Clock, typename Duration, typename F>
 spin_result spin_pause_until(
     std::chrono::time_point<Clock, Duration> const& deadline,
-    WaitOptions const& opt,
-    F f) {
+    WaitOptions const& opt, F f) {
   if (opt.spin_max() <= opt.spin_max().zero()) {
     return spin_result::advance;
   }
@@ -57,8 +56,7 @@ spin_result spin_pause_until(
 
 template <typename Clock, typename Duration, typename F>
 spin_result spin_yield_until(
-    std::chrono::time_point<Clock, Duration> const& deadline,
-    F f) {
+    std::chrono::time_point<Clock, Duration> const& deadline, F f) {
   while (true) {
     if (f()) {
       return spin_result::success;
@@ -73,5 +71,5 @@ spin_result spin_yield_until(
   }
 }
 
-} // namespace detail
-} // namespace folly
+}  // namespace detail
+}  // namespace folly

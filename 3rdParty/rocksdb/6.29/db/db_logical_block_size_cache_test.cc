@@ -217,8 +217,8 @@ TEST_F(DBLogicalBlockSizeCacheTest, CreateColumnFamilies) {
 
   delete db;
   ASSERT_EQ(0, cache_->Size());
-  ASSERT_OK(DestroyDB(dbname_, options,
-      {{"cf1", cf_options}, {"cf2", cf_options}}));
+  ASSERT_OK(
+      DestroyDB(dbname_, options, {{"cf1", cf_options}, {"cf2", cf_options}}));
 }
 
 TEST_F(DBLogicalBlockSizeCacheTest, OpenWithColumnFamilies) {
@@ -306,8 +306,8 @@ TEST_F(DBLogicalBlockSizeCacheTest, OpenWithColumnFamilies) {
     delete db;
     ASSERT_EQ(0, cache_->Size());
   }
-  ASSERT_OK(DestroyDB(dbname_, options,
-      {{"cf1", cf_options}, {"cf2", cf_options}}));
+  ASSERT_OK(
+      DestroyDB(dbname_, options, {{"cf1", cf_options}, {"cf2", cf_options}}));
 }
 
 TEST_F(DBLogicalBlockSizeCacheTest, DestroyColumnFamilyHandle) {
