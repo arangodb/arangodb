@@ -58,10 +58,10 @@ class SharedState {
   static __thread bool ignore_read_error;
 #else
   static thread_local bool ignore_read_error;
-#endif  // OS_SOLARIS
+#endif // OS_SOLARIS
 #else
   static bool ignore_read_error;
-#endif  // ROCKSDB_SUPPORT_THREAD_LOCAL
+#endif // ROCKSDB_SUPPORT_THREAD_LOCAL
 
   SharedState(Env* /*env*/, StressTest* stress_test)
       : cv_(&mu_),
@@ -169,7 +169,7 @@ class SharedState {
                                             IgnoreReadErrorCallback);
       SyncPoint::GetInstance()->EnableProcessing();
     }
-#endif  // NDEBUG
+#endif // NDEBUG
   }
 
   ~SharedState() {
@@ -334,7 +334,9 @@ class SharedState {
   }
 
  private:
-  static void IgnoreReadErrorCallback(void*) { ignore_read_error = true; }
+  static void IgnoreReadErrorCallback(void*) {
+    ignore_read_error = true;
+  }
 
   port::Mutex mu_;
   port::CondVar cv_;

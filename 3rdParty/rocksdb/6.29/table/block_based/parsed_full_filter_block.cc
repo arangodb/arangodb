@@ -5,7 +5,6 @@
 //
 
 #include "table/block_based/parsed_full_filter_block.h"
-
 #include "rocksdb/filter_policy.h"
 
 namespace ROCKSDB_NAMESPACE {

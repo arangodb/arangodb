@@ -7,7 +7,6 @@
 // org.rocksdb.AbstractTableFilter.
 
 #include <jni.h>
-
 #include <memory>
 
 #include "include/org_rocksdb_AbstractTableFilter.h"

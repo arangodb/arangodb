@@ -7,7 +7,6 @@
 #pragma once
 
 #include <cassert>
-
 #include "table/block_based/cachable_entry.h"
 #include "table/block_based/filter_block.h"
 

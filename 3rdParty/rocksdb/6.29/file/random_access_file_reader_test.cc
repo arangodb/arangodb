@@ -60,7 +60,9 @@ class RandomAccessFileReaderTest : public testing::Test {
   std::shared_ptr<FileSystem> fs_;
   std::string test_dir_;
 
-  std::string Path(const std::string& fname) { return test_dir_ + "/" + fname; }
+  std::string Path(const std::string& fname) {
+    return test_dir_ + "/" + fname;
+  }
 };
 
 // Skip the following tests in lite mode since direct I/O is unsupported.

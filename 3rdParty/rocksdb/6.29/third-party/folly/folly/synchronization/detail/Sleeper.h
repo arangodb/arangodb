@@ -10,10 +10,10 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
-#include <folly/portability/Asm.h>
-
 #include <cstdint>
 #include <thread>
+
+#include <folly/portability/Asm.h>
 
 namespace folly {
 
@@ -52,5 +52,6 @@ class Sleeper {
   }
 };
 
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly
+

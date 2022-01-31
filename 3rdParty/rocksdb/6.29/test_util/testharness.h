@@ -53,7 +53,6 @@
   } while (false) /* user ; */
 
 #include <string>
-
 #include "rocksdb/env.h"
 
 namespace ROCKSDB_NAMESPACE {

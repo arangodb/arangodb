@@ -12,12 +12,14 @@
 #include "rocksdb/options.h"
 #include "rocksjni/portal.h"
 
+
 /*
  * Class:     org_rocksdb_CompactionOptions
  * Method:    newCompactionOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_CompactionOptions_newCompactionOptions(JNIEnv*, jclass) {
+jlong Java_org_rocksdb_CompactionOptions_newCompactionOptions(
+    JNIEnv*, jclass) {
   auto* compact_opts = new ROCKSDB_NAMESPACE::CompactionOptions();
   return reinterpret_cast<jlong>(compact_opts);
 }
@@ -27,8 +29,8 @@ jlong Java_org_rocksdb_CompactionOptions_newCompactionOptions(JNIEnv*, jclass) {
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_CompactionOptions_disposeInternal(JNIEnv*, jobject,
-                                                        jlong jhandle) {
+void Java_org_rocksdb_CompactionOptions_disposeInternal(
+    JNIEnv *, jobject, jlong jhandle) {
   auto* compact_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactionOptions*>(jhandle);
   delete compact_opts;
@@ -39,8 +41,8 @@ void Java_org_rocksdb_CompactionOptions_disposeInternal(JNIEnv*, jobject,
  * Method:    compression
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_CompactionOptions_compression(JNIEnv*, jclass,
-                                                     jlong jhandle) {
+jbyte Java_org_rocksdb_CompactionOptions_compression(
+    JNIEnv*, jclass, jlong jhandle) {
   auto* compact_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactionOptions*>(jhandle);
   return ROCKSDB_NAMESPACE::CompressionTypeJni::toJavaCompressionType(
@@ -66,11 +68,12 @@ void Java_org_rocksdb_CompactionOptions_setCompression(
  * Method:    outputFileSizeLimit
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_CompactionOptions_outputFileSizeLimit(JNIEnv*, jclass,
-                                                             jlong jhandle) {
+jlong Java_org_rocksdb_CompactionOptions_outputFileSizeLimit(
+    JNIEnv*, jclass, jlong jhandle) {
   auto* compact_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactionOptions*>(jhandle);
-  return static_cast<jlong>(compact_opts->output_file_size_limit);
+  return static_cast<jlong>(
+      compact_opts->output_file_size_limit);
 }
 
 /*
@@ -91,11 +94,12 @@ void Java_org_rocksdb_CompactionOptions_setOutputFileSizeLimit(
  * Method:    maxSubcompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_CompactionOptions_maxSubcompactions(JNIEnv*, jclass,
-                                                          jlong jhandle) {
+jint Java_org_rocksdb_CompactionOptions_maxSubcompactions(
+    JNIEnv*, jclass, jlong jhandle) {
   auto* compact_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactionOptions*>(jhandle);
-  return static_cast<jint>(compact_opts->max_subcompactions);
+  return static_cast<jint>(
+      compact_opts->max_subcompactions);
 }
 
 /*
@@ -107,5 +111,6 @@ void Java_org_rocksdb_CompactionOptions_setMaxSubcompactions(
     JNIEnv*, jclass, jlong jhandle, jint jmax_subcompactions) {
   auto* compact_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactionOptions*>(jhandle);
-  compact_opts->max_subcompactions = static_cast<uint32_t>(jmax_subcompactions);
+  compact_opts->max_subcompactions =
+      static_cast<uint32_t>(jmax_subcompactions);
 }

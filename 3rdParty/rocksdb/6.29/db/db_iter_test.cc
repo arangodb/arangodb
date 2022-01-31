@@ -3,13 +3,12 @@
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
 
-#include "db/db_iter.h"
-
-#include <algorithm>
 #include <string>
-#include <utility>
 #include <vector>
+#include <algorithm>
+#include <utility>
 
+#include "db/db_iter.h"
 #include "db/dbformat.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/options.h"
@@ -83,8 +82,8 @@ class TestIterator : public InternalIterator {
     std::sort(data_.begin(), data_.end(),
               [this](std::pair<std::string, std::string> a,
                      std::pair<std::string, std::string> b) {
-                return (cmp.Compare(a.first, b.first) < 0);
-              });
+      return (cmp.Compare(a.first, b.first) < 0);
+    });
   }
 
   // Removes the key from the set of keys over which this iterator iterates.
@@ -430,8 +429,7 @@ TEST_F(DBIteratorTest, DBIteratorPrevNext) {
     db_iter->SeekToLast();
 
     ASSERT_TRUE(db_iter->Valid());
-    ASSERT_EQ(static_cast<int>(get_perf_context()->internal_key_skipped_count),
-              1);
+    ASSERT_EQ(static_cast<int>(get_perf_context()->internal_key_skipped_count), 1);
     ASSERT_EQ(db_iter->key().ToString(), "b");
 
     SetPerfLevel(kDisable);
@@ -559,8 +557,7 @@ TEST_F(DBIteratorTest, DBIteratorPrevNext) {
     db_iter->SeekToLast();
 
     ASSERT_TRUE(db_iter->Valid());
-    ASSERT_EQ(
-        static_cast<int>(get_perf_context()->internal_delete_skipped_count), 0);
+    ASSERT_EQ(static_cast<int>(get_perf_context()->internal_delete_skipped_count), 0);
     ASSERT_EQ(db_iter->key().ToString(), "b");
 
     SetPerfLevel(kDisable);
@@ -2566,9 +2563,9 @@ TEST_F(DBIteratorTest, DBIterator14) {
 }
 
 TEST_F(DBIteratorTest, DBIteratorTestDifferentialSnapshots) {
-  {  // test that KVs earlier that iter_start_seqnum are filtered out
+  { // test that KVs earlier that iter_start_seqnum are filtered out
     ReadOptions ro;
-    ro.iter_start_seqnum = 5;
+    ro.iter_start_seqnum=5;
     Options options;
     options.statistics = ROCKSDB_NAMESPACE::CreateDBStatistics();
 
@@ -2586,8 +2583,8 @@ TEST_F(DBIteratorTest, DBIteratorTestDifferentialSnapshots) {
         13 /* sequence */, options.max_sequential_skip_in_iterations,
         nullptr /* read_callback */));
     // Expecting InternalKeys in [5,8] range with correct type
-    int seqnums[4] = {5, 8, 11, 13};
-    std::string user_keys[4] = {"1", "2", "3", "4"};
+    int seqnums[4] = {5,8,11,13};
+    std::string user_keys[4] = {"1","2","3","4"};
     std::string values[4] = {"1c", "2c", "3c", "4b"};
     int i = 0;
     for (db_iter->SeekToFirst(); db_iter->Valid(); db_iter->Next()) {
@@ -2603,9 +2600,9 @@ TEST_F(DBIteratorTest, DBIteratorTestDifferentialSnapshots) {
     ASSERT_EQ(i, 4);
   }
 
-  {  // Test that deletes are returned correctly as internal KVs
+  { // Test that deletes are returned correctly as internal KVs
     ReadOptions ro;
-    ro.iter_start_seqnum = 5;
+    ro.iter_start_seqnum=5;
     Options options;
     options.statistics = ROCKSDB_NAMESPACE::CreateDBStatistics();
 
@@ -2623,10 +2620,10 @@ TEST_F(DBIteratorTest, DBIteratorTestDifferentialSnapshots) {
         13 /* sequence */, options.max_sequential_skip_in_iterations,
         nullptr /* read_callback */));
     // Expecting InternalKeys in [5,8] range with correct type
-    int seqnums[4] = {5, 8, 11, 13};
+    int seqnums[4] = {5,8,11,13};
     ValueType key_types[4] = {kTypeDeletion, kTypeDeletion, kTypeDeletion,
                               kTypeValue};
-    std::string user_keys[4] = {"1", "2", "3", "4"};
+    std::string user_keys[4] = {"1","2","3","4"};
     std::string values[4] = {"", "", "", "4b"};
     int i = 0;
     for (db_iter->SeekToFirst(); db_iter->Valid(); db_iter->Next()) {
@@ -3093,6 +3090,7 @@ TEST_F(DBIterWithMergeIterTest, InnerMergeIteratorDataRace8) {
 
   ROCKSDB_NAMESPACE::SyncPoint::GetInstance()->DisableProcessing();
 }
+
 
 TEST_F(DBIteratorTest, SeekPrefixTombstones) {
   ReadOptions ro;

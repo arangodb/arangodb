@@ -108,7 +108,7 @@ IOStatus FileSystem::ReuseWritableFile(const std::string& fname,
 }
 
 FileOptions FileSystem::OptimizeForLogRead(
-    const FileOptions& file_options) const {
+              const FileOptions& file_options) const {
   FileOptions optimized_file_options(file_options);
   optimized_file_options.use_direct_reads = false;
   return optimized_file_options;
@@ -122,7 +122,7 @@ FileOptions FileSystem::OptimizeForManifestRead(
 }
 
 FileOptions FileSystem::OptimizeForLogWrite(const FileOptions& file_options,
-                                            const DBOptions& db_options) const {
+                                           const DBOptions& db_options) const {
   FileOptions optimized_file_options(file_options);
   optimized_file_options.bytes_per_sync = db_options.wal_bytes_per_sync;
   optimized_file_options.writable_file_max_buffer_size =
@@ -192,7 +192,8 @@ IOStatus ReadFileToString(FileSystem* fs, const std::string& fname,
   char* space = new char[kBufferSize];
   while (true) {
     Slice fragment;
-    s = file->Read(kBufferSize, IOOptions(), &fragment, space, nullptr);
+    s = file->Read(kBufferSize, IOOptions(), &fragment, space,
+                   nullptr);
     if (!s.ok()) {
       break;
     }

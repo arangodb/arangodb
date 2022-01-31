@@ -9,7 +9,9 @@
 #include <jni.h>
 
 #include "include/org_rocksdb_TransactionDBOptions.h"
+
 #include "rocksdb/utilities/transaction_db.h"
+
 #include "rocksjni/portal.h"
 
 /*

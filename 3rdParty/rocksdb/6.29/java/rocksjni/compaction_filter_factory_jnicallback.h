@@ -10,7 +10,6 @@
 #define JAVA_ROCKSJNI_COMPACTION_FILTER_FACTORY_JNICALLBACK_H_
 
 #include <jni.h>
-
 #include <memory>
 
 #include "rocksdb/compaction_filter.h"
@@ -18,18 +17,17 @@
 
 namespace ROCKSDB_NAMESPACE {
 
-class CompactionFilterFactoryJniCallback : public JniCallback,
-                                           public CompactionFilterFactory {
+class CompactionFilterFactoryJniCallback : public JniCallback, public CompactionFilterFactory {
  public:
-  CompactionFilterFactoryJniCallback(JNIEnv* env,
-                                     jobject jcompaction_filter_factory);
-  virtual std::unique_ptr<CompactionFilter> CreateCompactionFilter(
+    CompactionFilterFactoryJniCallback(
+        JNIEnv* env, jobject jcompaction_filter_factory);
+    virtual std::unique_ptr<CompactionFilter> CreateCompactionFilter(
       const CompactionFilter::Context& context);
-  virtual const char* Name() const;
+    virtual const char* Name() const;
 
  private:
-  std::unique_ptr<const char[]> m_name;
-  jmethodID m_jcreate_compaction_filter_methodid;
+    std::unique_ptr<const char[]> m_name;
+    jmethodID m_jcreate_compaction_filter_methodid;
 };
 
 }  // namespace ROCKSDB_NAMESPACE

@@ -39,7 +39,9 @@ class EnvCounter : public SpecialEnv {
  public:
   explicit EnvCounter(Env* base)
       : SpecialEnv(base), num_new_writable_file_(0) {}
-  int GetNumberOfNewWritableFileCalls() { return num_new_writable_file_; }
+  int GetNumberOfNewWritableFileCalls() {
+    return num_new_writable_file_;
+  }
   Status NewWritableFile(const std::string& f, std::unique_ptr<WritableFile>* r,
                          const EnvOptions& soptions) override {
     ++num_new_writable_file_;
@@ -185,7 +187,7 @@ class ColumnFamilyTestBase : public testing::Test {
   }
 
   Status OpenReadOnly(std::vector<std::string> cf,
-                      std::vector<ColumnFamilyOptions> options = {}) {
+                         std::vector<ColumnFamilyOptions> options = {}) {
     std::vector<ColumnFamilyDescriptor> column_families;
     names_.clear();
     for (size_t i = 0; i < cf.size(); ++i) {
@@ -199,17 +201,20 @@ class ColumnFamilyTestBase : public testing::Test {
 
 #ifndef ROCKSDB_LITE  // ReadOnlyDB is not supported
   void AssertOpenReadOnly(std::vector<std::string> cf,
-                          std::vector<ColumnFamilyOptions> options = {}) {
+                    std::vector<ColumnFamilyOptions> options = {}) {
     ASSERT_OK(OpenReadOnly(cf, options));
   }
 #endif  // !ROCKSDB_LITE
+
 
   void Open(std::vector<std::string> cf,
             std::vector<ColumnFamilyOptions> options = {}) {
     ASSERT_OK(TryOpen(cf, options));
   }
 
-  void Open() { Open({"default"}); }
+  void Open() {
+    Open({"default"});
+  }
 
   DBImpl* dbfull() { return static_cast_with_check<DBImpl>(db_); }
 
@@ -248,7 +253,7 @@ class ColumnFamilyTestBase : public testing::Test {
   }
 
   void Destroy(const std::vector<ColumnFamilyDescriptor>& column_families =
-                   std::vector<ColumnFamilyDescriptor>()) {
+                  std::vector<ColumnFamilyDescriptor>()) {
     Close();
     ASSERT_OK(DestroyDB(dbname_, Options(db_options_, column_family_options_),
                         column_families));
@@ -330,7 +335,9 @@ class ColumnFamilyTestBase : public testing::Test {
     ASSERT_OK(dbfull()->TEST_WaitForFlushMemTable(handles_[cf]));
   }
 
-  void WaitForCompaction() { ASSERT_OK(dbfull()->TEST_WaitForCompact()); }
+  void WaitForCompaction() {
+    ASSERT_OK(dbfull()->TEST_WaitForCompact());
+  }
 
   uint64_t MaxTotalInMemoryState() {
     return dbfull()->TEST_MaxTotalInMemoryState();
@@ -347,7 +354,9 @@ class ColumnFamilyTestBase : public testing::Test {
   Status Merge(int cf, const std::string& key, const std::string& value) {
     return db_->Merge(WriteOptions(), handles_[cf], Slice(key), Slice(value));
   }
-  Status Flush(int cf) { return db_->Flush(FlushOptions(), handles_[cf]); }
+  Status Flush(int cf) {
+    return db_->Flush(FlushOptions(), handles_[cf]);
+  }
 
   std::string Get(int cf, const std::string& key) {
     ReadOptions options;
@@ -373,7 +382,8 @@ class ColumnFamilyTestBase : public testing::Test {
   }
 
   int NumTableFilesAtLevel(int level, int cf) {
-    return GetProperty(cf, "rocksdb.num-files-at-level" + ToString(level));
+    return GetProperty(cf,
+                       "rocksdb.num-files-at-level" + ToString(level));
   }
 
 #ifndef ROCKSDB_LITE
@@ -399,8 +409,8 @@ class ColumnFamilyTestBase : public testing::Test {
 #ifndef ROCKSDB_LITE
     ASSERT_EQ(value, FilesPerLevel(cf));
 #else
-    (void)value;
-    (void)cf;
+    (void) value;
+    (void) cf;
 #endif
   }
 
@@ -416,7 +426,7 @@ class ColumnFamilyTestBase : public testing::Test {
 #ifndef ROCKSDB_LITE
     ASSERT_EQ(expected_value, CountLiveFiles());
 #else
-    (void)expected_value;
+    (void) expected_value;
 #endif
   }
 
@@ -466,7 +476,7 @@ class ColumnFamilyTestBase : public testing::Test {
 #ifndef ROCKSDB_LITE  // GetSortedWalFiles is not supported
     ASSERT_EQ(value, CountLiveLogFiles());
 #else
-    (void)value;
+    (void) value;
 #endif  // !ROCKSDB_LITE
   }
 
@@ -511,14 +521,14 @@ class ColumnFamilyTestBase : public testing::Test {
     return static_cast<int>(files.size());
   }
 
-  void RecalculateWriteStallConditions(
-      ColumnFamilyData* cfd, const MutableCFOptions& mutable_cf_options) {
+  void RecalculateWriteStallConditions(ColumnFamilyData* cfd,
+      const MutableCFOptions& mutable_cf_options)  {
     // add lock to avoid race condition between
     // `RecalculateWriteStallConditions` which writes to CFStats and
     // background `DBImpl::DumpStats()` threads which read CFStats
     dbfull()->TEST_LockMutex();
     cfd->RecalculateWriteStallConditions(mutable_cf_options);
-    dbfull()->TEST_UnlockMutex();
+    dbfull()-> TEST_UnlockMutex();
   }
 
   std::vector<ColumnFamilyHandle*> handles_;
@@ -959,7 +969,8 @@ TEST_P(ColumnFamilyTest, FlushTest) {
     }
 
     for (int i = 0; i < 3; ++i) {
-      uint64_t max_total_in_memory_state = MaxTotalInMemoryState();
+      uint64_t max_total_in_memory_state =
+          MaxTotalInMemoryState();
       ASSERT_OK(Flush(i));
       AssertMaxTotalInMemoryState(max_total_in_memory_state);
     }
@@ -1197,7 +1208,7 @@ TEST_P(ColumnFamilyTest, DifferentWriteBufferSizes) {
   WaitForFlush(2);
   AssertNumberOfImmutableMemtables({0, 0, 0, 0});
   AssertCountLiveLogFiles(12);
-  PutRandomData(1, 2 * 200, 1000);
+  PutRandomData(1, 2*200, 1000);
   WaitForFlush(1);
   AssertNumberOfImmutableMemtables({0, 0, 0, 0});
   AssertCountLiveLogFiles(7);
@@ -2122,6 +2133,7 @@ TEST_P(ColumnFamilyTest, ReadOnlyDBTest) {
   ASSERT_EQ("NOT_FOUND", Get(0, "foo"));
   ASSERT_EQ("bla", Get(1, "foo"));
   ASSERT_EQ("blablablabla", Get(2, "foo"));
+
 
   // test newiterators
   {

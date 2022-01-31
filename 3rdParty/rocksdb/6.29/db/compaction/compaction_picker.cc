@@ -347,8 +347,9 @@ Compaction* CompactionPicker::CompactFiles(
     } else {
       base_level = 1;
     }
-    compression_type = GetCompressionType(
-        ioptions_, vstorage, mutable_cf_options, output_level, base_level);
+    compression_type =
+        GetCompressionType(ioptions_, vstorage, mutable_cf_options,
+                           output_level, base_level);
   } else {
     // TODO(ajkr): `CompactionOptions` offers configurable `CompressionType`
     // without configurable `CompressionOptions`, which is inconsistent.

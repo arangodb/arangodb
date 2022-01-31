@@ -265,8 +265,7 @@ void GetExpectedTableProperties(
   const int kDeletionCount = kTableCount * kDeletionsPerTable;
   const int kMergeCount = kTableCount * kMergeOperandsPerTable;
   const int kRangeDeletionCount = kTableCount * kRangeDeletionsPerTable;
-  const int kKeyCount =
-      kPutCount + kDeletionCount + kMergeCount + kRangeDeletionCount;
+  const int kKeyCount = kPutCount + kDeletionCount + kMergeCount + kRangeDeletionCount;
   const int kAvgSuccessorSize = kKeySize / 5;
   const int kEncodingSavePerKey = kKeySize / 4;
   expected_tp->raw_key_size = kKeyCount * (kKeySize + 8);
@@ -277,8 +276,7 @@ void GetExpectedTableProperties(
   expected_tp->num_merge_operands = kMergeCount;
   expected_tp->num_range_deletions = kRangeDeletionCount;
   expected_tp->num_data_blocks =
-      kTableCount *
-      (kKeysPerTable * (kKeySize - kEncodingSavePerKey + kValueSize)) /
+      kTableCount * (kKeysPerTable * (kKeySize - kEncodingSavePerKey + kValueSize)) /
       kBlockSize;
   expected_tp->data_size =
       kTableCount * (kKeysPerTable * (kKeySize + 8 + kValueSize));
@@ -1113,8 +1111,7 @@ class CountingUserTblPropCollector : public TablePropertiesCollector {
     std::string encoded;
     PutVarint32(&encoded, count_);
     *properties = UserCollectedProperties{
-        {"CountingUserTblPropCollector", message_},
-        {"Count", encoded},
+        {"CountingUserTblPropCollector", message_}, {"Count", encoded},
     };
     return Status::OK();
   }

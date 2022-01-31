@@ -44,8 +44,9 @@ class WinLogger : public ROCKSDB_NAMESPACE::Logger {
 
   void DebugWriter(const char* str, int len);
 
- protected:
-  Status CloseImpl() override;
+protected:
+
+    Status CloseImpl() override;
 
  private:
   HANDLE file_;
@@ -59,6 +60,6 @@ class WinLogger : public ROCKSDB_NAMESPACE::Logger {
 
   const static uint64_t flush_every_seconds_ = 5;
 };
-}  // namespace port
+}
 
 }  // namespace ROCKSDB_NAMESPACE

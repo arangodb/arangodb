@@ -5,12 +5,10 @@
 //
 
 #pragma once
+#include <algorithm>
 #include <stdio.h>
 #include <time.h>
-
-#include <algorithm>
 #include <iostream>
-
 #include "port/sys_time.h"
 #include "rocksdb/env.h"
 #include "rocksdb/status.h"
@@ -22,18 +20,19 @@ namespace ROCKSDB_NAMESPACE {
 
 // Thrown during execution when there is an issue with the supplied
 // arguments.
-class HdfsUsageException : public std::exception {};
+class HdfsUsageException : public std::exception { };
 
 // A simple exception that indicates something went wrong that is not
 // recoverable.  The intention is for the message to be printed (with
 // nothing else) and the process terminate.
 class HdfsFatalException : public std::exception {
- public:
-  explicit HdfsFatalException(const std::string& s) : what_(s) {}
-  virtual ~HdfsFatalException() throw() {}
-  virtual const char* what() const throw() { return what_.c_str(); }
-
- private:
+public:
+  explicit HdfsFatalException(const std::string& s) : what_(s) { }
+  virtual ~HdfsFatalException() throw() { }
+  virtual const char* what() const throw() {
+    return what_.c_str();
+  }
+private:
   const std::string what_;
 };
 
@@ -43,6 +42,7 @@ class HdfsFatalException : public std::exception {
 // default posix environment.
 //
 class HdfsEnv : public Env {
+
  public:
   explicit HdfsEnv(const std::string& fsname) : fsname_(fsname) {
     posixEnv = Env::Default();
@@ -95,7 +95,7 @@ class HdfsEnv : public Env {
 
   Status LinkFile(const std::string& /*src*/,
                   const std::string& /*target*/) override {
-    return Status::NotSupported();  // not supported
+    return Status::NotSupported(); // not supported
   }
 
   Status LockFile(const std::string& fname, FileLock** lock) override;
@@ -173,7 +173,7 @@ class HdfsEnv : public Env {
  private:
   std::string fsname_;  // string of the form "hdfs://hostname:port/"
   hdfsFS fileSys_;      //  a single FileSystem object for all files
-  Env* posixEnv;        // This object is derived from Env, but not from
+  Env*  posixEnv;       // This object is derived from Env, but not from
                         // posixEnv. We have posixnv as an encapsulated
                         // object here so that we can use posix timers,
                         // posix threads, etc.
@@ -197,7 +197,7 @@ class HdfsEnv : public Env {
     }
     const std::string hostport = uri.substr(kProto.length());
 
-    std::vector<std::string> parts;
+    std::vector <std::string> parts;
     split(hostport, ':', parts);
     if (parts.size() != 2) {
       throw HdfsFatalException("Bad uri for hdfs " + uri);
@@ -207,7 +207,8 @@ class HdfsEnv : public Env {
     std::string remaining(parts[1]);
 
     int rem = static_cast<int>(remaining.find(pathsep));
-    std::string portStr = (rem == 0 ? remaining : remaining.substr(0, rem));
+    std::string portStr = (rem == 0 ? remaining :
+                           remaining.substr(0, rem));
 
     tPort port = static_cast<tPort>(atoi(portStr.c_str()));
     if (port == 0) {
@@ -217,8 +218,8 @@ class HdfsEnv : public Env {
     return fs;
   }
 
-  void split(const std::string& s, char delim,
-             std::vector<std::string>& elems) {
+  void split(const std::string &s, char delim,
+             std::vector<std::string> &elems) {
     elems.clear();
     size_t prev = 0;
     size_t pos = s.find(delim);
@@ -233,11 +234,12 @@ class HdfsEnv : public Env {
 
 }  // namespace ROCKSDB_NAMESPACE
 
-#else  // USE_HDFS
+#else // USE_HDFS
 
 namespace ROCKSDB_NAMESPACE {
 
 class HdfsEnv : public Env {
+
  public:
   explicit HdfsEnv(const std::string& /*fsname*/) {
     fprintf(stderr, "You have not build rocksdb with HDFS support\n");
@@ -249,7 +251,8 @@ class HdfsEnv : public Env {
   static const char* kNickName() { return "hdfs"; }
   const char* NickName() const override { return kNickName(); }
 
-  virtual ~HdfsEnv() {}
+  virtual ~HdfsEnv() {
+  }
 
   virtual Status NewSequentialFile(const std::string& fname,
                                    std::unique_ptr<SequentialFile>* result,
@@ -336,13 +339,13 @@ class HdfsEnv : public Env {
     return Status::NotSupported();
   }
 
-  virtual void Schedule(void (*/*function*/)(void* arg), void* /*arg*/,
+  virtual void Schedule(void (* /*function*/)(void* arg), void* /*arg*/,
                         Priority /*pri*/ = LOW, void* /*tag*/ = nullptr,
-                        void (*/*unschedFunction*/)(void* arg) = 0) override {}
+                        void (* /*unschedFunction*/)(void* arg) = 0) override {}
 
   virtual int UnSchedule(void* /*tag*/, Priority /*pri*/) override { return 0; }
 
-  virtual void StartThread(void (*/*function*/)(void* arg),
+  virtual void StartThread(void (* /*function*/)(void* arg),
                            void* /*arg*/) override {}
 
   virtual void WaitForJoin() override {}
@@ -382,8 +385,10 @@ class HdfsEnv : public Env {
                                             Priority /*pri*/) override {}
   virtual std::string TimeToString(uint64_t /*number*/) override { return ""; }
 
-  virtual uint64_t GetThreadID() const override { return 0; }
+  virtual uint64_t GetThreadID() const override {
+    return 0;
+  }
 };
 }  // namespace ROCKSDB_NAMESPACE
 
-#endif  // USE_HDFS
+#endif // USE_HDFS

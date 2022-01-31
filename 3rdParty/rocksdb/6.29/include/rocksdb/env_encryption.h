@@ -328,7 +328,7 @@ class EncryptedWritableFile : public FSWritableFile {
   IOStatus PositionedAppend(const Slice& data, uint64_t offset,
                             const IOOptions& options,
                             IODebugContext* dbg) override;
-
+  
   // true if Sync() and Fsync() are safe to call concurrently with Append()
   // and Flush().
   bool IsSyncThreadSafe() const override;

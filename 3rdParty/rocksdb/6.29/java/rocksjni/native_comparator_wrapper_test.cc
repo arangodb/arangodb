@@ -4,12 +4,12 @@
 //  (found in the LICENSE.Apache file in the root directory).
 
 #include <jni.h>
-
 #include <string>
 
-#include "include/org_rocksdb_NativeComparatorWrapperTest_NativeStringComparatorWrapper.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/slice.h"
+
+#include "include/org_rocksdb_NativeComparatorWrapperTest_NativeStringComparatorWrapper.h"
 
 namespace ROCKSDB_NAMESPACE {
 

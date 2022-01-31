@@ -5,12 +5,12 @@
 
 #pragma once
 
-#include <folly/Traits.h>
-#include <folly/Utility.h>
-
 #include <array>
 #include <type_traits>
 #include <utility>
+
+#include <folly/Traits.h>
+#include <folly/Utility.h>
 
 namespace folly {
 
@@ -30,15 +30,16 @@ struct return_type_helper {
 };
 template <typename... TList>
 struct return_type_helper<void, TList...> {
-  static_assert(folly::Conjunction<not_ref_wrapper<TList>...>::value,
-                "TList cannot contain reference_wrappers when D is void");
+  static_assert(
+      folly::Conjunction<not_ref_wrapper<TList>...>::value,
+      "TList cannot contain reference_wrappers when D is void");
   using type = typename std::common_type<TList...>::type;
 };
 
 template <typename D, typename... TList>
-using return_type = std::array<typename return_type_helper<D, TList...>::type,
-                               sizeof...(TList)>;
-}  // namespace array_detail
+using return_type = std::
+    array<typename return_type_helper<D, TList...>::type, sizeof...(TList)>;
+} // namespace array_detail
 
 template <typename D = void, typename... TList>
 constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
@@ -49,12 +50,13 @@ constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
 
 namespace array_detail {
 template <typename MakeItem, std::size_t... Index>
-inline constexpr auto make_array_with(MakeItem const& make,
-                                      folly::index_sequence<Index...>)
-    -> std::array<decltype(make(0)), sizeof...(Index)> {
+inline constexpr auto make_array_with(
+    MakeItem const& make,
+    folly::index_sequence<Index...>)
+      -> std::array<decltype(make(0)), sizeof...(Index)> {
   return std::array<decltype(make(0)), sizeof...(Index)>{{make(Index)...}};
 }
-}  // namespace array_detail
+} // namespace array_detail
 
 //  make_array_with
 //
@@ -62,9 +64,11 @@ inline constexpr auto make_array_with(MakeItem const& make,
 template <std::size_t Size, typename MakeItem>
 constexpr auto make_array_with(MakeItem const& make)
     -> decltype(array_detail::make_array_with(
-        make, folly::make_index_sequence<Size>{})) {
-  return array_detail::make_array_with(make,
-                                       folly::make_index_sequence<Size>{});
+          make,
+          folly::make_index_sequence<Size>{})) {
+  return array_detail::make_array_with(
+      make,
+      folly::make_index_sequence<Size>{});
 }
 
-}  // namespace folly
+} // namespace folly

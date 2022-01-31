@@ -1724,8 +1724,10 @@ INSTANTIATE_TEST_CASE_P(DBBloomFilterTestVaryPrefixAndFormatVer,
                             std::make_tuple(false, 2),
                             std::make_tuple(false, 3),
                             std::make_tuple(false, 4),
-                            std::make_tuple(false, 5), std::make_tuple(true, 2),
-                            std::make_tuple(true, 3), std::make_tuple(true, 4),
+                            std::make_tuple(false, 5),
+                            std::make_tuple(true, 2),
+                            std::make_tuple(true, 3),
+                            std::make_tuple(true, 4),
                             std::make_tuple(true, 5)));
 
 #ifndef ROCKSDB_LITE

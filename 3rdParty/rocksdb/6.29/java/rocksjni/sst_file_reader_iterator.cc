@@ -176,8 +176,7 @@ jbyteArray Java_org_rocksdb_SstFileReaderIterator_key0(JNIEnv* env,
  * Method:    value0
  * Signature: (J)[B
  */
-jbyteArray Java_org_rocksdb_SstFileReaderIterator_value0(JNIEnv* env,
-                                                         jobject /*jobj*/,
+jbyteArray Java_org_rocksdb_SstFileReaderIterator_value0(JNIEnv* env, jobject /*jobj*/,
                                                          jlong handle) {
   auto* it = reinterpret_cast<ROCKSDB_NAMESPACE::Iterator*>(handle);
   ROCKSDB_NAMESPACE::Slice value_slice = it->value();
@@ -187,11 +186,10 @@ jbyteArray Java_org_rocksdb_SstFileReaderIterator_value0(JNIEnv* env,
   if (jkeyValue == nullptr) {
     // exception thrown: OutOfMemoryError
     return nullptr;
-  }
-  env->SetByteArrayRegion(
-      jkeyValue, 0, static_cast<jsize>(value_slice.size()),
-      const_cast<jbyte*>(reinterpret_cast<const jbyte*>(value_slice.data())));
-  return jkeyValue;
+    }
+    env->SetByteArrayRegion(jkeyValue, 0, static_cast<jsize>(value_slice.size()),
+                            const_cast<jbyte*>(reinterpret_cast<const jbyte*>(value_slice.data())));
+    return jkeyValue;
 }
 
 /*
@@ -259,9 +257,8 @@ void Java_org_rocksdb_SstFileReaderIterator_seekForPrevDirect0(
  * Method:    refresh0
  * Signature: (J)V
  */
-void Java_org_rocksdb_SstFileReaderIterator_refresh0(JNIEnv* env,
-                                                     jobject /*jobj*/,
-                                                     jlong handle) {
+void Java_org_rocksdb_SstFileReaderIterator_refresh0(JNIEnv* env, jobject /*jobj*/,
+                                            jlong handle) {
   auto* it = reinterpret_cast<ROCKSDB_NAMESPACE::Iterator*>(handle);
   ROCKSDB_NAMESPACE::Status s = it->Refresh();
 

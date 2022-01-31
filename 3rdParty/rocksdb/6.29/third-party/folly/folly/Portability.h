@@ -64,7 +64,7 @@ constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 constexpr bool kIsArchS390X = FOLLY_S390X == 1;
-}  // namespace folly
+} // namespace folly
 
 namespace folly {
 #ifdef NDEBUG
@@ -72,7 +72,7 @@ constexpr auto kIsDebug = false;
 #else
 constexpr auto kIsDebug = true;
 #endif
-}  // namespace folly
+} // namespace folly
 
 namespace folly {
 #if defined(_MSC_VER)
@@ -80,7 +80,7 @@ constexpr bool kIsMsvc = true;
 #else
 constexpr bool kIsMsvc = false;
 #endif
-}  // namespace folly
+} // namespace folly
 
 namespace folly {
 #if FOLLY_SANITIZE_THREAD
@@ -88,7 +88,7 @@ constexpr bool kIsSanitizeThread = true;
 #else
 constexpr bool kIsSanitizeThread = false;
 #endif
-}  // namespace folly
+} // namespace folly
 
 namespace folly {
 #if defined(__linux__) && !FOLLY_MOBILE
@@ -96,4 +96,4 @@ constexpr auto kIsLinux = true;
 #else
 constexpr auto kIsLinux = false;
 #endif
-}  // namespace folly
+} // namespace folly

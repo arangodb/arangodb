@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <vector>
-
 #include "rocksdb/status.h"
 #include "rocksdb/types.h"
 #include "rocksdb/write_batch.h"

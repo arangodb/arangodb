@@ -109,7 +109,7 @@ template <class T, class...>
 struct type_t_ {
   using type = T;
 };
-}  // namespace traits_detail
+} // namespace traits_detail
 
 template <class T, class... Ts>
 using type_t = typename traits_detail::type_t_<T, Ts...>::type;
@@ -131,8 +131,9 @@ using remove_cvref_t = typename remove_cvref<T>::type;
 template <class T>
 struct IsNothrowSwappable
     : std::integral_constant<
-          bool, std::is_nothrow_move_constructible<T>::value&& noexcept(
-                    std::swap(std::declval<T&>(), std::declval<T&>()))> {};
+          bool,
+          std::is_nothrow_move_constructible<T>::value&& noexcept(
+              std::swap(std::declval<T&>(), std::declval<T&>()))> {};
 
 template <typename...>
 struct Conjunction : std::true_type {};
@@ -148,4 +149,4 @@ struct Negation : std::integral_constant<bool, !T::value> {};
 template <std::size_t I>
 using index_constant = std::integral_constant<std::size_t, I>;
 
-}  // namespace folly
+} // namespace folly

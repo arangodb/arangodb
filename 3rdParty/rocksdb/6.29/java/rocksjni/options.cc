@@ -43,7 +43,8 @@
  * Method:    newOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_Options_newOptions__(JNIEnv*, jclass) {
+jlong Java_org_rocksdb_Options_newOptions__(
+    JNIEnv*, jclass) {
   auto* op = new ROCKSDB_NAMESPACE::Options();
   return reinterpret_cast<jlong>(op);
 }
@@ -53,8 +54,8 @@ jlong Java_org_rocksdb_Options_newOptions__(JNIEnv*, jclass) {
  * Method:    newOptions
  * Signature: (JJ)J
  */
-jlong Java_org_rocksdb_Options_newOptions__JJ(JNIEnv*, jclass, jlong jdboptions,
-                                              jlong jcfoptions) {
+jlong Java_org_rocksdb_Options_newOptions__JJ(
+    JNIEnv*, jclass, jlong jdboptions, jlong jcfoptions) {
   auto* dbOpt =
       reinterpret_cast<const ROCKSDB_NAMESPACE::DBOptions*>(jdboptions);
   auto* cfOpt = reinterpret_cast<const ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(
@@ -68,7 +69,8 @@ jlong Java_org_rocksdb_Options_newOptions__JJ(JNIEnv*, jclass, jlong jdboptions,
  * Method:    copyOptions
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_copyOptions(JNIEnv*, jclass, jlong jhandle) {
+jlong Java_org_rocksdb_Options_copyOptions(
+    JNIEnv*, jclass, jlong jhandle) {
   auto new_opt = new ROCKSDB_NAMESPACE::Options(
       *(reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)));
   return reinterpret_cast<jlong>(new_opt);
@@ -79,7 +81,8 @@ jlong Java_org_rocksdb_Options_copyOptions(JNIEnv*, jclass, jlong jhandle) {
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_Options_disposeInternal(JNIEnv*, jobject, jlong handle) {
+void Java_org_rocksdb_Options_disposeInternal(
+    JNIEnv*, jobject, jlong handle) {
   auto* op = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(handle);
   assert(op != nullptr);
   delete op;
@@ -90,9 +93,8 @@ void Java_org_rocksdb_Options_disposeInternal(JNIEnv*, jobject, jlong handle) {
  * Method:    setIncreaseParallelism
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setIncreaseParallelism(JNIEnv*, jobject,
-                                                     jlong jhandle,
-                                                     jint totalThreads) {
+void Java_org_rocksdb_Options_setIncreaseParallelism(
+    JNIEnv*, jobject, jlong jhandle, jint totalThreads) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->IncreaseParallelism(
       static_cast<int>(totalThreads));
 }
@@ -102,8 +104,8 @@ void Java_org_rocksdb_Options_setIncreaseParallelism(JNIEnv*, jobject,
  * Method:    setCreateIfMissing
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setCreateIfMissing(JNIEnv*, jobject,
-                                                 jlong jhandle, jboolean flag) {
+void Java_org_rocksdb_Options_setCreateIfMissing(
+    JNIEnv*, jobject, jlong jhandle, jboolean flag) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->create_if_missing =
       flag;
 }
@@ -113,8 +115,8 @@ void Java_org_rocksdb_Options_setCreateIfMissing(JNIEnv*, jobject,
  * Method:    createIfMissing
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_createIfMissing(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_Options_createIfMissing(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->create_if_missing;
 }
@@ -124,9 +126,8 @@ jboolean Java_org_rocksdb_Options_createIfMissing(JNIEnv*, jobject,
  * Method:    setCreateMissingColumnFamilies
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setCreateMissingColumnFamilies(JNIEnv*, jobject,
-                                                             jlong jhandle,
-                                                             jboolean flag) {
+void Java_org_rocksdb_Options_setCreateMissingColumnFamilies(
+    JNIEnv*, jobject, jlong jhandle, jboolean flag) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->create_missing_column_families = flag;
 }
@@ -136,8 +137,8 @@ void Java_org_rocksdb_Options_setCreateMissingColumnFamilies(JNIEnv*, jobject,
  * Method:    createMissingColumnFamilies
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_createMissingColumnFamilies(JNIEnv*, jobject,
-                                                              jlong jhandle) {
+jboolean Java_org_rocksdb_Options_createMissingColumnFamilies(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->create_missing_column_families;
 }
@@ -147,9 +148,8 @@ jboolean Java_org_rocksdb_Options_createMissingColumnFamilies(JNIEnv*, jobject,
  * Method:    setComparatorHandle
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setComparatorHandle__JI(JNIEnv*, jobject,
-                                                      jlong jhandle,
-                                                      jint builtinComparator) {
+void Java_org_rocksdb_Options_setComparatorHandle__JI(
+    JNIEnv*, jobject, jlong jhandle, jint builtinComparator) {
   switch (builtinComparator) {
     case 1:
       reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->comparator =
@@ -167,10 +167,9 @@ void Java_org_rocksdb_Options_setComparatorHandle__JI(JNIEnv*, jobject,
  * Method:    setComparatorHandle
  * Signature: (JJB)V
  */
-void Java_org_rocksdb_Options_setComparatorHandle__JJB(JNIEnv*, jobject,
-                                                       jlong jopt_handle,
-                                                       jlong jcomparator_handle,
-                                                       jbyte jcomparator_type) {
+void Java_org_rocksdb_Options_setComparatorHandle__JJB(
+    JNIEnv*, jobject, jlong jopt_handle, jlong jcomparator_handle,
+    jbyte jcomparator_type) {
   ROCKSDB_NAMESPACE::Comparator* comparator = nullptr;
   switch (jcomparator_type) {
     // JAVA_COMPARATOR
@@ -194,9 +193,8 @@ void Java_org_rocksdb_Options_setComparatorHandle__JJB(JNIEnv*, jobject,
  * Method:    setMergeOperatorName
  * Signature: (JJjava/lang/String)V
  */
-void Java_org_rocksdb_Options_setMergeOperatorName(JNIEnv* env, jobject,
-                                                   jlong jhandle,
-                                                   jstring jop_name) {
+void Java_org_rocksdb_Options_setMergeOperatorName(
+    JNIEnv* env, jobject, jlong jhandle, jstring jop_name) {
   const char* op_name = env->GetStringUTFChars(jop_name, nullptr);
   if (op_name == nullptr) {
     // exception thrown: OutOfMemoryError
@@ -215,8 +213,8 @@ void Java_org_rocksdb_Options_setMergeOperatorName(JNIEnv* env, jobject,
  * Method:    setMergeOperator
  * Signature: (JJjava/lang/String)V
  */
-void Java_org_rocksdb_Options_setMergeOperator(JNIEnv*, jobject, jlong jhandle,
-                                               jlong mergeOperatorHandle) {
+void Java_org_rocksdb_Options_setMergeOperator(
+    JNIEnv*, jobject, jlong jhandle, jlong mergeOperatorHandle) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->merge_operator =
       *(reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::MergeOperator>*>(
           mergeOperatorHandle));
@@ -228,7 +226,8 @@ void Java_org_rocksdb_Options_setMergeOperator(JNIEnv*, jobject, jlong jhandle,
  * Signature: (JJ)V
  */
 void Java_org_rocksdb_Options_setCompactionFilterHandle(
-    JNIEnv*, jobject, jlong jopt_handle, jlong jcompactionfilter_handle) {
+    JNIEnv*, jobject, jlong jopt_handle,
+    jlong jcompactionfilter_handle) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jopt_handle)
       ->compaction_filter =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactionFilter*>(
@@ -255,9 +254,8 @@ void JNICALL Java_org_rocksdb_Options_setCompactionFilterFactoryHandle(
  * Method:    setWriteBufferSize
  * Signature: (JJ)I
  */
-void Java_org_rocksdb_Options_setWriteBufferSize(JNIEnv* env, jobject,
-                                                 jlong jhandle,
-                                                 jlong jwrite_buffer_size) {
+void Java_org_rocksdb_Options_setWriteBufferSize(
+    JNIEnv* env, jobject, jlong jhandle, jlong jwrite_buffer_size) {
   auto s = ROCKSDB_NAMESPACE::JniUtil::check_if_jlong_fits_size_t(
       jwrite_buffer_size);
   if (s.ok()) {
@@ -288,8 +286,8 @@ void Java_org_rocksdb_Options_setWriteBufferManager(
  * Method:    writeBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_writeBufferSize(JNIEnv*, jobject,
-                                               jlong jhandle) {
+jlong Java_org_rocksdb_Options_writeBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->write_buffer_size;
 }
@@ -300,7 +298,8 @@ jlong Java_org_rocksdb_Options_writeBufferSize(JNIEnv*, jobject,
  * Signature: (JI)V
  */
 void Java_org_rocksdb_Options_setMaxWriteBufferNumber(
-    JNIEnv*, jobject, jlong jhandle, jint jmax_write_buffer_number) {
+    JNIEnv*, jobject, jlong jhandle,
+    jint jmax_write_buffer_number) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_write_buffer_number = jmax_write_buffer_number;
 }
@@ -310,8 +309,8 @@ void Java_org_rocksdb_Options_setMaxWriteBufferNumber(
  * Method:    setStatistics
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setStatistics(JNIEnv*, jobject, jlong jhandle,
-                                            jlong jstatistics_handle) {
+void Java_org_rocksdb_Options_setStatistics(
+    JNIEnv*, jobject, jlong jhandle, jlong jstatistics_handle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   auto* pSptr =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::StatisticsJni>*>(
@@ -324,7 +323,8 @@ void Java_org_rocksdb_Options_setStatistics(JNIEnv*, jobject, jlong jhandle,
  * Method:    statistics
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_statistics(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_statistics(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   std::shared_ptr<ROCKSDB_NAMESPACE::Statistics> sptr = opt->statistics;
   if (sptr == nullptr) {
@@ -341,8 +341,8 @@ jlong Java_org_rocksdb_Options_statistics(JNIEnv*, jobject, jlong jhandle) {
  * Method:    maxWriteBufferNumber
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxWriteBufferNumber(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jint Java_org_rocksdb_Options_maxWriteBufferNumber(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_write_buffer_number;
 }
@@ -352,8 +352,8 @@ jint Java_org_rocksdb_Options_maxWriteBufferNumber(JNIEnv*, jobject,
  * Method:    errorIfExists
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_errorIfExists(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jboolean Java_org_rocksdb_Options_errorIfExists(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->error_if_exists;
 }
@@ -363,8 +363,8 @@ jboolean Java_org_rocksdb_Options_errorIfExists(JNIEnv*, jobject,
  * Method:    setErrorIfExists
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setErrorIfExists(JNIEnv*, jobject, jlong jhandle,
-                                               jboolean error_if_exists) {
+void Java_org_rocksdb_Options_setErrorIfExists(
+    JNIEnv*, jobject, jlong jhandle, jboolean error_if_exists) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->error_if_exists =
       static_cast<bool>(error_if_exists);
 }
@@ -374,8 +374,8 @@ void Java_org_rocksdb_Options_setErrorIfExists(JNIEnv*, jobject, jlong jhandle,
  * Method:    paranoidChecks
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_paranoidChecks(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jboolean Java_org_rocksdb_Options_paranoidChecks(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->paranoid_checks;
 }
@@ -385,8 +385,8 @@ jboolean Java_org_rocksdb_Options_paranoidChecks(JNIEnv*, jobject,
  * Method:    setParanoidChecks
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setParanoidChecks(JNIEnv*, jobject, jlong jhandle,
-                                                jboolean paranoid_checks) {
+void Java_org_rocksdb_Options_setParanoidChecks(
+    JNIEnv*, jobject, jlong jhandle, jboolean paranoid_checks) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->paranoid_checks =
       static_cast<bool>(paranoid_checks);
 }
@@ -396,8 +396,8 @@ void Java_org_rocksdb_Options_setParanoidChecks(JNIEnv*, jobject, jlong jhandle,
  * Method:    setEnv
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setEnv(JNIEnv*, jobject, jlong jhandle,
-                                     jlong jenv) {
+void Java_org_rocksdb_Options_setEnv(
+    JNIEnv*, jobject, jlong jhandle, jlong jenv) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->env =
       reinterpret_cast<ROCKSDB_NAMESPACE::Env*>(jenv);
 }
@@ -407,9 +407,8 @@ void Java_org_rocksdb_Options_setEnv(JNIEnv*, jobject, jlong jhandle,
  * Method:    setMaxTotalWalSize
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setMaxTotalWalSize(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jlong jmax_total_wal_size) {
+void Java_org_rocksdb_Options_setMaxTotalWalSize(
+    JNIEnv*, jobject, jlong jhandle, jlong jmax_total_wal_size) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->max_total_wal_size =
       static_cast<jlong>(jmax_total_wal_size);
 }
@@ -419,8 +418,8 @@ void Java_org_rocksdb_Options_setMaxTotalWalSize(JNIEnv*, jobject,
  * Method:    maxTotalWalSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_maxTotalWalSize(JNIEnv*, jobject,
-                                               jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxTotalWalSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_total_wal_size;
 }
@@ -430,7 +429,8 @@ jlong Java_org_rocksdb_Options_maxTotalWalSize(JNIEnv*, jobject,
  * Method:    maxOpenFiles
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxOpenFiles(JNIEnv*, jobject, jlong jhandle) {
+jint Java_org_rocksdb_Options_maxOpenFiles(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->max_open_files;
 }
 
@@ -439,8 +439,8 @@ jint Java_org_rocksdb_Options_maxOpenFiles(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setMaxOpenFiles
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setMaxOpenFiles(JNIEnv*, jobject, jlong jhandle,
-                                              jint max_open_files) {
+void Java_org_rocksdb_Options_setMaxOpenFiles(
+    JNIEnv*, jobject, jlong jhandle, jint max_open_files) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->max_open_files =
       static_cast<int>(max_open_files);
 }
@@ -461,8 +461,8 @@ void Java_org_rocksdb_Options_setMaxFileOpeningThreads(
  * Method:    maxFileOpeningThreads
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxFileOpeningThreads(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jint Java_org_rocksdb_Options_maxFileOpeningThreads(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<int>(opt->max_file_opening_threads);
 }
@@ -472,7 +472,8 @@ jint Java_org_rocksdb_Options_maxFileOpeningThreads(JNIEnv*, jobject,
  * Method:    useFsync
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_useFsync(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_Options_useFsync(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->use_fsync;
 }
 
@@ -481,8 +482,8 @@ jboolean Java_org_rocksdb_Options_useFsync(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setUseFsync
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setUseFsync(JNIEnv*, jobject, jlong jhandle,
-                                          jboolean use_fsync) {
+void Java_org_rocksdb_Options_setUseFsync(
+    JNIEnv*, jobject, jlong jhandle, jboolean use_fsync) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->use_fsync =
       static_cast<bool>(use_fsync);
 }
@@ -492,9 +493,9 @@ void Java_org_rocksdb_Options_setUseFsync(JNIEnv*, jobject, jlong jhandle,
  * Method:    setDbPaths
  * Signature: (J[Ljava/lang/String;[J)V
  */
-void Java_org_rocksdb_Options_setDbPaths(JNIEnv* env, jobject, jlong jhandle,
-                                         jobjectArray jpaths,
-                                         jlongArray jtarget_sizes) {
+void Java_org_rocksdb_Options_setDbPaths(
+    JNIEnv* env, jobject, jlong jhandle, jobjectArray jpaths,
+    jlongArray jtarget_sizes) {
   std::vector<ROCKSDB_NAMESPACE::DbPath> db_paths;
   jlong* ptr_jtarget_size = env->GetLongArrayElements(jtarget_sizes, nullptr);
   if (ptr_jtarget_size == nullptr) {
@@ -538,7 +539,8 @@ void Java_org_rocksdb_Options_setDbPaths(JNIEnv* env, jobject, jlong jhandle,
  * Method:    dbPathsLen
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_dbPathsLen(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_dbPathsLen(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opt->db_paths.size());
 }
@@ -548,9 +550,9 @@ jlong Java_org_rocksdb_Options_dbPathsLen(JNIEnv*, jobject, jlong jhandle) {
  * Method:    dbPaths
  * Signature: (J[Ljava/lang/String;[J)V
  */
-void Java_org_rocksdb_Options_dbPaths(JNIEnv* env, jobject, jlong jhandle,
-                                      jobjectArray jpaths,
-                                      jlongArray jtarget_sizes) {
+void Java_org_rocksdb_Options_dbPaths(
+    JNIEnv* env, jobject, jlong jhandle, jobjectArray jpaths,
+    jlongArray jtarget_sizes) {
   jboolean is_copy;
   jlong* ptr_jtarget_size = env->GetLongArrayElements(jtarget_sizes, &is_copy);
   if (ptr_jtarget_size == nullptr) {
@@ -589,7 +591,8 @@ void Java_org_rocksdb_Options_dbPaths(JNIEnv* env, jobject, jlong jhandle,
  * Method:    dbLogDir
  * Signature: (J)Ljava/lang/String
  */
-jstring Java_org_rocksdb_Options_dbLogDir(JNIEnv* env, jobject, jlong jhandle) {
+jstring Java_org_rocksdb_Options_dbLogDir(
+    JNIEnv* env, jobject, jlong jhandle) {
   return env->NewStringUTF(
       reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
           ->db_log_dir.c_str());
@@ -600,8 +603,8 @@ jstring Java_org_rocksdb_Options_dbLogDir(JNIEnv* env, jobject, jlong jhandle) {
  * Method:    setDbLogDir
  * Signature: (JLjava/lang/String)V
  */
-void Java_org_rocksdb_Options_setDbLogDir(JNIEnv* env, jobject, jlong jhandle,
-                                          jstring jdb_log_dir) {
+void Java_org_rocksdb_Options_setDbLogDir(
+    JNIEnv* env, jobject, jlong jhandle, jstring jdb_log_dir) {
   const char* log_dir = env->GetStringUTFChars(jdb_log_dir, nullptr);
   if (log_dir == nullptr) {
     // exception thrown: OutOfMemoryError
@@ -617,7 +620,8 @@ void Java_org_rocksdb_Options_setDbLogDir(JNIEnv* env, jobject, jlong jhandle,
  * Method:    walDir
  * Signature: (J)Ljava/lang/String
  */
-jstring Java_org_rocksdb_Options_walDir(JNIEnv* env, jobject, jlong jhandle) {
+jstring Java_org_rocksdb_Options_walDir(
+    JNIEnv* env, jobject, jlong jhandle) {
   return env->NewStringUTF(
       reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->wal_dir.c_str());
 }
@@ -627,8 +631,8 @@ jstring Java_org_rocksdb_Options_walDir(JNIEnv* env, jobject, jlong jhandle) {
  * Method:    setWalDir
  * Signature: (JLjava/lang/String)V
  */
-void Java_org_rocksdb_Options_setWalDir(JNIEnv* env, jobject, jlong jhandle,
-                                        jstring jwal_dir) {
+void Java_org_rocksdb_Options_setWalDir(
+    JNIEnv* env, jobject, jlong jhandle, jstring jwal_dir) {
   const char* wal_dir = env->GetStringUTFChars(jwal_dir, nullptr);
   if (wal_dir == nullptr) {
     // exception thrown: OutOfMemoryError
@@ -644,8 +648,8 @@ void Java_org_rocksdb_Options_setWalDir(JNIEnv* env, jobject, jlong jhandle,
  * Method:    deleteObsoleteFilesPeriodMicros
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_deleteObsoleteFilesPeriodMicros(JNIEnv*, jobject,
-                                                               jlong jhandle) {
+jlong Java_org_rocksdb_Options_deleteObsoleteFilesPeriodMicros(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->delete_obsolete_files_period_micros;
 }
@@ -655,10 +659,8 @@ jlong Java_org_rocksdb_Options_deleteObsoleteFilesPeriodMicros(JNIEnv*, jobject,
  * Method:    setDeleteObsoleteFilesPeriodMicros
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setDeleteObsoleteFilesPeriodMicros(JNIEnv*,
-                                                                 jobject,
-                                                                 jlong jhandle,
-                                                                 jlong micros) {
+void Java_org_rocksdb_Options_setDeleteObsoleteFilesPeriodMicros(
+    JNIEnv*, jobject, jlong jhandle, jlong micros) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->delete_obsolete_files_period_micros = static_cast<int64_t>(micros);
 }
@@ -668,9 +670,8 @@ void Java_org_rocksdb_Options_setDeleteObsoleteFilesPeriodMicros(JNIEnv*,
  * Method:    setBaseBackgroundCompactions
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setBaseBackgroundCompactions(JNIEnv*, jobject,
-                                                           jlong jhandle,
-                                                           jint max) {
+void Java_org_rocksdb_Options_setBaseBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle, jint max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->base_background_compactions = static_cast<int>(max);
 }
@@ -680,8 +681,8 @@ void Java_org_rocksdb_Options_setBaseBackgroundCompactions(JNIEnv*, jobject,
  * Method:    baseBackgroundCompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_baseBackgroundCompactions(JNIEnv*, jobject,
-                                                        jlong jhandle) {
+jint Java_org_rocksdb_Options_baseBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->base_background_compactions;
 }
@@ -691,8 +692,8 @@ jint Java_org_rocksdb_Options_baseBackgroundCompactions(JNIEnv*, jobject,
  * Method:    maxBackgroundCompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxBackgroundCompactions(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jint Java_org_rocksdb_Options_maxBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_background_compactions;
 }
@@ -702,9 +703,8 @@ jint Java_org_rocksdb_Options_maxBackgroundCompactions(JNIEnv*, jobject,
  * Method:    setMaxBackgroundCompactions
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setMaxBackgroundCompactions(JNIEnv*, jobject,
-                                                          jlong jhandle,
-                                                          jint max) {
+void Java_org_rocksdb_Options_setMaxBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle, jint max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_background_compactions = static_cast<int>(max);
 }
@@ -714,8 +714,8 @@ void Java_org_rocksdb_Options_setMaxBackgroundCompactions(JNIEnv*, jobject,
  * Method:    setMaxSubcompactions
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setMaxSubcompactions(JNIEnv*, jobject,
-                                                   jlong jhandle, jint max) {
+void Java_org_rocksdb_Options_setMaxSubcompactions(
+    JNIEnv*, jobject, jlong jhandle, jint max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->max_subcompactions =
       static_cast<int32_t>(max);
 }
@@ -725,8 +725,8 @@ void Java_org_rocksdb_Options_setMaxSubcompactions(JNIEnv*, jobject,
  * Method:    maxSubcompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxSubcompactions(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jint Java_org_rocksdb_Options_maxSubcompactions(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_subcompactions;
 }
@@ -736,8 +736,8 @@ jint Java_org_rocksdb_Options_maxSubcompactions(JNIEnv*, jobject,
  * Method:    maxBackgroundFlushes
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxBackgroundFlushes(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jint Java_org_rocksdb_Options_maxBackgroundFlushes(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_background_flushes;
 }
@@ -758,8 +758,8 @@ void Java_org_rocksdb_Options_setMaxBackgroundFlushes(
  * Method:    maxBackgroundJobs
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxBackgroundJobs(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jint Java_org_rocksdb_Options_maxBackgroundJobs(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_background_jobs;
 }
@@ -769,9 +769,8 @@ jint Java_org_rocksdb_Options_maxBackgroundJobs(JNIEnv*, jobject,
  * Method:    setMaxBackgroundJobs
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setMaxBackgroundJobs(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jint max_background_jobs) {
+void Java_org_rocksdb_Options_setMaxBackgroundJobs(
+    JNIEnv*, jobject, jlong jhandle, jint max_background_jobs) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->max_background_jobs =
       static_cast<int>(max_background_jobs);
 }
@@ -781,7 +780,8 @@ void Java_org_rocksdb_Options_setMaxBackgroundJobs(JNIEnv*, jobject,
  * Method:    maxLogFileSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_maxLogFileSize(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxLogFileSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_log_file_size;
 }
@@ -791,9 +791,8 @@ jlong Java_org_rocksdb_Options_maxLogFileSize(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setMaxLogFileSize
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setMaxLogFileSize(JNIEnv* env, jobject,
-                                                jlong jhandle,
-                                                jlong max_log_file_size) {
+void Java_org_rocksdb_Options_setMaxLogFileSize(
+    JNIEnv* env, jobject, jlong jhandle, jlong max_log_file_size) {
   auto s =
       ROCKSDB_NAMESPACE::JniUtil::check_if_jlong_fits_size_t(max_log_file_size);
   if (s.ok()) {
@@ -809,8 +808,8 @@ void Java_org_rocksdb_Options_setMaxLogFileSize(JNIEnv* env, jobject,
  * Method:    logFileTimeToRoll
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_logFileTimeToRoll(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jlong Java_org_rocksdb_Options_logFileTimeToRoll(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->log_file_time_to_roll;
 }
@@ -837,7 +836,8 @@ void Java_org_rocksdb_Options_setLogFileTimeToRoll(
  * Method:    keepLogFileNum
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_keepLogFileNum(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_keepLogFileNum(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->keep_log_file_num;
 }
@@ -847,9 +847,8 @@ jlong Java_org_rocksdb_Options_keepLogFileNum(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setKeepLogFileNum
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setKeepLogFileNum(JNIEnv* env, jobject,
-                                                jlong jhandle,
-                                                jlong keep_log_file_num) {
+void Java_org_rocksdb_Options_setKeepLogFileNum(
+    JNIEnv* env, jobject, jlong jhandle, jlong keep_log_file_num) {
   auto s =
       ROCKSDB_NAMESPACE::JniUtil::check_if_jlong_fits_size_t(keep_log_file_num);
   if (s.ok()) {
@@ -865,8 +864,8 @@ void Java_org_rocksdb_Options_setKeepLogFileNum(JNIEnv* env, jobject,
  * Method:    recycleLogFileNum
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_recycleLogFileNum(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jlong Java_org_rocksdb_Options_recycleLogFileNum(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->recycle_log_file_num;
 }
@@ -876,9 +875,8 @@ jlong Java_org_rocksdb_Options_recycleLogFileNum(JNIEnv*, jobject,
  * Method:    setRecycleLogFileNum
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setRecycleLogFileNum(JNIEnv* env, jobject,
-                                                   jlong jhandle,
-                                                   jlong recycle_log_file_num) {
+void Java_org_rocksdb_Options_setRecycleLogFileNum(
+    JNIEnv* env, jobject, jlong jhandle, jlong recycle_log_file_num) {
   auto s = ROCKSDB_NAMESPACE::JniUtil::check_if_jlong_fits_size_t(
       recycle_log_file_num);
   if (s.ok()) {
@@ -894,8 +892,8 @@ void Java_org_rocksdb_Options_setRecycleLogFileNum(JNIEnv* env, jobject,
  * Method:    maxManifestFileSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_maxManifestFileSize(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxManifestFileSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_manifest_file_size;
 }
@@ -904,8 +902,8 @@ jlong Java_org_rocksdb_Options_maxManifestFileSize(JNIEnv*, jobject,
  * Method:    memTableFactoryName
  * Signature: (J)Ljava/lang/String
  */
-jstring Java_org_rocksdb_Options_memTableFactoryName(JNIEnv* env, jobject,
-                                                     jlong jhandle) {
+jstring Java_org_rocksdb_Options_memTableFactoryName(
+    JNIEnv* env, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   ROCKSDB_NAMESPACE::MemTableRepFactory* tf = opt->memtable_factory.get();
 
@@ -1065,9 +1063,8 @@ void Java_org_rocksdb_Options_setMaxManifestFileSize(
  * Method:    setMemTableFactory
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setMemTableFactory(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jlong jfactory_handle) {
+void Java_org_rocksdb_Options_setMemTableFactory(
+    JNIEnv*, jobject, jlong jhandle, jlong jfactory_handle) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->memtable_factory.reset(
           reinterpret_cast<ROCKSDB_NAMESPACE::MemTableRepFactory*>(
@@ -1079,8 +1076,8 @@ void Java_org_rocksdb_Options_setMemTableFactory(JNIEnv*, jobject,
  * Method:    setRateLimiter
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setRateLimiter(JNIEnv*, jobject, jlong jhandle,
-                                             jlong jrate_limiter_handle) {
+void Java_org_rocksdb_Options_setRateLimiter(
+    JNIEnv*, jobject, jlong jhandle, jlong jrate_limiter_handle) {
   std::shared_ptr<ROCKSDB_NAMESPACE::RateLimiter>* pRateLimiter =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::RateLimiter>*>(
           jrate_limiter_handle);
@@ -1107,8 +1104,8 @@ void Java_org_rocksdb_Options_setSstFileManager(
  * Method:    setLogger
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
-                                        jlong jlogger_handle) {
+void Java_org_rocksdb_Options_setLogger(
+    JNIEnv*, jobject, jlong jhandle, jlong jlogger_handle) {
   std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>* pLogger =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
           jlogger_handle);
@@ -1120,8 +1117,8 @@ void Java_org_rocksdb_Options_setLogger(JNIEnv*, jobject, jlong jhandle,
  * Method:    setInfoLogLevel
  * Signature: (JB)V
  */
-void Java_org_rocksdb_Options_setInfoLogLevel(JNIEnv*, jobject, jlong jhandle,
-                                              jbyte jlog_level) {
+void Java_org_rocksdb_Options_setInfoLogLevel(
+    JNIEnv*, jobject, jlong jhandle, jbyte jlog_level) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log_level =
       static_cast<ROCKSDB_NAMESPACE::InfoLogLevel>(jlog_level);
 }
@@ -1131,7 +1128,8 @@ void Java_org_rocksdb_Options_setInfoLogLevel(JNIEnv*, jobject, jlong jhandle,
  * Method:    infoLogLevel
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_Options_infoLogLevel(JNIEnv*, jobject, jlong jhandle) {
+jbyte Java_org_rocksdb_Options_infoLogLevel(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jbyte>(
       reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->info_log_level);
 }
@@ -1141,8 +1139,8 @@ jbyte Java_org_rocksdb_Options_infoLogLevel(JNIEnv*, jobject, jlong jhandle) {
  * Method:    tableCacheNumshardbits
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_tableCacheNumshardbits(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jint Java_org_rocksdb_Options_tableCacheNumshardbits(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->table_cache_numshardbits;
 }
@@ -1173,9 +1171,8 @@ void Java_org_rocksdb_Options_useFixedLengthPrefixExtractor(
  * Method:    useCappedPrefixExtractor
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_useCappedPrefixExtractor(JNIEnv*, jobject,
-                                                       jlong jhandle,
-                                                       jint jprefix_length) {
+void Java_org_rocksdb_Options_useCappedPrefixExtractor(
+    JNIEnv*, jobject, jlong jhandle, jint jprefix_length) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->prefix_extractor.reset(ROCKSDB_NAMESPACE::NewCappedPrefixTransform(
           static_cast<int>(jprefix_length)));
@@ -1186,7 +1183,8 @@ void Java_org_rocksdb_Options_useCappedPrefixExtractor(JNIEnv*, jobject,
  * Method:    walTtlSeconds
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_walTtlSeconds(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_walTtlSeconds(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->WAL_ttl_seconds;
 }
@@ -1196,8 +1194,8 @@ jlong Java_org_rocksdb_Options_walTtlSeconds(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setWalTtlSeconds
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setWalTtlSeconds(JNIEnv*, jobject, jlong jhandle,
-                                               jlong WAL_ttl_seconds) {
+void Java_org_rocksdb_Options_setWalTtlSeconds(
+    JNIEnv*, jobject, jlong jhandle, jlong WAL_ttl_seconds) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->WAL_ttl_seconds =
       static_cast<int64_t>(WAL_ttl_seconds);
 }
@@ -1207,7 +1205,8 @@ void Java_org_rocksdb_Options_setWalTtlSeconds(JNIEnv*, jobject, jlong jhandle,
  * Method:    walTtlSeconds
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_walSizeLimitMB(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_walSizeLimitMB(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->WAL_size_limit_MB;
 }
@@ -1217,8 +1216,8 @@ jlong Java_org_rocksdb_Options_walSizeLimitMB(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setWalSizeLimitMB
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setWalSizeLimitMB(JNIEnv*, jobject, jlong jhandle,
-                                                jlong WAL_size_limit_MB) {
+void Java_org_rocksdb_Options_setWalSizeLimitMB(
+    JNIEnv*, jobject, jlong jhandle, jlong WAL_size_limit_MB) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->WAL_size_limit_MB =
       static_cast<int64_t>(WAL_size_limit_MB);
 }
@@ -1251,8 +1250,8 @@ jlong Java_org_rocksdb_Options_maxWriteBatchGroupSizeBytes(JNIEnv*, jclass,
  * Method:    manifestPreallocationSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_manifestPreallocationSize(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jlong Java_org_rocksdb_Options_manifestPreallocationSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->manifest_preallocation_size;
 }
@@ -1278,8 +1277,8 @@ void Java_org_rocksdb_Options_setManifestPreallocationSize(
  * Method:    setTableFactory
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setTableFactory(JNIEnv*, jobject, jlong jhandle,
-                                              jlong jtable_factory_handle) {
+void Java_org_rocksdb_Options_setTableFactory(
+    JNIEnv*, jobject, jlong jhandle, jlong jtable_factory_handle) {
   auto* options = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   auto* table_factory =
       reinterpret_cast<ROCKSDB_NAMESPACE::TableFactory*>(jtable_factory_handle);
@@ -1319,8 +1318,8 @@ void Java_org_rocksdb_Options_setCompactionThreadLimiter(
  * Method:    allowMmapReads
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_allowMmapReads(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jboolean Java_org_rocksdb_Options_allowMmapReads(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->allow_mmap_reads;
 }
@@ -1330,8 +1329,8 @@ jboolean Java_org_rocksdb_Options_allowMmapReads(JNIEnv*, jobject,
  * Method:    setAllowMmapReads
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setAllowMmapReads(JNIEnv*, jobject, jlong jhandle,
-                                                jboolean allow_mmap_reads) {
+void Java_org_rocksdb_Options_setAllowMmapReads(
+    JNIEnv*, jobject, jlong jhandle, jboolean allow_mmap_reads) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->allow_mmap_reads =
       static_cast<bool>(allow_mmap_reads);
 }
@@ -1341,8 +1340,8 @@ void Java_org_rocksdb_Options_setAllowMmapReads(JNIEnv*, jobject, jlong jhandle,
  * Method:    allowMmapWrites
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_allowMmapWrites(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_Options_allowMmapWrites(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->allow_mmap_writes;
 }
@@ -1352,9 +1351,8 @@ jboolean Java_org_rocksdb_Options_allowMmapWrites(JNIEnv*, jobject,
  * Method:    setAllowMmapWrites
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setAllowMmapWrites(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean allow_mmap_writes) {
+void Java_org_rocksdb_Options_setAllowMmapWrites(
+    JNIEnv*, jobject, jlong jhandle, jboolean allow_mmap_writes) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->allow_mmap_writes =
       static_cast<bool>(allow_mmap_writes);
 }
@@ -1364,8 +1362,8 @@ void Java_org_rocksdb_Options_setAllowMmapWrites(JNIEnv*, jobject,
  * Method:    useDirectReads
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_useDirectReads(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jboolean Java_org_rocksdb_Options_useDirectReads(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->use_direct_reads;
 }
@@ -1375,8 +1373,8 @@ jboolean Java_org_rocksdb_Options_useDirectReads(JNIEnv*, jobject,
  * Method:    setUseDirectReads
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setUseDirectReads(JNIEnv*, jobject, jlong jhandle,
-                                                jboolean use_direct_reads) {
+void Java_org_rocksdb_Options_setUseDirectReads(
+    JNIEnv*, jobject, jlong jhandle, jboolean use_direct_reads) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->use_direct_reads =
       static_cast<bool>(use_direct_reads);
 }
@@ -1410,8 +1408,8 @@ void Java_org_rocksdb_Options_setUseDirectIoForFlushAndCompaction(
  * Method:    setAllowFAllocate
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setAllowFAllocate(JNIEnv*, jobject, jlong jhandle,
-                                                jboolean jallow_fallocate) {
+void Java_org_rocksdb_Options_setAllowFAllocate(
+    JNIEnv*, jobject, jlong jhandle, jboolean jallow_fallocate) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->allow_fallocate =
       static_cast<bool>(jallow_fallocate);
 }
@@ -1421,8 +1419,8 @@ void Java_org_rocksdb_Options_setAllowFAllocate(JNIEnv*, jobject, jlong jhandle,
  * Method:    allowFAllocate
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_allowFAllocate(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jboolean Java_org_rocksdb_Options_allowFAllocate(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->allow_fallocate);
 }
@@ -1432,8 +1430,8 @@ jboolean Java_org_rocksdb_Options_allowFAllocate(JNIEnv*, jobject,
  * Method:    isFdCloseOnExec
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_isFdCloseOnExec(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_Options_isFdCloseOnExec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->is_fd_close_on_exec;
 }
@@ -1443,9 +1441,8 @@ jboolean Java_org_rocksdb_Options_isFdCloseOnExec(JNIEnv*, jobject,
  * Method:    setIsFdCloseOnExec
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setIsFdCloseOnExec(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean is_fd_close_on_exec) {
+void Java_org_rocksdb_Options_setIsFdCloseOnExec(
+    JNIEnv*, jobject, jlong jhandle, jboolean is_fd_close_on_exec) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->is_fd_close_on_exec =
       static_cast<bool>(is_fd_close_on_exec);
 }
@@ -1455,8 +1452,8 @@ void Java_org_rocksdb_Options_setIsFdCloseOnExec(JNIEnv*, jobject,
  * Method:    statsDumpPeriodSec
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_statsDumpPeriodSec(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jint Java_org_rocksdb_Options_statsDumpPeriodSec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->stats_dump_period_sec;
 }
@@ -1467,7 +1464,8 @@ jint Java_org_rocksdb_Options_statsDumpPeriodSec(JNIEnv*, jobject,
  * Signature: (JI)V
  */
 void Java_org_rocksdb_Options_setStatsDumpPeriodSec(
-    JNIEnv*, jobject, jlong jhandle, jint jstats_dump_period_sec) {
+    JNIEnv*, jobject, jlong jhandle,
+    jint jstats_dump_period_sec) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->stats_dump_period_sec =
       static_cast<unsigned int>(jstats_dump_period_sec);
@@ -1478,8 +1476,8 @@ void Java_org_rocksdb_Options_setStatsDumpPeriodSec(
  * Method:    statsPersistPeriodSec
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_statsPersistPeriodSec(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jint Java_org_rocksdb_Options_statsPersistPeriodSec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->stats_persist_period_sec;
 }
@@ -1501,8 +1499,8 @@ void Java_org_rocksdb_Options_setStatsPersistPeriodSec(
  * Method:    statsHistoryBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_statsHistoryBufferSize(JNIEnv*, jobject,
-                                                      jlong jhandle) {
+jlong Java_org_rocksdb_Options_statsHistoryBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->stats_history_buffer_size;
 }
@@ -1524,8 +1522,8 @@ void Java_org_rocksdb_Options_setStatsHistoryBufferSize(
  * Method:    adviseRandomOnOpen
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_adviseRandomOnOpen(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jboolean Java_org_rocksdb_Options_adviseRandomOnOpen(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->advise_random_on_open;
 }
@@ -1536,7 +1534,8 @@ jboolean Java_org_rocksdb_Options_adviseRandomOnOpen(JNIEnv*, jobject,
  * Signature: (JZ)V
  */
 void Java_org_rocksdb_Options_setAdviseRandomOnOpen(
-    JNIEnv*, jobject, jlong jhandle, jboolean advise_random_on_open) {
+    JNIEnv*, jobject, jlong jhandle,
+    jboolean advise_random_on_open) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->advise_random_on_open = static_cast<bool>(advise_random_on_open);
 }
@@ -1547,7 +1546,8 @@ void Java_org_rocksdb_Options_setAdviseRandomOnOpen(
  * Signature: (JJ)V
  */
 void Java_org_rocksdb_Options_setDbWriteBufferSize(
-    JNIEnv*, jobject, jlong jhandle, jlong jdb_write_buffer_size) {
+    JNIEnv*, jobject, jlong jhandle,
+    jlong jdb_write_buffer_size) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->db_write_buffer_size = static_cast<size_t>(jdb_write_buffer_size);
 }
@@ -1557,8 +1557,8 @@ void Java_org_rocksdb_Options_setDbWriteBufferSize(
  * Method:    dbWriteBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_dbWriteBufferSize(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jlong Java_org_rocksdb_Options_dbWriteBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opt->db_write_buffer_size);
 }
@@ -1569,7 +1569,8 @@ jlong Java_org_rocksdb_Options_dbWriteBufferSize(JNIEnv*, jobject,
  * Signature: (JB)V
  */
 void Java_org_rocksdb_Options_setAccessHintOnCompactionStart(
-    JNIEnv*, jobject, jlong jhandle, jbyte jaccess_hint_value) {
+    JNIEnv*, jobject, jlong jhandle,
+    jbyte jaccess_hint_value) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->access_hint_on_compaction_start =
       ROCKSDB_NAMESPACE::AccessHintJni::toCppAccessHint(jaccess_hint_value);
@@ -1580,8 +1581,8 @@ void Java_org_rocksdb_Options_setAccessHintOnCompactionStart(
  * Method:    accessHintOnCompactionStart
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_Options_accessHintOnCompactionStart(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jbyte Java_org_rocksdb_Options_accessHintOnCompactionStart(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return ROCKSDB_NAMESPACE::AccessHintJni::toJavaAccessHint(
       opt->access_hint_on_compaction_start);
@@ -1617,7 +1618,8 @@ jboolean Java_org_rocksdb_Options_newTableReaderForCompactionInputs(
  * Signature: (JJ)V
  */
 void Java_org_rocksdb_Options_setCompactionReadaheadSize(
-    JNIEnv*, jobject, jlong jhandle, jlong jcompaction_readahead_size) {
+    JNIEnv*, jobject, jlong jhandle,
+    jlong jcompaction_readahead_size) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->compaction_readahead_size =
       static_cast<size_t>(jcompaction_readahead_size);
@@ -1628,8 +1630,8 @@ void Java_org_rocksdb_Options_setCompactionReadaheadSize(
  * Method:    compactionReadaheadSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_compactionReadaheadSize(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jlong Java_org_rocksdb_Options_compactionReadaheadSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opt->compaction_readahead_size);
 }
@@ -1651,8 +1653,8 @@ void Java_org_rocksdb_Options_setRandomAccessMaxBufferSize(
  * Method:    randomAccessMaxBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_randomAccessMaxBufferSize(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jlong Java_org_rocksdb_Options_randomAccessMaxBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opt->random_access_max_buffer_size);
 }
@@ -1663,7 +1665,8 @@ jlong Java_org_rocksdb_Options_randomAccessMaxBufferSize(JNIEnv*, jobject,
  * Signature: (JJ)V
  */
 void Java_org_rocksdb_Options_setWritableFileMaxBufferSize(
-    JNIEnv*, jobject, jlong jhandle, jlong jwritable_file_max_buffer_size) {
+    JNIEnv*, jobject, jlong jhandle,
+    jlong jwritable_file_max_buffer_size) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->writable_file_max_buffer_size =
       static_cast<size_t>(jwritable_file_max_buffer_size);
@@ -1674,8 +1677,8 @@ void Java_org_rocksdb_Options_setWritableFileMaxBufferSize(
  * Method:    writableFileMaxBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_writableFileMaxBufferSize(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jlong Java_org_rocksdb_Options_writableFileMaxBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opt->writable_file_max_buffer_size);
 }
@@ -1685,8 +1688,8 @@ jlong Java_org_rocksdb_Options_writableFileMaxBufferSize(JNIEnv*, jobject,
  * Method:    useAdaptiveMutex
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_useAdaptiveMutex(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_Options_useAdaptiveMutex(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->use_adaptive_mutex;
 }
@@ -1696,9 +1699,8 @@ jboolean Java_org_rocksdb_Options_useAdaptiveMutex(JNIEnv*, jobject,
  * Method:    setUseAdaptiveMutex
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setUseAdaptiveMutex(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean use_adaptive_mutex) {
+void Java_org_rocksdb_Options_setUseAdaptiveMutex(
+    JNIEnv*, jobject, jlong jhandle, jboolean use_adaptive_mutex) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->use_adaptive_mutex =
       static_cast<bool>(use_adaptive_mutex);
 }
@@ -1708,7 +1710,8 @@ void Java_org_rocksdb_Options_setUseAdaptiveMutex(JNIEnv*, jobject,
  * Method:    bytesPerSync
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_bytesPerSync(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_bytesPerSync(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->bytes_per_sync;
 }
 
@@ -1717,8 +1720,8 @@ jlong Java_org_rocksdb_Options_bytesPerSync(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setBytesPerSync
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setBytesPerSync(JNIEnv*, jobject, jlong jhandle,
-                                              jlong bytes_per_sync) {
+void Java_org_rocksdb_Options_setBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle, jlong bytes_per_sync) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->bytes_per_sync =
       static_cast<int64_t>(bytes_per_sync);
 }
@@ -1728,9 +1731,8 @@ void Java_org_rocksdb_Options_setBytesPerSync(JNIEnv*, jobject, jlong jhandle,
  * Method:    setWalBytesPerSync
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setWalBytesPerSync(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jlong jwal_bytes_per_sync) {
+void Java_org_rocksdb_Options_setWalBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle, jlong jwal_bytes_per_sync) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->wal_bytes_per_sync =
       static_cast<int64_t>(jwal_bytes_per_sync);
 }
@@ -1740,8 +1742,8 @@ void Java_org_rocksdb_Options_setWalBytesPerSync(JNIEnv*, jobject,
  * Method:    walBytesPerSync
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_walBytesPerSync(JNIEnv*, jobject,
-                                               jlong jhandle) {
+jlong Java_org_rocksdb_Options_walBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opt->wal_bytes_per_sync);
 }
@@ -1762,8 +1764,8 @@ void Java_org_rocksdb_Options_setStrictBytesPerSync(
  * Method:    strictBytesPerSync
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_strictBytesPerSync(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jboolean Java_org_rocksdb_Options_strictBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->strict_bytes_per_sync);
 }
@@ -1854,8 +1856,8 @@ void Java_org_rocksdb_Options_setEnableThreadTracking(
  * Method:    enableThreadTracking
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_enableThreadTracking(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jboolean Java_org_rocksdb_Options_enableThreadTracking(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->enable_thread_tracking);
 }
@@ -1865,9 +1867,8 @@ jboolean Java_org_rocksdb_Options_enableThreadTracking(JNIEnv*, jobject,
  * Method:    setDelayedWriteRate
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setDelayedWriteRate(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jlong jdelayed_write_rate) {
+void Java_org_rocksdb_Options_setDelayedWriteRate(
+    JNIEnv*, jobject, jlong jhandle, jlong jdelayed_write_rate) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->delayed_write_rate = static_cast<uint64_t>(jdelayed_write_rate);
 }
@@ -1877,8 +1878,8 @@ void Java_org_rocksdb_Options_setDelayedWriteRate(JNIEnv*, jobject,
  * Method:    delayedWriteRate
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_delayedWriteRate(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jlong Java_org_rocksdb_Options_delayedWriteRate(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opt->delayed_write_rate);
 }
@@ -1899,8 +1900,8 @@ void Java_org_rocksdb_Options_setEnablePipelinedWrite(
  * Method:    enablePipelinedWrite
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_enablePipelinedWrite(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jboolean Java_org_rocksdb_Options_enablePipelinedWrite(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->enable_pipelined_write);
 }
@@ -1910,8 +1911,8 @@ jboolean Java_org_rocksdb_Options_enablePipelinedWrite(JNIEnv*, jobject,
  * Method:    setUnorderedWrite
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setUnorderedWrite(JNIEnv*, jobject, jlong jhandle,
-                                                jboolean unordered_write) {
+void Java_org_rocksdb_Options_setUnorderedWrite(
+    JNIEnv*, jobject, jlong jhandle, jboolean unordered_write) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->unordered_write =
       static_cast<bool>(unordered_write);
 }
@@ -1921,8 +1922,8 @@ void Java_org_rocksdb_Options_setUnorderedWrite(JNIEnv*, jobject, jlong jhandle,
  * Method:    unorderedWrite
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_unorderedWrite(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jboolean Java_org_rocksdb_Options_unorderedWrite(
+        JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->unordered_write;
 }
@@ -1932,9 +1933,8 @@ jboolean Java_org_rocksdb_Options_unorderedWrite(JNIEnv*, jobject,
  * Method:    setAllowConcurrentMemtableWrite
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setAllowConcurrentMemtableWrite(JNIEnv*, jobject,
-                                                              jlong jhandle,
-                                                              jboolean allow) {
+void Java_org_rocksdb_Options_setAllowConcurrentMemtableWrite(
+    JNIEnv*, jobject, jlong jhandle, jboolean allow) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->allow_concurrent_memtable_write = static_cast<bool>(allow);
 }
@@ -1944,8 +1944,8 @@ void Java_org_rocksdb_Options_setAllowConcurrentMemtableWrite(JNIEnv*, jobject,
  * Method:    allowConcurrentMemtableWrite
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_allowConcurrentMemtableWrite(JNIEnv*, jobject,
-                                                               jlong jhandle) {
+jboolean Java_org_rocksdb_Options_allowConcurrentMemtableWrite(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->allow_concurrent_memtable_write;
 }
@@ -1977,9 +1977,8 @@ jboolean Java_org_rocksdb_Options_enableWriteThreadAdaptiveYield(
  * Method:    setWriteThreadMaxYieldUsec
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setWriteThreadMaxYieldUsec(JNIEnv*, jobject,
-                                                         jlong jhandle,
-                                                         jlong max) {
+void Java_org_rocksdb_Options_setWriteThreadMaxYieldUsec(
+    JNIEnv*, jobject, jlong jhandle, jlong max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->write_thread_max_yield_usec = static_cast<int64_t>(max);
 }
@@ -1989,8 +1988,8 @@ void Java_org_rocksdb_Options_setWriteThreadMaxYieldUsec(JNIEnv*, jobject,
  * Method:    writeThreadMaxYieldUsec
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_writeThreadMaxYieldUsec(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jlong Java_org_rocksdb_Options_writeThreadMaxYieldUsec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->write_thread_max_yield_usec;
 }
@@ -2000,9 +1999,8 @@ jlong Java_org_rocksdb_Options_writeThreadMaxYieldUsec(JNIEnv*, jobject,
  * Method:    setWriteThreadSlowYieldUsec
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setWriteThreadSlowYieldUsec(JNIEnv*, jobject,
-                                                          jlong jhandle,
-                                                          jlong slow) {
+void Java_org_rocksdb_Options_setWriteThreadSlowYieldUsec(
+    JNIEnv*, jobject, jlong jhandle, jlong slow) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->write_thread_slow_yield_usec = static_cast<int64_t>(slow);
 }
@@ -2012,8 +2010,8 @@ void Java_org_rocksdb_Options_setWriteThreadSlowYieldUsec(JNIEnv*, jobject,
  * Method:    writeThreadSlowYieldUsec
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_writeThreadSlowYieldUsec(JNIEnv*, jobject,
-                                                        jlong jhandle) {
+jlong Java_org_rocksdb_Options_writeThreadSlowYieldUsec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->write_thread_slow_yield_usec;
 }
@@ -2024,7 +2022,8 @@ jlong Java_org_rocksdb_Options_writeThreadSlowYieldUsec(JNIEnv*, jobject,
  * Signature: (JZ)V
  */
 void Java_org_rocksdb_Options_setSkipStatsUpdateOnDbOpen(
-    JNIEnv*, jobject, jlong jhandle, jboolean jskip_stats_update_on_db_open) {
+    JNIEnv*, jobject, jlong jhandle,
+    jboolean jskip_stats_update_on_db_open) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->skip_stats_update_on_db_open =
       static_cast<bool>(jskip_stats_update_on_db_open);
@@ -2035,8 +2034,8 @@ void Java_org_rocksdb_Options_setSkipStatsUpdateOnDbOpen(
  * Method:    skipStatsUpdateOnDbOpen
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_skipStatsUpdateOnDbOpen(JNIEnv*, jobject,
-                                                          jlong jhandle) {
+jboolean Java_org_rocksdb_Options_skipStatsUpdateOnDbOpen(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->skip_stats_update_on_db_open);
 }
@@ -2071,7 +2070,8 @@ jboolean Java_org_rocksdb_Options_skipCheckingSstFileSizesOnDbOpen(
  * Signature: (JB)V
  */
 void Java_org_rocksdb_Options_setWalRecoveryMode(
-    JNIEnv*, jobject, jlong jhandle, jbyte jwal_recovery_mode_value) {
+    JNIEnv*, jobject, jlong jhandle,
+    jbyte jwal_recovery_mode_value) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->wal_recovery_mode =
       ROCKSDB_NAMESPACE::WALRecoveryModeJni::toCppWALRecoveryMode(
@@ -2083,8 +2083,8 @@ void Java_org_rocksdb_Options_setWalRecoveryMode(
  * Method:    walRecoveryMode
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_Options_walRecoveryMode(JNIEnv*, jobject,
-                                               jlong jhandle) {
+jbyte Java_org_rocksdb_Options_walRecoveryMode(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return ROCKSDB_NAMESPACE::WALRecoveryModeJni::toJavaWALRecoveryMode(
       opt->wal_recovery_mode);
@@ -2095,8 +2095,8 @@ jbyte Java_org_rocksdb_Options_walRecoveryMode(JNIEnv*, jobject,
  * Method:    setAllow2pc
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setAllow2pc(JNIEnv*, jobject, jlong jhandle,
-                                          jboolean jallow_2pc) {
+void Java_org_rocksdb_Options_setAllow2pc(
+    JNIEnv*, jobject, jlong jhandle, jboolean jallow_2pc) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->allow_2pc = static_cast<bool>(jallow_2pc);
 }
@@ -2106,7 +2106,8 @@ void Java_org_rocksdb_Options_setAllow2pc(JNIEnv*, jobject, jlong jhandle,
  * Method:    allow2pc
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_allow2pc(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_Options_allow2pc(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->allow_2pc);
 }
@@ -2116,8 +2117,8 @@ jboolean Java_org_rocksdb_Options_allow2pc(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setRowCache
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setRowCache(JNIEnv*, jobject, jlong jhandle,
-                                          jlong jrow_cache_handle) {
+void Java_org_rocksdb_Options_setRowCache(
+    JNIEnv*, jobject, jlong jhandle, jlong jrow_cache_handle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   auto* row_cache =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::Cache>*>(
@@ -2125,13 +2126,14 @@ void Java_org_rocksdb_Options_setRowCache(JNIEnv*, jobject, jlong jhandle,
   opt->row_cache = *row_cache;
 }
 
+
 /*
  * Class:     org_rocksdb_Options
  * Method:    setWalFilter
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setWalFilter(JNIEnv*, jobject, jlong jhandle,
-                                           jlong jwal_filter_handle) {
+void Java_org_rocksdb_Options_setWalFilter(
+    JNIEnv*, jobject, jlong jhandle, jlong jwal_filter_handle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   auto* wal_filter = reinterpret_cast<ROCKSDB_NAMESPACE::WalFilterJniCallback*>(
       jwal_filter_handle);
@@ -2155,8 +2157,8 @@ void Java_org_rocksdb_Options_setFailIfOptionsFileError(
  * Method:    failIfOptionsFileError
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_failIfOptionsFileError(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jboolean Java_org_rocksdb_Options_failIfOptionsFileError(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->fail_if_options_file_error);
 }
@@ -2166,9 +2168,8 @@ jboolean Java_org_rocksdb_Options_failIfOptionsFileError(JNIEnv*, jobject,
  * Method:    setDumpMallocStats
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setDumpMallocStats(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean jdump_malloc_stats) {
+void Java_org_rocksdb_Options_setDumpMallocStats(
+    JNIEnv*, jobject, jlong jhandle, jboolean jdump_malloc_stats) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->dump_malloc_stats = static_cast<bool>(jdump_malloc_stats);
 }
@@ -2178,8 +2179,8 @@ void Java_org_rocksdb_Options_setDumpMallocStats(JNIEnv*, jobject,
  * Method:    dumpMallocStats
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_dumpMallocStats(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_Options_dumpMallocStats(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->dump_malloc_stats);
 }
@@ -2201,8 +2202,8 @@ void Java_org_rocksdb_Options_setAvoidFlushDuringRecovery(
  * Method:    avoidFlushDuringRecovery
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_avoidFlushDuringRecovery(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jboolean Java_org_rocksdb_Options_avoidFlushDuringRecovery(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->avoid_flush_during_recovery);
 }
@@ -2380,8 +2381,8 @@ void Java_org_rocksdb_Options_setAvoidFlushDuringShutdown(
  * Method:    avoidFlushDuringShutdown
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_avoidFlushDuringShutdown(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jboolean Java_org_rocksdb_Options_avoidFlushDuringShutdown(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->avoid_flush_during_shutdown);
 }
@@ -2402,8 +2403,8 @@ void Java_org_rocksdb_Options_setAllowIngestBehind(
  * Method:    allowIngestBehind
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_allowIngestBehind(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jboolean Java_org_rocksdb_Options_allowIngestBehind(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->allow_ingest_behind);
 }
@@ -2413,9 +2414,8 @@ jboolean Java_org_rocksdb_Options_allowIngestBehind(JNIEnv*, jobject,
  * Method:    setPreserveDeletes
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setPreserveDeletes(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean jpreserve_deletes) {
+void Java_org_rocksdb_Options_setPreserveDeletes(
+    JNIEnv*, jobject, jlong jhandle, jboolean jpreserve_deletes) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->preserve_deletes = jpreserve_deletes == JNI_TRUE;
 }
@@ -2425,8 +2425,8 @@ void Java_org_rocksdb_Options_setPreserveDeletes(JNIEnv*, jobject,
  * Method:    preserveDeletes
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_preserveDeletes(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_Options_preserveDeletes(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->preserve_deletes);
 }
@@ -2436,8 +2436,8 @@ jboolean Java_org_rocksdb_Options_preserveDeletes(JNIEnv*, jobject,
  * Method:    setTwoWriteQueues
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setTwoWriteQueues(JNIEnv*, jobject, jlong jhandle,
-                                                jboolean jtwo_write_queues) {
+void Java_org_rocksdb_Options_setTwoWriteQueues(
+    JNIEnv*, jobject, jlong jhandle, jboolean jtwo_write_queues) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->two_write_queues = jtwo_write_queues == JNI_TRUE;
 }
@@ -2447,8 +2447,8 @@ void Java_org_rocksdb_Options_setTwoWriteQueues(JNIEnv*, jobject, jlong jhandle,
  * Method:    twoWriteQueues
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_twoWriteQueues(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jboolean Java_org_rocksdb_Options_twoWriteQueues(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->two_write_queues);
 }
@@ -2458,8 +2458,8 @@ jboolean Java_org_rocksdb_Options_twoWriteQueues(JNIEnv*, jobject,
  * Method:    setManualWalFlush
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setManualWalFlush(JNIEnv*, jobject, jlong jhandle,
-                                                jboolean jmanual_wal_flush) {
+void Java_org_rocksdb_Options_setManualWalFlush(
+    JNIEnv*, jobject, jlong jhandle, jboolean jmanual_wal_flush) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->manual_wal_flush = jmanual_wal_flush == JNI_TRUE;
 }
@@ -2469,8 +2469,8 @@ void Java_org_rocksdb_Options_setManualWalFlush(JNIEnv*, jobject, jlong jhandle,
  * Method:    manualWalFlush
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_manualWalFlush(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jboolean Java_org_rocksdb_Options_manualWalFlush(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->manual_wal_flush);
 }
@@ -2480,8 +2480,8 @@ jboolean Java_org_rocksdb_Options_manualWalFlush(JNIEnv*, jobject,
  * Method:    setAtomicFlush
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setAtomicFlush(JNIEnv*, jobject, jlong jhandle,
-                                             jboolean jatomic_flush) {
+void Java_org_rocksdb_Options_setAtomicFlush(
+    JNIEnv*, jobject, jlong jhandle, jboolean jatomic_flush) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opt->atomic_flush = jatomic_flush == JNI_TRUE;
 }
@@ -2491,7 +2491,8 @@ void Java_org_rocksdb_Options_setAtomicFlush(JNIEnv*, jobject, jlong jhandle,
  * Method:    atomicFlush
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_atomicFlush(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_Options_atomicFlush(
+    JNIEnv *, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jboolean>(opt->atomic_flush);
 }
@@ -2500,8 +2501,8 @@ jboolean Java_org_rocksdb_Options_atomicFlush(JNIEnv*, jobject, jlong jhandle) {
  * Method:    tableFactoryName
  * Signature: (J)Ljava/lang/String
  */
-jstring Java_org_rocksdb_Options_tableFactoryName(JNIEnv* env, jobject,
-                                                  jlong jhandle) {
+jstring Java_org_rocksdb_Options_tableFactoryName(
+    JNIEnv* env, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   ROCKSDB_NAMESPACE::TableFactory* tf = opt->table_factory.get();
 
@@ -2517,8 +2518,8 @@ jstring Java_org_rocksdb_Options_tableFactoryName(JNIEnv* env, jobject,
  * Method:    minWriteBufferNumberToMerge
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_minWriteBufferNumberToMerge(JNIEnv*, jobject,
-                                                          jlong jhandle) {
+jint Java_org_rocksdb_Options_minWriteBufferNumberToMerge(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->min_write_buffer_number_to_merge;
 }
@@ -2539,8 +2540,8 @@ void Java_org_rocksdb_Options_setMinWriteBufferNumberToMerge(
  * Method:    maxWriteBufferNumberToMaintain
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_maxWriteBufferNumberToMaintain(JNIEnv*, jobject,
-                                                             jlong jhandle) {
+jint Java_org_rocksdb_Options_maxWriteBufferNumberToMaintain(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_write_buffer_number_to_maintain;
 }
@@ -2576,8 +2577,8 @@ void Java_org_rocksdb_Options_setCompressionType(
  * Method:    compressionType
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_Options_compressionType(JNIEnv*, jobject,
-                                               jlong jhandle) {
+jbyte Java_org_rocksdb_Options_compressionType(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opts = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return ROCKSDB_NAMESPACE::CompressionTypeJni::toJavaCompressionType(
       opts->compression);
@@ -2684,8 +2685,8 @@ void Java_org_rocksdb_Options_setCompressionPerLevel(
  * Method:    compressionPerLevel
  * Signature: (J)[B
  */
-jbyteArray Java_org_rocksdb_Options_compressionPerLevel(JNIEnv* env, jobject,
-                                                        jlong jhandle) {
+jbyteArray Java_org_rocksdb_Options_compressionPerLevel(
+    JNIEnv* env, jobject, jlong jhandle) {
   auto* options = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return rocksdb_compression_list_helper(env, options->compression_per_level);
 }
@@ -2708,8 +2709,8 @@ void Java_org_rocksdb_Options_setBottommostCompressionType(
  * Method:    bottommostCompressionType
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_Options_bottommostCompressionType(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jbyte Java_org_rocksdb_Options_bottommostCompressionType(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* options = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return ROCKSDB_NAMESPACE::CompressionTypeJni::toJavaCompressionType(
       options->bottommost_compression);
@@ -2749,9 +2750,8 @@ void Java_org_rocksdb_Options_setCompressionOptions(
  * Method:    setCompactionStyle
  * Signature: (JB)V
  */
-void Java_org_rocksdb_Options_setCompactionStyle(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jbyte jcompaction_style) {
+void Java_org_rocksdb_Options_setCompactionStyle(
+    JNIEnv*, jobject, jlong jhandle, jbyte jcompaction_style) {
   auto* options = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   options->compaction_style =
       ROCKSDB_NAMESPACE::CompactionStyleJni::toCppCompactionStyle(
@@ -2763,8 +2763,8 @@ void Java_org_rocksdb_Options_setCompactionStyle(JNIEnv*, jobject,
  * Method:    compactionStyle
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_Options_compactionStyle(JNIEnv*, jobject,
-                                               jlong jhandle) {
+jbyte Java_org_rocksdb_Options_compactionStyle(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* options = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return ROCKSDB_NAMESPACE::CompactionStyleJni::toJavaCompactionStyle(
       options->compaction_style);
@@ -2787,8 +2787,8 @@ void Java_org_rocksdb_Options_setMaxTableFilesSizeFIFO(
  * Method:    maxTableFilesSizeFIFO
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_maxTableFilesSizeFIFO(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxTableFilesSizeFIFO(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->compaction_options_fifo.max_table_files_size;
 }
@@ -2798,7 +2798,8 @@ jlong Java_org_rocksdb_Options_maxTableFilesSizeFIFO(JNIEnv*, jobject,
  * Method:    numLevels
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_numLevels(JNIEnv*, jobject, jlong jhandle) {
+jint Java_org_rocksdb_Options_numLevels(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->num_levels;
 }
 
@@ -2807,8 +2808,8 @@ jint Java_org_rocksdb_Options_numLevels(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setNumLevels
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setNumLevels(JNIEnv*, jobject, jlong jhandle,
-                                           jint jnum_levels) {
+void Java_org_rocksdb_Options_setNumLevels(
+    JNIEnv*, jobject, jlong jhandle, jint jnum_levels) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->num_levels =
       static_cast<int>(jnum_levels);
 }
@@ -2818,9 +2819,8 @@ void Java_org_rocksdb_Options_setNumLevels(JNIEnv*, jobject, jlong jhandle,
  * Method:    levelZeroFileNumCompactionTrigger
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_levelZeroFileNumCompactionTrigger(JNIEnv*,
-                                                                jobject,
-                                                                jlong jhandle) {
+jint Java_org_rocksdb_Options_levelZeroFileNumCompactionTrigger(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_file_num_compaction_trigger;
 }
@@ -2831,7 +2831,8 @@ jint Java_org_rocksdb_Options_levelZeroFileNumCompactionTrigger(JNIEnv*,
  * Signature: (JI)V
  */
 void Java_org_rocksdb_Options_setLevelZeroFileNumCompactionTrigger(
-    JNIEnv*, jobject, jlong jhandle, jint jlevel0_file_num_compaction_trigger) {
+    JNIEnv*, jobject, jlong jhandle,
+    jint jlevel0_file_num_compaction_trigger) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_file_num_compaction_trigger =
       static_cast<int>(jlevel0_file_num_compaction_trigger);
@@ -2842,8 +2843,8 @@ void Java_org_rocksdb_Options_setLevelZeroFileNumCompactionTrigger(
  * Method:    levelZeroSlowdownWritesTrigger
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_levelZeroSlowdownWritesTrigger(JNIEnv*, jobject,
-                                                             jlong jhandle) {
+jint Java_org_rocksdb_Options_levelZeroSlowdownWritesTrigger(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_slowdown_writes_trigger;
 }
@@ -2865,8 +2866,8 @@ void Java_org_rocksdb_Options_setLevelZeroSlowdownWritesTrigger(
  * Method:    levelZeroStopWritesTrigger
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_levelZeroStopWritesTrigger(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jint Java_org_rocksdb_Options_levelZeroStopWritesTrigger(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_stop_writes_trigger;
 }
@@ -2888,8 +2889,8 @@ void Java_org_rocksdb_Options_setLevelZeroStopWritesTrigger(
  * Method:    targetFileSizeBase
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_targetFileSizeBase(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jlong Java_org_rocksdb_Options_targetFileSizeBase(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->target_file_size_base;
 }
@@ -2910,8 +2911,8 @@ void Java_org_rocksdb_Options_setTargetFileSizeBase(
  * Method:    targetFileSizeMultiplier
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_targetFileSizeMultiplier(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jint Java_org_rocksdb_Options_targetFileSizeMultiplier(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->target_file_size_multiplier;
 }
@@ -2933,8 +2934,8 @@ void Java_org_rocksdb_Options_setTargetFileSizeMultiplier(
  * Method:    maxBytesForLevelBase
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_maxBytesForLevelBase(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxBytesForLevelBase(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_bytes_for_level_base;
 }
@@ -2978,8 +2979,8 @@ void Java_org_rocksdb_Options_setLevelCompactionDynamicLevelBytes(
  * Method:    maxBytesForLevelMultiplier
  * Signature: (J)D
  */
-jdouble Java_org_rocksdb_Options_maxBytesForLevelMultiplier(JNIEnv*, jobject,
-                                                            jlong jhandle) {
+jdouble Java_org_rocksdb_Options_maxBytesForLevelMultiplier(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_bytes_for_level_multiplier;
 }
@@ -3001,8 +3002,8 @@ void Java_org_rocksdb_Options_setMaxBytesForLevelMultiplier(
  * Method:    maxCompactionBytes
  * Signature: (J)I
  */
-jlong Java_org_rocksdb_Options_maxCompactionBytes(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxCompactionBytes(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jlong>(
       reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
           ->max_compaction_bytes);
@@ -3024,7 +3025,8 @@ void Java_org_rocksdb_Options_setMaxCompactionBytes(
  * Method:    arenaBlockSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_arenaBlockSize(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_arenaBlockSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->arena_block_size;
 }
@@ -3034,9 +3036,8 @@ jlong Java_org_rocksdb_Options_arenaBlockSize(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setArenaBlockSize
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setArenaBlockSize(JNIEnv* env, jobject,
-                                                jlong jhandle,
-                                                jlong jarena_block_size) {
+void Java_org_rocksdb_Options_setArenaBlockSize(
+    JNIEnv* env, jobject, jlong jhandle, jlong jarena_block_size) {
   auto s =
       ROCKSDB_NAMESPACE::JniUtil::check_if_jlong_fits_size_t(jarena_block_size);
   if (s.ok()) {
@@ -3052,8 +3053,8 @@ void Java_org_rocksdb_Options_setArenaBlockSize(JNIEnv* env, jobject,
  * Method:    disableAutoCompactions
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_disableAutoCompactions(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jboolean Java_org_rocksdb_Options_disableAutoCompactions(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->disable_auto_compactions;
 }
@@ -3074,8 +3075,8 @@ void Java_org_rocksdb_Options_setDisableAutoCompactions(
  * Method:    maxSequentialSkipInIterations
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_maxSequentialSkipInIterations(JNIEnv*, jobject,
-                                                             jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxSequentialSkipInIterations(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_sequential_skip_in_iterations;
 }
@@ -3086,7 +3087,8 @@ jlong Java_org_rocksdb_Options_maxSequentialSkipInIterations(JNIEnv*, jobject,
  * Signature: (JJ)V
  */
 void Java_org_rocksdb_Options_setMaxSequentialSkipInIterations(
-    JNIEnv*, jobject, jlong jhandle, jlong jmax_sequential_skip_in_iterations) {
+    JNIEnv*, jobject, jlong jhandle,
+    jlong jmax_sequential_skip_in_iterations) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_sequential_skip_in_iterations =
       static_cast<int64_t>(jmax_sequential_skip_in_iterations);
@@ -3097,8 +3099,8 @@ void Java_org_rocksdb_Options_setMaxSequentialSkipInIterations(
  * Method:    inplaceUpdateSupport
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_inplaceUpdateSupport(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jboolean Java_org_rocksdb_Options_inplaceUpdateSupport(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->inplace_update_support;
 }
@@ -3119,8 +3121,8 @@ void Java_org_rocksdb_Options_setInplaceUpdateSupport(
  * Method:    inplaceUpdateNumLocks
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_inplaceUpdateNumLocks(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jlong Java_org_rocksdb_Options_inplaceUpdateNumLocks(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->inplace_update_num_locks;
 }
@@ -3147,8 +3149,8 @@ void Java_org_rocksdb_Options_setInplaceUpdateNumLocks(
  * Method:    memtablePrefixBloomSizeRatio
  * Signature: (J)I
  */
-jdouble Java_org_rocksdb_Options_memtablePrefixBloomSizeRatio(JNIEnv*, jobject,
-                                                              jlong jhandle) {
+jdouble Java_org_rocksdb_Options_memtablePrefixBloomSizeRatio(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->memtable_prefix_bloom_size_ratio;
 }
@@ -3171,7 +3173,8 @@ void Java_org_rocksdb_Options_setMemtablePrefixBloomSizeRatio(
  * Method:    bloomLocality
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_bloomLocality(JNIEnv*, jobject, jlong jhandle) {
+jint Java_org_rocksdb_Options_bloomLocality(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->bloom_locality;
 }
 
@@ -3180,8 +3183,8 @@ jint Java_org_rocksdb_Options_bloomLocality(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setBloomLocality
  * Signature: (JI)V
  */
-void Java_org_rocksdb_Options_setBloomLocality(JNIEnv*, jobject, jlong jhandle,
-                                               jint jbloom_locality) {
+void Java_org_rocksdb_Options_setBloomLocality(
+    JNIEnv*, jobject, jlong jhandle, jint jbloom_locality) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->bloom_locality =
       static_cast<int32_t>(jbloom_locality);
 }
@@ -3191,8 +3194,8 @@ void Java_org_rocksdb_Options_setBloomLocality(JNIEnv*, jobject, jlong jhandle,
  * Method:    maxSuccessiveMerges
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_maxSuccessiveMerges(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jlong Java_org_rocksdb_Options_maxSuccessiveMerges(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->max_successive_merges;
 }
@@ -3219,8 +3222,8 @@ void Java_org_rocksdb_Options_setMaxSuccessiveMerges(
  * Method:    optimizeFiltersForHits
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_optimizeFiltersForHits(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jboolean Java_org_rocksdb_Options_optimizeFiltersForHits(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->optimize_filters_for_hits;
 }
@@ -3314,8 +3317,8 @@ void Java_org_rocksdb_Options_optimizeUniversalStyleCompaction(
  * Method:    prepareForBulkLoad
  * Signature: (J)V
  */
-void Java_org_rocksdb_Options_prepareForBulkLoad(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+void Java_org_rocksdb_Options_prepareForBulkLoad(
+    JNIEnv*, jobject, jlong jhandle) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)->PrepareForBulkLoad();
 }
 
@@ -3324,8 +3327,8 @@ void Java_org_rocksdb_Options_prepareForBulkLoad(JNIEnv*, jobject,
  * Method:    memtableHugePageSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_memtableHugePageSize(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jlong Java_org_rocksdb_Options_memtableHugePageSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->memtable_huge_page_size;
 }
@@ -3352,8 +3355,8 @@ void Java_org_rocksdb_Options_setMemtableHugePageSize(
  * Method:    softPendingCompactionBytesLimit
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_softPendingCompactionBytesLimit(JNIEnv*, jobject,
-                                                               jlong jhandle) {
+jlong Java_org_rocksdb_Options_softPendingCompactionBytesLimit(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->soft_pending_compaction_bytes_limit;
 }
@@ -3376,8 +3379,8 @@ void Java_org_rocksdb_Options_setSoftPendingCompactionBytesLimit(
  * Method:    softHardCompactionBytesLimit
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_hardPendingCompactionBytesLimit(JNIEnv*, jobject,
-                                                               jlong jhandle) {
+jlong Java_org_rocksdb_Options_hardPendingCompactionBytesLimit(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->hard_pending_compaction_bytes_limit;
 }
@@ -3400,8 +3403,8 @@ void Java_org_rocksdb_Options_setHardPendingCompactionBytesLimit(
  * Method:    level0FileNumCompactionTrigger
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_level0FileNumCompactionTrigger(JNIEnv*, jobject,
-                                                             jlong jhandle) {
+jint Java_org_rocksdb_Options_level0FileNumCompactionTrigger(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_file_num_compaction_trigger;
 }
@@ -3412,7 +3415,8 @@ jint Java_org_rocksdb_Options_level0FileNumCompactionTrigger(JNIEnv*, jobject,
  * Signature: (JI)V
  */
 void Java_org_rocksdb_Options_setLevel0FileNumCompactionTrigger(
-    JNIEnv*, jobject, jlong jhandle, jint jlevel0_file_num_compaction_trigger) {
+    JNIEnv*, jobject, jlong jhandle,
+    jint jlevel0_file_num_compaction_trigger) {
   reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_file_num_compaction_trigger =
       static_cast<int32_t>(jlevel0_file_num_compaction_trigger);
@@ -3423,8 +3427,8 @@ void Java_org_rocksdb_Options_setLevel0FileNumCompactionTrigger(
  * Method:    level0SlowdownWritesTrigger
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_level0SlowdownWritesTrigger(JNIEnv*, jobject,
-                                                          jlong jhandle) {
+jint Java_org_rocksdb_Options_level0SlowdownWritesTrigger(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_slowdown_writes_trigger;
 }
@@ -3446,8 +3450,8 @@ void Java_org_rocksdb_Options_setLevel0SlowdownWritesTrigger(
  * Method:    level0StopWritesTrigger
  * Signature: (J)I
  */
-jint Java_org_rocksdb_Options_level0StopWritesTrigger(JNIEnv*, jobject,
-                                                      jlong jhandle) {
+jint Java_org_rocksdb_Options_level0StopWritesTrigger(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->level0_stop_writes_trigger;
 }
@@ -3534,8 +3538,8 @@ void Java_org_rocksdb_Options_setMaxBytesForLevelMultiplierAdditional(
  * Method:    paranoidFileChecks
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_paranoidFileChecks(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jboolean Java_org_rocksdb_Options_paranoidFileChecks(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle)
       ->paranoid_file_checks;
 }
@@ -3569,8 +3573,8 @@ void Java_org_rocksdb_Options_setCompactionPriority(
  * Method:    compactionPriority
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_Options_compactionPriority(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jbyte Java_org_rocksdb_Options_compactionPriority(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opts = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return ROCKSDB_NAMESPACE::CompactionPriorityJni::toJavaCompactionPriority(
       opts->compaction_pri);
@@ -3581,9 +3585,8 @@ jbyte Java_org_rocksdb_Options_compactionPriority(JNIEnv*, jobject,
  * Method:    setReportBgIoStats
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_Options_setReportBgIoStats(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean jreport_bg_io_stats) {
+void Java_org_rocksdb_Options_setReportBgIoStats(
+    JNIEnv*, jobject, jlong jhandle, jboolean jreport_bg_io_stats) {
   auto* opts = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opts->report_bg_io_stats = static_cast<bool>(jreport_bg_io_stats);
 }
@@ -3593,8 +3596,8 @@ void Java_org_rocksdb_Options_setReportBgIoStats(JNIEnv*, jobject,
  * Method:    reportBgIoStats
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_reportBgIoStats(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_Options_reportBgIoStats(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opts = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<bool>(opts->report_bg_io_stats);
 }
@@ -3604,8 +3607,8 @@ jboolean Java_org_rocksdb_Options_reportBgIoStats(JNIEnv*, jobject,
  * Method:    setTtl
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_Options_setTtl(JNIEnv*, jobject, jlong jhandle,
-                                     jlong jttl) {
+void Java_org_rocksdb_Options_setTtl(
+    JNIEnv*, jobject, jlong jhandle, jlong jttl) {
   auto* opts = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   opts->ttl = static_cast<uint64_t>(jttl);
 }
@@ -3615,7 +3618,8 @@ void Java_org_rocksdb_Options_setTtl(JNIEnv*, jobject, jlong jhandle,
  * Method:    ttl
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_Options_ttl(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_Options_ttl(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opts = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<jlong>(opts->ttl);
 }
@@ -3687,8 +3691,8 @@ void Java_org_rocksdb_Options_setForceConsistencyChecks(
  * Method:    forceConsistencyChecks
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_Options_forceConsistencyChecks(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jboolean Java_org_rocksdb_Options_forceConsistencyChecks(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opts = reinterpret_cast<ROCKSDB_NAMESPACE::Options*>(jhandle);
   return static_cast<bool>(opts->force_consistency_checks);
 }
@@ -3865,8 +3869,8 @@ jdouble Java_org_rocksdb_Options_blobGarbageCollectionForceThreshold(
  * Method:    newColumnFamilyOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_newColumnFamilyOptions(JNIEnv*,
-                                                                  jclass) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_newColumnFamilyOptions(
+    JNIEnv*, jclass) {
   auto* op = new ROCKSDB_NAMESPACE::ColumnFamilyOptions();
   return reinterpret_cast<jlong>(op);
 }
@@ -3966,8 +3970,8 @@ jlong Java_org_rocksdb_ColumnFamilyOptions_getColumnFamilyOptionsFromProps__Ljav
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_ColumnFamilyOptions_disposeInternal(JNIEnv*, jobject,
-                                                          jlong handle) {
+void Java_org_rocksdb_ColumnFamilyOptions_disposeInternal(
+    JNIEnv*, jobject, jlong handle) {
   auto* cfo = reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(handle);
   assert(cfo != nullptr);
   delete cfo;
@@ -4174,8 +4178,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setWriteBufferSize(
  * Method:    writeBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_writeBufferSize(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_writeBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->write_buffer_size;
 }
@@ -4196,8 +4200,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setMaxWriteBufferNumber(
  * Method:    maxWriteBufferNumber
  * Signature: (J)I
  */
-jint Java_org_rocksdb_ColumnFamilyOptions_maxWriteBufferNumber(JNIEnv*, jobject,
-                                                               jlong jhandle) {
+jint Java_org_rocksdb_ColumnFamilyOptions_maxWriteBufferNumber(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->max_write_buffer_number;
 }
@@ -4302,9 +4306,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setCompactionThreadLimiter(
  * Method:    tableFactoryName
  * Signature: (J)Ljava/lang/String
  */
-jstring Java_org_rocksdb_ColumnFamilyOptions_tableFactoryName(JNIEnv* env,
-                                                              jobject,
-                                                              jlong jhandle) {
+jstring Java_org_rocksdb_ColumnFamilyOptions_tableFactoryName(
+    JNIEnv* env, jobject, jlong jhandle) {
   auto* opt =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle);
   ROCKSDB_NAMESPACE::TableFactory* tf = opt->table_factory.get();
@@ -4428,8 +4431,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setCompressionType(
  * Method:    compressionType
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_ColumnFamilyOptions_compressionType(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jbyte Java_org_rocksdb_ColumnFamilyOptions_compressionType(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* cf_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle);
   return ROCKSDB_NAMESPACE::CompressionTypeJni::toJavaCompressionType(
@@ -4543,8 +4546,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setCompactionStyle(
  * Method:    compactionStyle
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_ColumnFamilyOptions_compactionStyle(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jbyte Java_org_rocksdb_ColumnFamilyOptions_compactionStyle(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* cf_options =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle);
   return ROCKSDB_NAMESPACE::CompactionStyleJni::toJavaCompactionStyle(
@@ -4579,8 +4582,8 @@ jlong Java_org_rocksdb_ColumnFamilyOptions_maxTableFilesSizeFIFO(
  * Method:    numLevels
  * Signature: (J)I
  */
-jint Java_org_rocksdb_ColumnFamilyOptions_numLevels(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jint Java_org_rocksdb_ColumnFamilyOptions_numLevels(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->num_levels;
 }
@@ -4590,9 +4593,8 @@ jint Java_org_rocksdb_ColumnFamilyOptions_numLevels(JNIEnv*, jobject,
  * Method:    setNumLevels
  * Signature: (JI)V
  */
-void Java_org_rocksdb_ColumnFamilyOptions_setNumLevels(JNIEnv*, jobject,
-                                                       jlong jhandle,
-                                                       jint jnum_levels) {
+void Java_org_rocksdb_ColumnFamilyOptions_setNumLevels(
+    JNIEnv*, jobject, jlong jhandle, jint jnum_levels) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->num_levels = static_cast<int>(jnum_levels);
 }
@@ -4614,7 +4616,8 @@ jint Java_org_rocksdb_ColumnFamilyOptions_levelZeroFileNumCompactionTrigger(
  * Signature: (JI)V
  */
 void Java_org_rocksdb_ColumnFamilyOptions_setLevelZeroFileNumCompactionTrigger(
-    JNIEnv*, jobject, jlong jhandle, jint jlevel0_file_num_compaction_trigger) {
+    JNIEnv*, jobject, jlong jhandle,
+    jint jlevel0_file_num_compaction_trigger) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->level0_file_num_compaction_trigger =
       static_cast<int>(jlevel0_file_num_compaction_trigger);
@@ -4671,8 +4674,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setLevelZeroStopWritesTrigger(
  * Method:    targetFileSizeBase
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_targetFileSizeBase(JNIEnv*, jobject,
-                                                              jlong jhandle) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_targetFileSizeBase(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->target_file_size_base;
 }
@@ -4716,9 +4719,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setTargetFileSizeMultiplier(
  * Method:    maxBytesForLevelBase
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_maxBytesForLevelBase(JNIEnv*,
-                                                                jobject,
-                                                                jlong jhandle) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_maxBytesForLevelBase(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->max_bytes_for_level_base;
 }
@@ -4785,8 +4787,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setMaxBytesForLevelMultiplier(
  * Method:    maxCompactionBytes
  * Signature: (J)I
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_maxCompactionBytes(JNIEnv*, jobject,
-                                                              jlong jhandle) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_maxCompactionBytes(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jlong>(
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
           ->max_compaction_bytes);
@@ -4808,8 +4810,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setMaxCompactionBytes(
  * Method:    arenaBlockSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_arenaBlockSize(JNIEnv*, jobject,
-                                                          jlong jhandle) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_arenaBlockSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->arena_block_size;
 }
@@ -4870,7 +4872,8 @@ jlong Java_org_rocksdb_ColumnFamilyOptions_maxSequentialSkipInIterations(
  * Signature: (JJ)V
  */
 void Java_org_rocksdb_ColumnFamilyOptions_setMaxSequentialSkipInIterations(
-    JNIEnv*, jobject, jlong jhandle, jlong jmax_sequential_skip_in_iterations) {
+    JNIEnv*, jobject, jlong jhandle,
+    jlong jmax_sequential_skip_in_iterations) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->max_sequential_skip_in_iterations =
       static_cast<int64_t>(jmax_sequential_skip_in_iterations);
@@ -4955,8 +4958,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setMemtablePrefixBloomSizeRatio(
  * Method:    bloomLocality
  * Signature: (J)I
  */
-jint Java_org_rocksdb_ColumnFamilyOptions_bloomLocality(JNIEnv*, jobject,
-                                                        jlong jhandle) {
+jint Java_org_rocksdb_ColumnFamilyOptions_bloomLocality(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->bloom_locality;
 }
@@ -4977,8 +4980,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setBloomLocality(
  * Method:    maxSuccessiveMerges
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_maxSuccessiveMerges(JNIEnv*, jobject,
-                                                               jlong jhandle) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_maxSuccessiveMerges(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->max_successive_merges;
 }
@@ -5028,9 +5031,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setOptimizeFiltersForHits(
  * Method:    memtableHugePageSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ColumnFamilyOptions_memtableHugePageSize(JNIEnv*,
-                                                                jobject,
-                                                                jlong jhandle) {
+jlong Java_org_rocksdb_ColumnFamilyOptions_memtableHugePageSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->memtable_huge_page_size;
 }
@@ -5117,7 +5119,8 @@ jint Java_org_rocksdb_ColumnFamilyOptions_level0FileNumCompactionTrigger(
  * Signature: (JI)V
  */
 void Java_org_rocksdb_ColumnFamilyOptions_setLevel0FileNumCompactionTrigger(
-    JNIEnv*, jobject, jlong jhandle, jint jlevel0_file_num_compaction_trigger) {
+    JNIEnv*, jobject, jlong jhandle,
+    jint jlevel0_file_num_compaction_trigger) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
       ->level0_file_num_compaction_trigger =
       static_cast<int32_t>(jlevel0_file_num_compaction_trigger);
@@ -5174,8 +5177,7 @@ void Java_org_rocksdb_ColumnFamilyOptions_setLevel0StopWritesTrigger(
  * Method:    maxBytesForLevelMultiplierAdditional
  * Signature: (J)[I
  */
-jintArray
-Java_org_rocksdb_ColumnFamilyOptions_maxBytesForLevelMultiplierAdditional(
+jintArray Java_org_rocksdb_ColumnFamilyOptions_maxBytesForLevelMultiplierAdditional(
     JNIEnv* env, jobject, jlong jhandle) {
   auto mbflma =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle)
@@ -5277,8 +5279,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setCompactionPriority(
  * Method:    compactionPriority
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_ColumnFamilyOptions_compactionPriority(JNIEnv*, jobject,
-                                                              jlong jhandle) {
+jbyte Java_org_rocksdb_ColumnFamilyOptions_compactionPriority(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* cf_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle);
   return ROCKSDB_NAMESPACE::CompactionPriorityJni::toJavaCompactionPriority(
@@ -5302,8 +5304,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setReportBgIoStats(
  * Method:    reportBgIoStats
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ColumnFamilyOptions_reportBgIoStats(JNIEnv*, jobject,
-                                                              jlong jhandle) {
+jboolean Java_org_rocksdb_ColumnFamilyOptions_reportBgIoStats(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* cf_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle);
   return static_cast<bool>(cf_opts->report_bg_io_stats);
@@ -5314,8 +5316,8 @@ jboolean Java_org_rocksdb_ColumnFamilyOptions_reportBgIoStats(JNIEnv*, jobject,
  * Method:    setTtl
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_ColumnFamilyOptions_setTtl(JNIEnv*, jobject,
-                                                 jlong jhandle, jlong jttl) {
+void Java_org_rocksdb_ColumnFamilyOptions_setTtl(
+    JNIEnv*, jobject, jlong jhandle, jlong jttl) {
   auto* cf_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle);
   cf_opts->ttl = static_cast<uint64_t>(jttl);
@@ -5326,8 +5328,8 @@ void Java_org_rocksdb_ColumnFamilyOptions_setTtl(JNIEnv*, jobject,
  * Method:    ttl
  * Signature: (J)J
  */
-JNIEXPORT jlong JNICALL
-Java_org_rocksdb_ColumnFamilyOptions_ttl(JNIEnv*, jobject, jlong jhandle) {
+JNIEXPORT jlong JNICALL Java_org_rocksdb_ColumnFamilyOptions_ttl(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* cf_opts =
       reinterpret_cast<ROCKSDB_NAMESPACE::ColumnFamilyOptions*>(jhandle);
   return static_cast<jlong>(cf_opts->ttl);
@@ -5602,7 +5604,8 @@ Java_org_rocksdb_ColumnFamilyOptions_blobGarbageCollectionForceThreshold(
  * Method:    newDBOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_DBOptions_newDBOptions(JNIEnv*, jclass) {
+jlong Java_org_rocksdb_DBOptions_newDBOptions(
+    JNIEnv*, jclass) {
   auto* dbop = new ROCKSDB_NAMESPACE::DBOptions();
   return reinterpret_cast<jlong>(dbop);
 }
@@ -5612,7 +5615,8 @@ jlong Java_org_rocksdb_DBOptions_newDBOptions(JNIEnv*, jclass) {
  * Method:    copyDBOptions
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_copyDBOptions(JNIEnv*, jclass, jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_copyDBOptions(
+    JNIEnv*, jclass, jlong jhandle) {
   auto new_opt = new ROCKSDB_NAMESPACE::DBOptions(
       *(reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)));
   return reinterpret_cast<jlong>(new_opt);
@@ -5699,8 +5703,8 @@ jlong Java_org_rocksdb_DBOptions_getDBOptionsFromProps__Ljava_lang_String_2(
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_DBOptions_disposeInternal(JNIEnv*, jobject,
-                                                jlong handle) {
+void Java_org_rocksdb_DBOptions_disposeInternal(
+    JNIEnv*, jobject, jlong handle) {
   auto* dbo = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(handle);
   assert(dbo != nullptr);
   delete dbo;
@@ -5711,8 +5715,8 @@ void Java_org_rocksdb_DBOptions_disposeInternal(JNIEnv*, jobject,
  * Method:    optimizeForSmallDb
  * Signature: (J)V
  */
-void Java_org_rocksdb_DBOptions_optimizeForSmallDb(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+void Java_org_rocksdb_DBOptions_optimizeForSmallDb(
+    JNIEnv*, jobject, jlong jhandle) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->OptimizeForSmallDb();
 }
@@ -5722,8 +5726,8 @@ void Java_org_rocksdb_DBOptions_optimizeForSmallDb(JNIEnv*, jobject,
  * Method:    setEnv
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setEnv(JNIEnv*, jobject, jlong jhandle,
-                                       jlong jenv_handle) {
+void Java_org_rocksdb_DBOptions_setEnv(
+    JNIEnv*, jobject, jlong jhandle, jlong jenv_handle) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->env =
       reinterpret_cast<ROCKSDB_NAMESPACE::Env*>(jenv_handle);
 }
@@ -5733,9 +5737,8 @@ void Java_org_rocksdb_DBOptions_setEnv(JNIEnv*, jobject, jlong jhandle,
  * Method:    setIncreaseParallelism
  * Signature: (JI)V
  */
-void Java_org_rocksdb_DBOptions_setIncreaseParallelism(JNIEnv*, jobject,
-                                                       jlong jhandle,
-                                                       jint totalThreads) {
+void Java_org_rocksdb_DBOptions_setIncreaseParallelism(
+    JNIEnv*, jobject, jlong jhandle, jint totalThreads) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->IncreaseParallelism(
       static_cast<int>(totalThreads));
 }
@@ -5745,9 +5748,8 @@ void Java_org_rocksdb_DBOptions_setIncreaseParallelism(JNIEnv*, jobject,
  * Method:    setCreateIfMissing
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setCreateIfMissing(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jboolean flag) {
+void Java_org_rocksdb_DBOptions_setCreateIfMissing(
+    JNIEnv*, jobject, jlong jhandle, jboolean flag) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->create_if_missing =
       flag;
 }
@@ -5757,8 +5759,8 @@ void Java_org_rocksdb_DBOptions_setCreateIfMissing(JNIEnv*, jobject,
  * Method:    createIfMissing
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_createIfMissing(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_createIfMissing(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->create_if_missing;
 }
@@ -5768,9 +5770,8 @@ jboolean Java_org_rocksdb_DBOptions_createIfMissing(JNIEnv*, jobject,
  * Method:    setCreateMissingColumnFamilies
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setCreateMissingColumnFamilies(JNIEnv*, jobject,
-                                                               jlong jhandle,
-                                                               jboolean flag) {
+void Java_org_rocksdb_DBOptions_setCreateMissingColumnFamilies(
+    JNIEnv*, jobject, jlong jhandle, jboolean flag) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->create_missing_column_families = flag;
 }
@@ -5780,9 +5781,8 @@ void Java_org_rocksdb_DBOptions_setCreateMissingColumnFamilies(JNIEnv*, jobject,
  * Method:    createMissingColumnFamilies
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_createMissingColumnFamilies(JNIEnv*,
-                                                                jobject,
-                                                                jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_createMissingColumnFamilies(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->create_missing_column_families;
 }
@@ -5792,9 +5792,8 @@ jboolean Java_org_rocksdb_DBOptions_createMissingColumnFamilies(JNIEnv*,
  * Method:    setErrorIfExists
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setErrorIfExists(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean error_if_exists) {
+void Java_org_rocksdb_DBOptions_setErrorIfExists(
+    JNIEnv*, jobject, jlong jhandle, jboolean error_if_exists) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->error_if_exists =
       static_cast<bool>(error_if_exists);
 }
@@ -5804,8 +5803,8 @@ void Java_org_rocksdb_DBOptions_setErrorIfExists(JNIEnv*, jobject,
  * Method:    errorIfExists
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_errorIfExists(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_errorIfExists(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->error_if_exists;
 }
@@ -5815,9 +5814,8 @@ jboolean Java_org_rocksdb_DBOptions_errorIfExists(JNIEnv*, jobject,
  * Method:    setParanoidChecks
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setParanoidChecks(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean paranoid_checks) {
+void Java_org_rocksdb_DBOptions_setParanoidChecks(
+    JNIEnv*, jobject, jlong jhandle, jboolean paranoid_checks) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->paranoid_checks =
       static_cast<bool>(paranoid_checks);
 }
@@ -5827,8 +5825,8 @@ void Java_org_rocksdb_DBOptions_setParanoidChecks(JNIEnv*, jobject,
  * Method:    paranoidChecks
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_paranoidChecks(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_paranoidChecks(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->paranoid_checks;
 }
@@ -5838,8 +5836,8 @@ jboolean Java_org_rocksdb_DBOptions_paranoidChecks(JNIEnv*, jobject,
  * Method:    setRateLimiter
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setRateLimiter(JNIEnv*, jobject, jlong jhandle,
-                                               jlong jrate_limiter_handle) {
+void Java_org_rocksdb_DBOptions_setRateLimiter(
+    JNIEnv*, jobject, jlong jhandle, jlong jrate_limiter_handle) {
   std::shared_ptr<ROCKSDB_NAMESPACE::RateLimiter>* pRateLimiter =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::RateLimiter>*>(
           jrate_limiter_handle);
@@ -5866,8 +5864,8 @@ void Java_org_rocksdb_DBOptions_setSstFileManager(
  * Method:    setLogger
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setLogger(JNIEnv*, jobject, jlong jhandle,
-                                          jlong jlogger_handle) {
+void Java_org_rocksdb_DBOptions_setLogger(
+    JNIEnv*, jobject, jlong jhandle, jlong jlogger_handle) {
   std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>* pLogger =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::LoggerJniCallback>*>(
           jlogger_handle);
@@ -5879,8 +5877,8 @@ void Java_org_rocksdb_DBOptions_setLogger(JNIEnv*, jobject, jlong jhandle,
  * Method:    setInfoLogLevel
  * Signature: (JB)V
  */
-void Java_org_rocksdb_DBOptions_setInfoLogLevel(JNIEnv*, jobject, jlong jhandle,
-                                                jbyte jlog_level) {
+void Java_org_rocksdb_DBOptions_setInfoLogLevel(
+    JNIEnv*, jobject, jlong jhandle, jbyte jlog_level) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->info_log_level =
       static_cast<ROCKSDB_NAMESPACE::InfoLogLevel>(jlog_level);
 }
@@ -5890,7 +5888,8 @@ void Java_org_rocksdb_DBOptions_setInfoLogLevel(JNIEnv*, jobject, jlong jhandle,
  * Method:    infoLogLevel
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_DBOptions_infoLogLevel(JNIEnv*, jobject, jlong jhandle) {
+jbyte Java_org_rocksdb_DBOptions_infoLogLevel(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jbyte>(
       reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->info_log_level);
 }
@@ -5900,9 +5899,8 @@ jbyte Java_org_rocksdb_DBOptions_infoLogLevel(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setMaxTotalWalSize
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setMaxTotalWalSize(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jlong jmax_total_wal_size) {
+void Java_org_rocksdb_DBOptions_setMaxTotalWalSize(
+    JNIEnv*, jobject, jlong jhandle, jlong jmax_total_wal_size) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->max_total_wal_size =
       static_cast<jlong>(jmax_total_wal_size);
 }
@@ -5912,8 +5910,8 @@ void Java_org_rocksdb_DBOptions_setMaxTotalWalSize(JNIEnv*, jobject,
  * Method:    maxTotalWalSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_maxTotalWalSize(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_maxTotalWalSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_total_wal_size;
 }
@@ -5923,8 +5921,8 @@ jlong Java_org_rocksdb_DBOptions_maxTotalWalSize(JNIEnv*, jobject,
  * Method:    setMaxOpenFiles
  * Signature: (JI)V
  */
-void Java_org_rocksdb_DBOptions_setMaxOpenFiles(JNIEnv*, jobject, jlong jhandle,
-                                                jint max_open_files) {
+void Java_org_rocksdb_DBOptions_setMaxOpenFiles(
+    JNIEnv*, jobject, jlong jhandle, jint max_open_files) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->max_open_files =
       static_cast<int>(max_open_files);
 }
@@ -5934,7 +5932,8 @@ void Java_org_rocksdb_DBOptions_setMaxOpenFiles(JNIEnv*, jobject, jlong jhandle,
  * Method:    maxOpenFiles
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_maxOpenFiles(JNIEnv*, jobject, jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_maxOpenFiles(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_open_files;
 }
@@ -5955,8 +5954,8 @@ void Java_org_rocksdb_DBOptions_setMaxFileOpeningThreads(
  * Method:    maxFileOpeningThreads
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_maxFileOpeningThreads(JNIEnv*, jobject,
-                                                      jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_maxFileOpeningThreads(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<int>(opt->max_file_opening_threads);
 }
@@ -5966,8 +5965,8 @@ jint Java_org_rocksdb_DBOptions_maxFileOpeningThreads(JNIEnv*, jobject,
  * Method:    setStatistics
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setStatistics(JNIEnv*, jobject, jlong jhandle,
-                                              jlong jstatistics_handle) {
+void Java_org_rocksdb_DBOptions_setStatistics(
+    JNIEnv*, jobject, jlong jhandle, jlong jstatistics_handle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   auto* pSptr =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::StatisticsJni>*>(
@@ -5980,7 +5979,8 @@ void Java_org_rocksdb_DBOptions_setStatistics(JNIEnv*, jobject, jlong jhandle,
  * Method:    statistics
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_statistics(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_statistics(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   std::shared_ptr<ROCKSDB_NAMESPACE::Statistics> sptr = opt->statistics;
   if (sptr == nullptr) {
@@ -5997,8 +5997,8 @@ jlong Java_org_rocksdb_DBOptions_statistics(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setUseFsync
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setUseFsync(JNIEnv*, jobject, jlong jhandle,
-                                            jboolean use_fsync) {
+void Java_org_rocksdb_DBOptions_setUseFsync(
+    JNIEnv*, jobject, jlong jhandle, jboolean use_fsync) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->use_fsync =
       static_cast<bool>(use_fsync);
 }
@@ -6008,7 +6008,8 @@ void Java_org_rocksdb_DBOptions_setUseFsync(JNIEnv*, jobject, jlong jhandle,
  * Method:    useFsync
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_useFsync(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_useFsync(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->use_fsync;
 }
 
@@ -6017,9 +6018,9 @@ jboolean Java_org_rocksdb_DBOptions_useFsync(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setDbPaths
  * Signature: (J[Ljava/lang/String;[J)V
  */
-void Java_org_rocksdb_DBOptions_setDbPaths(JNIEnv* env, jobject, jlong jhandle,
-                                           jobjectArray jpaths,
-                                           jlongArray jtarget_sizes) {
+void Java_org_rocksdb_DBOptions_setDbPaths(
+    JNIEnv* env, jobject, jlong jhandle, jobjectArray jpaths,
+    jlongArray jtarget_sizes) {
   std::vector<ROCKSDB_NAMESPACE::DbPath> db_paths;
   jlong* ptr_jtarget_size = env->GetLongArrayElements(jtarget_sizes, nullptr);
   if (ptr_jtarget_size == nullptr) {
@@ -6063,7 +6064,8 @@ void Java_org_rocksdb_DBOptions_setDbPaths(JNIEnv* env, jobject, jlong jhandle,
  * Method:    dbPathsLen
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_dbPathsLen(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_dbPathsLen(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jlong>(opt->db_paths.size());
 }
@@ -6073,9 +6075,9 @@ jlong Java_org_rocksdb_DBOptions_dbPathsLen(JNIEnv*, jobject, jlong jhandle) {
  * Method:    dbPaths
  * Signature: (J[Ljava/lang/String;[J)V
  */
-void Java_org_rocksdb_DBOptions_dbPaths(JNIEnv* env, jobject, jlong jhandle,
-                                        jobjectArray jpaths,
-                                        jlongArray jtarget_sizes) {
+void Java_org_rocksdb_DBOptions_dbPaths(
+    JNIEnv* env, jobject, jlong jhandle, jobjectArray jpaths,
+    jlongArray jtarget_sizes) {
   jboolean is_copy;
   jlong* ptr_jtarget_size = env->GetLongArrayElements(jtarget_sizes, &is_copy);
   if (ptr_jtarget_size == nullptr) {
@@ -6114,8 +6116,8 @@ void Java_org_rocksdb_DBOptions_dbPaths(JNIEnv* env, jobject, jlong jhandle,
  * Method:    setDbLogDir
  * Signature: (JLjava/lang/String)V
  */
-void Java_org_rocksdb_DBOptions_setDbLogDir(JNIEnv* env, jobject, jlong jhandle,
-                                            jstring jdb_log_dir) {
+void Java_org_rocksdb_DBOptions_setDbLogDir(
+    JNIEnv* env, jobject, jlong jhandle, jstring jdb_log_dir) {
   const char* log_dir = env->GetStringUTFChars(jdb_log_dir, nullptr);
   if (log_dir == nullptr) {
     // exception thrown: OutOfMemoryError
@@ -6132,8 +6134,8 @@ void Java_org_rocksdb_DBOptions_setDbLogDir(JNIEnv* env, jobject, jlong jhandle,
  * Method:    dbLogDir
  * Signature: (J)Ljava/lang/String
  */
-jstring Java_org_rocksdb_DBOptions_dbLogDir(JNIEnv* env, jobject,
-                                            jlong jhandle) {
+jstring Java_org_rocksdb_DBOptions_dbLogDir(
+    JNIEnv* env, jobject, jlong jhandle) {
   return env->NewStringUTF(
       reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
           ->db_log_dir.c_str());
@@ -6144,8 +6146,8 @@ jstring Java_org_rocksdb_DBOptions_dbLogDir(JNIEnv* env, jobject,
  * Method:    setWalDir
  * Signature: (JLjava/lang/String)V
  */
-void Java_org_rocksdb_DBOptions_setWalDir(JNIEnv* env, jobject, jlong jhandle,
-                                          jstring jwal_dir) {
+void Java_org_rocksdb_DBOptions_setWalDir(
+    JNIEnv* env, jobject, jlong jhandle, jstring jwal_dir) {
   const char* wal_dir = env->GetStringUTFChars(jwal_dir, 0);
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->wal_dir.assign(
       wal_dir);
@@ -6157,7 +6159,8 @@ void Java_org_rocksdb_DBOptions_setWalDir(JNIEnv* env, jobject, jlong jhandle,
  * Method:    walDir
  * Signature: (J)Ljava/lang/String
  */
-jstring Java_org_rocksdb_DBOptions_walDir(JNIEnv* env, jobject, jlong jhandle) {
+jstring Java_org_rocksdb_DBOptions_walDir(
+    JNIEnv* env, jobject, jlong jhandle) {
   return env->NewStringUTF(
       reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
           ->wal_dir.c_str());
@@ -6190,9 +6193,8 @@ jlong Java_org_rocksdb_DBOptions_deleteObsoleteFilesPeriodMicros(
  * Method:    setBaseBackgroundCompactions
  * Signature: (JI)V
  */
-void Java_org_rocksdb_DBOptions_setBaseBackgroundCompactions(JNIEnv*, jobject,
-                                                             jlong jhandle,
-                                                             jint max) {
+void Java_org_rocksdb_DBOptions_setBaseBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle, jint max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->base_background_compactions = static_cast<int>(max);
 }
@@ -6202,8 +6204,8 @@ void Java_org_rocksdb_DBOptions_setBaseBackgroundCompactions(JNIEnv*, jobject,
  * Method:    baseBackgroundCompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_baseBackgroundCompactions(JNIEnv*, jobject,
-                                                          jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_baseBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->base_background_compactions;
 }
@@ -6213,9 +6215,8 @@ jint Java_org_rocksdb_DBOptions_baseBackgroundCompactions(JNIEnv*, jobject,
  * Method:    setMaxBackgroundCompactions
  * Signature: (JI)V
  */
-void Java_org_rocksdb_DBOptions_setMaxBackgroundCompactions(JNIEnv*, jobject,
-                                                            jlong jhandle,
-                                                            jint max) {
+void Java_org_rocksdb_DBOptions_setMaxBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle, jint max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_background_compactions = static_cast<int>(max);
 }
@@ -6225,8 +6226,8 @@ void Java_org_rocksdb_DBOptions_setMaxBackgroundCompactions(JNIEnv*, jobject,
  * Method:    maxBackgroundCompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_maxBackgroundCompactions(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_maxBackgroundCompactions(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_background_compactions;
 }
@@ -6236,8 +6237,8 @@ jint Java_org_rocksdb_DBOptions_maxBackgroundCompactions(JNIEnv*, jobject,
  * Method:    setMaxSubcompactions
  * Signature: (JI)V
  */
-void Java_org_rocksdb_DBOptions_setMaxSubcompactions(JNIEnv*, jobject,
-                                                     jlong jhandle, jint max) {
+void Java_org_rocksdb_DBOptions_setMaxSubcompactions(
+    JNIEnv*, jobject, jlong jhandle, jint max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->max_subcompactions =
       static_cast<int32_t>(max);
 }
@@ -6247,8 +6248,8 @@ void Java_org_rocksdb_DBOptions_setMaxSubcompactions(JNIEnv*, jobject,
  * Method:    maxSubcompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_maxSubcompactions(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_maxSubcompactions(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_subcompactions;
 }
@@ -6269,8 +6270,8 @@ void Java_org_rocksdb_DBOptions_setMaxBackgroundFlushes(
  * Method:    maxBackgroundFlushes
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_maxBackgroundFlushes(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_maxBackgroundFlushes(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_background_flushes;
 }
@@ -6280,9 +6281,8 @@ jint Java_org_rocksdb_DBOptions_maxBackgroundFlushes(JNIEnv*, jobject,
  * Method:    setMaxBackgroundJobs
  * Signature: (JI)V
  */
-void Java_org_rocksdb_DBOptions_setMaxBackgroundJobs(JNIEnv*, jobject,
-                                                     jlong jhandle,
-                                                     jint max_background_jobs) {
+void Java_org_rocksdb_DBOptions_setMaxBackgroundJobs(
+    JNIEnv*, jobject, jlong jhandle, jint max_background_jobs) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_background_jobs = static_cast<int>(max_background_jobs);
 }
@@ -6292,8 +6292,8 @@ void Java_org_rocksdb_DBOptions_setMaxBackgroundJobs(JNIEnv*, jobject,
  * Method:    maxBackgroundJobs
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_maxBackgroundJobs(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_maxBackgroundJobs(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_background_jobs;
 }
@@ -6303,9 +6303,8 @@ jint Java_org_rocksdb_DBOptions_maxBackgroundJobs(JNIEnv*, jobject,
  * Method:    setMaxLogFileSize
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setMaxLogFileSize(JNIEnv* env, jobject,
-                                                  jlong jhandle,
-                                                  jlong max_log_file_size) {
+void Java_org_rocksdb_DBOptions_setMaxLogFileSize(
+    JNIEnv* env, jobject, jlong jhandle, jlong max_log_file_size) {
   auto s =
       ROCKSDB_NAMESPACE::JniUtil::check_if_jlong_fits_size_t(max_log_file_size);
   if (s.ok()) {
@@ -6321,8 +6320,8 @@ void Java_org_rocksdb_DBOptions_setMaxLogFileSize(JNIEnv* env, jobject,
  * Method:    maxLogFileSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_maxLogFileSize(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_maxLogFileSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_log_file_size;
 }
@@ -6349,8 +6348,8 @@ void Java_org_rocksdb_DBOptions_setLogFileTimeToRoll(
  * Method:    logFileTimeToRoll
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_logFileTimeToRoll(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_logFileTimeToRoll(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->log_file_time_to_roll;
 }
@@ -6360,9 +6359,8 @@ jlong Java_org_rocksdb_DBOptions_logFileTimeToRoll(JNIEnv*, jobject,
  * Method:    setKeepLogFileNum
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setKeepLogFileNum(JNIEnv* env, jobject,
-                                                  jlong jhandle,
-                                                  jlong keep_log_file_num) {
+void Java_org_rocksdb_DBOptions_setKeepLogFileNum(
+    JNIEnv* env, jobject, jlong jhandle, jlong keep_log_file_num) {
   auto s =
       ROCKSDB_NAMESPACE::JniUtil::check_if_jlong_fits_size_t(keep_log_file_num);
   if (s.ok()) {
@@ -6378,8 +6376,8 @@ void Java_org_rocksdb_DBOptions_setKeepLogFileNum(JNIEnv* env, jobject,
  * Method:    keepLogFileNum
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_keepLogFileNum(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_keepLogFileNum(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->keep_log_file_num;
 }
@@ -6406,8 +6404,8 @@ void Java_org_rocksdb_DBOptions_setRecycleLogFileNum(
  * Method:    recycleLogFileNum
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_recycleLogFileNum(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_recycleLogFileNum(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->recycle_log_file_num;
 }
@@ -6428,8 +6426,8 @@ void Java_org_rocksdb_DBOptions_setMaxManifestFileSize(
  * Method:    maxManifestFileSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_maxManifestFileSize(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_maxManifestFileSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->max_manifest_file_size;
 }
@@ -6450,8 +6448,8 @@ void Java_org_rocksdb_DBOptions_setTableCacheNumshardbits(
  * Method:    tableCacheNumshardbits
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_tableCacheNumshardbits(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_tableCacheNumshardbits(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->table_cache_numshardbits;
 }
@@ -6461,9 +6459,8 @@ jint Java_org_rocksdb_DBOptions_tableCacheNumshardbits(JNIEnv*, jobject,
  * Method:    setWalTtlSeconds
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setWalTtlSeconds(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jlong WAL_ttl_seconds) {
+void Java_org_rocksdb_DBOptions_setWalTtlSeconds(
+    JNIEnv*, jobject, jlong jhandle, jlong WAL_ttl_seconds) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->WAL_ttl_seconds =
       static_cast<int64_t>(WAL_ttl_seconds);
 }
@@ -6473,8 +6470,8 @@ void Java_org_rocksdb_DBOptions_setWalTtlSeconds(JNIEnv*, jobject,
  * Method:    walTtlSeconds
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_walTtlSeconds(JNIEnv*, jobject,
-                                               jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_walTtlSeconds(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->WAL_ttl_seconds;
 }
@@ -6484,9 +6481,8 @@ jlong Java_org_rocksdb_DBOptions_walTtlSeconds(JNIEnv*, jobject,
  * Method:    setWalSizeLimitMB
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setWalSizeLimitMB(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jlong WAL_size_limit_MB) {
+void Java_org_rocksdb_DBOptions_setWalSizeLimitMB(
+    JNIEnv*, jobject, jlong jhandle, jlong WAL_size_limit_MB) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->WAL_size_limit_MB =
       static_cast<int64_t>(WAL_size_limit_MB);
 }
@@ -6496,8 +6492,8 @@ void Java_org_rocksdb_DBOptions_setWalSizeLimitMB(JNIEnv*, jobject,
  * Method:    walTtlSeconds
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_walSizeLimitMB(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_walSizeLimitMB(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->WAL_size_limit_MB;
 }
@@ -6547,8 +6543,8 @@ void Java_org_rocksdb_DBOptions_setManifestPreallocationSize(
  * Method:    manifestPreallocationSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_manifestPreallocationSize(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_manifestPreallocationSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->manifest_preallocation_size;
 }
@@ -6558,8 +6554,8 @@ jlong Java_org_rocksdb_DBOptions_manifestPreallocationSize(JNIEnv*, jobject,
  * Method:    useDirectReads
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_useDirectReads(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_useDirectReads(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->use_direct_reads;
 }
@@ -6569,9 +6565,8 @@ jboolean Java_org_rocksdb_DBOptions_useDirectReads(JNIEnv*, jobject,
  * Method:    setUseDirectReads
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setUseDirectReads(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean use_direct_reads) {
+void Java_org_rocksdb_DBOptions_setUseDirectReads(
+    JNIEnv*, jobject, jlong jhandle, jboolean use_direct_reads) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->use_direct_reads =
       static_cast<bool>(use_direct_reads);
 }
@@ -6605,9 +6600,8 @@ void Java_org_rocksdb_DBOptions_setUseDirectIoForFlushAndCompaction(
  * Method:    setAllowFAllocate
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setAllowFAllocate(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean jallow_fallocate) {
+void Java_org_rocksdb_DBOptions_setAllowFAllocate(
+    JNIEnv*, jobject, jlong jhandle, jboolean jallow_fallocate) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->allow_fallocate =
       static_cast<bool>(jallow_fallocate);
 }
@@ -6617,8 +6611,8 @@ void Java_org_rocksdb_DBOptions_setAllowFAllocate(JNIEnv*, jobject,
  * Method:    allowFAllocate
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_allowFAllocate(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_allowFAllocate(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->allow_fallocate);
 }
@@ -6628,9 +6622,8 @@ jboolean Java_org_rocksdb_DBOptions_allowFAllocate(JNIEnv*, jobject,
  * Method:    setAllowMmapReads
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setAllowMmapReads(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean allow_mmap_reads) {
+void Java_org_rocksdb_DBOptions_setAllowMmapReads(
+    JNIEnv*, jobject, jlong jhandle, jboolean allow_mmap_reads) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->allow_mmap_reads =
       static_cast<bool>(allow_mmap_reads);
 }
@@ -6640,8 +6633,8 @@ void Java_org_rocksdb_DBOptions_setAllowMmapReads(JNIEnv*, jobject,
  * Method:    allowMmapReads
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_allowMmapReads(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_allowMmapReads(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->allow_mmap_reads;
 }
@@ -6651,9 +6644,8 @@ jboolean Java_org_rocksdb_DBOptions_allowMmapReads(JNIEnv*, jobject,
  * Method:    setAllowMmapWrites
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setAllowMmapWrites(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jboolean allow_mmap_writes) {
+void Java_org_rocksdb_DBOptions_setAllowMmapWrites(
+    JNIEnv*, jobject, jlong jhandle, jboolean allow_mmap_writes) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->allow_mmap_writes =
       static_cast<bool>(allow_mmap_writes);
 }
@@ -6663,8 +6655,8 @@ void Java_org_rocksdb_DBOptions_setAllowMmapWrites(JNIEnv*, jobject,
  * Method:    allowMmapWrites
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_allowMmapWrites(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_allowMmapWrites(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->allow_mmap_writes;
 }
@@ -6685,8 +6677,8 @@ void Java_org_rocksdb_DBOptions_setIsFdCloseOnExec(
  * Method:    isFdCloseOnExec
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_isFdCloseOnExec(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_isFdCloseOnExec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->is_fd_close_on_exec;
 }
@@ -6708,8 +6700,8 @@ void Java_org_rocksdb_DBOptions_setStatsDumpPeriodSec(
  * Method:    statsDumpPeriodSec
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_statsDumpPeriodSec(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_statsDumpPeriodSec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->stats_dump_period_sec;
 }
@@ -6731,8 +6723,8 @@ void Java_org_rocksdb_DBOptions_setStatsPersistPeriodSec(
  * Method:    statsPersistPeriodSec
  * Signature: (J)I
  */
-jint Java_org_rocksdb_DBOptions_statsPersistPeriodSec(JNIEnv*, jobject,
-                                                      jlong jhandle) {
+jint Java_org_rocksdb_DBOptions_statsPersistPeriodSec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->stats_persist_period_sec;
 }
@@ -6754,8 +6746,8 @@ void Java_org_rocksdb_DBOptions_setStatsHistoryBufferSize(
  * Method:    statsHistoryBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_statsHistoryBufferSize(JNIEnv*, jobject,
-                                                        jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_statsHistoryBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->stats_history_buffer_size;
 }
@@ -6776,8 +6768,8 @@ void Java_org_rocksdb_DBOptions_setAdviseRandomOnOpen(
  * Method:    adviseRandomOnOpen
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_adviseRandomOnOpen(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_adviseRandomOnOpen(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->advise_random_on_open;
 }
@@ -6813,8 +6805,8 @@ void Java_org_rocksdb_DBOptions_setWriteBufferManager(
  * Method:    dbWriteBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_dbWriteBufferSize(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_dbWriteBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jlong>(opt->db_write_buffer_size);
 }
@@ -6836,8 +6828,8 @@ void Java_org_rocksdb_DBOptions_setAccessHintOnCompactionStart(
  * Method:    accessHintOnCompactionStart
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_DBOptions_accessHintOnCompactionStart(JNIEnv*, jobject,
-                                                             jlong jhandle) {
+jbyte Java_org_rocksdb_DBOptions_accessHintOnCompactionStart(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return ROCKSDB_NAMESPACE::AccessHintJni::toJavaAccessHint(
       opt->access_hint_on_compaction_start);
@@ -6884,8 +6876,8 @@ void Java_org_rocksdb_DBOptions_setCompactionReadaheadSize(
  * Method:    compactionReadaheadSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_compactionReadaheadSize(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_compactionReadaheadSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jlong>(opt->compaction_readahead_size);
 }
@@ -6907,8 +6899,8 @@ void Java_org_rocksdb_DBOptions_setRandomAccessMaxBufferSize(
  * Method:    randomAccessMaxBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_randomAccessMaxBufferSize(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_randomAccessMaxBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jlong>(opt->random_access_max_buffer_size);
 }
@@ -6930,8 +6922,8 @@ void Java_org_rocksdb_DBOptions_setWritableFileMaxBufferSize(
  * Method:    writableFileMaxBufferSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_writableFileMaxBufferSize(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_writableFileMaxBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jlong>(opt->writable_file_max_buffer_size);
 }
@@ -6952,8 +6944,8 @@ void Java_org_rocksdb_DBOptions_setUseAdaptiveMutex(
  * Method:    useAdaptiveMutex
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_useAdaptiveMutex(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_useAdaptiveMutex(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->use_adaptive_mutex;
 }
@@ -6963,8 +6955,8 @@ jboolean Java_org_rocksdb_DBOptions_useAdaptiveMutex(JNIEnv*, jobject,
  * Method:    setBytesPerSync
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setBytesPerSync(JNIEnv*, jobject, jlong jhandle,
-                                                jlong bytes_per_sync) {
+void Java_org_rocksdb_DBOptions_setBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle, jlong bytes_per_sync) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->bytes_per_sync =
       static_cast<int64_t>(bytes_per_sync);
 }
@@ -6974,7 +6966,8 @@ void Java_org_rocksdb_DBOptions_setBytesPerSync(JNIEnv*, jobject, jlong jhandle,
  * Method:    bytesPerSync
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_bytesPerSync(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_bytesPerSync(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->bytes_per_sync;
 }
@@ -6984,9 +6977,8 @@ jlong Java_org_rocksdb_DBOptions_bytesPerSync(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setWalBytesPerSync
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setWalBytesPerSync(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jlong jwal_bytes_per_sync) {
+void Java_org_rocksdb_DBOptions_setWalBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle, jlong jwal_bytes_per_sync) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)->wal_bytes_per_sync =
       static_cast<int64_t>(jwal_bytes_per_sync);
 }
@@ -6996,8 +6988,8 @@ void Java_org_rocksdb_DBOptions_setWalBytesPerSync(JNIEnv*, jobject,
  * Method:    walBytesPerSync
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_walBytesPerSync(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_walBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jlong>(opt->wal_bytes_per_sync);
 }
@@ -7018,8 +7010,8 @@ void Java_org_rocksdb_DBOptions_setStrictBytesPerSync(
  * Method:    strictBytesPerSync
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_strictBytesPerSync(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_strictBytesPerSync(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jboolean>(
       reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
           ->strict_bytes_per_sync);
@@ -7053,9 +7045,8 @@ jobjectArray Java_org_rocksdb_DBOptions_eventListeners(JNIEnv* env, jclass,
  * Method:    setDelayedWriteRate
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setDelayedWriteRate(JNIEnv*, jobject,
-                                                    jlong jhandle,
-                                                    jlong jdelayed_write_rate) {
+void Java_org_rocksdb_DBOptions_setDelayedWriteRate(
+    JNIEnv*, jobject, jlong jhandle, jlong jdelayed_write_rate) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   opt->delayed_write_rate = static_cast<uint64_t>(jdelayed_write_rate);
 }
@@ -7065,8 +7056,8 @@ void Java_org_rocksdb_DBOptions_setDelayedWriteRate(JNIEnv*, jobject,
  * Method:    delayedWriteRate
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_delayedWriteRate(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_delayedWriteRate(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jlong>(opt->delayed_write_rate);
 }
@@ -7087,8 +7078,8 @@ void Java_org_rocksdb_DBOptions_setEnablePipelinedWrite(
  * Method:    enablePipelinedWrite
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_enablePipelinedWrite(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_enablePipelinedWrite(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->enable_pipelined_write);
 }
@@ -7098,9 +7089,8 @@ jboolean Java_org_rocksdb_DBOptions_enablePipelinedWrite(JNIEnv*, jobject,
  * Method:    setUnorderedWrite
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setUnorderedWrite(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean junordered_write) {
+void Java_org_rocksdb_DBOptions_setUnorderedWrite(
+        JNIEnv*, jobject, jlong jhandle, jboolean junordered_write) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   opt->unordered_write = junordered_write == JNI_TRUE;
 }
@@ -7110,11 +7100,12 @@ void Java_org_rocksdb_DBOptions_setUnorderedWrite(JNIEnv*, jobject,
  * Method:    unorderedWrite
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_unorderedWrite(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_unorderedWrite(
+        JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->unordered_write);
 }
+
 
 /*
  * Class:     org_rocksdb_DBOptions
@@ -7132,8 +7123,8 @@ void Java_org_rocksdb_DBOptions_setEnableThreadTracking(
  * Method:    enableThreadTracking
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_enableThreadTracking(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_enableThreadTracking(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->enable_thread_tracking);
 }
@@ -7187,9 +7178,8 @@ jboolean Java_org_rocksdb_DBOptions_enableWriteThreadAdaptiveYield(
  * Method:    setWriteThreadMaxYieldUsec
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setWriteThreadMaxYieldUsec(JNIEnv*, jobject,
-                                                           jlong jhandle,
-                                                           jlong max) {
+void Java_org_rocksdb_DBOptions_setWriteThreadMaxYieldUsec(
+    JNIEnv*, jobject, jlong jhandle, jlong max) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->write_thread_max_yield_usec = static_cast<int64_t>(max);
 }
@@ -7199,8 +7189,8 @@ void Java_org_rocksdb_DBOptions_setWriteThreadMaxYieldUsec(JNIEnv*, jobject,
  * Method:    writeThreadMaxYieldUsec
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_writeThreadMaxYieldUsec(JNIEnv*, jobject,
-                                                         jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_writeThreadMaxYieldUsec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->write_thread_max_yield_usec;
 }
@@ -7210,9 +7200,8 @@ jlong Java_org_rocksdb_DBOptions_writeThreadMaxYieldUsec(JNIEnv*, jobject,
  * Method:    setWriteThreadSlowYieldUsec
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setWriteThreadSlowYieldUsec(JNIEnv*, jobject,
-                                                            jlong jhandle,
-                                                            jlong slow) {
+void Java_org_rocksdb_DBOptions_setWriteThreadSlowYieldUsec(
+    JNIEnv*, jobject, jlong jhandle, jlong slow) {
   reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->write_thread_slow_yield_usec = static_cast<int64_t>(slow);
 }
@@ -7222,8 +7211,8 @@ void Java_org_rocksdb_DBOptions_setWriteThreadSlowYieldUsec(JNIEnv*, jobject,
  * Method:    writeThreadSlowYieldUsec
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_DBOptions_writeThreadSlowYieldUsec(JNIEnv*, jobject,
-                                                          jlong jhandle) {
+jlong Java_org_rocksdb_DBOptions_writeThreadSlowYieldUsec(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle)
       ->write_thread_slow_yield_usec;
 }
@@ -7245,8 +7234,8 @@ void Java_org_rocksdb_DBOptions_setSkipStatsUpdateOnDbOpen(
  * Method:    skipStatsUpdateOnDbOpen
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_skipStatsUpdateOnDbOpen(JNIEnv*, jobject,
-                                                            jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_skipStatsUpdateOnDbOpen(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->skip_stats_update_on_db_open);
 }
@@ -7293,8 +7282,8 @@ void Java_org_rocksdb_DBOptions_setWalRecoveryMode(
  * Method:    walRecoveryMode
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_DBOptions_walRecoveryMode(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jbyte Java_org_rocksdb_DBOptions_walRecoveryMode(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return ROCKSDB_NAMESPACE::WALRecoveryModeJni::toJavaWALRecoveryMode(
       opt->wal_recovery_mode);
@@ -7305,8 +7294,8 @@ jbyte Java_org_rocksdb_DBOptions_walRecoveryMode(JNIEnv*, jobject,
  * Method:    setAllow2pc
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setAllow2pc(JNIEnv*, jobject, jlong jhandle,
-                                            jboolean jallow_2pc) {
+void Java_org_rocksdb_DBOptions_setAllow2pc(
+    JNIEnv*, jobject, jlong jhandle, jboolean jallow_2pc) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   opt->allow_2pc = static_cast<bool>(jallow_2pc);
 }
@@ -7316,7 +7305,8 @@ void Java_org_rocksdb_DBOptions_setAllow2pc(JNIEnv*, jobject, jlong jhandle,
  * Method:    allow2pc
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_allow2pc(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_allow2pc(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->allow_2pc);
 }
@@ -7326,8 +7316,8 @@ jboolean Java_org_rocksdb_DBOptions_allow2pc(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setRowCache
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setRowCache(JNIEnv*, jobject, jlong jhandle,
-                                            jlong jrow_cache_handle) {
+void Java_org_rocksdb_DBOptions_setRowCache(
+    JNIEnv*, jobject, jlong jhandle, jlong jrow_cache_handle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   auto* row_cache =
       reinterpret_cast<std::shared_ptr<ROCKSDB_NAMESPACE::Cache>*>(
@@ -7340,8 +7330,8 @@ void Java_org_rocksdb_DBOptions_setRowCache(JNIEnv*, jobject, jlong jhandle,
  * Method:    setWalFilter
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_DBOptions_setWalFilter(JNIEnv*, jobject, jlong jhandle,
-                                             jlong jwal_filter_handle) {
+void Java_org_rocksdb_DBOptions_setWalFilter(
+    JNIEnv*, jobject, jlong jhandle, jlong jwal_filter_handle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   auto* wal_filter = reinterpret_cast<ROCKSDB_NAMESPACE::WalFilterJniCallback*>(
       jwal_filter_handle);
@@ -7365,8 +7355,8 @@ void Java_org_rocksdb_DBOptions_setFailIfOptionsFileError(
  * Method:    failIfOptionsFileError
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_failIfOptionsFileError(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_failIfOptionsFileError(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->fail_if_options_file_error);
 }
@@ -7387,8 +7377,8 @@ void Java_org_rocksdb_DBOptions_setDumpMallocStats(
  * Method:    dumpMallocStats
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_dumpMallocStats(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_dumpMallocStats(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->dump_malloc_stats);
 }
@@ -7410,8 +7400,8 @@ void Java_org_rocksdb_DBOptions_setAvoidFlushDuringRecovery(
  * Method:    avoidFlushDuringRecovery
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_avoidFlushDuringRecovery(JNIEnv*, jobject,
-                                                             jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_avoidFlushDuringRecovery(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->avoid_flush_during_recovery);
 }
@@ -7432,8 +7422,8 @@ void Java_org_rocksdb_DBOptions_setAllowIngestBehind(
  * Method:    allowIngestBehind
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_allowIngestBehind(JNIEnv*, jobject,
-                                                      jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_allowIngestBehind(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->allow_ingest_behind);
 }
@@ -7443,9 +7433,8 @@ jboolean Java_org_rocksdb_DBOptions_allowIngestBehind(JNIEnv*, jobject,
  * Method:    setPreserveDeletes
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setPreserveDeletes(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jboolean jpreserve_deletes) {
+void Java_org_rocksdb_DBOptions_setPreserveDeletes(
+    JNIEnv*, jobject, jlong jhandle, jboolean jpreserve_deletes) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   opt->preserve_deletes = jpreserve_deletes == JNI_TRUE;
 }
@@ -7455,8 +7444,8 @@ void Java_org_rocksdb_DBOptions_setPreserveDeletes(JNIEnv*, jobject,
  * Method:    preserveDeletes
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_preserveDeletes(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_preserveDeletes(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->preserve_deletes);
 }
@@ -7466,9 +7455,8 @@ jboolean Java_org_rocksdb_DBOptions_preserveDeletes(JNIEnv*, jobject,
  * Method:    setTwoWriteQueues
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setTwoWriteQueues(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean jtwo_write_queues) {
+void Java_org_rocksdb_DBOptions_setTwoWriteQueues(
+    JNIEnv*, jobject, jlong jhandle, jboolean jtwo_write_queues) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   opt->two_write_queues = jtwo_write_queues == JNI_TRUE;
 }
@@ -7478,8 +7466,8 @@ void Java_org_rocksdb_DBOptions_setTwoWriteQueues(JNIEnv*, jobject,
  * Method:    twoWriteQueues
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_twoWriteQueues(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_twoWriteQueues(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->two_write_queues);
 }
@@ -7489,9 +7477,8 @@ jboolean Java_org_rocksdb_DBOptions_twoWriteQueues(JNIEnv*, jobject,
  * Method:    setManualWalFlush
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setManualWalFlush(JNIEnv*, jobject,
-                                                  jlong jhandle,
-                                                  jboolean jmanual_wal_flush) {
+void Java_org_rocksdb_DBOptions_setManualWalFlush(
+    JNIEnv*, jobject, jlong jhandle, jboolean jmanual_wal_flush) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   opt->manual_wal_flush = jmanual_wal_flush == JNI_TRUE;
 }
@@ -7501,8 +7488,8 @@ void Java_org_rocksdb_DBOptions_setManualWalFlush(JNIEnv*, jobject,
  * Method:    manualWalFlush
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_manualWalFlush(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_manualWalFlush(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->manual_wal_flush);
 }
@@ -7512,8 +7499,8 @@ jboolean Java_org_rocksdb_DBOptions_manualWalFlush(JNIEnv*, jobject,
  * Method:    setAtomicFlush
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_DBOptions_setAtomicFlush(JNIEnv*, jobject, jlong jhandle,
-                                               jboolean jatomic_flush) {
+void Java_org_rocksdb_DBOptions_setAtomicFlush(
+    JNIEnv*, jobject, jlong jhandle, jboolean jatomic_flush) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   opt->atomic_flush = jatomic_flush == JNI_TRUE;
 }
@@ -7523,8 +7510,8 @@ void Java_org_rocksdb_DBOptions_setAtomicFlush(JNIEnv*, jobject, jlong jhandle,
  * Method:    atomicFlush
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_atomicFlush(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_atomicFlush(
+    JNIEnv *, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->atomic_flush);
 }
@@ -7546,8 +7533,8 @@ void Java_org_rocksdb_DBOptions_setAvoidFlushDuringShutdown(
  * Method:    avoidFlushDuringShutdown
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_DBOptions_avoidFlushDuringShutdown(JNIEnv*, jobject,
-                                                             jlong jhandle) {
+jboolean Java_org_rocksdb_DBOptions_avoidFlushDuringShutdown(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::DBOptions*>(jhandle);
   return static_cast<jboolean>(opt->avoid_flush_during_shutdown);
 }
@@ -7716,7 +7703,8 @@ jlong Java_org_rocksdb_DBOptions_bgerrorResumeRetryInterval(JNIEnv*, jclass,
  * Method:    newWriteOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_WriteOptions_newWriteOptions(JNIEnv*, jclass) {
+jlong Java_org_rocksdb_WriteOptions_newWriteOptions(
+    JNIEnv*, jclass) {
   auto* op = new ROCKSDB_NAMESPACE::WriteOptions();
   return reinterpret_cast<jlong>(op);
 }
@@ -7726,8 +7714,8 @@ jlong Java_org_rocksdb_WriteOptions_newWriteOptions(JNIEnv*, jclass) {
  * Method:    copyWriteOptions
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_WriteOptions_copyWriteOptions(JNIEnv*, jclass,
-                                                     jlong jhandle) {
+jlong Java_org_rocksdb_WriteOptions_copyWriteOptions(
+    JNIEnv*, jclass, jlong jhandle) {
   auto new_opt = new ROCKSDB_NAMESPACE::WriteOptions(
       *(reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)));
   return reinterpret_cast<jlong>(new_opt);
@@ -7738,8 +7726,8 @@ jlong Java_org_rocksdb_WriteOptions_copyWriteOptions(JNIEnv*, jclass,
  * Method:    disposeInternal
  * Signature: ()V
  */
-void Java_org_rocksdb_WriteOptions_disposeInternal(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+void Java_org_rocksdb_WriteOptions_disposeInternal(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* write_options =
       reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle);
   assert(write_options != nullptr);
@@ -7751,8 +7739,8 @@ void Java_org_rocksdb_WriteOptions_disposeInternal(JNIEnv*, jobject,
  * Method:    setSync
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_WriteOptions_setSync(JNIEnv*, jobject, jlong jhandle,
-                                           jboolean jflag) {
+void Java_org_rocksdb_WriteOptions_setSync(
+    JNIEnv*, jobject, jlong jhandle, jboolean jflag) {
   reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)->sync = jflag;
 }
 
@@ -7761,7 +7749,8 @@ void Java_org_rocksdb_WriteOptions_setSync(JNIEnv*, jobject, jlong jhandle,
  * Method:    sync
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_WriteOptions_sync(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_WriteOptions_sync(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)->sync;
 }
 
@@ -7770,9 +7759,8 @@ jboolean Java_org_rocksdb_WriteOptions_sync(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setDisableWAL
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_WriteOptions_setDisableWAL(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean jflag) {
+void Java_org_rocksdb_WriteOptions_setDisableWAL(
+    JNIEnv*, jobject, jlong jhandle, jboolean jflag) {
   reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)->disableWAL =
       jflag;
 }
@@ -7782,8 +7770,8 @@ void Java_org_rocksdb_WriteOptions_setDisableWAL(JNIEnv*, jobject,
  * Method:    disableWAL
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_WriteOptions_disableWAL(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_WriteOptions_disableWAL(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)
       ->disableWAL;
 }
@@ -7794,7 +7782,8 @@ jboolean Java_org_rocksdb_WriteOptions_disableWAL(JNIEnv*, jobject,
  * Signature: (JZ)V
  */
 void Java_org_rocksdb_WriteOptions_setIgnoreMissingColumnFamilies(
-    JNIEnv*, jobject, jlong jhandle, jboolean jignore_missing_column_families) {
+    JNIEnv*, jobject, jlong jhandle,
+    jboolean jignore_missing_column_families) {
   reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)
       ->ignore_missing_column_families =
       static_cast<bool>(jignore_missing_column_families);
@@ -7816,9 +7805,8 @@ jboolean Java_org_rocksdb_WriteOptions_ignoreMissingColumnFamilies(
  * Method:    setNoSlowdown
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_WriteOptions_setNoSlowdown(JNIEnv*, jobject,
-                                                 jlong jhandle,
-                                                 jboolean jno_slowdown) {
+void Java_org_rocksdb_WriteOptions_setNoSlowdown(
+    JNIEnv*, jobject, jlong jhandle, jboolean jno_slowdown) {
   reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)->no_slowdown =
       static_cast<bool>(jno_slowdown);
 }
@@ -7828,8 +7816,8 @@ void Java_org_rocksdb_WriteOptions_setNoSlowdown(JNIEnv*, jobject,
  * Method:    noSlowdown
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_WriteOptions_noSlowdown(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+jboolean Java_org_rocksdb_WriteOptions_noSlowdown(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)
       ->no_slowdown;
 }
@@ -7839,8 +7827,8 @@ jboolean Java_org_rocksdb_WriteOptions_noSlowdown(JNIEnv*, jobject,
  * Method:    setLowPri
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_WriteOptions_setLowPri(JNIEnv*, jobject, jlong jhandle,
-                                             jboolean jlow_pri) {
+void Java_org_rocksdb_WriteOptions_setLowPri(
+    JNIEnv*, jobject, jlong jhandle, jboolean jlow_pri) {
   reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)->low_pri =
       static_cast<bool>(jlow_pri);
 }
@@ -7850,7 +7838,8 @@ void Java_org_rocksdb_WriteOptions_setLowPri(JNIEnv*, jobject, jlong jhandle,
  * Method:    lowPri
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_WriteOptions_lowPri(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_WriteOptions_lowPri(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::WriteOptions*>(jhandle)->low_pri;
 }
 
@@ -7862,7 +7851,8 @@ jboolean Java_org_rocksdb_WriteOptions_lowPri(JNIEnv*, jobject, jlong jhandle) {
  * Method:    newReadOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_ReadOptions_newReadOptions__(JNIEnv*, jclass) {
+jlong Java_org_rocksdb_ReadOptions_newReadOptions__(
+    JNIEnv*, jclass) {
   auto* read_options = new ROCKSDB_NAMESPACE::ReadOptions();
   return reinterpret_cast<jlong>(read_options);
 }
@@ -7884,8 +7874,8 @@ jlong Java_org_rocksdb_ReadOptions_newReadOptions__ZZ(
  * Method:    copyReadOptions
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ReadOptions_copyReadOptions(JNIEnv*, jclass,
-                                                   jlong jhandle) {
+jlong Java_org_rocksdb_ReadOptions_copyReadOptions(
+    JNIEnv*, jclass, jlong jhandle) {
   auto new_opt = new ROCKSDB_NAMESPACE::ReadOptions(
       *(reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)));
   return reinterpret_cast<jlong>(new_opt);
@@ -7896,8 +7886,8 @@ jlong Java_org_rocksdb_ReadOptions_copyReadOptions(JNIEnv*, jclass,
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_ReadOptions_disposeInternal(JNIEnv*, jobject,
-                                                  jlong jhandle) {
+void Java_org_rocksdb_ReadOptions_disposeInternal(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* read_options =
       reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle);
   assert(read_options != nullptr);
@@ -7920,8 +7910,8 @@ void Java_org_rocksdb_ReadOptions_setVerifyChecksums(
  * Method:    verifyChecksums
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_verifyChecksums(JNIEnv*, jobject,
-                                                      jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_verifyChecksums(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)
       ->verify_checksums;
 }
@@ -7931,8 +7921,8 @@ jboolean Java_org_rocksdb_ReadOptions_verifyChecksums(JNIEnv*, jobject,
  * Method:    setFillCache
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_ReadOptions_setFillCache(JNIEnv*, jobject, jlong jhandle,
-                                               jboolean jfill_cache) {
+void Java_org_rocksdb_ReadOptions_setFillCache(
+    JNIEnv*, jobject, jlong jhandle, jboolean jfill_cache) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->fill_cache =
       static_cast<bool>(jfill_cache);
 }
@@ -7942,8 +7932,8 @@ void Java_org_rocksdb_ReadOptions_setFillCache(JNIEnv*, jobject, jlong jhandle,
  * Method:    fillCache
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_fillCache(JNIEnv*, jobject,
-                                                jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_fillCache(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->fill_cache;
 }
 
@@ -7952,8 +7942,8 @@ jboolean Java_org_rocksdb_ReadOptions_fillCache(JNIEnv*, jobject,
  * Method:    setTailing
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_ReadOptions_setTailing(JNIEnv*, jobject, jlong jhandle,
-                                             jboolean jtailing) {
+void Java_org_rocksdb_ReadOptions_setTailing(
+    JNIEnv*, jobject, jlong jhandle, jboolean jtailing) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->tailing =
       static_cast<bool>(jtailing);
 }
@@ -7963,7 +7953,8 @@ void Java_org_rocksdb_ReadOptions_setTailing(JNIEnv*, jobject, jlong jhandle,
  * Method:    tailing
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_tailing(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_tailing(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->tailing;
 }
 
@@ -7972,7 +7963,8 @@ jboolean Java_org_rocksdb_ReadOptions_tailing(JNIEnv*, jobject, jlong jhandle) {
  * Method:    managed
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_managed(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_managed(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->managed;
 }
 
@@ -7981,8 +7973,8 @@ jboolean Java_org_rocksdb_ReadOptions_managed(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setManaged
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_ReadOptions_setManaged(JNIEnv*, jobject, jlong jhandle,
-                                             jboolean jmanaged) {
+void Java_org_rocksdb_ReadOptions_setManaged(
+    JNIEnv*, jobject, jlong jhandle, jboolean jmanaged) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->managed =
       static_cast<bool>(jmanaged);
 }
@@ -7992,8 +7984,8 @@ void Java_org_rocksdb_ReadOptions_setManaged(JNIEnv*, jobject, jlong jhandle,
  * Method:    totalOrderSeek
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_totalOrderSeek(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_totalOrderSeek(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)
       ->total_order_seek;
 }
@@ -8014,8 +8006,8 @@ void Java_org_rocksdb_ReadOptions_setTotalOrderSeek(
  * Method:    prefixSameAsStart
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_prefixSameAsStart(JNIEnv*, jobject,
-                                                        jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_prefixSameAsStart(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)
       ->prefix_same_as_start;
 }
@@ -8036,7 +8028,8 @@ void Java_org_rocksdb_ReadOptions_setPrefixSameAsStart(
  * Method:    pinData
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_pinData(JNIEnv*, jobject, jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_pinData(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->pin_data;
 }
 
@@ -8045,8 +8038,8 @@ jboolean Java_org_rocksdb_ReadOptions_pinData(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setPinData
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_ReadOptions_setPinData(JNIEnv*, jobject, jlong jhandle,
-                                             jboolean jpin_data) {
+void Java_org_rocksdb_ReadOptions_setPinData(
+    JNIEnv*, jobject, jlong jhandle, jboolean jpin_data) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->pin_data =
       static_cast<bool>(jpin_data);
 }
@@ -8080,8 +8073,8 @@ void Java_org_rocksdb_ReadOptions_setBackgroundPurgeOnIteratorCleanup(
  * Method:    readaheadSize
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ReadOptions_readaheadSize(JNIEnv*, jobject,
-                                                 jlong jhandle) {
+jlong Java_org_rocksdb_ReadOptions_readaheadSize(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle);
   return static_cast<jlong>(opt->readahead_size);
 }
@@ -8091,9 +8084,8 @@ jlong Java_org_rocksdb_ReadOptions_readaheadSize(JNIEnv*, jobject,
  * Method:    setReadaheadSize
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_ReadOptions_setReadaheadSize(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jlong jreadahead_size) {
+void Java_org_rocksdb_ReadOptions_setReadaheadSize(
+    JNIEnv*, jobject, jlong jhandle, jlong jreadahead_size) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle);
   opt->readahead_size = static_cast<size_t>(jreadahead_size);
 }
@@ -8103,8 +8095,8 @@ void Java_org_rocksdb_ReadOptions_setReadaheadSize(JNIEnv*, jobject,
  * Method:    maxSkippableInternalKeys
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ReadOptions_maxSkippableInternalKeys(JNIEnv*, jobject,
-                                                            jlong jhandle) {
+jlong Java_org_rocksdb_ReadOptions_maxSkippableInternalKeys(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle);
   return static_cast<jlong>(opt->max_skippable_internal_keys);
 }
@@ -8126,8 +8118,8 @@ void Java_org_rocksdb_ReadOptions_setMaxSkippableInternalKeys(
  * Method:    ignoreRangeDeletions
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ReadOptions_ignoreRangeDeletions(JNIEnv*, jobject,
-                                                           jlong jhandle) {
+jboolean Java_org_rocksdb_ReadOptions_ignoreRangeDeletions(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle);
   return static_cast<jboolean>(opt->ignore_range_deletions);
 }
@@ -8148,8 +8140,8 @@ void Java_org_rocksdb_ReadOptions_setIgnoreRangeDeletions(
  * Method:    setSnapshot
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_ReadOptions_setSnapshot(JNIEnv*, jobject, jlong jhandle,
-                                              jlong jsnapshot) {
+void Java_org_rocksdb_ReadOptions_setSnapshot(
+    JNIEnv*, jobject, jlong jhandle, jlong jsnapshot) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->snapshot =
       reinterpret_cast<ROCKSDB_NAMESPACE::Snapshot*>(jsnapshot);
 }
@@ -8159,7 +8151,8 @@ void Java_org_rocksdb_ReadOptions_setSnapshot(JNIEnv*, jobject, jlong jhandle,
  * Method:    snapshot
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ReadOptions_snapshot(JNIEnv*, jobject, jlong jhandle) {
+jlong Java_org_rocksdb_ReadOptions_snapshot(
+    JNIEnv*, jobject, jlong jhandle) {
   auto& snapshot =
       reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->snapshot;
   return reinterpret_cast<jlong>(snapshot);
@@ -8170,7 +8163,8 @@ jlong Java_org_rocksdb_ReadOptions_snapshot(JNIEnv*, jobject, jlong jhandle) {
  * Method:    readTier
  * Signature: (J)B
  */
-jbyte Java_org_rocksdb_ReadOptions_readTier(JNIEnv*, jobject, jlong jhandle) {
+jbyte Java_org_rocksdb_ReadOptions_readTier(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jbyte>(
       reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->read_tier);
 }
@@ -8180,8 +8174,8 @@ jbyte Java_org_rocksdb_ReadOptions_readTier(JNIEnv*, jobject, jlong jhandle) {
  * Method:    setReadTier
  * Signature: (JB)V
  */
-void Java_org_rocksdb_ReadOptions_setReadTier(JNIEnv*, jobject, jlong jhandle,
-                                              jbyte jread_tier) {
+void Java_org_rocksdb_ReadOptions_setReadTier(
+    JNIEnv*, jobject, jlong jhandle, jbyte jread_tier) {
   reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)->read_tier =
       static_cast<ROCKSDB_NAMESPACE::ReadTier>(jread_tier);
 }
@@ -8203,8 +8197,8 @@ void Java_org_rocksdb_ReadOptions_setIterateUpperBound(
  * Method:    iterateUpperBound
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ReadOptions_iterateUpperBound(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jlong Java_org_rocksdb_ReadOptions_iterateUpperBound(
+    JNIEnv*, jobject, jlong jhandle) {
   auto& upper_bound_slice_handle =
       reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)
           ->iterate_upper_bound;
@@ -8228,8 +8222,8 @@ void Java_org_rocksdb_ReadOptions_setIterateLowerBound(
  * Method:    iterateLowerBound
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ReadOptions_iterateLowerBound(JNIEnv*, jobject,
-                                                     jlong jhandle) {
+jlong Java_org_rocksdb_ReadOptions_iterateLowerBound(
+    JNIEnv*, jobject, jlong jhandle) {
   auto& lower_bound_slice_handle =
       reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle)
           ->iterate_lower_bound;
@@ -8255,9 +8249,8 @@ void Java_org_rocksdb_ReadOptions_setTableFilter(
  * Method:    setIterStartSeqnum
  * Signature: (JJ)V
  */
-void Java_org_rocksdb_ReadOptions_setIterStartSeqnum(JNIEnv*, jobject,
-                                                     jlong jhandle,
-                                                     jlong jiter_start_seqnum) {
+void Java_org_rocksdb_ReadOptions_setIterStartSeqnum(
+    JNIEnv*, jobject, jlong jhandle, jlong jiter_start_seqnum) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle);
   opt->iter_start_seqnum = static_cast<uint64_t>(jiter_start_seqnum);
 }
@@ -8267,8 +8260,8 @@ void Java_org_rocksdb_ReadOptions_setIterStartSeqnum(JNIEnv*, jobject,
  * Method:    iterStartSeqnum
  * Signature: (J)J
  */
-jlong Java_org_rocksdb_ReadOptions_iterStartSeqnum(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+jlong Java_org_rocksdb_ReadOptions_iterStartSeqnum(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* opt = reinterpret_cast<ROCKSDB_NAMESPACE::ReadOptions*>(jhandle);
   return static_cast<jlong>(opt->iter_start_seqnum);
 }
@@ -8416,7 +8409,8 @@ void Java_org_rocksdb_ReadOptions_setValueSizeSoftLimit(
  * Method:    newComparatorOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_ComparatorOptions_newComparatorOptions(JNIEnv*, jclass) {
+jlong Java_org_rocksdb_ComparatorOptions_newComparatorOptions(
+    JNIEnv*, jclass) {
   auto* comparator_opt = new ROCKSDB_NAMESPACE::ComparatorJniCallbackOptions();
   return reinterpret_cast<jlong>(comparator_opt);
 }
@@ -8427,7 +8421,7 @@ jlong Java_org_rocksdb_ComparatorOptions_newComparatorOptions(JNIEnv*, jclass) {
  * Signature: (J)B
  */
 jbyte Java_org_rocksdb_ComparatorOptions_reusedSynchronisationType(
-    JNIEnv*, jobject, jlong jhandle) {
+    JNIEnv *, jobject, jlong jhandle) {
   auto* comparator_opt =
       reinterpret_cast<ROCKSDB_NAMESPACE::ComparatorJniCallbackOptions*>(
           jhandle);
@@ -8456,8 +8450,8 @@ void Java_org_rocksdb_ComparatorOptions_setReusedSynchronisationType(
  * Method:    useDirectBuffer
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_ComparatorOptions_useDirectBuffer(JNIEnv*, jobject,
-                                                            jlong jhandle) {
+jboolean Java_org_rocksdb_ComparatorOptions_useDirectBuffer(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jboolean>(
       reinterpret_cast<ROCKSDB_NAMESPACE::ComparatorJniCallbackOptions*>(
           jhandle)
@@ -8480,8 +8474,8 @@ void Java_org_rocksdb_ComparatorOptions_setUseDirectBuffer(
  * Method:    maxReusedBufferSize
  * Signature: (J)I
  */
-jint Java_org_rocksdb_ComparatorOptions_maxReusedBufferSize(JNIEnv*, jobject,
-                                                            jlong jhandle) {
+jint Java_org_rocksdb_ComparatorOptions_maxReusedBufferSize(
+    JNIEnv*, jobject, jlong jhandle) {
   return static_cast<jint>(
       reinterpret_cast<ROCKSDB_NAMESPACE::ComparatorJniCallbackOptions*>(
           jhandle)
@@ -8504,8 +8498,8 @@ void Java_org_rocksdb_ComparatorOptions_setMaxReusedBufferSize(
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_ComparatorOptions_disposeInternal(JNIEnv*, jobject,
-                                                        jlong jhandle) {
+void Java_org_rocksdb_ComparatorOptions_disposeInternal(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* comparator_opt =
       reinterpret_cast<ROCKSDB_NAMESPACE::ComparatorJniCallbackOptions*>(
           jhandle);
@@ -8521,7 +8515,8 @@ void Java_org_rocksdb_ComparatorOptions_disposeInternal(JNIEnv*, jobject,
  * Method:    newFlushOptions
  * Signature: ()J
  */
-jlong Java_org_rocksdb_FlushOptions_newFlushOptions(JNIEnv*, jclass) {
+jlong Java_org_rocksdb_FlushOptions_newFlushOptions(
+    JNIEnv*, jclass) {
   auto* flush_opt = new ROCKSDB_NAMESPACE::FlushOptions();
   return reinterpret_cast<jlong>(flush_opt);
 }
@@ -8531,9 +8526,8 @@ jlong Java_org_rocksdb_FlushOptions_newFlushOptions(JNIEnv*, jclass) {
  * Method:    setWaitForFlush
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_FlushOptions_setWaitForFlush(JNIEnv*, jobject,
-                                                   jlong jhandle,
-                                                   jboolean jwait) {
+void Java_org_rocksdb_FlushOptions_setWaitForFlush(
+    JNIEnv*, jobject, jlong jhandle, jboolean jwait) {
   reinterpret_cast<ROCKSDB_NAMESPACE::FlushOptions*>(jhandle)->wait =
       static_cast<bool>(jwait);
 }
@@ -8543,8 +8537,8 @@ void Java_org_rocksdb_FlushOptions_setWaitForFlush(JNIEnv*, jobject,
  * Method:    waitForFlush
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_FlushOptions_waitForFlush(JNIEnv*, jobject,
-                                                    jlong jhandle) {
+jboolean Java_org_rocksdb_FlushOptions_waitForFlush(
+    JNIEnv*, jobject, jlong jhandle) {
   return reinterpret_cast<ROCKSDB_NAMESPACE::FlushOptions*>(jhandle)->wait;
 }
 
@@ -8565,8 +8559,8 @@ void Java_org_rocksdb_FlushOptions_setAllowWriteStall(
  * Method:    allowWriteStall
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_FlushOptions_allowWriteStall(JNIEnv*, jobject,
-                                                       jlong jhandle) {
+jboolean Java_org_rocksdb_FlushOptions_allowWriteStall(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* flush_options =
       reinterpret_cast<ROCKSDB_NAMESPACE::FlushOptions*>(jhandle);
   return static_cast<jboolean>(flush_options->allow_write_stall);
@@ -8577,8 +8571,8 @@ jboolean Java_org_rocksdb_FlushOptions_allowWriteStall(JNIEnv*, jobject,
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_FlushOptions_disposeInternal(JNIEnv*, jobject,
-                                                   jlong jhandle) {
+void Java_org_rocksdb_FlushOptions_disposeInternal(
+    JNIEnv*, jobject, jlong jhandle) {
   auto* flush_opt = reinterpret_cast<ROCKSDB_NAMESPACE::FlushOptions*>(jhandle);
   assert(flush_opt != nullptr);
   delete flush_opt;

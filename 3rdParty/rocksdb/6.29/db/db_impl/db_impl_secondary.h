@@ -47,7 +47,6 @@ class LogReaderContainer {
     delete reporter_;
     delete status_;
   }
-
  private:
   struct LogReporter : public log::Reader::Reporter {
     Env* env;
@@ -215,6 +214,7 @@ class DBImplSecondary : public DBImpl {
   // the amount of information in the log files to process is huge, this
   // method can take long time due to all the I/O and CPU costs.
   Status TryCatchUpWithPrimary() override;
+
 
   // Try to find log reader using log_number from log_readers_ map, initialize
   // if it doesn't exist

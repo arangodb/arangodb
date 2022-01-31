@@ -6,10 +6,8 @@
 #pragma once
 
 #include <stdint.h>
-
 #include <memory>
 #include <string>
-
 #include "rocksdb/cache.h"
 #include "rocksdb/env.h"
 #include "rocksdb/slice.h"

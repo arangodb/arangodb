@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <string>
-
 #include "db/dbformat.h"
 #include "file/writable_file_writer.h"
 #include "table/plain/plain_table_factory.h"

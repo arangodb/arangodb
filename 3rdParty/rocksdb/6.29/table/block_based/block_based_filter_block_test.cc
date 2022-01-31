@@ -8,7 +8,6 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "table/block_based/block_based_filter_block.h"
-
 #include "rocksdb/filter_policy.h"
 #include "table/block_based/block_based_table_reader.h"
 #include "table/block_based/mock_block_based_table.h"

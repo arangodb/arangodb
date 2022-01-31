@@ -10,9 +10,8 @@
 #include "db/malloc_stats.h"
 
 #ifndef ROCKSDB_LITE
-#include <string.h>
-
 #include <memory>
+#include <string.h>
 
 #include "port/jemalloc_helper.h"
 

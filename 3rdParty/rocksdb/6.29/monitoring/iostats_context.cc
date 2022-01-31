@@ -4,7 +4,6 @@
 //  (found in the LICENSE.Apache file in the root directory).
 
 #include <sstream>
-
 #include "monitoring/iostats_context_imp.h"
 #include "rocksdb/env.h"
 
@@ -21,7 +20,9 @@ __thread IOStatsContext iostats_context;
     "No thread-local support. Disable iostats context with -DNIOSTATS_CONTEXT."
 #endif
 
-IOStatsContext* get_iostats_context() { return &iostats_context; }
+IOStatsContext* get_iostats_context() {
+  return &iostats_context;
+}
 
 void IOStatsContext::Reset() {
 #ifndef NIOSTATS_CONTEXT

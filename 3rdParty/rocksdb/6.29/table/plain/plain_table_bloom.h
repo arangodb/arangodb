@@ -4,15 +4,18 @@
 //  (found in the LICENSE.Apache file in the root directory).
 #pragma once
 
-#include <memory>
 #include <string>
 #include <vector>
 
-#include "port/port.h"
 #include "rocksdb/slice.h"
-#include "third-party/folly/folly/ConstexprMath.h"
+
+#include "port/port.h"
 #include "util/bloom_impl.h"
 #include "util/hash.h"
+
+#include "third-party/folly/folly/ConstexprMath.h"
+
+#include <memory>
 
 namespace ROCKSDB_NAMESPACE {
 class Slice;

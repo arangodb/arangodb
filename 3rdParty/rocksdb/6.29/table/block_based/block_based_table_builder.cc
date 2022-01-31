@@ -60,6 +60,7 @@ namespace ROCKSDB_NAMESPACE {
 extern const std::string kHashIndexPrefixesBlock;
 extern const std::string kHashIndexPrefixesMetadataBlock;
 
+
 // Without anonymous namespace here, we fail the warning -Wmissing-prototypes
 namespace {
 

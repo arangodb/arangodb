@@ -123,8 +123,9 @@ namespace distributed_mutex {
  * implementation of futex() is used, where wait queues are managed in
  * user-space (see p1135r0 and folly::ParkingLot for more)
  */
-template <template <typename> class Atomic = std::atomic,
-          bool TimePublishing = true>
+template <
+    template <typename> class Atomic = std::atomic,
+    bool TimePublishing = true>
 class DistributedMutex {
  public:
   class DistributedMutexStateProxy;
@@ -287,8 +288,8 @@ class DistributedMutex {
   Atomic<std::uintptr_t> state_{0};
 };
 
-}  // namespace distributed_mutex
-}  // namespace detail
+} // namespace distributed_mutex
+} // namespace detail
 
 /**
  * Bring the default instantiation of DistributedMutex into the folly
@@ -297,7 +298,7 @@ class DistributedMutex {
 extern template class detail::distributed_mutex::DistributedMutex<>;
 using DistributedMutex = detail::distributed_mutex::DistributedMutex<>;
 
-}  // namespace folly
+} // namespace folly
 
 #include <folly/synchronization/DistributedMutex-inl.h>
 #include <folly/synchronization/DistributedMutexSpecializations.h>

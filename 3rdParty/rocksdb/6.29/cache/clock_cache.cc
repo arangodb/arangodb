@@ -25,7 +25,6 @@ std::shared_ptr<Cache> NewClockCache(
 #else
 
 #include <assert.h>
-
 #include <atomic>
 #include <deque>
 

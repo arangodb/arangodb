@@ -9,6 +9,7 @@
 #pragma once
 
 #include "table/block_based/block_based_table_reader.h"
+
 #include "table/block_based/reader_common.h"
 
 namespace ROCKSDB_NAMESPACE {

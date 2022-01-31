@@ -201,7 +201,9 @@ class VersionStorageInfo {
                                   const MutableCFOptions& mutable_cf_options);
 
   void GenerateLevel0NonOverlapping();
-  bool level0_non_overlapping() const { return level0_non_overlapping_; }
+  bool level0_non_overlapping() const {
+    return level0_non_overlapping_;
+  }
 
   // Check whether each file in this version is bottommost (i.e., nothing in its
   // key-range could possibly exist in an older file/level).
@@ -682,8 +684,8 @@ class Version {
 
   Status OverlapWithLevelIterator(const ReadOptions&, const FileOptions&,
                                   const Slice& smallest_user_key,
-                                  const Slice& largest_user_key, int level,
-                                  bool* overlap);
+                                  const Slice& largest_user_key,
+                                  int level, bool* overlap);
 
   // Lookup the value for key or get all merge operands for key.
   // If do_merge = true (default) then lookup value for key.
@@ -857,10 +859,10 @@ class Version {
   const MergeOperator* merge_operator_;
 
   VersionStorageInfo storage_info_;
-  VersionSet* vset_;  // VersionSet to which this Version belongs
-  Version* next_;     // Next version in linked list
-  Version* prev_;     // Previous version in linked list
-  int refs_;          // Number of live refs to this version
+  VersionSet* vset_;            // VersionSet to which this Version belongs
+  Version* next_;               // Next version in linked list
+  Version* prev_;               // Previous version in linked list
+  int refs_;                    // Number of live refs to this version
   const FileOptions file_options_;
   const MutableCFOptions mutable_cf_options_;
   // Cached value to avoid recomputing it on every read.
@@ -885,7 +887,7 @@ class Version {
 
 struct ObsoleteFileInfo {
   FileMetaData* metadata;
-  std::string path;
+  std::string   path;
 
   ObsoleteFileInfo() noexcept : metadata(nullptr) {}
   ObsoleteFileInfo(FileMetaData* f, const std::string& file_path)
@@ -894,8 +896,9 @@ struct ObsoleteFileInfo {
   ObsoleteFileInfo(const ObsoleteFileInfo&) = delete;
   ObsoleteFileInfo& operator=(const ObsoleteFileInfo&) = delete;
 
-  ObsoleteFileInfo(ObsoleteFileInfo&& rhs) noexcept : ObsoleteFileInfo() {
-    *this = std::move(rhs);
+  ObsoleteFileInfo(ObsoleteFileInfo&& rhs) noexcept :
+    ObsoleteFileInfo() {
+      *this = std::move(rhs);
   }
 
   ObsoleteFileInfo& operator=(ObsoleteFileInfo&& rhs) noexcept {
@@ -1249,7 +1252,7 @@ class VersionSet {
                             FileMetaData** metadata, ColumnFamilyData** cfd);
 
   // This function doesn't support leveldb SST filenames
-  void GetLiveFilesMetaData(std::vector<LiveFileMetaData>* metadata);
+  void GetLiveFilesMetaData(std::vector<LiveFileMetaData> *metadata);
 
   void AddObsoleteBlobFile(uint64_t blob_file_number, std::string path) {
     assert(table_cache_);

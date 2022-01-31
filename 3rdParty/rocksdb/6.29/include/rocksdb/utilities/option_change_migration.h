@@ -6,7 +6,6 @@
 #pragma once
 
 #include <string>
-
 #include "rocksdb/options.h"
 #include "rocksdb/status.h"
 

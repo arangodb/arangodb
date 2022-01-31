@@ -23,8 +23,12 @@ namespace folly {
 /// possible to construct a value of this type, but it is always the same value
 /// every time, so it is uninteresting.
 struct Unit {
-  constexpr bool operator==(const Unit& /*other*/) const { return true; }
-  constexpr bool operator!=(const Unit& /*other*/) const { return false; }
+  constexpr bool operator==(const Unit& /*other*/) const {
+    return true;
+  }
+  constexpr bool operator!=(const Unit& /*other*/) const {
+    return false;
+  }
 };
 
 constexpr Unit unit{};
@@ -51,4 +55,5 @@ struct drop_unit<Unit> {
 template <typename T>
 using drop_unit_t = typename drop_unit<T>::type;
 
-}  // namespace folly
+} // namespace folly
+

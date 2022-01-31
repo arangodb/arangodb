@@ -77,6 +77,7 @@ struct WriteBatch::ProtectionInfo {
 // WriteBatch that we don't want in the public WriteBatch interface.
 class WriteBatchInternal {
  public:
+
   // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
   static const size_t kHeader = 12;
 
@@ -145,9 +146,13 @@ class WriteBatchInternal {
   // This offset is only valid if the batch is not empty.
   static size_t GetFirstOffset(WriteBatch* batch);
 
-  static Slice Contents(const WriteBatch* batch) { return Slice(batch->rep_); }
+  static Slice Contents(const WriteBatch* batch) {
+    return Slice(batch->rep_);
+  }
 
-  static size_t ByteSize(const WriteBatch* batch) { return batch->rep_.size(); }
+  static size_t ByteSize(const WriteBatch* batch) {
+    return batch->rep_.size();
+  }
 
   static Status SetContents(WriteBatch* batch, const Slice& contents);
 

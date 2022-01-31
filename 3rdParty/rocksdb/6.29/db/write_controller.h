@@ -9,7 +9,6 @@
 
 #include <atomic>
 #include <memory>
-
 #include "rocksdb/rate_limiter.h"
 
 namespace ROCKSDB_NAMESPACE {

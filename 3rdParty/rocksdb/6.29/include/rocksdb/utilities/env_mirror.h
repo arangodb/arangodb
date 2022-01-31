@@ -23,7 +23,6 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-
 #include "rocksdb/env.h"
 
 namespace ROCKSDB_NAMESPACE {

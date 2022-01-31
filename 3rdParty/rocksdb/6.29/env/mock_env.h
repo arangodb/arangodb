@@ -135,7 +135,6 @@ class MockEnv : public CompositeEnvWrapper {
   const char* Name() const override { return kClassName(); }
 
   Status CorruptBuffer(const std::string& fname);
-
  private:
   MockEnv(Env* env, const std::shared_ptr<FileSystem>& fs,
           const std::shared_ptr<SystemClock>& clock);

@@ -54,12 +54,13 @@ Status UserKeyTablePropertiesCollector::Finish(
   return collector_->Finish(properties);
 }
 
-UserCollectedProperties UserKeyTablePropertiesCollector::GetReadableProperties()
-    const {
+UserCollectedProperties
+UserKeyTablePropertiesCollector::GetReadableProperties() const {
   return collector_->GetReadableProperties();
 }
 
-uint64_t GetDeletedKeys(const UserCollectedProperties& props) {
+uint64_t GetDeletedKeys(
+    const UserCollectedProperties& props) {
   bool property_present_ignored;
   return GetUint64Property(props, TablePropertiesNames::kDeletedKeys,
                            &property_present_ignored);
@@ -67,8 +68,8 @@ uint64_t GetDeletedKeys(const UserCollectedProperties& props) {
 
 uint64_t GetMergeOperands(const UserCollectedProperties& props,
                           bool* property_present) {
-  return GetUint64Property(props, TablePropertiesNames::kMergeOperands,
-                           property_present);
+  return GetUint64Property(
+      props, TablePropertiesNames::kMergeOperands, property_present);
 }
 
 }  // namespace ROCKSDB_NAMESPACE

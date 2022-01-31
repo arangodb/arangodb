@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "db/range_tombstone_fragmenter.h"
 #include "db/table_properties_collector.h"
 #include "logging/event_logger.h"

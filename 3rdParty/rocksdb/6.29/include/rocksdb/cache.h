@@ -348,8 +348,8 @@ class Cache {
   // memory - call this only if you're shutting down the process.
   // Any attempts of using cache after this call will fail terribly.
   // Always delete the DB object before calling this method!
-  virtual void DisownData() {
-    // default implementation is noop
+  virtual void DisownData(){
+      // default implementation is noop
   }
 
   struct ApplyToAllEntriesOptions {

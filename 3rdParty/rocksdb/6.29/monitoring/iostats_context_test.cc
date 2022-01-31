@@ -4,7 +4,6 @@
 //  (found in the LICENSE.Apache file in the root directory).
 
 #include "rocksdb/iostats_context.h"
-
 #include "test_util/testharness.h"
 
 namespace ROCKSDB_NAMESPACE {

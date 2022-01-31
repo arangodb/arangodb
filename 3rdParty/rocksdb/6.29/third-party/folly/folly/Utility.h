@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include <type_traits>
 #include <utility>
+#include <type_traits>
 
 namespace folly {
 
@@ -32,7 +32,9 @@ using in_place_type_t = in_place_type_tag<T> (&)(in_place_type_tag<T>);
 template <std::size_t I>
 using in_place_index_t = in_place_index_tag<I> (&)(in_place_index_tag<I>);
 
-inline in_place_tag in_place(in_place_tag = {}) { return {}; }
+inline in_place_tag in_place(in_place_tag = {}) {
+  return {};
+}
 template <class T>
 inline in_place_type_tag<T> in_place_type(in_place_type_tag<T> = {}) {
   return {};
@@ -52,11 +54,18 @@ T exchange(T& obj, U&& new_value) {
 namespace utility_detail {
 template <typename...>
 struct make_seq_cat;
-template <template <typename T, T...> class S, typename T, T... Ta, T... Tb,
-          T... Tc>
+template <
+    template <typename T, T...> class S,
+    typename T,
+    T... Ta,
+    T... Tb,
+    T... Tc>
 struct make_seq_cat<S<T, Ta...>, S<T, Tb...>, S<T, Tc...>> {
-  using type = S<T, Ta..., (sizeof...(Ta) + Tb)...,
-                 (sizeof...(Ta) + sizeof...(Tb) + Tc)...>;
+  using type =
+      S<T,
+        Ta...,
+        (sizeof...(Ta) + Tb)...,
+        (sizeof...(Ta) + sizeof...(Tb) + Tc)...>;
 };
 
 // Not parameterizing by `template <typename T, T...> class, typename` because
@@ -84,7 +93,7 @@ struct make_seq<0> {
   template <typename S0, typename S1>
   using apply = S0;
 };
-}  // namespace utility_detail
+} // namespace utility_detail
 
 // TODO: Remove after upgrading to C++14 baseline
 
@@ -92,7 +101,9 @@ template <class T, T... Ints>
 struct integer_sequence {
   using value_type = T;
 
-  static constexpr std::size_t size() noexcept { return sizeof...(Ints); }
+  static constexpr std::size_t size() noexcept {
+    return sizeof...(Ints);
+  }
 };
 
 template <std::size_t... Ints>
@@ -127,4 +138,4 @@ T const& as_const(T& t) noexcept {
 template <class T>
 void as_const(T const&&) = delete;
 
-}  // namespace folly
+} // namespace folly

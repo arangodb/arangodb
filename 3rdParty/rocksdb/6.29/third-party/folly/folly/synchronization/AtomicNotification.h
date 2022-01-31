@@ -38,7 +38,8 @@ template <typename Integer>
 void atomic_wait(const std::atomic<Integer>* atomic, Integer expected);
 template <typename Integer, typename Clock, typename Duration>
 std::cv_status atomic_wait_until(
-    const std::atomic<Integer>* atomic, Integer expected,
+    const std::atomic<Integer>* atomic,
+    Integer expected,
     const std::chrono::time_point<Clock, Duration>& deadline);
 
 //  mimic: std::atomic_notify_one, p1135r0
@@ -51,6 +52,6 @@ void atomic_notify_all(const std::atomic<Integer>* atomic);
 //  mimic: std::atomic_uint_fast_wait_t, p1135r0
 using atomic_uint_fast_wait_t = std::atomic<std::uint32_t>;
 
-}  // namespace folly
+} // namespace folly
 
 #include <folly/synchronization/AtomicNotification-inl.h>

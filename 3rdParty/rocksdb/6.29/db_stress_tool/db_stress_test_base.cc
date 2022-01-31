@@ -656,7 +656,7 @@ void StressTest::OperateDb(ThreadState* thread) {
 #ifndef NDEBUG
   if (FLAGS_read_fault_one_in) {
     fault_fs_guard->SetThreadLocalReadErrorContext(thread->shared->GetSeed(),
-                                                   FLAGS_read_fault_one_in);
+                                            FLAGS_read_fault_one_in);
   }
   if (FLAGS_write_fault_one_in) {
     IOStatus error_msg;
@@ -675,7 +675,7 @@ void StressTest::OperateDb(ThreadState* thread) {
         thread->shared->GetSeed(), FLAGS_write_fault_one_in, error_msg,
         /*inject_for_all_file_types=*/false, types);
   }
-#endif  // NDEBUG
+#endif // NDEBUG
   thread->stats.Start();
   for (int open_cnt = 0; open_cnt <= FLAGS_reopen; ++open_cnt) {
     if (thread->shared->HasVerificationFailedYet() ||
@@ -2237,8 +2237,7 @@ void StressTest::PrintEnv() const {
   fprintf(stdout, "Open metadata write fault one in:\n");
   fprintf(stdout, "                            %d\n",
           FLAGS_open_metadata_write_fault_one_in);
-  fprintf(stdout, "Sync fault injection      : %d\n",
-          FLAGS_sync_fault_injection);
+  fprintf(stdout, "Sync fault injection      : %d\n", FLAGS_sync_fault_injection);
   fprintf(stdout, "Best efforts recovery     : %d\n",
           static_cast<int>(FLAGS_best_efforts_recovery));
   fprintf(stdout, "Fail if OPTIONS file error: %d\n",
@@ -2803,7 +2802,7 @@ void StressTest::Reopen(ThreadState* thread) {
   }
   assert(!write_prepared || bg_canceled);
 #else
-  (void)thread;
+  (void) thread;
 #endif
 
   for (auto cf : column_families_) {

@@ -6,11 +6,12 @@
 #pragma once
 
 #include <memory>
-#include <rados/librados.hpp>
 #include <string>
 
 #include "rocksdb/status.h"
 #include "rocksdb/utilities/env_mirror.h"
+
+#include <rados/librados.hpp>
 
 namespace ROCKSDB_NAMESPACE {
 class LibradosWritableFile;

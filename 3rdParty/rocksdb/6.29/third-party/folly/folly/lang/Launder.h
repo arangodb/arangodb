@@ -5,9 +5,9 @@
 
 #pragma once
 
-#include <folly/Portability.h>
-
 #include <new>
+
+#include <folly/Portability.h>
 
 /***
  *  include or backport:
@@ -36,8 +36,8 @@ FOLLY_NODISCARD inline T* launder(T* in) noexcept {
   _ReadWriteBarrier();
   return in;
 #else
-  static_assert(false,
-                "folly::launder is not implemented for this environment");
+  static_assert(
+      false, "folly::launder is not implemented for this environment");
 #endif
 }
 
@@ -48,4 +48,4 @@ void launder(void volatile*) = delete;
 void launder(void const volatile*) = delete;
 template <typename T, typename... Args>
 void launder(T (*)(Args...)) = delete;
-}  // namespace folly
+} // namespace folly

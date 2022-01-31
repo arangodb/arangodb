@@ -17,11 +17,9 @@
 #endif
 #include <assert.h>
 #include <stdint.h>
-
 #include <cerrno>
 #include <cstddef>
 #include <vector>
-
 #include "memory/allocator.h"
 #include "util/mutexlock.h"
 
@@ -79,11 +77,12 @@ class Arena : public Allocator {
 
   size_t BlockSize() const override { return kBlockSize; }
 
-  bool IsInInlineBlock() const { return blocks_.empty(); }
+  bool IsInInlineBlock() const {
+    return blocks_.empty();
+  }
 
  private:
-  char inline_block_[kInlineSize]
-      __attribute__((__aligned__(alignof(max_align_t))));
+  char inline_block_[kInlineSize] __attribute__((__aligned__(alignof(max_align_t))));
   // Number of bytes allocated in one block
   const size_t kBlockSize;
   // Array of new[] allocated memory blocks

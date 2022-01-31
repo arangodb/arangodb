@@ -5,13 +5,13 @@
 
 #pragma once
 
+#include <cstdint>
+#include <type_traits>
+
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Launder.h>
-
-#include <cstdint>
-#include <type_traits>
 
 namespace folly {
 namespace detail {
@@ -66,8 +66,9 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   struct InSituTag {};
   struct RefTag {};
 
-  static_assert((Size % sizeof(uintptr_t)) == 0,
-                "Size has to be a multiple of sizeof(uintptr_t)");
+  static_assert(
+      (Size % sizeof(uintptr_t)) == 0,
+      "Size has to be a multiple of sizeof(uintptr_t)");
   static_assert(Size >= 2 * sizeof(uintptr_t), "This doesn't work");
   static_assert(alignof(Call) == alignof(Storage), "Mismatching alignments");
 
@@ -77,11 +78,12 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   //
   // This requires that the we pass in a type that is not ref-qualified.
   template <typename Func>
-  using ConstructMode =
-      _t<std::conditional<folly::is_trivially_copyable<Func>{} &&
-                              (sizeof(Func) <= sizeof(Storage)) &&
-                              (alignof(Func) <= alignof(Storage)),
-                          InSituTag, RefTag>>;
+  using ConstructMode = _t<std::conditional<
+      folly::is_trivially_copyable<Func>{} &&
+          (sizeof(Func) <= sizeof(Storage)) &&
+          (alignof(Func) <= alignof(Storage)),
+      InSituTag,
+      RefTag>>;
 
  public:
   /**
@@ -116,19 +118,21 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
    * reference semantics and store the function as a pointer, and add a level
    * of indirection through type erasure.
    */
-  template <typename Func,
-            _t<std::enable_if<
-                !std::is_same<_t<std::decay<Func>>, InlineFunctionRef>{} &&
-                !std::is_reference<Func>{} &&
-                std::is_convertible<
-                    decltype(std::declval<Func&&>()(std::declval<Args&&>()...)),
-                    ReturnType>{}>>* = nullptr>
+  template <
+      typename Func,
+      _t<std::enable_if<
+          !std::is_same<_t<std::decay<Func>>, InlineFunctionRef>{} &&
+          !std::is_reference<Func>{} &&
+          std::is_convertible<
+              decltype(std::declval<Func&&>()(std::declval<Args&&>()...)),
+              ReturnType>{}>>* = nullptr>
   InlineFunctionRef(Func&& func) {
     // We disallow construction from lvalues, so assert that this is not a
     // reference type.  When invoked with an lvalue, Func is a lvalue
     // reference type, when invoked with an rvalue, Func is not ref-qualified.
-    static_assert(!std::is_reference<Func>{},
-                  "InlineFunctionRef cannot be used with lvalues");
+    static_assert(
+        !std::is_reference<Func>{},
+        "InlineFunctionRef cannot be used with lvalues");
     static_assert(std::is_rvalue_reference<Func&&>{}, "");
     construct(ConstructMode<Func>{}, folly::as_const(func));
   }
@@ -146,7 +150,9 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
    * We have a function engaged if the call function points to anything other
    * than null.
    */
-  operator bool() const noexcept { return call_; }
+  operator bool() const noexcept {
+    return call_;
+  }
 
  private:
   friend class InlineFunctionRefTest;
@@ -187,9 +193,10 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   static ReturnType callInline(const Storage& object, Args&&... args) {
     // The only type of pointer allowed is a function pointer, no other
     // pointer types are invocable.
-    static_assert(!std::is_pointer<Func>::value ||
-                      std::is_function<_t<std::remove_pointer<Func>>>::value,
-                  "");
+    static_assert(
+        !std::is_pointer<Func>::value ||
+            std::is_function<_t<std::remove_pointer<Func>>>::value,
+        "");
     return (*folly::launder(reinterpret_cast<const Func*>(&object)))(
         static_cast<Args&&>(args)...);
   }
@@ -208,5 +215,5 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   Storage storage_;
 };
 
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly

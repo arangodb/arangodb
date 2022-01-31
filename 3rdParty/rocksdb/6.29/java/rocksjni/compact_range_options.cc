@@ -23,6 +23,7 @@ jlong Java_org_rocksdb_CompactRangeOptions_newCompactRangeOptions(
   return reinterpret_cast<jlong>(options);
 }
 
+
 /*
  * Class:     org_rocksdb_CompactRangeOptions
  * Method:    exclusiveManualCompaction
@@ -41,13 +42,12 @@ jboolean Java_org_rocksdb_CompactRangeOptions_exclusiveManualCompaction(
  * Signature: (JZ)V
  */
 void Java_org_rocksdb_CompactRangeOptions_setExclusiveManualCompaction(
-    JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle,
-    jboolean exclusive_manual_compaction) {
+    JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jboolean exclusive_manual_compaction) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
-  options->exclusive_manual_compaction =
-      static_cast<bool>(exclusive_manual_compaction);
+  options->exclusive_manual_compaction = static_cast<bool>(exclusive_manual_compaction);
 }
+
 
 /*
  * Class:     org_rocksdb_CompactRangeOptions
@@ -82,9 +82,8 @@ void Java_org_rocksdb_CompactRangeOptions_setBottommostLevelCompaction(
  * Method:    changeLevel
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_CompactRangeOptions_changeLevel(JNIEnv* /*env*/,
-                                                          jobject /*jobj*/,
-                                                          jlong jhandle) {
+jboolean Java_org_rocksdb_CompactRangeOptions_changeLevel
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   return static_cast<jboolean>(options->change_level);
@@ -95,8 +94,8 @@ jboolean Java_org_rocksdb_CompactRangeOptions_changeLevel(JNIEnv* /*env*/,
  * Method:    setChangeLevel
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_CompactRangeOptions_setChangeLevel(
-    JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jboolean change_level) {
+void Java_org_rocksdb_CompactRangeOptions_setChangeLevel
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jboolean change_level) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   options->change_level = static_cast<bool>(change_level);
@@ -107,9 +106,8 @@ void Java_org_rocksdb_CompactRangeOptions_setChangeLevel(
  * Method:    targetLevel
  * Signature: (J)I
  */
-jint Java_org_rocksdb_CompactRangeOptions_targetLevel(JNIEnv* /*env*/,
-                                                      jobject /*jobj*/,
-                                                      jlong jhandle) {
+jint Java_org_rocksdb_CompactRangeOptions_targetLevel
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   return static_cast<jint>(options->target_level);
@@ -120,10 +118,8 @@ jint Java_org_rocksdb_CompactRangeOptions_targetLevel(JNIEnv* /*env*/,
  * Method:    setTargetLevel
  * Signature: (JI)V
  */
-void Java_org_rocksdb_CompactRangeOptions_setTargetLevel(JNIEnv* /*env*/,
-                                                         jobject /*jobj*/,
-                                                         jlong jhandle,
-                                                         jint target_level) {
+void Java_org_rocksdb_CompactRangeOptions_setTargetLevel
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jint target_level) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   options->target_level = static_cast<int>(target_level);
@@ -134,9 +130,8 @@ void Java_org_rocksdb_CompactRangeOptions_setTargetLevel(JNIEnv* /*env*/,
  * Method:    targetPathId
  * Signature: (J)I
  */
-jint Java_org_rocksdb_CompactRangeOptions_targetPathId(JNIEnv* /*env*/,
-                                                       jobject /*jobj*/,
-                                                       jlong jhandle) {
+jint Java_org_rocksdb_CompactRangeOptions_targetPathId
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   return static_cast<jint>(options->target_path_id);
@@ -147,10 +142,8 @@ jint Java_org_rocksdb_CompactRangeOptions_targetPathId(JNIEnv* /*env*/,
  * Method:    setTargetPathId
  * Signature: (JI)V
  */
-void Java_org_rocksdb_CompactRangeOptions_setTargetPathId(JNIEnv* /*env*/,
-                                                          jobject /*jobj*/,
-                                                          jlong jhandle,
-                                                          jint target_path_id) {
+void Java_org_rocksdb_CompactRangeOptions_setTargetPathId
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jint target_path_id) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   options->target_path_id = static_cast<uint32_t>(target_path_id);
@@ -161,9 +154,8 @@ void Java_org_rocksdb_CompactRangeOptions_setTargetPathId(JNIEnv* /*env*/,
  * Method:    allowWriteStall
  * Signature: (J)Z
  */
-jboolean Java_org_rocksdb_CompactRangeOptions_allowWriteStall(JNIEnv* /*env*/,
-                                                              jobject /*jobj*/,
-                                                              jlong jhandle) {
+jboolean Java_org_rocksdb_CompactRangeOptions_allowWriteStall
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   return static_cast<jboolean>(options->allow_write_stall);
@@ -174,22 +166,21 @@ jboolean Java_org_rocksdb_CompactRangeOptions_allowWriteStall(JNIEnv* /*env*/,
  * Method:    setAllowWriteStall
  * Signature: (JZ)V
  */
-void Java_org_rocksdb_CompactRangeOptions_setAllowWriteStall(
-    JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle,
-    jboolean allow_write_stall) {
+void Java_org_rocksdb_CompactRangeOptions_setAllowWriteStall
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jboolean allow_write_stall) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   options->allow_write_stall = static_cast<bool>(allow_write_stall);
 }
+
 
 /*
  * Class:     org_rocksdb_CompactRangeOptions
  * Method:    maxSubcompactions
  * Signature: (J)I
  */
-jint Java_org_rocksdb_CompactRangeOptions_maxSubcompactions(JNIEnv* /*env*/,
-                                                            jobject /*jobj*/,
-                                                            jlong jhandle) {
+jint Java_org_rocksdb_CompactRangeOptions_maxSubcompactions
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   return static_cast<jint>(options->max_subcompactions);
@@ -200,8 +191,8 @@ jint Java_org_rocksdb_CompactRangeOptions_maxSubcompactions(JNIEnv* /*env*/,
  * Method:    setMaxSubcompactions
  * Signature: (JI)V
  */
-void Java_org_rocksdb_CompactRangeOptions_setMaxSubcompactions(
-    JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jint max_subcompactions) {
+void Java_org_rocksdb_CompactRangeOptions_setMaxSubcompactions
+  (JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle, jint max_subcompactions) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   options->max_subcompactions = static_cast<uint32_t>(max_subcompactions);
@@ -212,9 +203,8 @@ void Java_org_rocksdb_CompactRangeOptions_setMaxSubcompactions(
  * Method:    disposeInternal
  * Signature: (J)V
  */
-void Java_org_rocksdb_CompactRangeOptions_disposeInternal(JNIEnv* /*env*/,
-                                                          jobject /*jobj*/,
-                                                          jlong jhandle) {
+void Java_org_rocksdb_CompactRangeOptions_disposeInternal(
+    JNIEnv* /*env*/, jobject /*jobj*/, jlong jhandle) {
   auto* options =
       reinterpret_cast<ROCKSDB_NAMESPACE::CompactRangeOptions*>(jhandle);
   delete options;

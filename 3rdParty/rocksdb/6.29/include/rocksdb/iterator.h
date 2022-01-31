@@ -19,7 +19,6 @@
 #pragma once
 
 #include <string>
-
 #include "rocksdb/cleanable.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/status.h"

@@ -6,7 +6,6 @@
 #pragma once
 
 #include <stdint.h>
-
 #include "rocksdb/slice.h"
 
 namespace ROCKSDB_NAMESPACE {

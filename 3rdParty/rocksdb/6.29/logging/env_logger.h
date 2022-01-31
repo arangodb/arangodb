@@ -12,13 +12,12 @@
 #pragma once
 
 #include <time.h>
-
 #include <atomic>
 #include <memory>
+#include "port/sys_time.h"
 
 #include "file/writable_file_writer.h"
 #include "monitoring/iostats_context_imp.h"
-#include "port/sys_time.h"
 #include "rocksdb/env.h"
 #include "rocksdb/slice.h"
 #include "test_util/sync_point.h"

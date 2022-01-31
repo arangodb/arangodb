@@ -8,7 +8,6 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "table/block_based/block_based_filter_block.h"
-
 #include <algorithm>
 
 #include "db/dbformat.h"

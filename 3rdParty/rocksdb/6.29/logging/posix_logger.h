@@ -11,13 +11,11 @@
 // where enough posix functionality is available.
 
 #pragma once
-#include <fcntl.h>
-#include <stdio.h>
-#include <time.h>
-
 #include <algorithm>
-
+#include <stdio.h>
 #include "port/sys_time.h"
+#include <time.h>
+#include <fcntl.h>
 
 #ifdef OS_LINUX
 #ifndef FALLOC_FL_KEEP_SIZE
@@ -26,7 +24,6 @@
 #endif
 
 #include <atomic>
-
 #include "env/io_posix.h"
 #include "monitoring/iostats_context_imp.h"
 #include "rocksdb/env.h"
@@ -127,7 +124,7 @@ class PosixLogger : public Logger {
       // Truncate to available space if necessary
       if (p >= limit) {
         if (iter == 0) {
-          continue;  // Try again with larger buffer
+          continue;       // Try again with larger buffer
         } else {
           p = limit - 1;
         }
@@ -149,9 +146,9 @@ class PosixLogger : public Logger {
       // allocations from filesystem allocsize options.
       const size_t log_size = log_size_;
       const size_t last_allocation_chunk =
-          ((kDebugLogChunkSize - 1 + log_size) / kDebugLogChunkSize);
+        ((kDebugLogChunkSize - 1 + log_size) / kDebugLogChunkSize);
       const size_t desired_allocation_chunk =
-          ((kDebugLogChunkSize - 1 + log_size + write_size) /
+        ((kDebugLogChunkSize - 1 + log_size + write_size) /
            kDebugLogChunkSize);
       if (last_allocation_chunk != desired_allocation_chunk) {
         fallocate(
@@ -165,8 +162,8 @@ class PosixLogger : public Logger {
       if (sz > 0) {
         log_size_ += write_size;
       }
-      uint64_t now_micros =
-          static_cast<uint64_t>(now_tv.tv_sec) * 1000000 + now_tv.tv_usec;
+      uint64_t now_micros = static_cast<uint64_t>(now_tv.tv_sec) * 1000000 +
+        now_tv.tv_usec;
       if (now_micros - last_flush_micros_ >= flush_every_seconds_ * 1000000) {
         Flush();
       }

@@ -323,8 +323,8 @@ bool Compaction::IsTrivialMove() const {
   }
 
   if (!(start_level_ != output_level_ && num_input_levels() == 1 &&
-        input(0, 0)->fd.GetPathId() == output_path_id() &&
-        InputCompressionMatchesOutput())) {
+          input(0, 0)->fd.GetPathId() == output_path_id() &&
+          InputCompressionMatchesOutput())) {
     return false;
   }
 

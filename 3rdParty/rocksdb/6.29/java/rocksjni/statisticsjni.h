@@ -12,9 +12,8 @@
 #include <memory>
 #include <set>
 #include <string>
-
-#include "monitoring/statistics.h"
 #include "rocksdb/statistics.h"
+#include "monitoring/statistics.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -27,8 +26,8 @@ class StatisticsJni : public StatisticsImpl {
 
  private:
   const std::set<uint32_t> m_ignore_histograms;
-};
+ };
 
-}  // namespace ROCKSDB_NAMESPACE
+ }  // namespace ROCKSDB_NAMESPACE
 
 #endif  // JAVA_ROCKSJNI_STATISTICSJNI_H_

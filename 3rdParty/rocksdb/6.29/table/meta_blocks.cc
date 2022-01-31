@@ -35,7 +35,8 @@ const std::string kRangeDelBlockName = "rocksdb.range_del";
 MetaIndexBuilder::MetaIndexBuilder()
     : meta_index_block_(new BlockBuilder(1 /* restart interval */)) {}
 
-void MetaIndexBuilder::Add(const std::string& key, const BlockHandle& handle) {
+void MetaIndexBuilder::Add(const std::string& key,
+                           const BlockHandle& handle) {
   std::string handle_encoding;
   handle.EncodeTo(&handle_encoding);
   meta_block_handles_.insert({key, handle_encoding});
@@ -168,8 +169,8 @@ void LogPropertiesCollectionError(Logger* info_log, const std::string& method,
   assert(method == "Add" || method == "Finish");
 
   std::string msg =
-      "Encountered error when calling TablePropertiesCollector::" + method +
-      "() with collector name: " + name;
+    "Encountered error when calling TablePropertiesCollector::" +
+    method + "() with collector name: " + name;
   ROCKS_LOG_ERROR(info_log, "%s", msg.c_str());
 }
 
@@ -340,9 +341,8 @@ Status ReadTablePropertiesHelper(
       if (!GetVarint64(&raw_val, &val)) {
         // skip malformed value
         auto error_msg =
-            "Detect malformed value in properties meta-block:"
-            "\tkey: " +
-            key + "\tval: " + raw_val.ToString();
+          "Detect malformed value in properties meta-block:"
+          "\tkey: " + key + "\tval: " + raw_val.ToString();
         ROCKS_LOG_ERROR(ioptions.logger, "%s", error_msg.c_str());
         continue;
       }

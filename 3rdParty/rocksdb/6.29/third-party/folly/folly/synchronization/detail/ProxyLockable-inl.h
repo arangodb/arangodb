@@ -41,7 +41,7 @@ void throwIfNoMutex(Bool&& mutex) {
         std::make_error_code(std::errc::operation_not_permitted)};
   }
 }
-}  // namespace proxylockable_detail
+} // namespace proxylockable_detail
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::~ProxyLockableUniqueLock() {
@@ -73,13 +73,15 @@ ProxyLockableUniqueLock<Mutex>& ProxyLockableUniqueLock<Mutex>::operator=(
 
 template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mtx, std::defer_lock_t) noexcept {
+    mutex_type& mtx,
+    std::defer_lock_t) noexcept {
   mutex_ = std::addressof(mtx);
 }
 
 template <typename Mutex>
-ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(mutex_type& mtx,
-                                                        std::try_to_lock_t) {
+ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
+    mutex_type& mtx,
+    std::try_to_lock_t) {
   mutex_ = std::addressof(mtx);
   if (auto state = mtx.try_lock()) {
     proxy_.emplace(std::move(state));
@@ -89,7 +91,8 @@ ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(mutex_type& mtx,
 template <typename Mutex>
 template <typename Rep, typename Period>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mtx, const std::chrono::duration<Rep, Period>& duration) {
+    mutex_type& mtx,
+    const std::chrono::duration<Rep, Period>& duration) {
   mutex_ = std::addressof(mtx);
   if (auto state = mtx.try_lock_for(duration)) {
     proxy_.emplace(std::move(state));
@@ -99,7 +102,8 @@ ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
 template <typename Mutex>
 template <typename Clock, typename Duration>
 ProxyLockableUniqueLock<Mutex>::ProxyLockableUniqueLock(
-    mutex_type& mtx, const std::chrono::time_point<Clock, Duration>& time) {
+    mutex_type& mtx,
+    const std::chrono::time_point<Clock, Duration>& time) {
   mutex_ = std::addressof(mtx);
   if (auto state = mtx.try_lock_until(time)) {
     proxy_.emplace(std::move(state));
@@ -199,5 +203,5 @@ template <typename Mutex>
 ProxyLockableLockGuard<Mutex>::ProxyLockableLockGuard(mutex_type& mtx)
     : ProxyLockableUniqueLock<Mutex>{mtx} {}
 
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly

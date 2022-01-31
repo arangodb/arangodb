@@ -37,8 +37,7 @@ void KillPoint::TestKillRandom(std::string kill_point, int odds_weight,
   }
 }
 
-void SyncPoint::Data::LoadDependency(
-    const std::vector<SyncPointPair>& dependencies) {
+void SyncPoint::Data::LoadDependency(const std::vector<SyncPointPair>& dependencies) {
   std::lock_guard<std::mutex> lock(mutex_);
   successors_.clear();
   predecessors_.clear();
@@ -53,8 +52,8 @@ void SyncPoint::Data::LoadDependency(
 }
 
 void SyncPoint::Data::LoadDependencyAndMarkers(
-    const std::vector<SyncPointPair>& dependencies,
-    const std::vector<SyncPointPair>& markers) {
+  const std::vector<SyncPointPair>& dependencies,
+  const std::vector<SyncPointPair>& markers) {
   std::lock_guard<std::mutex> lock(mutex_);
   successors_.clear();
   predecessors_.clear();

@@ -126,7 +126,7 @@ class LogTest : public ::testing::TestWithParam<std::tuple<int, bool>> {
     size_t dropped_bytes_;
     std::string message_;
 
-    ReportCollector() : dropped_bytes_(0) {}
+    ReportCollector() : dropped_bytes_(0) { }
     void Corruption(size_t bytes, const Status& status) override {
       dropped_bytes_ += bytes;
       message_.append(status.ToString());
@@ -179,7 +179,9 @@ class LogTest : public ::testing::TestWithParam<std::tuple<int, bool>> {
     ASSERT_OK(writer_->AddRecord(Slice(msg)));
   }
 
-  size_t WrittenBytes() const { return dest_contents().size(); }
+  size_t WrittenBytes() const {
+    return dest_contents().size();
+  }
 
   std::string Read(const WALRecoveryMode wal_recovery_mode =
                        WALRecoveryMode::kTolerateCorruptedTailRecords) {
@@ -218,9 +220,13 @@ class LogTest : public ::testing::TestWithParam<std::tuple<int, bool>> {
     source_->force_error_position_ = position;
   }
 
-  size_t DroppedBytes() const { return report_.dropped_bytes_; }
+  size_t DroppedBytes() const {
+    return report_.dropped_bytes_;
+  }
 
-  std::string ReportMessage() const { return report_.message_; }
+  std::string ReportMessage() const {
+    return report_.message_;
+  }
 
   void ForceEOF(size_t position = 0) {
     source_->force_eof_ = true;
@@ -368,7 +374,7 @@ TEST_P(LogTest, BadRecordType) {
 
 TEST_P(LogTest, TruncatedTrailingRecordIsIgnored) {
   Write("foo");
-  ShrinkSize(4);  // Drop all payload as well as a header byte
+  ShrinkSize(4);   // Drop all payload as well as a header byte
   ASSERT_EQ("EOF", Read());
   // Truncated last record is ignored, not treated as an error
   ASSERT_EQ(0U, DroppedBytes());
@@ -560,7 +566,7 @@ TEST_P(LogTest, ErrorJoinsRecords) {
   Write("correct");
 
   // Wipe the middle block
-  for (unsigned int offset = kBlockSize; offset < 2 * kBlockSize; offset++) {
+  for (unsigned int offset = kBlockSize; offset < 2*kBlockSize; offset++) {
     SetByte(offset, 'x');
   }
 

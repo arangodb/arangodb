@@ -109,7 +109,8 @@ class MultiGetContext {
     assert(num_keys <= MAX_BATCH_SIZE);
     if (num_keys > MAX_LOOKUP_KEYS_ON_STACK) {
       lookup_key_heap_buf.reset(new char[sizeof(LookupKey) * num_keys]);
-      lookup_key_ptr_ = reinterpret_cast<LookupKey*>(lookup_key_heap_buf.get());
+      lookup_key_ptr_ = reinterpret_cast<LookupKey*>(
+          lookup_key_heap_buf.get());
     }
 
     for (size_t iter = 0; iter != num_keys_; ++iter) {
@@ -133,9 +134,8 @@ class MultiGetContext {
 
  private:
   static const int MAX_LOOKUP_KEYS_ON_STACK = 16;
-  alignas(
-      alignof(LookupKey)) char lookup_key_stack_buf[sizeof(LookupKey) *
-                                                    MAX_LOOKUP_KEYS_ON_STACK];
+  alignas(alignof(LookupKey))
+    char lookup_key_stack_buf[sizeof(LookupKey) * MAX_LOOKUP_KEYS_ON_STACK];
   std::array<KeyContext*, MAX_BATCH_SIZE> sorted_keys_;
   size_t num_keys_;
   uint64_t value_mask_;
@@ -216,7 +216,8 @@ class MultiGetContext {
       size_t index_;
     };
 
-    Range(const Range& mget_range, const Iterator& first,
+    Range(const Range& mget_range,
+          const Iterator& first,
           const Iterator& last) {
       ctx_ = mget_range.ctx_;
       start_ = first.index_;

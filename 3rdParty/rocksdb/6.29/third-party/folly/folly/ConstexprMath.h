@@ -42,4 +42,4 @@ constexpr T constexpr_log2_ceil(T t) {
   return detail::constexpr_log2_ceil_(constexpr_log2(t), t);
 }
 
-}  // namespace folly
+} // namespace folly
