@@ -40,7 +40,6 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
-#include "../../../tests/Mocks/MockGraphProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -280,11 +279,4 @@ template class PathValidatorTracer<PathValidator<
     PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-// namespace arangodb::tests::graph {
-//#include "../../../tests/Mocks/MockGraphProvider.h"
-// template class PathValidatorTracer<
-//     PathValidator<ProviderTracer<::arangodb::tests::graph::MockGraphProvider>,
-//     PathStoreTracer<PathStore<::arangodb::tests::graph::MockGraphProvider::Step>>>;
-//
-// }
 }  // namespace arangodb::graph

@@ -37,6 +37,7 @@ namespace aql {
 class PruneExpressionEvaluator;
 class InputAqlItemRow;
 }  // namespace aql
+
 namespace graph {
 
 class ValidationResult;
