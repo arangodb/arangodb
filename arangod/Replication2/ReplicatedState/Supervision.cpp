@@ -27,7 +27,8 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
-using namespace arangodb::replication2::replicated_state;
+
+namespace arangodb::replication2::replicated_state {
 
 auto checkStateAdded(replication2::replicated_state::agency::State const& state)
     -> std::unique_ptr<Action> {
@@ -43,7 +44,7 @@ auto isEmptyAction(std::unique_ptr<Action>& action) {
   return (action->type() == Action::ActionType::EmptyAction);
 }
 
-auto checkReplicatedState(
+auto arangodb::replication2::replicated_state::checkReplicatedState(
     std::optional<arangodb::replication2::agency::Log> const& log,
     replication2::replicated_state::agency::State const& state)
     -> std::unique_ptr<Action> {
@@ -56,3 +57,5 @@ auto checkReplicatedState(
 
   return std::make_unique<EmptyAction>();
 };
+
+}
