@@ -52,7 +52,7 @@ set(SOURCE_FILES
     src/vector.cc)
 
 
-if (NOT MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if (NOT MSVC)
   include(GNUInstallDirs)
   configure_file("fasttext.pc.in" "fasttext.pc" @ONLY)
   install(FILES "${CMAKE_BINARY_DIR}/fasttext.pc" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
