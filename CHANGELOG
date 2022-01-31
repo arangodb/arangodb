@@ -24,6 +24,8 @@ devel
   This drastically reduces peak memory usage for queries that use index lookups
   in inner loops and that get lots of different inputs from outer loops.
 
+* Upgrade VelocyPack library to latest version.
+
 * Slightly improve the explain output of SingleRemoteOperationNodes.
 
 * Added more detail to the log messages that display the total time consumption
