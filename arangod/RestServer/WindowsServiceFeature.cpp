@@ -643,7 +643,7 @@ void WindowsServiceFeature::validateOptions(
           }
         },
         [this](application_features::ApplicationServer::State state,
-               std::string const& name) {
+               std::string_view name) {
           switch (state) {
             case ApplicationServer::State::IN_COLLECT_OPTIONS:
             case ApplicationServer::State::IN_VALIDATE_OPTIONS:
