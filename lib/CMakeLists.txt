@@ -117,6 +117,7 @@ add_library(arango STATIC
   Basics/Thread.cpp
   Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
+  Basics/UpgradeMutex.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp

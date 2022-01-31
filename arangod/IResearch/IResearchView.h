@@ -29,8 +29,7 @@
 #include "IResearch/IResearchKludge.h"
 #include "Transaction/Status.h"
 #include "VocBase/LogicalView.h"
-
-#include <boost/thread/v2/shared_mutex.hpp>
+#include "Basics/UpgradeMutex.h"
 
 #include <atomic>
 #include <functional>
@@ -224,7 +223,7 @@ class IResearchView final : public LogicalView {
   using Links = containers::FlatHashMap<DataSourceId, AsyncLinkPtr>;
   Links _links;
   IResearchViewMeta _meta;              // the view configuration
-  mutable boost::upgrade_mutex _mutex;  // for '_meta', '_links'
+  mutable basics::UpgradeMutex _mutex;  // for '_meta', '_links'
   std::mutex _updateLinksLock;          // prevents simultaneous 'updateLinks'
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;  // for snapshot(...)

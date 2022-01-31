@@ -809,7 +809,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     if (!r.ok()) {
       return r;
     }
-    boost::unique_lock uniqueLock{_mutex};
+    std::unique_lock uniqueLock{_mutex};
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (!ExecContext::current().isSuperuser()) {
       for (auto& entry : _links) {
@@ -837,7 +837,8 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
                   slice.toString()};
     }
     _meta.storePartial(std::move(meta));
-    boost::shared_lock sharedLock{std::move(uniqueLock)};
+    uniqueLock.release()->unlock_and_lock_shared();
+    std::shared_lock sharedLock{_mutex, std::adopt_lock};
     for (auto& entry : _links) {
       auto linkLock = entry.second->lock();
       if (linkLock) {

@@ -115,7 +115,6 @@ target_link_libraries(arango_iresearch
   ${IRESEARCH_TARGET_DEPENDENCY}
   s2 # needed for some includes
   boost_locale # required by iResearch
-  boost_thread # required by IResearchView(boost::upgrade_mutex)
 )
 
 add_dependencies(arango_iresearch
