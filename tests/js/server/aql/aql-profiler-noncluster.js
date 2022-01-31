@@ -30,6 +30,7 @@ const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 const _ = require('lodash');
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
+const internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @file test suite for AQL tracing/profiling: noncluster tests
@@ -47,13 +48,13 @@ function ahuacatlProfilerTestSuite () {
 
   const { AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-    InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+    InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
     TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-    HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
+    HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
     SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
@@ -67,7 +68,69 @@ function ahuacatlProfilerTestSuite () {
       db._drop(edgeColName);
       db._dropView(viewName);
     },
+    
+    testMaterializeBlock: function () {
+      const col = db._create(colName);
+      col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
+      
+      const bind = () => ({'@col': colName});
+      const prepare = (rows) => {
+        col.truncate({ compact: false });
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
 
+      const genNodeList = (rows, batches) => {
+        return [
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+          {type: SortBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+          {type: LimitBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+          {type: MaterializeBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+          {type: ReturnBlock, calls: 1, items: Math.min(rows, 3), filtered: 0}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
+
+    testMaterializeBlockThatFilters: function () {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+
+      try {
+        const col = db._create(colName);
+        col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
+        
+        const bind = () => ({'@col': colName});
+        const prepare = (rows) => {
+          col.truncate({ compact: false });
+          col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+        };
+        const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
+
+        const genNodeList = (rows, batches) => {
+          return [
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+            {type: SortBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+            {type: LimitBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+            {type: MaterializeBlock, calls: 1, items: 0, filtered: Math.min(rows, 3)},
+            {type: ReturnBlock, calls: 1, items: 0, filtered: 0}
+          ];
+        };
+        
+        internal.debugSetFailAt("MaterializeExecutor::all_fail_and_count");
+        profHelper.runDefaultChecks(
+          {query, genNodeList, prepare, bind}
+        );
+      } finally {
+        // clear failure points!
+        internal.debugClearFailAt();
+      }
+    },
 
     testEnumerateCollectionBlock: function () {
       const col = db._create(colName);

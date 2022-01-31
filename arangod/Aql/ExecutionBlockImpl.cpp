@@ -352,7 +352,7 @@ void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
   // filtered. if so, use the info and add it to the node stats.
   if constexpr (is_one_of_v<typename Executor::Stats, IndexStats,
                             EnumerateCollectionStats, FilterStats,
-                            TraversalStats>) {
+                            TraversalStats, MaterializeStats>) {
     _execNodeStats.filtered += _blockStats.getFiltered();
   }
   ExecutionBlock::collectExecStats(stats);

@@ -93,6 +93,10 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
+// MaterializeExecutor only tracks the number of filtered rows, same we
+// can reuse the FilterStats for it.
+using MaterializeStats = FilterStats;
+
 class EnumerateCollectionStats {
  public:
   EnumerateCollectionStats() noexcept : _scannedFull(0), _filtered(0) {}

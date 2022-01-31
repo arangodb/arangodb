@@ -57,6 +57,7 @@ const GatherNode = 'GatherNode';
 const IndexNode = 'IndexNode';
 const InsertNode = 'InsertNode';
 const LimitNode = 'LimitNode';
+const MaterializeNode = 'MaterializeNode';
 const MutexNode = 'MutexNode';
 const NoResultsNode = 'NoResultsNode';
 const RemoteNode = 'RemoteNode';
@@ -74,9 +75,9 @@ const UpsertNode = 'UpsertNode';
 const nodeTypesList = [
   AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-  InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
-  ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-  TraversalNode, UpdateNode, UpsertNode
+  InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode, 
+  RemoveNode, ReplaceNode, ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, 
+  SortNode, TraversalNode, UpdateNode, UpsertNode
 ];
 
 const AsyncBlock = 'AsyncNode';
@@ -90,6 +91,7 @@ const FilterBlock = 'FilterNode';
 const HashedCollectBlock = 'HashedCollectNode';
 const IndexBlock = 'IndexNode';
 const LimitBlock = 'LimitNode';
+const MaterializeBlock = 'MaterializeNode';
 const MutexBlock = 'MutexNode';
 const NoResultsBlock = 'NoResultsNode';
 const RemoteBlock = 'RemoteNode';
@@ -115,8 +117,8 @@ const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 const blockTypesList = [
   AsyncBlock, CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-  HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
-  ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
+  HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock, 
+  RemoteBlock, ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
   SortedCollectBlock, SortingGatherBlock, TraversalBlock,
   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
   UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
@@ -758,6 +760,7 @@ exports.GatherNode = GatherNode;
 exports.IndexNode = IndexNode;
 exports.InsertNode = InsertNode;
 exports.LimitNode = LimitNode;
+exports.MaterializeNode = MaterializeNode;
 exports.MutexNode = MutexNode;
 exports.NoResultsNode = NoResultsNode;
 exports.RemoteNode = RemoteNode;
@@ -783,6 +786,7 @@ exports.FilterBlock = FilterBlock;
 exports.HashedCollectBlock = HashedCollectBlock;
 exports.IndexBlock = IndexBlock;
 exports.LimitBlock = LimitBlock;
+exports.MaterializeBlock = MaterializeBlock;
 exports.MutexBlock = MutexBlock;
 exports.NoResultsBlock = NoResultsBlock;
 exports.RemoteBlock = RemoteBlock;
