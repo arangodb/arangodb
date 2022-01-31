@@ -51,9 +51,8 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-RestViewHandler::RestViewHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestViewHandler::RestViewHandler(ArangodServer& server, GeneralRequest* request,
+                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {

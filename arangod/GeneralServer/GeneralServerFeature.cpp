@@ -25,6 +25,7 @@
 
 #include <stdexcept>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
@@ -140,9 +141,8 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
 DECLARE_COUNTER(arangodb_vst_connections_total,
                 "Total number of VST connections");
 
-GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "GeneralServer"),
+GeneralServerFeature::GeneralServerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _allowMethodOverride(false),
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
@@ -437,9 +437,6 @@ void GeneralServerFeature::defineHandlers() {
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
   AuthenticationFeature& authentication =
       server().getFeature<AuthenticationFeature>();
-#ifdef USE_ENTERPRISE
-  HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
-#endif
 
   // ...........................................................................
   // /_api
@@ -752,6 +749,7 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 
 #ifdef USE_ENTERPRISE
+  HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
   if (backup.isAPIEnabled()) {
     _handlerFactory->addPrefixHandler(
         "/_admin/backup",

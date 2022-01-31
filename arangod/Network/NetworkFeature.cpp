@@ -40,9 +40,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 void queueGarbageCollection(std::mutex& mutex,
@@ -64,7 +62,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
+NetworkFeature::NetworkFeature(Server& server)
     : NetworkFeature(server,
                      network::ConnectionPool::Config{
                          server.getFeature<metrics::MetricsFeature>()}) {
@@ -88,9 +86,9 @@ DECLARE_HISTOGRAM(
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
-NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
+NetworkFeature::NetworkFeature(Server& server,
                                network::ConnectionPool::Config config)
-    : ApplicationFeature(server, "Network"),
+    : ArangodFeature{server, *this},
       _protocol(),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),

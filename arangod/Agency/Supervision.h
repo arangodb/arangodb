@@ -113,7 +113,7 @@ class Supervision : public arangodb::Thread {
   };
 
   /// @brief Construct cluster consistency checking
-  explicit Supervision(application_features::ApplicationServer& server);
+  explicit Supervision(ArangodServer& server);
 
   /// @brief Default dtor
   ~Supervision();

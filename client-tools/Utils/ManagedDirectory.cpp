@@ -245,15 +245,10 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 
 namespace arangodb {
 
-ManagedDirectory::ManagedDirectory(
-    application_features::ApplicationServer& server, std::string const& path,
-    bool requireEmpty, bool create, bool writeGzip)
-    :
-#ifdef USE_ENTERPRISE
-      _encryptionFeature{&server.getFeature<EncryptionFeature>()},
-#else
-      _encryptionFeature(nullptr),
-#endif
+ManagedDirectory::ManagedDirectory(EncryptionFeature* encryption,
+                                   std::string const& path, bool requireEmpty,
+                                   bool create, bool writeGzip)
+    : _encryptionFeature{encryption},
       _path{path},
       _encryptionType{::EncryptionTypeNone},
       _writeGzip(writeGzip),

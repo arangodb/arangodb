@@ -22,6 +22,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBValue.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"

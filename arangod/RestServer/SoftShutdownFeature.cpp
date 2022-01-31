@@ -22,15 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Pregel/PregelFeature.h"
-#include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ScriptFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -56,9 +52,8 @@ void queueShutdownChecker(std::mutex& mutex,
 
 namespace arangodb {
 
-SoftShutdownFeature::SoftShutdownFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "SoftShutdown") {
+SoftShutdownFeature::SoftShutdownFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
@@ -84,10 +79,9 @@ void SoftShutdownTracker::cancelChecker() {
   }
 }
 
-SoftShutdownTracker::SoftShutdownTracker(
-    application_features::ApplicationServer& server)
+SoftShutdownTracker::SoftShutdownTracker(ArangodServer& server)
     : _server(server), _softShutdownOngoing(false) {
-  _checkFunc = [this](bool cancelled) {
+  _checkFunc = [this](bool /*cancelled*/) {
     if (_server.isStopping()) {
       return;  // already stopping, do nothing, and in particular
                // let's not schedule ourselves again!
