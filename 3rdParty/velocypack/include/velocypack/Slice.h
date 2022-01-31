@@ -163,7 +163,7 @@ class Slice {
           tag = readIntegerFixed<uint64_t, 8>(start + 1);
           offset = 9;
         } else {
-          throw new Exception(Exception::InternalError, "Invalid tag type ID");
+          throw Exception(Exception::InternalError, "Invalid tag type ID");
         }
 
         ret.push_back(tag);
@@ -189,7 +189,7 @@ class Slice {
         tag = readIntegerFixed<uint64_t, 8>(start + 1);
         offset = 9;
       } else {
-        throw new Exception(Exception::InternalError, "Invalid tag type ID");
+        throw Exception(Exception::InternalError, "Invalid tag type ID");
       }
 
       if (tag == tagId) {

@@ -4,6 +4,8 @@ devel
 * Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
   in upgrade mode in the same time.
 
+* Upgrade VelocyPack library to latest version.
+
 * Slightly improve the explain output of SingleRemoteOperationNodes.
 
 * Added more detail to the log messages that display the total time consumption
