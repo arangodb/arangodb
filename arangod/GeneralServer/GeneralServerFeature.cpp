@@ -303,6 +303,14 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
+
+  if (ServerState::instance()->isDBServer() &&
+      !server().options()->processingResult().touched(
+          "http.hide-product-header")) {
+    // if we are a DB server, client applications will not talk to us
+    // directly, so we can turn off the Server signature header.
+    HttpResponse::HIDE_PRODUCT_HEADER = true;
+  }
 }
 
 void GeneralServerFeature::start() {

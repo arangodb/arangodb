@@ -1,6 +1,10 @@
 devel
 -----
 
+* Turn off sending "Server" HTTP response header on DB servers if not 
+  explicitly requested. This saves a tiny bit of traffic on each response
+  from a DB server.
+
 * Upgrade VelocyPack library to latest version.
 
 * Slightly improve the explain output of SingleRemoteOperationNodes.
