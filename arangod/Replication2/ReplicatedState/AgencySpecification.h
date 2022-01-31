@@ -93,4 +93,12 @@ struct Current {
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
 
+struct Target {};
+
+struct State {
+  Target target;
+  Plan plan;
+  Current current;
+};
+
 }  // namespace arangodb::replication2::replicated_state::agency

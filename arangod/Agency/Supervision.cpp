@@ -1749,6 +1749,10 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
 
+  LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
+      << "Begin checkReplicatedStates";
+  checkReplicatedStates();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -2624,6 +2628,27 @@ void Supervision::checkReplicatedLogs() {
       }
     }
   }
+
+  envelope.done();
+  if (builder->slice().length() > 0) {
+    write_ret_t res = _agent->write(builder);
+    if (!res.successful()) {
+      LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
+          << "failed to update term in agency. Will retry. "
+          << builder->toJson();
+    }
+  }
+}
+
+void Supervision::checkReplicatedStates() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  auto builder = std::make_shared<Builder>();
+  auto envelope = arangodb::agency::envelope::into_builder(*builder);
+
+  // TODO
 
   envelope.done();
   if (builder->slice().length() > 0) {
