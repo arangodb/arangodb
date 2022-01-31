@@ -114,6 +114,14 @@ function attributeUncolored(v) {
   return '`' + v + '`';
 }
 
+function indexFieldToName(v) {
+  'use strict';
+  if (typeof v === 'object') {
+    return v.name;
+  }
+  return v;
+}
+
 function keyword(v) {
   'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
@@ -361,7 +369,7 @@ function printIndexes(indexes) {
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
-      l = index.fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      l = index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
@@ -385,8 +393,8 @@ function printIndexes(indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? 'true' : 'false');
       var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
-      var fields = '[ ' + indexes[i].fields.map(attribute).join(', ') + ' ]';
-      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -1133,7 +1141,10 @@ function processQuery(query, explain, planIndex) {
     }
     idx.collection = node.collection;
     idx.node = node.id;
-    if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
+    if (node.hasOwnProperty('condition') && node.hasOwnProperty('allCoveredByOneIndex') &&
+        node.allCoveredByOneIndex) {
+       idx.condition = buildExpression(node.condition);
+    } else if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
       idx.condition = buildExpression(node.condition.subNodes[i]);
     } else {
       if (variable !== false && variable !== undefined) {
@@ -1789,7 +1800,7 @@ function processQuery(query, explain, planIndex) {
             collectionVariables[node.outVariable.id] = node.collection;
             let indexRef = `${variable(JSON.stringify(node.key))}`;
             node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
-            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
+            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variableName(node.outVariable)}.${attribute('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
             // `
           }
           case 'InsertNode': {
@@ -1812,9 +1823,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))} `;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1843,9 +1854,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1872,9 +1883,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition;
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;

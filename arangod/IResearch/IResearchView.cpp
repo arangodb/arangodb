@@ -35,6 +35,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -49,6 +50,8 @@
 
 namespace arangodb::iresearch {
 namespace {
+using namespace arangodb;
+using namespace arangodb::iresearch;
 
 using kludge::read_write_mutex;
 
@@ -67,9 +70,9 @@ class ViewTrxState final : public TransactionState::Cookie,
     return *(_subReaders[subReaderId].second);
   }
 
-  void add(DataSourceId cid, IResearchLink::Snapshot&& snapshot);
+  void add(DataSourceId cid, IResearchDataStore::Snapshot&& snapshot);
 
-  DataSourceId cid(size_t offset) const noexcept final {
+  arangodb::DataSourceId cid(size_t offset) const noexcept override {
     return offset < _subReaders.size() ? _subReaders[offset].first
                                        : DataSourceId::none();
   }
@@ -119,7 +122,8 @@ class ViewTrxState final : public TransactionState::Cookie,
   std::vector<std::pair<DataSourceId, irs::sub_reader const*>> _subReaders;
 };
 
-void ViewTrxState::add(DataSourceId cid, IResearchLink::Snapshot&& snapshot) {
+void ViewTrxState::add(DataSourceId cid,
+                       IResearchDataStore::Snapshot&& snapshot) {
   auto& reader = snapshot.getDirectoryReader();
   for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct,
@@ -132,7 +136,6 @@ void ViewTrxState::add(DataSourceId cid, IResearchLink::Snapshot&& snapshot) {
   _collections.emplace(cid);
   _snapshots.emplace_back(std::move(snapshot));
 }
-
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -594,7 +597,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     // or
     // a previous link instance was unload()ed and a new instance is linking
     it->second = link;
-    IResearchLink::properties(std::move(linkLock), _meta);
+    IResearchDataStore::properties(std::move(linkLock), _meta);
     return {};
   } else {
     return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
@@ -609,7 +612,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
       return r;
     }
   }
-  IResearchLink::properties(std::move(linkLock), _meta);
+  IResearchDataStore::properties(std::move(linkLock), _meta);
   return {};
 }
 
@@ -876,7 +879,7 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
       // prevent the link from being deallocated
       auto linkLock = entry.second->lock();
       if (linkLock) {
-        IResearchLink::properties(std::move(linkLock), _meta);
+        IResearchDataStore::properties(std::move(linkLock), _meta);
       }
     }
     if (links.isEmptyObject() && (partialUpdate || _inRecovery.load())) {

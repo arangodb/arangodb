@@ -282,13 +282,14 @@ bool DepthFirstEnumerator::next() {
           }
           if (!foundOnce) {
             // We found it and it was not the last element (expected)
-            // This vertex is allready on the path
+            // This vertex is already on the path
             _enumeratedPath.popVertex();
             return;
           }
         }
 
         if (!validDisjointPath()) {
+          _enumeratedPath.popVertex();
           return;
         }
 

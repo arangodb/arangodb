@@ -295,12 +295,12 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
+    IResearchRocksDBLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
 #else
-    IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
+    IResearchRocksDBLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.insert(trx, docId, doc);
+    impl.insert(trx, nullptr, docId, doc, {}, false);
   }
 
   res = trx.commit();

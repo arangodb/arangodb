@@ -86,6 +86,9 @@ ClusterFeature::~ClusterFeature() {
 
     AgencyCommHelper::shutdown();
   }
+  // must make sure that the HeartbeatThread is fully stopped before
+  // we destroy the AgencyCallbackRegistry.
+  _heartbeatThread.reset();
 }
 
 void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

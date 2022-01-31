@@ -276,8 +276,8 @@ function CursorSyncSuite (databaseName) {
 
 dbs.forEach((databaseName) => {
   let func = function() {
-   let suite = {};
-   deriveTestSuite(CursorSyncSuite(databaseName), suite, databaseName);
+    let suite = {};
+    deriveTestSuite(CursorSyncSuite(databaseName), suite, databaseName);
     return suite;
   };
   Object.defineProperty(func, 'name', {value: "CursorSyncSuite" + databaseName, writable: false});

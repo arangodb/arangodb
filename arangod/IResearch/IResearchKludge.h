@@ -43,8 +43,9 @@ void mangleAnalyzer(std::string& name);
 void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
+void mangleString(std::string& name);
 
-void mangleField(std::string& name,
+void mangleField(std::string& name, bool isSearchFilter,
                  iresearch::FieldMeta::Analyzer const& analyzer);
 
 //////////////////////////////////////////////////////////////////////////////

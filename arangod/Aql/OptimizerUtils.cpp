@@ -470,7 +470,9 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
   if (bestIndex == nullptr) {
     for (auto const& idx : indexes) {
-      considerIndex(idx);
+      if (!Index::onlyHintForced(idx->type())) {
+        considerIndex(idx);
+      }
     }
   }
 
@@ -705,7 +707,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
-    std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted) {
+    std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
+    bool& isAllCoveredByIndex) {
   // We can only start after DNF transformation
   TRI_ASSERT(root->type ==
              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
@@ -720,6 +723,33 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 
   TRI_ASSERT(usedIndexes.empty());
 
+  // we might have an inverted index - it could cover whole condition at once.
+  // Give it a try
+  for (auto& index : indexes) {
+    if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+        ((hint.type() ==  // apply this index only if hinted
+              IndexHint::Simple &&
+          std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
+              hint.hint().end()))) {
+      auto costs = index.get()->supportsFilterCondition(
+          indexes, root, reference, itemsInCollection);
+      if (costs.supportsCondition) {
+        // we need to find 'root' in 'ast' and replace it with specialized
+        // version but for now we know that index will not alter the node, so
+        // just an assert
+        index.get()->specializeCondition(root, reference);
+        usedIndexes.emplace_back(index);
+        isAllCoveredByIndex = true;
+        // FIXME: we should somehow consider other indices and calculate here
+        // "overall" score Also a question: if sort is covered but filter is not
+        // ? What is more optimal?
+        auto const sortSupport = index.get()->supportsSortCondition(
+            sortCondition, reference, itemsInCollection);
+        return std::make_pair(true, sortSupport.supportsCondition);
+      }
+    }
+  }
+  isAllCoveredByIndex = false;
   size_t const n = root->numMembers();
   for (size_t i = 0; i < n; ++i) {
     // BTS-398: if there are multiple OR-ed conditions, fail only for forced
@@ -829,7 +859,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
       if (bestIndex == nullptr) {
         for (auto const& idx : indexes) {
-          considerIndex(idx);
+          if (!Index::onlyHintForced(idx->type())) {
+            considerIndex(idx);
+          }
         }
       }
 
