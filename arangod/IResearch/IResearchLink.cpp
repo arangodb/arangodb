@@ -432,8 +432,8 @@ Result IResearchLink::init(velocypack::Slice definition,
                     std::to_string(_id.id()) + "'"};
       }
 
-      viewId = view->guid();  // ensue that this is a GUID (required by
-                              // operator==(IResearchView))
+      // ensure that this is a GUID (required by operator==(IResearchView))
+      viewId = view->guid();
 
       auto linkRes = view->link(_asyncSelf);
 

@@ -2009,9 +2009,9 @@ arangodb::Result TransactionCollectionMock::doUnlock(
   return {};
 }
 
-size_t TransactionStateMock::abortTransactionCount;
-size_t TransactionStateMock::beginTransactionCount;
-size_t TransactionStateMock::commitTransactionCount;
+std::atomic_size_t TransactionStateMock::abortTransactionCount;
+std::atomic_size_t TransactionStateMock::beginTransactionCount;
+std::atomic_size_t TransactionStateMock::commitTransactionCount;
 
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(

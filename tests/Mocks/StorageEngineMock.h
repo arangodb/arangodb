@@ -184,9 +184,9 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
 
 class TransactionStateMock : public arangodb::TransactionState {
  public:
-  static size_t abortTransactionCount;
-  static size_t beginTransactionCount;
-  static size_t commitTransactionCount;
+  static std::atomic_size_t abortTransactionCount;
+  static std::atomic_size_t beginTransactionCount;
+  static std::atomic_size_t commitTransactionCount;
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options);
