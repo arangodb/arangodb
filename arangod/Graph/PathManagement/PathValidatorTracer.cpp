@@ -147,7 +147,10 @@ void PathValidatorTracer<
 
 namespace arangodb::graph {
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+
+#ifdef USE_ENTERPRISE
 using SmartGraphStep = ::arangodb::graph::enterprise::SmartGraphStep;
+#endif
 
 template class PathValidatorTracer<
     PathValidator<SingleServerProvider<SingleServerProviderStep>,
