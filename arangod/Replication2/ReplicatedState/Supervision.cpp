@@ -23,11 +23,10 @@
 
 #include "Supervision.h"
 
-namespace arangodb::replication2::replicated_state {
+using namespace arangodb::replication2::replicated_state;
 
-auto checkReplicatedState(Log const& log, agency::State const& state)
-    -> std::unique_ptr<Action> {
+auto checkReplicatedState(
+    std::optional<arangodb::replication2::agency::Log> const& log,
+    agency::State const& state) -> std::unique_ptr<Action> {
   return std::make_unique<EmptyAction>();
 };
-
-}  // namespace arangodb::replication2::replicated_state

@@ -97,8 +97,8 @@ struct Target {};
 
 struct State {
   Target target;
-  Plan plan;
-  Current current;
+  std::optional<Plan> plan;
+  std::optional<Current> current;
 };
 
 }  // namespace arangodb::replication2::replicated_state::agency

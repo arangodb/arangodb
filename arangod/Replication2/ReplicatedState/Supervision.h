@@ -29,8 +29,6 @@
 
 #include <memory>
 
-using namespace arangodb::replication2::agency;
-
 namespace arangodb::replication2::replicated_state {
 
 struct Action {
@@ -53,7 +51,8 @@ struct EmptyAction : Action {
   void toVelocyPack(VPackBuilder& builder) const override{};
 };
 
-auto checkReplicatedState(Log const& log, agency::State const& state)
-    -> std::unique_ptr<Action>;
+auto checkReplicatedState(
+    std::optional<arangodb::replication2::agency::Log> const& log,
+    agency::State const& state) -> std::unique_ptr<Action>;
 
 }  // namespace arangodb::replication2::replicated_state
