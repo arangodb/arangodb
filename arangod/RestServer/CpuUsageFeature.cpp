@@ -62,15 +62,6 @@ CpuUsageFeature::SnapshotProvider::SnapshotProvider() : _statFile(nullptr) {
   _statFile = fopen("/proc/stat", "r");
 }
 
-CpuUsageFeature::CpuUsageFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _snapshotProvider(),
-      _updateInProgress(false) {
-  setOptional(true);
-
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
 CpuUsageFeature::SnapshotProvider::~SnapshotProvider() {
   if (_statFile != nullptr) {
     fclose(_statFile);
@@ -158,7 +149,14 @@ struct CpuUsageFeature::SnapshotProvider {
 };
 #endif
 
-CpuUsageFeature::~CpuUsageFeature() = default;
+CpuUsageFeature::CpuUsageFeature(Server& server)
+    : ArangodFeature{server, *this},
+      _snapshotProvider(),
+      _updateInProgress(false) {
+  setOptional(true);
+
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
 
 void CpuUsageFeature::prepare() {
   _snapshotProvider = std::make_unique<SnapshotProvider>();
