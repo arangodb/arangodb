@@ -356,8 +356,7 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "zkd")) {
     return TRI_IDX_TYPE_ZKD_INDEX;
   }
-  std::string const& tmp = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  if (::typeMatch(type, len, tmp.c_str())) {
+  if (std::string_view{type, len} == iresearch::StaticStrings::DataSourceType) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
   if (::typeMatch(type, len, "noaccess")) {
@@ -395,7 +394,7 @@ char const* Index::oldtypeName(Index::IndexType type) {
     case TRI_IDX_TYPE_GEO_INDEX:
       return "geo";
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-      return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
+      return iresearch::StaticStrings::DataSourceType.data();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_ZKD_INDEX:

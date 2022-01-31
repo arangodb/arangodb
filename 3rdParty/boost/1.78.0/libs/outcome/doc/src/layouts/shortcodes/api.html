@@ -1,0 +1,72 @@
+{{- if and (hasPrefix (.Get 0) "std::") (not (hasPrefix (.Get 0) "std::experimental")) (not (in (.Get 0) "print(")) }}
+  {{- if hasPrefix (.Get 0) "std::errc" }}
+<a href="https://en.cppreference.com/w/cpp/error/errc" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::error_category" }}
+<a href="https://en.cppreference.com/w/cpp/error/error_category" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::error_code" }}
+<a href="https://en.cppreference.com/w/cpp/error/error_code" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::exception_ptr" }}
+<a href="https://en.cppreference.com/w/cpp/error/exception_ptr" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::generic_category" }}
+<a href="https://en.cppreference.com/w/cpp/error/generic_category" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::is_error_code_enum" }}
+<a href="https://en.cppreference.com/w/cpp/error/error_code/is_error_code_enum" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::is_error_condition_enum" }}
+<a href="https://en.cppreference.com/w/cpp/error/error_condition/is_error_condition_enum" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::in_place_type_t" }}
+<a href="https://en.cppreference.com/w/cpp/utility/in_place" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::launder" }}
+<a href="https://en.cppreference.com/w/cpp/utility/launder" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::logic_error" }}
+<a href="https://en.cppreference.com/w/cpp/error/logic_error" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::make_error_code" }}
+<a href="https://en.cppreference.com/mwiki/index.php?title=Special%3ASearch&search=make_error_code" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::make_exception_ptr" }}
+<a href="https://en.cppreference.com/w/cpp/error/make_exception_ptr" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::optional" }}
+<a href="https://en.cppreference.com/w/cpp/utility/optional" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::rethrow_exception" }}
+<a href="https://en.cppreference.com/w/cpp/error/rethrow_exception" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::system_category" }}
+<a href="https://en.cppreference.com/w/cpp/error/system_category" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::system_error" }}
+<a href="https://en.cppreference.com/w/cpp/error/system_error" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::terminate" }}
+<a href="https://en.cppreference.com/w/cpp/error/terminate" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::variant" }}
+<a href="https://en.cppreference.com/w/cpp/utility/variant" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> <code>{{ .Get 0 }}</code></a>
+
+  {{- else if hasPrefix (.Get 0) "std::expected" }}
+<a href="https://wg21.link/P0323" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> P0323 <code>{{ .Get 0 }}</code></a>
+  {{- else if hasPrefix (.Get 0) "std::unexpected" }}
+<a href="https://wg21.link/P0323" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> P0323 <code>{{ .Get 0 }}</code></a>
+
+  {{- else }}
+    {{- errorf "Unknown cppreference target %s" (.Get 0) }}
+  {{- end }}
+{{- else }}
+  {{- $api_found := false }}
+  {{- $api_title := "" }}
+  {{- $api_url := "" }}
+  {{- $api := .Get 0 }}
+  {{- range .Site.Pages }}
+    {{- if in .Title $api -}}
+      {{- if $api_found }}
+        {{- if lt (len .Title) (len $api_title) }}
+          {{- $api_title = .Title }}
+          {{- $api_url = .URL }}
+        {{- end }}
+      {{- else }}
+        {{- $api_title = .Title }}
+        {{- $api_url = .URL }}
+        {{- $api_found = true }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $api_found -}}
+<a href="{{ $api_url }}" class="api-reference"><code>{{ $api }}</code></a>
+  {{- else }}
+    {{- errorf "%s: API reference page for '%s' not found, please use an identifier wholly contained in a page title" .Position (.Get 0) }}
+    <b>API NOT FOUND IN DOCS <code>{{ .Get 0 }}</code></b>
+  {{- end }}
+{{- end }}

@@ -91,24 +91,24 @@ struct IResearchViewMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  size_t _cleanupIntervalStep;  // issue cleanup after <count> commits (0 ==
-                                // disable)
-  size_t _commitIntervalMsec;   // issue commit after <interval> milliseconds (0
-                                // == disable)
-  size_t _consolidationIntervalMsec;  // issue consolidation after <interval>
-                                      // milliseconds (0 == disable)
+  size_t _cleanupIntervalStep{};
+  // issue cleanup after <count> commits (0 == disable)
+  size_t _commitIntervalMsec{};
+  // issue commit after <interval> milliseconds (0 == disable)
+  size_t _consolidationIntervalMsec{};
+  // issue consolidation after <interval> milliseconds (0 == disable)
   ConsolidationPolicy _consolidationPolicy;  // the consolidation policy to use
-  uint32_t _version;  // the version of the iresearch interface e.g. which how
-                      // data is stored in iresearch (default == latest)
-  size_t _writebufferActive;   // maximum number of concurrent segments before
-                               // segment aquisition blocks, e.g. max number of
-                               // concurrent transacitons) (0 == unlimited)
-  size_t _writebufferIdle;     // maximum number of segments cached in the pool
-  size_t _writebufferSizeMax;  // maximum memory byte size per segment before a
-                               // segment flush is triggered (0 == unlimited)
+  uint32_t _version{};  // the version of the iresearch interface e.g. which
+                        // how data is stored in iresearch (default == latest)
+  size_t _writebufferActive{};  // maximum number of concurrent segments
+  // before segment acquisition blocks,
+  // e.g. max number of concurrent transactions (0 == unlimited)
+  size_t _writebufferIdle{};  // maximum number of segments cached in the pool
+  size_t _writebufferSizeMax{};  // maximum memory byte size per segment
+  // before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
-  irs::type_info::type_id _primarySortCompression;
+  irs::type_info::type_id _primarySortCompression{};
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -120,12 +120,27 @@ struct IResearchViewMeta {
   // function !!! NOTE: if adding fields don't forget to modify the memory()
   // function !!!
 
+  IResearchViewMeta(IResearchViewMeta&& other) noexcept = delete;
+  IResearchViewMeta& operator=(IResearchViewMeta&& other) noexcept = delete;
+  IResearchViewMeta& operator=(IResearchViewMeta const& other) = delete;
+
   IResearchViewMeta();
   IResearchViewMeta(IResearchViewMeta const& other);
-  IResearchViewMeta(IResearchViewMeta&& other) noexcept;
 
-  IResearchViewMeta& operator=(IResearchViewMeta&& other) noexcept;
-  IResearchViewMeta& operator=(IResearchViewMeta const& other);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ctor with '*Tag' not thread-safe for '&& other'
+  //////////////////////////////////////////////////////////////////////////////
+  struct FullTag {};
+  IResearchViewMeta(FullTag, IResearchViewMeta&& other) noexcept;
+  struct PartialTag {};
+  IResearchViewMeta(PartialTag, IResearchViewMeta&& other) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief store methods not thread-safe for 'this', and not for '&& other'
+  //////////////////////////////////////////////////////////////////////////////
+  void storeFull(IResearchViewMeta const& other);
+  void storeFull(IResearchViewMeta&& other) noexcept;
+  void storePartial(IResearchViewMeta&& other) noexcept;
 
   bool operator==(IResearchViewMeta const& other) const noexcept;
   bool operator!=(IResearchViewMeta const& other) const noexcept;
@@ -141,7 +156,7 @@ struct IResearchViewMeta {
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
+  bool init(velocypack::Slice slice, std::string& errorField,
             IResearchViewMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr) noexcept;
 
@@ -152,7 +167,7 @@ struct IResearchViewMeta {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
+  bool json(velocypack::Builder& builder,
             IResearchViewMeta const* ignoreEqual = nullptr,
             Mask const* mask = nullptr) const;
 
@@ -172,9 +187,9 @@ struct IResearchViewMetaState {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<DataSourceId>
-      _collections;  // collection links added to this view via IResearchLink
-                     // creation (may contain no-longer valid cids)
+  // collection links added to this view via IResearchLink
+  // creation (may contain no-longer valid cids)
+  std::unordered_set<DataSourceId> _collections;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -197,19 +212,12 @@ struct IResearchViewMetaState {
   bool operator!=(IResearchViewMetaState const& other) const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief return default IResearchViewMeta values
-  ////////////////////////////////////////////////////////////////////////////////
-  static const IResearchViewMetaState& DEFAULT();
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchViewMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(VPackSlice slice, std::string& errorField,
-            IResearchViewMetaState const& defaults = DEFAULT(),
-            Mask* mask = nullptr);
+  bool init(VPackSlice slice, std::string& errorField, Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object

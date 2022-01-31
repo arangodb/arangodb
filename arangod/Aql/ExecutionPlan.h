@@ -89,12 +89,16 @@ class ExecutionPlan {
   /// @brief clone the plan by recursively cloning starting from the root
   ExecutionPlan* clone();
 
+  // build flags for plan serialization
+  static unsigned buildSerializationFlags(bool verbose, bool includeInternals,
+                                          bool explainRegisters) noexcept;
+
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
-      Ast*, bool verbose, ExplainRegisterPlan) const;
+      Ast* ast, unsigned flags) const;
 
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose,
-                    ExplainRegisterPlan) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast* ast,
+                    unsigned flags) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }

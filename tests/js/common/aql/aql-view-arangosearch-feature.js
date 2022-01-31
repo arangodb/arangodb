@@ -2127,13 +2127,44 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(16, result[0][0].length);
 
           const expected = [
-            39, 6, 65533, 6, 120, 16, 65533, 26, 12,
-            1, 12, 1, 65533, 65533, 65533, 65533 ];
+            39, 6,  1158, 6, 120, 16, 1090, 26, 12,
+            1, 12, 1, 1862, 1537, 1862, 1862];
 
           assertTrue(
             _.isEqual(expected, result[0][0].split('').map(c => c.charCodeAt(0))));
         } finally {
           analyzers.remove(analyzerName, true);
+        }
+      }
+    },
+    
+    // BTS-712
+    testCustomCollationUtf8Convertable : function() {
+      let analyzerName = "collationUnderTest";
+      let collectionName = "testBTS712";
+      let viewName = "viewTestBTS712";
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try { db._drop(collectionName); } catch(e) {}
+      try { db._dropView(viewName); } catch(e) {}
+      try { 
+        analyzers.save(analyzerName,"collation", {locale:"sv.utf-8"}, []);
+        let col = db._create(collectionName);
+        col.save([ { text: "a" }, { text: "\u00E5" }, { text: "b" }, { text: "z" }, ]);
+        db._createView(viewName, "arangosearch", {
+            links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true }}});
+      } catch (e) { }
+      {
+        try {
+          let result = db._query(
+            "FOR d IN " + viewName + " SEARCH ANALYZER(d.text <  TOKENS('Z', '" + analyzerName +
+            "' )[0], '" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d",
+            null,
+            { }).toArray();
+          assertEqual(3, result.length);
+        } finally {
+          db._dropView(viewName);
+          analyzers.remove(analyzerName, true);
+          db._drop(collectionName);
         }
       }
     },

@@ -1,0 +1,248 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Background</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../allocators.html" title="Allocators">
+<link rel="prev" href="../allocators.html" title="Allocators">
+<link rel="next" href="storage_ptr.html" title="storage_ptr">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../allocators.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../allocators.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="storage_ptr.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="json.allocators.background"></a><a class="link" href="background.html" title="Background">Background</a>
+</h3></div></div></div>
+<p>
+        The first version of allocators in C++ defined the named requirement <a href="https://en.cppreference.com/w/cpp/named_req/Allocator" target="_top"><span class="emphasis"><em>Allocator</em></span></a>,
+        and made each standard container a class template parameterized on the allocator
+        type. For example, here is the declaration for <a href="https://en.cppreference.com/w/cpp/container/vector" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code></a>:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">std</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Allocator</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">vector</span><span class="special">;</span>
+
+<span class="special">}</span> <span class="comment">// namespace std</span>
+</pre>
+<p>
+        The standard allocator is <a href="https://en.cppreference.com/w/cpp/named_req/DefaultConstructible" target="_top"><span class="emphasis"><em>DefaultConstructible</em></span></a>.
+        To support stateful allocators, containers provide additional constructor
+        overloads taking an allocator instance parameter.
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">std</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">vector</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">vector</span><span class="special">(</span> <span class="identifier">Allocator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">alloc</span> <span class="special">);</span>
+
+    <span class="comment">//...</span>
+</pre>
+<p>
+        While the system works, it has some usability problems:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The container must be a class template.
+          </li>
+<li class="listitem">
+            Parameterizing the allocator on the element type is clumsy.
+          </li>
+<li class="listitem">
+            The system of allocator traits, especially POCCA and POCMA, is complicated
+            and error-prone.
+          </li>
+</ul></div>
+<p>
+        Allocator-based programs which use multiple allocator types incur a greater
+        number of function template instantiations and are generally slower to compile
+        because class template function definitions must be visible at all call sites.
+      </p>
+<h5>
+<a name="json.allocators.background.h0"></a>
+        <span class="phrase"><a name="json.allocators.background.polymorphic_allocators"></a></span><a class="link" href="background.html#json.allocators.background.polymorphic_allocators">Polymorphic
+        Allocators</a>
+      </h5>
+<p>
+        C++17 improves the allocator model by representing the low-level allocation
+        operation with an abstract interface called <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>, which is not parameterized
+        on the element type, and has no traits:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">std</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">pmr</span> <span class="special">{</span>
+
+<span class="keyword">class</span> <span class="identifier">memory_resource</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">memory_resource</span><span class="special">();</span>
+
+    <span class="keyword">void</span><span class="special">*</span> <span class="identifier">allocate</span>  <span class="special">(</span> <span class="identifier">size_t</span> <span class="identifier">bytes</span><span class="special">,</span> <span class="identifier">size_t</span> <span class="identifier">alignment</span> <span class="special">);</span>
+    <span class="keyword">void</span>  <span class="identifier">deallocate</span><span class="special">(</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">size_t</span> <span class="identifier">bytes</span><span class="special">,</span> <span class="identifier">size_t</span> <span class="identifier">alignment</span> <span class="special">);</span>
+    <span class="keyword">bool</span>  <span class="identifier">is_equal</span>  <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">memory_resource</span><span class="special">&amp;</span> <span class="identifier">other</span> <span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+<span class="keyword">protected</span><span class="special">:</span>
+    <span class="keyword">virtual</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">do_allocate</span>  <span class="special">(</span> <span class="identifier">size_t</span> <span class="identifier">bytes</span><span class="special">,</span> <span class="identifier">size_t</span> <span class="identifier">alignment</span> <span class="special">)</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="keyword">virtual</span> <span class="keyword">void</span>  <span class="identifier">do_deallocate</span><span class="special">(</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">size_t</span> <span class="identifier">bytes</span><span class="special">,</span> <span class="identifier">size_t</span> <span class="identifier">alignment</span> <span class="special">)</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="keyword">virtual</span> <span class="keyword">bool</span>  <span class="identifier">do_is_equal</span>  <span class="special">(</span> <span class="identifier">memory_resource</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span> <span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}</span> <span class="comment">// namespace pmr</span>
+<span class="special">}</span> <span class="comment">// namespace std</span>
+</pre>
+<p>
+        The class template <a class="link" href="../ref/boost__json__polymorphic_allocator.html" title="polymorphic_allocator"><code class="computeroutput"><span class="identifier">polymorphic_allocator</span></code></a> wraps a <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>
+        pointer and meets the requirements of <a href="https://en.cppreference.com/w/cpp/named_req/Allocator" target="_top"><span class="emphasis"><em>Allocator</em></span></a>,
+        allowing it to be used where an allocator is expected. The standard provides
+        type aliases using the polymorphic allocator for standard containers:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">std</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">pmr</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">vector</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">polymorphic_allocator</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&gt;;</span>
+
+<span class="special">}</span> <span class="comment">// namespace pmr</span>
+<span class="special">}</span> <span class="comment">// namespace std</span>
+</pre>
+<p>
+        A polymorphic allocator constructs with a pointer to a memory resource:
+      </p>
+<pre class="programlisting"><span class="comment">// A type of memory resource</span>
+<span class="identifier">monotonic_resource</span> <span class="identifier">mr</span><span class="special">;</span>
+
+<span class="comment">// Construct a vector using the monotonic buffer resource</span>
+<span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="identifier">v1</span><span class="special">((</span> <span class="identifier">polymorphic_allocator</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;(&amp;</span><span class="identifier">mr</span><span class="special">)</span> <span class="special">));</span>
+
+<span class="comment">// Or this way, since construction from memory_resource* is implicit:</span>
+<span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="identifier">v2</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>
+</pre>
+<p>
+        The memory resource is passed by pointer; ownership is not transferred. The
+        caller is responsible for extending the lifetime of the memory resource until
+        the last container which is using it goes out of scope, otherwise the behavior
+        is undefined. Sometimes this is the correct model, such as in this example
+        which uses a monotonic resource constructed from a local stack buffer:
+      </p>
+<pre class="programlisting"><span class="special">{</span>
+    <span class="comment">// A type of memory resource which uses a stack buffer</span>
+    <span class="keyword">unsigned</span> <span class="keyword">char</span> <span class="identifier">temp</span><span class="special">[</span><span class="number">4096</span><span class="special">];</span>
+    <span class="identifier">static_resource</span> <span class="identifier">mr</span><span class="special">(</span> <span class="identifier">temp</span><span class="special">,</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">temp</span><span class="special">)</span> <span class="special">);</span>
+
+    <span class="comment">// Construct a vector using the static buffer resource</span>
+    <span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">value</span> <span class="special">&gt;</span> <span class="identifier">v</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>
+
+    <span class="comment">// The vector will allocate from `temp` first, and then the heap.</span>
+<span class="special">}</span>
+</pre>
+<p>
+        However, sometimes shared ownership is needed. Specifically, that the lifetime
+        extension of the memory resource should be automatic. For example, if a library
+        wants to return a container which owns an instance of the library's custom
+        memory resource as shown below:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">my_library</span> <span class="special">{</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">get_chars1</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// This leaks memory because `v` does not own the memory resource</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">v</span><span class="special">(</span> <span class="keyword">new</span> <span class="identifier">my_resource</span> <span class="special">);</span>
+
+    <span class="keyword">return</span> <span class="identifier">v</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="special">}</span> <span class="comment">// my_library</span>
+</pre>
+<p>
+        This can be worked around by declaring the container to use a custom allocator
+        (perhaps using a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span>
+        <span class="identifier">memory_resource</span> <span class="special">&gt;</span></code>
+        as a data member). This hinders library composition; every library now exports
+        unique, incompatible container types. A raw memory resource pointer is also
+        easy to misuse:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">my_library</span> <span class="special">{</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">get_chars2</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// Declare a local memory resource</span>
+    <span class="identifier">my_resource</span> <span class="identifier">mr</span><span class="special">;</span>
+
+    <span class="comment">// Construct a vector that uses our resource</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">v</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>
+
+    <span class="comment">// Undefined behavior, `mr` goes out of scope!</span>
+    <span class="keyword">return</span> <span class="identifier">v</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="special">}</span> <span class="comment">// my_library</span>
+</pre>
+<p>
+        Workarounds for this problem are worse than the problem itself. The library
+        could return a pair with the vector and <code class="computeroutput"><span class="identifier">unique_ptr</span><span class="special">&lt;</span><span class="identifier">memory_resource</span><span class="special">&gt;</span></code> which the caller must manage. Or the
+        library could change its function signatures to accept a <code class="computeroutput"><span class="identifier">memory_resource</span><span class="special">*</span></code> provided by the caller, where the library
+        also makes public the desired memory resources (<code class="computeroutput"><span class="identifier">my_resource</span></code>
+        above).
+      </p>
+<h5>
+<a name="json.allocators.background.h1"></a>
+        <span class="phrase"><a name="json.allocators.background.problem_statement"></a></span><a class="link" href="background.html#json.allocators.background.problem_statement">Problem
+        Statement</a>
+      </h5>
+<p>
+        We would like an allocator model using a single type <code class="computeroutput"><span class="identifier">T</span></code>
+        with the following properties:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> is not a class template
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> references a <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> supports both reference
+            semantics or shared ownership
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> interoperates with
+            code already using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pmr</span></code>
+          </li>
+</ul></div>
+<p>
+        Boost.JSON solves this problem by introducing a new smart pointer called
+        <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a>
+        which builds upon C++17's memory allocation interfaces, accomplishing the
+        goals above. As a result, libraries which use this type compose more easily
+        and enjoy faster compilation, as member functions for containers which use
+        the type can be defined out-of-line.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../allocators.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../allocators.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="storage_ptr.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

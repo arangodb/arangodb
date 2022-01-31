@@ -41,19 +41,22 @@ ExecutorExpressionContext::ExecutorExpressionContext(
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = false;
-  auto const searchId = variable->id;
-  for (auto const& [varId, regId] : _varsToRegister) {
-    if (varId == searchId) {
-      if (doCopy) {
-        mustDestroy = true;  // as we are copying
-        return _inputRow.getValue(regId).clone();
-      }
-      return _inputRow.getValue(regId);
-    }
-  }
-  std::string msg("variable not found '");
-  msg.append(variable->name);
-  msg.append("' in executeSimpleExpression()");
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        mustDestroy = doCopy;
+        auto const searchId = variable->id;
+        for (auto const& [varId, regId] : _varsToRegister) {
+          if (varId == searchId) {
+            if (doCopy) {
+              return _inputRow.getValue(regId).clone();
+            }
+            return _inputRow.getValue(regId);
+          }
+        }
+        std::string msg("variable not found '");
+        msg.append(variable->name);
+        msg.append("' in executeSimpleExpression()");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+      });
 }
