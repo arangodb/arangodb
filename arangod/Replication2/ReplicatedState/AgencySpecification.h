@@ -93,7 +93,9 @@ struct Current {
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
 
-struct Target {};
+struct Target {
+  static auto fromVelocyPack(velocypack::Slice) -> Target;
+};
 
 struct State {
   Target target;
