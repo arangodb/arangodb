@@ -13,6 +13,7 @@
       return this;
     },
 
+    nodes: {},
     nodeLabels: {},
     edgeLabels: {},
     general: {
@@ -90,7 +91,7 @@
           2: { id: "germanCity/Berlin" },
           3: { id: "germanCity/Hamburg" },
           4: { id: "germanCity/Cologne" }
-        },
+        }
       },
 
       'nodeLabelByCollection': {
@@ -280,13 +281,30 @@
     },
 
     checkAllEvents: function (e) {
-      //console.log(e.target);
       var self = this;
-      if (e.type === "change" && e.target.id !== "g_singleNode") {
+      if (e.type === "change" && e.target.id !== "g_singleNode" && e.target.id !== 'g_nodeLabelByCollection') {
         self.saveGraphSettings(self.getLabels());
       } else if (e.target.id === "g_singleNode") {
-        this.updateSingleNode(e);
+        self.updateSingleNode(e);
+      } else if (e.target.id === 'g_nodeLabelByCollection') {
+        self.populateNodeIds(e);
       }
+    },
+
+    populateNodeIds: function (e) {
+      console.log(e);
+      let cNodes = window.App.graphViewer.currentGraph.graph.nodes();
+
+      if (!$('#g_singleNode').prop('disabled', true)) {
+        $("#_singleNode").prop('disabled', true);
+      }
+
+      let singleNode = $('#g_singleNode');
+      _.each(cNodes, function (n) {
+        console.log(n);
+        singleNode.append($('<option />').val(n.id).text(n.id));
+      });
+      debugger;
     },
 
     /**
@@ -324,7 +342,7 @@
         }
       });
       graphViewer.currentGraph.refresh({ skipIndexation: true });
-      debugger;
+      // debugger;
     },
 
     getLabels: function () {
@@ -613,7 +631,6 @@
     },
 
     render: function () {
-      this.getLabels();
       if (this.noDefinedGraph) {
         // aql render mode
         this.continueRender();
@@ -646,6 +663,11 @@
         }
       }
 
+      //single node collection
+      if ($('#g_nodeLabelByCollection').val() === 'false') {
+        $('#g_singleNode').prop('disabled', true);
+      }
+
       // edge color
       if ($('#g_edgeColorByCollection').val() === 'true') {
         $('#g_edgeColorAttribute').prop('disabled', true);
@@ -663,13 +685,12 @@
     },
 
     continueRender: function () {
-      console.log(this.nodeLabels);
-      console.log(this.edgeLabels)
       $(this.el).html(this.template.render({
         general: this.general,
         specific: this.specific,
         nodeLabels: this.nodeLabels,
         edgeLabels: this.edgeLabels,
+        nodes: this.nodes,
       }));
 
       arangoHelper.fixTooltips('.gv-tooltips', 'top');
