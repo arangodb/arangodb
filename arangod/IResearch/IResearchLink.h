@@ -171,7 +171,7 @@ class IResearchLink : public IResearchDataStore {
   struct LinkStats : Stats {
     LinkStats() = default;
     explicit LinkStats(Stats const& storeStats) : Stats(storeStats) {}
-    void toPrometheus(std::string& r, bool first, std::string_view globals,
+    void toPrometheus(std::string& result, bool first, std::string_view globals,
                       std::string_view labels) const;
   };
 

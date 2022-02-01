@@ -601,19 +601,21 @@ StatisticsFeature::StatisticsFeature(Server& server)
       if (it.second != nullptr) {
         auto const& builder = *it.second;
         auto const& stat = statIt->second;
-        if (builder.name() != stat[0]) {
+        auto const name = stat[0];
+        auto const type = stat[1];
+        if (builder.name() != name) {
           foundError = true;
           LOG_TOPIC("f66dd", ERR, Logger::STATISTICS)
               << "Statistic '" << it.first << "' has mismatching names: '"
-              << builder.name() << "' in statBuilder but '" << stat[0]
+              << builder.name() << "' in statBuilder but '" << name
               << "' in statStrings";
         }
-        if (builder.type() != stat[1]) {
+        if (builder.type() != type) {
           foundError = true;
           LOG_TOPIC("9fe22", ERR, Logger::STATISTICS)
               << "Statistic '" << it.first
               << "' has mismatching types (for API v2): '" << builder.type()
-              << "' in statBuilder but '" << stat[1] << "' in statStrings";
+              << "' in statBuilder but '" << type << "' in statStrings";
         }
       }
     } else {
@@ -780,10 +782,12 @@ void StatisticsFeature::appendHistogram(
   VPackSlice counts = slc.get("counts");
 
   auto const& stat = statStrings.at(label);
-  auto const& name = stat.at(0);
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
 
-  (result.append("# HELP ").append(name) += ' ').append(stat[2]) += '\n';
-  (result.append("# TYPE ").append(name) += ' ').append(stat[1]) += '\n';
+  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
   uint64_t sum = 0;
@@ -800,9 +804,12 @@ void StatisticsFeature::appendMetric(std::string& result,
                                      std::string const& val,
                                      std::string const& label) {
   auto const& stat = statStrings.at(label);
-  (result.append("# HELP ").append(stat[0]) += ' ').append(stat[2]) += '\n';
-  (result.append("# TYPE ").append(stat[0]) += ' ').append(stat[1]) += '\n';
-  result.append(stat[0]).append("{}").append(val) += '\n';
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
+  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
+  result.append(name).append("{}").append(val) += '\n';
 }
 
 void StatisticsFeature::toPrometheus(std::string& result, double const& now) {

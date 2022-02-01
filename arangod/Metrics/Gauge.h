@@ -38,13 +38,13 @@ class Gauge final : public Metric {
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
 
-  void toPrometheus(std::string& r, bool first,
+  void toPrometheus(std::string& result, bool first,
                     std::string_view globals) const final {
     if (first) {
-      addHelpType(r);
+      addHelpType(result);
     }
-    addName(r, globals);
-    r.append(std::to_string(load())) += '\n';
+    addName(result, globals);
+    result.append(std::to_string(load())) += '\n';
   }
 
   [[nodiscard]] T load(

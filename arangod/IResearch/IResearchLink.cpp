@@ -706,28 +706,28 @@ void IResearchLink::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   aql::QueryCache::instance()->invalidate(vocbase, _viewGuid);
 }
 
-void IResearchLink::LinkStats::toPrometheus(std::string& r, bool first,
+void IResearchLink::LinkStats::toPrometheus(std::string& result, bool first,
                                             std::string_view globals,
                                             std::string_view labels) const {
   auto writeAnnotation = [&] {
-    (r += '{') += globals;
+    (result += '{') += globals;
     if (!labels.empty()) {
       if (!globals.empty()) {
-        r += ',';
+        result += ',';
       }
-      r += labels;
+      result += labels;
     }
-    r += '}';
+    result += '}';
   };
   auto writeMetric = [&](std::string_view name, std::string_view help,
                          size_t value) {
     if (first) {
-      (r.append("# HELP ").append(name) += ' ').append(help) += '\n';
-      r.append("# TYPE ").append(name) += " gauge\n";
+      (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+      result.append("# TYPE ").append(name) += " gauge\n";
     }
-    r.append(name);
+    result.append(name);
     writeAnnotation();
-    r.append(std::to_string(value)) += '\n';
+    result.append(std::to_string(value)) += '\n';
   };
   writeMetric(arangosearch_num_buffered_docs::kName,
               "Number of buffered documents", numBufferedDocs);

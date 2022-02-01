@@ -40,7 +40,7 @@ class Counter final : public Metric {
   ~Counter() final;
 
   [[nodiscard]] std::string_view type() const noexcept final;
-  void toPrometheus(std::string& r, bool first,
+  void toPrometheus(std::string& result, bool first,
                     std::string_view globals) const final;
 
   [[nodiscard]] uint64_t load() const noexcept;

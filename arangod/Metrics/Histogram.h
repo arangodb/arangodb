@@ -120,10 +120,10 @@ class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  void toPrometheus(std::string& r, bool first,
+  void toPrometheus(std::string& result, bool first,
                     std::string_view globals) const final {
     if (first) {
-      addHelpType(r);
+      addHelpType(result);
     }
     std::string ls;
     auto const globals_size = globals.size();
@@ -137,17 +137,17 @@ class Histogram : public Metric {
     uint64_t sum = 0;
     for (size_t i = 0, end = size(); i != end; ++i) {
       sum += load(i);
-      r.append(name()).append("_bucket{");
+      result.append(name()).append("_bucket{");
       if (!ls.empty()) {
-        r.append(ls) += ',';
+        result.append(ls) += ',';
       }
-      r.append("le=\"").append(_scale.delim(i)).append("\"}");
-      r.append(std::to_string(sum)) += '\n';
+      result.append("le=\"").append(_scale.delim(i)).append("\"}");
+      result.append(std::to_string(sum)) += '\n';
     }
-    (r.append(name()).append("_count") += '{').append(ls) += '}';
-    r.append(std::to_string(sum)) += '\n';
-    (r.append(name()).append("_sum") += '{').append(ls) += '}';
-    r.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
+    (result.append(name()).append("_count") += '{').append(ls) += '}';
+    result.append(std::to_string(sum)) += '\n';
+    (result.append(name()).append("_sum") += '{').append(ls) += '}';
+    result.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
   }
 
   std::ostream& print(std::ostream& o) const {
