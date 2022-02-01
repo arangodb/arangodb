@@ -80,7 +80,8 @@ std::uint64_t FnvHashProvider::hash(std::uint64_t input) const {
   return TRI_FnvHashPod(input);
 }
 
-static_assert(std::is_pod_v<MerkleTreeBase::Meta>);
+static_assert(std::is_trivial_v<MerkleTreeBase::Meta> &&
+              std::is_standard_layout_v<MerkleTreeBase::Meta>);
 
 void MerkleTreeBase::Data::ensureShard(std::uint64_t shard,
                                        std::uint64_t shardSize) {
@@ -98,7 +99,8 @@ void MerkleTreeBase::Data::ensureShard(std::uint64_t shard,
 
 /*static*/ MerkleTreeBase::Data::ShardType MerkleTreeBase::Data::buildShard(
     std::uint64_t shardSize) {
-  static_assert(std::is_pod_v<MerkleTreeBase::Node>);
+  static_assert(std::is_trivially_constructible_v<MerkleTreeBase::Node> &&
+                std::is_trivially_copyable_v<MerkleTreeBase::Node>);
   // note: shardSize is currently passed in bytes, not in number of nodes!
   TRI_ASSERT(shardSize % NodeSize == 0);
   auto p = std::make_unique<Node[]>(shardSize / NodeSize);

@@ -57,7 +57,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 PrivilegeFeature::PrivilegeFeature(Server& server)
-    : ArangodFeature{server, *this}, _numericUid(0), _numericGid(0) {
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
