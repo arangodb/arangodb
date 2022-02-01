@@ -218,6 +218,9 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _localQueryMemoryLimitReached(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_aql_local_query_memory_limit_reached_total{})) {
+  static_assert(
+      Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
+
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
