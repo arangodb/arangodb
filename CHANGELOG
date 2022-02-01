@@ -43,6 +43,8 @@ v3.9.0 (XXXX-XX-XX)
 
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
 
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
 
 v3.9.0-beta.1 (2022-01-06)
 --------------------------
