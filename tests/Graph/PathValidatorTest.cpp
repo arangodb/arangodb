@@ -106,8 +106,7 @@ class PathValidatorTest : public ::testing::Test {
   PathValidatorOptions _opts{&_tmpVar, _expressionContext};
 
  protected:
-  VertexUniquenessLevel
-  getVertexUniqueness() {
+  VertexUniquenessLevel getVertexUniqueness() {
     if constexpr (std::is_same_v<
                       ValidatorType,
                       PathValidator<graph::MockGraphProvider, PathStore<Step>,
