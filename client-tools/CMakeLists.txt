@@ -7,8 +7,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 ################################################################################
 
 set(LIB_ARANGO_SHELL_SOURCES
-  FeaturePhases/BasicFeaturePhaseClient.cpp
-  FeaturePhases/V8ShellFeaturePhase.cpp
   Shell/ClientFeature.cpp
   Shell/ShellConsoleFeature.cpp
   Utils/ClientManager.cpp

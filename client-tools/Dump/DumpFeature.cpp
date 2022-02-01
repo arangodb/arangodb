@@ -62,9 +62,6 @@ namespace {
 static std::string clientId;
 static std::string syncerId;
 
-/// @brief name of the feature to report to application server
-constexpr auto FeatureName = "Dump";
-
 /// @brief minimum amount of data to fetch from server in a single batch
 constexpr uint64_t MinChunkSize = 1024 * 128;
 
@@ -631,10 +628,10 @@ Result DumpFeature::DumpShardJob::run(
   return res;
 }
 
-DumpFeature::DumpFeature(application_features::ApplicationServer& server,
-                         int& exitCode)
-    : ApplicationFeature(server, DumpFeature::featureName()),
-      _clientManager{server, Logger::DUMP},
+DumpFeature::DumpFeature(Server& server, int& exitCode)
+    : ArangoDumpFeature{server, *this},
+      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
+                     Logger::DUMP},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
@@ -648,8 +645,6 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server,
       std::max(uint32_t(_options.threadCount),
                static_cast<uint32_t>(NumberOfCores::getValue()));
 }
-
-std::string DumpFeature::featureName() { return ::FeatureName; }
 
 void DumpFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -867,8 +862,16 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     // inject current database
     LOG_TOPIC("4af42", INFO, Logger::DUMP)
         << "Dumping database '" << dbName << "' (" << dbId << ")";
+
+    EncryptionFeature* encryption{};
+    if constexpr (Server::contains<EncryptionFeature>()) {
+      if (server().hasFeature<EncryptionFeature>()) {
+        encryption = &server().getFeature<EncryptionFeature>();
+      }
+    }
+
     _directory = std::make_unique<ManagedDirectory>(
-        server(),
+        encryption,
         arangodb::basics::FileUtils::buildFilename(
             _options.outputPath, ::getDatabaseDirName(dbName, dbId)),
         !_options.overwrite, true, _options.useGzip);
@@ -1143,10 +1146,17 @@ void DumpFeature::start() {
 
   double const start = TRI_microtime();
 
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
+
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(server(), _options.outputPath,
-                                                  !_options.overwrite, true,
-                                                  _options.useGzip);
+  _directory = std::make_unique<ManagedDirectory>(
+      encryption, _options.outputPath, !_options.overwrite, true,
+      _options.useGzip);
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
       case static_cast<int>(TRI_ERROR_FILE_EXISTS):

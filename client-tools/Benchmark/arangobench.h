@@ -18,36 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <functional>
+#pragma once
 
-#include "BasicFeaturePhaseClient.h"
-
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Shell/ClientFeature.h"
-#include "Ssl/SslFeature.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
 
-BasicFeaturePhaseClient::BasicFeaturePhaseClient(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
+class TempFeature;
+class BenchFeature;
 
-#ifdef USE_ENTERPRISE
-  startsAfter<EncryptionFeature>();
-#endif
-  startsAfter<SslFeature>();
+using ArangoBenchFeatures =
+    ArangoClientFeatures<BasicFeaturePhaseClient, TempFeature, BenchFeature>;
 
-  startsAfter<ClientFeature>();
-}
+using ArangoBenchServer = ApplicationServerT<ArangoBenchFeatures>;
+using ArangoBenchFeature = ApplicationFeatureT<ArangoBenchServer>;
 
-}  // namespace application_features
 }  // namespace arangodb

@@ -515,8 +515,7 @@ ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
 }
 
 Result ShardingInfo::validateShardsAndReplicationFactor(
-    arangodb::velocypack::Slice slice,
-    application_features::ApplicationServer const& server,
+    arangodb::velocypack::Slice slice, ArangodServer const& server,
     bool enforceReplicationFactor) {
   if (slice.isObject()) {
     auto& cl = server.getFeature<ClusterFeature>();

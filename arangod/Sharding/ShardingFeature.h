@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Sharding/ShardingStrategy.h"
+#include "RestServer/arangod.h"
 
 #include <velocypack/Slice.h>
 
@@ -33,9 +33,11 @@ namespace arangodb {
 
 class ShardingInfo;
 
-class ShardingFeature : public application_features::ApplicationFeature {
+class ShardingFeature : public ArangodFeature {
  public:
-  explicit ShardingFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Sharding"; }
+
+  explicit ShardingFeature(Server& server);
 
   void prepare() override final;
   void start() override final;

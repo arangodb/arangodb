@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Builder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
 
 #include <map>
@@ -36,9 +36,11 @@
 
 namespace arangodb::metrics {
 
-class MetricsFeature final : public application_features::ApplicationFeature {
+class MetricsFeature final : public ArangodFeature {
  public:
-  explicit MetricsFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Metrics"; }
+
+  explicit MetricsFeature(Server& server);
 
   bool exportAPI() const;
   bool exportReadWriteMetrics() const;

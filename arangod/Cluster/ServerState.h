@@ -27,14 +27,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
+#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 class AgencyComm;
 class Result;
 
@@ -76,7 +74,7 @@ class ServerState {
   };
 
  public:
-  explicit ServerState(application_features::ApplicationServer&);
+  explicit ServerState(ArangodServer&);
 
   ~ServerState();
 
@@ -327,7 +325,7 @@ class ServerState {
   bool isUuid(std::string const& value) const;
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   /// @brief server role
   std::atomic<RoleEnum> _role;

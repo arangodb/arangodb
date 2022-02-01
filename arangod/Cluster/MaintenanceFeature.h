@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
@@ -34,6 +33,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 
 #include "Metrics/Fwd.h"
 
@@ -64,9 +64,11 @@ struct SharedPtrComparer {
   }
 };
 
-class MaintenanceFeature : public application_features::ApplicationFeature {
+class MaintenanceFeature : public ArangodFeature {
  public:
-  explicit MaintenanceFeature(application_features::ApplicationServer&);
+  static constexpr std::string_view name() noexcept { return "Maintenance"; }
+
+  explicit MaintenanceFeature(Server& server);
 
   virtual ~MaintenanceFeature();
 
