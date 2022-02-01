@@ -463,8 +463,9 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term, [..._.difference(servers, oldServer), newServer], leader));
     },
 
-    // This tests replaces the leader in Target with a new server that has the
-    // excluded flag set. It then waits for the replicated log to converge and
+    // This tests removes the participant that is currently the leader from Target
+    // while simultaneously adding a new server that has the excluded flag set.
+    // It then waits for the replicated log to converge and
     // then removes the excluded flag.
     testReplaceLeaderWithNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
@@ -477,27 +478,27 @@ const replicatedLogSuite = function () {
         target.participants[newServer] = {excluded: true};
         replicatedLogSetTarget(database, logId, target);
       }
+
+      // Wait for the new participant to appear, while excluded
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: true, forced: false},
-        [leader]: null,
       }));
-
+	   
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {excluded: false},
       });
+
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: false, forced: false},
-        [leader]: null,
       }));
 
       // we expect to have a new leader and the new follower
       waitFor(replicatedLogLeaderEstablished(database, logId, term + 1, [...followers, newServer]));
     },
 
-    // This test replaces the old leader in target with a new server that is excluded
-    // and additionally requests that this new server shall become the leader.
-    // It expects the supervision to fail and then removes the excluded flag.
+    // This test adds a new participant to the replicated log 
+    // and requests that this new participant shall become the leader.
     testChangeLeaderToNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -513,15 +514,11 @@ const replicatedLogSuite = function () {
       }
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: true, forced: false},
-      //  [leader]: null,
       }));
 
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
-        [newServer]: 3,
-        [servers[0]]: 0,
-        [servers[1]]: 0,
-        [servers[2]]: 0,
-      }));
+      // the new leader is excluded
+      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
