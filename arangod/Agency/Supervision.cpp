@@ -2687,9 +2687,10 @@ void Supervision::checkReplicatedStates() {
   for (auto const& [dbName, db] : targetNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
       auto log = parseReplicatedLogAgency(snapshot(), dbName, idString);
+
       auto state = replication2::replicated_state::agency::State{
           .target = parseSomethingFromNode<
-              replication2::replicated_state::agency::Target>(*targetNode),
+              replication2::replicated_state::agency::Target>(*node),
           .plan = parseIfExists<replication2::replicated_state::agency::Plan>(
               snapshot(), aliases::plan()
                               ->replicatedStates()
@@ -2703,6 +2704,7 @@ void Supervision::checkReplicatedStates() {
                                   ->database(dbName)
                                   ->state(idString)
                                   ->str(SkipComponents(1)))};
+
       auto action = std::invoke(
           [&, &dbName = dbName, &idString = idString]()
               -> std::unique_ptr<replication2::replicated_state::Action> {

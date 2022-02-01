@@ -104,6 +104,7 @@ struct Target {
   };
 
   std::unordered_map<ParticipantId, Participant> participants;
+  LogConfig config;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;

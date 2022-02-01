@@ -37,6 +37,9 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::AddStateToPlanAction: {
       return "AddStateToPlan";
     }
+    case Action::ActionType::CreateLogForStateAction: {
+      return "CreateLogForStateAction";
+    }
   }
   return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
          "is-a-bug";
@@ -65,7 +68,52 @@ void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue(to_string(type())));
 }
 
+auto EmptyAction::execute(std::string dbName,
+                          arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  return envelope;
+}
+
 void AddStateToPlanAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+  builder.add(VPackValue("logTarget"));
+  logTarget.toVelocyPack(builder);
+  builder.add(VPackValue("statePlan"));
+  statePlan.toVelocyPack(builder);
+}
+
+auto AddStateToPlanAction::execute(std::string dbName,
+                                   arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto logTargetPath = paths::target()
+                           ->replicatedLogs()
+                           ->database(dbName)
+                           ->log(logTarget.id)
+                           ->str();
+  auto statePlanPath = paths::plan()
+                           ->replicatedStates()
+                           ->database(dbName)
+                           ->state(statePlan.id)
+                           ->str();
+
+  return envelope.write()
+      .emplace_object(
+          logTargetPath,
+          [&](VPackBuilder& builder) { logTarget.toVelocyPack(builder); })
+      .emplace_object(
+          statePlanPath,
+          [&](VPackBuilder& builder) { statePlan.toVelocyPack(builder); })
+      .inc(paths::target()->version()->str())
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .isEmpty(logTargetPath)
+      .isEmpty(statePlanPath)
+      .end();
+}
+
+void CreateLogForStateAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -73,14 +121,11 @@ void AddStateToPlanAction::toVelocyPack(VPackBuilder& builder) const {
   spec.toVelocyPack(builder);
 }
 
-auto AddStateToPlanAction::execute(std::string dbName,
-                                   arangodb::agency::envelope envelope)
+auto CreateLogForStateAction::execute(std::string dbName,
+                                      arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
-  auto path = paths::plan()
-                  ->replicatedStates()
-                  ->database(dbName)
-                  ->state(spec.id)
-                  ->str();
+  auto path =
+      paths::target()->replicatedLogs()->database(dbName)->log(spec.id)->str();
 
   return envelope.write()
       .emplace_object(

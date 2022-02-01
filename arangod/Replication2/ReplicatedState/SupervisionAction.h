@@ -34,6 +34,7 @@ struct Action {
   enum class ActionType {
     EmptyAction,
     AddStateToPlanAction,
+    CreateLogForStateAction
   };
   virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope = 0;
@@ -42,6 +43,8 @@ struct Action {
   virtual void toVelocyPack(VPackBuilder& builder) const = 0;
   virtual ~Action() = default;
 };
+
+auto to_string(Action::ActionType action) -> std::string_view;
 
 struct EmptyAction : Action {
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
@@ -55,10 +58,28 @@ struct AddStateToPlanAction : Action {
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
 
-  ActionType type() const override { return ActionType::EmptyAction; };
+  ActionType type() const override { return ActionType::AddStateToPlanAction; };
   void toVelocyPack(VPackBuilder& builder) const override;
 
-  AddStateToPlanAction(agency::Plan const& spec) : spec{spec} {};
+  AddStateToPlanAction(
+      arangodb::replication2::agency::LogTarget const& logTarget,
+      agency::Plan const& statePlan)
+      : logTarget{logTarget}, statePlan{statePlan} {};
+
+  arangodb::replication2::agency::LogTarget logTarget;
+  agency::Plan statePlan;
+};
+
+struct CreateLogForStateAction : Action {
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+
+  ActionType type() const override {
+    return ActionType::CreateLogForStateAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  CreateLogForStateAction(agency::Plan const& spec) : spec{spec} {};
 
   agency::Plan spec;
 };

@@ -139,7 +139,8 @@ const replicatedStateSuite = function () {
                                              participants: participants,
                                              config: { waitForSync: true,
                                                        writeConcern: 2,
-                                                       softWriteConcern: 3 },
+                                                       softWriteConcern: 3,
+					               replicationFactor: 3},
                                              properties: {
                                                implementation: {
                                                  type: "black-hole"
@@ -167,7 +168,8 @@ const replicatedStateSuite = function () {
                                              participants: participants,
                                              config: { waitForSync: true,
                                                        writeConcern: 2,
-                                                       softWriteConcern: 3 },
+                                                       softWriteConcern: 3,
+						       replicationFactor: 3},
                                              properties: {
                                                implementation: {
                                                  type: "black-hole"

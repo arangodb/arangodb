@@ -30,6 +30,8 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/velocypack-aliases.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -165,6 +167,8 @@ void Target::toVelocyPack(velocypack::Builder& builder) const {
   }
   builder.add(velocypack::Value(StaticStrings::Properties));
   properties.toVelocyPack(builder);
+  builder.add(velocypack::Value(StaticStrings::Config));
+  config.toVelocyPack(builder);
 }
 
 auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
@@ -172,14 +176,16 @@ auto Target::fromVelocyPack(velocypack::Slice slice) -> Target {
   auto participants = std::unordered_map<ParticipantId, Participant>{};
   for (auto [key, value] :
        velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
-    auto status = Participant::fromVelocyPack(value);
-    participants.emplace(key.copyString(), status);
+    auto participant = Participant::fromVelocyPack(value);
+    participants.emplace(key.copyString(), participant);
   }
-
   auto properties =
       Properties::fromVelocyPack(slice.get(StaticStrings::Properties));
 
+  auto config = LogConfig(slice.get(StaticStrings::Config));
+
   return Target{.id = id,
                 .properties = std::move(properties),
-                .participants = std::move(participants)};
+                .participants = std::move(participants),
+                .config = std::move(config)};
 }

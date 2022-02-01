@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Supervision.h"
+
+#include "Replication2/ReplicatedState/SupervisionAction.h"
 #include <memory>
 
 #include "Logger/LogMacros.h"
@@ -32,30 +34,61 @@ namespace arangodb::replication2::replicated_state {
 
 auto checkStateAdded(replication2::replicated_state::agency::State const& state)
     -> std::unique_ptr<Action> {
+  auto id = state.target.id;
+
   if (!state.plan) {
-    auto const spec = replication2::replicated_state::agency::Plan{};
-    return std::make_unique<AddStateToPlanAction>(spec);
+    auto participants =
+        arangodb::replication2::agency::LogTarget::Participants{};
+
+    auto statePlan = replication2::replicated_state::agency::Plan{
+        .id = state.target.id,
+        .generation = StateGeneration{1},
+        .properties = state.target.properties};
+
+    auto logTarget =
+        replication2::agency::LogTarget(id, participants, state.target.config);
+
+    for (auto const& [participantId, _] : state.target.participants) {
+      logTarget.participants.emplace(participantId, ParticipantFlags{});
+      statePlan.participants.emplace(
+          participantId,
+          agency::Plan::Participant{.generation = StateGeneration{1}});
+    }
+
+    return std::make_unique<AddStateToPlanAction>(logTarget, statePlan);
+  } else {
+    return std::make_unique<EmptyAction>();
+  }
+}
+
+auto checkStateLog(
+    std::optional<arangodb::replication2::agency::Log> const& log,
+    replication2::replicated_state::agency::State const& state)
+    -> std::unique_ptr<Action> {
+  if (!log) {
+    return std::make_unique<CreateLogForStateAction>(
+        replication2::replicated_state::agency::Plan{});
   } else {
     return std::make_unique<EmptyAction>();
   }
 }
 
 auto isEmptyAction(std::unique_ptr<Action>& action) {
-  return (action->type() == Action::ActionType::EmptyAction);
+  return action->type() == Action::ActionType::EmptyAction;
 }
 
-auto arangodb::replication2::replicated_state::checkReplicatedState(
+auto checkReplicatedState(
     std::optional<arangodb::replication2::agency::Log> const& log,
     replication2::replicated_state::agency::State const& state)
     -> std::unique_ptr<Action> {
-
-    LOG_DEVEL << " check replicated state";
-
   if (auto action = checkStateAdded(state); !isEmptyAction(action)) {
     return action;
+  }
+
+  if (auto action = checkStateLog(log, state); !isEmptyAction(action)) {
   }
 
   return std::make_unique<EmptyAction>();
 };
 
-}
+}  // namespace arangodb::replication2::replicated_state
