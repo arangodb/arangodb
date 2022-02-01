@@ -53,8 +53,7 @@ namespace {
 struct DefaultIndexFactory : public IndexTypeFactory {
   Index::IndexType const _type;
 
-  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
-                               Index::IndexType type)
+  explicit DefaultIndexFactory(ArangodServer& server, Index::IndexType type)
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -64,7 +63,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  EdgeIndexFactory(application_features::ApplicationServer& server)
+  explicit EdgeIndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_EDGE_INDEX) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -104,7 +103,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
-  FulltextIndexFactory(application_features::ApplicationServer& server)
+  explicit FulltextIndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -133,7 +132,7 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 };
 
 struct GeoIndexFactory : public DefaultIndexFactory {
-  GeoIndexFactory(application_features::ApplicationServer& server)
+  explicit GeoIndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -162,7 +161,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
-  Geo1IndexFactory(application_features::ApplicationServer& server)
+  explicit Geo1IndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -192,7 +191,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
-  Geo2IndexFactory(application_features::ApplicationServer& server)
+  explicit Geo2IndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -223,7 +222,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 
 template<typename F, Index::IndexType type>
 struct SecondaryIndexFactory : public DefaultIndexFactory {
-  SecondaryIndexFactory(application_features::ApplicationServer& server)
+  explicit SecondaryIndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
@@ -256,13 +255,13 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct ZkdIndexFactory : public DefaultIndexFactory {
-  ZkdIndexFactory(arangodb::application_features::ApplicationServer& server)
+  explicit ZkdIndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_ZKD_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice definition, IndexId id,
-      bool isClusterConstructor) const override {
+      bool /*isClusterConstructor*/) const override {
     if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue();
         isUnique) {
       return std::make_shared<RocksDBUniqueZkdIndex>(id, collection,
@@ -272,13 +271,9 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
     return std::make_shared<RocksDBZkdIndex>(id, collection, definition);
   }
 
-  virtual arangodb::Result normalize(  // normalize definition
-      arangodb::velocypack::Builder&
-          normalized,  // normalized definition (out-param)
-      arangodb::velocypack::Slice definition,  // source definition
-      bool isCreation,                         // definition for index creation
-      TRI_vocbase_t const& vocbase             // index vocbase
-  ) const override {
+  virtual arangodb::Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(arangodb::Index::oldtypeName(
@@ -297,8 +292,7 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
-  explicit TtlIndexFactory(application_features::ApplicationServer& server,
-                           Index::IndexType type)
+  TtlIndexFactory(ArangodServer& server, Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
@@ -328,7 +322,7 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  PrimaryIndexFactory(application_features::ApplicationServer& server)
+  explicit PrimaryIndexFactory(ArangodServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_PRIMARY_INDEX) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -363,8 +357,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-RocksDBIndexFactory::RocksDBIndexFactory(
-    application_features::ApplicationServer& server)
+RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
     : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory(server);
   static const FulltextIndexFactory fulltextIndexFactory(server);
@@ -407,7 +400,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(
 /// "hash") used to display storage engine capabilities
 std::unordered_map<std::string, std::string> RocksDBIndexFactory::indexAliases()
     const {
-  return std::unordered_map<std::string, std::string>{
+  return {
       {"hash", "persistent"},
       {"skiplist", "persistent"},
   };
@@ -440,16 +433,15 @@ void RocksDBIndexFactory::prepareIndexes(
   IndexId last = IndexId::primary();
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
+    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX)
+             .ok()) {
       continue;
     }
 
     // check for combined edge index from MMFiles; must split!
     auto typeSlice = v.get(StaticStrings::IndexType);
     if (typeSlice.isString()) {
-      VPackValueLength len;
-      const char* tmp = typeSlice.getStringUnchecked(len);
-      Index::IndexType const type = Index::type(tmp, len);
+      Index::IndexType const type = Index::type(typeSlice.stringView());
 
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         VPackSlice fields = v.get(StaticStrings::IndexFields);

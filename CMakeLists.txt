@@ -1365,6 +1365,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
+  absl-static
 )
 
 add_subdirectory(lib)

@@ -220,9 +220,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
       views;
   std::atomic<size_t> vocbaseCount;
 
-  explicit StorageEngineMock(
-      arangodb::application_features::ApplicationServer& server,
-      bool injectClusterIndexes = false);
+  explicit StorageEngineMock(arangodb::ArangodServer& server,
+                             bool injectClusterIndexes = false);
   arangodb::HealthData healthCheck() override;
   virtual void addOptimizerRules(
       arangodb::aql::OptimizerRulesFeature& feature) override;

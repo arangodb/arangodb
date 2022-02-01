@@ -39,8 +39,6 @@
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
@@ -70,8 +68,8 @@ void LogHackWriter(char const* p) {
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
-                             bool threaded)
-    : ApplicationFeature(server, "Logger"),
+                             size_t registration, bool threaded)
+    : ApplicationFeature(server, registration, name()),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
       _threaded(threaded) {
   // note: we use the _threaded option to determine whether we are arangod
@@ -79,9 +77,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
   // the latter case we disable some options for the Logger, which only make
   // sense when we are running in server mode
   setOptional(false);
-
-  startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
 
   _levels.push_back("info");
 
@@ -119,6 +114,12 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   "escape unicode characters when logging",
                   new BooleanParameter(&_useUnicodeEscaped))
       .setIntroducedIn(30900);
+  options
+      ->addOption(
+          "--log.structured-param",
+          "toggle usage of log category parameter in structured log messages",
+          new VectorParameter<StringParameter>(&_structuredLogParams))
+      .setIntroducedIn(31000);
 
   options->addOption("--log.output,-o",
                      "log destination(s), e.g. "
@@ -416,6 +417,7 @@ void LoggerFeature::prepare() {
       std::max<uint32_t>(256, _maxEntryLength));
 
   Logger::setLogLevel(_levels);
+  Logger::setLogStructuredParamsOnServerStart(_structuredLogParams);
   Logger::setShowIds(_showIds);
   Logger::setShowRole(_showRole);
   Logger::setUseColor(_useColor);

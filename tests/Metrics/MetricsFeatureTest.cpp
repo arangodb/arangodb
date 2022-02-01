@@ -33,7 +33,8 @@ using namespace arangodb;
 
 auto opts = std::make_shared<arangodb::options::ProgramOptions>(
     "metrics_feature_test", std::string(), std::string(), "path");
-application_features::ApplicationServer server(opts, nullptr);
+
+ArangodServer server(opts, nullptr);
 metrics::MetricsFeature feature(server);
 
 class MetricsFeatureTest : public ::testing::Test {

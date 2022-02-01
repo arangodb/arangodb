@@ -65,8 +65,7 @@ constexpr std::string_view writeKey("write");
 constexpr std::string_view exclusiveKey("exclusive");
 }  // namespace
 
-RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* request,
+RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
                                GeneralResponse* response, QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(qr),
@@ -529,6 +528,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
     LOG_TOPIC("c4db4", INFO, Logger::FIXME)
         << "Ignoring unknown exception during rest handler shutdown.";
   }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 // dig out the query from ID, handle errors

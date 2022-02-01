@@ -92,6 +92,7 @@ function optimizerRuleInvertedIndexTestSuite() {
     },
     tearDownAll: function () {
       col.drop();
+      try { analyzers.remove("my_geo", true); } catch (e) {}
     },
     testIndexNotHinted: function () {
       const query = aql`

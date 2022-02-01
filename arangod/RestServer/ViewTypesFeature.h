@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Containers/FlatHashMap.h"
+#include "RestServer/arangod.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb {
@@ -45,11 +45,11 @@ struct ViewFactory {
                              velocypack::Slice definition) const = 0;
 };
 
-class ViewTypesFeature final : public application_features::ApplicationFeature {
+class ViewTypesFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ViewTypes"; }
 
-  explicit ViewTypesFeature(application_features::ApplicationServer& server);
+  explicit ViewTypesFeature(Server& server);
 
   // Return 'factory' for 'type' was added successfully
   Result emplace(std::string_view type, ViewFactory const& factory);

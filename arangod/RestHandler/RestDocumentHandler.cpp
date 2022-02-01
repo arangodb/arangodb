@@ -26,11 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogContextKeys.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -47,9 +45,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestDocumentHandler::RestDocumentHandler(ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
@@ -118,10 +116,10 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   if (isFinalized) {
     // reset the transaction so it releases all locks as early as possible
     _activeTrx.reset();
-
+    TRI_ASSERT(_request != nullptr);
+    TRI_ASSERT(_response != nullptr);
     try {
-      GeneralRequest const* request = _request.get();
-      auto const type = request->requestType();
+      auto const type = _request->requestType();
       auto const result = _response->responseCode();
 
       switch (type) {
@@ -133,7 +131,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
         case rest::RequestType::PATCH:
           break;
         default:
-          events::IllegalDocumentOperation(*request, result);
+          events::IllegalDocumentOperation(*_request, result);
           break;
       }
     } catch (...) {
@@ -213,6 +211,7 @@ RestStatus RestDocumentHandler::insertDocument() {
       }
     }
   }
+
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false) &&
       opOptions.isOverwriteModeUpdateReplace();

@@ -40,6 +40,7 @@
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
 #include "Replication2/Version.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
@@ -121,7 +122,7 @@ struct TRI_vocbase_t {
     DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
-  arangodb::application_features::ApplicationServer& _server;
+  arangodb::ArangodServer& _server;
 
   arangodb::CreateDatabaseInfo _info;
 
@@ -194,9 +195,7 @@ struct TRI_vocbase_t {
   // structures for volatile cache data (used from JavaScript)
   std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
-  arangodb::application_features::ApplicationServer& server() const noexcept {
-    return _server;
-  }
+  arangodb::ArangodServer& server() const noexcept { return _server; }
 
   TRI_voc_tick_t id() const { return _info.getId(); }
   std::string const& name() const { return _info.getName(); }

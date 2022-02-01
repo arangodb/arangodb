@@ -221,6 +221,7 @@ class FollowerInfo {
     return _theLeaderTouched;
   }
 
+<<<<<<< HEAD
   WriteState allowedToWrite() {
     {
       auto& engine = _docColl->vocbase()
@@ -277,6 +278,9 @@ class FollowerInfo {
     }
     return WriteState::ALLOWED;
   }
+=======
+  WriteState allowedToWrite();
+>>>>>>> 2e1c006d9512a78f3db5a07f2b51f2597122f9aa
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inject the information about followers into the builder.
