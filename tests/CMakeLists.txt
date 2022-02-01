@@ -101,6 +101,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
@@ -467,6 +468,13 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+    # There's a warning about /MP being unused if compiling only a single file
+    target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
+    if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+      target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    endif()
   endif()
 endif()
 

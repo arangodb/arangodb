@@ -18,44 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <sys/types.h>
-#include <memory>
-#include <string>
-
-#include "Basics/operating-system.h"
-
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
-namespace options {
-class ProgramOptions;
-}
 
-class PrivilegeFeature final : public application_features::ApplicationFeature {
- public:
-  explicit PrivilegeFeature(application_features::ApplicationServer& server);
+class TempFeature;
+class ImportFeature;
+class EncryptionFeature;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
+using ArangoImportFeatures = ArangoClientFeatures<
+#ifdef USE_ENTERPRISE
+    EncryptionFeature,
+#endif
+    BasicFeaturePhaseClient, TempFeature, ImportFeature>;
 
-  std::string _uid;
-  std::string _gid;
-
-  void dropPrivilegesPermanently();
-
- private:
-  void extractPrivileges();
-
-  TRI_uid_t _numericUid;
-  TRI_gid_t _numericGid;
-};
+using ArangoImportServer = ApplicationServerT<ArangoImportFeatures>;
+using ArangoImportFeature = ApplicationFeatureT<ArangoImportServer>;
 
 }  // namespace arangodb

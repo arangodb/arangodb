@@ -22,8 +22,9 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./ClusterProvider.h"
+#include "ClusterProvider.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"

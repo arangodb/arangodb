@@ -122,7 +122,6 @@ add_dependencies(arango_iresearch
   v8_build # for ICU required by iResearch
 )
 
-
 ################################################################################
 ## arangod
 ################################################################################
@@ -777,6 +776,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/CpuUsageFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
@@ -790,12 +790,16 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
+  RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/PrivilegeFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
@@ -826,6 +830,10 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
 )
+
+if (MSVC)
+  list(APPEND LIB_ARANGOSERVER_SOURCES RestServer/WindowsServiceFeature.cpp)
+endif()
 
 set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
   RestHandler/RestCollectionHandler.cpp
@@ -1219,6 +1227,10 @@ foreach(TARGET
   if (USE_FAIL_ON_WARNINGS)
     if (MSVC)
       target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
+      endif()
     else ()
       target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
     endif ()

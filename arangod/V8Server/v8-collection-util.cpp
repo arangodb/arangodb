@@ -74,11 +74,9 @@ arangodb::LogicalCollection* UnwrapCollection(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalCollection
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapCollection(  // wrap collection
-    v8::Isolate* isolate,               // isolate
-    std::shared_ptr<arangodb::LogicalCollection> const&
-        collection  // collection
-) {
+v8::Handle<v8::Object> WrapCollection(
+    v8::Isolate* isolate,
+    std::shared_ptr<arangodb::LogicalCollection> const& collection) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   auto context = TRI_IGETC;

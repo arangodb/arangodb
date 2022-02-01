@@ -30,10 +30,20 @@
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase;
+}
 
 class SslFeature final : public application_features::ApplicationFeature {
  public:
-  explicit SslFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Ssl"; }
+
+  template<typename Server>
+  explicit SslFeature(Server& server)
+      : application_features::ApplicationFeature(server, *this) {
+    setOptional(true);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
   void prepare() override final;
   void unprepare() override final;

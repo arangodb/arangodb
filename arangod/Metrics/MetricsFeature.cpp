@@ -505,8 +505,8 @@ constexpr auto kSuppressionsV1 = frozen::make_unordered_set<frozen::string>({
 
 }  // namespace
 
-MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature{server, "Metrics"},
+MetricsFeature::MetricsFeature(Server& server)
+    : ArangodFeature{server, *this},
       _export{true},
       _exportReadWriteMetrics{false} {
   setOptional(false);
@@ -673,8 +673,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
 
   // RocksDBEngine
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
-  std::string const& engineName = es.typeName();
-  if (engineName == RocksDBEngine::EngineName) {
+  if (es.typeName() == RocksDBEngine::kEngineName) {
     es.getStatistics(result, v2);
   }
 }

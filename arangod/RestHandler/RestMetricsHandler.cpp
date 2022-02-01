@@ -66,9 +66,9 @@ network::Headers buildHeaders(
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestMetricsHandler::RestMetricsHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestMetricsHandler::RestMetricsHandler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestMetricsHandler::execute() {

@@ -1864,8 +1864,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(
-      nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
+                                                       std::vector<size_t>{});
 
   auto& feature =
       server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
@@ -1874,12 +1874,13 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
-  server.getFeature<arangodb::DatabaseFeature>()
-      .enableUpgrade();  // skip IResearchView validation
+  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(
-      dbPathFeature);  // ensure test data is stored in a unique directory
+
+  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(dbPathFeature);
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
@@ -1971,8 +1972,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(
-      nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
+                                                       std::vector<size_t>{});
 
   auto& feature =
       server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();

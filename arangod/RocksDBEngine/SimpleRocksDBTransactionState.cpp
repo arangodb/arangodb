@@ -23,6 +23,7 @@
 
 #include "SimpleRocksDBTransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"

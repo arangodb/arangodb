@@ -26,6 +26,7 @@
 
 #include "MaintenanceWorker.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

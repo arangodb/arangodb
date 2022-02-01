@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
@@ -33,11 +33,11 @@ namespace arangodb {
 // in the startup sequence, so it can use the full cluster functionality when
 // run. after the feature has executed the upgrade, it will shut down the
 // server.
-class ClusterUpgradeFeature final
-    : public application_features::ApplicationFeature {
+class ClusterUpgradeFeature final : public ArangodFeature {
  public:
-  explicit ClusterUpgradeFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ClusterUpgrade"; }
+
+  explicit ClusterUpgradeFeature(ArangodServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

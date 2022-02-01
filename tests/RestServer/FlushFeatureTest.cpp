@@ -63,7 +63,7 @@ class FlushFeatureTest
                                             arangodb::LogLevel::FATAL> {
  protected:
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
