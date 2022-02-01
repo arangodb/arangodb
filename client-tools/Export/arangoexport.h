@@ -18,37 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GreetingsFeaturePhase.h"
+#pragma once
 
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
-#include "Logger/LoggerFeature.h"
-#include "Random/RandomFeature.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
 
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server,
-                                             bool isClient)
-    : ApplicationFeaturePhase(server, "GreetingsPhase") {
-  setOptional(false);
+class ExportFeature;
+class TempFeature;
+class EncryptionFeature;
 
-  startsAfter<ConfigFeature>();
-  startsAfter<LoggerFeature>();
-  startsAfter<RandomFeature>();
-  startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
+using ArangoExportFeatures = ArangoClientFeatures<
+#ifdef USE_ENTERPRISE
+    EncryptionFeature,
+#endif
+    BasicFeaturePhaseClient, TempFeature, ExportFeature>;
 
-  if (!isClient) {
-    // These are server only features
-    startsAfter<GreetingsFeature>();
-  }
-}
+using ArangoExportServer = ApplicationServerT<ArangoExportFeatures>;
+using ArangoExportFeature = ApplicationFeatureT<ArangoExportServer>;
 
-}  // namespace application_features
 }  // namespace arangodb

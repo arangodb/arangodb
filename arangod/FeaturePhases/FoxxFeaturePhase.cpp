@@ -22,24 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FoxxFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "FeaturePhases/ServerFeaturePhase.h"
-#include "RestServer/BootstrapFeature.h"
-#include "RestServer/FrontendFeature.h"
-#include "V8Server/FoxxFeature.h"
+namespace arangodb::application_features {
 
-namespace arangodb {
-namespace application_features {
-
-FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "FoxxPhase") {
+FoxxFeaturePhase::FoxxFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<ServerFeaturePhase>();
+  startsAfter<ServerFeaturePhase, ArangodServer>();
 
-  startsAfter<BootstrapFeature>();
-  startsAfter<FoxxFeature>();
-  startsAfter<FrontendFeature>();
+  startsAfter<BootstrapFeature, ArangodServer>();
+  startsAfter<FoxxFeature, ArangodServer>();
+  startsAfter<FrontendFeature, ArangodServer>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

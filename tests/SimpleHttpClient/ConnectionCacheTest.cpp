@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Endpoint/Endpoint.h"
+#include "RestServer/arangod.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
@@ -34,22 +35,24 @@ using namespace arangodb;
 using namespace arangodb::httpclient;
 
 TEST(ConnectionCacheTest, testEmpty) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   auto const& connections = cache.connections();
   EXPECT_EQ(0, connections.size());
 }
 
 TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   ConnectionLease lease;
   EXPECT_EQ(nullptr, lease._connection);
@@ -68,11 +71,12 @@ TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -94,11 +98,12 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -123,11 +128,12 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -182,11 +188,12 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
 }
 
 TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -230,11 +237,12 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 }
 
 TEST(ConnectionCacheTest, testDifferentEndpoints) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("tcp://127.0.0.1:12345");
@@ -268,11 +276,12 @@ TEST(ConnectionCacheTest, testDifferentEndpoints) {
 }
 
 TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{5});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("ssl://127.0.0.1:9999");
@@ -306,11 +315,12 @@ TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
 }
 
 TEST(ConnectionCacheTest, testDropSuperfluous) {
-  application_features::ApplicationServer server(nullptr, nullptr);
-  server
-      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
 
-  ConnectionCache cache(server, ConnectionCache::Options{3});
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{3});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("tcp://127.0.0.1:12345");

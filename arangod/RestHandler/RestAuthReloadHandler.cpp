@@ -36,9 +36,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAuthReloadHandler::RestAuthReloadHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAuthReloadHandler::RestAuthReloadHandler(ArangodServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAuthReloadHandler::execute() {

@@ -135,7 +135,7 @@ bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
 bool Logger::_useJson(false);
 char Logger::_role('\0');
-TRI_pid_t Logger::_cachedPid(0);
+std::atomic<TRI_pid_t> Logger::_cachedPid(0);
 std::string Logger::_outputPrefix;
 std::string Logger::_hostname;
 
@@ -493,8 +493,8 @@ void Logger::log(char const* logid, char const* function, char const* file,
   // this read-check-update sequence is not thread-safe, but this
   // should not matter, as the pid value is only changed from 0 to the
   // actual pid and never changes afterwards
-  if (_cachedPid == 0) {
-    _cachedPid = Thread::currentProcessId();
+  if (_cachedPid.load(std::memory_order_relaxed) == 0) {
+    _cachedPid.store(Thread::currentProcessId(), std::memory_order_relaxed);
   }
 
   std::string out;
@@ -533,7 +533,8 @@ void Logger::log(char const* logid, char const* function, char const* file,
     // pid
     if (_showProcessIdentifier) {
       out.append(",\"pid\":");
-      StringUtils::itoa(uint64_t(_cachedPid), out);
+      StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
+                        out);
     }
 
     // tid
@@ -688,9 +689,10 @@ void Logger::log(char const* logid, char const* function, char const* file,
     bool haveProcessOutput = false;
     if (_showProcessIdentifier) {
       // append the process / thread identifier
-      TRI_ASSERT(_cachedPid != 0);
+      TRI_ASSERT(_cachedPid.load(std::memory_order_relaxed) != 0);
       out.push_back('[');
-      StringUtils::itoa(uint64_t(_cachedPid), out);
+      StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
+                        out);
       haveProcessOutput = true;
     }
 
@@ -924,7 +926,7 @@ void Logger::shutdown() {
   // cleanup appenders
   LogAppender::shutdown();
 
-  _cachedPid = 0;
+  _cachedPid.store(0, std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

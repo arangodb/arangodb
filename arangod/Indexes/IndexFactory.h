@@ -43,7 +43,7 @@ class Slice;
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
 struct IndexTypeFactory {
-  explicit IndexTypeFactory(application_features::ApplicationServer& server);
+  explicit IndexTypeFactory(ArangodServer& server);
   virtual ~IndexTypeFactory() = default;  // define to silence warning
 
   /// @brief determine if the two Index definitions will result in the same
@@ -71,12 +71,12 @@ struct IndexTypeFactory {
   }
 
  protected:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 };
 
 class IndexFactory {
  public:
-  IndexFactory(application_features::ApplicationServer&);
+  IndexFactory(ArangodServer&);
   virtual ~IndexFactory() = default;
 
   /// @brief returns if 'factory' for 'type' was added successfully
@@ -189,7 +189,7 @@ class IndexFactory {
                                bool isClusterConstructor);
 
  protected:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;
 };

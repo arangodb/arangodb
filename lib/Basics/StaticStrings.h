@@ -343,6 +343,7 @@ class StaticStrings {
   static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
+  static std::string const Outcome;
 
   // generic attribute names
   static std::string const AttrCoordinator;

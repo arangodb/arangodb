@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Aql/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/FlushFeature.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>

@@ -122,7 +122,6 @@ add_dependencies(arango_iresearch
   v8_build # for ICU required by iResearch
 )
 
-
 ################################################################################
 ## arangod
 ################################################################################
@@ -564,6 +563,8 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLog.cpp
   Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
+  Replication2/ReplicatedLog/Supervision.cpp
+  Replication2/ReplicatedLog/SupervisionAction.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
@@ -572,8 +573,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
-  Replication2/ReplicatedState/Supervision.cpp
-  Replication2/ReplicatedState/SupervisionVelocyPackHell.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/Version.cpp
@@ -776,6 +775,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/CpuUsageFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
@@ -789,12 +789,16 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
+  RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/PrivilegeFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
@@ -825,6 +829,10 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
 )
+
+if (MSVC)
+  list(APPEND LIB_ARANGOSERVER_SOURCES RestServer/WindowsServiceFeature.cpp)
+endif()
 
 set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
   RestHandler/RestCollectionHandler.cpp

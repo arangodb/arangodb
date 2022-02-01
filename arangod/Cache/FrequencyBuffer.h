@@ -31,7 +31,7 @@
 #include <utility>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/debugging.h"
 
 namespace arangodb {

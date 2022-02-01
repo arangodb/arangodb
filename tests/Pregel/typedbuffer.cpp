@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/arangod.h"
 #include "Pregel/TypedBuffer.h"
 
 #include "gtest/gtest.h"
@@ -31,7 +32,7 @@ using namespace arangodb::pregel;
 
 /***************************************/
 TEST(PregelTypedBufferTest, test_with_malloc) {
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ArangodServer server(nullptr, nullptr);
 
   VectorTypedBuffer<int> mapped(1024);
   ASSERT_EQ(mapped.size(), 0);
@@ -54,7 +55,7 @@ TEST(PregelTypedBufferTest, test_with_malloc) {
 }
 
 TEST(PregelTypedBufferTest, test_with_mmap) {
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ArangodServer server(nullptr, nullptr);
 
   MappedFileBuffer<int64_t> mapped(1024, "");
   ASSERT_EQ(mapped.size(), 0);
