@@ -114,6 +114,10 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
       bool edgeSuccess = _store.visitReversePath(
           step, [&](typename PathStore::Step const& step) -> bool {
+            if (step.isFirst()) {
+              return true;
+            }
+
             auto const& [unusedE, addedEdge] =
                 _uniqueEdges.emplace(step.getEdgeIdentifier());
             // If this add fails, we need to exclude this path

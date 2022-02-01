@@ -111,18 +111,49 @@ class MockGraphProvider {
     class Edge {
      public:
       Edge(EdgeType e) : _edge(e) {
-        auto stringLength =
-            static_cast<uint32_t>(std::to_string(_edge._id).length());
-        _id = arangodb::velocypack::HashedStringRef{
-            std::to_string(_edge._id).c_str(), stringLength};
+        _id = std::to_string(_edge._id);
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
       };
 
+      Edge(Edge const& other) {
+        _edge = other._edge;
+        _id = other._id;
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+      }
+
+      Edge(Edge&& other) {
+        _edge = std::move(other._edge);
+        _id = std::move(other._id);
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+      }
+
+      Edge& operator=(Edge const& other) {
+        _edge = other._edge;
+        _id = other._id;
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+        return *this;
+      }
+
+      Edge& operator=(Edge&& other) {
+        _edge = std::move(other._edge);
+        _id = std::move(other._id);
+        _idRef = arangodb::velocypack::HashedStringRef{
+            _id.c_str(), static_cast<uint32_t>(_id.length())};
+        return *this;
+      }
+
       std::string toString() const {
-        return "Edge - _from: " + _edge._from + ", _to: " + _edge._to;
+        return "Edge - _from: " + _edge._from + ", _to: " + _edge._to +
+               " edgeIdentifier: " + _id;
       }
 
       EdgeType getEdge() const { return _edge; }
-      StepType const& getID() const { return _id; };
+      StepType const& getID() const { return _idRef; }
+
       bool isValid() const {
         if (_edge._from.empty() && _edge._to.empty()) {
           return false;
@@ -132,7 +163,8 @@ class MockGraphProvider {
 
      private:
       EdgeType _edge;
-      StepType _id;
+      StepType _idRef;
+      std::string _id;
     };
 
     Step(VertexType v, bool isProcessable);
