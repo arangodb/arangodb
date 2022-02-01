@@ -329,6 +329,11 @@ class ApplicationServerT : public ApplicationServer {
     return Features::template contains<T>();
   }
 
+  template<typename Feature, typename... OtherFeatures>
+  static constexpr bool isCreatedAfter() noexcept {
+    return (std::greater{}(id<Feature>(), id<OtherFeatures>()) && ...);
+  }
+
   ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
                      char const* binaryPath)
       : ApplicationServer{opts, binaryPath, _features} {}
