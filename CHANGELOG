@@ -1,3 +1,10 @@
+v3.9.1 (XXXX-XX-XX)
+-------------------
+
+* In an attempt to make the performance of the RocksDB throttle much
+  more consistent and predictable the default compaction slow down
+  trigger is lowered to 128kB.
+
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
