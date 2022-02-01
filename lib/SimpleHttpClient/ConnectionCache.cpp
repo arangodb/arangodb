@@ -28,7 +28,6 @@
 #include "Basics/debugging.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
 namespace arangodb {
@@ -70,14 +69,12 @@ void ConnectionLease::preventRecycling() noexcept {
 }
 
 ConnectionCache::ConnectionCache(
-    arangodb::application_features::ApplicationServer& server,
+    arangodb::application_features::CommunicationFeaturePhase& comm,
     Options const& options)
-    : _server(server),
+    : _comm(comm),
       _options(options),
       _connectionsCreated(0),
       _connectionsRecycled(0) {}
-
-ConnectionCache::~ConnectionCache() = default;
 
 ConnectionLease ConnectionCache::acquire(std::string endpoint,
                                          double connectTimeout,
@@ -156,7 +153,7 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
     // the unique_ptr ep is modified by the factory function and takes over
     // ownership here
     connection.reset(GeneralClientConnection::factory(
-        _server, ep, requestTimeout, connectTimeout, connectRetries,
+        _comm, ep, requestTimeout, connectTimeout, connectRetries,
         sslProtocol));
 
     TRI_ASSERT(connection != nullptr);

@@ -74,9 +74,8 @@ using namespace arangodb::rest;
 
 #include "Benchmark/test-cases.h"
 
-BenchFeature::BenchFeature(application_features::ApplicationServer& server,
-                           int* result)
-    : ApplicationFeature(server, "Bench"),
+BenchFeature::BenchFeature(Server& server, int* result)
+    : ArangoBenchFeature{server, *this},
       _threadCount(NumberOfCores::getValue()),
       _operations(1000),
       _realOperations(0),

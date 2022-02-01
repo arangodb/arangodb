@@ -23,7 +23,9 @@
 
 #include "ReplicationTimeoutFeature.h"
 
-#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogTopic.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -46,9 +48,8 @@ double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
 // reboot id is increased. As a consequence, the connection is aborted and we
 // run into an error anyway. This is when a follower will be dropped.
 
-ReplicationTimeoutFeature::ReplicationTimeoutFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicationTimeout") {
+ReplicationTimeoutFeature::ReplicationTimeoutFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }

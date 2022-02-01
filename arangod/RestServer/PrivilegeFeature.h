@@ -18,30 +18,43 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8ShellFeaturePhase.h"
+#pragma once
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "Shell/ShellConsoleFeature.h"
-#include "Shell/V8ShellFeature.h"
+#include <sys/types.h>
+#include <memory>
+#include <string>
+
+#include "Basics/operating-system.h"
+
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-
-V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8ShellPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
-
-  startsAfter<ShellConsoleFeature>();
-  startsAfter<V8ShellFeature>();
-  startsAfter<V8PlatformFeature>();
-  startsAfter<V8SecurityFeature>();
+namespace options {
+class ProgramOptions;
 }
 
-}  // namespace application_features
+class PrivilegeFeature final : public ArangodFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "Privilege"; }
+
+  explicit PrivilegeFeature(Server& server);
+
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+
+  std::string _uid;
+  std::string _gid;
+
+  void dropPrivilegesPermanently();
+
+ private:
+  void extractPrivileges();
+
+  TRI_uid_t _numericUid;
+  TRI_gid_t _numericGid;
+};
+
 }  // namespace arangodb

@@ -18,38 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "NonceFeature.h"
+#pragma once
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Basics/Nonce.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-
-using namespace arangodb::basics;
-using namespace arangodb::options;
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
 
-NonceFeature::NonceFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Nonce") {
-  setOptional(true);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
+class TempFeature;
+class ImportFeature;
+class EncryptionFeature;
 
-void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("nonce", "nonces", "", true, true);
-  options->addObsoleteOption("--nonce.size",
-                             "the size of the hash array for nonces", true);
-}
+using ArangoImportFeatures = ArangoClientFeatures<
+#ifdef USE_ENTERPRISE
+    EncryptionFeature,
+#endif
+    BasicFeaturePhaseClient, TempFeature, ImportFeature>;
 
-void NonceFeature::prepare() {
-  constexpr uint64_t initialSize = 2 * 1024 * 1024;
-  Nonce::setInitialSize(static_cast<size_t>(initialSize));
-}
-
-void NonceFeature::unprepare() { Nonce::destroy(); }
+using ArangoImportServer = ApplicationServerT<ArangoImportFeatures>;
+using ArangoImportFeature = ApplicationFeatureT<ArangoImportServer>;
 
 }  // namespace arangodb

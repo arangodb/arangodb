@@ -23,6 +23,7 @@
 
 #include "Compactor.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
 #include "Logger/LogMacros.h"

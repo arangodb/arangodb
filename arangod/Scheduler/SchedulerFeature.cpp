@@ -28,7 +28,6 @@
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
@@ -40,7 +39,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -74,14 +72,13 @@ namespace arangodb {
 
 SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
-SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+SchedulerFeature::SchedulerFeature(Server& server)
+    : ArangodFeature{server, *this}, _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
-#ifdef TRI_HAVE_GETRLIMIT
-  startsAfter<FileDescriptorsFeature>();
-#endif
+  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature>();
+  }
 }
 
 SchedulerFeature::~SchedulerFeature() = default;
