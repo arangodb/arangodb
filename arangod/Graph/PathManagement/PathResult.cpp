@@ -160,9 +160,10 @@ template class ::arangodb::graph::PathResult<
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ClusterProvider,
-    ::arangodb::graph::ClusterProvider::Step>;
+    ::arangodb::graph::ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::ClusterProviderStep>;
 
 template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
-    ::arangodb::graph::ClusterProvider::Step>;
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::ClusterProvider<ClusterProviderStep>>,
+    ::arangodb::graph::ClusterProviderStep>;

@@ -198,6 +198,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Providers/SingleServerProvider.cpp
   Graph/Providers/BaseProviderOptions.cpp
   Graph/Providers/ProviderTracer.cpp
+  Graph/Steps/ClusterProviderStep.cpp
   Graph/Steps/SingleServerProviderStep.cpp
   Graph/Types/UniquenessLevel.cpp
   Graph/Types/ValidationResult.cpp

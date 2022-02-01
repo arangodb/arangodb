@@ -102,11 +102,11 @@ using KPathRefactoredTracer = arangodb::graph::TracedKPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 /* ClusterProvider Section */
-using KPathRefactoredCluster =
-    arangodb::graph::KPathEnumerator<arangodb::graph::ClusterProvider>;
+using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using KPathRefactoredClusterTracer =
-    arangodb::graph::TracedKPathEnumerator<arangodb::graph::ClusterProvider>;
+using KPathRefactoredClusterTracer = arangodb::graph::TracedKPathEnumerator<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using namespace arangodb;
 using namespace arangodb::aql;

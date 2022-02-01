@@ -175,4 +175,4 @@ template class ::arangodb::graph::ProviderTracer<
 #endif
 
 template class ::arangodb::graph::ProviderTracer<
-    arangodb::graph::ClusterProvider>;
+    arangodb::graph::ClusterProvider<ClusterProviderStep>>;

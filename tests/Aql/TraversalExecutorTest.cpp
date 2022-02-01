@@ -51,10 +51,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
-namespace arangodb {
-namespace tests {
-
-namespace aql {
+namespace arangodb::tests::aql {
 
 class TestGraph {
  public:
@@ -142,7 +139,7 @@ class GraphEnumerator : public PathEnumerator {
                   TestGraph const& g)
       : PathEnumerator(traverser, opts), _graph(g), _idx(0), _depth(0) {}
 
-  ~GraphEnumerator() = default;
+  ~GraphEnumerator() override = default;
 
   void clear() override {
     _idx = 0;
@@ -241,7 +238,6 @@ class TraverserHelper : public Traverser {
     TRI_ASSERT(builder.isOpenArray());
     VPackSlice v = _graph.getVertexData(vid);
     builder.add(v);
-    return;
   }
 
   void destroyEngines() override {}
@@ -306,7 +302,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   const aql::Variable tmpVar{"dummy", 1337, false};
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
-      *server.createFakeTransaction().get(), *fakedQuery.get(), aqlCache};
+      *server.createFakeTransaction(), *fakedQuery, aqlCache};
   arangodb::graph::BaseProviderOptions baseProviderOptions{
       &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
@@ -518,7 +514,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   const aql::Variable tmpVar{"dummy", 1337, false};
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
-      *server.createFakeTransaction().get(), *fakedQuery.get(), aqlCache};
+      *server.createFakeTransaction(), *fakedQuery, aqlCache};
   arangodb::graph::BaseProviderOptions baseProviderOptions{
       &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
@@ -549,7 +545,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false, 1,
                       "weightAttribute", server.createFakeTransaction().get(),
-                      *fakedQuery.get(), std::move(baseProviderOptions),
+                      *fakedQuery, std::move(baseProviderOptions),
                       std::move(pathValidatorOptions),
                       std::move(enumeratorOptions)) {}
 };
@@ -713,6 +709,4 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_edges_connected) {
   }
 }
 
-}  // namespace aql
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests::aql

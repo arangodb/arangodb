@@ -226,8 +226,8 @@ arangodb::aql::QueryWarnings& TraversalExecutorInfos::getWarnings() {
 std::pair<arangodb::graph::VertexUniquenessLevel,
           arangodb::graph::EdgeUniquenessLevel>
 TraversalExecutorInfos::convertUniquenessLevels() const {
-  // TODO [GraphRefactor]: This should be a temporary function as we remove
-  //  TraverserOptions in total after the graph refactor is done.
+  // TODO [GraphRefactor]: This should be a temoporary function as we remove
+  // TraverserOptions in total after the graph refactor is done.
   auto vertexUniquenessLevel = graph::VertexUniquenessLevel::NONE;
   auto edgeUniquenessLevel = graph::EdgeUniquenessLevel::NONE;
 
@@ -248,8 +248,8 @@ TraversalExecutorInfos::convertUniquenessLevels() const {
   return std::make_pair(vertexUniquenessLevel, edgeUniquenessLevel);
 }
 
-// TODO [GraphRefactor]: (R) Add a parameter to toggle tracing variants of
-//  enumerators. See KPathEnumerators.
+// TODO [GraphRefactor]: Add a parameter to toggle tracing variants of
+// enumerators.
 auto TraversalExecutorInfos::parseTraversalEnumerator(
     TraverserOptions::Order order,
     TraverserOptions::UniquenessLevel uniqueVertices,
@@ -870,8 +870,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         _traversalEnumerator.prepareIndexExpressions(_infos.getAst());
 
         // start actual search
-        // reset will take a copy of the underlying string of sourceString
-        _traversalEnumerator.reset(toHashedStringRef(sourceString));
+        _traversalEnumerator.reset(toHashedStringRef(
+            sourceString));  // TODO [GraphRefactor]: check sourceString memory
         TRI_ASSERT(_inputRow.isInitialized());
         return true;
       }
