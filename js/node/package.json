@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@xmldom/xmldom": "^0.8.0",
     "accepts": "1.3.7",
     "ansi_up": "5.0.1",
     "ansi-html": "0.0.7",
@@ -37,7 +38,6 @@
     "timezone": "1.0.23",
     "type-is": "1.6.18",
     "underscore": "1.13.1",
-    "vary": "1.1.2",
-    "xmldom": "0.6.0"
+    "vary": "1.1.2"
   }
 }
