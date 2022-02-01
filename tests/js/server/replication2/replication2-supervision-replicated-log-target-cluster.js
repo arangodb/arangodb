@@ -396,9 +396,8 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, newLeader);
 
       // nothing should happen (supervision should not elect leader)
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term, {
-        [newLeader]: 3,
-      }));
+      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newLeader]: {excluded: false},
@@ -467,7 +466,6 @@ const replicatedLogSuite = function () {
     // This tests replaces the leader in Target with a new server that has the
     // excluded flag set. It then waits for the replicated log to converge and
     // then removes the excluded flag.
-    /* TODO reenable this test
     testReplaceLeaderWithNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -496,12 +494,10 @@ const replicatedLogSuite = function () {
       // we expect to have a new leader and the new follower
       waitFor(replicatedLogLeaderEstablished(database, logId, term + 1, [...followers, newServer]));
     },
-    */
 
     // This test replaces the old leader in target with a new server that is excluded
     // and additionally requests that this new server shall become the leader.
     // It expects the supervision to fail and then removes the excluded flag.
-    /* TODO reenable this test
     testChangeLeaderToNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -537,7 +533,6 @@ const replicatedLogSuite = function () {
       }));
       waitFor(replicatedLogIsReady(database, logId, term + 1, [...followers, newServer], newServer));
     },
-    */
 
     // This tests requests a non-server as leader and expects the
     // supervision to fail
