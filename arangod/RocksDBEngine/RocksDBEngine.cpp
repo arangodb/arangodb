@@ -24,6 +24,7 @@
 
 #include "RocksDBEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -58,6 +59,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
@@ -258,6 +260,8 @@ RocksDBEngine::RocksDBEngine(Server& server)
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
   startsAfter<RocksDBOptionFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<LanguageCheckFeature>();
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
