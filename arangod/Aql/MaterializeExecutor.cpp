@@ -72,9 +72,11 @@ arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
       _infos(infos) {}
 
 template<typename T>
-std::tuple<ExecutorState, NoStats, AqlCall>
+std::tuple<ExecutorState, MaterializeStats, AqlCall>
 arangodb::aql::MaterializeExecutor<T>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  MaterializeStats stats;
+
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
@@ -102,6 +104,11 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
 
+    TRI_IF_FAILURE("MaterializeExecutor::all_fail_and_count") {
+      stats.incrFiltered();
+      continue;
+    }
+
     TRI_IF_FAILURE("MaterializeExecutor::all_fail") { continue; }
 
     TRI_IF_FAILURE("MaterializeExecutor::only_one") {
@@ -116,16 +123,21 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
                    LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
                    callback, ReadOwnWrites::no)
             .ok();
+
     if (written) {
+      // document found
       output.advanceRow();
+    } else {
+      // document not found
+      stats.incrFiltered();
     }
   }
 
-  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+  return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
 template<typename T>
-std::tuple<ExecutorState, NoStats, size_t, AqlCall>
+std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
 arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   size_t skipped = 0;
@@ -143,7 +155,7 @@ arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
   }
   call.didSkip(skipped);
 
-  return {inputRange.upstreamState(), NoStats{}, skipped, call};
+  return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
 template class ::arangodb::aql::MaterializeExecutor<RegisterId>;
