@@ -93,7 +93,7 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
-// MaterializeExecutor only tracks the number of filtered rows, same we
+// MaterializeExecutor only tracks the number of filtered rows, so we
 // can reuse the FilterStats for it.
 using MaterializeStats = FilterStats;
 
