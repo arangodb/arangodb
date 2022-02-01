@@ -50,16 +50,16 @@ using namespace arangodb::httpclient;
 ////////////////////////////////////////////////////////////////////////////////
 
 ClientConnection::ClientConnection(
-    application_features::ApplicationServer& server, Endpoint* endpoint,
+    application_features::CommunicationFeaturePhase& comm, Endpoint* endpoint,
     double requestTimeout, double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+    : GeneralClientConnection(comm, endpoint, requestTimeout, connectTimeout,
                               connectRetries) {}
 
 ClientConnection::ClientConnection(
-    application_features::ApplicationServer& server,
+    application_features::CommunicationFeaturePhase& comm,
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+    : GeneralClientConnection(comm, endpoint, requestTimeout, connectTimeout,
                               connectRetries) {}
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -27,6 +27,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBSha256Checksum.h"
 
 #include <string>
@@ -207,7 +208,7 @@ class RocksDBShaFileHandlerEnvGenerator {
 };
 
 TEST(CheckMissingShaFilesTest, verify_common_situations) {
-  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
+  arangodb::ArangodServer server{nullptr, nullptr};
 
   RocksDBShaFileHandlerEnvGenerator envGenerator;
   auto shaFileManager = std::make_shared<arangodb::RocksDBShaFileManager>(
@@ -250,7 +251,7 @@ TEST(CheckMissingShaFilesTest, verify_common_situations) {
 }
 
 TEST(RocksDBShaFileHandlerTest, delete_sha_file_direct) {
-  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
+  arangodb::ArangodServer server{nullptr, nullptr};
 
   RocksDBShaFileHandlerEnvGenerator envGenerator;
   auto shaFileManager = std::make_shared<arangodb::RocksDBShaFileManager>(
@@ -275,7 +276,7 @@ TEST(RocksDBShaFileHandlerTest, delete_sha_file_direct) {
 }
 
 TEST(RocksDBShaFileHandlerTest, delete_sha_file_indirect) {
-  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
+  arangodb::ArangodServer server{nullptr, nullptr};
 
   RocksDBShaFileHandlerEnvGenerator envGenerator;
 

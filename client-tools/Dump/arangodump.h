@@ -18,28 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
-/// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
-class SharedPRNGFeature final
-    : public application_features::ApplicationFeature {
- public:
-  explicit SharedPRNGFeature(application_features::ApplicationServer& server);
-  ~SharedPRNGFeature();
+class DumpFeature;
+class EncryptionFeature;
 
-  void prepare() override final;
+using ArangoDumpFeatures = ArangoClientFeatures<
+#ifdef USE_ENTERPRISE
+    EncryptionFeature,
+#endif
+    BasicFeaturePhaseClient, DumpFeature>;
 
-  uint64_t rand() noexcept;
-};
+using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
+using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;
 
 }  // namespace arangodb

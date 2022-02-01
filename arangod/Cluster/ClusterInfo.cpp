@@ -407,7 +407,7 @@ DECLARE_LEGACY_COUNTER(arangodb_load_plan_accum_runtime_msec_total,
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
-ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _server(server),
@@ -5952,6 +5952,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
+      {"Sync/FoxxQueueVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}});
 
   VPackSlice latestIdSlice = plan.get({"arango", "Sync", "LatestID"});
@@ -6277,9 +6278,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
-application_features::ApplicationServer& ClusterInfo::server() const {
-  return _server;
-}
+ArangodServer& ClusterInfo::server() const { return _server; }
 
 ClusterInfo::ServersKnown::ServersKnown(
     VPackSlice const serversKnownSlice,
@@ -6425,10 +6424,11 @@ CollectionWatcher::~CollectionWatcher() {
   }
 }
 
-ClusterInfo::SyncerThread::SyncerThread(
-    application_features::ApplicationServer& server, std::string const& section,
-    std::function<void()> const& f, AgencyCallbackRegistry* cregistry)
-    : arangodb::Thread(server, section + "Syncer"),
+ClusterInfo::SyncerThread::SyncerThread(Server& server,
+                                        std::string const& section,
+                                        std::function<void()> const& f,
+                                        AgencyCallbackRegistry* cregistry)
+    : arangodb::ServerThread<Server>(server, section + "Syncer"),
       _news(false),
       _section(section),
       _f(f),
@@ -6476,7 +6476,7 @@ void ClusterInfo::SyncerThread::run() {
         return notify(result);
       };
 
-  auto acb = std::make_shared<AgencyCallback>(_server, _section + "/Version",
+  auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
                                               update, true, false);
   Result res = _cr->registerCallback(std::move(acb));
   if (res.fail()) {

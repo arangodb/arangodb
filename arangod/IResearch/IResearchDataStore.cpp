@@ -24,6 +24,7 @@
 #include "IResearchDataStore.h"
 #include "IResearchDocument.h"
 #include "IResearchFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 

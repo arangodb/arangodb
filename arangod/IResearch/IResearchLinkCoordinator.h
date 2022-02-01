@@ -119,7 +119,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
     friend class IResearchLinkCoordinator;
 
    private:
-    IndexFactory(application_features::ApplicationServer& server);
+    IndexFactory(ArangodServer& server);
 
    public:
     bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -134,8 +134,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
                              TRI_vocbase_t const& vocbase) const override;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(
-      application_features::ApplicationServer&);
+  static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
 };  // IResearchLinkCoordinator
 
 }  // namespace iresearch

@@ -47,12 +47,13 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
 #include "StorageEngine/HealthData.h"
+#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/ReplicatedLog/Supervision.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -200,7 +201,7 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(application_features::ApplicationServer& server)
+Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _spearhead(server, _agent),
@@ -2518,112 +2519,109 @@ void Supervision::checkBrokenAnalyzers() {
   }
 }
 
+namespace {
+template<typename T>
+auto parseSomethingFromNode(Node const& n) -> T {
+  auto builder = n.toBuilder();
+  return T::fromVelocyPack(builder.slice());
+}
+
+template<typename T>
+auto parseIfExists(Node const& root, std::string const& url)
+    -> std::optional<T> {
+  if (auto node = root.get(url); node.has_value()) {
+    return parseSomethingFromNode<T>(node->get());
+  }
+  return std::nullopt;
+}
+}  // namespace
+
 void Supervision::checkReplicatedLogs() {
   _lock.assertLockedByCurrentThread();
 
   using namespace replication2::agency;
 
-  auto const readPlanSpecification =
-      [](Node const& node) -> LogPlanSpecification {
-    auto builder = node.toBuilder();
-    return LogPlanSpecification{from_velocypack, builder.slice()};
-  };
-
-  auto const readLogCurrent = [](Node const& node) -> LogCurrent {
-    auto builder = node.toBuilder();
-    return LogCurrent(from_velocypack, builder.slice());
-  };
-
-  // check if Plan has replicated logs
-  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
-  if (!planNode) {
+  // check if Target has replicated logs
+  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+  if (!targetNode) {
     return;
   }
 
-  using namespace replication2::algorithms;
+  using namespace replication2::replicated_log;
 
-  ParticipantInfo info = std::invoke([&] {
-    ParticipantInfo info;
+  ParticipantsHealth info = std::invoke([&] {
+    std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
     auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
     for (auto const& [serverId, node] : dbservers) {
       bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
-      auto rebootID = snapshot().hasAsUInt(curServersKnown + serverId + "/" +
-                                           StaticStrings::RebootId);
+
+      auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
+          curServersKnown, serverId, "/", StaticStrings::RebootId));
       if (rebootID) {
         info.emplace(serverId,
-                     ParticipantRecord{RebootId{*rebootID}, isHealthy});
+                     ParticipantHealth{RebootId{*rebootID}, isHealthy});
       }
     }
-    return info;
+    return ParticipantsHealth{info};
   });
 
   auto builder = std::make_shared<Builder>();
   auto envelope = arangodb::agency::envelope::into_builder(*builder);
-  for (auto const& [dbName, db] : planNode->get().children()) {
+
+  for (auto const& [dbName, db] : targetNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
-      auto const spec = readPlanSpecification(*node);
-      auto const
-          current =
-              std::invoke(
-                  [&, &dbName = dbName, &idString = idString]() -> LogCurrent {
-                    using namespace cluster::paths;
-                    auto currentPath =
-                aliases::current()
-                    ->replicatedLogs()
-                    ->database(dbName)
-                    ->log(idString)
-                    ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+      auto target = parseSomethingFromNode<LogTarget>(*node);
+      auto plan = parseIfExists<LogPlanSpecification>(
+          snapshot(), aliases::plan()
+                          ->replicatedLogs()
+                          ->database(dbName)
+                          ->log(idString)
+                          ->str(SkipComponents(1)));
+      auto current =
+          parseIfExists<LogCurrent>(snapshot(), aliases::current()
+                                                    ->replicatedLogs()
+                                                    ->database(dbName)
+                                                    ->log(idString)
+                                                    ->str(SkipComponents(1)));
 
-                    if (auto cnode = snapshot().get(currentPath);
-                        cnode.has_value()) {
-                      return readLogCurrent(cnode->get());
-                    }
-                    return {};
-                  });
+      auto action =
+          std::invoke([&, &dbName = dbName]() -> std::unique_ptr<Action> {
+            try {
+              return checkReplicatedLog(Log{target, plan, current}, info);
+            } catch (std::exception const& err) {
+              LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
+                  << "Supervision caught exception in checkReplicatedLog for "
+                     "replicated log "
+                  << dbName << "/" << target.id << ": " << err.what();
+              return nullptr;
+            }
+          });
 
-      auto checkParticipantsResult =
-          checkReplicatedLogParticipants(dbName, spec, info);
-
-      auto const checkResult = checkReplicatedLog(dbName, spec, current, info);
-      TRI_ASSERT(  // holds(LogPlanTermSpecification) =>
-                   // !participantsConfig.participants.empty()
-          !std::holds_alternative<LogPlanTermSpecification>(checkResult) ||
-          !spec.participantsConfig.participants.empty());
-      envelope = std::visit(
-          overload{
-              [&, &dbName = dbName](
-                  replication2::ParticipantsConfig const& participantsConfig) {
-                return arangodb::replication2::agency::methods::
-                    updateParticipantsConfigTrx(std::move(envelope), dbName,
-                                                spec.id, participantsConfig,
-                                                spec.participantsConfig);
-              },
-              [&](std::monostate) { return std::move(envelope); },
-          },
-          std::move(checkParticipantsResult));
-      envelope = std::visit(
-          overload{
-              [&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
-                envelope = arangodb::replication2::agency::methods::
-                    removeElectionResult(std::move(envelope), dbName, spec.id);
-
-                return arangodb::replication2::agency::methods::
-                    updateTermSpecificationTrx(
-                        std::move(envelope), dbName, spec.id, newSpec,
-                        spec.currentTerm.has_value()
-                            ? std::optional{spec.currentTerm->term}
-                            : std::nullopt);
-              },
-              [&, &dbName = dbName](
-                  LogCurrentSupervisionElection const& newElection) {
-                return arangodb::replication2::agency::methods::
-                    updateElectionResult(std::move(envelope), dbName, spec.id,
-                                         newElection);
-              },
-              [&](std::monostate const&) {
-                return std::move(envelope);  // do nothing
-              }},
-          checkResult);
+      if (action != nullptr) {
+        if (target.supervision.has_value() &&
+            target.supervision->maxActionsTraceLength > 0) {
+          envelope =
+              envelope.write()
+                  .push_queue_emplace(
+                      aliases::current()
+                          ->replicatedLogs()
+                          ->database(dbName)
+                          ->log(idString)
+                          ->supervision()
+                          ->actions()
+                          ->str(),
+                      [&](velocypack::Builder& b) {
+                        VPackObjectBuilder ob(&b);
+                        b.add("time", VPackValue(timepointToString(
+                                          std::chrono::system_clock::now())));
+                        b.add(VPackValue("desc"));
+                        action->toVelocyPack(b);
+                      },
+                      target.supervision->maxActionsTraceLength)
+                  .end();
+        }
+        envelope = action->execute(dbName, std::move(envelope));
+      }
     }
   }
 

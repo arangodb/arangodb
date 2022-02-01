@@ -23,18 +23,18 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/CpuUsageSnapshot.h"
 #include "Basics/Mutex.h"
 
-namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
+#include "RestServer/arangod.h"
 
-class CpuUsageFeature final : public application_features::ApplicationFeature {
+namespace arangodb {
+
+class CpuUsageFeature final : public ArangodFeature {
  public:
-  explicit CpuUsageFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "CpuUsage"; }
+
+  explicit CpuUsageFeature(Server& server);
   ~CpuUsageFeature();
 
   void prepare() override final;

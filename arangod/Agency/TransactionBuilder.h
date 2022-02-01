@@ -183,6 +183,18 @@ struct envelope {
       return std::move(*this);
     }
 
+    template<typename K, typename F>
+    write_trx push_queue_emplace(K&& k, F&& f, std::size_t max) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("push-queue"));
+      _builder->add("len", VPackValue(max));
+      detail::add_to_builder(*_builder.get(), "new");
+      std::invoke(std::forward<F>(f), *_builder);
+      _builder->close();
+      return std::move(*this);
+    }
+
     template<typename K, typename V>
     write_trx set(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));

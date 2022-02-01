@@ -58,20 +58,12 @@ class GeneralClientConnection {
   GeneralClientConnection& operator=(GeneralClientConnection const&);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a new client connection
-  //////////////////////////////////////////////////////////////////////////////
-
-  GeneralClientConnection(application_features::ApplicationServer&,
+  GeneralClientConnection(application_features::CommunicationFeaturePhase&,
                           Endpoint* endpoint, double, double, size_t);
 
-  GeneralClientConnection(application_features::ApplicationServer&,
+  GeneralClientConnection(application_features::CommunicationFeaturePhase&,
                           std::unique_ptr<Endpoint>& endpoint, double, double,
                           size_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroys a client connection
-  //////////////////////////////////////////////////////////////////////////////
 
   virtual ~GeneralClientConnection();
 
@@ -81,12 +73,12 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   static GeneralClientConnection* factory(
-      application_features::ApplicationServer& server, Endpoint*,
+      application_features::CommunicationFeaturePhase& comm, Endpoint*,
       double requestTimeout, double connectTimeout, size_t numRetries,
       uint64_t sslProtocol);
 
   static GeneralClientConnection* factory(
-      application_features::ApplicationServer& server,
+      application_features::CommunicationFeaturePhase& comm,
       std::unique_ptr<Endpoint>&, double requestTimeout, double connectTimeout,
       size_t numRetries, uint64_t sslProtocol);
 
@@ -178,6 +170,10 @@ class GeneralClientConnection {
 
   application_features::ApplicationServer& server() const;
 
+  application_features::CommunicationFeaturePhase& comm() const {
+    return _comm;
+  }
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -223,12 +219,6 @@ class GeneralClientConnection {
   virtual bool readable() = 0;
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the underlying application server
-  //////////////////////////////////////////////////////////////////////////////
-
-  application_features::ApplicationServer& _server;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying socket
   //////////////////////////////////////////////////////////////////////////////

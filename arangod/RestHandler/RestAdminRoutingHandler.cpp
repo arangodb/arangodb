@@ -23,6 +23,7 @@
 
 #include "RestAdminRoutingHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -30,9 +31,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminRoutingHandler::RestAdminRoutingHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAdminRoutingHandler::RestAdminRoutingHandler(ArangodServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminRoutingHandler::execute() {

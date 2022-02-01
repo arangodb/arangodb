@@ -25,10 +25,10 @@
 
 #include <atomic>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ConditionVariable.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 #include "V8/JSLoader.h"
 
 #include <velocypack/Builder.h>
@@ -42,7 +42,7 @@ class JavaScriptSecurityContext;
 class Thread;
 class V8Context;
 
-class V8DealerFeature final : public application_features::ApplicationFeature {
+class V8DealerFeature final : public ArangodFeature {
  public:
   struct Statistics {
     size_t available;
@@ -61,7 +61,9 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     size_t invocations;
   };
 
-  explicit V8DealerFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "V8Dealer"; }
+
+  explicit V8DealerFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

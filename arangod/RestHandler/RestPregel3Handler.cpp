@@ -33,13 +33,14 @@
 #include "Rest/CommonDefines.h"
 
 #include "Pregel3/Methods.h"
+#include "RestServer/arangod.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel3;
 
-RestPregel3Handler::RestPregel3Handler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestPregel3Handler::RestPregel3Handler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _pregel3Feature(server.getFeature<Pregel3Feature>()) {}
 

@@ -39,11 +39,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::pregel3;
 
-Pregel3Feature::Pregel3Feature(ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicatedLog") {
+Pregel3Feature::Pregel3Feature(Server& server) : ArangodFeature{server, *this} {
   setOptional(true);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<DatabaseFeaturePhase>();
+  startsAfter<application_features::V8FeaturePhase>();
 }
 
 void Pregel3Feature::prepare() {

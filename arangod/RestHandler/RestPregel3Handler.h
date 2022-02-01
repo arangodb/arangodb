@@ -31,8 +31,8 @@ using namespace pregel3;
 
 class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
  public:
-  explicit RestPregel3Handler(application_features::ApplicationServer&,
-                              GeneralRequest*, GeneralResponse*);
+  explicit RestPregel3Handler(ArangodServer&, GeneralRequest*,
+                              GeneralResponse*);
 
   ~RestPregel3Handler() override;
 

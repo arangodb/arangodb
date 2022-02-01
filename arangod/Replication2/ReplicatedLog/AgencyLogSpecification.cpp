@@ -71,11 +71,10 @@ LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
   }
 }
 
+LogPlanSpecification::LogPlanSpecification() = default;
 auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Id, VPackValue(id.id()));
-  builder.add(VPackValue(StaticStrings::TargetConfig));
-  targetConfig.toVelocyPack(builder);
   if (currentTerm.has_value()) {
     builder.add(VPackValue(StaticStrings::CurrentTerm));
     currentTerm->toVelocyPack(builder);
@@ -85,8 +84,7 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
 }
 
 LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
-    : id(slice.get(StaticStrings::Id).extract<LogId>()),
-      targetConfig(slice.get(StaticStrings::TargetConfig)) {
+    : id(slice.get(StaticStrings::Id).extract<LogId>()) {
   if (auto term = slice.get(StaticStrings::CurrentTerm); !term.isNone()) {
     currentTerm = LogPlanTermSpecification{from_velocypack, term};
   }
@@ -102,16 +100,20 @@ LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
     : term(term), config(config), leader(std::move(leader)) {}
 
 LogPlanSpecification::LogPlanSpecification(
-    LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config)
-    : id(id), currentTerm(std::move(term)), targetConfig(config) {}
+    LogId id, std::optional<LogPlanTermSpecification> term)
+    : id(id), currentTerm(std::move(term)) {}
 
 LogPlanSpecification::LogPlanSpecification(
-    LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config,
+    LogId id, std::optional<LogPlanTermSpecification> term,
     ParticipantsConfig participantsConfig)
     : id(id),
       currentTerm(std::move(term)),
-      targetConfig(config),
       participantsConfig(std::move(participantsConfig)) {}
+
+auto LogPlanSpecification::fromVelocyPack(velocypack::Slice slice)
+    -> LogPlanSpecification {
+  return LogPlanSpecification(from_velocypack, slice);
+}
 
 LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t,
                                            VPackSlice slice) {
@@ -153,6 +155,11 @@ LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t,
   if (auto es = slice.get("election"); !es.isNone()) {
     election = LogCurrentSupervisionElection{from_velocypack, es};
   }
+  if (auto es = slice.get("error"); !es.isNone()) {
+    if (es.isObject()) {
+      error = es.get("code").getNumericValue<LogCurrentSupervisionError>();
+    }
+  }
 }
 
 LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
@@ -162,6 +169,13 @@ LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
           slice.get("participantsRequired").getNumericValue<std::size_t>()),
       participantsAvailable(
           slice.get("participantsAvailable").getNumericValue<std::size_t>()) {
+  // TODO: this is a bit ugly
+  if (auto oco = slice.get("outcome"); oco.isObject()) {
+    if (auto oc = oco.get("outcome"); !oc.isNone()) {
+      outcome = oc.getNumericValue<LogCurrentSupervisionElection::Outcome>();
+    }
+  }
+
   for (auto [key, value] : VPackObjectIterator(slice.get("details"))) {
     detail.emplace(key.copyString(),
                    value.get("code").getNumericValue<ErrorCode>());
@@ -191,9 +205,13 @@ auto LogCurrent::fromVelocyPack(VPackSlice s) -> LogCurrent {
 
 auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
-  if (election.has_value()) {
+  if (election) {
     builder.add(VPackValue("election"));
     election->toVelocyPack(builder);
+  }
+  if (error) {
+    builder.add(VPackValue("error"));
+    ::toVelocyPack(*error, builder);
   }
 }
 
@@ -201,6 +219,11 @@ auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
     -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
+
+  if (outcome) {
+    builder.add(VPackValue(StaticStrings::Outcome));
+    ::toVelocyPack(*outcome, builder);
+  }
   builder.add("participantsRequired", VPackValue(participantsRequired));
   builder.add("participantsAvailable", VPackValue(participantsAvailable));
   {
@@ -228,10 +251,35 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
       return "the server is not reported as good in Supervision/Health";
     case LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED:
       return "the server has not (yet) confirmed the current term";
+    case LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED:
+      return "the server is configured as excluded";
   }
   LOG_TOPIC("7e572", FATAL, arangodb::Logger::REPLICATION2)
       << "Invalid LogCurrentSupervisionElection::ErrorCode "
       << static_cast<std::underlying_type_t<decltype(ec)>>(ec);
+  FATAL_ERROR_ABORT();
+}
+
+auto agency::toVelocyPack(LogCurrentSupervisionElection::Outcome outcome,
+                          VPackBuilder& builder) -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Outcome, VPackValue(static_cast<int>(outcome)));
+  builder.add("message", VPackValue(to_string(outcome)));
+}
+
+auto agency::to_string(LogCurrentSupervisionElection::Outcome outcome) noexcept
+    -> std::string_view {
+  switch (outcome) {
+    case LogCurrentSupervisionElection::Outcome::SUCCESS:
+      return "the election was successful";
+    case LogCurrentSupervisionElection::Outcome::IMPOSSIBLE:
+      return "an election was impossible";
+    case LogCurrentSupervisionElection::Outcome::FAILED:
+      return "the election failed";
+  }
+  LOG_TOPIC("7f572", FATAL, arangodb::Logger::REPLICATION2)
+      << "Invalid LogCurrentSupervisionElection::Outcome "
+      << static_cast<std::underlying_type_t<decltype(outcome)>>(outcome);
   FATAL_ERROR_ABORT();
 }
 
@@ -242,6 +290,25 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
          left.participantsAvailable == right.participantsAvailable &&
          left.participantsRequired == right.participantsRequired &&
          left.detail == right.detail;
+}
+
+auto agency::toVelocyPack(LogCurrentSupervisionError error,
+                          VPackBuilder& builder) -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add("code", VPackValue(static_cast<int>(error)));
+  builder.add("message", VPackValue(to_string(error)));
+}
+
+auto agency::to_string(LogCurrentSupervisionError error) noexcept
+    -> std::string_view {
+  switch (error) {
+    case LogCurrentSupervisionError::TARGET_LEADER_INVALID:
+      return "the leader selected in target is invalid";
+  }
+  LOG_TOPIC("7eee2", FATAL, arangodb::Logger::REPLICATION2)
+      << "Invalid LogCurrentSupervisionError "
+      << static_cast<std::underlying_type_t<decltype(error)>>(error);
+  FATAL_ERROR_ABORT();
 }
 
 auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {
@@ -276,3 +343,94 @@ auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
   }
   return leader;
 }
+
+auto LogTarget::fromVelocyPack(velocypack::Slice s) -> LogTarget {
+  return LogTarget(from_velocypack_t{}, s);
+}
+
+void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+
+  builder.add(StaticStrings::Id, VPackValue(id));
+
+  builder.add(VPackValue(StaticStrings::Config));
+
+  config.toVelocyPack(builder);
+
+  if (leader.has_value()) {
+    builder.add(StaticStrings::Leader, VPackValue(leader.value()));
+  }
+
+  builder.add(VPackValue(StaticStrings::Participants));
+  {
+    velocypack::ObjectBuilder pb(&builder);
+    for (auto const& [pid, flags] : participants) {
+      builder.add(VPackValue(pid));
+      flags.toVelocyPack(builder);
+    }
+  }
+
+  builder.add(VPackValue("properties"));
+  properties.toVelocyPack(builder);
+
+  if (supervision.has_value()) {
+    builder.add(VPackValue("supervision"));
+    supervision->toVelocyPack(builder);
+  }
+}
+
+void LogTarget::Properties::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+}
+
+auto LogTarget::Properties::fromVelocyPack(velocypack::Slice s)
+    -> LogTarget::Properties {
+  return {};
+}
+
+auto LogTarget::Supervision::fromVelocyPack(velocypack::Slice s)
+    -> Supervision {
+  Supervision result;
+  if (auto slice = s.get("maxActionsTraceLength"); !slice.isNone()) {
+    result.maxActionsTraceLength = slice.extract<std::size_t>();
+  }
+  return result;
+}
+
+auto LogTarget::Supervision::toVelocyPack(velocypack::Builder& b) const
+    -> void {
+  velocypack::ObjectBuilder ob(&b);
+  b.add("maxActionsTraceLength", velocypack::Value(maxActionsTraceLength));
+}
+
+LogTarget::LogTarget(from_velocypack_t, VPackSlice slice) {
+  id = slice.get(StaticStrings::Id).extract<LogId>();
+
+  config = LogConfig(slice.get(StaticStrings::Config));
+
+  if (auto leaderSlice = slice.get(StaticStrings::Leader);
+      leaderSlice.isString()) {
+    leader = leaderSlice.copyString();
+  }
+
+  if (auto participantsSlice = slice.get("participants");
+      participantsSlice.isObject()) {
+    for (auto const& [pid, flags] :
+         velocypack::ObjectIterator(participantsSlice)) {
+      participants.emplace(pid.copyString(),
+                           ParticipantFlags::fromVelocyPack(flags));
+    }
+  }
+
+  if (auto propSlice = slice.get("properties"); !propSlice.isNone()) {
+    properties = Properties::fromVelocyPack(propSlice);
+  }
+
+  if (auto supSlice = slice.get("supervision"); !supSlice.isNone()) {
+    supervision = Supervision::fromVelocyPack(supSlice);
+  }
+}
+
+LogTarget::LogTarget(LogId id, Participants const& participants,
+                     LogConfig const& config)
+    : id{id}, participants{participants}, config(config) {}

@@ -22,16 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 #include "Pregel3/GlobalSettings.h"
 #include "Query.h"
 
 #include <cstdint>
 
 namespace arangodb::pregel3 {
-class Pregel3Feature final : public application_features::ApplicationFeature {
+class Pregel3Feature final : public ArangodFeature {
  public:
-  explicit Pregel3Feature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Pregel3"; }
+  explicit Pregel3Feature(Server& server);
   ~Pregel3Feature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -74,4 +75,4 @@ class Pregel3Feature final : public application_features::ApplicationFeature {
   pregel3::GlobalSettings _settings;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::pregel3

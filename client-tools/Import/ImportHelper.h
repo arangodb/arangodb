@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -42,6 +42,7 @@
 
 namespace arangodb {
 class ClientFeature;
+class EncryptionFeature;
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
@@ -82,7 +83,8 @@ class ImportHelper {
   ImportHelper& operator=(ImportHelper const&) = delete;
 
  public:
-  ImportHelper(ClientFeature const& client, std::string const& endpoint,
+  ImportHelper(EncryptionFeature* encryption, ClientFeature const& client,
+               std::string const& endpoint,
                httpclient::SimpleHttpClientParams const& params,
                uint64_t maxUploadSize, uint32_t threadCount,
                bool autoUploadSize = false);
@@ -330,7 +332,7 @@ class ImportHelper {
   void waitForSenders();
 
  private:
-  ClientFeature const& _clientFeature;
+  EncryptionFeature* _encryption;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   std::atomic<uint64_t> _maxUploadSize;
   std::atomic<uint64_t> _periodByteCount;

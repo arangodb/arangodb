@@ -24,15 +24,15 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class DatabasePathFeature final
-    : public application_features::ApplicationFeature {
+class DatabasePathFeature final : public ArangodFeature {
  public:
-  explicit DatabasePathFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() { return "DatabasePath"; }
 
-  static constexpr const char* name() { return "DatabasePath"; }
+  explicit DatabasePathFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
