@@ -1,6 +1,8 @@
 devel
 -----
 
+* Replaced internal JS dependency ansi-html with ansi-html-community
+
 * Changed default value of startup option 
   `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
   This makes RocksDB track all loaded index and filter blocks in the block
