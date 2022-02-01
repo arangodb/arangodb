@@ -28,8 +28,7 @@
 namespace arangodb {
 class RestMetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestMetricsHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
   char const* name() const override final { return "RestMetricsHandler"; }
   /// @brief must be on fast lane so that metrics can always be retrieved,

@@ -24,8 +24,6 @@
 #include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -38,7 +36,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/FileDescriptorsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -46,16 +43,14 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-DatabasePathFeature::DatabasePathFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, DatabasePathFeature::name()),
-      _requiredDirectoryState("any") {
+DatabasePathFeature::DatabasePathFeature(Server& server)
+    : ArangodFeature{server, *this}, _requiredDirectoryState("any") {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
-#ifdef TRI_HAVE_GETRLIMIT
-  startsAfter<FileDescriptorsFeature>();
-#endif
+  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature>();
+  }
   startsAfter<LanguageFeature>();
   startsAfter<TempFeature>();
 }

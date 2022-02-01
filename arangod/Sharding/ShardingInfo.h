@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -89,8 +90,7 @@ class ShardingInfo {
   /// @brief validates the number of shards and the replication factor
   /// in slice against the minimum and maximum configured values
   static Result validateShardsAndReplicationFactor(
-      arangodb::velocypack::Slice slice,
-      application_features::ApplicationServer const& server,
+      arangodb::velocypack::Slice slice, ArangodServer const& server,
       bool enforceReplicationFactor);
 
   bool usesDefaultShardKeys() const;

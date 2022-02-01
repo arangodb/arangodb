@@ -507,8 +507,7 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 };  // AllIteratorMock
 
 struct IndexFactoryMock : arangodb::IndexFactory {
-  IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
-                   bool injectClusterIndexes)
+  IndexFactoryMock(arangodb::ArangodServer& server, bool injectClusterIndexes)
       : IndexFactory(server) {
     if (injectClusterIndexes) {
       arangodb::ClusterIndexFactory::linkIndexFactories(server, *this);
@@ -1589,10 +1588,9 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
-StorageEngineMock::StorageEngineMock(
-    arangodb::application_features::ApplicationServer& server,
-    bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "",
+StorageEngineMock::StorageEngineMock(arangodb::ArangodServer& server,
+                                     bool injectClusterIndexes)
+    : StorageEngine(server, "Mock", "", std::numeric_limits<size_t>::max(),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),

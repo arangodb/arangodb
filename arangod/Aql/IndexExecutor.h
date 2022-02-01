@@ -28,6 +28,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/Ast.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/IndexNode.h"
@@ -275,6 +276,10 @@ class IndexExecutor {
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   Infos& _infos;
   std::unique_ptr<ExecutorExpressionContext> _expressionContext;
+
+  // an AST owned by the IndexExecutor, used to store data of index
+  // expressions
+  Ast _ast;
 
   /// @brief a vector of cursors for the index block
   /// cursors can be reused

@@ -53,9 +53,8 @@ using namespace arangodb::rest;
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 Mutex ConsoleThread::serverConsoleMutex;
 
-ConsoleThread::ConsoleThread(ApplicationServer& applicationServer,
-                             TRI_vocbase_t* vocbase)
-    : Thread(applicationServer, "Console"),
+ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
+    : ServerThread<ArangodServer>(applicationServer, "Console"),
       _vocbase(vocbase),
       _userAborted(false) {}
 
@@ -66,9 +65,9 @@ static char const* USER_ABORTED = "user aborted";
 void ConsoleThread::run() {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-  bool v8Enabled = _server.hasFeature<V8DealerFeature>() &&
-                   _server.isEnabled<V8DealerFeature>() &&
-                   _server.getFeature<V8DealerFeature>().isEnabled();
+  bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
+                   server().isEnabled<V8DealerFeature>() &&
+                   server().getFeature<V8DealerFeature>().isEnabled();
   if (!v8Enabled) {
     LOG_TOPIC("4a00f", FATAL, arangodb::Logger::FIXME)
         << "V8 engine is not enabled";

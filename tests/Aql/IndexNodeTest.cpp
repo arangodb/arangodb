@@ -54,8 +54,7 @@ class IndexNodeTest
 
 };  // IndexNodeTest
 
-arangodb::CreateDatabaseInfo createInfo(
-    arangodb::application_features::ApplicationServer& server) {
+arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {
@@ -559,8 +558,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     }
 
     // clone
-    {
-      // without properties
+    {  // without properties
       {
         auto indNodeClone =
             dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
@@ -609,7 +607,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
                                   arangodb::aql::IndexNode::IndexVarsInfo());
       ASSERT_FALSE(indNode.isLateMaterialized());
     }
-  }
+  }  // namespace
 }
 
 TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {

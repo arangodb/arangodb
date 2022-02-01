@@ -34,6 +34,7 @@
 
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -236,7 +237,7 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : _server(server) {}
 
 void IResearchRocksDBRecoveryHelper::prepare() {

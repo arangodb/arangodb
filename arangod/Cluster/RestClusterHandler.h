@@ -28,8 +28,7 @@
 namespace arangodb {
 class RestClusterHandler : public arangodb::RestBaseHandler {
  public:
-  RestClusterHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestClusterHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   virtual char const* name() const override { return "RestClusterHandler"; }

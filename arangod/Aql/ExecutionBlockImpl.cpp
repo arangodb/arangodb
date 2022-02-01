@@ -88,8 +88,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <boost/core/demangle.hpp>
-
 #include <type_traits>
 
 /* SingleServerProvider Section */

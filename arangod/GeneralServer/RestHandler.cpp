@@ -50,8 +50,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandler::RestHandler(application_features::ApplicationServer& server,
-                         GeneralRequest* request, GeneralResponse* response)
+RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
+                         GeneralResponse* response)
     : _request(request),
       _response(response),
       _server(server),
@@ -60,10 +60,11 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
-      _logContextScopeValues(LogContext::makeValue()
-                                 .with<structuredParams::UrlName>(_request->fullUrl())
-                                 .with<structuredParams::UserName>(_request->user())
-                                 .share()),
+      _logContextScopeValues(
+          LogContext::makeValue()
+              .with<structuredParams::UrlName>(_request->fullUrl())
+              .with<structuredParams::UserName>(_request->user())
+              .share()),
       _canceled(false) {}
 
 RestHandler::~RestHandler() {

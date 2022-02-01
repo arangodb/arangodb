@@ -134,9 +134,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
 
 class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
  public:
-  explicit IResearchRocksDBInvertedIndexFactory(
-      application_features::ApplicationServer& server);
-  virtual ~IResearchRocksDBInvertedIndexFactory() = default;
+  explicit IResearchRocksDBInvertedIndexFactory(ArangodServer& server);
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override;

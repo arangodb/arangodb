@@ -18,28 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "NonceFeature.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Nonce.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+
+using namespace arangodb::basics;
+using namespace arangodb::options;
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
+
+NonceFeature::NonceFeature(Server& server) : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-class SharedPRNGFeature final
-    : public application_features::ApplicationFeature {
- public:
-  explicit SharedPRNGFeature(application_features::ApplicationServer& server);
-  ~SharedPRNGFeature();
+void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("nonce", "nonces", "", true, true);
+  options->addObsoleteOption("--nonce.size",
+                             "the size of the hash array for nonces", true);
+}
 
-  void prepare() override final;
+void NonceFeature::prepare() {
+  constexpr uint64_t initialSize = 2 * 1024 * 1024;
+  Nonce::setInitialSize(static_cast<size_t>(initialSize));
+}
 
-  uint64_t rand() noexcept;
-};
+void NonceFeature::unprepare() { Nonce::destroy(); }
 
 }  // namespace arangodb
