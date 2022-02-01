@@ -118,7 +118,7 @@ class ExecutionBlock {
   virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
       AqlCallStack const& stack) = 0;
 
-  virtual void collectExecStats(ExecutionStats&) const;
+  virtual void collectExecStats(ExecutionStats&);
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;

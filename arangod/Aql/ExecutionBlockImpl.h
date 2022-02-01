@@ -220,10 +220,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
       AqlCallStack const& stack) override;
 
-  virtual void collectExecStats(ExecutionStats& stats) const override {
-    ExecutionBlock::collectExecStats(stats);
-    stats += _blockStats;  // additional stats;
-  }
+  void collectExecStats(ExecutionStats& stats) override;
 
   template<class exec = Executor,
            typename = std::enable_if_t<std::is_same_v<

@@ -130,7 +130,7 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   _dependencyPos = _dependencies.end();
 }
 
-void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
+void ExecutionBlock::collectExecStats(ExecutionStats& stats) {
   if (_profileLevel >= ProfileLevel::Blocks) {
     stats.addNode(getPlanNode()->id(), _execNodeStats);
   }

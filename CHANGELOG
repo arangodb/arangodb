@@ -1,6 +1,52 @@
 devel
 -----
 
+* Changed default value of startup option 
+  `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
+  This makes RocksDB track all loaded index and filter blocks in the block
+  cache, so they are accounted for in RocksDB's block cache. Also the default
+  value for the startup option `--rocksdb.enforce-block-cache-size-limit`
+  was flipped from `false` to `true` to make the RocksDB block cache not
+  temporarily exceed the configured memory limit (`--rocksdb.block-cache-size`).
+
+  These default value changes will make RocksDB adhere much better to the
+  configured memory limit. This is a trade-off between memory usage stability
+  and performance. These change may have a small negative impact on performance
+  because if the block cache is not large enough to hold the data plus the
+  index and filter blocks, additional disk I/O may be performed compared to
+  previous versions. In case there is still unused RAM capacity available, it
+  may be sensible to increase the total size of the RocksDB block cache.
+
+* Add "filtered" column to AQL query profiling output.
+  This column shows how many documents were filtered by the node and thus
+  provides insights into if additional indexes could help.
+
+* Reuse ExecutorExpressionContext inside IndexExecutor, so that repeated
+  setup and teardown of expression contexts can be avoided.
+
+* Reduce memory usage of inner joins if they were performed by the 
+  IndexExecutor with dynamic index lookup expressions that needed to be
+  recomputed for input from the outer loop.
+
+  For example, in the query
+  ```
+  FOR i IN 1..1000
+    FOR doc IN collection
+      FILTER doc.indexAttribute == i
+      RETURN doc
+  ```
+  the inner loop will be executed 1000 times. The IndexExecutor in the inner
+  loop needed to rebuild the index lookup attribute from the value of `i` 1000
+  times as well. The memory for index lookup attributes came from the Ast's
+  memory allocator and was not freed until the end of the query. In this
+  query, it would mean that up to 1000 lookup values were held in memory. With
+  larger inputs even more memory would be used.
+
+  Now the memory for index lookup values is freed when a new lookup value is
+  computed, i.e. only a single lookup value is held in memory.
+  This drastically reduces peak memory usage for queries that use index lookups
+  in inner loops and that get lots of different inputs from outer loops.
+
 * Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
   column family, setting it from `false` to `true`. This should reduce memory
   and disk space requirements for the bottom-most .sst files of the documents

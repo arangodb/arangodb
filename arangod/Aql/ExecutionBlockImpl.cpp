@@ -88,8 +88,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <boost/core/demangle.hpp>
-
 #include <type_traits>
 
 /* SingleServerProvider Section */
@@ -344,6 +342,19 @@ ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // }
 
   return ExecutionBlock::initializeCursor(input);
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
+  // some node types provide info about how many documents have been
+  // filtered. if so, use the info and add it to the node stats.
+  if constexpr (is_one_of_v<typename Executor::Stats, IndexStats,
+                            EnumerateCollectionStats, FilterStats,
+                            TraversalStats, MaterializeStats>) {
+    _execNodeStats.filtered += _blockStats.getFiltered();
+  }
+  ExecutionBlock::collectExecStats(stats);
+  stats += _blockStats;  // additional stats;
 }
 
 template<class Executor>
