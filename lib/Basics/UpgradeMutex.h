@@ -33,10 +33,16 @@
 #include <mutex>
 #include <condition_variable>
 #include <cstddef>
+#include <climits>
 
 namespace arangodb::basics {
 
 // Simple, not scalable, correct upgrade mutex
+// Not recursive
+// Priority:
+//  write more than read
+//  write same as upgrade
+//  upgrade not concurrent with read
 class UpgradeMutex {
  public:
   UpgradeMutex();
