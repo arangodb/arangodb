@@ -157,7 +157,7 @@ bool WeightedEnumerator::expand() {
     TRI_ASSERT(!_queue.empty());
     NextEdge nextEdge = _queue.popTop();
 
-    bool shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
+    bool shouldReturnPath = nextEdge.depth + 1 > _opts->minDepth;
     bool const didInsert = expandEdge(std::move(nextEdge));
 
     if (didInsert && _opts->usesPostFilter()) {
