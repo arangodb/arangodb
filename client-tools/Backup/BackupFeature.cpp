@@ -153,7 +153,7 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now - start;
     return (static_cast<double>(duration.count()) /
-            decltype(duration)::period::den * decltype(duration)::period::num);
+            decltype(duration)::period::den* decltype(duration)::period::num);
   };
 
   LOG_TOPIC("0dfda", INFO, arangodb::Logger::BACKUP)
