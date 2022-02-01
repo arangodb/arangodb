@@ -6,13 +6,14 @@ import { GraphView } from './GraphView';
 import { data } from './data';
 import { data2 } from './data2';
 import G6 from '@antv/g6';
-import { Card } from 'antd';
+import { Card  } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
 import NodeLabelContentSelector from './NodeLabelContentSelector.js';
 import { EditNodeModal } from './EditNodeModal';
+import { Headerinfo } from './Headerinfo';
 import { LoadDocument } from './LoadDocument';
 import { EditModal } from './EditModal';
 import { EditEdgeModal } from './EditEdgeModal';
@@ -702,6 +703,9 @@ const G6JsGraph = () => {
       >
         <strong>Add node</strong>
       </AddNodeModal2>
+      <Headerinfo
+        graphName={graphName}
+      />
       <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
