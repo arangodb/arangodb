@@ -26,13 +26,19 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
+
+class LoggerFeature;
 
 class GreetingsFeature final : public application_features::ApplicationFeature {
  public:
-  explicit GreetingsFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Greetings"; }
+
+  template<typename Server>
+  explicit GreetingsFeature(Server& server)
+      : ApplicationFeature{server, *this} {
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+  }
 
  public:
   void prepare() override final;

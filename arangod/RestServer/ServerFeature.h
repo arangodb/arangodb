@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
@@ -35,11 +36,13 @@ class AsyncJobManager;
 
 }  // namespace rest
 
-class ServerFeature final : public application_features::ApplicationFeature {
+class ServerFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "Server"; }
+
   static std::string operationModeString(OperationMode mode);
 
-  ServerFeature(application_features::ApplicationServer& server, int* result);
+  ServerFeature(Server& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

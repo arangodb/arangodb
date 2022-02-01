@@ -926,6 +926,43 @@ arangosh, use this:
 
     require("@arangodb/mocha-runner").runTest('tests/js/client/endpoint-spec.js', true)
 
+### Release tests
+[RTA](https://github.com/arangodb/release-test-automation) has some tests to verify production integration.
+To aid their development, they can also be used from the ArangoDB source tree.
+
+#### MakeData / CheckData suite
+The [makedata framework](https://github.com/arangodb/release-test-automation#makedata--checkdata-framework)
+is implemented in arangosh javascript.
+It uses the respective interface to execute DDL and DML operations. 
+It falicitates a per database approach, and can be run multiple times in loops. 
+It has hooks, that are intended to create DDL/DML objects in a way their existence
+can be revalidated later on by other script hooks. The check hooks must respect a 
+flag whether they can create resources or whether they're talking to a read-only source.
+Thus, the check-hooks may create data, but must remove it on success.
+The checks should be considered not as time intense as the creation of the data. 
+
+It is used by RTA to:
+- revalidate data can be created
+- data survives hot backup / restore
+- data makes it across the replication
+- data is accessible with clusters with one failing DB-Server
+- data makes it across DC2DC replication
+
+With this integration additional DDL/DML checks can be more easily be developed without the 
+rather time and resource consuming and complex RTA framework.
+
+The `rta_makedata` testsuite can be invoked with:
+- `--cluster false` - to be ran on a single server setup.
+- `--activefailover true` to be ran on an active failover setup.
+- `--cluster true` to be ran on a 3 db-server node cluster; one run will check resillience with 2 remaining dbservers.
+
+Invoke it like this:
+
+    ./scripts/unittest rta_makedata --cluster true --rtasource ../release-test-automation/
+
+(with `--rtasource ../release-test-automation` being the default value, 
+that can be overriden with another directory with a git clone of RTA) 
+
 ### Driver tests
 
 #### Go driver

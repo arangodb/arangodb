@@ -85,7 +85,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
   auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(res);

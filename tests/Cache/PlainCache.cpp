@@ -29,7 +29,7 @@
 #include <thread>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/xoroshiro128plus.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"

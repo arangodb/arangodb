@@ -18,24 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andreas Dominik Jung
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <memory>
+#include <string>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
 
-class NonceFeature : public application_features::ApplicationFeature {
+class TimeZoneFeature final : public ArangodFeature {
  public:
-  explicit NonceFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "TimeZone"; }
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  explicit TimeZoneFeature(Server& server);
+
   void prepare() override final;
-  void unprepare() override final;
+  void start() override final;
+
+  static void prepareTimeZoneData(std::string const& binaryPath,
+                                  std::string const& binaryExecutionPath,
+                                  std::string const& binaryName);
+
+ private:
+  char const* _binaryPath;
 };
 
 }  // namespace arangodb

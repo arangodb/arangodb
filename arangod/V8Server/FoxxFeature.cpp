@@ -24,7 +24,7 @@
 #include "FoxxFeature.h"
 
 #include "Agency/AgencyComm.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -35,15 +35,15 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "Foxx"),
+FoxxFeature::FoxxFeature(Server& server)
+    : ArangodFeature{server, *this},
       _queueVersion(0),
       _localQueueInserts(0),
       _pollInterval(1.0),
       _enabled(true),
       _startupWaitForSelfHeal(false) {
   setOptional(true);
-  startsAfter<ServerFeaturePhase>();
+  startsAfter<application_features::ServerFeaturePhase>();
 }
 
 void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -297,7 +297,7 @@ ShardDistributionReporter::ShardDistributionReporter(ClusterInfo* ci,
 ShardDistributionReporter::~ShardDistributionReporter() = default;
 
 std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
   auto& nf = server.getFeature<NetworkFeature>();
   auto* pool = nf.pool();

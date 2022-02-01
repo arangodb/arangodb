@@ -37,8 +37,8 @@ class ApplicationServer;
 
 class CacheRebalancerThread final : public Thread {
  public:
-  CacheRebalancerThread(application_features::ApplicationServer& server,
-                        cache::Manager* manager, std::uint64_t interval);
+  CacheRebalancerThread(ArangodServer& server, cache::Manager* manager,
+                        std::uint64_t interval);
   ~CacheRebalancerThread();
 
   void beginShutdown() override;

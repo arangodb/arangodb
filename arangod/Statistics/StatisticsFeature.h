@@ -26,10 +26,10 @@
 #include <array>
 #include <initializer_list>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/figures.h"
 
@@ -82,14 +82,14 @@ extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
-class StatisticsFeature final
-    : public application_features::ApplicationFeature {
+class StatisticsFeature final : public ArangodFeature {
  public:
   static double time() { return TRI_microtime(); }
 
  public:
-  explicit StatisticsFeature(application_features::ApplicationServer& server);
-  ~StatisticsFeature();
+  static constexpr std::string_view name() noexcept { return "Statistics"; }
+
+  explicit StatisticsFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

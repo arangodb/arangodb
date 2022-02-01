@@ -23,6 +23,7 @@
 
 #include "TraverserCacheFactory.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
 #include "Basics/ResourceUsage.h"
 #include "Cache/Cache.h"

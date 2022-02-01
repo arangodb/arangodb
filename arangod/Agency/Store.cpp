@@ -33,6 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/arangod.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 
@@ -81,8 +82,8 @@ static bool endpointPathFromUrl(std::string const& url, std::string& endpoint,
 }
 
 /// Ctor with name
-Store::Store(arangodb::application_features::ApplicationServer& server,
-             Agent* agent, std::string const& name)
+Store::Store(arangodb::ArangodServer& server, Agent* agent,
+             std::string const& name)
     : _server(server), _agent(agent), _node(name, this) {}
 
 /// Copy assignment operator
