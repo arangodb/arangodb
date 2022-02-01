@@ -2465,11 +2465,11 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### xmldom
+#### @xmldom/xmldom
 
-Name: xmldom
-Version: 0.6.0
-Project Home: http://www.xidea.org
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
+Name: @xmldom/xmldom
+Version: 0.8.0
+Project Home: https://github.com/xmldom/xmldom
+License: httpsx://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
 License Name: MIT (dual license)
 License Id: MIT
