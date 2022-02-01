@@ -477,4 +477,4 @@ is returned if there are insufficient privileges to adjust log levels.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 
-@edDocuBlock
+@endDocuBlock
