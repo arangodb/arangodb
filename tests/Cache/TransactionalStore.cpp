@@ -200,7 +200,8 @@ bool TransactionalStore::update(TransactionalStore::Transaction* tx,
   return updated;
 }
 
-bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64_t key) {
+bool TransactionalStore::remove(TransactionalStore::Transaction* tx,
+                                std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(false);
@@ -229,8 +230,8 @@ bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64
   return removed;
 }
 
-TransactionalStore::Document TransactionalStore::lookup(TransactionalStore::Transaction* tx,
-                                                        std::uint64_t key) {
+TransactionalStore::Document TransactionalStore::lookup(
+    TransactionalStore::Transaction* tx, std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(true);

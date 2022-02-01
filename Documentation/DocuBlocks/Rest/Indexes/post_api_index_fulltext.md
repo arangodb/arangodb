@@ -4,6 +4,11 @@
 
 @RESTHEADER{POST /_api/index#fulltext, Create fulltext index, createIndex#fulltext}
 
+@HINTS
+{% hint 'warning' %}
+The fulltext index type is deprecated from version 3.10 onwards.
+{% endhint %}
+
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection,string,required}

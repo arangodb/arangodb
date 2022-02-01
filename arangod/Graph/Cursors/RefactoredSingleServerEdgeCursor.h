@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +28,13 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
+#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
+
+// Note: only used for NonConstExpressionContainer
+// Could be extracted to it's own file.
+#include "Aql/OptimizerUtils.h"
 
 #include "Graph/Providers/TypeAliases.h"
 
@@ -41,7 +46,7 @@ class LocalDocumentId;
 
 namespace aql {
 class TraversalStats;
-}
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
@@ -53,16 +58,15 @@ struct IndexAccessor;
 
 struct EdgeDocumentToken;
 
-template <class StepType>
+template<class StepType>
 class SingleServerProvider;
 
-template <class StepType>
+template<class StepType>
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
-    LookupInfo(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-               std::optional<size_t> memberToUpdate,
-               aql::Expression* expression, size_t cursorID);
+    LookupInfo(IndexAccessor* accessor);
+
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&) = delete;
@@ -77,17 +81,12 @@ class RefactoredSingleServerEdgeCursor {
 
     size_t getCursorID() const;
 
+    void calculateIndexExpressions(aql::Ast* ast, aql::ExpressionContext& ctx);
+
    private:
-    // NOTE: The expression can be nullptr!
-    transaction::Methods::IndexHandle _idxHandle;
-    aql::Expression* _expression;
-    aql::AstNode* _indexCondition;
-    size_t _cursorID;
+    IndexAccessor* _accessor;
 
     std::unique_ptr<IndexIterator> _cursor;
-
-    // Position of _from / _to in the index search condition
-    std::optional<size_t> _conditionMemberToUpdate;
   };
 
   enum Direction { FORWARD, BACKWARD };
@@ -95,19 +94,21 @@ class RefactoredSingleServerEdgeCursor {
  public:
   RefactoredSingleServerEdgeCursor(
       transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
-      std::vector<IndexAccessor> const& globalIndexConditions,
-      std::unordered_map<uint64_t, std::vector<IndexAccessor>> const& depthBasedIndexConditions,
-      arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument);
+      std::vector<IndexAccessor>& globalIndexConditions,
+      std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
+          depthBasedIndexConditions,
+      arangodb::aql::FixedVarExpressionContext& expressionContext,
+      bool requiresFullDocument);
 
   ~RefactoredSingleServerEdgeCursor();
 
-  using Callback =
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
+  using Callback = std::function<void(EdgeDocumentToken&&,
+                                      arangodb::velocypack::Slice, size_t)>;
 
  private:
   aql::Variable const* _tmpVar;
   std::vector<LookupInfo> _lookupInfo;
-  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
@@ -115,11 +116,15 @@ class RefactoredSingleServerEdgeCursor {
 
  public:
   void readAll(SingleServerProvider<StepType>& provider,
-               aql::TraversalStats& stats, size_t depth, Callback const& callback);
+               aql::TraversalStats& stats, size_t depth,
+               Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
-  bool evaluateEdgeExpression(arangodb::aql::Expression* expression, VPackSlice value);
+  void prepareIndexExpressions(aql::Ast* ast);
+
+  bool evaluateEdgeExpression(arangodb::aql::Expression* expression,
+                              VPackSlice value);
 
  private:
   auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;

@@ -1,11 +1,13 @@
 # -*- mode: CMAKE; -*-
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+
 # options
 option(BuildBench "Build bench performance test suite" OFF)
-message(STATUS "Building bench performance test suite: ${BuildBench}")
+message(STATUS "VelocyPack building bench performance test suite: ${BuildBench}")
 
 option(BuildTools "Build support programs and tools" ON)
-message(STATUS "Building support programs and tools: ${BuildTools}")
+message(STATUS "VelocyPack building support programs and tools: ${BuildTools}")
 
 # build json-to-vpack.cpp
 if(BuildTools)
@@ -27,12 +29,20 @@ endif()
 # build bench.cpp
 if(BuildBench)
   if(NOT IS_DIRECTORY "${PROJECT_SOURCE_DIR}/rapidjson")
-      #    message(FATAL_ERROR "rapidjson library not found in subdirectory 'rapidjson'. Please run ./download-rapidjson.sh")
+    message(FATAL_ERROR "rapidjson library not found in subdirectory 'rapidjson'. Please run ./download-rapidjson.sh")
   endif()
+  if(NOT IS_DIRECTORY "${PROJECT_SOURCE_DIR}/simdjson")
+    message(FATAL_ERROR "simdjson library not found in subdirectory 'simdjson'. Please run ./download-simdjson.sh")
+  endif()
+
+  add_library(simdjson STATIC IMPORTED)
+  set_target_properties(simdjson PROPERTIES IMPORTED_LOCATION ${PROJECT_SOURCE_DIR}/simdjson/build/libsimdjson.a)
 
   add_executable(bench bench.cpp)
   target_link_libraries(bench velocypack)
+  target_link_libraries(bench simdjson)
   target_include_directories(bench PRIVATE ${PROJECT_SOURCE_DIR}/rapidjson/include)
+  target_include_directories(bench PRIVATE ${PROJECT_SOURCE_DIR}/simdjson/include)
 
   if(EnableSSE)
       target_compile_definitions(bench PRIVATE RAPIDJSON_SSE42)

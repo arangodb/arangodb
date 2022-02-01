@@ -93,7 +93,7 @@ void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd, OffsetType o
 
   const DWORD dwFileOffsetHigh = (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(0)
-      : static_cast<DWORD>((off >> 32) & UINT32_C(0xFFFFFFFF));
+      : static_cast<DWORD>((off >> 32) & UINT32_C(0xFFFFFFFF)); // cppcheck-suppress shiftTooManyBits
 
   const DWORD dwMaxSizeLow = (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(maxSize)
@@ -101,7 +101,7 @@ void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd, OffsetType o
 
   const DWORD dwMaxSizeHigh = (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(0)
-      : static_cast<DWORD>((maxSize >> 32) & UINT32_C(0xFFFFFFFF));
+      : static_cast<DWORD>((maxSize >> 32) & UINT32_C(0xFFFFFFFF)); // cppcheck-suppress shiftTooManyBits
 
   const DWORD protect = page_protection(prot);
 

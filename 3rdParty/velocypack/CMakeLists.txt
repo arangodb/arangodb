@@ -1,6 +1,6 @@
 # -*- mode: CMAKE; -*-
 
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.9)
 project(velocypack CXX C)
 
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "target C++ standard")
@@ -8,6 +8,29 @@ message(STATUS "Require C++${CMAKE_CXX_STANDARD}")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+
+set(UseIPO "AUTO" CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
+set_property(CACHE UseIPO PROPERTY STRINGS AUTO ON OFF)
+
+# Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
+set(IPO_ENABLED False)
+if (UseIPO STREQUAL "AUTO")
+  if (CMAKE_BUILD_TYPE STREQUAL "Release"
+      OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+      OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    set(IPO_ENABLED True)
+  else()
+    set(IPO_ENABLED False)
+  endif ()
+elseif (UseIPO)
+  set(IPO_ENABLED True)
+else()
+  set(IPO_ENABLED False)
+endif()
+
+if (IPO_ENABLED)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
+endif()
 
 option(BuildVelocyPackExamples "Build examples" ON)
 option(Maintainer "Build maintainer tools" OFF)
@@ -19,8 +42,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
 
-message(STATUS "Build mode: ${CMAKE_BUILD_TYPE}")
-message(STATUS "Install base directory: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "VelocyPack build mode: ${CMAKE_BUILD_TYPE}")
+message(STATUS "VelocyPack interprocedural optimizations: ${IPO_ENABLED}")
+message(STATUS "VelocyPack install base directory: ${CMAKE_INSTALL_PREFIX}")
 set(VELOCYPACK_VERSION "0.1.33" CACHE STRING "VelocyPack version")
 set(VELOCYPACK_DISPLAY_NAME "Velocypack")
 set(VELOCYPACK_URL_INFO_ABOUT "https://github.com/arangodb/velocypack")
@@ -48,7 +72,6 @@ set(VELOCY_SOURCE
     src/Serializable.cpp
     src/SharedSlice.cpp
     src/Slice.cpp
-    src/StringRef.cpp
     src/Utf8Helper.cpp
     src/Validator.cpp
     src/Value.cpp
@@ -68,9 +91,9 @@ elseif(HashType STREQUAL "fasthash")
     list(APPEND VELOCY_SOURCE src/fasthash.cpp)
     add_definitions("-DVELOCYPACK_FASTHASH=1")
 else()
-    message(FATAL_ERROR "invalid HashType value. supported values: xxhash, fasthash")
+    message(FATAL_ERROR "VelocyPack invalid HashType value. supported values: xxhash, fasthash")
 endif()
-message(STATUS "Building with hash type: ${HashType}")
+message(STATUS "VelocyPack Building with hash type: ${HashType}")
 
 add_library(velocypack STATIC ${VELOCY_SOURCE})
 target_include_directories(velocypack PRIVATE src)

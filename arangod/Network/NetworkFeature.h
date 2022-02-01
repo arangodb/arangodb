@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,9 +28,9 @@
 
 #include <fuerte/requests.h>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Network/ConnectionPool.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -38,15 +38,16 @@ namespace network {
 struct RequestOptions;
 }
 
-class NetworkFeature final : public application_features::ApplicationFeature {
+class NetworkFeature final : public ArangodFeature {
  public:
-  using RequestCallback =
-      std::function<void(fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                         std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
+  using RequestCallback = std::function<void(
+      fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+      std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
 
-  explicit NetworkFeature(application_features::ApplicationServer& server);
-  explicit NetworkFeature(application_features::ApplicationServer& server,
-                          network::ConnectionPool::Config);
+  static constexpr std::string_view name() noexcept { return "Network"; }
+
+  explicit NetworkFeature(Server& server);
+  NetworkFeature(Server& server, network::ConnectionPool::Config);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -72,8 +73,10 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   bool isCongested() const;  // in-flight above low-water mark
   bool isSaturated() const;  // in-flight above high-water mark
   void sendRequest(network::ConnectionPool& pool,
-                   network::RequestOptions const& options, std::string const& endpoint,
-                   std::unique_ptr<fuerte::Request>&& req, RequestCallback&& cb);
+                   network::RequestOptions const& options,
+                   std::string const& endpoint,
+                   std::unique_ptr<fuerte::Request>&& req,
+                   RequestCallback&& cb);
 
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
@@ -101,14 +104,13 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   /// @brief number of cluster-internal forwarded requests
   /// (from one coordinator to another, in case load-balancing
   /// is used)
-  Counter& _forwardedRequests;
+  metrics::Counter& _forwardedRequests;
 
   std::uint64_t _maxInFlight;
-  Gauge<std::uint64_t>& _requestsInFlight;
+  metrics::Gauge<std::uint64_t>& _requestsInFlight;
 
-  Counter& _requestTimeouts;
-  Histogram<fixed_scale_t<double>>& _requestDurations;
+  metrics::Counter& _requestTimeouts;
+  metrics::Histogram<metrics::FixScale<double>>& _requestDurations;
 };
 
 }  // namespace arangodb
-

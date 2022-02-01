@@ -99,20 +99,23 @@ int dump(
     }
 
     for (auto columns = segment.columns(); columns->next();) {
-      auto& meta = columns->value();
-      stream << "Column id=" << meta.id
-             << " name=" << meta.name
-             << std::endl;
+      auto& reader = columns->value();
 
-      auto visitor = [&stream](irs::doc_id_t doc, const irs::bytes_ref& value) {
+      stream << "Column id=" << reader.id()
+             << " name=" << reader.name() << '\n';
+
+      auto it = reader.iterator(true);
+      auto* payload = irs::get<irs::payload>(*it);
+      auto* doc = irs::get<irs::document>(*it);
+
+      if (!payload || !doc) {
+        return 1;
+      }
+
+      while (it->next()) {
         stream << "doc=" << doc
-               << " value=" << irs::ref_cast<char>(value)
-               << std::endl;
-        return true;
-      };
-
-      auto column = segment.column_reader(meta.id);
-      column->visit(visitor);
+               << " value=" << irs::ref_cast<char>(payload->value) << '\n';
+      }
     }
     ++i;
   }

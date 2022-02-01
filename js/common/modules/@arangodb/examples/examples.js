@@ -27,6 +27,7 @@
 
 let db = require("internal").db;
 let examples = require("@arangodb/graph-examples/example-graph.js");
+let user_examples = require("@arangodb/examples/example-users.js");
 
 exports.Examples = {
   'traversalGraph': {
@@ -141,6 +142,20 @@ exports.Examples = {
     removeDS: function() {
       try {
         db._drop("observations");
+      } catch (e) {}
+    }
+  },
+  'usersDataset': {
+    createDS: function() {
+      let u = user_examples.createUsers('users');
+      let r = user_examples.createRegions('regions');
+      user_examples.createLocations('locations', u);
+    },
+    removeDS: function() {
+      try {
+        db._drop("users");
+        db._drop("regions");
+        db._drop("locations");
       } catch (e) {}
     }
   }

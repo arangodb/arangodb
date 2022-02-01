@@ -52,9 +52,9 @@ class IRESEARCH_API utf8_path {
   typedef native_char_t value_type; // to simplify move to std::filesystem::path
 
   utf8_path() = default;
-  utf8_path(const char* utf8_path);
-  utf8_path(const std::string& utf8_path);
-  utf8_path(const irs::string_ref& utf8_path);
+  utf8_path(const char* utf8_path); // cppcheck-suppress noExplicitConstructor
+  utf8_path(const std::string& utf8_path); // cppcheck-suppress noExplicitConstructor
+  utf8_path(const irs::string_ref& utf8_path); // cppcheck-suppress noExplicitConstructor
   utf8_path& operator+=(const char* utf8_name);
   utf8_path& operator+=(const std::string& utf8_name);
   utf8_path& operator+=(const irs::string_ref& utf8_name);
@@ -73,6 +73,7 @@ class IRESEARCH_API utf8_path {
   const native_char_t* c_str() const noexcept;
   const native_str_t& native() const noexcept;
   std::string u8string() const;
+  std::string string() const { return u8string(); }
 
   template<typename T>
   utf8_path& assign(T&& source) {

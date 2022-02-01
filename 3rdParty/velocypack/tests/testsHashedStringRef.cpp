@@ -128,6 +128,7 @@ TEST(HashedStringRefTest, EmptyHashedStringRef) {
   ASSERT_EQ("", s.toString());
   ASSERT_NE(0, s.hash());
   ASSERT_NE(0, s.tag());
+  ASSERT_EQ(std::string_view(), s.stringView());
 
   ASSERT_TRUE(s.equals(HashedStringRef()));
   ASSERT_TRUE(s.equals(s));
@@ -148,6 +149,7 @@ TEST(HashedStringRefTest, HashedStringRefFromEmptyString) {
   ASSERT_NE(0, s.hash());
   ASSERT_NE(0, s.tag());
   ASSERT_EQ("", s.toString());
+  ASSERT_EQ(std::string_view(), s.stringView());
 
   ASSERT_TRUE(s.equals(HashedStringRef()));
   ASSERT_TRUE(s.equals(s));
@@ -167,6 +169,7 @@ TEST(HashedStringRefTest, HashedStringRefFromString) {
   ASSERT_NE(0, s.tag());
   ASSERT_EQ("the-quick-brown-foxx", s.toString());
   ASSERT_EQ(value.data(), s.data());
+  ASSERT_EQ(std::string_view("the-quick-brown-foxx"), s.stringView());
 
   ASSERT_TRUE(s.equals(HashedStringRef(value.data(), 20)));
   ASSERT_TRUE(s.equals(s));

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,25 +34,30 @@
 
 using namespace arangodb;
 
-RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
+RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(
+    RocksDBTransactionState* state, rocksdb::TransactionDB* db)
     : RocksDBTrxBaseMethods(state, db) {
   TRI_ASSERT(_state->isSingleOperation());
   TRI_ASSERT(!_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
 }
 
-rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions() const {
+rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions()
+    const {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call iteratorReadOptions for single operation methods");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "should not call iteratorReadOptions for single operation methods");
 }
 
-void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, RevisionId rid,
-                                         TRI_voc_document_operation_e operationType) {
+void RocksDBSingleOperationTrxMethods::prepareOperation(
+    DataSourceId cid, RevisionId rid,
+    TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(_rocksTransaction != nullptr);
 
   // singleOp => no modifications yet
   TRI_ASSERT(_rocksTransaction->GetNumPuts() == 0 &&
-              _rocksTransaction->GetNumDeletes() == 0);
+             _rocksTransaction->GetNumDeletes() == 0);
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
@@ -70,7 +75,8 @@ void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, Revisi
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
       TRI_ASSERT(rid.isSet());
 
-      auto logValue = RocksDBLogValue::SingleRemoveV2(_state->vocbase().id(), cid, rid);
+      auto logValue =
+          RocksDBLogValue::SingleRemoveV2(_state->vocbase().id(), cid, rid);
 
       _rocksTransaction->PutLogData(logValue.slice());
       TRI_ASSERT(_numLogdata == 0);
@@ -81,7 +87,8 @@ void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, Revisi
 }
 
 /// @brief undo the effects of the previous prepareOperation call
-void RocksDBSingleOperationTrxMethods::rollbackOperation(TRI_voc_document_operation_e operationType) {
+void RocksDBSingleOperationTrxMethods::rollbackOperation(
+    TRI_voc_document_operation_e operationType) {
   ++_numRollbacks;
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -92,20 +99,24 @@ void RocksDBSingleOperationTrxMethods::rollbackOperation(TRI_voc_document_operat
       --_numLogdata;
       break;
     }
-    default: { 
-      break; 
+    default: {
+      break;
     }
   }
 }
 
-std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationTrxMethods::NewIterator(
-    rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
+std::unique_ptr<rocksdb::Iterator>
+RocksDBSingleOperationTrxMethods::NewIterator(rocksdb::ColumnFamilyHandle*,
+                                              ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call NewIterator for single operation methods");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "should not call NewIterator for single operation methods");
 }
 
-bool RocksDBSingleOperationTrxMethods::iteratorMustCheckBounds(ReadOwnWrites) const {
+bool RocksDBSingleOperationTrxMethods::iteratorMustCheckBounds(
+    ReadOwnWrites) const {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
   return false;

@@ -1,0 +1,60 @@
+[/
+          Copyright Oliver Kowalke 2009.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[section:attributes Attributes]
+
+Class `attributes` is used to specify parameters required to setup a
+coroutine's context.
+
+        enum flag_unwind_t
+        {
+            stack_unwind,
+            no_stack_unwind
+        };
+
+        struct attributes
+        {
+            std::size_t     size;
+            flag_unwind_t   do_unwind;
+
+            attributes() noexcept;
+
+            explicit attributes( std::size_t size_) noexcept;
+
+            explicit attributes( flag_unwind_t do_unwind_) noexcept;
+
+            explicit attributes( std::size_t size_, flag_unwind_t do_unwind_) noexcept;
+        };
+
+[heading `attributes()`]
+[variablelist
+[[Effects:] [Default constructor using `boost::context::default_stacksize()`, does unwind
+the stack after coroutine/generator is complete.]]
+[[Throws:] [Nothing.]]
+]
+
+[heading `attributes( std::size_t size)`]
+[variablelist
+[[Effects:] [Argument `size` defines stack size of the new coroutine.
+Stack unwinding after termination.]]
+[[Throws:] [Nothing.]]
+]
+
+[heading `attributes( flag_unwind_t do_unwind)`]
+[variablelist
+[[Effects:] [Argument `do_unwind` determines if stack will be unwound after
+termination or not. The default stacksize is used for the new coroutine.]]
+[[Throws:] [Nothing.]]
+]
+
+[heading `attributes( std::size_t size, flag_unwind_t do_unwind)`]
+[variablelist
+[[Effects:] [Arguments `size` and `do_unwind` are given by the user.]]
+[[Throws:] [Nothing.]]
+]
+
+[endsect]

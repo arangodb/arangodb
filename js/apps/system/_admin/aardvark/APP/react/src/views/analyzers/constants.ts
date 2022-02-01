@@ -1,5 +1,5 @@
+/* eslint-disable camelcase */
 import { JSONSchemaType } from 'ajv';
-import { Dispatch } from 'react';
 import _, { merge, partial } from 'lodash';
 
 export const typeNameMap = {
@@ -13,6 +13,8 @@ export const typeNameMap = {
   stopwords: 'Stopwords',
   collation: 'Collation',
   segmentation: 'Segmentation',
+  nearest_neighbors: 'Nearest Neighbors',
+  classification: 'Classification',
   pipeline: 'Pipeline',
   geojson: 'GeoJSON',
   geopoint: 'GeoPoint'
@@ -20,7 +22,6 @@ export const typeNameMap = {
 
 export type Feature = 'frequency' | 'norm' | 'position';
 type Features = Feature[];
-export type Int = number & { __int__: void };
 
 export type BaseFormState = {
   name: string;
@@ -38,48 +39,58 @@ export type DelimiterState = {
   };
 };
 
-type StemState = {
-  type: 'stem';
+export type LocaleProperty = {
   properties: {
     locale: string;
   };
 };
 
-type CaseProperty = 'lower' | 'upper' | 'none';
+export type StemState = LocaleProperty & {
+  type: 'stem';
+};
 
-type NormState = {
-  type: 'norm';
+export type CaseProperty = {
+  properties: {
+    case?: 'lower' | 'upper' | 'none';
+  };
+};
+
+export type AccentProperty = {
   properties: {
     accent?: boolean;
-    case?: CaseProperty;
-    locale: string;
   };
 };
 
-export type NGramBase = {
-  max?: Int;
-  min?: Int;
+export type NormState = LocaleProperty & CaseProperty & AccentProperty & {
+  type: 'norm';
+};
+
+export type NGramBaseProperty = {
+  max?: number;
+  min?: number;
   preserveOriginal?: boolean;
 };
 
 export type NGramState = {
   type: 'ngram';
-  properties: NGramBase & {
+  properties: NGramBaseProperty & {
     startMarker?: string;
     endMarker?: string;
     streamType?: 'binary' | 'utf8';
   };
 };
 
-export type TextState = {
+export type StopwordsProperty = {
+  properties: {
+    stopwords?: string[];
+  };
+};
+
+export type TextState = LocaleProperty & CaseProperty & AccentProperty & StopwordsProperty & {
   type: 'text';
   properties: {
-    case?: CaseProperty;
-    locale: string;
-    accent?: boolean;
     stemming?: boolean;
-    edgeNgram?: NGramBase;
-    stopwords?: string[];
+    edgeNgram?: NGramBaseProperty;
     stopwordsPath?: string;
   };
 };
@@ -90,36 +101,49 @@ export type AqlState = {
     queryString: string;
     collapsePositions?: boolean;
     keepNull?: boolean;
-    batchSize?: Int;
-    memoryLimit?: Int;
+    batchSize?: number;
+    memoryLimit?: number;
     returnType?: 'string' | 'number' | 'bool';
   };
 };
 
-export type StopwordsState = {
-  type: 'stopwords',
+export type StopwordsState = StopwordsProperty & {
+  type: 'stopwords';
   properties: {
-    stopwords: string[];
     hex?: boolean;
-  }
-};
-
-export type CollationState = {
-  type: 'collation';
-  properties: {
-    locale: string;
   };
 };
 
-export type SegmentationState = {
-  type: 'segmentation',
+export type CollationState = LocaleProperty & {
+  type: 'collation';
+};
+
+export type SegmentationState = CaseProperty & {
+  type: 'segmentation';
   properties: {
     break?: 'all' | 'alpha' | 'graphic';
-    case?: CaseProperty;
   };
 };
 
-type PipelineState = DelimiterState
+export type ModelProperty = {
+  properties: {
+    model_location: string;
+    top_k?: number; // [0, 2147483647]
+  };
+};
+
+export type NearestNeighborsState = ModelProperty & {
+  type: 'nearest_neighbors';
+};
+
+export type ClassificationState = ModelProperty & {
+  type: 'classification';
+  properties: {
+    threshold?: number; // [0.0, 1.0]
+  };
+};
+
+export type PipelineState = DelimiterState
   | StemState
   | NormState
   | NGramState
@@ -127,7 +151,9 @@ type PipelineState = DelimiterState
   | AqlState
   | StopwordsState
   | CollationState
-  | SegmentationState;
+  | SegmentationState
+  | NearestNeighborsState
+  | ClassificationState;
 
 export type PipelineStates = {
   type: 'pipeline';
@@ -136,26 +162,28 @@ export type PipelineStates = {
   };
 };
 
-export type GeoOptions = {
-  maxCells?: Int;
-  minLevel?: Int;
-  maxLevel?: Int;
+export type GeoOptionsProperty = {
+  properties: {
+    options?: {
+      maxCells?: number;
+      minLevel?: number;
+      maxLevel?: number;
+    }
+  }
 };
 
-export type GeoJsonState = {
+export type GeoJsonState = GeoOptionsProperty & {
   type: 'geojson';
   properties: {
     type?: 'shape' | 'centroid' | 'point';
-    options?: GeoOptions;
   };
 };
 
-export type GeoPointState = {
+export type GeoPointState = GeoOptionsProperty & {
   type: 'geopoint';
   properties: {
     latitude?: string[];
     longitude?: string[];
-    options?: GeoOptions;
   };
 };
 
@@ -169,6 +197,8 @@ export type AnalyzerTypeState = IdentityState
   | StopwordsState
   | CollationState
   | SegmentationState
+  | NearestNeighborsState
+  | ClassificationState
   | PipelineStates
   | GeoJsonState
   | GeoPointState;
@@ -242,7 +272,7 @@ const mergeBase = partial(merge, _, baseSchema);
 
 const identitySchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'identity'
     }
   },
@@ -251,7 +281,7 @@ const identitySchema = mergeBase({
 
 const delimiterSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'delimiter'
     },
     'properties': {
@@ -276,7 +306,7 @@ const delimiterSchema = mergeBase({
 
 const stemSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'stem'
     },
     'properties': {
@@ -297,7 +327,7 @@ const stemSchema = mergeBase({
 
 const normSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'norm'
     },
     'properties': {
@@ -320,7 +350,7 @@ const normSchema = mergeBase({
 
 const ngramSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'ngram'
     },
     'properties': {
@@ -373,7 +403,7 @@ const ngramSchema = mergeBase({
 
 const textSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'text'
     },
     'properties': {
@@ -432,7 +462,7 @@ const textSchema = mergeBase({
 
 const aqlSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'aql'
     },
     'properties': {
@@ -481,7 +511,7 @@ const aqlSchema = mergeBase({
 
 const stopwordsSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'stopwords'
     },
     'properties': {
@@ -513,7 +543,7 @@ const stopwordsSchema = mergeBase({
 
 const collationSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'collation'
     },
     'properties': {
@@ -534,7 +564,7 @@ const collationSchema = mergeBase({
 
 const segmentationSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'segmentation'
     },
     'properties': {
@@ -551,6 +581,67 @@ const segmentationSchema = mergeBase({
       additionalProperties: false,
       default: {}
     }
+  },
+  required: ['type', 'properties']
+});
+
+const nearestNeighborsSchema = mergeBase({
+  properties: {
+    'type': {
+      const: 'nearest_neighbors'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        model_location: {
+          type: 'string',
+          nullable: false
+        },
+        top_k: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 2147483647,
+          nullable: false
+        }
+      }
+    },
+    additionalProperties: false,
+    default: {}
+  },
+  required: ['type', 'properties']
+});
+
+const classificationSchema = mergeBase({
+  properties: {
+    'type': {
+      const: 'classification'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        model_location: {
+          type: 'string',
+          nullable: false
+        },
+        top_k: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 2147483647,
+          nullable: false
+        },
+        threshold: {
+          type: 'number',
+          nullable: false,
+          minimum: 0,
+          maximum: 1,
+          default: 0
+        }
+      }
+    },
+    additionalProperties: false,
+    default: {}
   },
   required: ['type', 'properties']
 });
@@ -581,7 +672,9 @@ const pipelineSchema = mergeBase({
               aqlSchema,
               stopwordsSchema,
               collationSchema,
-              segmentationSchema
+              segmentationSchema,
+              nearestNeighborsSchema,
+              classificationSchema
             ],
             errorMessage: {
               discriminator: '/type should be one of "delimiter", "stem", "norm", "ngram", "text", "aql",' +
@@ -672,6 +765,8 @@ export const formSchema: JSONSchemaType<FormState> = {
     stopwordsSchema,
     collationSchema,
     segmentationSchema,
+    nearestNeighborsSchema,
+    classificationSchema,
     pipelineSchema,
     geojsonSchema,
     geopointSchema
@@ -681,29 +776,4 @@ export const formSchema: JSONSchemaType<FormState> = {
       ' "stopwords", "collation", "segmentation", "pipeline", "geojson", "geopoint"'
   },
   required: ['name', 'features']
-};
-
-export type State = {
-  formState: FormState;
-  formCache: object;
-  show: boolean;
-  showJsonForm: boolean;
-  lockJsonForm: boolean;
-  renderKey: string;
-};
-
-export type DispatchArgs = {
-  type: string;
-  field?: {
-    path: string;
-    value?: any;
-  };
-  basePath?: string;
-  formState?: FormState;
-};
-
-export type FormProps = {
-  formState: BaseFormState | AnalyzerTypeState | FormState;
-  dispatch: Dispatch<DispatchArgs>;
-  disabled?: boolean;
 };

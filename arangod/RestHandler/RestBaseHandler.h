@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,22 +40,22 @@ class Slice;
 
 class RestBaseHandler : public rest::RestHandler {
  public:
-  explicit RestBaseHandler(application_features::ApplicationServer&,
-                           GeneralRequest*, GeneralResponse*);
+  explicit RestBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
   void handleError(basics::Exception const&) override;
 
  public:
   // generates a result from VelocyPack
-  template <typename Payload>
+  template<typename Payload>
   void generateResult(rest::ResponseCode, Payload&&);
 
   // generates a result from VelocyPack
-  template <typename Payload>
-  void generateResult(rest::ResponseCode, Payload&&, velocypack::Options const*);
+  template<typename Payload>
+  void generateResult(rest::ResponseCode, Payload&&,
+                      velocypack::Options const*);
 
   // generates a result from VelocyPack
-  template <typename Payload>
+  template<typename Payload>
   void generateResult(rest::ResponseCode, Payload&&,
                       std::shared_ptr<transaction::Context> context);
 
@@ -71,12 +71,10 @@ class RestBaseHandler : public rest::RestHandler {
   void generateCanceled();
 
  protected:
-  
-  /// @brief parses the body as VelocyPack, generates body
+  /// @brief parses the body (request) as VelocyPack, generates body
   arangodb::velocypack::Slice parseVPackBody(bool& success);
 
-  template <typename Payload>
+  template<typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
 };
 }  // namespace arangodb
-

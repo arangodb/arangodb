@@ -167,7 +167,7 @@ class term_filter_test_case : public tests::filter_test_case_base {
            const std::string& name,
            const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) {
-            doc.insert(std::make_shared<tests::templates::string_field>(
+            doc.insert(std::make_shared<tests::string_field>(
               name,
               data.str
             ));

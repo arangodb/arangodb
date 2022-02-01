@@ -65,7 +65,7 @@ void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
 
 arangodb::aql::SharedAqlItemBlockPtr arangodb::tests::vPackBufferToAqlItemBlock(
     arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer) {
-  if(VPackSlice(buffer->data()).isNone()) {
+  if (VPackSlice(buffer->data()).isNone()) {
     return nullptr;
   }
   return multiVPackBufferToAqlItemBlocks(manager, buffer)[0];

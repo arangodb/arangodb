@@ -133,7 +133,7 @@ class ngram_token_stream: public ngram_token_stream_base {
  public:
   static ptr make(const ngram_token_stream_base::Options& options);
 
-  ngram_token_stream(const ngram_token_stream_base::Options& options);
+  explicit ngram_token_stream(const ngram_token_stream_base::Options& options);
   
   virtual bool next() noexcept override;
 

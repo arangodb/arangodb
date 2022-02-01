@@ -46,6 +46,7 @@ class IRESEARCH_API score : public attribute {
     return score ? *score : no_score();
   }
 
+  // cppcheck-suppress shadowFunction
   score() noexcept;
   explicit score(const order::prepared& ord);
 

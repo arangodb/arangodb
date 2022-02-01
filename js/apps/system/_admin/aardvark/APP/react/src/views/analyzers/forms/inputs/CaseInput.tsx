@@ -1,9 +1,9 @@
 import React, { ChangeEvent } from "react";
-import { FormProps } from "../../constants";
-import { get } from "lodash";
+import { FormProps } from "../../../../utils/constants";
 import Select from "../../../../components/pure-css/form/Select";
+import { CaseProperty } from "../../constants";
 
-type CaseInputProps = FormProps & {
+type CaseInputProps = FormProps<CaseProperty> & {
   defaultValue?: string;
 };
 
@@ -18,8 +18,8 @@ const CaseInput = ({ formState, dispatch, disabled, defaultValue = 'none' }: Cas
     });
   };
 
-  return <Select label={'Case'} value={get(formState, 'properties.case', defaultValue)}
-                 onChange={updateCase} disabled={disabled}>
+  return <Select label={'Case'} value={formState.properties.case || defaultValue} onChange={updateCase}
+                 disabled={disabled}>
     <option value={'lower'}>Lower</option>
     <option value={'upper'}>Upper</option>
     <option value={'none'}>None</option>

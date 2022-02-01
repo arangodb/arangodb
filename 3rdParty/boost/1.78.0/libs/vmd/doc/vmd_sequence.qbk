@@ -1,0 +1,292 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_sequence Parsing sequences]
+
+In the normal use of the Boost Preprocessor library data is passed as arguments to a macro in
+discrete units so that each parameter expects a single data type. A typical
+macro might be:
+
+ #define AMACRO(anumber,atuple,anidentifier) someoutput
+ 
+where the 'atuple', having the form of ( data1, data2, data3 ), itself may 
+contain different data types of elements.
+ 
+This is the standard macro design and internally it is the easiest way
+to pass macro data back and forth. The Boost PP library has a rich set of 
+functionality to deal with all of its high-level data types, and variadic data,
+with its own simpler functionality, also offers another alternative to 
+representing data.
+
+Occasionally designers of macros, especially for the use of others programmers within
+a particular library, have expressed the need for a macro parameter to allow a more
+C/C++ like syntax where a single parameter might mimic a C++ function-call or a
+C-like type modification syntax, or some other more complicated construct. 
+Something along the lines of:
+
+ areturn afunction ( aparameter1, aparameter2, aparameter3 )
+ 
+or 
+
+ ( type ) data
+ 
+etc. etc.
+
+In other words, from a syntactical level when designing possible macro input,
+is it possible to design parameter data to look more like C/C++ when macros
+are used in a library and still do a certain amount of preprocessor metaprogramming
+with such mixed token input ?
+
+VMD has functionality which allows more than one type of preprocessing token, 
+excluding an 'empty' token which always refers to some entire input, to be part of a 
+single parameter of input data. These preprocessing tokens as a single parameter are 
+syntactically a consecutive series of data which can be space separated as a single argument.
+The need to space separate the preprocessor data occurs when consecutive tokens are
+VMD identifiers. The limitation of this consecutive series of data is that each top-level part of the data
+of this series is of some VMD data type. Furthermore if you use generic macros to parse
+a sequence, any top-level VMD type which is an identifier must be a specific identifier,
+meaning it must be an identifier that has been registered.
+
+What the VMD sequence functionality means is that if some input consists of a series of data types it is possible 
+to extract the data for each data type in that series.
+
+In practicality what this means is that, given the examples just above, if 
+'areturn', 'afunction', and 'data' are specific identifiers it would be possible to
+parse either of the two inputs above so that one could identify the different
+data types involved and do preprocessor metaprogramming based on those results.
+
+[heading Sequence definition]
+
+I will be calling such input data, which consists of all top-level data types in a series,
+by the term of a 'sequence'. Each separate data type in the sequence is called an 'element'.
+In this definition of a 'sequence' we can have 0 or more elements, so that a sequence 
+is a general name for any VMD input. A sequence is therefore 
+any input VMD can parse, whether it is emptiness, a single element, or more than one 
+element in a series. Therefore when we speak of VMD macros parsing input data generically we are 
+really speaking of VMD macros parsing a sequence. A sequence can therefore also be part of 
+a Boost PP composite data type, or variadic data, and VMD can still parse such an embedded 
+sequence if asked to do so.
+
+A sequence that consists of 0 elements is an empty sequence, and we have already seen that
+emptiness can be tested with the specific macro BOOST_VMD_IS_EMPTY. A sequence which consists
+of a single element can be tested using the various identifying macros which test for "specific"
+VMD data types. But whether a sequence consists of 0 elemants, one element, or more than one
+element, we can also use "generic" macros, which will be further described, to parse a sequence.
+
+[heading Sequence parsing]
+
+Parsing a sequence means that VMD can step through each element of a sequence
+sequentially, determine the type and data of each element, then move on to the
+next element. Parsing is sequential and can only be done in a forward direction,
+but it can be done any number of times. In C++ iterator terms parsing of a 
+sequence models a forward iterator.
+
+Working with a sequence is equivalent to using VMD macros 'generically', whereas
+previously we had documented using VMD macros "specifically" with identifying
+macros that tested each type of VMD data.
+
+Before I give an explanation of how to use a sequence using VMD generic 
+functionality I would like to make two points:
+
+* The possibility of working with a sequence which contains more than one 
+data type can be easily abused. In general 
+keeping things simple is usually better than making things overly complicated 
+when it comes to the syntactical side of things in a computer language. A macro 
+parameter syntactical possibility has to be understandable to be used.
+* Using VMD to parse the individual data types of a sequence takes more 
+preprocessing time than functionality offered with Boost PP data types,
+because it is based on forward access through each top-level type of the sequence.
+
+The constraints in a sequence are that the top-level must 
+consist of VMD data types, ie. preprocessor tokens which VMD understands,
+and that all top-level VMD identifiers must be specific identifiers when the sequence is parsed
+generically. By top-level it is meant that a Boost PP composite data may have elements which
+VMD cannot parse but as long as the input consists of the composite data types and
+not the inner unparsable elements, VMD can parse the input.
+Therefore if preprocessor data is one of the examples above, you will be successful 
+in using VMD. However if your preprocessor data takes the form of:
+
+ &name identifier ( param )
+ 
+or
+
+ identifier "string literal"
+ 
+or 
+
+ identifier + number
+ 
+or
+
+ identifier += 4.3
+ 
+etc. etc.
+ 
+you will not be able to parse the data using VMD since '&', "string literal",
+'+', '+=', and "4.3" are preprocessor tokens which are not VMD top-level data types and 
+therefore VMD cannot handle them at the parsing level. You can still of course
+pass such data as preprocessing input to macros but you cannot use VMD to recognize
+the parts of such data.
+
+This is similar to the fact that VMD cannot tell you what type preprocessor data
+is as a whole, using any of the VMD identifying macros already discussed, if the 
+type is not one that VMD can handle.
+
+On the other hand you can still use VMD to parse such tokens in the input if you use
+Boost PP data types as top-level data types to do so. Such as:
+
+ ( &name ) identifier ( param )
+ 
+or
+
+ identifier ( "string literal" )
+ 
+or
+
+ identifier ( + ) number
+ 
+or
+
+ identifier ( += ) 4 ( . ) 3
+ 
+The succeeding topics explain the VMD functionality for parsing a sequence
+for each individual VMD data type in that sequence.
+
+[heading Sequence types]
+
+A VMD sequence can be seen as one of either three general types:
+
+# An empty sequence
+# A single element sequence
+# A multi-element sequence
+
+An empty sequence is merely input that is empty, what VMD calls "emptiness". Use the previously
+explained BOOST_VMD_IS_EMPTY identifying macro to test if the sequence is an empty sequence.
+
+ #include <boost/vmd/is_empty.hpp>
+ 
+ #define AN_EMPTY_SEQUENCE
+ #define A_NON_EMPTY_SEQUENCE 23 ( some_identifier )
+ 
+ BOOST_VMD_IS_EMPTY(AN_EMPTY_SEQUENCE) will return 1
+ BOOST_VMD_IS_EMPTY(A_NON_EMPTY_SEQUENCE) will return 0
+ 
+The type of an empty sequence is BOOST_VMD_TYPE_EMPTY. You can test for
+an empty sequence when a top-level identifier is not a specific identifier
+and the macro will correctly return 0. This is because BOOST_VMD_IS_EMPTY,
+which has been previously documented, is really an identifying macro which also
+works to parse any sequence and determine emptiness or not.
+ 
+A single element sequence is a single VMD data type. This is what
+we have been previously discussing as data which VMD can parse in this 
+documentation with our identifying macros. You can use the 
+BOOST_VMD_IS_UNARY generic macro to test if the sequence is a single element sequence.
+
+ #include <boost/vmd/is_unary.hpp>
+ 
+ #define AN_EMPTY_SEQUENCE
+ #define A_SINGLE_ELEMENT_SEQUENCE (1,2)
+ #define NOT_A_SINGLE_ELEMENT_SEQUENCE (1,2) (45)(name)
+ 
+ BOOST_VMD_IS_UNARY(A_SINGLE_ELEMENT_SEQUENCE) will return 1
+ BOOST_VMD_IS_UNARY(AN_EMPTY_SEQUENCE) will return 0
+ BOOST_VMD_IS_UNARY(NOT_A_SINGLE_ELEMENT_SEQUENCE) will return 0
+ 
+The type of a single element sequence is the type of the individual data type.
+In our example above the type of A_SINGLE_ELEMENT_SEQUENCE is BOOST_VMD_TYPE_TUPLE.
+
+A multi-element sequence consists of more than one data type. This is the
+"new" type which VMD can parse. You can use the BOOST_VMD_IS_MULTI macro
+to test for a multi-element sequence.
+
+ #define AN_EMPTY_SEQUENCE
+ #define A_SINGLE_ELEMENT_SEQUENCE (1,2)
+ #define A_MULTI_ELEMENT_SEQUENCE (1,2) (1)(2) 45
+ 
+The A_MULTI_ELEMENT_SEQUENCE consists of a tuple followed by a seq followed by a number.
+ 
+ #include <boost/vmd/is_multi.hpp>
+ 
+ BOOST_VMD_IS_MULTI(A_MULTI_ELEMENT_SEQUENCE) will return 1
+ BOOST_VMD_IS_MULTI(AN_EMPTY_SEQUENCE) will return 0
+ BOOST_VMD_IS_MULTI(A_SINGLE_ELEMENT_SEQUENCE) will return 0
+ 
+The type of a multi-element sequence is always BOOST_VMD_TYPE_SEQUENCE.
+
+The type of any sequence can be obtained with the BOOST_VMD_GET_TYPE
+macro. We will be explaining this further in the documentation.
+
+[heading Sequence size]
+
+The size of any sequence can be accessed using the BOOST_VMD_SIZE macro.
+For an empty sequence the size is always 0. For a single element sequence
+the size is always 1. For a multi-element sequence the size is the number
+of individual top-level data types in the sequence.
+
+ #include <boost/vmd/size.hpp>
+ 
+ #define AN_EMPTY_SEQUENCE
+ #define A_SINGLE_ELEMENT_SEQUENCE (1,2)
+ #define A_MULTI_ELEMENT_SEQUENCE (1,2) (1)(2) 45
+ 
+ BOOST_VMD_SIZE(AN_EMPTY_SEQUENCE) will return 0
+ BOOST_VMD_SIZE(A_SINGLE_ELEMENT_SEQUENCE) will return 1
+ BOOST_VMD_SIZE(A_MULTI_ELEMENT_SEQUENCE) will return 3
+
+[heading Distinguishing consecutive seqs and tuples in a sequence]
+
+As has previously been mentioned a single element tuple
+is also a one element seq, so parsing a sequence which
+has seqs and tuples in them might be a problem as far
+as identify each element of the sequence. In a multi-element
+sequence if the data consists of a mixture of seqs
+and tuples consecutively we need to distinguish how VMD parses the data.
+The rule is that VMD always parses a single element tuple as a tuple unless it is
+followed by one or more single element tuples, in which case it is a seq.
+Here are some examples showing how the rule is applied.
+
+ #define ST_DATA (somedata)(element1,element2)
+ 
+VMD parses the above data as 2 consecutive tuples.
+The first tuple is the single element tuple '(somedata)' and the second tuple
+is the multi element tuple '(element1,element2)'.
+
+ #define ST_DATA (element1,element2)(somedata)
+ 
+VMD parses the above data as 2 consecutive tuples.
+The first tuple is the multi element tuple '(element1,element2)' and the second tuple
+is the single element tuple '(somedata)'.
+
+ #define ST_DATA (somedata)(some_other_data)(element1,element2)
+ 
+VMD parses the above data as a seq followed by a tuple.
+The seq is '(somedata) (some_other_data)' and the tuple is
+'(element1,element2)'.
+
+[heading Using VMD to parse sequence input]
+
+For a VMD sequence two ways of parsing into individual data 
+types are offered by the VMD library:
+
+# The sequence can be converted to any of the Boost PP data types, or
+to variadic data, where each individual data type in the sequence becomes 
+a separate element of the particular composite data type chosen. The
+conversion to a particular Boost PP data type or variadic data is slow, 
+because it is based on forward access through each top-level type of the sequence,
+but afterwards accessing any individual element is as fast as accessing 
+any element in the Boost PP data type or among variadic data.
+# The sequence can be accessed directly through its individual elements.
+This is slower than accessing an element of a Boost PP data type
+or variadic data but offers conceptual access to the original sequence
+as a series of elements.
+
+These two techniques will be discussed in succeeding topics.
+
+[include vmd_sequence_convert.qbk]
+[include vmd_sequence_access.qbk]
+
+[endsect]

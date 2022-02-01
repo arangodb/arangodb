@@ -29,7 +29,7 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
+(function () {
   const _ = require('lodash');
   const fs = require('fs');
   const internal = require("internal");
@@ -83,18 +83,113 @@
     const satelliteOrphanCollectionName = "UnitTestDumpSatelliteOrphanCollection";
     const satelliteEdgeCollection1Name = "UnitTestDumpSatelliteEdgeCollection1";
     const satelliteEdgeCollection2Name = "UnitTestDumpSatelliteEdgeCollection2";
-    const gm = (isEnterprise) ? require("@arangodb/smart-graph"): {};
+    const gm = (isEnterprise) ? require("@arangodb/smart-graph") : {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-    
+    const {map, zipObject} = require('lodash');
+
     console.info("Test suite arguments: " + JSON.stringify(args));
+
+    function assertCommonSmartGraphProperties(graph) {
+      assertTrue(graph.isSmart);
+      assertFalse(graph.isSatellite);
+      assertEqual(graph.replicationFactor, 2);
+      assertEqual(graph.numberOfShards, 5);
+      assertEqual(graph.smartGraphAttribute, 'value');
+    }
+
+    function assertCommonSatelliteGraphProperties(graph) {
+      assertTrue(graph.isSatellite);
+      assertFalse(graph.isSmart);
+      assertEqual(graph.replicationFactor, "satellite");
+      assertEqual(graph.numberOfShards, 1);
+    }
+
+    function assertEmptyness(graph) {
+      assertEqual(graph.edgeDefinitions.length, 0);
+      assertEqual(graph.orphanCollections.length, 0);
+    }
+
+    function assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
+      assertEqual(graph.edgeDefinitions, [
+        {
+          "collection": edgeCollName,
+          "from": [vertexCollName],
+          "to": [vertexCollName]
+        }
+      ]);
+      assertEqual(graph.orphanCollections, [orphanCollName]);
+
+      for (const collName of [vertexCollName, orphanCollName]) {
+        const vColl = db._collection(collName);
+        const properties = vColl.properties();
+
+        assertTrue(properties.isSmart);
+        assertEqual(properties.isDisjoint, isDisjoint);
+        assertEqual(properties.smartGraphAttribute, 'value');
+        assertEqual(properties.numberOfShards, 5);
+        assertEqual(properties.replicationFactor, 2);
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        }
+      }
+
+      const eColl = db._collection(edgeCollName);
+      const properties = eColl.properties();
+
+      assertTrue(properties.isSmart);
+      assertEqual(properties.isDisjoint, isDisjoint);
+
+      assertEqual(properties.replicationFactor, 2);
+      if (isCluster) {
+        assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+        assertEqual(properties.numberOfShards, 0);
+      } else {
+        assertEqual(properties.numberOfShards, 5);
+      }
+    }
+
+    function assertSatelliteCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName) {
+      assertEqual(graph.edgeDefinitions, [
+        {
+          "collection": edgeCollName,
+          "from": [vertexCollName],
+          "to": [vertexCollName]
+        }
+      ]);
+      assertEqual(graph.orphanCollections, [orphanCollName]);
+
+      for (const collName of [vertexCollName, orphanCollName]) {
+        const vColl = db._collection(collName);
+        const properties = vColl.properties();
+
+        assertFalse(properties.isSmart);
+        assertFalse(properties.isDisjoint);
+        assertEqual(properties.numberOfShards, 1);
+        assertEqual(properties.replicationFactor, 'satellite');
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        }
+      }
+
+      const eColl = db._collection(edgeCollName);
+      const properties = eColl.properties();
+
+      assertFalse(properties.isSmart);
+      assertFalse(properties.isDisjoint);
+      assertEqual(properties.numberOfShards, 1);
+      assertEqual(properties.replicationFactor, 'satellite');
+      if (isCluster) {
+        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+      }
+    }
 
     return {
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test the users
       ////////////////////////////////////////////////////////////////////////////////
 
-      testUsers : function () {
+      testUsers: function () {
         let uName = "foobaruser";
 
         assertTrue(users.exists(uName));
@@ -109,7 +204,7 @@
       /// @brief test db properties
       ////////////////////////////////////////////////////////////////////////////////
 
-      testDatabaseProperties : function () {
+      testDatabaseProperties: function () {
         let old = db._name();
         db._useDatabase("_system");
         try {
@@ -123,14 +218,14 @@
           assertEqual(2, props.writeConcern);
         } finally {
           db._useDatabase(old);
-        };
+        }
       },
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test the empty collection
       ////////////////////////////////////////////////////////////////////////////////
 
-      testEmpty : function () {
+      testEmpty: function () {
         var c = db._collection("UnitTestsDumpEmpty");
         var p = c.properties();
 
@@ -146,7 +241,7 @@
       /// @brief test the collection with many documents
       ////////////////////////////////////////////////////////////////////////////////
 
-      testMany : function () {
+      testMany: function () {
         var c = db._collection("UnitTestsDumpMany");
         var p = c.properties();
 
@@ -171,7 +266,7 @@
           let doc = results[i];
           if (args.manyCountStart === 1) {
             doc = results[j++];
-          }              
+          }
           assertEqual(i, doc.value1);
           assertEqual("this is a test", doc.value2);
           assertEqual("test" + i, doc.value3);
@@ -182,7 +277,7 @@
       /// @brief test the edges collection
       ////////////////////////////////////////////////////////////////////////////////
 
-      testEdges : function () {
+      testEdges: function () {
         var c = db._collection("UnitTestsDumpEdges");
         var p = c.properties();
 
@@ -214,7 +309,7 @@
       /// @brief test the order of documents
       ////////////////////////////////////////////////////////////////////////////////
 
-      testOrder : function () {
+      testOrder: function () {
         var c = db._collection("UnitTestsDumpOrder");
         var p = c.properties();
 
@@ -230,7 +325,7 @@
       /// @brief test document removal & update
       ////////////////////////////////////////////////////////////////////////////////
 
-      testRemoved : function () {
+      testRemoved: function () {
         var c = db._collection("UnitTestsDumpRemoved");
         var p = c.properties();
 
@@ -259,7 +354,7 @@
       /// @brief test indexes
       ////////////////////////////////////////////////////////////////////////////////
 
-      testIndexes : function () {
+      testIndexes: function () {
         var c = db._collection("UnitTestsDumpIndexes");
         var p = c.properties();
 
@@ -272,44 +367,44 @@
         assertEqual("hash", c.getIndexes()[1].type);
         assertTrue(c.getIndexes()[1].unique);
         assertFalse(c.getIndexes()[1].sparse);
-        assertEqual([ "a_uc" ], c.getIndexes()[1].fields);
+        assertEqual(["a_uc"], c.getIndexes()[1].fields);
 
         assertEqual("skiplist", c.getIndexes()[2].type);
         assertFalse(c.getIndexes()[2].unique);
         assertFalse(c.getIndexes()[2].sparse);
-        assertEqual([ "a_s1", "a_s2" ], c.getIndexes()[2].fields);
+        assertEqual(["a_s1", "a_s2"], c.getIndexes()[2].fields);
 
         assertEqual("hash", c.getIndexes()[3].type);
         assertFalse(c.getIndexes()[3].unique);
         assertFalse(c.getIndexes()[3].sparse);
-        assertEqual([ "a_h1", "a_h2" ], c.getIndexes()[3].fields);
+        assertEqual(["a_h1", "a_h2"], c.getIndexes()[3].fields);
 
         assertEqual("skiplist", c.getIndexes()[4].type);
         assertTrue(c.getIndexes()[4].unique);
         assertFalse(c.getIndexes()[4].sparse);
-        assertEqual([ "a_su" ], c.getIndexes()[4].fields);
+        assertEqual(["a_su"], c.getIndexes()[4].fields);
 
         assertEqual("hash", c.getIndexes()[5].type);
         assertFalse(c.getIndexes()[5].unique);
         assertTrue(c.getIndexes()[5].sparse);
-        assertEqual([ "a_hs1", "a_hs2" ], c.getIndexes()[5].fields);
+        assertEqual(["a_hs1", "a_hs2"], c.getIndexes()[5].fields);
 
         assertEqual("skiplist", c.getIndexes()[6].type);
         assertFalse(c.getIndexes()[6].unique);
         assertTrue(c.getIndexes()[6].sparse);
-        assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[6].fields);
+        assertEqual(["a_ss1", "a_ss2"], c.getIndexes()[6].fields);
 
         assertFalse(c.getIndexes()[7].unique);
         assertEqual("fulltext", c.getIndexes()[7].type);
-        assertEqual([ "a_f" ], c.getIndexes()[7].fields);
+        assertEqual(["a_f"], c.getIndexes()[7].fields);
 
         assertEqual("geo", c.getIndexes()[8].type);
-        assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
+        assertEqual(["a_la", "a_lo"], c.getIndexes()[8].fields);
         assertFalse(c.getIndexes()[8].unique);
 
         if (args.indexesCount > 9) {
           assertEqual("hash", c.getIndexes()[9].type);
-          assertEqual([ "abc" ], c.getIndexes()[9].fields);
+          assertEqual(["abc"], c.getIndexes()[9].fields);
           assertFalse(c.getIndexes()[9].unique);
         }
         assertEqual(0, c.count());
@@ -319,7 +414,7 @@
       /// @brief test truncate
       ////////////////////////////////////////////////////////////////////////////////
 
-      testTruncated : function () {
+      testTruncated: function () {
         var c = db._collection("UnitTestsDumpTruncated");
         var p = c.properties();
 
@@ -335,7 +430,7 @@
       /// @brief test shards
       ////////////////////////////////////////////////////////////////////////////////
 
-      testShards : function () {
+      testShards: function () {
         let c = db._collection("UnitTestsDumpShards");
         let p = c.properties();
 
@@ -352,7 +447,7 @@
 
           assertEqual(String(7 + (i * 42)), doc._key);
           assertEqual(i, doc.value);
-          assertEqual({ value: [ i, i ] }, doc.more);
+          assertEqual({value: [i, i]}, doc.more);
         }
       },
 
@@ -360,7 +455,7 @@
       /// @brief test autoinc keygen
       ////////////////////////////////////////////////////////////////////////////////
 
-      testKeygenAutoInc : function () {
+      testKeygenAutoInc: function () {
         var c = db._collection("UnitTestsDumpKeygen");
         var p = c.properties();
 
@@ -381,7 +476,7 @@
 
           assertEqual(String(7 + (i * 42)), doc._key);
           assertEqual(i, doc.value);
-          assertEqual({ value: [ i, i ] }, doc.more);
+          assertEqual({value: [i, i]}, doc.more);
         }
         if (args.autoIncDocCount === 1001) {
           doc = c.save({});
@@ -393,7 +488,7 @@
 
             assertEqual(String(7 + ((1000 + j) * 42)), doc._key);
             assertEqual(j, doc.value);
-            assertEqual({ value: [ j, j ] }, doc.more);
+            assertEqual({value: [j, j]}, doc.more);
           }
         }
       },
@@ -402,7 +497,7 @@
       /// @brief test padded keygen
       ////////////////////////////////////////////////////////////////////////////////
 
-      testKeygenPadded : function () {
+      testKeygenPadded: function () {
         var c = db._collection("UnitTestsDumpKeygenPadded");
         var p = c.properties();
 
@@ -423,14 +518,14 @@
             nonDeletedDoc = doc;
           }
         });
-        
+
         let lastKey = "";
         for (var i = 0; i < 1000; ++i) {
           var doc = allDocs[i];
 
           assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
           assertEqual(i, doc.value);
-          assertEqual({ value: [ i, i ] }, doc.more);
+          assertEqual({value: [i, i]}, doc.more);
           lastKey = doc._key;
         }
         if (args.paddedDocCount === 1001) {
@@ -449,7 +544,7 @@
       /// @brief test uuid keygen
       ////////////////////////////////////////////////////////////////////////////////
 
-      testKeygenUuid : function () {
+      testKeygenUuid: function () {
         var c = db._collection("UnitTestsDumpKeygenUuid");
         var p = c.properties();
 
@@ -469,7 +564,7 @@
 
         let docs = [];
         for (var i = 0; i < 1000; ++i) docs.push({"a": i});
-        
+
         let savedDocs = c.save(docs);
         savedDocs.forEach(doc => {
           assertFalse(allDocs.hasOwnProperty(doc._key), "found " + doc._key + "!");
@@ -480,7 +575,7 @@
       /// @brief test strings
       ////////////////////////////////////////////////////////////////////////////////
 
-      testStrings : function () {
+      testStrings: function () {
         var c = db._collection("UnitTestsDumpStrings");
         var p = c.properties();
 
@@ -514,7 +609,7 @@
       /// @brief test committed trx
       ////////////////////////////////////////////////////////////////////////////////
 
-      testTransactionCommit : function () {
+      testTransactionCommit: function () {
         var c = db._collection("UnitTestsDumpTransactionCommit");
 
         assertEqual(1000, c.count());
@@ -532,7 +627,7 @@
       /// @brief test committed trx
       ////////////////////////////////////////////////////////////////////////////////
 
-      testTransactionUpdate : function () {
+      testTransactionUpdate: function () {
         var c = db._collection("UnitTestsDumpTransactionUpdate");
 
         assertEqual(1000, c.count());
@@ -544,8 +639,7 @@
           assertEqual("this is a test", doc.value2);
           if (i % 2 === 0) {
             assertEqual(i, doc.value3);
-          }
-          else {
+          } else {
             assertEqual("test" + i, doc.value3);
           }
         }
@@ -555,7 +649,7 @@
       /// @brief test aborted trx
       ////////////////////////////////////////////////////////////////////////////////
 
-      testTransactionAbort : function () {
+      testTransactionAbort: function () {
         var c = db._collection("UnitTestsDumpTransactionAbort");
 
         assertEqual(1, c.count());
@@ -567,7 +661,7 @@
       /// @brief test persistent
       ////////////////////////////////////////////////////////////////////////////////
 
-      testPersistent : function () {
+      testPersistent: function () {
         var c = db._collection("UnitTestsDumpPersistent");
         var p = c.properties();
 
@@ -593,10 +687,11 @@
       /// @brief test view restoring
       ////////////////////////////////////////////////////////////////////////////////
 
-      testView : function () {
+      testView: function () {
         try {
           db._createView("check", "arangosearch", {});
-        } catch (err) {}
+        } catch (err) {
+        }
 
         let views = db._views();
         if (views.length === 0) {
@@ -652,41 +747,71 @@
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test custom analyzers restoring
       ////////////////////////////////////////////////////////////////////////////////
-      testAnalyzers: function() {
-        assertNotEqual(null, db._collection("_analyzers"));
-        assertEqual((isEnterprise && isCluster)?
-                    2 : // plus 1 for smartgraph in enerprise
-                    1,  // only 1 stored custom analyzers
-                    db._analyzers.count());
+      testAnalyzers: function () {
+        /*
+         * createAnalyzers() creates -> "customInCreateAnalyzers" (CE && EE)
+         * createSmartArangoSearch() creates -> "smartCustom" (EE)
+         * createView() creates -> customInCreateView (CE && EE)
+         *
+         * => EE will lead to a total of 3x created analyzers
+         * => CE will lead to a total of 2x created analyzers
+         */
+        let createdAnalyzersInSrc = [
+          {
+            name: 'customInCreateView',
+            delimiter: " "
+          }, {
+            name: 'customInCreateAnalyzers',
+            delimiter: ","
+          }
+        ];
+        if (isEnterprise) {
+          createdAnalyzersInSrc.push({
+            name: "smartCustom",
+            delimiter: "smart"
+          });
+        }
 
-        let analyzer = analyzers.analyzer("custom");
-        assertEqual(db._name() + "::custom", analyzer.name());
-        assertEqual("delimiter", analyzer.type());
-        assertEqual(Object.keys(analyzer.properties()).length, 1);
-        assertEqual(" ", analyzer.properties().delimiter);
-        assertEqual(1, analyzer.features().length);
-        assertEqual("frequency", analyzer.features()[0]);
-        
+        let verifyAnalyzer = (analyzerName, delimiter) => {
+          let analyzer = analyzers.analyzer(analyzerName);
+          assertEqual(db._name() + "::" + analyzerName, analyzer.name());
+          assertEqual("delimiter", analyzer.type());
+          assertEqual(Object.keys(analyzer.properties()).length, 1);
+          assertEqual(delimiter, analyzer.properties().delimiter);
+          assertEqual(1, analyzer.features().length);
+          assertEqual("frequency", analyzer.features()[0]);
+        };
+
+        assertNotEqual(null, db._collection("_analyzers"));
+        assertEqual((isEnterprise) ?
+            3 : // plus 1 for a SmartGraph in Enterprise
+            2,  // only 1 stored custom analyzers
+          db._analyzers.count());
+
+        _.each(createdAnalyzersInSrc, (analyzerObject) => {
+          verifyAnalyzer(analyzerObject.name, analyzerObject.delimiter);
+        });
+
         assertNull(analyzers.analyzer("custom_dst"));
       },
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test link on analyzers collection
       ////////////////////////////////////////////////////////////////////////////////
-      testIndexAnalyzerCollection : function() {
+      testIndexAnalyzerCollection: function () {
         let res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} FOR a IN _analyzers FILTER d._key == a._key RETURN [d,a]").toArray();
         assertEqual(res.length, db._analyzers.count());
-        res.forEach(function(e) {
-          assertEqual(e[0],e[1]);
+        res.forEach(function (e) {
+          assertEqual(e[0], e[1]);
         });
       },
 
-      testJobsAndQueues : function() {
+      testJobsAndQueues: function () {
         assertEqual("test", db._jobs.document("test")._key);
         assertEqual("test", db._queues.document("test")._key);
       },
 
-      testReplicationFactor : function () {
+      testReplicationFactor: function () {
         let c = db._collection("UnitTestsDumpReplicationFactor1");
         let p = c.properties();
 
@@ -700,7 +825,7 @@
         assertEqual(6, p.numberOfShards);
       },
 
-      testSatelliteGraph : function () {
+      testSatelliteGraph: function () {
         {
           // check collections in graph object
           const satelliteGraph = satgm._graph(satelliteGraphName);
@@ -777,11 +902,11 @@
         `;
           // [ "v1" -> "v2", "v3" -> "v4", "v5" -> "v6", ..., "v99" -> "v100" ]
           const e1s = db._query(getEdges, {'@col': satelliteEdgeCollection1Name}).toArray();
-          const expectedE1s = _.range(1, 100+1, 2).map(i => [`v${i}`, `v${i%100 + 1}`]);
+          const expectedE1s = _.range(1, 100 + 1, 2).map(i => [`v${i}`, `v${i % 100 + 1}`]);
           assertEqual(expectedE1s, e1s);
           // [ "v2" -> "v3", "v4" -> "v5", "v6" -> "v7", ..., "v98" -> "v99", "v100" -> "v1" ]
           const e2s = db._query(getEdges, {'@col': satelliteEdgeCollection2Name}).toArray();
-          const expectedE2s = _.range(2, 100+1, 2).map(i => [`v${i}`, `v${i%100 + 1}`]);
+          const expectedE2s = _.range(2, 100 + 1, 2).map(i => [`v${i}`, `v${i % 100 + 1}`]);
           assertEqual(expectedE2s, e2s);
         }
 
@@ -797,7 +922,7 @@
         }
       },
 
-      testHiddenCollectionsOmitted : function () {
+      testHiddenCollectionsOmitted: function () {
         let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
         if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
           // when dumping multiple database the database name is one layer added:
@@ -814,7 +939,7 @@
         assertFalse(fs.exists(toEdgeCollectionPath), '_to edge collection should not have been dumped!');
       },
 
-      testShadowCollectionsOmitted : function () {
+      testShadowCollectionsOmitted: function () {
         const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
         if (encryption === '' || encryption === 'none') {
           let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
@@ -829,11 +954,11 @@
           assertTrue(collStructure.hasOwnProperty('parameters'), collStructure);
           const parameters = collStructure['parameters'];
           assertFalse(parameters.hasOwnProperty('shadowCollections'),
-                      `Property 'shadowCollections' should be hidden in collection ${edges}!`);
+            `Property 'shadowCollections' should be hidden in collection ${edges}!`);
         }
       },
 
-      testVertices : function () {
+      testVertices: function () {
         let c = db._collection(vertices);
         let p = c.properties();
         assertEqual(2, c.type()); // Document
@@ -889,7 +1014,7 @@
         assertEqual(100, db[vertices].count());
       },
 
-      testOrphans : function () {
+      testOrphans: function () {
         let c = db._collection(orphans);
         let p = c.properties();
         assertEqual(2, c.type()); // Document
@@ -946,7 +1071,7 @@
         assertEqual(100, c.count());
       },
 
-      testEEEdges : function () {
+      testEEEdges: function () {
         let c = db._collection(edges);
         let p = c.properties();
         assertEqual(3, c.type()); // Edges
@@ -965,9 +1090,9 @@
         assertEqual(300, res1.length);
         for (let i = 0; i < 100; ++i) {
           // We have three edges per value
-          assertEqual(String(i), res1[3*i].value);
-          assertEqual(String(i), res1[3*i+1].value);
-          assertEqual(String(i), res1[3*i+2].value);
+          assertEqual(String(i), res1[3 * i].value);
+          assertEqual(String(i), res1[3 * i + 1].value);
+          assertEqual(String(i), res1[3 * i + 2].value);
         }
 
         let res2 = db._query(q2).toArray();
@@ -1017,7 +1142,7 @@
         assertEqual(300, c.count());
       },
 
-      testAqlGraphQueryOutbound: function() {
+      testAqlGraphQueryOutbound: function () {
         // Precondition
         const c = db[edges];
         assertEqual(300, c.count());
@@ -1047,7 +1172,7 @@
         assertEqual("12", res[3].value);
       },
 
-      testAqlGraphQueryAny: function() {
+      testAqlGraphQueryAny: function () {
         // Precondition
         const c = db[edges];
         assertEqual(300, c.count());
@@ -1105,10 +1230,11 @@
         }
       },
 
-      testViewOnSmartEdgeCollection : function() {
+      testViewOnSmartEdgeCollection: function () {
         try {
           db._createView("check", "arangosearch", {});
-        } catch (err) {}
+        } catch (err) {
+        }
 
         let views = db._views();
         if (views.length === 0) {
@@ -1163,7 +1289,7 @@
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test whether the test collection has been restored
       ////////////////////////////////////////////////////////////////////////////////
-      testSmartGraphAttribute : function () {
+      testSmartGraphAttribute: function () {
         assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
         let doc = db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0];
         assertEqual(doc.cheesyness, "bread");
@@ -1173,7 +1299,7 @@
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test whether hotbackup restore restores the uniqid
       ////////////////////////////////////////////////////////////////////////////////
-      testLatestId : function() {
+      testLatestId: function () {
         if (arango.getRole() === "COORDINATOR") {
           // Only executed in the cluster
           // After the hotbackup was taken, we have consumed 100.000.000
@@ -1184,7 +1310,331 @@
           assertTrue(next < 100000000, "expected next uniqid after restore to be less than 100000000, not " + next);
         }
       },
-      
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test smart graph restores
+      ////////////////////////////////////////////////////////////////////////////////
+      testEmptySmartGraph: function () {
+        const smartGraphName = "UnitTestsDumpEmptySmartGraph";
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graph = graphsColl.document(smartGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonSmartGraphProperties(graph);
+        assertEqual(graph.edgeDefinitions.length, 0);
+        assertEqual(graph.orphanCollections.length, 0);
+      },
+
+      testEmptySatelliteGraph: function () {
+        const smartGraphName = "UnitTestsDumpEmptySatelliteGraph";
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graph = graphsColl.document(smartGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonSatelliteGraphProperties(graph);
+        assertEmptyness(graph);
+      },
+
+      testEmptyDisjointGraph: function () {
+        const smartGraphName = "UnitTestsDumpEmptyDisjointGraph";
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graph = graphsColl.document(smartGraphName);
+        assertTrue(graph.isDisjoint);
+        assertCommonSmartGraphProperties(graph);
+        assertEmptyness(graph);
+      },
+
+      testSmartGraphWithoutData: function () {
+        const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
+        const vertexCollName = 'UnitTestDumpSmartVerticesWithoutData';
+        const edgeCollName = 'UnitTestDumpSmartEdgesWithoutData';
+        const orphanCollName = 'UnitTestDumpSmartOrphansWithoutData';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(smartGraphName));
+
+        const graph = g.document(smartGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonSmartGraphProperties(graph);
+        assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
+      },
+
+      testSmartGraphSingleServer: function () {
+        const smartGraphName = "UnitTestDumpSmartGraphSingleServer";
+        const vertexCollName = 'UnitTestDumpSmartVerticesSingleServer';
+        const edgeCollName = 'UnitTestDumpSmartEdgesSingleServer';
+        const orphanCollName = 'UnitTestDumpSmartOrphansSingleServer';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(smartGraphName));
+
+        const graph = g.document(smartGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonSmartGraphProperties(graph);
+        assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
+
+        const vColl = db._collection(vertexCollName);
+        const eColl = db._collection(edgeCollName);
+        const oColl = db._collection(orphanCollName);
+
+        assertEqual(eColl.count(), 300);
+        assertEqual(vColl.count(), 100);
+        assertEqual(oColl.count(), 100);
+
+        for (const edge of eColl.toArray()) {
+          assertTrue(!!edge._from);
+          assertTrue(!!edge._to);
+        }
+      },
+
+      testSatelliteSmartGraphSingleServer: function () {
+        const satelliteGraphName = "UnitTestDumpSatelliteGraphSingleServer";
+        const vertexCollName = 'UnitTestDumpSatelliteVerticesSingleServer';
+        const edgeCollName = 'UnitTestDumpSatelliteEdgesSingleServer';
+        const orphanCollName = 'UnitTestDumpSatelliteOrphansSingleServer';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(satelliteGraphName));
+
+        const graph = g.document(satelliteGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonSatelliteGraphProperties(graph);
+        assertSatelliteCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName);
+
+        const vColl = db._collection(vertexCollName);
+        const eColl = db._collection(edgeCollName);
+        const oColl = db._collection(orphanCollName);
+
+        assertEqual(eColl.count(), 300);
+        assertEqual(vColl.count(), 100);
+        assertEqual(oColl.count(), 100);
+
+        for (const edge of eColl.toArray()) {
+          assertTrue(!!edge._from);
+          assertTrue(!!edge._to);
+        }
+      },
+
+      testDisjointGraphSingleServer: function () {
+        const disjointGraphName = "UnitTestDumpDisjointGraphSingleServer";
+        const vertexCollName = 'UnitTestDumpDisjointVerticesSingleServer';
+        const edgeCollName = 'UnitTestDumpDisjointEdgesSingleServer';
+        const orphanCollName = 'UnitTestDumpDisjointOrphansSingleServer';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(disjointGraphName));
+
+        const graph = g.document(disjointGraphName);
+        assertCommonSmartGraphProperties(graph);
+        assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, true);
+
+        const vColl = db._collection(vertexCollName);
+        const eColl = db._collection(edgeCollName);
+        const oColl = db._collection(orphanCollName);
+
+        // only self-loops are saved as the others have different values of the 'value' key, which is the smartGraphAttribute field
+        assertEqual(eColl.count(), 100);
+        assertEqual(vColl.count(), 100);
+        assertEqual(oColl.count(), 100);
+
+        for (const edge of eColl.toArray()) {
+          assertTrue(!!edge._from);
+          assertTrue(!!edge._to);
+        }
+      },
+
+      testHybridSmartGraphSingleServer: function () {
+        const hybridGraphName = "UnitTestDumpHybridSmartGraphSingleServer";
+        const verticesNonSat = "UnitTestDumpHybridSmartVerticesNonSatSingleServer";
+        const verticesSat = "UnitTestDumpHybridSmartVerticesSatSingleServer";
+        const edges = "UnitTestDumpHybridSmartEdgesSingleServer";
+        const orphans = "UnitTestDumpHybridSmartOrphansSingleServer";
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(hybridGraphName));
+
+        const graph = g.document(hybridGraphName);
+        assertTrue(graph.isSmart);
+        assertFalse(graph.isSatellite);
+        assertEqual(graph.replicationFactor, 2);
+        assertEqual(graph.numberOfShards, 1);
+        assertEqual(graph.smartGraphAttribute, 'value');
+
+        assertEqual(graph.edgeDefinitions, [
+          {
+            "collection": edges,
+            "from": [verticesSat],
+            "to": [verticesNonSat]
+          }
+        ]);
+        assertEqual(graph.orphanCollections, [orphans]);
+
+        // Test smart collections
+        for (const collName of [verticesNonSat, orphans]) {
+          const vColl = db._collection(collName);
+          const properties = vColl.properties();
+          assertTrue(properties.isSmart);
+          assertEqual(properties.isDisjoint, false);
+          assertEqual(properties.smartGraphAttribute, 'value');
+          assertEqual(properties.numberOfShards, 1);
+          assertEqual(properties.replicationFactor, 2);
+          if (isCluster) {
+            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          }
+        }
+
+        // Test satellite collections
+        for (const collName of [verticesSat]) {
+          const vColl = db._collection(collName);
+          const properties = vColl.properties();
+          assertFalse(properties.isSmart);
+          assertEqual(properties.isDisjoint, false);
+          assertEqual(properties.smartGraphAttribute, undefined);
+          assertEqual(properties.numberOfShards, 1);
+          assertEqual(properties.replicationFactor, 'satellite');
+          if (isCluster) {
+            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          }
+        }
+
+        // Test edge collection
+        const eColl = db._collection(edges);
+        const properties = eColl.properties();
+        assertFalse(properties.isSmart);
+        assertFalse(properties.isDisjoint);
+        assertEqual(properties.numberOfShards, 1);
+        assertEqual(properties.replicationFactor, 'satellite');
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        }
+
+        // test data
+        const collVerticesNonSat = db._collection(verticesNonSat);
+        const collVerticesSat = db._collection(verticesSat);
+        const collOrphans = db._collection(orphans);
+
+        // only self-loops are saved as the others have different values of the 'value' key, which is the smartGraphAttribute field
+        assertEqual(eColl.count(), 100);
+
+        assertEqual(collVerticesNonSat.count(), 50);
+        assertEqual(collVerticesSat.count(), 50);
+        assertEqual(collOrphans.count(), 100);
+
+        for (const edge of eColl.toArray()) {
+          assertTrue(!!edge._from);
+          assertTrue(!!edge._to);
+        }
+      },
+
+      testHybridDisjointSmartGraphSingleServer: function () {
+        const hybridGraphName = "UnitTestDumpHybridDisjointSmartGraphSingleServer";
+        const verticesANonSat = "UnitTestDumpHybridDisjointSmartVerticesANonSatSingleServer";
+        const verticesBNonSat = "UnitTestDumpHybridDisjointSmartVerticesBNonSatSingleServer";
+        const verticesSat = "UnitTestDumpHybridDisjointSmartVerticesSatSingleServer";
+        const edgesSatA = "UnitTestDumpHybridSDisjointmartEdgesSatASingleServer";
+        const edgesAB = "UnitTestDumpHybridSDisjointmartEdgesABSingleServer";
+        const orphans = "UnitTestDumpHybridSDisjointmartOrphansSingleServer";
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(hybridGraphName));
+
+        // check graph properties
+        const graph = g.document(hybridGraphName);
+        assertEqual(graph.isSmart, true);
+        assertFalse(graph.isSatellite);
+        assertEqual(graph.replicationFactor, 2);
+        assertEqual(graph.numberOfShards, 1);
+        assertEqual(graph.smartGraphAttribute, 'value');
+
+        // check edge definitions
+        const cmp = function (a, b) {
+          return a.collection < b.collection ? 1 : a.collection === b.collection ? 0 : -1;
+        };
+        assertEqual(graph.edgeDefinitions.sort(cmp), [
+          {
+            "collection": edgesSatA,
+            "from": [verticesSat],
+            "to": [verticesANonSat]
+          },
+          {
+            "collection": edgesAB,
+            "from": [verticesANonSat],
+            "to": [verticesBNonSat]
+          }
+        ].sort(cmp));
+
+        // check orphan collections
+        assertEqual(graph.orphanCollections, [orphans]);
+
+        // check properties of vertex collections
+        const verticesANonSatProps = db._collection(verticesANonSat).properties();
+        const verticesBNonSatProps = db._collection(verticesBNonSat).properties();
+        const verticesSatProps = db._collection(verticesSat).properties();
+        const orphansProps = db._collection(orphans).properties();
+
+        // properties common for all vertex collections (smart & satellite)
+        for (const properties of [verticesANonSatProps, verticesBNonSatProps, verticesSatProps, orphansProps]) {
+          assertEqual(properties.numberOfShards, 1);
+          if (isCluster) {
+            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          }
+        }
+
+        // properties common for all vertex non-satellite collection
+        for (const properties of [verticesANonSatProps, verticesBNonSatProps, orphansProps]) {
+          assertTrue(properties.isSmart);
+          assertTrue(properties.isDisjoint);
+          assertEqual(verticesANonSatProps.smartGraphAttribute, 'value');
+          assertEqual(properties.replicationFactor, 2);
+        }
+
+        // properties only for verticesSatProps (satellite collection)
+        assertFalse(verticesSatProps.isSmart);
+        assertFalse(verticesSatProps.isDisjoint);
+        assertEqual(verticesSatProps.smartGraphAttribute, undefined);
+        assertEqual(verticesSatProps.replicationFactor, 'satellite');
+
+        // check properties of edge collections
+        const eCollSatA = db._collection(edgesSatA);
+        const eCollAB = db._collection(edgesAB);
+        for (const properties of [eCollSatA.properties(), eCollAB.properties()]) {
+          assertTrue(properties.isSmart);
+          assertTrue(properties.isDisjoint);
+
+          if (isCluster) {
+            assertEqual(properties.numberOfShards, 0);
+            assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+          } else {
+            assertEqual(properties.numberOfShards, 1);
+          }
+          assertEqual(properties.replicationFactor, 2);
+        }
+
+        // test data
+        const collVerticesANonSat = db._collection(verticesANonSat);
+        const collVerticesBNonSat = db._collection(verticesBNonSat);
+        const collVerticesSat = db._collection(verticesSat);
+        const collOrphans = db._collection(orphans);
+
+        // see explanation in the documentation to createHybridDisjointSmartGraphSingleServer() in file dump-set-common.inc
+        assertEqual(eCollSatA.count(), 100);
+        assertEqual(eCollAB.count(), 100);
+
+        assertEqual(collVerticesANonSat.count(), 50);
+        assertEqual(collVerticesBNonSat.count(), 50);
+        assertEqual(collVerticesSat.count(), 50);
+        // |verticesSat| + |verticesANonSat|. Faked: not really orphans but this is not tested
+        assertEqual(collOrphans.count(), 100);
+
+        for (const edge of eCollSatA.toArray().concat(eCollAB.toArray())) {
+          assertTrue(!!edge._from);
+          assertTrue(!!edge._to);
+        }
+      }
     };
   };
 }());

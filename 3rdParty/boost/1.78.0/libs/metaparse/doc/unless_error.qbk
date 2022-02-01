@@ -1,0 +1,79 @@
+[#unless_error]
+[section unless_error]
+
+[h1 Synopsis]
+
+  template <class T, class NotErrorCase>
+  struct unless_error;
+
+This is a [link lazy_metafunction lazy template metafunction].
+
+[table Arguments
+  [[Name]           [Type]]
+  [[`T`]            [[link accept accept] or [link reject reject] value]]
+  [[`NotErrorCase`] [[link metaprogramming_value template metaprogramming value]]]
+]
+
+[h1 Description]
+
+Checks if `T` is a parsing error or not. When it is, the result is `T`. When it
+is not, the result is `NotErrorCase`.
+
+[h1 Header]
+
+  #include <boost/metaparse/unless_error.hpp>
+
+[h1 Expression semantics]
+
+For any `t` and `c` classes the following are equivalent:
+
+  unless_error<t, c>
+  
+  boost::mpl::if_<is_error<t::type>::type, t, c>
+
+[h1 Example]
+
+  #include <boost/metaparse/unless_error.hpp>
+  #include <boost/metaparse/accept.hpp>
+  #include <boost/metaparse/reject.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/define_error.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  BOOST_METAPARSE_DEFINE_ERROR(sample_error, "Sample error message");
+  
+  using accept1 =
+    accept<std::integral_constant<int, 11>, BOOST_METAPARSE_STRING("foo"), start>;
+  
+  using accept2 =
+    accept<std::integral_constant<int, 13>, BOOST_METAPARSE_STRING("bar"), start>;
+  
+  using reject1 = reject<sample_error, start>;
+  
+  struct returns_accept1 { using type = accept1; };
+  struct returns_accept2 { using type = accept2; };
+  
+  static_assert(
+    std::is_same<accept2, unless_error<accept1, accept2>::type>::type::value,
+    "it returns the second argument when the first argument is an accept"
+  );
+  
+  static_assert(
+    std::is_same<reject1, unless_error<reject1, accept2>::type>::type::value,
+    "it returns the first argument when that is a reject"
+  );
+  
+  static_assert(
+    std::is_same<
+      accept2,
+      unless_error<returns_accept1, returns_accept2>::type
+    >::type::value,
+    "it supports lazy evaluation"
+  );
+
+[endsect]
+

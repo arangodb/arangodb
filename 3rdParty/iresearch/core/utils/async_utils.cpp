@@ -89,6 +89,7 @@ thread_pool::~thread_pool() {
 }
 
 size_t thread_pool::max_idle() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return max_idle_;
@@ -98,6 +99,7 @@ void thread_pool::max_idle(size_t value) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
 
     max_idle_ = value;
@@ -110,6 +112,7 @@ void thread_pool::max_idle_delta(int delta) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
     auto max_idle = max_idle_ + delta;
 
@@ -126,6 +129,7 @@ void thread_pool::max_idle_delta(int delta) {
 }
 
 size_t thread_pool::max_threads() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return max_threads_;
@@ -135,6 +139,7 @@ void thread_pool::max_threads(size_t value) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
 
     max_threads_ = value;
@@ -151,6 +156,7 @@ void thread_pool::max_threads_delta(int delta) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
     auto max_threads = max_threads_ + delta;
 
@@ -223,6 +229,7 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
   auto& state = *shared_state_;
 
   {
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(state.lock);
 
     max_threads_ = max_threads;
@@ -255,30 +262,35 @@ bool thread_pool::maybe_spawn_worker() {
 }
 
 std::pair<size_t, size_t> thread_pool::limits() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return { max_threads_, max_idle_ };
 }
 
 std::tuple<size_t, size_t, size_t> thread_pool::stats() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return { active_, queue_.size(), threads_.load() };
 }
 
 size_t thread_pool::tasks_active() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return active_;
 }
 
 size_t thread_pool::tasks_pending() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return queue_.size();
 }
 
 size_t thread_pool::threads() const {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(shared_state_->lock);
 
   return threads_.load();
@@ -314,62 +326,41 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
   lock.lock();
 
   while (State::ABORT != state.load() && threads_.load() <= max_threads_) {
+    assert(lock.owns_lock());
     if (!queue_.empty()) {
-      auto& top = queue_.top();
-
-      if (top.at <= clock_t::now()) {
+      if (const auto& top = queue_.top(); top.at <= clock_t::now()) {
         func_t fn;
-
-        try {
-          // std::function<...> move ctor isn't marked "noexcept" until c++20
-          fn = std::move(top.fn);
-        } catch (const std::bad_alloc&) {
-          fprintf(stderr, "Failed to pop task from queue, skipping it");
-          queue_.pop();
-          continue;
-        } catch (...) {
-          IR_FRMT_WARN("Failed to pop task from queue, skipping it");
-          queue_.pop();
-          continue;
-        }
-
+        fn.swap(const_cast<func_t&>(top.fn));
         queue_.pop();
+
         ++active_;
-
-        {
-          auto dec = make_finally([this]()noexcept{ --active_; });
-
-          // if have more tasks but no idle thread and can grow pool
-          try {
-            maybe_spawn_worker();
-          } catch (const std::bad_alloc&) {
-            fprintf(stderr, "Failed to allocate memory while spawning a worker");
-          } catch (const std::exception& e) {
-            IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
-          } catch (...) {
-            IR_FRMT_ERROR("Failed to grow pool");
-          }
-
-          lock.unlock();
-
-          try {
-            fn();
-          } catch (const std::bad_alloc&) {
-            fprintf(stderr, "Failed to allocate memory while executing task");
-          } catch (const std::exception& e) {
-            IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
-          } catch (...) {
-            IR_FRMT_ERROR("Failed to execute task");
-          }
-
-          lock.lock();
+        auto decrement = make_finally([this]() noexcept { --active_; });
+        // if have more tasks but no idle thread and can grow pool
+        try {
+          maybe_spawn_worker();
+        } catch (const std::bad_alloc&) {
+          fprintf(stderr, "Failed to allocate memory while spawning a worker");
+        } catch (const std::exception& e) {
+          IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
+        } catch (...) {
+          IR_FRMT_ERROR("Failed to grow pool");
         }
 
+        lock.unlock();
+        try {
+          fn();
+        } catch (const std::bad_alloc&) {
+          fprintf(stderr, "Failed to allocate memory while executing task");
+        } catch (const std::exception& e) {
+          IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
+        } catch (...) {
+          IR_FRMT_ERROR("Failed to execute task");
+        }
+        fn = nullptr;
+        lock.lock();
         continue;
       }
     }
-
-    assert(lock.owns_lock());
     assert(active_ <= threads_.load());
 
     if (const auto idle = threads_.load() - active_;
@@ -388,8 +379,6 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
     } else {
       return; // too many idle threads
     }
-
-    assert(lock.owns_lock());
   }
 }
 

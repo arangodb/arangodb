@@ -54,10 +54,10 @@ namespace iresearch {
 
       function(const deterministic_function_t& fnDeterminitic, const contextual_function_t& fnContextual, size_t nFixedArg = 0, bool bVarArg = false):
         m_fnContextual(fnContextual), m_fnDeterminitic(fnDeterminitic), m_nFixedArg(nFixedArg), m_bVarArg(bVarArg) {}
-      function(const deterministic_function_t& fnDeterminitic, size_t nFixedArg = 0, bool bVarArg = false):
-        function(fnDeterminitic, NOT_IMPLEMENTED_C, nFixedArg, bVarArg) {}
-      function(const contextual_function_t& fnContextual, size_t nFixedArg = 0, bool bVarArg = false):
-        function(NOT_IMPLEMENTED_D, fnContextual, nFixedArg, bVarArg) {}
+      explicit function(const deterministic_function_t& fnDeterminitic, size_t nFixedArg = 0, bool bVarArg = false):
+                 function(fnDeterminitic, NOT_IMPLEMENTED_C, nFixedArg, bVarArg) {}
+      explicit function(const contextual_function_t& fnContextual, size_t nFixedArg = 0, bool bVarArg = false):
+                 function(NOT_IMPLEMENTED_D, fnContextual, nFixedArg, bVarArg) {}
       function& operator=(function&) = delete; // because of references
       bool operator==(const function& other) const {
         return
@@ -99,7 +99,7 @@ namespace iresearch {
       function_arg(fn_args_t&& fnArgs, fn_branch_t&& fnBranch);
       function_arg(fn_args_t&& fnArgs, const bytes_ref& value, const fn_branch_t& fnBranch);
       function_arg(fn_args_t&& fnArgs, const bytes_ref& value, fn_branch_t&& fnBranch);
-      function_arg(const bytes_ref& value);
+      explicit function_arg(const bytes_ref& value);
       function_arg(function_arg&& other) noexcept;
       function_arg(const function_arg& other) = delete; // to avoid having multipe copies of args
       function_arg();

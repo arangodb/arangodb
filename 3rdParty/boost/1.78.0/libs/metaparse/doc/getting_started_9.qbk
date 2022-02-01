@@ -1,0 +1,4 @@
+[#getting_started_9]
+
+  sum_items< mpl_::integral_c<int, 1>, boost::mpl::vector<mpl_::char_<'+'>, mpl_::integral_c<int, 2>> >::type
+

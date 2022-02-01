@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class StaticStrings {
@@ -116,10 +117,12 @@ class StaticStrings {
   static std::string const DataSourceDeleted;  // data-source deletion marker
   static std::string const DataSourceGuid;     // data-source globaly-unique id
   static std::string const DataSourceId;       // data-source id
+  static std::string const DataSourceCid;      // data-source collection id
   static std::string const DataSourceName;     // data-source name
   static std::string const DataSourcePlanId;   // data-source plan id
   static std::string const DataSourceSystem;   // data-source system marker
   static std::string const DataSourceType;     // data-source type
+  static std::string const DataSourceParameters;
 
   // Index definition fields
   static std::string const IndexExpireAfter;   // ttl index expire value
@@ -129,6 +132,7 @@ class StaticStrings {
   static std::string const IndexIsBuilding;    // index build in-process
   static std::string const IndexName;          // index name
   static std::string const IndexSparse;        // index sparsity marker
+  static std::string const IndexStoredValues;  // index stored values
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
   static std::string const IndexEstimates;     // index estimates flag
@@ -142,15 +146,10 @@ class StaticStrings {
   static std::string const IndexNameTime;
 
   // index hint strings
-  static std::string const IndexHintAny;
-  static std::string const IndexHintCollection;
-  static std::string const IndexHintHint;
-  static std::string const IndexHintDepth;
-  static std::string const IndexHintInbound;
+  static std::string const IndexHintDisableIndex;
+  static std::string const IndexHintMaxProjections;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
-  static std::string const IndexHintOutbound;
-  static std::string const IndexHintWildcard;
 
   // HTTP headers
   static std::string const Accept;
@@ -190,6 +189,7 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
+  static std::string const LockLocation;
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
@@ -245,14 +245,10 @@ class StaticStrings {
   static std::string const ShardingSingle;
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
+  static std::string_view const SoftWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
-  static std::string const IsDisjoint;
-  static std::string const IsHybrid;
-  static std::string const GraphIsSatellite;
-  static std::string const GraphSatellites;
-  static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -263,10 +259,21 @@ class StaticStrings {
   static std::string const GraphEdgeDefinitions;
   static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
-  static std::string const GraphInitial;
-  static std::string const GraphInitialCid;
   static std::string const GraphName;
   static std::string const GraphTraversalProfileLevel;
+
+  // smart graph relevant attributes
+  static std::string const IsDisjoint;
+  static std::string const IsHybrid;
+  static std::string const GraphIsSatellite;
+  static std::string const GraphSatellites;
+  static std::string const GraphIsSmart;
+  static std::string const GraphInitial;
+  static std::string const GraphInitialCid;
+  static std::string const ShadowCollections;
+  static std::string const FullLocalPrefix;
+  static std::string const FullFromPrefix;
+  static std::string const FullToPrefix;
 
   // Pregel Section Start
 
@@ -335,6 +342,7 @@ class StaticStrings {
   static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
+  static std::string const Outcome;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -390,8 +398,10 @@ class StaticStrings {
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
 
+  // API Strings
+  static std::string_view const ApiLogInternal;
+
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
-

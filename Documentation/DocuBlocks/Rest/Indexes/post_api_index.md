@@ -43,7 +43,7 @@ create a non-unique index.
 the *unique* attribute with these types may lead to an error:
 
 - geo indexes
-- fulltext indexes
+- fulltext indexes (deprecated from ArangoDB 3.10 onwards)
 
 **Note**: Unique indexes on non-shard keys are not supported in a
 cluster.

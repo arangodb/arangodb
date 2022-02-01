@@ -3,7 +3,7 @@ if (NOT IResearch_version_major)
   set(IResearch_version_major "1") 
 endif()
 if (NOT IResearch_version_minor)
-  set(IResearch_version_minor "1")
+  set(IResearch_version_minor "2")
 endif()
 if (NOT IResearch_version_revision)
   set(IResearch_version_revision "0")
@@ -15,6 +15,8 @@ endif()
 set(SIMD_LIBRARY_SHARED "simdcomp-shared")
 set(SIMD_LIBRARY_STATIC "simdcomp-static")
 set(ABSL_LIBRARY_STATIC "absl-static")
+set(FASTTEXT_LIBRARY_STATIC "fasttext-static")
+set(FASTTEXT_LIBRARY_SHARED "fasttext-shared")
 
 # set libatomic library 
 # (not available on Windows and Mac)
@@ -286,6 +288,7 @@ set(IRESEARCH_EXTERNAL_INCLUDES
     ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
     ${BFD_INCLUDE_DIR}
     ${Lz4_INCLUDE_DIR}
+    ${Fasttext_INCLUDE_DIR}
     ${Unwind_INCLUDE_DIR}
     ${FROZEN_INCLUDE_DIR})
 
@@ -327,6 +330,8 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E md5sum iql/parser.cc || ${CMAKE_COMMAND} -E remove iql/parser.yy
   COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
+  COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql/*
+  COMMAND ${CMAKE_COMMAND} -E copy iql/location.hh iql/parser.hh iql/parser.cc iql/parser.yy iql/position.hh ${CMAKE_CURRENT_SOURCE_DIR}/../prebuilt/core/iql
 )
 
 # trigger generation of BUILD_IDENTIFIER if needed
@@ -386,6 +391,8 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stopwords-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+  ${IResearch_TARGET_NAME}-analyzer-classification-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -459,6 +466,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
   ${ABSL_LIBRARY_STATIC}
+  ${FASTTEXT_LIBRARY_SHARED}
   velocypack
 )
 
@@ -472,6 +480,8 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stopwords-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-analyzer-segmentation-static
+  ${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+  ${IResearch_TARGET_NAME}-analyzer-classification-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -484,6 +494,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
   ${ABSL_LIBRARY_STATIC}
+  ${FASTTEXT_LIBRARY_STATIC}
   velocypack
 )
 
@@ -510,10 +521,13 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
   "$<TARGET_FILE:${ABSL_LIBRARY_STATIC}>"
+  "$<TARGET_FILE:${FASTTEXT_LIBRARY_STATIC}>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-classification-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-collation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stopwords-static>"
@@ -711,6 +725,8 @@ add_library(${IResearch_TARGET_NAME}-analyzer-text-shared
   SHARED
   ./analysis/text_token_stream.cpp
   ./analysis/text_token_stream.hpp
+  ./utils/snowball_stemmer.cpp
+  ./utils/snowball_stemmer.hpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared)
@@ -718,6 +734,7 @@ set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared)
 add_library(${IResearch_TARGET_NAME}-analyzer-text-static
   STATIC
   ./analysis/text_token_stream.cpp
+  ./utils/snowball_stemmer.cpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static)
@@ -873,6 +890,8 @@ add_library(${IResearch_TARGET_NAME}-analyzer-stem-shared
   SHARED
   ./analysis/text_token_stemming_stream.cpp
   ./analysis/text_token_stemming_stream.hpp
+  ./utils/snowball_stemmer.cpp
+  ./utils/snowball_stemmer.hpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared)
@@ -880,6 +899,7 @@ set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared)
 add_library(${IResearch_TARGET_NAME}-analyzer-stem-static
   STATIC
   ./analysis/text_token_stemming_stream.cpp
+  ./utils/snowball_stemmer.cpp
 )
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static)
@@ -1121,6 +1141,115 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-static
 )
+
+################################################################################
+### analysis plugin: embedding classification
+################################################################################
+
+add_library(${IResearch_TARGET_NAME}-analyzer-classification-shared
+  SHARED
+  analysis/classification_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-classification-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-classification-static
+  STATIC
+  analysis/classification_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-classification-static)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-classification-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-classification
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-classification-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-classification-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-classification-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-classification-static
+  ${IResearch_TARGET_NAME}-static
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-classification-shared
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_SHARED},INCLUDE_DIRECTORIES>
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-classification-static
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INCLUDE_DIRECTORIES>
+)
+
+################################################################################
+### analysis plugin: nearest neighbors
+################################################################################
+
+add_library(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
+  SHARED
+  analysis/nearest_neighbors_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared)
+
+add_library(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+  STATIC
+  analysis/nearest_neighbors_stream.cpp
+)
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-nearest-neighbors
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
+  CXX_VISIBILITY_PRESET hidden
+)
+
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-nearest-neighbors-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
+  ${IResearch_TARGET_NAME}-shared
+)
+
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+  ${IResearch_TARGET_NAME}-static
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-shared
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_SHARED},INCLUDE_DIRECTORIES>
+)
+
+target_include_directories(${IResearch_TARGET_NAME}-analyzer-nearest-neighbors-static
+  SYSTEM
+  PRIVATE $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INCLUDE_DIRECTORIES>
+)
+
 
 ################################################################################
 ### format plugin: format-1_0

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,8 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 
 #include <list>
 
@@ -40,7 +41,8 @@ namespace arangodb {
 namespace consensus {
 
 static inline double steadyClockToDouble() {
-  return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch())
+  return std::chrono::duration<double>(
+             std::chrono::steady_clock::now().time_since_epoch())
       .count();
 }
 
@@ -49,7 +51,7 @@ class Agent;
 // RAFT leader election
 class Constituent : public Thread {
  public:
-  explicit Constituent(application_features::ApplicationServer&);
+  explicit Constituent(ArangodServer&);
 
   // clean up and exit election
   virtual ~Constituent();
@@ -73,10 +75,12 @@ class Constituent : public Thread {
   bool running() const;
 
   // Called by REST handler
-  bool vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
+  bool vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex,
+            term_t prevLogTerm);
 
   // Check leader
-  bool checkLeader(term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
+  bool checkLeader(term_t term, std::string const& id, index_t prevLogIndex,
+                   term_t prevLogTerm);
 
   // Notify about heartbeat being sent out:
   void notifyHeartbeatSent(std::string const& followerId);
@@ -146,8 +150,8 @@ class Constituent : public Thread {
 
   TRI_vocbase_t* _vocbase;
 
-  term_t _term;  // term number
-  Gauge<term_t>& _gterm;  // term number
+  term_t _term;                    // term number
+  metrics::Gauge<term_t>& _gterm;  // term number
 
   std::string _leaderID;  // Current leader
   std::string _id;        // My own id
@@ -159,7 +163,7 @@ class Constituent : public Thread {
   // if the time since _lastHeartbeatSeen is greater than a random timeout:
   std::atomic<double> _lastHeartbeatSeen;
 
-  std::atomic<role_t> _role;           // My role
+  std::atomic<role_t> _role;  // My role
   // We use this to read off leadership without acquiring a lock.
   // It is still only changed under _termVoteLock.
   Agent* _agent;          // My boss
@@ -197,4 +201,3 @@ class Constituent : public Thread {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

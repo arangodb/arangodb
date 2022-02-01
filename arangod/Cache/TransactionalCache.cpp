@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,9 +49,7 @@ Finding TransactionalCache::find(void const* key, std::uint32_t keySize) {
   Finding result;
   std::uint32_t hash = hashKey(key, keySize);
 
-  Result status;
-  Table::BucketLocker guard;
-  std::tie(status, guard) = getBucket(hash, Cache::triesFast, false);
+  auto [status, guard] = getBucket(hash, Cache::triesFast, false);
   if (status.fail()) {
     result.reportError(status);
     return result;
@@ -90,7 +88,8 @@ Result TransactionalCache::insert(CachedValue* value) {
     bool allowed = !bucket.isBanished(hash);
     if (allowed) {
       std::int64_t change = static_cast<std::int64_t>(value->size());
-      CachedValue* candidate = bucket.find(hash, value->key(), value->keySize());
+      CachedValue* candidate =
+          bucket.find(hash, value->key(), value->keySize());
 
       if (candidate == nullptr && bucket.isFull()) {
         candidate = bucket.evictionCandidate();
@@ -121,6 +120,7 @@ Result TransactionalCache::insert(CachedValue* value) {
           }
           bucket.insert(hash, value);
           if (!eviction) {
+            TRI_ASSERT(source != nullptr);
             maybeMigrate = source->slotFilled();
           }
           maybeMigrate |= reportInsert(eviction);
@@ -135,6 +135,7 @@ Result TransactionalCache::insert(CachedValue* value) {
   }
 
   if (maybeMigrate) {
+    TRI_ASSERT(source != nullptr);
     requestMigrate(source->idealSize());  // let function do the hard work
   }
 
@@ -168,11 +169,13 @@ Result TransactionalCache::remove(void const* key, std::uint32_t keySize) {
       }
 
       freeValue(candidate);
+      TRI_ASSERT(source != nullptr);
       maybeMigrate = source->slotEmptied();
     }
   }
 
   if (maybeMigrate) {
+    TRI_ASSERT(source != nullptr);
     requestMigrate(source->idealSize());
   }
 
@@ -207,11 +210,13 @@ Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
       }
 
       freeValue(candidate);
+      TRI_ASSERT(source != nullptr);
       maybeMigrate = source->slotEmptied();
     }
   }
 
   if (maybeMigrate) {
+    TRI_ASSERT(source != nullptr);
     requestMigrate(source->idealSize());
   }
 
@@ -220,12 +225,13 @@ Result TransactionalCache::banish(void const* key, std::uint32_t keySize) {
 
 uint64_t TransactionalCache::allocationSize(bool enableWindowedStats) {
   return sizeof(TransactionalCache) +
-         (enableWindowedStats
-              ? (sizeof(StatBuffer) + StatBuffer::allocationSize(_findStatsCapacity))
-              : 0);
+         (enableWindowedStats ? (sizeof(StatBuffer) +
+                                 StatBuffer::allocationSize(_findStatsCapacity))
+                              : 0);
 }
 
-std::shared_ptr<Cache> TransactionalCache::create(Manager* manager, std::uint64_t id,
+std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
+                                                  std::uint64_t id,
                                                   Metadata&& metadata,
                                                   std::shared_ptr<Table> table,
                                                   bool enableWindowedStats) {
@@ -234,11 +240,14 @@ std::shared_ptr<Cache> TransactionalCache::create(Manager* manager, std::uint64_
                                               table, enableWindowedStats);
 }
 
-TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
-                                       std::uint64_t id, Metadata&& metadata,
-                                       std::shared_ptr<Table> table, bool enableWindowedStats)
+TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
+                                       Manager* manager, std::uint64_t id,
+                                       Metadata&& metadata,
+                                       std::shared_ptr<Table> table,
+                                       bool enableWindowedStats)
     : Cache(guard, manager, id, std::move(metadata), table, enableWindowedStats,
-            TransactionalCache::bucketClearer, TransactionalBucket::slotsData) {}
+            TransactionalCache::bucketClearer, TransactionalBucket::slotsData) {
+}
 
 TransactionalCache::~TransactionalCache() {
   if (!isShutdown()) {
@@ -274,7 +283,7 @@ uint64_t TransactionalCache::freeMemoryFrom(std::uint32_t hash) {
     }
   }
 
-  cache::Table* table = _table.load(std::memory_order_relaxed);
+  std::shared_ptr<cache::Table> table = this->table();
   if (table) {
     std::int32_t size = table->idealSize();
     if (maybeMigrate) {
@@ -291,7 +300,10 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   std::uint64_t term = _manager->_transactions.term();
 
   // lock current bucket
-  Table::BucketLocker sourceGuard(sourcePtr, _table.load(), Cache::triesGuarantee);
+  std::shared_ptr<Table> table = this->table();
+
+  Table::BucketLocker sourceGuard(sourcePtr, table.get(),
+                                  Cache::triesGuarantee);
   TransactionalBucket& source = sourceGuard.bucket<TransactionalBucket>();
   term = std::max(term, source._banishTerm);
 
@@ -299,42 +311,49 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
     // lock target bucket(s)
     std::vector<Table::BucketLocker> targetGuards = targets->lockAllBuckets();
 
-    targets->applyToAllBuckets<TransactionalBucket>([&term](TransactionalBucket& bucket) -> bool {
-      term = std::max(term, bucket._banishTerm);
-      return true;
-    });
+    targets->applyToAllBuckets<TransactionalBucket>(
+        [&term](TransactionalBucket& bucket) -> bool {
+          term = std::max(term, bucket._banishTerm);
+          return true;
+        });
 
     // update all buckets to maximum term found (guaranteed at most the current)
     source.updateBanishTerm(term);
-    targets->applyToAllBuckets<TransactionalBucket>([&term](TransactionalBucket& bucket) -> bool {
-      bucket.updateBanishTerm(term);
-      return true;
-    });
+    targets->applyToAllBuckets<TransactionalBucket>(
+        [&term](TransactionalBucket& bucket) -> bool {
+          bucket.updateBanishTerm(term);
+          return true;
+        });
 
     // now actually migrate any relevant banish terms
     if (source.isFullyBanished()) {
-      targets->applyToAllBuckets<TransactionalBucket>([](TransactionalBucket& bucket) -> bool {
-        if (!bucket.isFullyBanished()) {
-          bucket._state.toggleFlag(BucketState::Flag::banished);
-        }
-        return true;
-      });
+      targets->applyToAllBuckets<TransactionalBucket>(
+          [](TransactionalBucket& bucket) -> bool {
+            if (!bucket.isFullyBanished()) {
+              bucket._state.toggleFlag(BucketState::Flag::banished);
+            }
+            return true;
+          });
     } else {
+      std::uint64_t totalSize = 0;
+      std::uint64_t emptied = 0;
       for (std::size_t j = 0; j < TransactionalBucket::slotsBanish; j++) {
         std::uint32_t hash = source._banishHashes[j];
         if (hash != 0) {
-          auto targetBucket =
-              reinterpret_cast<TransactionalBucket*>(targets->fetchBucket(hash));
+          auto targetBucket = reinterpret_cast<TransactionalBucket*>(
+              targets->fetchBucket(hash));
           CachedValue* candidate = targetBucket->banish(hash, nullptr, 0);
           if (candidate != nullptr) {
             std::uint64_t size = candidate->size();
             freeValue(candidate);
-            reclaimMemory(size);
-            newTable->slotEmptied();
+            totalSize += size;
+            ++emptied;
           }
           source._banishHashes[j] = 0;
         }
       }
+      reclaimMemory(totalSize);
+      newTable->slotsEmptied(emptied);
     }
 
     // migrate actual values
@@ -389,7 +408,7 @@ std::tuple<Result, Table::BucketLocker> TransactionalCache::getBucket(
   Result status;
   Table::BucketLocker guard;
 
-  Table* table = _table.load(std::memory_order_relaxed);
+  std::shared_ptr<Table> table = this->table();
   if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_tuple(std::move(status), std::move(guard));

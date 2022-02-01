@@ -240,6 +240,7 @@ let ARANGOIMPORT_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOEXPORT_BIN;
 let ARANGOSH_BIN;
+let ARANGO_SECURE_INSTALLATION_BIN;
 let CONFIG_ARANGODB_DIR;
 let CONFIG_RELATIVE_DIR;
 let CONFIG_DIR;
@@ -252,7 +253,7 @@ const TOP_DIR = (function findTopDir () {
   const topDir = fs.normalize(fs.makeAbsolute('.'));
 
   if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
-    !fs.exists('arangosh') && !fs.exists('tests')) {
+    !fs.exists('client-tools') && !fs.exists('tests')) {
     throw new Error('Must be in ArangoDB topdir to execute tests.');
   }
 
@@ -327,6 +328,7 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
+  ARANGO_SECURE_INSTALLATION_BIN = fs.join(BIN_DIR, 'arango-secure-installation' + executableExt);
 
   CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3');
   if (!fs.exists(CONFIG_ARANGODB_DIR)) {
@@ -641,8 +643,10 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 }
 
 function killWithCoreDump (options, instanceInfo) {
-  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    crashUtils.stopProcdump (options, instanceInfo, true);
+  if (platform.substr(0, 3) === 'win') {
+    if (!options.disableMonitor) {
+      crashUtils.stopProcdump (options, instanceInfo, true);
+    }
     crashUtils.runProcdump (options, instanceInfo, instanceInfo.rootDir, instanceInfo.pid, true);
   }
   instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
@@ -656,9 +660,11 @@ function getProcessStats(pid) {
   if (platform === 'linux') {
     let pidStr = "" + pid;
     let ioraw;
+    let fn = fs.join('/', 'proc', pidStr, 'io');
     try {
-      ioraw = fs.readBuffer(fs.join('/', 'proc', pidStr, 'io'));
+      ioraw = fs.readBuffer(fn);
     } catch (x) {
+      print("Proc FN gone: " + fn);
       print(x.stack);
       throw x;
     }
@@ -800,7 +806,7 @@ function killRemainingProcesses(results) {
   results.status = results.status && (running.length === 0);
   let i = 0;
   for (i = 0; i < running.length; i++) {
-    let status = require("internal").statusExternal(running[i].pid, false);
+    let status = internal.statusExternal(running[i].pid, false);
     if (status.status === "TERMINATED") {
       print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
     }
@@ -1099,6 +1105,10 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
 
   if (what.mergeAttributes !== undefined) {
     args['merge-attributes'] = what.mergeAttributes;
+  }
+
+  if (what.batchSize !== undefined) {
+    args['batch-size'] = what.batchSize;
   }
 
 
@@ -1550,6 +1560,77 @@ function shutdownArangod (arangod, options, forceTerminate) {
   }
 }
 
+
+function shutDownOneInstance(options, arangod, fullInstance, counters, forceTerminate, timeout) {
+  let shutdownTime = internal.time();
+  if (!arangod.hasOwnProperty('exitStatus')) {
+    shutdownArangod(arangod, options, forceTerminate);
+    if (forceTerminate) {
+      print(Date() + " FORCED shut down: " + JSON.stringify(arangod));
+    } else {
+      arangod.exitStatus = {
+        status: 'RUNNING'
+      };
+      print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
+    }
+    return true;
+  }
+  if (arangod.exitStatus.status === 'RUNNING') {
+    arangod.exitStatus = statusExternal(arangod.pid, false);
+    if (!crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus)) {
+      if (arangod.role !== 'agent') {
+        counters.nonAgenciesCount--;
+      }
+      print(Date() + ' Server "' + arangod.role + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
+      return false;
+    }
+  }
+  if (arangod.exitStatus.status === 'RUNNING') {
+    let localTimeout = timeout;
+    if (arangod.role === 'agent') {
+      localTimeout = localTimeout + 60;
+    }
+    if ((internal.time() - shutdownTime) > localTimeout) {
+      dumpAgency(fullInstance, options);
+      print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod) +
+            ' after ' + timeout + 's grace period; marking crashy.');
+      serverCrashedLocal = true;
+      counters.shutdownSuccess = false;
+      killWithCoreDump(options, arangod);
+      analyzeServerCrash(arangod,
+                         options,
+                         'shutdown timeout; instance "' +
+                         arangod.role +
+                         '" forcefully KILLED after 60s - ' +
+                         arangod.exitStatus.signal);
+      if (arangod.role !== 'agent') {
+        counters.nonAgenciesCount--;
+      }
+      return false;
+    } else {
+      return true;
+    }
+  } else if (arangod.exitStatus.status !== 'TERMINATED') {
+    if (arangod.role !== 'agent') {
+      counters.nonAgenciesCount--;
+    }
+    if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
+      analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
+      print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
+      serverCrashedLocal = true;
+      counters.shutdownSuccess = false;
+    }
+    crashUtils.stopProcdump(options, arangod);
+  } else {
+    if (arangod.role !== 'agent') {
+      counters.nonAgenciesCount--;
+    }
+    print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+    crashUtils.stopProcdump(options, arangod);
+    return false;
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief shuts down an instance
 // //////////////////////////////////////////////////////////////////////////////
@@ -1819,7 +1900,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       }
       print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.role);
       let url = arangod.url;
-      if (arangod.role === "coordinator") {
+      if (arangod.role === "coordinator" && arangod.args["javascript.enabled"] !== "false") {
         url += '/_admin/aardvark/index.html';
       } else {
         url += '/_api/version';
@@ -2262,8 +2343,12 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     usedPorts.push(port);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
-    instanceArgs['agency.supervision-grace-period'] = '10.0';
-    instanceArgs['agency.supervision-frequency'] = '1.0';
+    if (!instanceArgs.hasOwnProperty("agency.supervision-grace-period")) {
+      instanceArgs['agency.supervision-grace-period'] = '10.0';
+    }
+    if (!instanceArgs.hasOwnProperty("agency.supervision-frequency")) {
+      instanceArgs['agency.supervision-frequency'] = '1.0';
+    }
     if (options.encryptionAtRest) {
       instanceArgs['rocksdb.encryption-keyfile'] = instanceInfo.restKeyFile;
     }
@@ -2367,29 +2452,57 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   return instanceInfo;
 }
 
-function reStartInstance(options, instanceInfo, moreArgs) {
-  let launchInstance = function(options, oneInstanceInfo) {
-    if (oneInstanceInfo.pid) {
-      return;
-    }
-    try {
-      Object.assign(oneInstanceInfo.args, moreArgs);
-      oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
-    } catch (x) {
-      print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
+function launchInstance(options, oneInstanceInfo, moreArgs) {
+  if (oneInstanceInfo.pid) {
+    return;
+  }
+  try {
+    Object.assign(oneInstanceInfo.args, moreArgs);
+    oneInstanceInfo.pid = executeArangod(ARANGOD_BIN, toArgv(oneInstanceInfo.args), options).pid;
+  } catch (x) {
+    print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 
-      throw x;
+    throw x;
+  }
+  if (crashUtils.isEnabledWindowsMonitor(options, oneInstanceInfo, oneInstanceInfo.pid, ARANGOD_BIN)) {
+    if (!crashUtils.runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid)) {
+      print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(oneInstanceInfo.args));
+      let res = killExternal(oneInstanceInfo.pid);
+      oneInstanceInfo.pid = res.pid;
+      oneInstanceInfo.exitStatus = res;
+      throw new Error("launching procdump failed, aborting.");
     }
-    if (crashUtils.isEnabledWindowsMonitor(options, oneInstanceInfo, oneInstanceInfo.pid, ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid)) {
-        print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(oneInstanceInfo.args));
-        let res = killExternal(oneInstanceInfo.pid);
-        oneInstanceInfo.pid = res.pid;
-        oneInstanceInfo.exitStatus = res;
-        throw new Error("launching procdump failed, aborting.");
-      }
-    }
-  };
+  }
+};
+
+function restartOneInstance(options, oneInstance, instanceInfo, moreArgs) {
+  const startTime = time();
+  delete(oneInstance.exitStatus);
+  delete(oneInstance.pid);
+  oneInstance.upAndRunning = false;
+
+  if (oneInstance.role === 'agent') {
+    print("relaunching: " + JSON.stringify(oneInstance));
+    launchInstance(options, oneInstance, moreArgs);
+  } else {
+    print("relaunching: " + JSON.stringify(oneInstance));
+    launchInstance(options, oneInstance, moreArgs);
+  }
+ 
+  if (options.cluster && !options.skipReconnect) {
+    checkClusterAlive(options, instanceInfo, {}); // todo addArgs
+    print("reconnecting " + instanceInfo.endpoint);
+    arango.reconnect(instanceInfo.endpoint,
+                     '_system',
+                     options.username,
+                     options.password,
+                     false
+                    );
+  }
+  launchFinalize(options, instanceInfo, startTime);
+}
+
+function reStartInstance(options, instanceInfo, moreArgs) {
 
   const startTime = time();
 
@@ -2410,7 +2523,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       }
       if (oneInstance.role === 'agent') {
         print("relaunching: " + JSON.stringify(oneInstance));
-        launchInstance(options, oneInstance);
+        launchInstance(options, oneInstance, moreArgs);
         agencyInstance.arangods.push(_.clone(oneInstance));
       }
     });
@@ -2428,7 +2541,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
         (oneInstance.role === 'primary') ||
         (oneInstance.role === 'dbserver')) {
       print("relaunching: " + JSON.stringify(oneInstance));
-      launchInstance(options, oneInstance);
+      launchInstance(options, oneInstance, moreArgs);
     }
   });
   instanceInfo.arangods.forEach(function (oneInstance, i) {
@@ -2437,7 +2550,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
     }
     if ((oneInstance.role === 'COORDINATOR') || (oneInstance.role === 'coordinator')) {
       print("relaunching: " + JSON.stringify(oneInstance));
-      launchInstance(options, oneInstance);
+      launchInstance(options, oneInstance, moreArgs);
     }
   });
   instanceInfo.arangods.forEach(function (oneInstance, i) {
@@ -2445,7 +2558,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       return;
     }
     if (oneInstance.role === 'single') {
-      launchInstance(options, oneInstance);
+      launchInstance(options, oneInstance, moreArgs);
     }
   });
 
@@ -2508,6 +2621,7 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
+exports.shutDownOneInstance = shutDownOneInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
 exports.checkServerFailurePoints = checkServerFailurePoints;
@@ -2516,6 +2630,7 @@ exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;
+exports.restartOneInstance = restartOneInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;
@@ -2528,9 +2643,15 @@ exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 exports.dumpAgency = dumpAgency;
-Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
+Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});
+Object.defineProperty(exports, 'ARANGOBENCH_BIN', {get: () => ARANGOBENCH_BIN});
+Object.defineProperty(exports, 'ARANGODUMP_BIN', {get: () => ARANGODUMP_BIN});
 Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
+Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
+Object.defineProperty(exports, 'ARANGOIMPORT_BIN', {get: () => ARANGOIMPORT_BIN});
+Object.defineProperty(exports, 'ARANGORESTORE_BIN', {get: () => ARANGORESTORE_BIN});
 Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
+Object.defineProperty(exports, 'ARANGO_SECURE_INSTALLATION_BIN', {get: () => ARANGO_SECURE_INSTALLATION_BIN});
 Object.defineProperty(exports, 'CONFIG_DIR', {get: () => CONFIG_DIR});
 Object.defineProperty(exports, 'TOP_DIR', {get: () => TOP_DIR});
 Object.defineProperty(exports, 'LOGS_DIR', {get: () => LOGS_DIR});

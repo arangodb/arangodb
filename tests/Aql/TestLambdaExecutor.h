@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TEST_LAMBDA_EXECUTOR_H
-#define ARANGOD_AQL_TEST_LAMBDA_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
@@ -38,20 +37,21 @@ class AqlItemBlockInputRange;
 class OutputAqlItemRow;
 class SharedAqlItemBlockPtr;
 
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 /**
  * @brief This is a shorthand for the produceRows signature
  */
-using ProduceCall =
-    std::function<std::tuple<ExecutorState, NoStats, AqlCall>(AqlItemBlockInputRange& input, OutputAqlItemRow& output)>;
+using ProduceCall = std::function<std::tuple<ExecutorState, NoStats, AqlCall>(
+    AqlItemBlockInputRange& input, OutputAqlItemRow& output)>;
 
 /**
  * @brief This is a shorthand for the skipRowsInRange signature
  */
 using SkipCall =
-    std::function<std::tuple<ExecutorState, NoStats, size_t, AqlCall>(AqlItemBlockInputRange& input, AqlCall& call)>;
+    std::function<std::tuple<ExecutorState, NoStats, size_t, AqlCall>(
+        AqlItemBlockInputRange& input, AqlCall& call)>;
 
 /**
  * @brief This is a shorthand for the reset state signature
@@ -61,7 +61,8 @@ using ResetCall = std::function<void()>;
 /**
  * @brief Executorinfos for the lambda executors.
  *        Contains basice RegisterPlanning information, and a ProduceCall.
- *        This produceCall will be executed whenever the LambdaExecutor is called with produceRows
+ *        This produceCall will be executed whenever the LambdaExecutor is
+ * called with produceRows
  */
 class LambdaExecutorInfos {
  public:
@@ -83,14 +84,16 @@ class LambdaExecutorInfos {
 
 /**
  * @brief Executorinfos for the lambda executors.
- *        Contains basic RegisterPlanning information, a ProduceCall, and a SkipCall
- *        The produceCall will be executed whenever the LambdaExecutor is called with produceRows
- *        The skipCall will be executed whenever the LambdaExecutor is called with skipRowsInRange
+ *        Contains basic RegisterPlanning information, a ProduceCall, and a
+ * SkipCall The produceCall will be executed whenever the LambdaExecutor is
+ * called with produceRows The skipCall will be executed whenever the
+ * LambdaExecutor is called with skipRowsInRange
  */
 class LambdaSkipExecutorInfos {
  public:
   LambdaSkipExecutorInfos(
-      ProduceCall lambda, SkipCall skipLambda, ResetCall reset = []() -> void {});
+      ProduceCall lambda, SkipCall skipLambda,
+      ResetCall reset = []() -> void {});
 
   LambdaSkipExecutorInfos() = delete;
   LambdaSkipExecutorInfos(LambdaSkipExecutorInfos&&) = default;
@@ -117,7 +120,8 @@ class TestLambdaExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static const BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -156,7 +160,8 @@ class TestLambdaSkipExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -195,5 +200,3 @@ class TestLambdaSkipExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

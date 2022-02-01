@@ -231,7 +231,7 @@ class allocator_array_deallocator : public compact<0, Alloc> {
  public:
   typedef compact<0, Alloc> allocator_t;
   typedef typename allocator_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
+  typedef typename std::allocator_traits<allocator_t>::pointer pointer;
 
   allocator_array_deallocator(const allocator_type& alloc, size_t size) noexcept
     : allocator_t(alloc), size_(size) {
@@ -301,6 +301,7 @@ struct managed_deleter : util::noncopyable {
   template<
     typename U,
     typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
+  // cppcheck-suppress noExplicitConstructor
   managed_deleter(managed_deleter<U>&& rhs) noexcept
     : ptr_(rhs.ptr_) {
     rhs.ptr_ = nullptr;
@@ -328,7 +329,7 @@ struct managed_deleter : util::noncopyable {
     return *this;
   }
 
-  void operator()(pointer p) noexcept {
+  void operator()(const pointer p) noexcept {
     assert(!ptr_ || p == ptr_);
     delete ptr_;
   }

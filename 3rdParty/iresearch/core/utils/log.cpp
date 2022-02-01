@@ -65,7 +65,7 @@
 
 namespace {
 
-MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
 
 MSVC_ONLY(__pragma(warning(pop)))
@@ -168,7 +168,7 @@ bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // pred
     auto lock = irs::make_lock_guard(mutex); // win32 stack trace API is not thread safe
 
     if (!ex || !ex->ContextRecord) {
-      IR_LOG_FORMATED(level, "No stack_trace available");
+      IR_LOG_FORMATED(level, "No stack_trace available"); // cppcheck-suppress syntaxError
       return EXCEPTION_EXECUTE_HANDLER;
     }
 

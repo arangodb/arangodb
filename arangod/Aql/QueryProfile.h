@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,14 +41,13 @@ struct QueryProfile {
   QueryProfile(QueryProfile const&) = delete;
   QueryProfile& operator=(QueryProfile const&) = delete;
 
-  explicit QueryProfile(Query* query);
+  explicit QueryProfile(Query& query);
 
   ~QueryProfile();
 
  public:
-  
   void registerInQueryList();
-  
+
   /// @brief unregister the query from the list of queries, if entered
   void unregisterFromQueryList() noexcept;
 
@@ -66,19 +65,22 @@ struct QueryProfile {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
  private:
-  Query* _query;
-  std::array<double, static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)> _timers;
+  Query& _query;
+  std::array<double,
+             static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)>
+      _timers;
   double _lastStamp;
   bool _tracked;
 };
 
 // we want the number of execution states to be quite low
 // as we reserve a statically sized array for it
-static_assert(static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
-              "unexpected min QueryExecutionState enum value");
-static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 11,
+static_assert(
+    static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
+    "unexpected min QueryExecutionState enum value");
+static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) <
+                  11,
               "unexpected max QueryExecutionState enum value");
 
 }  // namespace aql
 }  // namespace arangodb
-

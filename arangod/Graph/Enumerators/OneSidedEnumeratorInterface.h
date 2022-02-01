@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,6 +66,7 @@ class TraversalEnumerator {
   // can be removed in the version after 3.9
   virtual void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
                      bool keepPathStore = false) = 0;
+  virtual auto prepareIndexExpressions(aql::Ast* ast) -> void = 0;
   virtual auto getNextPath() -> std::unique_ptr<PathResultInterface> = 0;
   virtual bool skipPath() = 0;
   virtual auto destroyEngines() -> void = 0;

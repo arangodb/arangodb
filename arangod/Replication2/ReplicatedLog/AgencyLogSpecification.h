@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -45,27 +46,28 @@ struct LogPlanTermSpecification {
   };
   std::optional<Leader> leader;
 
-  struct Participant {};
-  std::unordered_map<ParticipantId, Participant> participants;
-
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, LogConfig config, std::optional<Leader>, std::unordered_map<ParticipantId, Participant> participants);
+  LogPlanTermSpecification(LogTerm term, LogConfig config,
+                           std::optional<Leader>);
 };
 
 struct LogPlanSpecification {
   LogId id;
   std::optional<LogPlanTermSpecification> currentTerm;
 
-  LogConfig targetConfig;
+  ParticipantsConfig participantsConfig;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
+  auto toVelocyPack(velocypack::Builder&) const -> void;
+  static auto fromVelocyPack(velocypack::Slice) -> LogPlanSpecification;
   LogPlanSpecification(from_velocypack_t, VPackSlice);
-  LogPlanSpecification() = default;
+  LogPlanSpecification();
 
-  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config);
+  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term);
+  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
+                       ParticipantsConfig participantsConfig);
 };
 
 struct LogCurrentLocalState {
@@ -78,25 +80,43 @@ struct LogCurrentLocalState {
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
 };
 
-
 struct LogCurrentSupervisionElection {
+  // TODO: I would really like the Election type to be
+  //       a tagged union, but it is such a pain to implement
+  //       so I currently hacked the possible outcomes of an
+  //       election in here.
+  enum class Outcome {
+    SUCCESS = 0,     // A new leader has been selected
+    IMPOSSIBLE = 1,  // Election is impossible because the number of
+                     // participants + 1 is less than writeConcern
+    FAILED = 2,      // The election failed
+  };
+  // This error code applies to participants, not to
+  // the election itself
   enum class ErrorCode {
     OK = 0,
     SERVER_NOT_GOOD = 1,
     TERM_NOT_CONFIRMED = 2,
+    SERVER_EXCLUDED = 3
   };
 
+  std::optional<Outcome> outcome{std::nullopt};
   LogTerm term;
+
+  TermIndexPair bestTermIndex;
+
   std::size_t participantsRequired{};
   std::size_t participantsAvailable{};
   std::unordered_map<ParticipantId, ErrorCode> detail;
+  std::vector<ParticipantId> electibleLeaderSet;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
 
   friend auto operator==(LogCurrentSupervisionElection const&,
                          LogCurrentSupervisionElection const&) noexcept -> bool;
   friend auto operator!=(LogCurrentSupervisionElection const& left,
-                         LogCurrentSupervisionElection const& right) noexcept -> bool {
+                         LogCurrentSupervisionElection const& right) noexcept
+      -> bool {
     return !(left == right);
   }
 
@@ -107,11 +127,24 @@ struct LogCurrentSupervisionElection {
 auto operator==(LogCurrentSupervisionElection const&,
                 LogCurrentSupervisionElection const&) noexcept -> bool;
 
-auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&) -> void;
+auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept
+    -> std::string_view;
+auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
+    -> void;
+
+auto to_string(LogCurrentSupervisionElection::Outcome) noexcept
+    -> std::string_view;
+auto toVelocyPack(LogCurrentSupervisionElection::Outcome, VPackBuilder&)
+    -> void;
+
+enum class LogCurrentSupervisionError { TARGET_LEADER_INVALID };
+
+auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;
+auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder&) -> void;
 
 struct LogCurrentSupervision {
   std::optional<LogCurrentSupervisionElection> election;
+  std::optional<LogCurrentSupervisionError> error;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
 
@@ -123,9 +156,70 @@ struct LogCurrent {
   std::unordered_map<ParticipantId, LogCurrentLocalState> localState;
   std::optional<LogCurrentSupervision> supervision;
 
+  struct Leader {
+    ParticipantId serverId;
+    LogTerm term;
+    // optional because the leader might not have committed anything
+    std::optional<ParticipantsConfig> committedParticipantsConfig;
+    bool leadershipEstablished;
+    // will be set after 5s if leader is unable to establish leadership
+    std::optional<replicated_log::CommitFailReason> commitStatus;
+
+    auto toVelocyPack(VPackBuilder&) const -> void;
+    static auto fromVelocyPack(VPackSlice) -> Leader;
+  };
+
+  // Will be nullopt until a leader has been assumed leadership
+  std::optional<Leader> leader;
+
   auto toVelocyPack(VPackBuilder&) const -> void;
+  static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent(from_velocypack_t, VPackSlice);
   LogCurrent() = default;
 };
 
-}
+struct LogTarget {
+  using Participants = std::unordered_map<ParticipantId, ParticipantFlags>;
+
+  LogId id;
+  Participants participants;
+  LogConfig config;
+
+  std::optional<ParticipantId> leader;
+
+  struct Properties {
+    void toVelocyPack(velocypack::Builder&) const;
+    static auto fromVelocyPack(velocypack::Slice) -> Properties;
+  };
+  Properties properties;
+
+  struct Supervision {
+    std::size_t maxActionsTraceLength{0};
+    auto toVelocyPack(velocypack::Builder&) const -> void;
+    static auto fromVelocyPack(velocypack::Slice) -> Supervision;
+  };
+
+  std::optional<Supervision> supervision;
+
+  static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
+  void toVelocyPack(velocypack::Builder&) const;
+
+  LogTarget(from_velocypack_t, VPackSlice);
+  LogTarget() = default;
+
+  LogTarget(LogId id, Participants const& participants,
+            LogConfig const& config);
+};
+
+/* Convenience Wrapper */
+struct Log {
+  LogTarget target;
+
+  // These two do not necessarily exist in the Agency
+  // so when we're called for a Log these might not
+  // exist
+  std::optional<LogPlanSpecification> plan;
+  std::optional<LogCurrent> current;
+};
+
+}  // namespace arangodb::replication2::agency

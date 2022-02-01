@@ -100,6 +100,13 @@ module.exports =
       }
     }
 
+    transformations(which) {
+      if (!this._raw.hasOwnProperty('transformations')) {
+        this._raw.transformations = [];
+      }
+      this._raw.transformations.push(which);
+    }
+
     getHeader (name) {
       name = name.toLowerCase();
       if (name === 'content-type') {

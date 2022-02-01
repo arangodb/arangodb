@@ -49,16 +49,18 @@ using namespace irs;
 typedef range<index_writer::modification_context> modification_contexts_ref;
 typedef range<segment_writer::update_context> update_contexts_ref;
 
-const size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
+constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
-const column_info_provider_t DEFAULT_COLUMN_INFO = [](const string_ref&) {
+const column_info_provider_t kDefaultColumnInfo = [](const string_ref&) {
   // no compression, no encryption
   return column_info{ irs::type<compression::none>::get(), {}, false };
 };
 
-const feature_column_info_provider_t DEFAULT_FEATURE_COLUMN_INFO = [](irs::type_info::type_id) {
+const feature_info_provider_t kDefaultFeatureInfo = [](irs::type_info::type_id) {
   // no compression, no encryption
-  return column_info{ irs::type<compression::none>::get(), {}, false };
+  return std::make_pair(
+    column_info{ irs::type<compression::none>::get(), {}, false },
+    feature_writer_factory_t{});
 };
 
 struct flush_segment_context {
@@ -234,7 +236,7 @@ bool add_document_mask_modified_records(
       // seen (i.e. replacement value whose filter did not match any documents)
       // for every update request a replacement 'update-value' is optimistically inserted
       if (modification.update
-          && doc_ctx.update_id != NON_UPDATE_RECORD
+          && doc_ctx.update_id != kNonUpdateRecord
           && !ctx.modification_contexts_[doc_ctx.update_id].seen) {
         continue; // the current modification matched a replacement document which in turn did not match any records
       }
@@ -265,7 +267,7 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
   for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
     auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
 
-    if (doc_ctx.update_id == NON_UPDATE_RECORD) {
+    if (doc_ctx.update_id == kNonUpdateRecord) {
       continue; // not an update operation
     }
 
@@ -545,7 +547,8 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
 
   segment_reader cached_reader;
 
-  // FIXME consider moving open/reopen out of the scope of the lock
+  // FIXME(gnusi) consider moving open/reopen out of the scope of the lock
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
   auto& reader = cache_[meta];
 
@@ -560,6 +563,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
 }
 
 void readers_cache::clear() noexcept {
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
   cache_.clear();
 }
@@ -572,6 +576,7 @@ size_t readers_cache::purge(
 
   size_t erased = 0;
 
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
 
   for (auto it = cache_.begin(); it != cache_.end(); ) {
@@ -605,6 +610,7 @@ index_writer::active_segment_context::active_segment_context(
 #ifdef IRESEARCH_DEBUG
   if (flush_ctx) {
     // ensure there are no active struct update operations (only needed for assert)
+    // cppcheck-suppress unreadVariable
     auto lock = make_lock_guard(flush_ctx->mutex_);
     // assert that flush_ctx and ctx are compatible
     assert(flush_ctx->pending_segment_contexts_[pending_segment_context_offset_].segment_ == ctx_);
@@ -895,8 +901,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   auto flush_lock = make_unique_lock(ctx.flush_mutex_, std::defer_lock);
 
   {
-    // pending_segment_contexts_ may be asynchronously read
-    auto lock = make_lock_guard(mutex_);
+    auto lock = make_lock_guard(mutex_); // pending_segment_contexts_ may be asynchronously read
 
     // update pending_segment_context
     // this segment_context has not yet been seen by this flush_context
@@ -1041,9 +1046,8 @@ void index_writer::flush_context::reset() noexcept {
 index_writer::segment_context::segment_context(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator)
   : active_count_(0),
     buffered_docs_(0),
@@ -1053,8 +1057,7 @@ index_writer::segment_context::segment_context(
     uncomitted_doc_id_begin_(doc_limits::min()),
     uncomitted_generation_offset_(0),
     uncomitted_modification_queries_(0),
-    writer_(segment_writer::make(dir_, field_features, column_info,
-                                 feature_column_info, comparator)) {
+    writer_(segment_writer::make(dir_, column_info, feature_info, comparator)) {
   assert(meta_generator_);
 }
 
@@ -1103,14 +1106,12 @@ uint64_t index_writer::segment_context::flush() {
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator) {
   return memory::make_unique<segment_context>(
     dir, std::move(meta_generator),
-    field_features, column_info,
-    feature_column_info, comparator);
+    column_info, feature_info, comparator);
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
@@ -1205,13 +1206,11 @@ index_writer::index_writer(
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const payload_provider_t& meta_payload_provider,
-    const field_features_t& field_features,
     index_meta&& meta,
     committed_state_t&& committed_state)
-  : field_features_(field_features),
-    feature_column_info_(feature_column_info),
+  : feature_info_(feature_info),
     column_info_(column_info),
     meta_payload_provider_(meta_payload_provider),
     comparator_(comparator),
@@ -1228,7 +1227,7 @@ index_writer::index_writer(
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
   assert(column_info); // ensured by 'make'
-  assert(feature_column_info); // ensured by 'make'
+  assert(feature_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
@@ -1244,6 +1243,7 @@ index_writer::index_writer(
 }
 
 void index_writer::clear(uint64_t tick) {
+  // cppcheck-suppress unreadVariable
   auto commit_lock = make_lock_guard(commit_lock_);
 
   if (!pending_state_
@@ -1253,6 +1253,7 @@ void index_writer::clear(uint64_t tick) {
   }
 
   auto ctx = get_flush_context(false);
+  // cppcheck-suppress unreadVariable
   auto ctx_lock = make_lock_guard(ctx->mutex_); // ensure there are no active struct update operations
 
   auto pending_commit = memory::make_shared<committed_state_t::element_type>(
@@ -1262,7 +1263,6 @@ void index_writer::clear(uint64_t tick) {
 
   auto& dir = *ctx->dir_;
   auto& pending_meta = *pending_commit->first;
-  auto& pending_refs = pending_commit->second;
 
   // setup new meta
   pending_meta.update_generation(meta_); // clone index metadata generation
@@ -1277,11 +1277,12 @@ void index_writer::clear(uint64_t tick) {
 
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
-    throw illegal_state();
+    throw illegal_state{"Failed to write index metadata."};
   }
 
   auto ref = directory_utils::reference(dir, writer_->filename(pending_meta), true);
   if (ref) {
+    auto& pending_refs = pending_commit->second;
     pending_refs.emplace_back(std::move(ref));
   }
 
@@ -1300,6 +1301,7 @@ void index_writer::clear(uint64_t tick) {
   cached_readers_.clear(); // original readers no longer required
 
   // clear consolidating segments
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(consolidation_lock_);
   consolidating_segments_.clear();
 }
@@ -1373,11 +1375,10 @@ index_writer::ptr index_writer::make(
     segment_options(opts),
     opts.comparator,
     opts.column_info
-      ? opts.column_info : DEFAULT_COLUMN_INFO,
-    opts.feature_column_info
-      ? opts.feature_column_info : DEFAULT_FEATURE_COLUMN_INFO,
+      ? opts.column_info : kDefaultColumnInfo,
+    opts.features
+      ? opts.features : kDefaultFeatureInfo,
     opts.meta_payload_provider,
-    opts.features,
     std::move(meta),
     std::move(comitted_state));
 
@@ -1399,9 +1400,11 @@ uint64_t index_writer::buffered_docs() const {
   uint64_t docs_in_ram = 0;
   auto ctx = const_cast<index_writer*>(this)->get_flush_context();
   // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_' may be modified
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(ctx->mutex_);
 
   for (auto& entry: ctx->pending_segment_contexts_) {
+    // cppcheck-suppress useStlAlgorithm
     docs_in_ram += entry.segment_->buffered_docs_.load(); // reading segment_writer::docs_count() is not thread safe
   }
 
@@ -1532,7 +1535,7 @@ index_writer::consolidation_result index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_info_, comparator_);
   merger.reserve(result.size);
 
   // add consolidated segments to the merge_writer
@@ -1782,11 +1785,11 @@ bool index_writer::import(
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_info_, comparator_);
   merger.reserve(reader.size());
 
-  for (auto& segment : reader) {
-    merger.add(segment);
+  for (auto& curr_segment : reader) {
+    merger.add(curr_segment);
   }
 
   if (!merger.flush(segment, progress)) {
@@ -1798,6 +1801,7 @@ bool index_writer::import(
   auto refs = extract_refs(dir);
 
   auto ctx = get_flush_context();
+  // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(ctx->mutex_); // lock due to context modification
 
   ctx->pending_segments_.emplace_back(
@@ -1904,16 +1908,15 @@ index_writer::active_segment_context index_writer::get_segment_context(
   };
   auto segment_ctx = segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
-    field_features_, column_info_,
-    feature_column_info_, comparator_).release();
+    column_info_, feature_info_,
+    comparator_).release();
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
     segment_ctx->writer_ = segment_writer::make(
-      segment_ctx->dir_, field_features_,
-      column_info_,  feature_column_info_, comparator_);
+      segment_ctx->dir_,  column_info_, feature_info_, comparator_);
   }
 
   return active_segment_context(segment_ctx, segments_active_);
@@ -2430,7 +2433,7 @@ bool index_writer::start() {
 
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
-    throw illegal_state();
+    throw illegal_state{"Failed to write index metadata."};
   }
 
   auto update_generation = make_finally([this, &pending_meta]()noexcept{
@@ -2505,7 +2508,7 @@ void index_writer::finish() {
 
   try {
     if (!writer_->commit()) {
-      throw illegal_state();
+      throw illegal_state{"Failed to commit index metadata."};
     }
 #ifndef __APPLE__
     // atomic_store may throw

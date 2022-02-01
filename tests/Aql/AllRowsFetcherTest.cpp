@@ -54,9 +54,11 @@ class AllRowsFetcherTest : public ::testing::Test {
   VPackBuilder input;
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
   RegIdSet inputRegisters{};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, inputRegisters, 1};
+  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable>
+      dependencyProxyMock{monitor, inputRegisters, 1};
 };
 
 TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {
@@ -110,7 +112,8 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
-TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immediately) {
+TEST_F(AllRowsFetcherTest,
+       a_single_upstream_block_producer_returns_done_immediately) {
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
@@ -138,7 +141,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
 }
 
-TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then_done) {
+TEST_F(AllRowsFetcherTest,
+       a_single_upstream_block_producer_returns_hasmore_then_done) {
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
@@ -167,7 +171,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
-TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_done) {
+TEST_F(AllRowsFetcherTest,
+       a_single_upstream_block_producer_waits_then_returns_done) {
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, std::move(block));
@@ -200,7 +205,8 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 2);
 }
 
-TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmore_then_done) {
+TEST_F(AllRowsFetcherTest,
+       a_single_upstream_block_producer_waits_returns_hasmore_then_done) {
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block))
@@ -239,8 +245,10 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmor
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
   // three 1-column matrices with 3, 2 and 1 rows, respectively
-  SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
-                        block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
+  SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager,
+                                               {{{1}}, {{2}}, {{3}}}),
+                        block2 =
+                            buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
                         block3 = buildBlock<1>(itemBlockManager, {{{6}}});
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))
       .andThenReturn(ExecutionState::HASMORE, std::move(block2))
@@ -277,8 +285,10 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_does_not_wait) {
 
 TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
   // three 1-column matrices with 3, 2 and 1 rows, respectively
-  SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
-                        block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
+  SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager,
+                                               {{{1}}, {{2}}, {{3}}}),
+                        block2 =
+                            buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
                         block3 = buildBlock<1>(itemBlockManager, {{{6}}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block1))
@@ -327,10 +337,13 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits) {
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 6);
 }
 
-TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_return_done) {
+TEST_F(AllRowsFetcherTest,
+       multiple_blocks_upstream_producer_waits_and_does_not_return_done) {
   // three 1-column matrices with 3, 2 and 1 rows, respectively
-  SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager, {{{1}}, {{2}}, {{3}}}),
-                        block2 = buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
+  SharedAqlItemBlockPtr block1 = buildBlock<1>(itemBlockManager,
+                                               {{{1}}, {{2}}, {{3}}}),
+                        block2 =
+                            buildBlock<1>(itemBlockManager, {{{4}}, {{5}}}),
                         block3 = buildBlock<1>(itemBlockManager, {{{6}}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block1))
@@ -380,12 +393,14 @@ TEST_F(AllRowsFetcherTest, multiple_blocks_upstream_producer_waits_and_does_not_
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 7);
 }
 
-class AllRowsFetcherFetchRows : public fetcherHelper::PatternTestWrapper<AllRowsFetcher> {
+class AllRowsFetcherFetchRows
+    : public fetcherHelper::PatternTestWrapper<AllRowsFetcher> {
  public:
   AllRowsFetcherFetchRows()
       : fetcherHelper::PatternTestWrapper<AllRowsFetcher>() {}
 
-  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+  void PullAndAssertDataRows(
+      std::vector<std::string> const& dataResults) override {
     AqlItemMatrix const* matrix = nullptr;
     ExecutionState state = ExecutionState::HASMORE;
 
@@ -408,7 +423,8 @@ class AllRowsFetcherFetchRows : public fetcherHelper::PatternTestWrapper<AllRows
     }
 
     AqlItemMatrix const* nextMatrix;
-    // Now assert that we will forever stay in the DONE state and do not move on.
+    // Now assert that we will forever stay in the DONE state and do not move
+    // on.
     std::tie(state, nextMatrix) = _fetcher.fetchAllRows();
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(nextMatrix, nullptr);
@@ -428,7 +444,8 @@ class AllRowsFetcherFetchSingleRow
   AllRowsFetcherFetchSingleRow()
       : fetcherHelper::PatternTestWrapper<AllRowsFetcher>() {}
 
-  void PullAndAssertDataRows(std::vector<std::string> const& dataResults) override {
+  void PullAndAssertDataRows(
+      std::vector<std::string> const& dataResults) override {
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
     ExecutionState state = ExecutionState::HASMORE;
 
@@ -443,19 +460,26 @@ class AllRowsFetcherFetchSingleRow
       ASSERT_TRUE(row.isInitialized());
       EXPECT_TRUE(row.getValue(0).slice().isEqualString(it));
     }
-    // Now assert that we will forever stay in the DONE state and do not move on.
+    // Now assert that we will forever stay in the DONE state and do not move
+    // on.
     std::tie(state, row) = _fetcher.fetchRow();
     EXPECT_EQ(state, ExecutionState::DONE);
     ASSERT_FALSE(row.isInitialized());
   }
 };
 
-TEST_SHADOWROW_PATTERN_1(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern1Test);
-TEST_SHADOWROW_PATTERN_2(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern2Test);
-TEST_SHADOWROW_PATTERN_3(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern3Test);
-TEST_SHADOWROW_PATTERN_4(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern4Test);
-TEST_SHADOWROW_PATTERN_5(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern5Test);
-TEST_SHADOWROW_PATTERN_6(AllRowsFetcherFetchSingleRow, AllRowsFetcherSingleRowPattern6Test);
+TEST_SHADOWROW_PATTERN_1(AllRowsFetcherFetchSingleRow,
+                         AllRowsFetcherSingleRowPattern1Test);
+TEST_SHADOWROW_PATTERN_2(AllRowsFetcherFetchSingleRow,
+                         AllRowsFetcherSingleRowPattern2Test);
+TEST_SHADOWROW_PATTERN_3(AllRowsFetcherFetchSingleRow,
+                         AllRowsFetcherSingleRowPattern3Test);
+TEST_SHADOWROW_PATTERN_4(AllRowsFetcherFetchSingleRow,
+                         AllRowsFetcherSingleRowPattern4Test);
+TEST_SHADOWROW_PATTERN_5(AllRowsFetcherFetchSingleRow,
+                         AllRowsFetcherSingleRowPattern5Test);
+TEST_SHADOWROW_PATTERN_6(AllRowsFetcherFetchSingleRow,
+                         AllRowsFetcherSingleRowPattern6Test);
 
 }  // namespace aql
 }  // namespace tests

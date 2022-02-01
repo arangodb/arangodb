@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global fail, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -26,14 +26,15 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
-let internal = require('internal');
-let arangodb = require('@arangodb');
-let fs = require('fs');
-let pu = require('@arangodb/testutils/process-utils');
-let db = arangodb.db;
-let isCluster = require("internal").isCluster();
-let dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {"name": "cachorro", "id": "9999995", "isUnicode": false}, {"name": "testName", "id": "9999996", "isUnicode": false}, {"name": "😀", "id": "9999997", "isUnicode": true}, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
+const jsunity = require('jsunity');
+const {assertTrue, assertFalse, assertEqual, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const fs = require('fs');
+const pu = require('@arangodb/testutils/process-utils');
+const db = arangodb.db;
+const isCluster = require("internal").isCluster();
+const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {"name": "cachorro", "id": "9999995", "isUnicode": false}, {"name": "testName", "id": "9999996", "isUnicode": false}, {"name": "😀", "id": "9999997", "isUnicode": true}, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
 
 function createCollectionFiles (path, cn) {
   let fn = fs.join(path, cn + ".structure.json");
@@ -70,8 +71,7 @@ function createDumpJsonFile (path, databaseName, id) {
 function restoreIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsRestore';
-  // detect the path of arangorestore. quite hacky, but works
-  const arangorestore = fs.join(global.ARANGOSH_PATH, 'arangorestore' + pu.executableExt);
+  const arangorestore = pu.ARANGORESTORE_BIN;
 
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
@@ -1017,7 +1017,65 @@ function restoreIntegrationSuite () {
         } catch (err) {}
       }
     },
-    
+
+    testRestoreRegressionDistributeShardsLike: function () {
+      const collectionsJson = [
+        {"parameters": {"name": "Comment_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Comment_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Forum_hasMember_Person", "type": 3}},
+        {"parameters": {"name": "Forum_hasTag_Tag", "type": 3}},
+        {"parameters": {"name": "Forum", "type": 2}},
+        {"parameters": {"name": "Organisation", "type": 2}},
+        {"parameters": {"name": "Person_hasCreated_Comment_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_hasCreated_Post_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_hasInterest_Tag", "type": 3}},
+        {"parameters": {"name": "Person_knows_Person_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_likes_Comment_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_likes_Post_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_Smart", "type": 2}},
+        {"parameters": {"name": "Person_studyAt_University", "type": 3}},
+        {"parameters": {"name": "Person_workAt_Company", "type": 3}},
+        {"parameters": {"name": "Place", "type": 2}},
+        {"parameters": {"name": "Post_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Post_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "TagClass", "type": 2}},
+        {"parameters": {"name": "Tag", "type": 2}},
+      ];
+      // satisfy the file format requirements by adding indexes
+      collectionsJson.forEach(col => { col.indexes = []; });
+
+      const path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+
+        const dbName = 'UnitTestRestoreRegressionDb';
+        db._createDatabase(dbName);
+        createDumpJsonFile(path, dbName);
+
+        for (const colJson of collectionsJson) {
+          const colName = colJson.parameters.name;
+          const fn = fs.join(path, colName + ".structure.json");
+          fs.write(fn, JSON.stringify(colJson));
+        }
+
+        const args = ['--server.database', dbName, '--import-data', 'false'];
+        runRestore(path, args, 0);
+
+        db._useDatabase(dbName);
+        for (const colJson of collectionsJson) {
+          const col = db._collection(colJson.parameters.name);
+          assertInstanceOf(arangodb.ArangoCollection, col);
+          assertEqual(colJson.parameters.name, col.name());
+          assertEqual(colJson.parameters.type, col.type());
+          if (isCluster) {
+            assertEqual(colJson.parameters.distributeShardsLike, col.properties().distributeShardsLike);
+          }
+        }
+        fs.removeDirectoryRecursive(path, true);
+      } finally {
+        db._useDatabase("_system");
+      }
+    },
   };
 }
 

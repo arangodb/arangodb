@@ -1446,7 +1446,7 @@ class btree {
 
   // Verify that key_compare returns an int or bool, as appropriate
   // depending on the value of is_key_compare_to.
-  static_assert(std::is_same<absl::result_of_t<key_compare(key_type, key_type)>,
+  static_assert(std::is_same<absl::result_of_t<key_compare, key_type, key_type>,
                              absl::conditional_t<is_key_compare_to::value, int,
                                                  bool>>::value,
                 "key comparison function must return bool");

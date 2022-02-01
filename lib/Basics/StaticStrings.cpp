@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,10 +120,12 @@ std::string const StaticStrings::Properties("properties");
 std::string const StaticStrings::DataSourceDeleted("deleted");
 std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
 std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceCid("cid");
 std::string const StaticStrings::DataSourceName("name");
 std::string const StaticStrings::DataSourcePlanId("planId");
 std::string const StaticStrings::DataSourceSystem("isSystem");
 std::string const StaticStrings::DataSourceType("type");
+std::string const StaticStrings::DataSourceParameters("parameters");
 
 // Index definition fields
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
@@ -133,6 +135,7 @@ std::string const StaticStrings::IndexInBackground("inBackground");
 std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexStoredValues("storedValues");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
@@ -146,15 +149,10 @@ std::string const StaticStrings::IndexNamePrimary("primary");
 std::string const StaticStrings::IndexNameTime("time");
 
 // index hint strings
-std::string const StaticStrings::IndexHintAny("any");
-std::string const StaticStrings::IndexHintCollection("collection");
-std::string const StaticStrings::IndexHintHint("hint");
-std::string const StaticStrings::IndexHintDepth("depth");
-std::string const StaticStrings::IndexHintInbound("inbound");
+std::string const StaticStrings::IndexHintDisableIndex("disableIndex");
+std::string const StaticStrings::IndexHintMaxProjections("maxProjections");
 std::string const StaticStrings::IndexHintOption("indexHint");
 std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
-std::string const StaticStrings::IndexHintOutbound("outbound");
-std::string const StaticStrings::IndexHintWildcard("*");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -204,6 +202,7 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
+std::string const StaticStrings::LockLocation("lockLocation");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::PotentialDirtyRead(
@@ -219,7 +218,8 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
-std::string const StaticStrings::XArangoQueueTimeSeconds("x-arango-queue-time-seconds");
+std::string const StaticStrings::XArangoQueueTimeSeconds(
+    "x-arango-queue-time-seconds");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
@@ -265,14 +265,10 @@ std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
 std::string const StaticStrings::ReplicationVersion("replicationVersion");
 std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
+std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
-std::string const StaticStrings::IsDisjoint("isDisjoint");
-std::string const StaticStrings::IsHybrid("isHybrid");
-std::string const StaticStrings::GraphIsSmart("isSmart");
-std::string const StaticStrings::GraphIsSatellite("isSatellite");
-std::string const StaticStrings::GraphSatellites("satellites");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphOptions("options");
@@ -281,10 +277,22 @@ std::string const StaticStrings::GraphSmartGraphAttribute(
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
 std::string const StaticStrings::GraphEdgeDefinitionType("type");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
-std::string const StaticStrings::GraphInitial("initial");
-std::string const StaticStrings::GraphInitialCid("initialCid");
+
 std::string const StaticStrings::GraphName("name");
 std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
+
+// smart graph relevant attributes
+std::string const StaticStrings::IsDisjoint("isDisjoint");
+std::string const StaticStrings::IsHybrid("isHybrid");
+std::string const StaticStrings::GraphIsSmart("isSmart");
+std::string const StaticStrings::GraphIsSatellite("isSatellite");
+std::string const StaticStrings::GraphSatellites("satellites");
+std::string const StaticStrings::GraphInitial("initial");
+std::string const StaticStrings::GraphInitialCid("initialCid");
+std::string const StaticStrings::ShadowCollections("shadowCollections");
+std::string const StaticStrings::FullLocalPrefix("_local_");
+std::string const StaticStrings::FullFromPrefix("_from_");
+std::string const StaticStrings::FullToPrefix("_to_");
 
 // Pregel Section Start
 
@@ -359,6 +367,7 @@ std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
+std::string const StaticStrings::Outcome("outcome");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
@@ -419,6 +428,8 @@ std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
+
+std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

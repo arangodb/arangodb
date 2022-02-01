@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,6 +60,14 @@ TransactionId TransactionId::createCoordinator() {
 
 TransactionId TransactionId::createLegacy() {
   return TransactionId(TRI_NewServerSpecificTickMod4() + 3);
+}
+
+TransactionId TransactionId::createLeader() {
+  return TransactionId(TRI_NewServerSpecificTickMod4() + 1);
+}
+
+TransactionId TransactionId::createFollower() {
+  return TransactionId(TRI_NewServerSpecificTickMod4() + 2);
 }
 
 }  // namespace arangodb

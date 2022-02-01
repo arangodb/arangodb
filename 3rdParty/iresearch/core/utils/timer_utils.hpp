@@ -43,7 +43,7 @@ struct timer_stat_t {
 
 class IRESEARCH_API scoped_timer : util::noncopyable {
  public:
-  scoped_timer(timer_stat_t& stat);
+  explicit scoped_timer(timer_stat_t& stat);
   scoped_timer(scoped_timer&&) = default;
   ~scoped_timer();
 

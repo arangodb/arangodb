@@ -1,0 +1,101 @@
+[section:skeleton_and_content Separating structure from content]
+
+When communicating data types over MPI that are not fundamental to MPI
+(such as strings, lists, and user-defined data types), Boost.MPI must
+first serialize these data types into a buffer and then communicate
+them; the receiver then copies the results into a buffer before
+deserializing into an object on the other end. For some data types,
+this overhead can be eliminated by using [classref
+boost::mpi::is_mpi_datatype `is_mpi_datatype`]. However,
+variable-length data types such as strings and lists cannot be MPI
+data types. 
+
+Boost.MPI supports a second technique for improving performance by
+separating the structure of these variable-length data structures from
+the content stored in the data structures. This feature is only
+beneficial when the shape of the data structure remains the same but
+the content of the data structure will need to be communicated several
+times. For instance, in a finite element analysis the structure of the
+mesh may be fixed at the beginning of computation but the various
+variables on the cells of the mesh (temperature, stress, etc.) will be
+communicated many times within the iterative analysis process. In this
+case, Boost.MPI allows one to first send the "skeleton" of the mesh
+once, then transmit the "content" multiple times. Since the content
+need not contain any information about the structure of the data type,
+it can be transmitted without creating separate communication buffers.
+
+To illustrate the use of skeletons and content, we will take a
+somewhat more limited example wherein a master process generates
+random number sequences into a list and transmits them to several
+slave processes. The length of the list will be fixed at program
+startup, so the content of the list (i.e., the current sequence of
+numbers) can be transmitted efficiently. The complete example is
+available in `example/random_content.cpp`. We being with the master
+process (rank 0), which builds a list, communicates its structure via
+a [funcref boost::mpi::skeleton `skeleton`], then repeatedly
+generates random number sequences to be broadcast to the slave
+processes via [classref boost::mpi::content `content`]:
+
+  
+    // Generate the list and broadcast its structure
+    std::list<int> l(list_len);
+    broadcast(world, mpi::skeleton(l), 0);
+
+    // Generate content several times and broadcast out that content
+    mpi::content c = mpi::get_content(l);
+    for (int i = 0; i < iterations; ++i) {
+      // Generate new random values
+      std::generate(l.begin(), l.end(), &random);
+
+      // Broadcast the new content of l
+      broadcast(world, c, 0);
+    }
+
+    // Notify the slaves that we're done by sending all zeroes
+    std::fill(l.begin(), l.end(), 0);
+    broadcast(world, c, 0);
+
+
+The slave processes have a very similar structure to the master. They
+receive (via the [funcref boost::mpi::broadcast
+`broadcast()`] call) the skeleton of the data structure, then use it
+to build their own lists of integers. In each iteration, they receive
+via another `broadcast()` the new content in the data structure and
+compute some property of the data:
+
+
+    // Receive the content and build up our own list
+    std::list<int> l;
+    broadcast(world, mpi::skeleton(l), 0);
+
+    mpi::content c = mpi::get_content(l);
+    int i = 0;
+    do {
+      broadcast(world, c, 0);
+
+      if (std::find_if
+           (l.begin(), l.end(),
+            std::bind1st(std::not_equal_to<int>(), 0)) == l.end())
+        break;
+
+      // Compute some property of the data.
+
+      ++i;
+    } while (true);
+
+
+The skeletons and content of any Serializable data type can be
+transmitted either via the [memberref
+boost::mpi::communicator::send `send`] and [memberref
+boost::mpi::communicator::recv `recv`] members of the
+[classref boost::mpi::communicator `communicator`] class
+(for point-to-point communicators) or broadcast via the [funcref
+boost::mpi::broadcast `broadcast()`] collective. When
+separating a data structure into a skeleton and content, be careful
+not to modify the data structure (either on the sender side or the
+receiver side) without transmitting the skeleton again. Boost.MPI can
+not detect these accidental modifications to the data structure, which
+will likely result in incorrect data being transmitted or unstable
+programs. 
+
+[endsect:skeleton_and_content]

@@ -232,44 +232,24 @@ SharedSlice SharedSlice::getNthValue(ValueLength index) const {
   return alias(slice().getNthValue(index));
 }
 
-SharedSlice SharedSlice::get(StringRef const& attribute) const {
-  return alias(slice().get(attribute));
-}
-
-SharedSlice SharedSlice::get(std::string const& attribute) const {
-  return alias(slice().get(attribute));
-}
-
-SharedSlice SharedSlice::get(char const* attribute) const {
+SharedSlice SharedSlice::get(std::string_view attribute) const {
   return alias(slice().get(attribute));
 }
 
 SharedSlice SharedSlice::get(char const* attribute, std::size_t length) const {
-  return alias(slice().get(attribute, length));
+  return alias(slice().get(std::string_view(attribute, length)));
 }
 
-SharedSlice SharedSlice::operator[](StringRef const& attribute) const {
+SharedSlice SharedSlice::operator[](std::string_view attribute) const {
   return alias(slice().operator[](attribute));
 }
 
-SharedSlice SharedSlice::operator[](std::string const& attribute) const {
-  return alias(slice().operator[](attribute));
-}
-
-bool SharedSlice::hasKey(StringRef const& attribute) const {
-  return slice().hasKey(attribute);
-}
-
-bool SharedSlice::hasKey(std::string const& attribute) const {
-  return slice().hasKey(attribute);
-}
-
-bool SharedSlice::hasKey(char const* attribute) const {
+bool SharedSlice::hasKey(std::string_view attribute) const {
   return slice().hasKey(attribute);
 }
 
 bool SharedSlice::hasKey(char const* attribute, std::size_t length) const {
-  return slice().hasKey(attribute, length);
+  return slice().hasKey(std::string_view(attribute, length));
 }
 
 bool SharedSlice::hasKey(std::vector<std::string> const& attributes) const {
@@ -318,7 +298,7 @@ ValueLength SharedSlice::getStringLength() const {
 
 std::string SharedSlice::copyString() const { return slice().copyString(); }
 
-StringRef SharedSlice::stringRef() const { return slice().stringRef(); }
+[[deprecated("use stringView")]] StringRef SharedSlice::stringRef() const { return slice().stringRef(); }
 
 std::string_view SharedSlice::stringView() const {
   return slice().stringView();
@@ -352,47 +332,31 @@ ValueLength SharedSlice::getNthOffset(ValueLength index) const {
 
 SharedSlice SharedSlice::makeKey() const { return alias(slice().makeKey()); }
 
-int SharedSlice::compareString(StringRef const& value) const {
-  return slice().compareString(value);
-}
-
-int SharedSlice::compareString(std::string const& value) const {
+int SharedSlice::compareString(std::string_view value) const {
   return slice().compareString(value);
 }
 
 int SharedSlice::compareString(char const* value, std::size_t length) const {
-  return slice().compareString(value, length);
+  return slice().compareString(std::string_view(value, length));
 }
 
-int SharedSlice::compareStringUnchecked(StringRef const& value) const noexcept {
-  return slice().compareStringUnchecked(value);
-}
-
-int SharedSlice::compareStringUnchecked(std::string const& value) const noexcept {
+int SharedSlice::compareStringUnchecked(std::string_view value) const noexcept {
   return slice().compareStringUnchecked(value);
 }
 
 int SharedSlice::compareStringUnchecked(char const* value, std::size_t length) const noexcept {
-  return slice().compareStringUnchecked(value, length);
+  return slice().compareStringUnchecked(std::string_view(value, length));
 }
 
-bool SharedSlice::isEqualString(StringRef const& attribute) const {
+bool SharedSlice::isEqualString(std::string_view attribute) const {
   return slice().isEqualString(attribute);
 }
 
-bool SharedSlice::isEqualString(std::string const& attribute) const {
-  return slice().isEqualString(attribute);
-}
-
-bool SharedSlice::isEqualStringUnchecked(StringRef const& attribute) const noexcept {
+bool SharedSlice::isEqualStringUnchecked(std::string_view attribute) const noexcept {
   return slice().isEqualStringUnchecked(attribute);
 }
 
-bool SharedSlice::isEqualStringUnchecked(std::string const& attribute) const noexcept {
-  return slice().isEqualStringUnchecked(attribute);
-}
-
-bool SharedSlice::binaryEquals(Slice const& other) const {
+bool SharedSlice::binaryEquals(Slice other) const {
   return slice().binaryEquals(other);
 }
 

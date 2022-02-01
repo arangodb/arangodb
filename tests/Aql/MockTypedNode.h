@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCK_TYPED_NODE_H
-#define ARANGODB_TESTS_MOCK_TYPED_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -34,27 +33,31 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  MockTypedNode(::arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id, NodeType);
+  MockTypedNode(::arangodb::aql::ExecutionPlan* plan,
+                arangodb::aql::ExecutionNodeId id, NodeType);
 
   // return mocked type
   NodeType getType() const override final;
 
   // Necessary overrides, all not implemented:
 
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override;
 
   std::unique_ptr<::arangodb::aql::ExecutionBlock> createBlock(
       ::arangodb::aql::ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ::arangodb::aql::ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*,
+                         ::arangodb::aql::ExecutionBlock*> const&)
+      const override;
 
   ExecutionNode* clone(::arangodb::aql::ExecutionPlan* plan,
-                       bool withDependencies, bool withProperties) const override;
+                       bool withDependencies,
+                       bool withProperties) const override;
 
   ::arangodb::aql::CostEstimate estimateCost() const override;
+
  private:
   NodeType _mockedType{};
 };
 
 }  // namespace arangodb::tests::aql
-
-#endif  // ARANGODB_TESTS_MOCK_TYPED_NODE_H

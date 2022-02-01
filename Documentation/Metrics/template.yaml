@@ -25,6 +25,7 @@ category: Health
   # Agency
   # Transactions
   # Replication
+  # ArangoSearch
 complexity: simple
   # Choose one of:
   # simple

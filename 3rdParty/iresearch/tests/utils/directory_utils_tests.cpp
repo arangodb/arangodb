@@ -100,6 +100,24 @@ class directory_utils_tests: public ::testing::Test {
    private:
     irs::directory_attributes attrs_{};
   }; // directory_mock
+
+  struct callback_directory : tests::directory_mock {
+    typedef std::function<void()> AfterCallback;
+
+    explicit callback_directory(irs::directory& impl, AfterCallback&& p)
+      : tests::directory_mock(impl), after(p) {
+    }
+
+    virtual irs::index_input::ptr open(
+        const std::string& name,
+        irs::IOAdvice advice) const noexcept override {
+      auto stream = tests::directory_mock::open(name, advice);
+      after();
+      return stream;
+    }
+
+    AfterCallback after;
+  }; // callback_directory
 };
 
 }
@@ -571,6 +589,34 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
     ASSERT_TRUE(track_dir.visit_refs(visitor));
     ASSERT_EQ(1, count);
+  }
+
+  // test open (track-open)
+  {
+    irs::memory_directory dir;
+
+    auto clean = [&dir]() {
+      irs::directory_utils::remove_all_unreferenced(dir);
+    };
+
+    callback_directory callback_dir{dir, clean};
+    irs::ref_tracking_directory track_dir(callback_dir, true);
+    auto file1 = dir.create("abc");
+    ASSERT_NE(nullptr, file1);
+    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, file2);
+
+    size_t count = 0;
+    auto visitor = [&count](const irs::index_file_refs::ref_t&)->bool {
+      ++count;
+      return true;
+    };
+
+    ASSERT_TRUE(track_dir.visit_refs(visitor));
+    ASSERT_EQ(1, count);
+
+    auto file3 = dir.open("abc", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, file3);
   }
 
   // test visit refs visitor terminate

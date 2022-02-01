@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,28 +45,27 @@ struct Unit {
 
 constexpr Unit unit{};
 
-template <typename T>
+template<typename T>
 struct lift_unit {
   using type = T;
 };
-template <>
+template<>
 struct lift_unit<void> {
   using type = Unit;
 };
-template <typename T>
+template<typename T>
 using lift_unit_t = typename lift_unit<T>::type;
 
-template <typename T>
+template<typename T>
 struct drop_unit {
   using type = T;
 };
-template <>
+template<>
 struct drop_unit<Unit> {
   using type = void;
 };
-template <typename T>
+template<typename T>
 using drop_unit_t = typename drop_unit<T>::type;
 
 }  // namespace futures
 }  // namespace arangodb
-

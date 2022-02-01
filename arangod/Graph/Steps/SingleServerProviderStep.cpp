@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,8 @@ using namespace arangodb::graph;
 
 namespace arangodb {
 namespace graph {
-auto operator<<(std::ostream& out, SingleServerProviderStep const& step) -> std::ostream& {
+auto operator<<(std::ostream& out, SingleServerProviderStep const& step)
+    -> std::ostream& {
   out << step._vertex.getID();
   return out;
 }
@@ -41,14 +42,19 @@ auto operator<<(std::ostream& out, SingleServerProviderStep const& step) -> std:
 SingleServerProviderStep::SingleServerProviderStep(VertexType v)
     : _vertex(v), _edge() {}
 
-SingleServerProviderStep::SingleServerProviderStep(VertexType v, size_t depth, double weight)
-    : BaseStep(std::numeric_limits<size_t>::max(), depth, weight), _vertex(v), _edge() {}
+SingleServerProviderStep::SingleServerProviderStep(VertexType v, size_t depth,
+                                                   double weight)
+    : BaseStep(std::numeric_limits<size_t>::max(), depth, weight),
+      _vertex(v),
+      _edge() {}
 
 SingleServerProviderStep::SingleServerProviderStep(VertexType v,
-                                                   EdgeDocumentToken edge, size_t prev)
+                                                   EdgeDocumentToken edge,
+                                                   size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
 
-SingleServerProviderStep::SingleServerProviderStep(VertexType v, EdgeDocumentToken edge,
+SingleServerProviderStep::SingleServerProviderStep(VertexType v,
+                                                   EdgeDocumentToken edge,
                                                    size_t prev, size_t depth,
                                                    double weight, size_t)
     : BaseStep(prev, depth, weight), _vertex(v), _edge(std::move(edge)) {}
@@ -67,8 +73,9 @@ bool SingleServerProviderStep::Edge::isValid() const {
   return getID().isValid();
 };
 
-void SingleServerProviderStep::Edge::addToBuilder(SingleServerProvider<SingleServerProviderStep>& provider,
-                                                  arangodb::velocypack::Builder& builder) const {
+void SingleServerProviderStep::Edge::addToBuilder(
+    SingleServerProvider<SingleServerProviderStep>& provider,
+    arangodb::velocypack::Builder& builder) const {
   provider.insertEdgeIntoResult(getID(), builder);
 }
 

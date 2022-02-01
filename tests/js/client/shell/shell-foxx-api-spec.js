@@ -146,10 +146,10 @@ describe('FoxxApi commit', function () {
     } else {
       body = JSON.parse(result.body);
     }
-    
+
     Object.keys(headers).forEach(function(key) {
       let value = headers[key];
-      
+
       expect(body[key]).to.equal(headers[key]);
     });
   });
@@ -165,7 +165,8 @@ describe('FoxxApi commit', function () {
     expect(result.body).to.contain('doctype');
 
     result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'gzip'});
-    expect(result.body).to.be.instanceof(Buffer);
+    expect(result).to.have.property('body');
+    expect(result.body).to.be.a('string');
 
     result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {});
     expect(result.body).to.contain('doctype');
@@ -179,7 +180,39 @@ describe('FoxxApi commit', function () {
       expect(result.body).to.be.instanceof(Buffer);
     } else {
       expect(result).to.have.property('parsedBody');
-    }      
+    }
+
+
+    result = arango.GET_RAW('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    result = arango.GET_RAW('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
+
+    if (!isVst) {
+      // doesn't work with vst..
+      arango.GET_RAW('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
+
+      arango.GET_RAW('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
+    }
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');

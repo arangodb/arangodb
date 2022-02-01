@@ -22,15 +22,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_SMALL_VECTOR_H
-#define VELOCYPACK_SMALL_VECTOR_H 1
+#pragma once
 
 #include <cassert>
 #include <cstddef>
 #include <vector>
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 // The MIT License (MIT)
 //
@@ -173,6 +171,3 @@ template <class T, std::size_t BufSize = 64, std::size_t ElementAlignment = alig
 using SmallVector = std::vector<T, short_alloc<T, BufSize, ElementAlignment>>;
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
-
-#endif

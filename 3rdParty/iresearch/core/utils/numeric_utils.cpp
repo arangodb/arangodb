@@ -81,12 +81,14 @@ struct encode_traits<uint32_t> {
 #ifndef FLOAT_T_IS_DOUBLE_T
 template<>
 struct encode_traits<float_t> : encode_traits<uint32_t> {
+  // cppcheck-suppress duplInheritedMember
   static const byte_type TYPE_MAGIC = 0x20;
 }; // encode_traits
 #endif
 
 template<>
 struct encode_traits<double_t> : encode_traits<uint64_t> {
+  // cppcheck-suppress duplInheritedMember
   static const byte_type TYPE_MAGIC = 0xA0;
 }; // encode_traits
 
@@ -139,11 +141,17 @@ typename EncodeTraits::type decode(const byte_type* in) {
   return value;
 }
 
-inline int32_t make_sortable32(int32_t value) {
+// assert that signed right shift works as expected
+static_assert(static_cast<uint32_t>(INT32_C(-1) >> 31) == UINT32_C(0xFFFFFFFF));
+static_assert(static_cast<uint64_t>(INT64_C(-1) >> 63) == UINT64_C(0xFFFFFFFFFFFFFFFF));
+
+constexpr int32_t make_sortable32(int32_t value) noexcept {
+  // cppcheck-suppress 	shiftTooManyBitsSigned
   return value ^ ((value >> 31) & INT32_C(0x7FFFFFFF));
 }
 
-inline int64_t make_sortable64(int64_t value) {
+constexpr int64_t make_sortable64(int64_t value) noexcept {
+  // cppcheck-suppress 	shiftTooManyBitsSigned
   return value ^ ((value >> 63) & INT64_C(0x7FFFFFFFFFFFFFFF));
 }
 

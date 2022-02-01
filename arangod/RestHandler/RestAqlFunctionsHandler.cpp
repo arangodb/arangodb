@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestAqlFunctionsHandler.h"
 #include "Aql/AqlFunctionFeature.h"
 
@@ -30,7 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAqlFunctionsHandler::RestAqlFunctionsHandler(application_features::ApplicationServer& server,
+RestAqlFunctionsHandler::RestAqlFunctionsHandler(ArangodServer& server,
                                                  GeneralRequest* request,
                                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
@@ -52,6 +53,7 @@ RestStatus RestAqlFunctionsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

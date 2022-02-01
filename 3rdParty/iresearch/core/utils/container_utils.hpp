@@ -157,7 +157,8 @@ struct bucket_size_t {
 /// @param SkipBits 2^SkipBits is the size of the first bucket, consequently
 ///        the number of bits from a 'position' value to place into 1st bucket
 //////////////////////////////////////////////////////////////////////////////
-MSVC_ONLY(__pragma(warning(push)))
+
+MSVC_ONLY(__pragma(warning(push))) // cppcheck-suppress unknownMacro
 MSVC_ONLY(__pragma(warning(disable:4127))) // constexp conditionals are intended to be optimized out
 template<size_t NumBuckets, size_t SkipBits>
 class bucket_meta {

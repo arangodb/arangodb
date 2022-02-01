@@ -145,8 +145,12 @@ struct IRESEARCH_API index_input : public data_input {
   //////////////////////////////////////////////////////////////////////////////
   virtual int64_t checksum(size_t offset) const = 0;
 
+ protected:
+  index_input() = default;
+  index_input(const index_input&) = default;
+
  private:
-  index_input& operator=( const index_input& ) = delete;
+  index_input& operator=(const index_input&) = delete;
 }; // index_input
 
 //////////////////////////////////////////////////////////////////////////////
@@ -167,7 +171,7 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 
   virtual int_type underflow() override;
 
-  operator index_input&() { return *in_; }
+  operator index_input&() { return *in_; } // cppcheck-suppress syntaxError
 
   index_input* internal() const { return in_; }
 

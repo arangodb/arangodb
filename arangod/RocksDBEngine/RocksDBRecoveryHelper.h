@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,32 +37,24 @@ class RocksDBRecoveryHelper {
 
   virtual void prepare() {}
 
-  virtual void PutCF(uint32_t column_family_id,
-                     const rocksdb::Slice& key,
+  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value,
-                     rocksdb::SequenceNumber tick) {
-  }
+                     rocksdb::SequenceNumber tick) {}
 
-  virtual void DeleteCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key,
-                        rocksdb::SequenceNumber tick) {
-  }
+  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                        rocksdb::SequenceNumber tick) {}
 
   virtual void SingleDeleteCF(uint32_t column_family_id,
                               const rocksdb::Slice& key,
-                              rocksdb::SequenceNumber tick) {
-  }
+                              rocksdb::SequenceNumber tick) {}
 
   virtual void DeleteRangeCF(uint32_t column_family_id,
                              const rocksdb::Slice& begin_key,
                              const rocksdb::Slice& end_key,
-                             rocksdb::SequenceNumber tick) {
-  }
+                             rocksdb::SequenceNumber tick) {}
 
   virtual void LogData(const rocksdb::Slice& blob,
-                       rocksdb::SequenceNumber tick) {
-  }
+                       rocksdb::SequenceNumber tick) {}
 };
 
 }  // end namespace arangodb
-

@@ -279,6 +279,7 @@ FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT
   std::memcpy(out, in, sizeof(uint64_t)*irs::packed::BLOCK_SIZE_64);
 }
 
+// cppcheck-suppress unknownMacro
 MSVC_ONLY(__pragma(warning(disable:4702))) // unreachable code
 
 template<int N, int I>

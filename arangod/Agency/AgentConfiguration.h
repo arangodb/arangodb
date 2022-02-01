@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,9 +92,10 @@ struct config_t {
   config_t();
 
   /// @brief ctor
-  config_t(std::string const& rid, size_t as, size_t ps, double minp, double maxp,
-           std::string const& e, std::vector<std::string> const& g, bool s, bool st,
-           bool w, double f, uint64_t c, uint64_t k, double p, double o, bool t, size_t a);
+  config_t(std::string const& rid, size_t as, size_t ps, double minp,
+           double maxp, std::string const& e, std::vector<std::string> const& g,
+           bool s, bool st, bool w, double f, uint64_t c, uint64_t k, double p,
+           double o, bool t, size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -236,14 +237,10 @@ struct config_t {
   double supervisionOkThreshold() const;
 
   /// @brief set Supervision grace period
-  void setSupervisionGracePeriod(double d) {
-    _supervisionGracePeriod = d;
-  }
+  void setSupervisionGracePeriod(double d) { _supervisionGracePeriod = d; }
 
   /// @brief set Supervision ok threshold
-  void setSupervisionOkThreshold(double d) {
-    _supervisionOkThreshold = d;
-  }
+  void setSupervisionOkThreshold(double d) { _supervisionOkThreshold = d; }
 
   /// @brief
   std::string startup() const;
@@ -256,4 +253,3 @@ struct config_t {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

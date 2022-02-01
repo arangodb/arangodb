@@ -61,7 +61,7 @@ memory_allocator::memory_allocator(size_t pool_size)
 // --SECTION--                                                   index_file_refs
 // -----------------------------------------------------------------------------
 
-DEFINE_FACTORY_DEFAULT(index_file_refs)
+DEFINE_FACTORY_DEFAULT(index_file_refs) // cppcheck-suppress unknownMacro
 
 index_file_refs::ref_t index_file_refs::add(const std::string& key) {
   return refs_.add(std::string(key));
@@ -75,7 +75,7 @@ void index_file_refs::clear() {
   refs_.visit([](const std::string&, size_t){ return true; }, true);
 
   if (!refs_.empty()) {
-    throw illegal_state(); // cannot clear ref_counter due to live refs
+    throw illegal_state{"Cannot clear ref_counter due to live refs."};
   }
 }
 

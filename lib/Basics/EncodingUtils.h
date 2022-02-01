@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,21 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_BASICS_ENCODING_UTILS_H
-#define ARANGOD_BASICS_ENCODING_UTILS_H 1
 
-#include <velocypack/Buffer.h>
+#include <cstddef>
+#include <cstdint>
+
+#include "Basics/ErrorCode.h"
 
 namespace arangodb {
 namespace encoding {
 
-bool gzipUncompress(uint8_t* compressed, size_t compressedLength,
-                    arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+template<typename T>
+[[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed,
+                                       size_t compressedLength,
+                                       T& uncompressed);
 
-bool gzipDeflate(uint8_t* compressed, size_t compressedLength,
-                 arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+template<typename T>
+[[nodiscard]] ErrorCode gzipInflate(uint8_t const* compressed,
+                                    size_t compressedLength, T& uncompressed);
+
+template<typename T>
+[[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed,
+                                    size_t uncompressedLength, T& compressed);
 
 }  // namespace encoding
 }  // namespace arangodb
-
-#endif

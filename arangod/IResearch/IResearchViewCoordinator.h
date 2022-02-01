@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
 
@@ -32,23 +33,24 @@
 
 namespace arangodb {
 
-struct ViewFactory;  // forward declaration
+struct ViewFactory;
 
 }  // namespace arangodb
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
-class IResearchLink; // forward declaration
+class IResearchLink;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewCoordinator
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final : public arangodb::LogicalView {
+class IResearchViewCoordinator final : public LogicalView {
  public:
-  virtual ~IResearchViewCoordinator() = default;
+  static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
+    return {ViewType::kSearch, StaticStrings::DataSourceType};
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -64,12 +66,11 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result link(IResearchLink const& link);
 
-  void open() override { /* NOOP */ }
+  void open() final {}
 
   using LogicalDataSource::properties;
-  virtual Result properties(VPackSlice properties,
-                            bool isUserRequest,
-                            bool partialUpdate) override;
+  Result properties(VPackSlice properties, bool isUserRequest,
+                    bool partialUpdate) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
@@ -78,7 +79,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result unlink(DataSourceId cid) noexcept;
 
-  bool visitCollections(CollectionVisitor const& visitor) const override;
+  bool visitCollections(CollectionVisitor const& visitor) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
@@ -102,23 +103,23 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   }
 
  protected:
-  virtual Result appendVelocyPackImpl(VPackBuilder& builder,
-                                      Serialization context) const override;
+  Result appendVelocyPackImpl(VPackBuilder& builder,
+                              Serialization context) const final;
 
-  virtual Result dropImpl() override;
+  Result dropImpl() final;
 
-  Result renameImpl(std::string const& oldName) override;
+  Result renameImpl(std::string const& oldName) final;
 
  private:
-  struct ViewFactory;  // forward declaration
+  struct ViewFactory;
 
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
 
-  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>> _collections;  // transient member, not persisted
+  // transient member, not persisted
+  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>>
+      _collections;
   mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
-};  // IResearchViewCoordinator
+};
 
-}  // namespace iresearch
-}  // namespace arangodb
-
+}  // namespace arangodb::iresearch

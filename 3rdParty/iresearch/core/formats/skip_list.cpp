@@ -204,7 +204,7 @@ void skip_reader::read_skip(skip_reader::level& level) {
 skip_reader::levels_t::iterator skip_reader::find_level(doc_id_t target) {
   assert(std::is_sorted(
     levels_.rbegin(), levels_.rend(),
-    [](level& lhs, level& rhs) { return lhs.doc < rhs.doc; }
+    [](const level& lhs, const level& rhs) { return lhs.doc < rhs.doc; }
   ));
 
   auto level = std::upper_bound(

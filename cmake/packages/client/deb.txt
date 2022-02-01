@@ -105,7 +105,7 @@ include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/debugInformation.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
-include(${ORIGINAL_SOURCE_DIR}/arangosh/install.cmake)
+include(${ORIGINAL_SOURCE_DIR}/client-tools/install.cmake)
 
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"

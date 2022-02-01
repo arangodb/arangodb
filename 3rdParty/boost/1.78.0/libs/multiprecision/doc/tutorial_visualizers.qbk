@@ -1,0 +1,50 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:visualizers Visual C++ Debugger Visualizers]
+
+[important This section is seriously out of date compared to recent Visual C++ releases.]
+
+Let's face it debugger multiprecision numbers is hard - simply because we can't easily inspect the value of the numbers.
+Visual C++ provides a partial solution in the shape of "visualizers" which provide improved views of complex data structures,
+these visualizers need to be added to the `[Visualizer]` section of `autoexp.dat` located in the `Common7/Packages/Debugger`
+directory of your Visual Studio installation.  The actual visualizer code is in the sandbox
+[@https://svn.boost.org/svn/boost/sandbox/boost_docs/subprojects/DebuggerVisualizers/multiprecision.vis.txt here] - just cut and paste the code
+into your `autoexp.dat` file.
+
+[note These visualizers have only been tested with VC10, also given the ability of buggy visualizers to crash your Visual C++
+debugger, make sure you back up `autoexp.dat` file before using these!!]
+
+The first visualizer provides improved views of `debug_adaptor`:
+
+[$../debugger1.png]
+
+The next visualizer provides improved views of cpp_int: small numbers are displayed as actual values, while larger numbers are
+displayed as an array of hexadecimal parts, with the most significant part first.
+
+Here's what it looks like for small values:
+
+[$../debugger4.png]
+
+And for larger values:
+
+[$../debugger5.png]
+
+There is also a `~raw` child member that
+lets you see the actual members of the class:
+
+[$../debugger6.png]
+
+The visualizer for `cpp_dec_float` shows the first few digits of the value in the preview field, and the full array of digits
+when you expand the view.  As before the `~raw` child gives you access to the actual data members:
+
+[$../debugger7.png]
+
+[endsect] [/section:visualizers Visual C++ Debugger Visualizers]

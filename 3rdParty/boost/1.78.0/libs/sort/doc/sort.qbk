@@ -1,0 +1,27 @@
+[library Boost.Sort
+  [quickbook 1.7]
+  [id sort]
+  [copyright 2014-2017 Steven Ross, Francisco Tapia, Orson Peters]
+  [authors [Ross, Steven] [Tapia, Francisco] [Peters, Orson]]
+  [dirname sort]
+  [license Distributed under the
+    [@http://boost.org/LICENSE_1_0.txt Boost Software License,  Version 1.0].
+  ]
+]
+
+[/ Some composite templates]
+[template super[x]'''<superscript>'''[x]'''</superscript>''']
+[template sub[x]'''<subscript>'''[x]'''</subscript>''']
+[template floor[x]'''&#x230A;'''[x]'''&#x230B;''']
+[template floorlr[x][lfloor][x][rfloor]]
+[template ceil[x] '''&#x2308;'''[x]'''&#x2309;''']
+
+[/ Required for autoindexing]
+[import ../../../tools/auto_index/include/auto_index_helpers.qbk]
+[/ Must be first included file!]
+
+[include introduction.qbk]
+[include single_thread.qbk]
+[include parallel.qbk]
+[include bibliography.qbk]
+[include gratitude.qbk]

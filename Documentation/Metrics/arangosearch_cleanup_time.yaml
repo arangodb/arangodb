@@ -1,0 +1,13 @@
+name: arangosearch_cleanup_time
+introducedIn: "3.10.0"
+help: |
+  Average time of few last cleanups.
+unit: ms
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Average time of few last cleanups.

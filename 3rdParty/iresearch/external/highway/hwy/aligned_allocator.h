@@ -111,6 +111,32 @@ AlignedUniquePtr<T> MakeUniqueAligned(Args&&... args) {
       new (ptr) T(std::forward<Args>(args)...), AlignedDeleter());
 }
 
+// Helpers for array allocators (avoids overflow)
+namespace detail {
+
+// Returns x such that 1u << x == n (if n is a power of two).
+static inline constexpr size_t ShiftCount(size_t n) {
+  return (n <= 1) ? 0 : 1 + ShiftCount(n / 2);
+}
+
+template <typename T>
+T* AllocateAlignedItems(size_t items, AllocPtr alloc_ptr, void* opaque_ptr) {
+  constexpr size_t size = sizeof(T);
+
+  constexpr bool is_pow2 = (size & (size - 1)) == 0;
+  constexpr size_t bits = ShiftCount(size);
+  static_assert(!is_pow2 || (1ull << bits) == size, "ShiftCount is incorrect");
+
+  const size_t bytes = is_pow2 ? items << bits : items * size;
+  const size_t check = is_pow2 ? bytes >> bits : bytes / size;
+  if (check != items) {
+    return nullptr;  // overflowed
+  }
+  return static_cast<T*>(AllocateAlignedBytes(bytes, alloc_ptr, opaque_ptr));
+}
+
+}  // namespace detail
+
 // Aligned memory equivalent of make_unique<T[]> for array types using the
 // custom allocators alloc/free. This function calls the constructor with the
 // passed Args... on every created item. The destructor of each element will be
@@ -118,10 +144,11 @@ AlignedUniquePtr<T> MakeUniqueAligned(Args&&... args) {
 template <typename T, typename... Args>
 AlignedUniquePtr<T[]> MakeUniqueAlignedArrayWithAlloc(
     size_t items, AllocPtr alloc, FreePtr free, void* opaque, Args&&... args) {
-  T* ptr =
-      static_cast<T*>(AllocateAlignedBytes(items * sizeof(T), alloc, opaque));
-  for (size_t i = 0; i < items; i++) {
-    new (ptr + i) T(std::forward<Args>(args)...);
+  T* ptr = detail::AllocateAlignedItems<T>(items, alloc, opaque);
+  if (ptr != nullptr) {
+    for (size_t i = 0; i < items; i++) {
+      new (ptr + i) T(std::forward<Args>(args)...);
+    }
   }
   return AlignedUniquePtr<T[]>(ptr, AlignedDeleter(free, opaque));
 }
@@ -165,7 +192,7 @@ template <typename T>
 AlignedFreeUniquePtr<T[]> AllocateAligned(const size_t items, AllocPtr alloc,
                                           FreePtr free, void* opaque) {
   return AlignedFreeUniquePtr<T[]>(
-      static_cast<T*>(AllocateAlignedBytes(items * sizeof(T), alloc, opaque)),
+      detail::AllocateAlignedItems<T>(items, alloc, opaque),
       AlignedFreer(free, opaque));
 }
 

@@ -183,8 +183,8 @@ parser::semantic_type parser_context::boost(
 parser::semantic_type parser_context::function(
   parser::semantic_type const& name, parser::semantic_type const& args
 ) {
-  auto& nameNode = find_node(name);
-  auto& argsNode = find_node(args);
+  const auto& nameNode = find_node(name);
+  const auto& argsNode = find_node(args);
   size_t nArgsCount;
   bool bArgsDirect = false;
 
@@ -375,8 +375,8 @@ parser::semantic_type parser_context::range(
 ) {
   auto minNodeId = try_eval(value1, false, false, true); // only sequence nodes
   auto maxNodeId = value1 == value2 ? minNodeId : try_eval(value2, false, false, true); // only sequence nodes (don't try_eval(...) twice)
-  auto& minNode = find_node(minNodeId);
-  auto& maxNode = find_node(maxNodeId);
+  const auto& minNode = find_node(minNodeId);
+  const auto& maxNode = find_node(maxNodeId);
 
   // only support values are range parameters
   if (!((query_node::NodeType::FUNCTION == minNode.type && minNode.pFnSequence) || query_node::NodeType::SEQUENCE == minNode.type || query_node::NodeType::UNKNOWN == minNode.type) ||
@@ -410,8 +410,8 @@ parser::semantic_type parser_context::op_eq(
 ) {
   auto nameNodeId = try_eval(value1, false, false, true); // accept only sequences
   auto& rangeNodeId = value2;
-  auto& nameNode = find_node(nameNodeId);
-  auto& rangeNode = find_node(rangeNodeId);
+  const auto& nameNode = find_node(nameNodeId);
+  const auto& rangeNode = find_node(rangeNodeId);
 
   // only support values are range parameters
   if (!((query_node::NodeType::FUNCTION == nameNode.type && nameNode.pFnSequence) || query_node::NodeType::SEQUENCE == nameNode.type) ||
@@ -438,8 +438,8 @@ parser::semantic_type parser_context::op_like(
 ) {
   auto leftNodeId = try_eval(value1, false, false, true); // only sequence
   auto rightNodeId = try_eval(value2, false, false, true); // only sequence
-  auto& node1 = find_node(leftNodeId);
-  auto& node2 = find_node(rightNodeId);
+  const auto& node1 = find_node(leftNodeId);
+  const auto& node2 = find_node(rightNodeId);
 
   // only support values are range parameters
   if (!((query_node::NodeType::FUNCTION == node1.type && node1.pFnSequence) || query_node::NodeType::SEQUENCE == node1.type) ||
@@ -471,7 +471,7 @@ parser::semantic_type parser_context::op_and(
   auto leftNodeId = try_eval(value1, true, false, false); // only boolean
   auto rightNodeId = try_eval(value2, true, false, false); // only boolean
   auto& node1 = find_node(leftNodeId);
-  auto& node2 = find_node(rightNodeId);
+  const auto& node2 = find_node(rightNodeId);
 
   switch (node1.type) {
   case query_node::NodeType::INTERSECTION:
@@ -481,6 +481,7 @@ parser::semantic_type parser_context::op_and(
         parser::semantic_type value = leftNodeId;
 
         for (auto& child: node2.children) {
+          // cppcheck-suppress useStlAlgorithm
           value = op_and(value, child);
         }
 
@@ -621,7 +622,7 @@ parser::semantic_type parser_context::op_or(
   auto leftNodeId = try_eval(value1, true, false, false); // only boolean
   auto rightNodeId = try_eval(value2, true, false, false); // only boolean
   auto& node1 = find_node(leftNodeId);
-  auto& node2 = find_node(rightNodeId);
+  const auto& node2 = find_node(rightNodeId);
 
   switch (node1.type) {
   case query_node::NodeType::UNION:
@@ -631,6 +632,7 @@ parser::semantic_type parser_context::op_or(
         parser::semantic_type value = leftNodeId;
 
         for (auto& child: node2.children) {
+          // cppcheck-suppress useStlAlgorithm
           value = op_or(value, child);
         }
 
@@ -712,7 +714,7 @@ bool parser_context::addOrder(
   parser::semantic_type const& value, bool bAscending
 ) {
   auto nodeId = try_eval(value, false, true, true); // accept order or sequence
-  auto& node = find_node(nodeId);
+  const auto& node = find_node(nodeId);
 
   switch (node.type) {
     case query_node::NodeType::FUNCTION: // fall through
@@ -761,7 +763,7 @@ bool parser_context::setLimit(parser::semantic_type const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 bool parser_context::setQuery(parser::semantic_type const& value) {
   auto nodeId = try_eval(value, true, false, false); // only accept boolean
-  auto& node = find_node(nodeId);
+  const auto& node = find_node(nodeId);
 
   // only support values that are conditional expressions
   switch (node.type) {

@@ -83,7 +83,6 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   applierConfiguration.username = 'root';
   applierConfiguration.password = '';
   applierConfiguration.includeSystem = false;
-  applierConfiguration.force32mode = false;
   applierConfiguration.requireFromPresent = true;
 
   var syncResult = replication.syncGlobal({
@@ -153,10 +152,10 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
       console.topic('replication=debug', 'waiting for follower to catch up');
       printed = true;
     }
-    internal.wait(0.5, false);
+    internal.wait(0.25, false);
   }
 
-  internal.wait(1.0, false);
+  internal.wait(0.1, false);
   db._flushCache();
   followerFuncFinal(state);
 };

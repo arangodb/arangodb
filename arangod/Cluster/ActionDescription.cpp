@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,15 @@ using namespace arangodb::maintenance;
 
 /// @brief ctor
 ActionDescription::ActionDescription(std::map<std::string, std::string> d,
-                                     int priority,
-                                     bool runEvenIfDuplicate,
+                                     int priority, bool runEvenIfDuplicate,
                                      std::shared_ptr<VPackBuilder> p)
-    : _description(std::move(d)), _properties(std::move(p)), _priority(priority),
+    : _description(std::move(d)),
+      _properties(std::move(p)),
+      _priority(priority),
       _runEvenIfDuplicate(runEvenIfDuplicate) {
   TRI_ASSERT(_description.find(NAME) != _description.end());
-  TRI_ASSERT(_properties == nullptr || _properties->isEmpty() || _properties->slice().isObject());
+  TRI_ASSERT(_properties == nullptr || _properties->isEmpty() ||
+             _properties->slice().isObject());
 }
 
 /// @brief Default dtor
@@ -54,7 +56,8 @@ bool ActionDescription::has(std::string const& key) const noexcept {
 
 /// @brief Does this description have a "key" parameter and does it
 /// compare equal to "value"?
-bool ActionDescription::has(std::string const& key, std::string const& value) const noexcept {
+bool ActionDescription::has(std::string const& key,
+                            std::string const& value) const noexcept {
   auto it = _description.find(key);
   return (it != _description.end() && (*it).second == value);
 }
@@ -86,7 +89,8 @@ std::size_t ActionDescription::hash() const noexcept {
   return hash(_description);
 }
 
-/*static*/ std::size_t ActionDescription::hash(std::map<std::string, std::string> const& desc) noexcept {
+/*static*/ std::size_t ActionDescription::hash(
+    std::map<std::string, std::string> const& desc) noexcept {
   std::size_t hash = 0x0404b00b1e5;
   auto hasher = std::hash<std::string>{};
   for (auto const& i : desc) {
@@ -142,11 +146,13 @@ std::shared_ptr<VPackBuilder> const ActionDescription::properties() const {
 
 /// @brief hash implementation for ActionRegistry
 namespace std {
-std::size_t hash<ActionDescription>::operator()(ActionDescription const& a) const noexcept {
+std::size_t hash<ActionDescription>::operator()(
+    ActionDescription const& a) const noexcept {
   return a.hash();
 }
 
-ostream& operator<<(ostream& out, arangodb::maintenance::ActionDescription const& d) {
+ostream& operator<<(ostream& out,
+                    arangodb::maintenance::ActionDescription const& d) {
   out << d.toJson() << " Priority: " << d.priority();
   return out;
 }

@@ -86,7 +86,7 @@
       let info = `<blockquote>
         Modifies the cluster supervision maintenance mode. Be aware that no automatic failovers of any
         kind will take place while the maintenance mode is enabled. The cluster supervision reactivates
-        itself automatically 60 minutes after disabling it, in case it is not manually prolonged.<blockquote>
+        itself automatically after the selected duration in case it is not manually prolonged.<blockquote>
       `;
 
       tableContent.push(
@@ -96,23 +96,42 @@
           info
         )
       );
-
-      if (mode === 'off') {
-        buttons.push(
-          window.modalView.createSuccessButton(
-            title,
-            self.confirmChangeMaintenance.bind(this, mode)
+         
+      if (mode !== 'off') {
+        // when enabling maintenance mode, add a selectbox with some useful
+        // maintenance durations for the user to pick from. we don't need this
+        // when turning the maintenance off.
+        tableContent.push(
+          window.modalView.createSelectEntry(
+            'maintenance-duration',
+            'Maintenance duration',
+            3600,
+            'The duration that the supervision maintenance will be enabled.',
+            [{value: 600, label: '10 minutes'}, {value: 1200, label: '20 minutes'},
+             {value: 1800, label: '30 minutes'}, {value: 2700, label: '45 minutes'},
+             {value: 3600, label: '1 hour'}, {value: 5400, label: '1.5 hours'},
+             {value: 7200, label: '2 hours'}, {value: 10800, label: '3 hours'},
+             {value: 14400, label: '4 hours'}, {value: 18000, label: '5 hours'},
+             {value: 36000, label: '10 hours'}, {value: 86400, label: '24 hours'},
+            ]
           )
         );
-      } else {
+        
         buttons.push(
           window.modalView.createNotificationButton(
             title,
             self.confirmChangeMaintenance.bind(this, mode)
           )
         );
+      } else {
+        // disable maintenance mode
+        buttons.push(
+          window.modalView.createSuccessButton(
+            title,
+            self.confirmChangeMaintenance.bind(this, mode)
+          )
+        );
       }
-
 
       window.modalView.show(
         'modalTable.ejs',
@@ -125,6 +144,10 @@
     confirmChangeMaintenance: function (mode) {
       let self = this;
       let data = mode;
+
+      if (mode !== 'off') {
+        data = $('#maintenance-duration').val();
+      }
 
       $.ajax({
         type: 'PUT',

@@ -1,0 +1,122 @@
+[/
+  Copyright 2018 Peter Dimov
+
+  Distributed under the Boost Software License, Version 1.0.
+
+  See accompanying file LICENSE_1_0.txt
+  or copy at http://boost.org/LICENSE_1_0.txt
+]
+
+[section:cmath cmath]
+
+[simplesect Authors]
+
+* Peter Dimov
+
+[endsimplesect]
+
+[section Header <boost/core/cmath.hpp>]
+
+The header `<boost/core/cmath.hpp>` defines, in a portable way, the floating
+point classification and sign manipulation functions from C++11.
+
+[section Synopsis]
+
+``
+namespace boost
+{
+namespace core
+{
+
+// fpclassify return values
+
+int const fp_zero = /*unspecified*/;
+int const fp_subnormal = /*unspecified*/;
+int const fp_normal = /*unspecified*/;
+int const fp_infinite = /*unspecified*/;
+int const fp_nan = /*unspecified*/;
+
+// Classification functions
+
+template<class T> bool isfinite( T x );
+template<class T> bool isnan( T x );
+template<class T> bool isinf( T x );
+template<class T> bool isnormal( T x );
+template<class T> int fpclassify( T x );
+
+// Sign manipulation functions
+
+template<class T> bool signbit( T x );
+template<class T> T copysign( T x, T y );
+
+} // namespace core
+} // namespace boost
+``
+
+[endsect]
+
+[section Classification Functions]
+
+[section template<class T> bool isfinite( T x );]
+
+* *Requires:* `T` must be `float`, `double`, or `long double`.
+* *Returns:* `true` when `x` is finite (not infinity or NaN), `false` otherwise.
+
+[endsect]
+
+[section template<class T> bool isnan( T x );]
+
+* *Requires:* `T` must be `float`, `double`, or `long double`.
+* *Returns:* `true` when `x` is NaN, `false` otherwise.
+
+[endsect]
+
+[section template<class T> bool isinf( T x );]
+
+* *Requires:* `T` must be `float`, `double`, or `long double`.
+* *Returns:* `true` when `x` is infinity, `false` otherwise.
+
+[endsect]
+
+[section template<class T> bool isnormal( T x );]
+
+* *Requires:* `T` must be `float`, `double`, or `long double`.
+* *Returns:* `true` when `x` is a normal number (not zero, subnormal, infinity, or NaN), `false` otherwise.
+
+[endsect]
+
+[section template<class T> int fpclassify( T x );]
+
+* *Requires:* `T` must be `float`, `double`, or `long double`.
+* *Returns:*
+  * `fp_zero` when `x` is zero;
+  * `fp_subnormal` when `x` is subnormal;
+  * `fp_infinite` when `x` is infinity;
+  * `fp_nan` when `x` is NaN;
+  * `fp_normal` otherwise.
+
+[endsect]
+
+[endsect]
+
+[section Sign Manipulation Functions]
+
+[section template<class T> bool signbit( T x );]
+
+* *Requires:* `T` must be `float`, `double`, or `long double`.
+* *Returns:* `true` when `x` is negative, `false` otherwise.
+
+[endsect]
+
+[section template<class T> bool copysign( T x, T y );]
+
+* *Requires:* `T` must be `float`, `double`, or `long double`.
+* *Returns:* `x` with the sign copied from `y`.
+
+[endsect]
+
+[endsect]
+
+[endsect]
+
+[endsect]

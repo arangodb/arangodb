@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -37,18 +37,20 @@ namespace arangodb::replication2::test {
 using namespace replicated_log;
 
 struct MockLog : replication2::replicated_log::PersistedLog {
-  using storeType = std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
+  using storeType =
+      std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
 
   explicit MockLog(replication2::LogId id);
   MockLog(replication2::LogId id, storeType storage);
 
-  auto insert(replication2::replicated_log::PersistedLogIterator& iter,
-              WriteOptions const&) -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
+  auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
+      -> Result override;
+  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
-      -> std::unique_ptr<replication2::replicated_log::PersistedLogIterator> override;
-  auto removeFront(replication2::LogIndex stop) -> Result override;
+      -> std::unique_ptr<replication2::PersistedLogIterator> override;
+  auto removeFront(replication2::LogIndex stop)
+      -> futures::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
 
@@ -68,7 +70,7 @@ struct AsyncMockLog : MockLog {
 
   ~AsyncMockLog() noexcept;
 
-  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
 
   auto stop() noexcept -> void {
@@ -85,7 +87,7 @@ struct AsyncMockLog : MockLog {
  private:
   struct QueueEntry {
     WriteOptions opts;
-    std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter;
+    std::unique_ptr<replication2::PersistedLogIterator> iter;
     futures::Promise<Result> promise;
   };
 
@@ -101,4 +103,4 @@ struct AsyncMockLog : MockLog {
   std::thread _asyncWorker;
 };
 
-}
+}  // namespace arangodb::replication2::test

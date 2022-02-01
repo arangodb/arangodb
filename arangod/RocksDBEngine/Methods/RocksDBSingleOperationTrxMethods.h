@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,24 +26,26 @@
 #include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 
 namespace arangodb {
-  
+
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBSingleOperationTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
+  explicit RocksDBSingleOperationTrxMethods(RocksDBTransactionState*,
+                                            rocksdb::TransactionDB* db);
 
   rocksdb::ReadOptions iteratorReadOptions() const override;
-  
-  void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;
+
+  void prepareOperation(DataSourceId cid, RevisionId rid,
+                        TRI_voc_document_operation_e operationType) override;
 
   /// @brief undo the effects of the previous prepareOperation call
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
-                                                 ReadOptionsCallback readOptionsCallback) override;
-                                                              
+  std::unique_ptr<rocksdb::Iterator> NewIterator(
+      rocksdb::ColumnFamilyHandle*,
+      ReadOptionsCallback readOptionsCallback) override;
+
   bool iteratorMustCheckBounds(ReadOwnWrites) const override;
 };
 
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,17 +41,19 @@ class InputAqlItemRow;
 
 class PruneExpressionEvaluator {
  public:
-  PruneExpressionEvaluator(transaction::Methods& trx,
-                           QueryContext& query,
+  PruneExpressionEvaluator(transaction::Methods& trx, QueryContext& query,
                            AqlFunctionsInternalCache& cache,
                            std::vector<Variable const*> vars,
                            std::vector<RegisterId> regs, size_t vertexVarIdx,
-                           size_t edgeVarIdx, size_t pathVarIdx, Expression* expr);
+                           size_t edgeVarIdx, size_t pathVarIdx,
+                           Expression* expr);
 
   ~PruneExpressionEvaluator();
 
   bool evaluate();
-  void prepareContext(InputAqlItemRow input) { _ctx.setInputRow(std::move(input)); }
+  void prepareContext(InputAqlItemRow input) {
+    _ctx.setInputRow(std::move(input));
+  }
   void unPrepareContext() { _ctx.invalidateInputRow(); }
 
   bool needsVertex() const { return _ctx.needsVertexValue(); }
@@ -72,4 +74,3 @@ class PruneExpressionEvaluator {
 
 }  // namespace aql
 }  // namespace arangodb
-

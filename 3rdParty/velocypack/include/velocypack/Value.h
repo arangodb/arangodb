@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VALUE_H
-#define VELOCYPACK_VALUE_H 1
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -32,9 +31,7 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/ValueType.h"
 
-namespace arangodb {
-namespace velocypack {
-class StringRef;
+namespace arangodb::velocypack {
 
 class Value {
   // Convenience class for more compact notation
@@ -196,7 +193,8 @@ class ValuePair {
   constexpr explicit ValuePair(uint64_t size, ValueType type = ValueType::Binary) noexcept
       : _start(nullptr), _size(size), _type(type) {}
 
-  explicit ValuePair(StringRef const& value, ValueType type = ValueType::Binary) noexcept;
+  explicit ValuePair(std::string_view value, ValueType type = ValueType::Binary) noexcept
+      : ValuePair(value.data(), value.size(), type) {}
 
   uint8_t const* getStart() const noexcept { return _start; }
 
@@ -208,6 +206,6 @@ class ValuePair {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackValue = arangodb::velocypack::Value;
+using VPackValuePair = arangodb::velocypack::ValuePair;

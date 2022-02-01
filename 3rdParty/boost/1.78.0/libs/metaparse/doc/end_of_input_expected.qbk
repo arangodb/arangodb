@@ -1,0 +1,23 @@
+[#end_of_input_expected]
+[section end_of_input_expected]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    struct end_of_input_expected;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[h1 Description]
+
+Class representing the error that the input contains more characters than it
+should.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/end_of_input_expected.hpp>
+
+[endsect]
+

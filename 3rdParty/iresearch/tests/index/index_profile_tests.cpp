@@ -31,6 +31,31 @@
 #include "utils/index_utils.hpp"
 #include "utils/file_utils.hpp"
 
+namespace  {
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator(true);
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+}
+
 class index_profile_test_case : public tests::index_test_base {
  public:
   void profile_bulk_index(
@@ -41,11 +66,11 @@ class index_profile_test_case : public tests::index_test_base {
       irs::index_writer::ptr writer = nullptr,
       std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
-      std::vector<std::shared_ptr<tests::templates::string_field>> fields;
+      std::vector<std::shared_ptr<tests::string_field>> fields;
 
       csv_doc_template_t() {
-        fields.emplace_back(std::make_shared<tests::templates::string_field>("id"));
-        fields.emplace_back(std::make_shared<tests::templates::string_field>("label"));
+        fields.emplace_back(std::make_shared<tests::string_field>("id"));
+        fields.emplace_back(std::make_shared<tests::string_field>("label"));
         reserve(fields.size());
       }
 
@@ -214,7 +239,7 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register update jobs
       for (size_t i = 0; i < num_update_threads; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i, update_skip, writer_batch_size, &writer_commit_count, this]()->void {
+        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i, update_skip, writer_batch_size, &writer_commit_count]()->void {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -255,17 +280,17 @@ class index_profile_test_case : public tests::index_test_base {
             {
               auto filter = irs::by_term::make();
               auto key_field = csv_doc_template.indexed.begin()->name();
-              auto key_term = csv_doc_template.indexed.get<tests::templates::string_field>(key_field)->value();
+              auto key_term = csv_doc_template.indexed.get<tests::string_field>(key_field)->value();
               auto value_field = (++(csv_doc_template.indexed.begin()))->name();
-              auto value_term = csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value();
+              auto value_term = csv_doc_template.indexed.get<tests::string_field>(value_field)->value();
               std::string updated_term(value_term.c_str(), value_term.size());
 
               auto& filter_impl = static_cast<irs::by_term&>(*filter);
               *filter_impl.mutable_field() = key_field;
               filter_impl.mutable_options()->term = irs::ref_cast<irs::byte_type>(key_term);
               updated_term.append(value_term.c_str(), value_term.size()); // double up term
-              csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value(updated_term);
-              csv_doc_template.insert(std::make_shared<tests::templates::string_field>("updated"));
+              csv_doc_template.indexed.get<tests::string_field>(value_field)->value(updated_term);
+              csv_doc_template.insert(std::make_shared<tests::string_field>("updated"));
 
               REGISTER_TIMER_NAMED_DETAILED("update");
               update(*writer,
@@ -340,16 +365,16 @@ class index_profile_test_case : public tests::index_test_base {
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       indexed_docs_count += reader[i].live_docs_count();
 
-      const auto* column = reader[i].column_reader("same");
+      const auto* column = reader[i].column("same");
       if (column) {
         // field present in all docs from simple_sequential.json
-        column->visit(imported_visitor);
+        visit(*column, imported_visitor);
       }
 
-      column = reader[i].column_reader("updated");
+      column = reader[i].column("updated");
       if (column) {
         // field insterted by updater threads
-        column->visit(updated_visitor);
+        visit(*column, updated_visitor);
       }
     }
 

@@ -1,0 +1,181 @@
+[/===========================================================================
+ Copyright (c) 2013-2015 Kyle Lutz <kyle.r.lutz@gmail.com>
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section:faq Frequently Asked Questions]
+
+[h3 How do I report a bug, issue, or feature request?]
+
+Please submit an issue on the GitHub issue tracker at
+[@https://github.com/boostorg/compute/issues].
+
+
+[h3 Where can I find more documentation?]
+
+* The main documentation is here: [@http://boostorg.github.io/compute/]
+* The README is here: [@https://github.com/boostorg/compute/blob/master/README.md]
+* The wiki is here: [@https://github.com/boostorg/compute/wiki]
+* The contributor guide is here: [@https://github.com/boostorg/compute/blob/master/CONTRIBUTING.md]
+* The reference is here: [@http://boostorg.github.io/compute/compute/reference.html]
+
+
+[h3 Where is the best place to ask questions about the library?]
+
+The mailing list at [@https://groups.google.com/forum/#!forum/boost-compute].
+
+
+[h3 What compute devices (e.g. GPUs) are supported?]
+
+Any device which implements the OpenCL standard is supported. This includes
+GPUs from NVIDIA, AMD, and Intel as well as CPUs from AMD and Intel and other
+accelerator cards such as the Xeon Phi.
+
+
+[h3 Can you compare Boost.Compute to other GPGPU libraries such as Thrust,
+Bolt and VexCL?]
+
+Thrust implements a C++ STL-like API for GPUs and CPUs. It is built
+with multiple backends. NVIDIA GPUs use the CUDA backend and
+multi-core CPUs can use the Intel TBB or OpenMP backends. However,
+thrust will not work with AMD graphics cards or other lesser-known
+accelerators. I feel Boost.Compute is superior in that it uses the
+vendor-neutral OpenCL library to achieve portability across all types
+of compute devices.
+
+Bolt is an AMD specific C++ wrapper around the OpenCL API which
+extends the C99-based OpenCL language to support C++ features (most
+notably templates). It is similar to NVIDIA's Thrust library and
+shares the same failure, lack of portability.
+
+VexCL is an expression-template based linear-algebra library for
+OpenCL. The aims and scope are a bit different from the Boost Compute
+library. VexCL is closer in nature to the Eigen library while
+Boost.Compute is closer to the C++ standard library. I don't feel that
+Boost.Compute really fills the same role as VexCL. In fact, the recent versions
+of VexCL allow to use Boost.Compute as one of the backends, which makes
+the interaction between the two libraries a breeze.
+
+
+
+Also see this StackOverflow question:
+[@http://stackoverflow.com/questions/20154179/differences-between-vexcl-thrust-and-boost-compute]
+
+
+[h3 Why not write just write a new OpenCL back-end for Thrust?]
+
+It would not be possible to provide the same API that Thrust expects
+for OpenCL. The fundamental reason is that functions/functors passed
+to Thrust algorithms are actual compiled C++ functions whereas for
+Boost.Compute these form expression objects which are then translated
+into C99 code which is then compiled for OpenCL.
+
+
+[h3 Why not target CUDA and/or support multiple back-ends?]
+
+CUDA and OpenCL are two very different technologies. OpenCL works by
+compiling C99 code at run-time to generate kernel objects which can
+then be executed on the GPU. CUDA, on the other hand, works by
+compiling its kernels using a special compiler (nvcc) which then
+produces binaries which can executed on the GPU.
+
+OpenCL already has multiple implementations which allow it to be used
+on a variety of platforms (e.g. NVIDIA GPUs, Intel CPUs, etc.). I feel
+that adding another abstraction level within Boost.Compute would only
+complicate and bloat the library.
+
+
+[h3 Is it possible to use ordinary C++ functions/functors or C++11 
+lambdas with Boost.Compute?]
+
+Unfortunately no. OpenCL relies on having C99 source code available at
+run-time in order to execute code on the GPU. Thus compiled C++
+functions or C++11 lambdas cannot simply be passed to the OpenCL
+environment to be executed on the GPU.
+
+This is the reason why I wrote the Boost.Compute lambda library.
+Basically it takes C++ lambda expressions (e.g. _1 * sqrt(_1) + 4) and
+transforms them into C99 source code fragments (e.g. “input[i] *
+sqrt(input[i]) + 4)”) which are then passed to the Boost.Compute
+STL-style algorithms for execution. While not perfect, it allows the
+user to write code closer to C++ that still can be executed through
+OpenCL.
+
+Also check out the BOOST_COMPUTE_FUNCTION() macro which allows OpenCL
+functions to be defined inline with C++ code. An example can be found in
+the monte_carlo example code.
+
+
+[h3 What is the command_queue argument that appears in all of the algorithms?]
+
+Command queues specify the context and device for the algorithm's
+execution. For all of the standard algorithms the command_queue
+parameter is optional. If not provided, a default command_queue will
+be created for the default GPU device and the algorithm will be
+executed there.
+
+
+[h3 How can I print out the contents of a buffer/vector on the GPU?]
+
+This can be accompilshed easily using the generic boost::compute::copy()
+algorithm along with std::ostream_iterator<T>. For example:
+
+[import ../example/print_vector.cpp]
+[print_vector_example]
+
+
+[h3 Does Boost.Compute support zero-copy memory?]
+
+Zero-copy memory allows OpenCL kernels to directly operate on regions of host
+memory (if supported by the platform).
+
+Boost.Compute supports zero-copy memory in multiple ways. The low-level
+interface is provided by allocating [classref boost::compute::buffer buffer]
+objects with the `CL_MEM_USE_HOST_PTR` flag. The high-level interface is
+provided by the [classref boost::compute::mapped_view mapped_view<T>] class
+which provides a std::vector-like interface to a region of host-memory and can
+be used directly with all of the Boost.Compute algorithms.
+
+
+[h3 Is Boost.Compute thread-safe?]
+
+The low-level Boost.Compute APIs offer the same thread-safety guarantees as
+the underyling OpenCL library implementation. However, the high-level APIs
+make use of a few global static objects for features such as automatic program
+caching which makes them not thread-safe by default.
+
+To compile Boost.Compute in thread-safe mode define `BOOST_COMPUTE_THREAD_SAFE`
+before including any of the Boost.Compute headers. By default this will require
+linking your application/library with the Boost.Thread library.
+
+
+[h3 What applications/libraries use Boost.Compute?]
+
+Boost.Compute is used by a number of open-source libraries and applications
+including:
+
+* ArrayFire ([@http://arrayfire.com])
+* Ceemple ([@http://www.ceemple.com])
+* Odeint ([@http://headmyshoulder.github.io/odeint-v2])
+* VexCL ([@https://github.com/ddemidov/vexcl])
+
+If you use Boost.Compute in your project and would like it to be listed here
+please send an email to Kyle Lutz (kyle.r.lutz@gmail.com).
+
+
+[h3 How can I contribute?]
+
+We are actively seeking additional C++ developers with experience in
+GPGPU and parallel-computing.
+
+Please send an email to Kyle Lutz (kyle.r.lutz@gmail.com) for more information.
+
+Also see the
+[@https://github.com/boostorg/compute/blob/master/CONTRIBUTING.md contributor guide]
+and check out the list of issues at:
+[@https://github.com/boostorg/compute/issues].
+
+[endsect] [/ faq ]

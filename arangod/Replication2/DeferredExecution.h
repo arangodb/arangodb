@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,9 +35,7 @@ struct DeferredAction {
   static constexpr std::size_t alloc_size = 24;
   DeferredAction() = default;
 
-  DeferredAction(DeferredAction&& other) noexcept {
-    *this = std::move(other);
-  }
+  DeferredAction(DeferredAction&& other) noexcept { *this = std::move(other); }
 
   DeferredAction& operator=(DeferredAction&& other) noexcept {
     fire();
@@ -45,7 +44,8 @@ struct DeferredAction {
     std::swap(invoke_func, other.invoke_func);
     if (invoke_func != nullptr) {
       // this will run the move constructor and then destroy other.storage
-      invoke_func(&other.storage, action::move_construct_into_and_destroy, &storage);
+      invoke_func(&other.storage, action::move_construct_into_and_destroy,
+                  &storage);
     }
 
     return *this;
@@ -54,18 +54,15 @@ struct DeferredAction {
   DeferredAction(DeferredAction const&) = delete;
   DeferredAction& operator=(DeferredAction const&) = delete;
 
-  template <typename F, typename Func = std::decay_t<F>,
-            std::enable_if_t<std::is_nothrow_invocable_r_v<void, F>, int> = 0>
-  explicit DeferredAction(F&& f) noexcept
-      : invoke_func(call_action<F>) {
+  template<typename F, typename Func = std::decay_t<F>,
+           std::enable_if_t<std::is_nothrow_invocable_r_v<void, F>, int> = 0>
+  explicit DeferredAction(F&& f) noexcept : invoke_func(call_action<F>) {
     static_assert(sizeof(F) <= alloc_size);
     static_assert(std::is_nothrow_move_constructible_v<Func>);
     new (&storage) Func(std::forward<F>(f));
   }
 
-  ~DeferredAction() {
-    fire();
-  }
+  ~DeferredAction() { fire(); }
 
   explicit operator bool() const noexcept { return invoke_func != nullptr; }
 
@@ -77,14 +74,13 @@ struct DeferredAction {
   }
 
  private:
-
   enum class action {
     invoke_and_destroy,
     move_construct_into_and_destroy,
   };
 
-  template <typename F, typename Func = std::decay_t<F>>
-  static void call_action(void *storage, action what, void* ptr) noexcept {
+  template<typename F, typename Func = std::decay_t<F>>
+  static void call_action(void* storage, action what, void* ptr) noexcept {
     auto& func = *reinterpret_cast<Func*>(storage);
     switch (what) {
       case action::invoke_and_destroy:

@@ -77,6 +77,7 @@ inline int to_string(std::string& buf, const char* format, Args&&... args) {
   buf.resize(buf.size() + result);
 
   try {
+    // cppcheck-suppress accessForwarded
     result = snprintf(&buf[start], result, format, std::forward<Args>(args)...);
     buf.resize(start + (std::max)(0, result));
   } catch (...) {

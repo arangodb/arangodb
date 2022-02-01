@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VPACK_H
-#define VELOCYPACK_VPACK_H 1
+#pragma once
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/AttributeTranslator.h"
@@ -47,5 +46,3 @@
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 #include "velocypack/Version.h"
-
-#endif

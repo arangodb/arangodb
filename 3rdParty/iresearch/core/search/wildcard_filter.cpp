@@ -99,7 +99,7 @@ namespace iresearch {
 // --SECTION--                                        by_wildcard implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FACTORY_DEFAULT(by_wildcard)
+DEFINE_FACTORY_DEFAULT(by_wildcard) // cppcheck-suppress unknownMacro
 
 field_visitor by_wildcard::visitor(const bytes_ref& term) {
   bstring buf;

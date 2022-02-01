@@ -159,7 +159,7 @@ compressor::ptr get_compressor(
 
     return factory ? factory(opts) : nullptr;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
+    IR_FRMT_ERROR("Caught exception while getting an analyzer instance"); // cppcheck-suppress syntaxError
   }
 
   return nullptr;

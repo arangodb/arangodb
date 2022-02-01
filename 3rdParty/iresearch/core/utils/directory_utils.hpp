@@ -186,7 +186,7 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
     return impl_.attributes();
   }
 
-  void clear_refs() const noexcept;
+  void clear_refs() const;
 
   virtual index_output::ptr create(const std::string &name) noexcept override;
 

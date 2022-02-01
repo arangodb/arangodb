@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,21 +33,20 @@ namespace iresearch {
 
 class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "identity";
-  }
+  static constexpr irs::string_ref type_name() noexcept { return "identity"; }
 
   static bool normalize(const irs::string_ref& /*args*/, std::string& out);
 
   static ptr make(irs::string_ref const& /*args*/);
-  
+
   static bool normalize_json(const irs::string_ref& /*args*/, std::string& out);
 
   static ptr make_json(irs::string_ref const& /*args*/);
 
   IdentityAnalyzer() noexcept;
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override;
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override;
 
   virtual bool next() noexcept override {
     auto const empty = _empty;
@@ -68,9 +67,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   irs::term_attribute _term;
   irs::increment _inc;
   bool _empty;
-}; // IdentityAnalyzer
+};  // IdentityAnalyzer
 
-} // iresearch
-} // arangodb
-
-
+}  // namespace iresearch
+}  // namespace arangodb

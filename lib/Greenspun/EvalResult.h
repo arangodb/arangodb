@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,8 @@ struct EvalError {
     std::string message;
   };
 
-  using Frame = std::variant<ParamFrame, CallFrame, WrapFrame, SpecialFormFrame>;
+  using Frame =
+      std::variant<ParamFrame, CallFrame, WrapFrame, SpecialFormFrame>;
 
   explicit EvalError(std::string message) : message(std::move(message)) {}
   EvalError(EvalError const&) = default;
@@ -79,7 +80,8 @@ struct EvalError {
     for (auto&& p : VPackArrayIterator(parameter)) {
       parameterVec.push_back(p.toJson());
     }
-    frames.emplace_back(CallFrame{std::move(function), std::move(parameterVec)});
+    frames.emplace_back(
+        CallFrame{std::move(function), std::move(parameterVec)});
     return *this;
   }
 
@@ -105,7 +107,8 @@ struct EvalResultT {
   operator bool() const { return ok(); }
 
   EvalResultT() = default;
-  EvalResultT(EvalError error) : _value(std::in_place_index<1>, std::move(error)) {}
+  EvalResultT(EvalError error)
+      : _value(std::in_place_index<1>, std::move(error)) {}
   EvalResultT(EvalResultT const&) = default;
   EvalResultT(EvalResultT&&) noexcept = default;
   EvalResultT& operator=(EvalResultT const&) = default;
@@ -113,8 +116,7 @@ struct EvalResultT {
 
   EvalResultT(T s) : _value(std::in_place_index<0>, std::move(s)) {}
 
-
-  template <typename F>
+  template<typename F>
   EvalResultT mapError(F&& f) {
     if (hasError()) {
       std::forward<F>(f)(error());
@@ -123,14 +125,14 @@ struct EvalResultT {
   }
 
   EvalResultT<std::monostate> asResult() && {
-    return std::move(*this).map([](auto &&) -> std::monostate { return {}; });
+    return std::move(*this).map([](auto&&) -> std::monostate { return {}; });
   };
 
   template<typename F>
   auto map(F&& f) && -> EvalResultT<std::invoke_result_t<F, T&&>> {
     if (hasValue()) {
       return {f(value())};
-    } else if(hasError()) {
+    } else if (hasError()) {
       return error();
     } else {
       return EvalError("valueless by exception");
@@ -151,4 +153,3 @@ using EvalResult = EvalResultT<std::monostate>;
 
 }  // namespace greenspun
 }  // namespace arangodb
-

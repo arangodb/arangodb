@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #define OPENSSL_THREAD_DEFINES
 #include <openssl/opensslconf.h>
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Thread.h"
 #include "Logger/Logger.h"
@@ -45,12 +44,6 @@ using namespace arangodb::options;
 namespace arangodb {
 
 const asio_ns::ssl::detail::openssl_init<true> SslFeature::sslBase{};
-
-SslFeature::SslFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Ssl") {
-  setOptional(true);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
 
 void SslFeature::prepare() {}
 

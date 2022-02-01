@@ -146,10 +146,12 @@ order::prepared order::prepare() const {
       continue;
     }
 
+    // cppcheck-suppress shadowFunction
     const auto score_size = prepared->score_size();
     assert(score_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
 
+    // cppcheck-suppress shadowFunction
     const auto stats_size = prepared->stats_size();
     assert(stats_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true

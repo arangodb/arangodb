@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,8 @@ class SubqueryStartNode : public ExecutionNode {
 
  public:
   SubqueryStartNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
-  SubqueryStartNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* subqueryOutVariable)
+  SubqueryStartNode(ExecutionPlan* plan, ExecutionNodeId id,
+                    Variable const* subqueryOutVariable)
       : ExecutionNode(plan, id), _subqueryOutVariable(subqueryOutVariable) {}
 
   CostEstimate estimateCost() const override final;
@@ -47,7 +48,8 @@ class SubqueryStartNode : public ExecutionNode {
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
@@ -55,14 +57,15 @@ class SubqueryStartNode : public ExecutionNode {
   bool isEqualTo(ExecutionNode const& other) const override final;
 
  protected:
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   /// @brief This is only required for Explain output.
-  ///        it has no practical usage other then to print this information during explain.
+  ///        it has no practical usage other then to print this information
+  ///        during explain.
   Variable const* _subqueryOutVariable;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

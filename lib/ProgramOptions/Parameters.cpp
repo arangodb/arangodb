@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@
 namespace {
 std::regex const removeComments("#.*$", std::regex::ECMAScript);
 std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
-}
+}  // namespace
 
 namespace arangodb {
 namespace options {
@@ -40,5 +40,5 @@ std::string removeCommentsFromNumber(std::string const& value) {
   return std::regex_replace(noComment, ::removeTabs, "");
 }
 
-}
-}
+}  // namespace options
+}  // namespace arangodb

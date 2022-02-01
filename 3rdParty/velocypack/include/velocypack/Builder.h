@@ -22,15 +22,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_BUILDER_H
-#define VELOCYPACK_BUILDER_H 1
+#pragma once
 
-#include <vector>
-#include <string>
+#include <algorithm>
 #include <cstring>
 #include <cstdint>
-#include <algorithm>
 #include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/AttributeTranslator.h"
@@ -42,12 +43,10 @@
 #include "velocypack/SharedSlice.h"
 #include "velocypack/Slice.h"
 #include "velocypack/SmallVector.h"
-#include "velocypack/StringRef.h"
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 class ArrayIterator;
 class ObjectIterator;
 
@@ -91,11 +90,13 @@ class Builder {
     ValueLength indexStartPos;
   };
 
+  static constexpr std::size_t arenaSize = 64;
+
   // Start positions of open objects/arrays
   // we are using a SmallVector here, so we can stuff the first few
   // levels into the vector without making any allocations
-  SmallVector<CompoundInfo, 64>::allocator_type::arena_type _arena;
-  SmallVector<CompoundInfo, 64> _stack;
+  SmallVector<CompoundInfo, arenaSize>::allocator_type::arena_type _arena;
+  SmallVector<CompoundInfo, arenaSize> _stack;
 
   // Indices for starts of subindex
   std::vector<ValueLength> _indexes;
@@ -300,91 +301,77 @@ class Builder {
   inline void openObject(bool unindexed = false) {
     openCompoundValue(unindexed ? 0x14 : 0x0b);
   }
+  
+  template <typename T>
+  uint8_t* addUnchecked(std::string_view attrName, T const& sub) {
+    bool needCleanup = !_stack.empty();
+    if (needCleanup) {
+      reportAdd();
+    }
+    try {
+      set(Value(attrName));
+      return writeValue(sub);
+    } catch (...) {
+      // clean up in case of an exception
+      if (needCleanup) {
+        cleanupAdd();
+      }
+      throw;
+    }
+  }
 
   template <typename T>
-  uint8_t* addUnchecked(char const* attrName, std::size_t attrLength, T const& sub) {
-    if (_stack.empty()) {
-      set(ValuePair(attrName, attrLength, ValueType::String));
-      return writeValue(sub);
+  [[deprecated]] uint8_t* addUnchecked(char const* attrName, std::size_t attrLength, T const& sub) {
+    bool needCleanup = !_stack.empty();
+    if (needCleanup) {
+      reportAdd();
     }
-
-    reportAdd();
     try {
       set(ValuePair(attrName, attrLength, ValueType::String));
       return writeValue(sub);
     } catch (...) {
       // clean up in case of an exception
-      cleanupAdd();
+      if (needCleanup) {
+        cleanupAdd();
+      }
       throw;
     }
   }
 
   // Add a subvalue into an object from a Value:
-  inline uint8_t* add(std::string const& attrName, Value const& sub) {
+  inline uint8_t* add(std::string_view attrName, Value const& sub) {
     return addInternal<Value>(attrName, sub);
   }
 
-  inline uint8_t* add(StringRef const& attrName, Value const& sub) {
-    return addInternal<Value>(attrName, sub);
-  }
-
-  inline uint8_t* add(char const* attrName, Value const& sub) {
-    return addInternal<Value>(attrName, std::char_traits<char>::length(attrName), sub);
-  }
-
-  inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
-    return addInternal<Value>(attrName, attrLength, sub);
+  [[deprecated]] inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
+    return addInternal<Value>(std::string_view(attrName, attrLength), sub);
   }
 
   // Add a subvalue into an object from a Slice:
-  inline uint8_t* add(std::string const& attrName, Slice const& sub) {
+  inline uint8_t* add(std::string_view attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, sub);
   }
 
-  inline uint8_t* add(StringRef const& attrName, Slice const& sub) {
-    return addInternal<Slice>(attrName, sub);
-  }
-
-  inline uint8_t* add(char const* attrName, Slice const& sub) {
-    return addInternal<Slice>(attrName, std::char_traits<char>::length(attrName), sub);
-  }
-
-  inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
-    return addInternal<Slice>(attrName, attrLength, sub);
+  [[deprecated]] inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
+    return addInternal<Slice>(std::string_view(attrName, attrLength), sub);
   }
 
   // Add a subvalue into an object from a ValuePair:
-  inline uint8_t* add(std::string const& attrName, ValuePair const& sub) {
+  inline uint8_t* add(std::string_view attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, sub);
   }
 
-  inline uint8_t* add(StringRef const& attrName, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, sub);
-  }
-
-  inline uint8_t* add(char const* attrName, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, std::char_traits<char>::length(attrName), sub);
-  }
-
-  inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, attrLength, sub);
+  [[deprecated]] inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
+    return addInternal<ValuePair>(std::string_view(attrName, attrLength), sub);
   }
 
   // Add a subvalue into an object from a Serializable:
-  inline uint8_t* add(std::string const& attrName, Serialize const& sub) {
+  inline uint8_t* add(std::string_view attrName, Serialize const& sub) {
     return addInternal<Serializable>(attrName, sub._sable);
-  }
-
-  inline uint8_t* add(StringRef const& attrName, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, sub._sable);
-  }
-
-  inline uint8_t* add(char const* attrName, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, std::char_traits<char>::length(attrName), sub._sable);
   }
 
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, attrLength, sub._sable);
+    return addInternal<Serializable>(std::string_view(attrName, attrLength), sub._sable);
   }
 
   // Add a subvalue into an array from a Value:
@@ -413,71 +400,39 @@ class Builder {
   }
 
   // Add a subvalue into an object from a Value:
-  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Value const& sub) {
+  inline uint8_t* addTagged(std::string_view attrName, uint64_t tag, Value const& sub) {
     return addInternalTagged<Value>(attrName, tag, sub);
   }
 
-  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Value const& sub) {
-    return addInternalTagged<Value>(attrName, tag, sub);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Value const& sub) {
-    return addInternalTagged<Value>(attrName, std::char_traits<char>::length(attrName), tag, sub);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Value const& sub) {
-    return addInternalTagged<Value>(attrName, attrLength, tag, sub);
+  [[deprecated]] inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Value const& sub) {
+    return addInternalTagged<Value>(std::string_view(attrName, attrLength), tag, sub);
   }
 
   // Add a subvalue into an object from a Slice:
-  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Slice const& sub) {
+  inline uint8_t* addTagged(std::string_view attrName, uint64_t tag, Slice const& sub) {
     return addInternalTagged<Slice>(attrName, tag, sub);
   }
 
-  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Slice const& sub) {
-    return addInternalTagged<Slice>(attrName, tag, sub);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Slice const& sub) {
-    return addInternalTagged<Slice>(attrName, std::char_traits<char>::length(attrName), tag, sub);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Slice const& sub) {
-    return addInternalTagged<Slice>(attrName, attrLength, tag, sub);
+  [[deprecated]] inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Slice const& sub) {
+    return addInternalTagged<Slice>(std::string_view(attrName, attrLength), tag, sub);
   }
 
   // Add a subvalue into an object from a ValuePair:
-  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, ValuePair const& sub) {
+  inline uint8_t* addTagged(std::string_view attrName, uint64_t tag, ValuePair const& sub) {
     return addInternalTagged<ValuePair>(attrName, tag, sub);
   }
 
-  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, ValuePair const& sub) {
-    return addInternalTagged<ValuePair>(attrName, tag, sub);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, uint64_t tag, ValuePair const& sub) {
-    return addInternalTagged<ValuePair>(attrName, std::char_traits<char>::length(attrName), tag, sub);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, ValuePair const& sub) {
-    return addInternalTagged<ValuePair>(attrName, attrLength, tag, sub);
+  [[deprecated]] inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, ValuePair const& sub) {
+    return addInternalTagged<ValuePair>(std::string_view(attrName, attrLength), tag, sub);
   }
 
   // Add a subvalue into an object from a Serializable:
-  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Serialize const& sub) {
+  inline uint8_t* addTagged(std::string_view attrName, uint64_t tag, Serialize const& sub) {
     return addInternalTagged<Serializable>(attrName, tag, sub._sable);
   }
 
-  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Serialize const& sub) {
-    return addInternalTagged<Serializable>(attrName, tag, sub._sable);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Serialize const& sub) {
-    return addInternalTagged<Serializable>(attrName, std::char_traits<char>::length(attrName), tag, sub._sable);
-  }
-
-  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Serialize const& sub) {
-    return addInternalTagged<Serializable>(attrName, attrLength, tag, sub._sable);
+  [[deprecated]] inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Serialize const& sub) {
+    return addInternalTagged<Serializable>(std::string_view(attrName, attrLength), tag, sub._sable);
   }
 
   // Add a subvalue into an array from a Value:
@@ -551,25 +506,25 @@ class Builder {
   Builder& close();
 
   // whether or not a specific key is present in an Object value
-  bool hasKey(std::string const& key) const;
+  bool hasKey(std::string_view key) const;
 
   // return an attribute from an Object value
-  Slice getKey(std::string const& key) const;
+  Slice getKey(std::string_view key) const;
 
   // Syntactic sugar for add:
-  Builder& operator()(std::string const& attrName, Value const& sub) {
+  Builder& operator()(std::string_view attrName, Value const& sub) {
     add(attrName, sub);
     return *this;
   }
 
   // Syntactic sugar for add:
-  Builder& operator()(std::string const& attrName, ValuePair const& sub) {
+  Builder& operator()(std::string_view attrName, ValuePair const& sub) {
     add(attrName, sub);
     return *this;
   }
 
   // Syntactic sugar for add:
-  Builder& operator()(std::string const& attrName, Slice const& sub) {
+  Builder& operator()(std::string_view attrName, Slice sub) {
     add(attrName, sub);
     return *this;
   }
@@ -587,7 +542,7 @@ class Builder {
   }
 
   // Syntactic sugar for add:
-  Builder& operator()(Slice const& sub) {
+  Builder& operator()(Slice sub) {
     add(sub);
     return *this;
   }
@@ -741,9 +696,9 @@ class Builder {
     }
   }
 
-  inline void checkKeyIsString(Slice const& item) {
+  inline void checkKeyIsString(Slice item) {
     if (!_stack.empty()) {
-      ValueLength const pos = _stack.back().startPos;
+      ValueLength pos = _stack.back().startPos;
       if (_start[pos] == 0x0b || _start[pos] == 0x14) {
         if (VELOCYPACK_UNLIKELY(!_keyWritten && !item.isString())) {
           throw Exception(Exception::BuilderKeyMustBeString);
@@ -806,17 +761,7 @@ class Builder {
   }
 
   template <typename T>
-  uint8_t* addInternal(std::string const& attrName, T const& sub) {
-    return addInternal<T>(attrName.data(), attrName.size(), sub);
-  }
-
-  template <typename T>
-  uint8_t* addInternal(StringRef const& attrName, T const& sub) {
-    return addInternal<T>(attrName.data(), attrName.size(), sub);
-  }
-
-  template <typename T>
-  uint8_t* addInternal(char const* attrName, std::size_t attrLength, T const& sub) {
+  uint8_t* addInternal(std::string_view attrName, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
       ValueLength const to = _stack.back().startPos;
@@ -834,7 +779,7 @@ class Builder {
       if (options->attributeTranslator != nullptr) {
         // check if a translation for the attribute name exists
         uint8_t const* translated =
-            options->attributeTranslator->translate(attrName, attrLength);
+            options->attributeTranslator->translate(attrName);
 
         if (translated != nullptr) {
           Slice item(translated);
@@ -847,7 +792,7 @@ class Builder {
         // otherwise fall through to regular behavior
       }
 
-      set(ValuePair(attrName, attrLength, ValueType::String));
+      set(ValuePair(attrName.data(), attrName.size(), ValueType::String));
       return writeValue(sub);
     } catch (...) {
       // clean up in case of an exception
@@ -859,17 +804,7 @@ class Builder {
   }
 
   template <typename T>
-  uint8_t* addInternalTagged(std::string const& attrName, uint64_t tag, T const& sub) {
-    return addInternalTagged<T>(attrName.data(), attrName.size(), tag, sub);
-  }
-
-  template <typename T>
-  uint8_t* addInternalTagged(StringRef const& attrName, uint64_t tag, T const& sub) {
-    return addInternalTagged<T>(attrName.data(), attrName.size(), tag, sub);
-  }
-
-  template <typename T>
-  uint8_t* addInternalTagged(char const* attrName, std::size_t attrLength, uint64_t tag, T const& sub) {
+  uint8_t* addInternalTagged(std::string_view attrName, uint64_t tag, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
       ValueLength const to = _stack.back().startPos;
@@ -887,7 +822,7 @@ class Builder {
       if (options->attributeTranslator != nullptr) {
         // check if a translation for the attribute name exists
         uint8_t const* translated =
-            options->attributeTranslator->translate(attrName, attrLength);
+            options->attributeTranslator->translate(attrName);
 
         if (translated != nullptr) {
           Slice item(translated);
@@ -900,7 +835,7 @@ class Builder {
         // otherwise fall through to regular behavior
       }
 
-      set(ValuePair(attrName, attrLength, ValueType::String));
+      set(ValuePair(attrName.data(), attrName.size(), ValueType::String));
       return writeValueTagged(tag, sub);
     } catch (...) {
       // clean up in case of an exception
@@ -1082,16 +1017,20 @@ struct BuilderContainer {
 struct ObjectBuilder final : public BuilderContainer,
                              private NonHeapAllocatable,
                              NonCopyable {
-  ObjectBuilder(Builder* builder, bool allowUnindexed = false)
+  explicit ObjectBuilder(Builder* builder)
+      : BuilderContainer(builder) {
+    builder->openObject(/*allowUnindexed*/ false);
+  }
+  // this stunt is only necessary to prevent implicit conversions
+  // from char const* to bool for the second call argument
+  template<class T ,
+           class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  ObjectBuilder(Builder* builder, T allowUnindexed)
       : BuilderContainer(builder) {
     builder->openObject(allowUnindexed);
   }
-  ObjectBuilder(Builder* builder, std::string const& attributeName,
-                bool allowUnindexed = false)
-      : BuilderContainer(builder) {
-    builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
-  }
-  ObjectBuilder(Builder* builder, char const* attributeName,
+
+  ObjectBuilder(Builder* builder, std::string_view attributeName,
                 bool allowUnindexed = false)
       : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
@@ -1113,20 +1052,24 @@ struct ObjectBuilder final : public BuilderContainer,
 struct ArrayBuilder final : public BuilderContainer,
                             private NonHeapAllocatable,
                             NonCopyable {
-  ArrayBuilder(Builder* builder, bool allowUnindexed = false)
+  explicit ArrayBuilder(Builder* builder)
+      : BuilderContainer(builder) {
+    builder->openArray(/*allowUnindexed*/ false);
+  }
+  // this stunt is only necessary to prevent implicit conversions
+  // from char const* to bool for the second call argument
+  template<class T ,
+           class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  ArrayBuilder(Builder* builder, T allowUnindexed)
       : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }
-  ArrayBuilder(Builder* builder, std::string const& attributeName,
+  ArrayBuilder(Builder* builder, std::string_view attributeName,
                bool allowUnindexed = false)
       : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
   }
-  ArrayBuilder(Builder* builder, char const* attributeName,
-               bool allowUnindexed = false)
-      : BuilderContainer(builder) {
-    builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
-  }
+
   ~ArrayBuilder() {
     try {
       if (!builder->isClosed()) {
@@ -1141,6 +1084,9 @@ struct ArrayBuilder final : public BuilderContainer,
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackBuilder = arangodb::velocypack::Builder;
+using VPackBuilderNonDeleter = arangodb::velocypack::BuilderNonDeleter;
+using VPackBuilderContainer = arangodb::velocypack::BuilderContainer;
+using VPackObjectBuilder = arangodb::velocypack::ObjectBuilder;
+using VPackArrayBuilder = arangodb::velocypack::ArrayBuilder;

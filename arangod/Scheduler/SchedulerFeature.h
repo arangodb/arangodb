@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,18 +23,20 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/asio_ns.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class SchedulerFeature final : public application_features::ApplicationFeature {
+class SchedulerFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "Scheduler"; }
+
   static SupervisedScheduler* SCHEDULER;
 
-  explicit SchedulerFeature(application_features::ApplicationServer& server);
+  explicit SchedulerFeature(Server& server);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -77,4 +79,3 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

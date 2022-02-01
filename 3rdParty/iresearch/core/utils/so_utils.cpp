@@ -174,7 +174,7 @@ void load_libraries(
     const auto path_stem = plugin_path / stem; // strip extension
 
     // FIXME TODO check double-load of same dll
-    void* handle = load_library(path_stem.u8string().c_str(), 1);
+    const void* handle = load_library(path_stem.u8string().c_str(), 1);
 
     if (!handle) {
       IR_FRMT_ERROR("library load failed for path: %s", path_stem.u8string().c_str());

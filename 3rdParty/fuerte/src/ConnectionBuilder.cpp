@@ -25,7 +25,7 @@
 #include <fuerte/FuerteLogger.h>
 #include <fuerte/connection.h>
 
-#include <boost/algorithm/string.hpp>
+#include <string_view>
 
 #include "H1Connection.h"
 #include "H2Connection.h"
@@ -95,11 +95,11 @@ void parseSchema(std::string const& schema,
   // non exthausive list of supported url schemas
   // "http+tcp://", "http+ssl://", "tcp://", "ssl://", "unix://", "http+unix://"
   // "vsts://", "vst://", "http://", "https://", "vst+unix://", "vst+tcp://"
-  velocypack::StringRef proto(schema.data(), schema.length());
+  std::string_view proto(schema.data(), schema.length());
   std::string::size_type pos = schema.find('+');
   if (pos != std::string::npos && pos + 1 < proto.length()) {
     // got something like "http+tcp://"
-    velocypack::StringRef socket = proto.substr(pos + 1);
+    std::string_view socket = proto.substr(pos + 1);
     proto = proto.substr(0, pos);
     if (socket == "tcp" || socket == "srv") {
       conf._socketType = SocketType::Tcp;
@@ -109,7 +109,7 @@ void parseSchema(std::string const& schema,
       conf._socketType = SocketType::Unix;
     } else if (conf._socketType == SocketType::Undefined) {
       throw std::runtime_error(std::string("invalid socket type: ") +
-                               proto.toString());
+                               std::string(proto));
     }
 
     if (proto == "vst") {
@@ -148,7 +148,7 @@ void parseSchema(std::string const& schema,
   if (conf._socketType == SocketType::Undefined ||
       conf._protocolType == ProtocolType::Undefined) {
     throw std::runtime_error(std::string("invalid schema: ") +
-                             proto.toString());
+                             std::string(proto));
   }
 }
 

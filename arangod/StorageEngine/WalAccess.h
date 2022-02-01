@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,18 +45,16 @@ struct WalAccessResult {
         _lastScannedTick(lastScannedTick),
         _latestTick(latest) {}
 
-  /*
-    WalAccessResult(WalAccessResult const& other) = default;
-    WalAccessResult& operator=(WalAccessResult const& other)  = default;
-  */
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
   TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  WalAccessResult& reset(ErrorCode errorNumber, bool ft, TRI_voc_tick_t included,
-                         TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
+  WalAccessResult& reset(ErrorCode errorNumber, bool ft,
+                         TRI_voc_tick_t included,
+                         TRI_voc_tick_t lastScannedTick,
+                         TRI_voc_tick_t latest) {
     _result.reset(errorNumber);
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
@@ -127,12 +125,14 @@ class WalAccess {
     TRI_voc_tick_t firstRegularTick = 0;
   };
 
-  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)> MarkerCallback;
+  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)>
+      MarkerCallback;
   typedef std::function<void(TransactionId, TransactionId)> TransactionCallback;
 
   /// {"tickMin":"123", "tickMax":"456",
   ///  "server":{"version":"3.2", "serverId":"abc"}}
-  virtual Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const = 0;
+  virtual Result tickRange(
+      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const = 0;
 
   /// {"lastTick":"123",
   ///  "server":{"version":"3.2",
@@ -143,11 +143,6 @@ class WalAccess {
   ///
   virtual TRI_voc_tick_t lastTick() const = 0;
 
-  /// should return the list of transactions started, but not committed in that
-  /// range (range can be adjusted)
-  virtual WalAccessResult openTransactions(Filter const& filter,
-                                           TransactionCallback const&) const = 0;
-
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
                                MarkerCallback const&) const = 0;
 };
@@ -155,8 +150,8 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(application_features::ApplicationServer& server,
-                   WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
+  WalAccessContext(ArangodServer& server, WalAccess::Filter const& filter,
+                   WalAccess::MarkerCallback const& c)
       : _server(server), _filter(filter), _callback(c), _responseSize(0) {}
 
   ~WalAccessContext() = default;
@@ -177,7 +172,7 @@ struct WalAccessContext {
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
  public:
   /// @brief arbitrary collection filter (inclusive)
@@ -199,4 +194,3 @@ struct WalAccessContext {
 };
 
 }  // namespace arangodb
-

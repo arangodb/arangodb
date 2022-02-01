@@ -23,69 +23,7 @@
 #include <atomic>
 #include <cfloat>
 
-// Add to #if conditions to prevent IDE from graying out code.
-#if (defined __CDT_PARSER__) || (defined __INTELLISENSE__) || \
-    (defined Q_CREATOR_RUN) || (defined(__CLANGD__))
-#define HWY_IDE 1
-#else
-#define HWY_IDE 0
-#endif
-
-//------------------------------------------------------------------------------
-// Detect compiler using predefined macros
-
-#ifdef _MSC_VER
-#define HWY_COMPILER_MSVC _MSC_VER
-#else
-#define HWY_COMPILER_MSVC 0
-#endif
-
-#ifdef __INTEL_COMPILER
-#define HWY_COMPILER_ICC __INTEL_COMPILER
-#else
-#define HWY_COMPILER_ICC 0
-#endif
-
-#ifdef __GNUC__
-#define HWY_COMPILER_GCC (__GNUC__ * 100 + __GNUC_MINOR__)
-#else
-#define HWY_COMPILER_GCC 0
-#endif
-
-// Clang can masquerade as MSVC/GCC, in which case both are set.
-#ifdef __clang__
-#ifdef __APPLE__
-// Apple LLVM version is unrelated to the actual Clang version, which we need
-// for enabling workarounds. Use the presence of warning flags to deduce it.
-// Adapted from https://github.com/simd-everywhere/simde/ simde-detect-clang.h.
-#if __has_warning("-Wformat-insufficient-args")
-#define HWY_COMPILER_CLANG 1200
-#elif __has_warning("-Wimplicit-const-int-float-conversion")
-#define HWY_COMPILER_CLANG 1100
-#elif __has_warning("-Wmisleading-indentation")
-#define HWY_COMPILER_CLANG 1000
-#elif defined(__FILE_NAME__)
-#define HWY_COMPILER_CLANG 900
-#elif __has_warning("-Wextra-semi-stmt") || \
-    __has_builtin(__builtin_rotateleft32)
-#define HWY_COMPILER_CLANG 800
-#elif __has_warning("-Wc++98-compat-extra-semi")
-#define HWY_COMPILER_CLANG 700
-#else  // Anything older than 7.0 is not recommended for Highway.
-#define HWY_COMPILER_CLANG 600
-#endif  // __has_warning chain
-#else   // Non-Apple: normal version
-#define HWY_COMPILER_CLANG (__clang_major__ * 100 + __clang_minor__)
-#endif
-#else  // Not clang
-#define HWY_COMPILER_CLANG 0
-#endif
-
-// More than one may be nonzero, but we want at least one.
-#if !HWY_COMPILER_MSVC && !HWY_COMPILER_ICC && !HWY_COMPILER_GCC && \
-    !HWY_COMPILER_CLANG
-#error "Unsupported compiler"
-#endif
+#include "hwy/detect_compiler_arch.h"
 
 //------------------------------------------------------------------------------
 // Compiler-specific definitions
@@ -137,18 +75,6 @@
 //------------------------------------------------------------------------------
 // Builtin/attributes
 
-#ifdef __has_builtin
-#define HWY_HAS_BUILTIN(name) __has_builtin(name)
-#else
-#define HWY_HAS_BUILTIN(name) 0
-#endif
-
-#ifdef __has_attribute
-#define HWY_HAS_ATTRIBUTE(name) __has_attribute(name)
-#else
-#define HWY_HAS_ATTRIBUTE(name) 0
-#endif
-
 // Enables error-checking of format strings.
 #if HWY_HAS_ATTRIBUTE(__format__)
 #define HWY_FORMAT(idx_fmt, idx_arg) \
@@ -172,9 +98,9 @@
 // are inlined. Support both per-function annotation (HWY_ATTR) for lambdas and
 // automatic annotation via pragmas.
 #if HWY_COMPILER_CLANG
-#define HWY_PUSH_ATTRIBUTES(targets_str)                                     \
+#define HWY_PUSH_ATTRIBUTES(targets_str)                                \
   HWY_PRAGMA(clang attribute push(__attribute__((target(targets_str))), \
-                                       apply_to = function))
+                                  apply_to = function))
 #define HWY_POP_ATTRIBUTES HWY_PRAGMA(clang attribute pop)
 #elif HWY_COMPILER_GCC
 #define HWY_PUSH_ATTRIBUTES(targets_str) \
@@ -183,57 +109,6 @@
 #else
 #define HWY_PUSH_ATTRIBUTES(targets_str)
 #define HWY_POP_ATTRIBUTES
-#endif
-
-//------------------------------------------------------------------------------
-// Detect architecture using predefined macros
-
-#if defined(__i386__) || defined(_M_IX86)
-#define HWY_ARCH_X86_32 1
-#else
-#define HWY_ARCH_X86_32 0
-#endif
-
-#if defined(__x86_64__) || defined(_M_X64)
-#define HWY_ARCH_X86_64 1
-#else
-#define HWY_ARCH_X86_64 0
-#endif
-
-#if HWY_ARCH_X86_32 || HWY_ARCH_X86_64
-#define HWY_ARCH_X86 1
-#else
-#define HWY_ARCH_X86 0
-#endif
-
-#if defined(__powerpc64__) || defined(_M_PPC)
-#define HWY_ARCH_PPC 1
-#else
-#define HWY_ARCH_PPC 0
-#endif
-
-#if defined(__arm__) || defined(_M_ARM) || defined(__aarch64__)
-#define HWY_ARCH_ARM 1
-#else
-#define HWY_ARCH_ARM 0
-#endif
-
-// There isn't yet a standard __wasm or __wasm__.
-#ifdef __EMSCRIPTEN__
-#define HWY_ARCH_WASM 1
-#else
-#define HWY_ARCH_WASM 0
-#endif
-
-#ifdef __riscv
-#define HWY_ARCH_RVV 1
-#else
-#define HWY_ARCH_RVV 0
-#endif
-
-#if (HWY_ARCH_X86 + HWY_ARCH_PPC + HWY_ARCH_ARM + HWY_ARCH_WASM + \
-     HWY_ARCH_RVV) != 1
-#error "Must detect exactly one platform"
 #endif
 
 //------------------------------------------------------------------------------
@@ -271,9 +146,20 @@
     }                                     \
   } while (0)
 
-// Only for "debug" builds
-#if !defined(NDEBUG) || defined(ADDRESS_SANITIZER) || \
-    defined(MEMORY_SANITIZER) || defined(THREAD_SANITIZER)
+// For enabling HWY_DASSERT and shortening tests in slower debug builds
+#if !defined(HWY_IS_DEBUG_BUILD)
+// Clang does not define NDEBUG, but it and GCC define __OPTIMIZE__, and recent
+// MSVC defines NDEBUG (if not, could instead check _DEBUG).
+#if (!defined(__OPTIMIZE__) && !defined(NDEBUG)) ||            \
+    defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
+    defined(THREAD_SANITIZER) || defined(__clang_analyzer__)
+#define HWY_IS_DEBUG_BUILD 1
+#else
+#define HWY_IS_DEBUG_BUILD 0
+#endif
+#endif  // HWY_IS_DEBUG_BUILD
+
+#if HWY_IS_DEBUG_BUILD
 #define HWY_DASSERT(condition) HWY_ASSERT(condition)
 #else
 #define HWY_DASSERT(condition) \
@@ -281,24 +167,33 @@
   } while (0)
 #endif
 
+#if defined(HWY_EMULATE_SVE)
+class FarmFloat16;
+#endif
 
 namespace hwy {
 
 //------------------------------------------------------------------------------
+// kMaxVectorSize (undocumented, pending removal)
+
+#if HWY_ARCH_X86
+static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 64;  // AVX-512
+#elif HWY_ARCH_RVV && defined(__riscv_vector)
+// Not actually an upper bound on the size.
+static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 4096;
+#else
+static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 16;
+#endif
+
+//------------------------------------------------------------------------------
 // Alignment
 
-// Not guaranteed to be an upper bound, but the alignment established by
-// aligned_allocator is HWY_MAX(HWY_ALIGNMENT, kMaxVectorSize).
+// For stack-allocated partial arrays or LoadDup128.
 #if HWY_ARCH_X86
-static constexpr size_t kMaxVectorSize = 64;  // AVX-512
 #define HWY_ALIGN_MAX alignas(64)
-#elif HWY_ARCH_RVV
-// Not actually an upper bound on the size, but this value prevents crossing a
-// 4K boundary (relevant on Andes).
-static constexpr size_t kMaxVectorSize = 4096;
+#elif HWY_ARCH_RVV && defined(__riscv_vector)
 #define HWY_ALIGN_MAX alignas(8)  // only elements need be aligned
 #else
-static constexpr size_t kMaxVectorSize = 16;
 #define HWY_ALIGN_MAX alignas(16)
 #endif
 
@@ -308,13 +203,29 @@ static constexpr size_t kMaxVectorSize = 16;
 // Match [u]int##_t naming scheme so rvv-inl.h macros can obtain the type name
 // by concatenating base type and bits.
 
-// RVV already has a builtin type.
-#if !HWY_ARCH_RVV
+// RVV already has a builtin type and the GCC intrinsics require it.
+#if (HWY_ARCH_RVV && HWY_COMPILER_GCC && defined(__riscv_vector)) || \
+    (HWY_ARCH_ARM && (__ARM_FP & 2))
+#define HWY_NATIVE_FLOAT16 1
+#else
+#define HWY_NATIVE_FLOAT16 0
+#endif
+
+#if defined(HWY_EMULATE_SVE)
+using float16_t = FarmFloat16;
+#elif HWY_NATIVE_FLOAT16
+using float16_t = __fp16;
+// Clang does not allow __fp16 arguments, but scalar.h requires LaneType
+// arguments, so use a wrapper.
+// TODO(janwas): replace with _Float16 when that is supported?
+#else
+#pragma pack(push, 1)
 struct float16_t {
-  // __fp16 cannot be used as a function parameter in clang, so use a wrapper.
   uint16_t bits;
 };
+#pragma pack(pop)
 #endif
+
 using float32_t = float;
 using float64_t = double;
 
@@ -331,6 +242,21 @@ struct EnableIfT<true, T> {
 template <bool Condition, class T = void>
 using EnableIf = typename EnableIfT<Condition, T>::type;
 
+template <typename T, typename U>
+struct IsSameT {
+  enum { value = 0 };
+};
+
+template <typename T>
+struct IsSameT<T, T> {
+  enum { value = 1 };
+};
+
+template <typename T, typename U>
+HWY_API constexpr bool IsSame() {
+  return IsSameT<T, U>::value;
+}
+
 // Insert into template/function arguments to enable this overload only for
 // vectors of AT MOST this many bits.
 //
@@ -340,6 +266,9 @@ using EnableIf = typename EnableIfT<Condition, T>::type;
 #define HWY_IF_LE128(T, N) hwy::EnableIf<N * sizeof(T) <= 16>* = nullptr
 #define HWY_IF_LE64(T, N) hwy::EnableIf<N * sizeof(T) <= 8>* = nullptr
 #define HWY_IF_LE32(T, N) hwy::EnableIf<N * sizeof(T) <= 4>* = nullptr
+#define HWY_IF_GE64(T, N) hwy::EnableIf<N * sizeof(T) >= 8>* = nullptr
+#define HWY_IF_GE128(T, N) hwy::EnableIf<N * sizeof(T) >= 16>* = nullptr
+#define HWY_IF_GT128(T, N) hwy::EnableIf<(N * sizeof(T) > 16)>* = nullptr
 
 #define HWY_IF_UNSIGNED(T) hwy::EnableIf<!IsSigned<T>()>* = nullptr
 #define HWY_IF_SIGNED(T) \
@@ -356,17 +285,35 @@ using EnableIf = typename EnableIfT<Condition, T>::type;
 template <size_t N>
 struct SizeTag {};
 
+template <class T>
+struct RemoveConstT {
+  using type = T;
+};
+template <class T>
+struct RemoveConstT<const T> {
+  using type = T;
+};
+
+template <class T>
+using RemoveConst = typename RemoveConstT<T>::type;
+
 //------------------------------------------------------------------------------
 // Type traits
 
 template <typename T>
 constexpr bool IsFloat() {
-  return T(1.25) != T(1);
+  // Cannot use T(1.25) != T(1) for float16_t, which can only be converted to or
+  // from a float, not compared.
+  return IsSame<T, float>() || IsSame<T, double>();
 }
 
 template <typename T>
 constexpr bool IsSigned() {
   return T(0) > T(-1);
+}
+template <>
+constexpr bool IsSigned<float16_t>() {
+  return true;
 }
 
 // Largest/smallest representable integer values.
@@ -506,11 +453,19 @@ struct Relations<int64_t> {
   using Narrow = int32_t;
 };
 template <>
+struct Relations<float16_t> {
+  using Unsigned = uint16_t;
+  using Signed = int16_t;
+  using Float = float16_t;
+  using Wide = float;
+};
+template <>
 struct Relations<float> {
   using Unsigned = uint32_t;
   using Signed = int32_t;
   using Float = float;
   using Wide = double;
+  using Narrow = float16_t;
 };
 template <>
 struct Relations<double> {
@@ -518,6 +473,31 @@ struct Relations<double> {
   using Signed = int64_t;
   using Float = double;
   using Narrow = float;
+};
+
+template <size_t N>
+struct TypeFromSize;
+template <>
+struct TypeFromSize<1> {
+  using Unsigned = uint8_t;
+  using Signed = int8_t;
+};
+template <>
+struct TypeFromSize<2> {
+  using Unsigned = uint16_t;
+  using Signed = int16_t;
+};
+template <>
+struct TypeFromSize<4> {
+  using Unsigned = uint32_t;
+  using Signed = int32_t;
+  using Float = float;
+};
+template <>
+struct TypeFromSize<8> {
+  using Unsigned = uint64_t;
+  using Signed = int64_t;
+  using Float = double;
 };
 
 }  // namespace detail
@@ -536,6 +516,14 @@ using MakeWide = typename detail::Relations<T>::Wide;
 template <typename T>
 using MakeNarrow = typename detail::Relations<T>::Narrow;
 
+// Obtain type from its size [bytes].
+template <size_t N>
+using UnsignedFromSize = typename detail::TypeFromSize<N>::Unsigned;
+template <size_t N>
+using SignedFromSize = typename detail::TypeFromSize<N>::Signed;
+template <size_t N>
+using FloatFromSize = typename detail::TypeFromSize<N>::Float;
+
 //------------------------------------------------------------------------------
 // Helper functions
 
@@ -551,13 +539,37 @@ constexpr inline size_t RoundUpTo(size_t what, size_t align) {
 
 // Undefined results for x == 0.
 HWY_API size_t Num0BitsBelowLS1Bit_Nonzero32(const uint32_t x) {
-#ifdef _MSC_VER
+#if HWY_COMPILER_MSVC
   unsigned long index;  // NOLINT
   _BitScanForward(&index, x);
   return index;
-#else
+#else   // HWY_COMPILER_MSVC
   return static_cast<size_t>(__builtin_ctz(x));
-#endif
+#endif  // HWY_COMPILER_MSVC
+}
+
+HWY_API size_t Num0BitsBelowLS1Bit_Nonzero64(const uint64_t x) {
+#if HWY_COMPILER_MSVC
+#if HWY_ARCH_X86_64
+  unsigned long index;  // NOLINT
+  _BitScanForward64(&index, x);
+  return index;
+#else   // HWY_ARCH_X86_64
+  // _BitScanForward64 not available
+  uint32_t lsb = static_cast<uint32_t>(x & 0xFFFFFFFF);
+  unsigned long index;
+  if (lsb == 0) {
+    uint32_t msb = static_cast<uint32_t>(x >> 32u);
+    _BitScanForward(&index, msb);
+    return 32 + index;
+  } else {
+    _BitScanForward(&index, lsb);
+    return index;
+  }
+#endif  // HWY_ARCH_X86_64
+#else   // HWY_COMPILER_MSVC
+  return static_cast<size_t>(__builtin_ctzll(x));
+#endif  // HWY_COMPILER_MSVC
 }
 
 HWY_API size_t PopCount(uint64_t x) {
@@ -565,7 +577,7 @@ HWY_API size_t PopCount(uint64_t x) {
   return static_cast<size_t>(__builtin_popcountll(x));
 #elif HWY_COMPILER_MSVC && HWY_ARCH_X86_64
   return _mm_popcnt_u64(x);
-#elif HWY_COMPILER_MSVC
+#elif HWY_COMPILER_MSVC && HWY_ARCH_X86_32
   return _mm_popcnt_u32(uint32_t(x)) + _mm_popcnt_u32(uint32_t(x >> 32));
 #else
   x -= ((x >> 1) & 0x55555555U);
@@ -576,6 +588,30 @@ HWY_API size_t PopCount(uint64_t x) {
   x += (x >> 32);
   x = x & 0x0000007FU;
   return (unsigned int)x;
+#endif
+}
+
+#if HWY_COMPILER_MSVC && HWY_ARCH_X86_64
+#pragma intrinsic(_umul128)
+#endif
+
+// 64 x 64 = 128 bit multiplication
+HWY_API uint64_t Mul128(uint64_t a, uint64_t b, uint64_t* HWY_RESTRICT upper) {
+#if defined(__SIZEOF_INT128__)
+  __uint128_t product = (__uint128_t)a * (__uint128_t)b;
+  *upper = (uint64_t)(product >> 64);
+  return (uint64_t)(product & 0xFFFFFFFFFFFFFFFFULL);
+#elif HWY_COMPILER_MSVC && HWY_ARCH_X86_64
+  return _umul128(a, b, upper);
+#else
+  constexpr uint64_t kLo32 = 0xFFFFFFFFU;
+  const uint64_t lo_lo = (a & kLo32) * (b & kLo32);
+  const uint64_t hi_lo = (a >> 32) * (b & kLo32);
+  const uint64_t lo_hi = (a & kLo32) * (b >> 32);
+  const uint64_t hi_hi = (a >> 32) * (b >> 32);
+  const uint64_t t = (lo_lo >> 32) + (hi_lo & kLo32) + lo_hi;
+  *upper = (hi_lo >> 32) + (t >> 32) + hi_hi;
+  return (t << 32) | (lo_lo & kLo32);
 #endif
 }
 

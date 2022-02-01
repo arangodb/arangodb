@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ class Methods;
 class TransactionState;
 
 /// @brief collection used in a transaction
-class RocksDBTransactionCollection final : public TransactionCollection {
+class RocksDBTransactionCollection : public TransactionCollection {
  public:
   RocksDBTransactionCollection(TransactionState* trx, DataSourceId cid,
                                AccessMode::Type accessType);
@@ -63,7 +63,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t numRemoves() const { return _numRemoves; }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_document_operation_e operationType, RevisionId revisionId);
+  void addOperation(TRI_voc_document_operation_e operationType,
+                    RevisionId revisionId);
 
   /**
    * @brief Prepare collection for commit by placing collection blockers
@@ -124,7 +125,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
     std::vector<uint64_t> inserts;
     std::vector<uint64_t> removals;
   };
-  using IndexOperationsMap = std::unordered_map<IndexId, TrackedIndexOperations>;
+  using IndexOperationsMap =
+      std::unordered_map<IndexId, TrackedIndexOperations>;
 
   /// @brief steal the tracked operations from the map
   IndexOperationsMap stealTrackedIndexOperations() {
@@ -142,7 +144,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
-  
+
   Result ensureCollection();
 
  private:
@@ -159,9 +161,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
-  
+
   bool _usageLocked;
   bool _exclusiveWrites;
 };
 }  // namespace arangodb
-

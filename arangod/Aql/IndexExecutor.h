@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,10 +28,12 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/Ast.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
@@ -44,13 +46,14 @@ class IndexIterator;
 namespace aql {
 
 class ExecutionEngine;
+class ExecutorExpressionContext;
 class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class Projections;
 class QueryContext;
 
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 struct AstNode;
@@ -59,18 +62,18 @@ struct NonConstExpression;
 
 class IndexExecutorInfos {
  public:
-  IndexExecutorInfos(RegisterId outputRegister, QueryContext& query,
-                     Collection const* collection, Variable const* outVariable,
-                     bool produceResult, Expression* filter,
-                     arangodb::aql::Projections projections,
-                     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
-                     std::vector<Variable const*>&& expInVars,
-                     std::vector<RegisterId>&& expInRegs, bool hasV8Expression,
-                     bool count, ReadOwnWrites readOwnWrites, AstNode const* condition,
-                     std::vector<transaction::Methods::IndexHandle> indexes,
-                     Ast* ast, IndexIteratorOptions options,
-                     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-                     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
+  IndexExecutorInfos(
+      RegisterId outputRegister, QueryContext& query,
+      Collection const* collection, Variable const* outVariable,
+      bool produceResult, Expression* filter,
+      arangodb::aql::Projections projections,
+      NonConstExpressionContainer&& nonConstExpressions, bool count,
+      ReadOwnWrites readOwnWrites, AstNode const* condition,
+      bool oneIndexCondition,
+      std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
+      IndexIteratorOptions options,
+      IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
+      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
@@ -83,11 +86,13 @@ class IndexExecutorInfos {
   aql::QueryContext& query() noexcept;
   Expression* getFilter() const noexcept;
   bool getProduceResult() const noexcept;
-  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const noexcept;
+  std::vector<transaction::Methods::IndexHandle> const& getIndexes()
+      const noexcept;
   AstNode const* getCondition() const noexcept;
   bool getV8Expression() const noexcept;
   RegisterId getOutputRegisterId() const noexcept;
-  std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() const noexcept;
+  std::vector<std::unique_ptr<NonConstExpression>> const&
+  getNonConstExpressions() const noexcept;
   bool hasMultipleExpansions() const noexcept;
   bool getCount() const noexcept;
 
@@ -99,8 +104,8 @@ class IndexExecutorInfos {
 
   Ast* getAst() const noexcept;
 
-  std::vector<Variable const*> const& getExpInVars() const noexcept;
-  std::vector<RegisterId> const& getExpInRegs() const noexcept;
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister()
+      const noexcept;
 
   // setter
   void setHasMultipleExpansions(bool flag);
@@ -111,13 +116,17 @@ class IndexExecutorInfos {
     return !_outNonMaterializedIndRegs.second.empty();
   }
 
-  IndexNode::IndexValuesVars const& getOutNonMaterializedIndVars() const noexcept {
+  IndexNode::IndexValuesVars const& getOutNonMaterializedIndVars()
+      const noexcept {
     return _outNonMaterializedIndVars;
   }
 
-  IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs() const noexcept {
+  IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs()
+      const noexcept {
     return _outNonMaterializedIndRegs;
   }
+
+  bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
 
  private:
   /// @brief _indexes holds all Indexes used in this block
@@ -145,10 +154,8 @@ class IndexExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   arangodb::aql::Projections _projections;
-  std::vector<Variable const*> _expInVars;  // input variables for expresseion
-  std::vector<RegisterId> _expInRegs;       // input registers for expression
 
-  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
+  NonConstExpressionContainer _nonConstExpressions;
 
   RegisterId _outputRegisterId;
 
@@ -160,12 +167,14 @@ class IndexExecutorInfos {
   bool _hasMultipleExpansions;
 
   bool _produceResult;
+
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
-  bool _hasV8Expression;
-
   bool _count;
+
+  bool _oneIndexCondition;
+
   ReadOwnWrites const _readOwnWrites;
 };
 
@@ -176,10 +185,10 @@ class IndexExecutor {
  private:
   struct CursorReader {
    public:
-    CursorReader(transaction::Methods& trx,
-                 IndexExecutorInfos const& infos, AstNode const* condition,
-                 std::shared_ptr<Index> const& index,
-                 DocumentProducingFunctionContext& context, bool checkUniqueness);
+    CursorReader(transaction::Methods& trx, IndexExecutorInfos const& infos,
+                 AstNode const* condition, std::shared_ptr<Index> const& index,
+                 DocumentProducingFunctionContext& context,
+                 bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
     size_t skipIndex(size_t toSkip);
     void reset();
@@ -190,7 +199,7 @@ class IndexExecutor {
 
     CursorReader(const CursorReader&) = delete;
     CursorReader& operator=(const CursorReader&) = delete;
-    CursorReader(CursorReader&& other) noexcept;
+    CursorReader(CursorReader&& other) noexcept = default;
 
    private:
     enum Type { NoResult, Covering, Document, LateMaterialized, Count };
@@ -210,12 +219,15 @@ class IndexExecutor {
     IndexIterator::LocalDocumentIdCallback _documentNonProducer;
     IndexIterator::DocumentCallback _documentProducer;
     IndexIterator::DocumentCallback _documentSkipper;
+    IndexIterator::CoveringCallback _coveringProducer;
+    IndexIterator::CoveringCallback _coveringSkipper;
   };
 
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
@@ -228,12 +240,14 @@ class IndexExecutor {
   IndexExecutor(IndexExecutor const&) = delete;
   IndexExecutor(Fetcher& fetcher, Infos&);
   ~IndexExecutor();
-  
+
   /**
-   * @brief This Executor in some cases knows how many rows it will produce and most by itself
+   * @brief This Executor in some cases knows how many rows it will produce and
+   * most by itself
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
   auto produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
@@ -245,8 +259,8 @@ class IndexExecutor {
 
  private:
   bool advanceCursor();
-  void executeExpressions(InputAqlItemRow& input);
-  void initIndexes(InputAqlItemRow& input);
+  void executeExpressions(InputAqlItemRow const& input);
+  void initIndexes(InputAqlItemRow const& input);
 
   CursorReader& getCursor();
 
@@ -261,6 +275,11 @@ class IndexExecutor {
 
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   Infos& _infos;
+  std::unique_ptr<ExecutorExpressionContext> _expressionContext;
+
+  // an AST owned by the IndexExecutor, used to store data of index
+  // expressions
+  Ast _ast;
 
   /// @brief a vector of cursors for the index block
   /// cursors can be reused
@@ -277,4 +296,3 @@ class IndexExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

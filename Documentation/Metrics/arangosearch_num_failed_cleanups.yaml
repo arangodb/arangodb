@@ -1,0 +1,13 @@
+name: arangosearch_num_failed_cleanups
+introducedIn: "3.10.0"
+help: |
+  Number of failed cleanups.
+unit: number
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of failed cleanups.

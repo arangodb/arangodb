@@ -274,13 +274,13 @@ class doc_iterator final : public irs::doc_iterator {
       const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
       const byte_block_pool::sliced_reader* prox) {
-    doc_.value = 0;
+    std::get<document>(attrs_).value = 0;
     freq_.value = 0;
     cookie_ = 0;
     freq_in_ = freq;
     posting_ = &posting;
 
-    auto& ppos = std::get<attribute_ptr<position>>(attrs_);
+    const auto& ppos = std::get<attribute_ptr<position>>(attrs_);
 
     if (ppos.ptr && prox) {
       // reset positions only once,
@@ -307,16 +307,18 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
     if (freq_in_.eof()) {
       if (!posting_) {
         return false;
       }
 
-      doc_.value = posting_->doc;
+      doc.value = posting_->doc;
       freq_.value = posting_->freq;
 
       if (has_cookie_) {
@@ -336,16 +338,16 @@ class doc_iterator final : public irs::doc_iterator {
         }
 
         assert(delta < doc_limits::eof());
-        doc_.value += doc_id_t(delta);
+        doc.value += doc_id_t(delta);
 
         if (has_cookie_) {
           cookie_ += read_cookie(freq_in_);
         }
       } else {
-        doc_.value += irs::vread<uint32_t>(freq_in_);
+        doc.value += irs::vread<uint32_t>(freq_in_);
       }
 
-      assert(doc_.value != posting_->doc);
+      assert(doc.value != posting_->doc);
     }
 
     pos_.clear();
@@ -355,11 +357,10 @@ class doc_iterator final : public irs::doc_iterator {
 
  private:
   using attributes = std::tuple<
-    attribute_ptr<frequency>, attribute_ptr<position>>;
+    document, attribute_ptr<frequency>, attribute_ptr<position>>;
 
   const field_data* field_{};
   uint64_t cookie_{};
-  document doc_;
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_reader> pos_;
   byte_block_pool::sliced_reader freq_in_;
@@ -435,6 +436,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   }
 
   virtual bool next() noexcept override {
+    // cppcheck-suppress shadowFunction
     auto& value = std::get<document>(attrs_);
 
     while (it_ != docs_.end()) {
@@ -730,8 +732,8 @@ class term_reader final : public irs::basic_term_reader,
 field_data::field_data(
     const string_ref& name,
     const features_t& features,
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_columns,
+    std::deque<cached_column>& cached_features,
     columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
@@ -743,21 +745,40 @@ field_data::field_data(
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
-  features_.reserve(field_features.size());
-  for (type_info::type_id feature : features) {
-    const auto it = field_features.find(feature);
+  for (const type_info::type_id feature : features) {
+    assert(feature_columns);
+    auto [feature_column_info, feature_writer_factory] = feature_columns(feature);
 
-    if (IRS_UNLIKELY(it == field_features.end())) {
-      assert(false);
-      continue;
-    }
+    auto feature_writer = feature_writer_factory
+      ? (*feature_writer_factory)({})
+      : nullptr;
 
-    if (it->second) {
-      assert(feature_columns);
-      auto [id, handler] = columns.push_column(feature_columns(feature));
-      features_.emplace_back(feature, it->second, std::move(handler));
+    if (feature_writer) {
+      columnstore_writer::column_finalizer_f finalizer =
+          [writer = feature_writer.get()](bstring& out) {
+              writer->finish(out);
+              return string_ref::NIL;
+          };
 
-      meta_.features[feature] = id;
+      if (random_access) {
+        // sorted index case
+        auto* id = &meta_.features[feature];
+        *id = field_limits::invalid();
+        auto& stream = cached_features.emplace_back(
+            id, feature_column_info,
+            std::move(finalizer));
+        features_.emplace_back(
+            std::move(feature_writer),
+            [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
+              stream->prepare(doc);
+              return *stream; });
+      } else {
+        auto [id, handler] = columns.push_column(
+            feature_column_info,
+            std::move(finalizer));
+        features_.emplace_back(std::move(feature_writer), std::move(handler));
+        meta_.features[feature] = id;
+      }
     } else {
       meta_.features[feature] = field_limits::invalid();
     }
@@ -990,7 +1011,9 @@ void field_data::add_term_random_access(
       auto& last_start_cookie = *prox_stream_cookie;
 
       write_cookie(doc_out, start_cookie - last_start_cookie);
+      // cppcheck-suppress selfAssignment
       last_start_cookie = start_cookie; // update previous cookie
+      // cppcheck-suppress selfAssignment
       start_cookie = end_cookie; // update start cookie
 
       auto prox_out = greedy_writer(*byte_writer_, end_cookie);
@@ -1096,9 +1119,9 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
     const auto res = terms_.emplace(term->value);
 
     if (nullptr == res.first) {
-      IR_FRMT_ERROR("field '%s' has invalid term of size '" IR_SIZE_T_SPECIFIER "'",
-                    meta_.name.c_str(), term->value.size());
-      IR_FRMT_TRACE("field '%s' has invalid term '%s'",
+      IR_FRMT_WARN("skipping too long term of size '" IR_SIZE_T_SPECIFIER "' in field '%s'",
+                    term->value.size(), meta_.name.c_str());
+      IR_FRMT_TRACE("field '%s' contains too long term '%s'",
                     meta_.name.c_str(), ref_cast<char>(term->value).c_str());
       continue;
     }
@@ -1127,12 +1150,12 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 // -----------------------------------------------------------------------------
 
 fields_data::fields_data(
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_info,
+    std::deque<cached_column>& cached_features,
     const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
-    field_features_(&field_features),
-    feature_columns_(&feature_columns),
+    feature_info_(&feature_info),
+    cached_features_(&cached_features),
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
 }
@@ -1153,8 +1176,8 @@ field_data* fields_data::emplace(
   if (!it->second) {
     try {
       fields_.emplace_back(
-        name, features, *field_features_,
-        *feature_columns_, columns,
+        name, features,
+        *feature_info_, *cached_features_, columns,
         byte_writer_, int_writer_,
         index_features, (nullptr != comparator_));
     } catch (...) {
@@ -1216,6 +1239,18 @@ void fields_data::reset() noexcept {
   fields_.clear();
   fields_map_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
+}
+
+size_t fields_data::memory_active() const noexcept {
+  return byte_writer_.pool_offset()
+    + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
+    + fields_map_.size() * sizeof(fields_map::value_type)
+    + fields_.size() * sizeof(decltype(fields_)::value_type);
+}
+
+size_t fields_data::memory_reserved() const noexcept {
+  // FIXME(@gnusi): revisit the implementation
+  return byte_pool_.size() + int_pool_.size();
 }
 
 // use base irs::position type for ancestors

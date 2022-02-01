@@ -28,7 +28,7 @@
 
 namespace {
 
-void print_consolidation(
+[[maybe_unused]] void print_consolidation(
     const irs::index_meta& meta,
     const irs::index_writer::consolidation_policy_t& policy) {
   struct less_t {

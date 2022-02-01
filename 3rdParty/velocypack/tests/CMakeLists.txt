@@ -1,14 +1,16 @@
 # -*- mode: CMAKE; -*-
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+
 # options
 option(BuildTests "Build test suite" OFF)
-message(STATUS "Building test suite: ${BuildTests}")
+message(STATUS "VelocyPack building test suite: ${BuildTests}")
 
 option(BuildLargeTests "Build large tests" OFF)
-message(STATUS "Building large tests: ${BuildLargeTests}")
+message(STATUS "VelocyPack building large tests: ${BuildLargeTests}")
 
 option(BuildAsmTest "Build assembler test code" OFF)
-message(STATUS "Building assembler test suite: ${BuildAsmTest}")
+message(STATUS "VelocyPack building assembler test suite: ${BuildAsmTest}")
 
 set(Tests
     testsAliases
@@ -26,20 +28,14 @@ set(Tests
     testsLookup
     testsParser
     testsSerializable
+    testsSharedSlice
     testsSink
     testsSlice
     testsSliceContainer
-    testsStringRef
     testsType
     testsValidator
     testsVersion
 )
-
-if (CMAKE_CXX_STANDARD GREATER_EQUAL 17)
-    list(APPEND Tests
-        testsSharedSlice
-    )
-endif ()
 
 macro(standard_test test_name)
     set(testName ${test_name})
@@ -51,6 +47,9 @@ macro(standard_test test_name)
 
     include_directories(${testName} PRIVATE ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
     add_executable(${testName} ${testCpp})
+    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+      set_source_files_properties(${testCpp} PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
+    endif()
     target_link_libraries(${testName} gtest velocypack ${CMAKE_THREAD_LIBS_INIT})
     add_test(${testName} ${testName})
 endmacro()

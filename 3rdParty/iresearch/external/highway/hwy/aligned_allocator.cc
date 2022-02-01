@@ -27,10 +27,21 @@
 namespace hwy {
 namespace {
 
-constexpr size_t kAlignment = HWY_MAX(HWY_ALIGNMENT, kMaxVectorSize);
+#if HWY_ARCH_RVV && defined(__riscv_vector)
+// Not actually an upper bound on the size, but this value prevents crossing a
+// 4K boundary (relevant on Andes).
+constexpr size_t kAlignment = HWY_MAX(HWY_ALIGNMENT, 4096);
+#else
+constexpr size_t kAlignment = HWY_ALIGNMENT;
+#endif
+
+#if HWY_ARCH_X86
 // On x86, aliasing can only occur at multiples of 2K, but that's too wasteful
 // if this is used for single-vector allocations. 256 is more reasonable.
 constexpr size_t kAlias = kAlignment * 4;
+#else
+constexpr size_t kAlias = kAlignment;
+#endif
 
 #pragma pack(push, 1)
 struct AllocationHeader {
@@ -53,6 +64,7 @@ size_t NextAlignedOffset() {
 
 void* AllocateAlignedBytes(const size_t payload_size, AllocPtr alloc_ptr,
                            void* opaque_ptr) {
+  HWY_ASSERT(payload_size != 0);  // likely a bug in caller
   if (payload_size >= std::numeric_limits<size_t>::max() / 2) {
     HWY_DASSERT(false && "payload_size too large");
     return nullptr;
@@ -94,7 +106,7 @@ void* AllocateAlignedBytes(const size_t payload_size, AllocPtr alloc_ptr,
   header->allocated = allocated;
   header->payload_size = payload_size;
 
-  return HWY_ASSUME_ALIGNED(reinterpret_cast<void*>(payload), kMaxVectorSize);
+  return HWY_ASSUME_ALIGNED(reinterpret_cast<void*>(payload), kAlignment);
 }
 
 void FreeAlignedBytes(const void* aligned_pointer, FreePtr free_ptr,

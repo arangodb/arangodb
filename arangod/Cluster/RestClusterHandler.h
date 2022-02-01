@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +28,7 @@
 namespace arangodb {
 class RestClusterHandler : public arangodb::RestBaseHandler {
  public:
-  RestClusterHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestClusterHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   virtual char const* name() const override { return "RestClusterHandler"; }
@@ -50,4 +49,3 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   void handleClusterInfo();
 };
 }  // namespace arangodb
-

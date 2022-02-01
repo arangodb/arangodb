@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,23 +24,27 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-class EnvironmentFeature final : public application_features::ApplicationFeature {
+class EnvironmentFeature final : public ArangodFeature {
  public:
-  explicit EnvironmentFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Environment"; }
+
+  explicit EnvironmentFeature(Server& server);
 
   void prepare() override final;
 
-  std::string const& operatingSystem() const noexcept { return _operatingSystem; }
+  std::string const& operatingSystem() const noexcept {
+    return _operatingSystem;
+  }
 
  private:
   std::string _operatingSystem;
 };
 
 }  // namespace arangodb
-

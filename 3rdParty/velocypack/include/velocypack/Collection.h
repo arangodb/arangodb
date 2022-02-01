@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_COLLECTION_H
-#define VELOCYPACK_COLLECTION_H 1
+#pragma once
 
 #include <functional>
 #include <set>
@@ -36,8 +35,7 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 class Collection {
  public:
@@ -231,6 +229,5 @@ struct IsEqualPredicate {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackCollection = arangodb::velocypack::Collection;

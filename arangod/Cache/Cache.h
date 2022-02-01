@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +75,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  public:
   Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
-        Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
+        Metadata&& metadata, std::shared_ptr<Table> table,
+        bool enableWindowedStats,
         std::function<Table::BucketClearer(Metadata*)> bucketClearer,
         std::size_t slotsPerBucket);
   virtual ~Cache() = default;
@@ -145,8 +146,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   inline bool isShutdown() const { return _shutdown.load(); }
 
   struct Inserter {
-    Inserter(Cache& cache, void const* key, std::size_t keySize, void const* value,
-             std::size_t valueSize, std::function<bool(Result const&)> retry);
+    Inserter(Cache& cache, void const* key, std::size_t keySize,
+             void const* value, std::size_t valueSize,
+             std::function<bool(Result const&)> retry);
     Result status;
   };
 
@@ -154,7 +156,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static constexpr std::uint64_t triesFast = 200;
   static constexpr std::uint64_t triesSlow = 10000;
 
- protected:
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
 
@@ -169,10 +170,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::uint64_t _id;
   Metadata _metadata;
 
-  // manage the actual table
-  std::shared_ptr<Table> _tableShrdPtr;
-  /// keep a pointer to the current table, which can be atomically set
-  std::atomic<Table*> _table;
+ private:
+  // manage the actual table - note: MUST be used only with atomic_load and
+  // atomic_store!
+  std::shared_ptr<Table> _table;
 
   Table::BucketClearer _bucketClearer;
   std::size_t _slotsPerBucket;
@@ -180,10 +181,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // manage eviction rate
   basics::SharedCounter<64> _insertsTotal;
   basics::SharedCounter<64> _insertEvictions;
-  static constexpr std::uint64_t _evictionMask = 4095;  // check roughly every 4096 insertions
-  static constexpr double _evictionRateThreshold = 0.01;  // if more than 1%
-                                                          // evictions in past 4096
-                                                          // inserts, migrate
+  static constexpr std::uint64_t _evictionMask =
+      4095;  // check roughly every 4096 insertions
+  static constexpr double _evictionRateThreshold =
+      0.01;  // if more than 1%
+             // evictions in past 4096
+             // inserts, migrate
 
   // times to wait until requesting is allowed again
   std::atomic<Manager::time_point::rep> _migrateRequestTime;
@@ -201,10 +204,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void requestGrow();
   void requestMigrate(std::uint32_t requestedLogSize = 0);
 
-  static void freeValue(CachedValue* value);
+  static void freeValue(CachedValue* value) noexcept;
   bool reclaimMemory(std::uint64_t size);
 
-  std::uint32_t hashKey(void const* key, std::size_t keySize) const;
+  std::uint32_t hashKey(void const* key, std::size_t keySize) const noexcept;
   void recordStat(Stat stat);
 
   bool reportInsert(bool hadEviction);
@@ -219,10 +222,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool migrate(std::shared_ptr<Table> newTable);
 
   virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
-  virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+  virtual void migrateBucket(void* sourcePtr,
+                             std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) = 0;
 };
 
 };  // end namespace cache
 };  // end namespace arangodb
-

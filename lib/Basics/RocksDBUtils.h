@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,11 +42,11 @@ namespace rocksutils {
 
 enum StatusHint { none, document, collection, view, index, database, wal };
 
-arangodb::Result convertStatus(rocksdb::Status const&, StatusHint hint = StatusHint::none);
+arangodb::Result convertStatus(rocksdb::Status const&,
+                               StatusHint hint = StatusHint::none);
 
 std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
     VPackSlice const& inputSlice, bool checkBeforeCopy = true);
 
 }  // namespace rocksutils
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,8 +38,7 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   basics::ReadWriteLock _lock;
 
  public:
-  RestTransactionHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
+  RestTransactionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTransactionHandler"; }
@@ -47,8 +46,8 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
     if (ServerState::instance()->isDBServer()) {
       bool isSyncReplication = false;
       // We do not care for the real value, enough if it is there.
-      std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
-                                    isSyncReplication);
+      std::ignore = _request->value(
+          StaticStrings::IsSynchronousReplicationString, isSyncReplication);
       if (isSyncReplication) {
         return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
         // This leads to the high queue, we want replication requests (for
@@ -77,4 +76,3 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   void executeJSTransaction();
 };
 }  // namespace arangodb
-

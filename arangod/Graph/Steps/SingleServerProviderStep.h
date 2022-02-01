@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,10 +32,11 @@
 namespace arangodb {
 namespace graph {
 
-template <class StepType>
+template<class StepType>
 class SingleServerProvider;
 
-class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerProviderStep> {
+class SingleServerProviderStep
+    : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
   class Vertex {
    public:
@@ -103,8 +104,8 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
 
   bool isResponsible(transaction::Methods* trx) const;
 
-  friend auto operator<<(std::ostream& out, SingleServerProviderStep const& step)
-      -> std::ostream&;
+  friend auto operator<<(std::ostream& out,
+                         SingleServerProviderStep const& step) -> std::ostream&;
 
  private:
   Vertex _vertex;

@@ -63,9 +63,7 @@ const endpointToURL = (endpoint) => {
   return 'http' + endpoint.substr(pos);
 };
 
-// detect the path of arangosh. quite hacky, but works
-const arangosh = fs.join(global.ARANGOSH_PATH, 'arangosh' + pu.executableExt);
-
+const arangosh = pu.ARANGOSH_BIN;
 
 const debug = function (text) {
   console.warn(text);
@@ -89,7 +87,7 @@ const runShell = function (args, prefix) {
     'server.database': arango.getDatabaseName(),
     'server.username': arango.connectedUser(),
     'server.password': '',
-    'server.request-timeout': '10',
+    'server.request-timeout': '30',
     'log.foreground-tty': 'false',
     'log.output': 'file://' + prefix + '.log'
   };

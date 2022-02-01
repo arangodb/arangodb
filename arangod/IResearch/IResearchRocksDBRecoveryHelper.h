@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 
 #include "Basics/Identifier.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -57,25 +58,20 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
     bool operator<(IndexId const& rhs) const noexcept {
       return (db < rhs.db) ||
-               (db == rhs.db &&
-                  (cid < rhs.cid ||
-                    (cid == rhs.cid &&  iid < rhs.iid)));
+             (db == rhs.db &&
+              (cid < rhs.cid || (cid == rhs.cid && iid < rhs.iid)));
     }
   };
 
-  explicit IResearchRocksDBRecoveryHelper(application_features::ApplicationServer&);
-
-  virtual ~IResearchRocksDBRecoveryHelper() override = default;
+  explicit IResearchRocksDBRecoveryHelper(ArangodServer&);
 
   virtual void prepare() override;
 
-  virtual void PutCF(uint32_t column_family_id,
-                     const rocksdb::Slice& key,
+  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value,
                      rocksdb::SequenceNumber tick) override;
 
-  virtual void DeleteCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key,
+  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::SequenceNumber tick) override {
     handleDeleteCF(column_family_id, key, tick);
   }
@@ -90,11 +86,10 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
                        rocksdb::SequenceNumber tick) override;
 
  private:
-  void handleDeleteCF(uint32_t column_family_id,
-                      const rocksdb::Slice& key,
+  void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                       rocksdb::SequenceNumber tick);
 
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
   DatabaseFeature* _dbFeature{};
   RocksDBEngine* _engine{};
@@ -103,4 +98,3 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
 }  // end namespace iresearch
 }  // end namespace arangodb
-

@@ -27,6 +27,8 @@
 #ifndef IRESEARCH_DLL
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/collation_token_stream.hpp"
+#include "analysis/classification_stream.hpp"
+#include "analysis/nearest_neighbors_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
 #include "analysis/text_token_normalizing_stream.hpp"
 #include "analysis/text_token_stemming_stream.hpp"
@@ -149,7 +151,8 @@ namespace analysis {
 
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments", name.c_str());
+    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments",
+                  static_cast<std::string>(name).c_str());
   }
 
   return false;
@@ -206,8 +209,10 @@ namespace analysis {
 #ifndef IRESEARCH_DLL
   irs::analysis::delimited_token_stream::init();
   irs::analysis::collation_token_stream::init();
+  irs::analysis::classification_stream::init();
   irs::analysis::ngram_token_stream_base::init();
   irs::analysis::normalizing_token_stream::init();
+  irs::analysis::nearest_neighbors_stream::init();
   irs::analysis::stemming_token_stream::init();
   irs::analysis::text_token_stream::init();
   irs::analysis::token_stopwords_stream::init();

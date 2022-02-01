@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,15 +24,19 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
 
 class BasicFeaturePhaseServer : public ApplicationFeaturePhase {
  public:
-  explicit BasicFeaturePhaseServer(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept {
+    return "BasicsPhaseServer";
+  }
+
+  explicit BasicFeaturePhaseServer(ArangodServer& server);
 };
 
 }  // namespace application_features
 }  // namespace arangodb
-

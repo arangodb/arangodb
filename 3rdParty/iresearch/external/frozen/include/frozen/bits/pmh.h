@@ -28,6 +28,7 @@
 #include "frozen/bits/basic_types.h"
 
 #include <array>
+#include <limits>
 
 namespace frozen {
 
@@ -94,18 +95,23 @@ pmh_buckets<M> constexpr make_pmh_buckets(const carray<Item, N> & items,
                                 PRG & prg) {
   using result_t = pmh_buckets<M>;
   result_t result{};
+  bool rejected = false;
   // Continue until all items are placed without exceeding bucket_max
   while (1) {
     for (auto & b : result.buckets) {
       b.clear();
     }
     result.seed = prg();
+    rejected = false;
     for (std::size_t i = 0; i < N; ++i) {
       auto & bucket = result.buckets[hash(key(items[i]), static_cast<size_t>(result.seed)) % M];
-      if (bucket.size() >= result_t::bucket_max) { continue; }
+      if (bucket.size() >= result_t::bucket_max) {
+        rejected = true;
+        break;
+      }
       bucket.push_back(i);
     }
-    return result;
+    if (!rejected) { return result; }
   }
 }
 
@@ -125,7 +131,7 @@ struct seed_or_index {
   using value_type = uint64_t;
 
 private:
-  static constexpr value_type MINUS_ONE = -1;
+  static constexpr value_type MINUS_ONE = std::numeric_limits<value_type>::max();
   static constexpr value_type HIGH_BIT = ~(MINUS_ONE >> 1);
 
   value_type value_ = 0;
@@ -177,7 +183,7 @@ pmh_tables<M, Hash> constexpr make_pmh_tables(const carray<Item, N> &
   carray<seed_or_index, M> G; // Default constructed to "index 0"
 
   // H becomes the second hash table in the resulting pmh function
-  constexpr std::size_t UNUSED = -1;
+  constexpr std::size_t UNUSED = std::numeric_limits<std::size_t>::max();
   carray<std::size_t, M> H;
   H.fill(UNUSED);
 

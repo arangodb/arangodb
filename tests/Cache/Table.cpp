@@ -44,7 +44,8 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
   for (std::uint32_t i = Table::minLogSize; i <= 20; i++) {
     auto table = std::make_shared<Table>(i);
     ASSERT_NE(table.get(), nullptr);
-    ASSERT_EQ(table->memoryUsage(), (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
+    ASSERT_EQ(table->memoryUsage(),
+              (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
     ASSERT_EQ(table->logSize(), i);
     ASSERT_EQ(table->size(), (static_cast<std::uint64_t>(1) << i));
   }
@@ -55,7 +56,8 @@ TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
   ASSERT_NE(table.get(), nullptr);
   table->enable();
   for (std::uint64_t i = 0; i < table->size(); i++) {
-    std::uint32_t hash = static_cast<std::uint32_t>(i << (32 - Table::minLogSize));
+    std::uint32_t hash =
+        static_cast<std::uint32_t>(i << (32 - Table::minLogSize));
     Table::BucketLocker guard = table->fetchAndLockBucket(hash, -1);
     ASSERT_TRUE(guard.isValid());
     ASSERT_TRUE(guard.isLocked());
@@ -97,7 +99,8 @@ TEST_F(CacheTableMigrationTest, check_that_setauxiliary_works_as_intended) {
   ASSERT_EQ(res.get(), large.get());
 }
 
-TEST_F(CacheTableMigrationTest, check_that_bucket_locking_falls_through_appropriately) {
+TEST_F(CacheTableMigrationTest,
+       check_that_bucket_locking_falls_through_appropriately) {
   auto res = small->setAuxiliary(large);
   ASSERT_EQ(res.get(), nullptr);
 
@@ -122,7 +125,8 @@ TEST_F(CacheTableMigrationTest, check_that_bucket_locking_falls_through_appropri
   ASSERT_EQ(busyGuard.source(), nullptr);
 }
 
-TEST_F(CacheTableMigrationTest, check_subtable_fetching_for_moving_to_a_smaller_table) {
+TEST_F(CacheTableMigrationTest,
+       check_subtable_fetching_for_moving_to_a_smaller_table) {
   auto res = large->setAuxiliary(small);
   ASSERT_EQ(res.get(), nullptr);
 
@@ -136,7 +140,8 @@ TEST_F(CacheTableMigrationTest, check_subtable_fetching_for_moving_to_a_smaller_
   ASSERT_EQ(bucket, small->primaryBucket(indexSmall));
 }
 
-TEST_F(CacheTableMigrationTest, check_subtable_fetching_for_moving_to_a_larger_table) {
+TEST_F(CacheTableMigrationTest,
+       check_subtable_fetching_for_moving_to_a_larger_table) {
   auto res = small->setAuxiliary(large);
   ASSERT_EQ(res.get(), nullptr);
 
@@ -178,10 +183,12 @@ TEST_F(CacheTableMigrationTest, check_subtable_apply_all_works) {
 TEST_F(CacheTableMigrationTest, test_fill_ratio_methods) {
   for (std::uint64_t i = 0; i < large->size(); i++) {
     bool res = large->slotFilled();
-    if (static_cast<double>(i + 1) < 0.04 * static_cast<double>(large->size())) {
+    if (static_cast<double>(i + 1) <
+        0.04 * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() - 1);
       ASSERT_FALSE(res);
-    } else if (static_cast<double>(i + 1) > 0.25 * static_cast<double>(large->size())) {
+    } else if (static_cast<double>(i + 1) >
+               0.25 * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() + 1);
       ASSERT_TRUE(res);
     } else {
@@ -191,10 +198,12 @@ TEST_F(CacheTableMigrationTest, test_fill_ratio_methods) {
   }
   for (std::uint64_t i = large->size(); i > 0; i--) {
     bool res = large->slotEmptied();
-    if (static_cast<double>(i - 1) < 0.04 * static_cast<double>(large->size())) {
+    if (static_cast<double>(i - 1) <
+        0.04 * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() - 1);
       ASSERT_TRUE(res);
-    } else if (static_cast<double>(i - 1) > 0.25 * static_cast<double>(large->size())) {
+    } else if (static_cast<double>(i - 1) >
+               0.25 * static_cast<double>(large->size())) {
       ASSERT_EQ(large->idealSize(), large->logSize() + 1);
       ASSERT_FALSE(res);
     } else {

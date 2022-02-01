@@ -1,0 +1,139 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+	Copyright (c) 2019-2020 Krystian Stasiowski (sdkrystian at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/static_string
+]
+
+[library Boost.StaticString
+    [id static_string]
+    [quickbook 1.6]
+	[copyright 2019 - 2020 Krystian Stasiowski]
+    [copyright 2016 - 2019 Vinnie Falco]
+    [purpose String Library]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+    [authors [Stasiowski, Krystian], [Falco, Vinnie]]
+    [category template]
+    [category generic]
+]
+
+[template mdash[] '''&mdash; ''']
+[template indexterm1[term1] '''<indexterm><primary>'''[term1]'''</primary></indexterm>''']
+[template indexterm2[term1 term2] '''<indexterm><primary>'''[term1]'''</primary><secondary>'''[term2]'''</secondary></indexterm>''']
+
+[template path_link[path name] '''<ulink url="../../'''[path]'''">'''[name]'''</ulink>''']
+[template include_file[path][^<'''<ulink url="../../../../'''[path]'''">'''[path]'''</ulink>'''>]]
+
+[def __InputIterator__          [@https://en.cppreference.com/w/cpp/named_req/InputIterator ['InputIterator]]]
+[def __UnaryPredicate__         [@https://en.cppreference.com/w/cpp/named_req/Predicate ['Predicate]]]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Introduction]
+
+This library provides a dynamically resizable string of characters with
+compile-time fixed capacity and contiguous embedded storage in which the
+characters are placed within the string object itself. Its API closely
+resembles that of `std::string`.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Motivation]
+
+A fixed capacity string is useful when:
+
+* Memory allocation is not possible, e.g., embedded environments without a free
+  store, where only a stack and the static memory segment are available.
+* Memory allocation imposes an unacceptable performance penalty.
+  e.g., with respect to latency.
+* Allocation of objects with complex lifetimes in the static-memory
+  segment is required.
+* A dynamically-resizable string is required within `constexpr` functions.
+* The storage location of the static_vector elements is required to be
+  within the string object itself (e.g. to support `memcpy` for serialization
+  purposes).
+
+[/-----------------------------------------------------------------------------]
+
+[heading Requirements]
+
+The library is usable in two different modes: standalone and Boost dependent. This library defaults to Boost dependent mode; standalone mode is opt-in through the use of a configuration macro.
+
+When in Boost dependent mode, the library requires the use of at least C++11, in addition to Boost.Core, Boost.Utility, and Boost.ContainerHash. In standalone mode, C++17 is required but no libraries except for the standard library are needed.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Design]
+
+The over-arching design goal is to resemble the interface and behavior of
+`std::string` as much as possible. When any operation would exceed the
+maximum allowed size of the string, `std::length_error` is thrown if exceptions are enabled. All
+algorithms which throw exceptions provide the strong exception safety
+guarantee. This is intended to be a drop in replacement for `std::string`.
+
+The API of `static_string` only diverges from `std::string` in few places,
+one of which is the addition of the `subview` function, for which this implementation
+returns a string view instead of `static_string`,
+and certain functions that will never throw are marked as `noexcept`, which diverges from
+those of `std::string`. The available overloads for `static_string` are identical to those
+of `std::string`.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Iterators]
+
+The iterator invalidation rules differ from those of `std::string`:
+
+* Moving a `static_string` invalidates all iterators
+* Swapping two `static_string`s invalidates all iterators
+
+[/-----------------------------------------------------------------------------]
+
+[heading Optimizations]
+
+Depending on the character type and size used for a specialization of `static_string`, certain optimizations are used to reduce the size of the class type. Given the name of a specialization of the form `basic_static_string<N, CharT, Traits>`:
+
+* If `N` is 0, then the class has no non-static data members. Given two objects `a` and `b` of type `basic_static_string<0, T, Traits>` and `static_string<0, U, Traits>` respectively, the pointer value returned by `data()` will be the same if `T` and `U` are the same.
+
+* Otherwise, the type of the member used to store the size of the `static_string` will be the smallest standard unsigned integer type that can represent the value `N`.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Configuration]
+
+Certain features can be enabled and disabled though defining configuration macros. The macros and the associated feature they control are:
+
+* `BOOST_STATIC_STRING_STANDALONE`: When defined, the library is put into standalone mode.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Acknowledgments]
+
+Thanks to [@https://github.com/K-ballo Agustín Bergé], [@https://github.com/pdimov Peter Dimov], [@https://github.com/glenfe Glen Fernandes], and [@https://github.com/LeonineKing1199 Christian Mazakas] for their constant feedback and guidance during the development of this library. 
+
+The development of this library is sponsored by [@https://cppalliance.org The C++ Alliance].
+
+[/-----------------------------------------------------------------------------]
+
+[heading Reference]
+
+Defined in namespace `boost::static_strings`:
+
+[link static_string.ref.boost__static_strings__basic_static_string `basic_static_string`]
+
+[/-----------------------------------------------------------------------------]
+
+[section:ref Reference]
+[include reference.qbk]
+[endsect]
+
+[/-----------------------------------------------------------------------------]
+
+[xinclude index.xml]
