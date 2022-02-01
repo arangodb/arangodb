@@ -29,4 +29,4 @@
 namespace arangodb::graph {
 using VertexType = arangodb::velocypack::HashedStringRef;
 using EdgeType = arangodb::velocypack::HashedStringRef;
-}  // namespace arangodb
+}  // namespace arangodb::graph

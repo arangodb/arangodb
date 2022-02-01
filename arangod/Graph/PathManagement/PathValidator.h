@@ -60,6 +60,9 @@ class PathValidator {
   using Step = typename Provider::Step;
 
  public:
+  using ProviderImpl = Provider;
+  using PathStoreImpl = PathStore;
+
   PathValidator(Provider& provider, PathStore& store,
                 PathValidatorOptions opts);
   ~PathValidator();

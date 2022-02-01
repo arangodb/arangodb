@@ -59,7 +59,8 @@ IndexNode::IndexNode(
     ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
     Variable const* outVariable,
     std::vector<transaction::Methods::IndexHandle> const& indexes,
-    std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)
+    bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
+    IndexIteratorOptions const& opts)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
@@ -67,7 +68,8 @@ IndexNode::IndexNode(
       _condition(std::move(condition)),
       _needsGatherNodeSort(false),
       _options(opts),
-      _outNonMaterializedDocId(nullptr) {
+      _outNonMaterializedDocId(nullptr),
+      _allCoveredByOneIndex(allCoveredByOneIndex) {
   TRI_ASSERT(_condition != nullptr);
 
   _projections.determineIndexSupport(this->collection()->id(), _indexes);
@@ -127,6 +129,8 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   }
 
   _condition = Condition::fromVPack(plan, condition);
+  _allCoveredByOneIndex = basics::VelocyPackHelper::getBooleanValue(
+      base, "allCoveredByOneIndex", false);
 
   TRI_ASSERT(_condition != nullptr);
 
@@ -214,6 +218,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   }
   builder.add(VPackValue("condition"));
   _condition->toVelocyPack(builder, flags);
+  builder.add("allCoveredByOneIndex", VPackValue(_allCoveredByOneIndex));
   // IndexIteratorOptions
   builder.add("sorted", VPackValue(_options.sorted));
   builder.add("ascending", VPackValue(_options.ascending));
@@ -363,8 +368,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       outRegister, engine.getQuery(), this->collection(), _outVariable,
       isProduceResult(), this->_filter.get(), this->projections(),
       std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
-      _condition->root(), this->getIndexes(), _plan->getAst(), this->options(),
-      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
+      _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
+      _plan->getAst(), this->options(), _outNonMaterializedIndVars,
+      std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -395,7 +401,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   auto c = std::make_unique<IndexNode>(
-      plan, _id, collection(), outVariable, _indexes,
+      plan, _id, collection(), outVariable, _indexes, _allCoveredByOneIndex,
       std::unique_ptr<Condition>(_condition->clone()), _options);
 
   c->_projections = _projections;
@@ -424,16 +430,15 @@ CostEstimate IndexNode::estimateCost() const {
   double totalCost = 0.0;
 
   auto root = _condition->root();
-
+  TRI_ASSERT(!_allCoveredByOneIndex || _indexes.size() == 1);
   for (size_t i = 0; i < _indexes.size(); ++i) {
     Index::FilterCosts costs =
         Index::FilterCosts::defaultCosts(itemsInCollection);
 
     if (root != nullptr && root->numMembers() > i) {
-      arangodb::aql::AstNode const* condition = root->getMember(i);
-      costs = _indexes[i]->supportsFilterCondition(
-          std::vector<std::shared_ptr<Index>>(), condition, _outVariable,
-          itemsInCollection);
+      auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
+      costs = _indexes[i]->supportsFilterCondition({}, condition, _outVariable,
+                                                   itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;

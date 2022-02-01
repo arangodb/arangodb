@@ -372,7 +372,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"cleanupIntervalStep"};
+    constexpr std::string_view kFieldName{StaticStrings::CleanupIntervalStep};
 
     mask->_cleanupIntervalStep = slice.hasKey(kFieldName);
 
@@ -391,7 +391,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"commitIntervalMsec"};
+    constexpr std::string_view kFieldName{StaticStrings::CommitIntervalMsec};
 
     mask->_commitIntervalMsec = slice.hasKey(kFieldName);
 
@@ -410,7 +410,8 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName{"consolidationIntervalMsec"};
+    constexpr std::string_view kFieldName{
+        StaticStrings::ConsolidationIntervalMsec};
 
     mask->_consolidationIntervalMsec = slice.hasKey(kFieldName);
 
@@ -429,7 +430,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional object
-    constexpr std::string_view kFieldName{"consolidationPolicy"};
+    constexpr std::string_view kFieldName{StaticStrings::ConsolidationPolicy};
     std::string errorSubField;
 
     mask->_consolidationPolicy = slice.hasKey(kFieldName);
@@ -494,7 +495,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName("writebufferActive");
+    constexpr std::string_view kFieldName(StaticStrings::WritebufferActive);
 
     mask->_writebufferActive = slice.hasKey(kFieldName);
 
@@ -513,7 +514,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName("writebufferIdle");
+    constexpr std::string_view kFieldName(StaticStrings::WritebufferIdle);
 
     mask->_writebufferIdle = slice.hasKey(kFieldName);
 
@@ -532,7 +533,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName("writebufferSizeMax");
+    constexpr std::string_view kFieldName(StaticStrings::WritebufferSizeMax);
 
     mask->_writebufferSizeMax = slice.hasKey(kFieldName);
 
@@ -617,7 +618,8 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
   if ((!ignoreEqual ||
        _cleanupIntervalStep != ignoreEqual->_cleanupIntervalStep) &&
       (!mask || mask->_cleanupIntervalStep)) {
-    builder.add("cleanupIntervalStep", velocypack::Value(_cleanupIntervalStep));
+    builder.add(StaticStrings::CleanupIntervalStep,
+                velocypack::Value(_cleanupIntervalStep));
   }
 
   if ((!ignoreEqual ||
@@ -625,7 +627,7 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
            ignoreEqual->_commitIntervalMsec)  // if requested or different
       && (!mask || mask->_commitIntervalMsec)) {
     builder.add(  // add value
-        "commitIntervalMsec",
+        StaticStrings::CommitIntervalMsec,
         velocypack::Value(_commitIntervalMsec)  // args
     );
   }
@@ -633,7 +635,7 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
   if ((!ignoreEqual ||
        _consolidationIntervalMsec != ignoreEqual->_consolidationIntervalMsec) &&
       (!mask || mask->_consolidationIntervalMsec)) {
-    builder.add("consolidationIntervalMsec",
+    builder.add(StaticStrings::ConsolidationIntervalMsec,
                 velocypack::Value(_consolidationIntervalMsec));
   }
 
@@ -642,7 +644,8 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
            _consolidationPolicy.properties(),
            ignoreEqual->_consolidationPolicy.properties(), false)) &&
       (!mask || mask->_consolidationPolicy)) {
-    builder.add("consolidationPolicy", _consolidationPolicy.properties());
+    builder.add(StaticStrings::ConsolidationPolicy,
+                _consolidationPolicy.properties());
   }
 
   if ((!ignoreEqual || _version != ignoreEqual->_version) &&
@@ -652,18 +655,21 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
 
   if ((!ignoreEqual || _writebufferActive != ignoreEqual->_writebufferActive) &&
       (!mask || mask->_writebufferActive)) {
-    builder.add("writebufferActive", velocypack::Value(_writebufferActive));
+    builder.add(StaticStrings::WritebufferActive,
+                velocypack::Value(_writebufferActive));
   }
 
   if ((!ignoreEqual || _writebufferIdle != ignoreEqual->_writebufferIdle) &&
       (!mask || mask->_writebufferIdle)) {
-    builder.add("writebufferIdle", velocypack::Value(_writebufferIdle));
+    builder.add(StaticStrings::WritebufferIdle,
+                velocypack::Value(_writebufferIdle));
   }
 
   if ((!ignoreEqual ||
        _writebufferSizeMax != ignoreEqual->_writebufferSizeMax) &&
       (!mask || mask->_writebufferSizeMax)) {
-    builder.add("writebufferSizeMax", velocypack::Value(_writebufferSizeMax));
+    builder.add(StaticStrings::WritebufferSizeMax,
+                velocypack::Value(_writebufferSizeMax));
   }
 
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) &&

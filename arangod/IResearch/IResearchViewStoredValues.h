@@ -56,6 +56,10 @@ class IResearchViewStoredValues {
     bool operator!=(StoredColumn const& rhs) const noexcept {
       return !(*this == rhs);
     }
+
+    bool sameName(std::string_view str) const noexcept {
+      return (name.size() == str.size() + 1) && name.ends_with(str);
+    }
   };
 
   bool operator==(IResearchViewStoredValues const& rhs) const noexcept {

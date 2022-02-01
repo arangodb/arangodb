@@ -3133,12 +3133,15 @@ struct SortToIndexNode final
         // and contains the best index found.
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
-
+        TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
         auto newNode = std::make_unique<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
-            outVariable, usedIndexes, std::move(condition), opts);
+            outVariable, usedIndexes,
+            false,  // here we could always assume false as there is no lookup
+                    // condition here
+            std::move(condition), opts);
 
         auto n = newNode.release();
         enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
@@ -3229,25 +3232,30 @@ struct SortToIndexNode final
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    if (isOnlyAttributeAccess && isSorted && !isSparse &&
-        sortCondition.isUnidirectional() &&
-        sortCondition.isAscending() == indexNode->options().ascending) {
-      // we have found a sort condition, which is unidirectional and in the same
-      // order as the IndexNode...
-      // now check if the sort attributes match the ones of the index
-      size_t const numCovered =
-          sortCondition.coveredAttributes(outVariable, fields);
+    // FIXME: why not just call index->supportsSortCondition here always?
+    bool indexCoversSortCondition = false;
+    if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      indexCoversSortCondition =
+          index->supportsSortCondition(&sortCondition, outVariable, 1)
+              .supportsCondition;
+    } else {
+      indexCoversSortCondition =
+          isOnlyAttributeAccess && isSorted && !isSparse &&
+          sortCondition.isUnidirectional() &&
+          sortCondition.isAscending() == indexNode->options().ascending &&
+          sortCondition.coveredAttributes(outVariable, fields) >=
+              sortCondition.numAttributes();
+    }
 
-      if (numCovered >= sortCondition.numAttributes()) {
-        // sort condition is fully covered by index... now we can remove the
-        // sort node from the plan
-        _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-        // we need to have a sorted result later on, so we will need a sorted
-        // GatherNode in the cluster
-        indexNode->needsGatherNodeSort(true);
-        _modified = true;
-        handled = true;
-      }
+    if (indexCoversSortCondition) {
+      // sort condition is fully covered by index... now we can remove the
+      // sort node from the plan
+      _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+      // we need to have a sorted result later on, so we will need a sorted
+      // GatherNode in the cluster
+      indexNode->needsGatherNodeSort(true);
+      _modified = true;
+      handled = true;
     }
 
     if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
@@ -3454,10 +3462,12 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
-            auto newNode = condition.removeIndexCondition(
-                plan.get(), indexNode->outVariable(), indexCondition->root(),
-                indexesUsed[0].get());
-
+            AstNode* newNode{nullptr};
+            if (!indexNode->isAllCoveredByOneIndex()) {
+              newNode = condition.removeIndexCondition(
+                  plan.get(), indexNode->outVariable(), indexCondition->root(),
+                  indexesUsed[0].get());
+            }
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
@@ -7145,6 +7155,8 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
                              info.collectionNodeOutVar,
                              std::vector<transaction::Methods::IndexHandle>{
                                  transaction::Methods::IndexHandle{info.index}},
+                             false,  // here we are not using inverted index so
+                                     // for sure no "whole" coverage
                              std::move(condition), opts);
   plan->registerNode(inode);
   plan->replaceNode(info.collectionNodeToReplace, inode);

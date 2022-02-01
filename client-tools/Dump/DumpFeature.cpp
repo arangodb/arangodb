@@ -1273,14 +1273,15 @@ void DumpFeature::start() {
     if (_options.dumpData) {
       LOG_TOPIC("66c0e", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
-          << " wrote " << formatSize(_stats.totalWritten.load())
-          << " into datafiles, sent " << _stats.totalBatches.load()
-          << " batch(es)";
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 6) << " s total time. Wrote "
+          << formatSize(_stats.totalWritten.load()) << " into datafiles, sent "
+          << _stats.totalBatches.load() << " batch(es) in total.";
     } else {
       LOG_TOPIC("aaa17", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s";
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 6) << " s total time.";
     }
   }
 }

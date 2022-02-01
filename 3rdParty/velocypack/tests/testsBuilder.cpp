@@ -2447,7 +2447,7 @@ TEST(BuilderTest, ObjectBuilderNested) {
       ob2->add("zoo", Value("b"));
     }
     {
-      ObjectBuilder ob2(&b, std::string("foobar"));
+      ObjectBuilder ob2(&b, "foobar");
       ASSERT_EQ(&*ob2, &b);
       ASSERT_FALSE(ob2->isClosed());
       ASSERT_FALSE(ob->isClosed());
@@ -2487,7 +2487,7 @@ TEST(BuilderTest, ObjectBuilderNestedArrayInner) {
       ab2->add(Value("b"));
     }
     {
-      ArrayBuilder ab2(&b, std::string("foobar"));
+      ArrayBuilder ab2(&b, "foobar");
       ASSERT_EQ(&*ab2, &b);
       ASSERT_FALSE(ab2->isClosed());
       ASSERT_FALSE(ob->isClosed());
@@ -2609,6 +2609,88 @@ TEST(BuilderTest, ArrayBuilderClosed) {
   ASSERT_TRUE(b.isClosed());
 
   ASSERT_EQ("[\n  \"foo\",\n  \"bar\"\n]", b.toString());
+}
+
+TEST(BuilderTest, IsOpenObject) {
+  Builder b;
+  ASSERT_FALSE(b.isOpenObject());
+  b.openObject();
+  ASSERT_TRUE(b.isOpenObject());
+  b.add("baz", Value("bark"));
+  ASSERT_TRUE(b.isOpenObject());
+  b.add("bar", Value(ValueType::Object));
+  ASSERT_TRUE(b.isOpenObject());
+  b.close();
+  ASSERT_TRUE(b.isOpenObject());
+  b.close();
+  ASSERT_FALSE(b.isOpenObject());
+}
+
+TEST(BuilderTest, IsOpenObjectNoObject) {
+  {
+    Builder b;
+    b.add(Value(ValueType::Null));
+    ASSERT_FALSE(b.isOpenObject());
+  }
+  
+  {
+    Builder b;
+    b.add(Value(false));
+    ASSERT_FALSE(b.isOpenObject());
+  }
+  
+  {
+    Builder b;
+    b.add(Value(1234));
+    ASSERT_FALSE(b.isOpenObject());
+  }
+  
+  {
+    Builder b;
+    b.add(Value("foobar"));
+    ASSERT_FALSE(b.isOpenObject());
+  }
+  
+  {
+    Builder b;
+    b.openArray();
+    ASSERT_FALSE(b.isOpenObject());
+    b.close();
+    ASSERT_FALSE(b.isOpenObject());
+  }
+}
+
+TEST(BuilderTest, Data) {
+  Builder b;
+  ASSERT_NE(b.data(), nullptr);
+  ASSERT_EQ(b.data(), b.buffer()->data());
+}
+
+TEST(BuilderTest, DataWithExternalBuffer) {
+  Buffer<uint8_t> buffer;
+  Builder b(buffer);
+  ASSERT_NE(b.data(), nullptr);
+  ASSERT_EQ(b.data(), buffer.data());
+}
+
+TEST(BuilderTest, AddUnchecked) {
+  Builder b;
+  b.openObject();
+  b.addUnchecked("baz", Value("bark"));
+  b.addUnchecked("foo", Value("bar"));
+  b.addUnchecked("qux", Value("b0rk"));
+  b.close();
+  ASSERT_EQ(R"({"baz":"bark","foo":"bar","qux":"b0rk"})", b.toJson());
+}
+
+TEST(BuilderTest, AddUncheckedCharLength) {
+  Builder b;
+  b.openObject();
+  b.addUnchecked("baz", 3, Value("bark"));
+  b.addUnchecked("foo", 3, Value("bar"));
+  b.addUnchecked("qux", 3, Value("b0rk"));
+  b.close();
+  ASSERT_EQ(R"({"baz":"bark","foo":"bar","qux":"b0rk"})", b.toJson());
 }
 
 TEST(BuilderTest, AddKeysSeparately1) {
