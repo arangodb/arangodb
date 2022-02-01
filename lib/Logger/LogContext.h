@@ -402,11 +402,14 @@ struct LogContext::Entry {
  private:
   void incRefCnt() noexcept {
     TRI_ASSERT(_refCount.load() > 0);
+    // (1) - this acquire-fetch-add synchronizes-with the release-fetch-sub (2)
     _refCount.fetch_add(1, std::memory_order_acquire);
   }
   [[nodiscard]] std::size_t decRefCnt() noexcept {
     TRI_ASSERT(_refCount.load() > 0);
-    return _refCount.fetch_sub(1, std::memory_order_relaxed);
+    // (2) - this release-fetch-sub synchronizes-with the acquire-fetch-add (1)
+    //       and the acquire-load (3)
+    return _refCount.fetch_sub(1, std::memory_order_release);
   }
 
   friend class LogContext;
@@ -606,6 +609,8 @@ struct LogContext::ScopedContext {
 
 template<class Vals>
 inline void LogContext::EntryImpl<Vals>::release(EntryCache& cache) noexcept {
+  // (3) - this acquire-load synchronizes-with the release-fetch-sub (2)
+  std::ignore = this->_refCount.load(std::memory_order_acquire);
   void* p = this;
   this->~EntryImpl();
   if (sizeof(*this) <= LogContext::EntryCache::MinEntryCacheSize &&
@@ -641,7 +646,7 @@ inline LogContext::~LogContext() {
   auto* t = _tail;
   while (t != nullptr) {
     auto prev = t->_prev;
-    if (t->_refCount == 1) {
+    if (t->_refCount.load(std::memory_order_relaxed) == 1) {
       // we have the only reference to this Entry, so we can "reuse" t's
       // reference to prev and therefore do not need to update any refCount.
       t->release(cache);
@@ -650,6 +655,8 @@ inline LogContext::~LogContext() {
         prev->incRefCnt();
       }
       if (t->decRefCnt() == 1) {
+        TRI_ASSERT(prev->_refCount.load() > 1);
+        std::ignore = prev->decRefCnt();
         t->release(cache);
       }
     }
@@ -744,7 +751,7 @@ inline LogContext::Entry* LogContext::pushEntry(
 inline void LogContext::popTail(EntryCache& cache) noexcept {
   TRI_ASSERT(_tail != nullptr);
   auto prev = _tail->_prev;
-  if (_tail->_refCount == 1) {
+  if (_tail->_refCount.load(std::memory_order_relaxed) == 1) {
     // we have the only reference to this Entry, so we can "reuse" _tail's
     // reference to prev and therefore do not need to update any refCount.
     _tail->release(cache);
@@ -753,6 +760,8 @@ inline void LogContext::popTail(EntryCache& cache) noexcept {
       prev->incRefCnt();
     }
     if (_tail->decRefCnt() == 1) {
+      TRI_ASSERT(prev->_refCount.load() > 1);
+      std::ignore = prev->decRefCnt();
       _tail->release(cache);
     }
   }
