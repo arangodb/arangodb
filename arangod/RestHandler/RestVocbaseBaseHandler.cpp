@@ -635,13 +635,23 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid.id()) + "' not found");
   }
+  
   std::unique_ptr<transaction::Methods> trx;
   if (ServerState::instance()->isDBServer() &&
       !opOptions.isSynchronousReplicationFrom.empty()) {
+    // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName, type);
   } else {
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
+    if (isSideUser) {
+      // this is a call from the DOCUMENT() AQL function into an existing AQL query.
+      // locks are already acquired by the AQL transaction.
+      TRI_ASSERT(type == AccessMode::Type::READ);
+      if (type != AccessMode::Type::READ) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid access mode for request");
+      }
+    }
   }
   return trx;
 }
