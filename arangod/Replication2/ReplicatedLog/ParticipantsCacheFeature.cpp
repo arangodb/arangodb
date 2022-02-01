@@ -42,9 +42,8 @@ namespace arangodb::replication2 {
 const std::string_view ParticipantsCacheFeature::kParticipantsHealthPath =
     "arango/Supervision/Health";
 
-ParticipantsCacheFeature::ParticipantsCacheFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ParticipantsCache") {
+ParticipantsCacheFeature::ParticipantsCacheFeature(Server& server)
+    : ArangodFeature{server, *this} {
   agencyCallback = std::make_shared<AgencyCallback>(
       server, std::string(kParticipantsHealthPath),
       [self = weak_from_this()](VPackSlice const& result) {
@@ -63,19 +62,14 @@ ParticipantsCacheFeature::ParticipantsCacheFeature(
       true, false);
 
   setOptional(true);
-  startsAfter<application_features::CommunicationFeaturePhase>();
-  startsAfter<application_features::DatabaseFeaturePhase>();
-  startsAfter<application_features::ClusterFeaturePhase>();
-  startsAfter<application_features::FinalFeaturePhase>();
-  startsAfter<application_features::AgencyFeaturePhase>();
-  startsAfter<application_features::ServerFeaturePhase>();
   startsAfter<ClusterFeature>();
 }
 
-ParticipantsCacheFeature::~ParticipantsCacheFeature() {
+void ParticipantsCacheFeature::stop() {
   try {
-    auto x = server().getFeature<ClusterFeature>().agencyCallbackRegistry();
-    x->unregisterCallback(agencyCallback);
+    auto agencyCallbackRegistry =
+        server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
+    agencyCallbackRegistry->unregisterCallback(agencyCallback);
   } catch (std::exception const& ex) {
     LOG_TOPIC("42af2", WARN, Logger::REPLICATION2)
         << "caught unexpected exception while unregistering agency callback in "
@@ -85,19 +79,17 @@ ParticipantsCacheFeature::~ParticipantsCacheFeature() {
 }
 
 void ParticipantsCacheFeature::start() {
-  auto x = server().getFeature<ClusterFeature>().agencyCallbackRegistry();
-
-  Result res = x->registerCallback(agencyCallback, true);
+  auto agencyCallbackRegistry =
+      server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
+  Result res = agencyCallbackRegistry->registerCallback(agencyCallback, true);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
 
 void ParticipantsCacheFeature::prepare() {
-  if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isAgent()) {
-    setEnabled(false);
-    return;
+  if (ServerState::instance()->isAgent()) {
+    disable();
   }
 }
 

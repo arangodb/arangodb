@@ -39,16 +39,19 @@
 namespace arangodb::replication2 {
 
 class ParticipantsCacheFeature final
-    : public application_features::ApplicationFeature,
+    : public ArangodFeature,
       public FailureOracle,
       public std::enable_shared_from_this<ParticipantsCacheFeature> {
   static const std::string_view kParticipantsHealthPath;
 
  public:
-  explicit ParticipantsCacheFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept {
+    return "ParticipantsCache";
+  }
 
-  ~ParticipantsCacheFeature() override;
+  explicit ParticipantsCacheFeature(Server& server);
+
+  ~ParticipantsCacheFeature() override = default;
 
   void prepare() override;
 
@@ -56,6 +59,7 @@ class ParticipantsCacheFeature final
       -> bool override;
 
   void start() override;
+  void stop() override;
 
  private:
   std::unordered_map<std::string, bool> isFailed;

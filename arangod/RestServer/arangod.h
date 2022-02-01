@@ -140,13 +140,15 @@ namespace iresearch {
 class IResearchAnalyzerFeature;
 class IResearchFeature;
 }  // namespace iresearch
-namespace replication2::replicated_state {
+namespace replication2 {
+class ParticipantsCacheFeature;
+namespace replicated_state {
 struct ReplicatedStateAppFeature;
 namespace black_hole {
 struct BlackHoleStateMachineFeature;
 }
-
-}  // namespace replication2::replicated_state
+}  // namespace replicated_state
+}  // namespace replication2
 
 using namespace application_features;
 
@@ -193,7 +195,8 @@ using ArangodFeatures = TypeList<
     SslServerFeature, arangodb::iresearch::IResearchAnalyzerFeature,
     arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
     replication2::replicated_state::ReplicatedStateAppFeature,
-    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature>;
+    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
+    replication2::ParticipantsCacheFeature>;
 
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
