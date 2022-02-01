@@ -19,7 +19,7 @@ Returns all log entries of log level *level*. Note that the query parameters
 *upto* and *level* are mutually exclusive.
 
 @RESTQUERYPARAM{start,number,optional}
-Returns all log entries such that their log entry identifier (*lid* value)
+Returns all log entries such that their log entry identifier (*lid* .)
 is greater or equal to *start*.
 
 @RESTQUERYPARAM{size,number,optional}
@@ -455,13 +455,13 @@ the API is disabled, all requests will be responded to with HTTP 403. If the
 API is enabled, accessing it requires admin privileges, or even superuser
 privileges, depending on the value of the `--log.api-enabled` startup option.
 
-@RESTBODYPARAM{database,string,value,boolean}
+@RESTBODYPARAM{database,boolean,optional,}
 One of the possible log parameters.
 
-@RESTBODYPARAM{username,string,value,boolean}
+@RESTBODYPARAM{username,boolean,optional,}
 One of the possible log parameters.
 
-@RESTBODYPARAM{url,string,value,boolean}
+@RESTBODYPARAM{url,boolean,optional,}
 One of the possible log parameters.
 
 @RESTRETURNCODES
