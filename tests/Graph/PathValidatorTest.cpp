@@ -107,8 +107,7 @@ class PathValidatorTest : public ::testing::Test {
 
  protected:
   VertexUniquenessLevel
-  getVertexUniqueness() {  // TODO [GraphRefactor]: (R done) Also integrate
-                           //  getEdgeUniqueness here.
+  getVertexUniqueness() {
     if constexpr (std::is_same_v<
                       ValidatorType,
                       PathValidator<graph::MockGraphProvider, PathStore<Step>,
