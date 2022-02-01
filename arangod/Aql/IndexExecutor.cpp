@@ -606,7 +606,14 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
   // modify the existing node in place
   TEMPORARILY_UNLOCK_NODE(condition);
 
-  auto& query = _infos.query();
+  if (_expressionContext == nullptr) {
+    _expressionContext = std::make_unique<ExecutorExpressionContext>(
+        _trx, _infos.query(),
+        _documentProducingFunctionContext.aqlFunctionsInternalCache(), input,
+        _infos.getVarsToRegister());
+  } else {
+    _expressionContext->adjustInputRow(input);
+  }
 
   _ast.clearMost();
 
@@ -617,13 +624,8 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
         _infos.getNonConstExpressions()[posInExpressions].get();
     auto exp = toReplace->expression.get();
 
-    auto& regex = _documentProducingFunctionContext.aqlFunctionsInternalCache();
-
-    ExecutorExpressionContext ctx(_trx, query, regex, input,
-                                  _infos.getVarsToRegister());
-
     bool mustDestroy;
-    AqlValue a = exp->execute(&ctx, mustDestroy);
+    AqlValue a = exp->execute(_expressionContext.get(), mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&_trx.vpackOptions());
@@ -687,7 +689,7 @@ bool IndexExecutor::advanceCursor() {
     }
     // We have a cursor now.
     TRI_ASSERT(_currentIndex < _cursors.size());
-    // Check if this cursor has more (some might now already)
+    // Check if this cursor has more (some might know already)
     if (getCursor().hasMore()) {
       // The current cursor has data.
       _documentProducingFunctionContext.setAllowCoveringIndexOptimization(
@@ -800,6 +802,14 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       bool more = getCursor().readIndex(output);
       TRI_ASSERT(more == getCursor().hasMore());
 
+      if (!more && _currentIndex + 1 >= _cursors.size() && output.isFull()) {
+        // optimization for the case that the cursor cannot produce more data,
+        // we are at the last cursor and we have filled up the output block
+        // completely.
+        inputRange.advanceDataRow();
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      }
+
       INTERNAL_LOG_IDX
           << "IndexExecutor::produceRows::innerLoop output.numRowsWritten() == "
           << output.numRowsWritten();
@@ -817,11 +827,9 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _documentProducingFunctionContext.getAndResetNumFiltered());
   }
 
-  AqlCall upstreamCall;
-
   INTERNAL_LOG_IDX << "IndexExecutor::produceRows reporting state "
                    << returnState();
-  return {returnState(), stats, upstreamCall};
+  return {returnState(), stats, AqlCall{}};
 }
 
 auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
@@ -901,7 +909,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
   INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
                    << " " << skipped << " " << upstreamCall;
-  return {returnState(), stats, skipped, upstreamCall};
+  return {returnState(), stats, skipped, std::move(upstreamCall)};
 }
 
 auto IndexExecutor::returnState() const noexcept -> ExecutorState {
