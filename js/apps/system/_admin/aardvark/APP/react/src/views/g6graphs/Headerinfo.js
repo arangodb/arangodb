@@ -82,7 +82,7 @@ export const Headerinfo = ({ graphName }) => {
               addonBefore="Startnode"
               placeholder="Startnode"
               suffix={
-                <Tooltip title="A valif node id or space seperated list of id's. If empty a random node will be chosen.">
+                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -141,7 +141,7 @@ export const Headerinfo = ({ graphName }) => {
               addonBefore="Label"
               placeholder="Attribute"
               suffix={
-                <Tooltip title="A valif node id or space seperated list of id's. If empty a random node will be chosen.">
+                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -166,7 +166,7 @@ export const Headerinfo = ({ graphName }) => {
               addonBefore="Color"
               placeholder="Color"
               suffix={
-                <Tooltip title="A valif node id or space seperated list of id's. If empty a random node will be chosen.">
+                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -211,7 +211,69 @@ export const Headerinfo = ({ graphName }) => {
             }
             key="3"
           >
-            Show form with EDGE settings
+            <Input
+              addonBefore="Label"
+              placeholder="Attribute"
+              suffix={
+                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+              style={{ width: 240, marginTop: '24px' }}
+            />
+            <br />
+            <Switch
+              checkedChildren="Show collection name"
+              unCheckedChildren="Hide collection name"
+              onChange={onSwitchChange}
+              style={{ marginTop: '24px' }}
+            />
+            <br />
+            <Switch
+              checkedChildren="Color by collections"
+              unCheckedChildren="Don't color by collections"
+              onChange={onSwitchChange}
+              style={{ marginTop: '24px' }}
+            />
+            <br />
+            <Input
+              addonBefore="Color"
+              placeholder="Color"
+              suffix={
+                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+              style={{ width: 240, marginTop: '24px' }}
+            />
+            <br />
+            <Input
+              addonBefore="Color attribute"
+              placeholder="Attribute"
+              suffix={
+                <Tooltip title="Search depth, starting from your startnode">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+              style={{ width: 240, marginTop: '24px' }}
+            />
+            <br />
+            <Select
+              defaultValue="lucy"
+              style={{ width: 240, marginBottom: '24px' , marginTop: '24px' }}
+              onChange={handleChange}
+              suffix={
+                <Tooltip title="Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes).">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }>
+              <Option value="jack">Jack</Option>
+              <Option value="lucy">Lucy</Option>
+              <Option value="disabled" disabled>
+                Disabled
+              </Option>
+              <Option value="Yiminghe">yiminghe</Option>
+            </Select>
           </TabPane>
         </Tabs>
       }
