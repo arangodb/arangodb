@@ -137,6 +137,70 @@ export const Headerinfo = ({ graphName }) => {
             }
             key="2"
           >
+            <Input
+              addonBefore="Label"
+              placeholder="Attribute"
+              suffix={
+                <Tooltip title="A valif node id or space seperated list of id's. If empty a random node will be chosen.">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+              style={{ width: 240, marginTop: '24px' }}
+            />
+            <br />
+            <Switch
+              checkedChildren="Show collection name"
+              unCheckedChildren="Hide collection name"
+              onChange={onSwitchChange}
+              style={{ marginTop: '24px' }}
+            />
+            <br />
+            <Switch
+              checkedChildren="Color by collections"
+              unCheckedChildren="Don't color by collections"
+              onChange={onSwitchChange}
+              style={{ marginTop: '24px' }}
+            />
+            <br />
+            <Input
+              addonBefore="Color"
+              placeholder="Color"
+              suffix={
+                <Tooltip title="A valif node id or space seperated list of id's. If empty a random node will be chosen.">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+              style={{ width: 240, marginTop: '24px' }}
+            />
+            <br />
+            <Input
+              addonBefore="Color attribute"
+              placeholder="Attribute"
+              suffix={
+                <Tooltip title="Search depth, starting from your startnode">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+              style={{ width: 240, marginTop: '24px' }}
+            />
+            <br />
+            <Switch
+              checkedChildren="Size by connections"
+              unCheckedChildren="Default size"
+              onChange={onSwitchChange}
+              style={{ marginTop: '24px' }}
+            />
+            <br />
+            <Input
+              addonBefore="Sizing attribute"
+              placeholder="Attribute"
+              suffix={
+                <Tooltip title="Search depth, starting from your startnode">
+                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+                </Tooltip>
+              }
+              style={{ width: 240, marginTop: '24px', marginBottom: '24px' }}
+            />
           </TabPane>
           <TabPane
             tab={
