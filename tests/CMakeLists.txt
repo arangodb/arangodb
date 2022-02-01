@@ -101,6 +101,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp

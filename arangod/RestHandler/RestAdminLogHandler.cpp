@@ -65,9 +65,9 @@ network::Headers buildHeaders(
 }
 }  // namespace
 
-RestAdminLogHandler::RestAdminLogHandler(
-    arangodb::application_features::ApplicationServer& server,
-    GeneralRequest* request, GeneralResponse* response)
+RestAdminLogHandler::RestAdminLogHandler(arangodb::ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
@@ -116,12 +116,12 @@ RestStatus RestAdminLogHandler::execute() {
     } else if (suffixes.size() == 1 && suffixes[0] == "structured") {
       handleLogStructuredParams();
     } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "superfluous suffix, expecting /_admin/log/<suffix>, "
-                    "where suffix can be either 'entries', 'level' or 'structured'");
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+          "superfluous suffix, expecting /_admin/log/<suffix>, "
+          "where suffix can be either 'entries', 'level' or 'structured'");
     }
-  } else if (type == rest::RequestType::PUT ) {
+  } else if (type == rest::RequestType::PUT) {
     if (suffixes.size() == 1) {
       if (suffixes[0] == "level") {
         handleLogLevel();
@@ -133,7 +133,7 @@ RestStatus RestAdminLogHandler::execute() {
                       "superfluous suffix, expecting /_admin/log/<suffix>, "
                       "where suffix can be either 'level' or 'structured'");
       }
-    } else { // error handling
+    } else {  // error handling
       if (suffixes.empty()) {
         generateError(rest::ResponseCode::BAD,
                       TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -526,7 +526,8 @@ void RestAdminLogHandler::handleLogStructuredParams() {
       std::unordered_map<std::string, bool> paramsAndValues;
       for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isBoolean()) {
-          paramsAndValues.try_emplace(it.key.copyString(), it.value.getBoolean());
+          paramsAndValues.try_emplace(it.key.copyString(),
+                                      it.value.getBoolean());
         }
       }
       Logger::setLogStructuredParams(paramsAndValues);

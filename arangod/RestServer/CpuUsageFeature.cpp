@@ -23,7 +23,7 @@
 
 #include "CpuUsageFeature.h"
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/debugging.h"
@@ -149,16 +149,14 @@ struct CpuUsageFeature::SnapshotProvider {
 };
 #endif
 
-CpuUsageFeature::CpuUsageFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CpuUsage"),
+CpuUsageFeature::CpuUsageFeature(Server& server)
+    : ArangodFeature{server, *this},
       _snapshotProvider(),
       _updateInProgress(false) {
   setOptional(true);
+
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
-
-CpuUsageFeature::~CpuUsageFeature() = default;
 
 void CpuUsageFeature::prepare() {
   _snapshotProvider = std::make_unique<SnapshotProvider>();
@@ -168,6 +166,8 @@ void CpuUsageFeature::prepare() {
     disable();
   }
 }
+
+CpuUsageFeature::~CpuUsageFeature() = default;
 
 CpuUsageSnapshot CpuUsageFeature::snapshot() {
   CpuUsageSnapshot lastSnapshot, lastDelta;

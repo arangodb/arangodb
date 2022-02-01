@@ -117,7 +117,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     friend class IResearchRocksDBLink;
 
    private:
-    IndexFactory(application_features::ApplicationServer& server);
+    IndexFactory(ArangodServer& server);
 
    public:
     bool equal(VPackSlice lhs, VPackSlice rhs,
@@ -132,8 +132,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
                              TRI_vocbase_t const& vocbase) const override;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(
-      application_features::ApplicationServer&);
+  static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
 };
 
 }  // namespace iresearch

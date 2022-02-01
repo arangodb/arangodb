@@ -77,8 +77,8 @@ struct dummy_scorer : public irs::sort {
 REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 
 void assertOrder(
-    arangodb::application_features::ApplicationServer& server, bool parseOk,
-    bool execOk, std::string const& queryString, irs::order const& expected,
+    arangodb::ArangodServer& server, bool parseOk, bool execOk,
+    std::string const& queryString, irs::order const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -176,8 +176,8 @@ void assertOrder(
 }
 
 void assertOrderSuccess(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& queryString, irs::order const& expected,
+    arangodb::ArangodServer& server, std::string const& queryString,
+    irs::order const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -186,8 +186,7 @@ void assertOrderSuccess(
 }
 
 void assertOrderFail(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& queryString,
+    arangodb::ArangodServer& server, std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -197,8 +196,7 @@ void assertOrderFail(
 }
 
 void assertOrderExecutionFail(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& queryString,
+    arangodb::ArangodServer& server, std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -207,9 +205,8 @@ void assertOrderExecutionFail(
                      bindVars, refName);
 }
 
-void assertOrderParseFail(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& queryString, ErrorCode parseCode) {
+void assertOrderParseFail(arangodb::ArangodServer& server,
+                          std::string const& queryString, ErrorCode parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server));
 
@@ -233,7 +230,7 @@ class IResearchOrderTest
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
  protected:
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>

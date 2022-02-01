@@ -25,6 +25,7 @@
 
 #include "Basics/Thread.h"
 #include "V8Server/V8Context.h"
+#include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;
 
@@ -38,7 +39,7 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ConsoleThread final : public Thread {
+class ConsoleThread final : public ServerThread<ArangodServer> {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
@@ -47,7 +48,7 @@ class ConsoleThread final : public Thread {
   static arangodb::Mutex serverConsoleMutex;
 
  public:
-  ConsoleThread(application_features::ApplicationServer&, TRI_vocbase_t*);
+  ConsoleThread(Server&, TRI_vocbase_t*);
 
   ~ConsoleThread();
 

@@ -168,9 +168,8 @@ arangodb::Result arangodb::maintenance::collectionCount(
   return opResult.result;
 }
 
-MaintenanceFeature::MaintenanceFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Maintenance"),
+MaintenanceFeature::MaintenanceFeature(Server& server)
+    : ArangodFeature{server, *this},
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
       _firstRun(true),
