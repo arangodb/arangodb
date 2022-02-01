@@ -185,7 +185,7 @@ TEST_BEGIN(test_align_enum) {
 				assert_ptr_not_null(p,
 				    "Unexpected mallocx() error");
 				assert_zu_eq(nallocx(1, flags),
-				    malloc_usable_size(p),
+				    TEST_MALLOC_SIZE(p),
 				    "Wrong mallocx() usable size");
 				int flags_next =
 				    MALLOCX_LG_ALIGN(lg_align_next);
@@ -193,7 +193,7 @@ TEST_BEGIN(test_align_enum) {
 				assert_ptr_not_null(p,
 				    "Unexpected rallocx() error");
 				expect_zu_eq(nallocx(size, flags_next),
-				    malloc_usable_size(p),
+				    TEST_MALLOC_SIZE(p),
 				    "Wrong rallocx() usable size");
 				free(p);
 			}

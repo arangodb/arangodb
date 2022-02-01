@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade bundled version of jemalloc to 5.3rc (upstream commit a4e8122).
+
 * Reduce memory usage of inner joins if they were performed by the 
   IndexExecutor with dynamic index lookup expressions that needed to be
   recomputed for input from the outer loop.

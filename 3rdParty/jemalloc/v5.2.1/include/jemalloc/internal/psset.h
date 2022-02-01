@@ -25,6 +25,9 @@
  * index 2*pszind), and one for the non-hugified hpdatas (at index 2*pszind +
  * 1).  This lets us implement a preference for purging non-hugified hpdatas
  * among similarly-dirty ones.
+ * We reserve the last two indices for empty slabs, in that case purging
+ * hugified ones (which are definitionally all waste) before non-hugified ones
+ * (i.e. reversing the order).
  */
 #define PSSET_NPURGE_LISTS (2 * PSSET_NPSIZES)
 
@@ -78,7 +81,11 @@ struct psset_s {
 	 * allocations.
 	 */
 	hpdata_empty_list_t empty;
-	/* Slabs which are available to be purged, ordered by purge level. */
+	/*
+	 * Slabs which are available to be purged, ordered by how much we want
+	 * to purge them (with later indices indicating slabs we want to purge
+	 * more).
+	 */
 	hpdata_purge_list_t to_purge[PSSET_NPURGE_LISTS];
 	/* Bitmap for which set bits correspond to non-empty purge lists. */
 	fb_group_t purge_bitmap[FB_NGROUPS(PSSET_NPURGE_LISTS)];

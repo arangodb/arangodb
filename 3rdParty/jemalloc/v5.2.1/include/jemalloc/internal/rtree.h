@@ -35,9 +35,6 @@
 #  define RTREE_LEAF_COMPACT
 #endif
 
-/* Needed for initialization only. */
-#define RTREE_LEAFKEY_INVALID ((uintptr_t)1)
-
 typedef struct rtree_node_elm_s rtree_node_elm_t;
 struct rtree_node_elm_s {
 	atomic_p_t	child; /* (rtree_{node,leaf}_elm_t *) */
@@ -333,28 +330,27 @@ rtree_leaf_elm_state_update(tsdn_t *tsdn, rtree_t *rtree,
 }
 
 /*
- * Tries to look up the key in the L1 cache, returning it if there's a hit, or
- * NULL if there's a miss.
- * Key is allowed to be NULL; returns NULL in this case.
+ * Tries to look up the key in the L1 cache, returning false if there's a hit, or
+ * true if there's a miss.
+ * Key is allowed to be NULL; returns true in this case.
  */
-JEMALLOC_ALWAYS_INLINE rtree_leaf_elm_t *
+JEMALLOC_ALWAYS_INLINE bool
 rtree_leaf_elm_lookup_fast(tsdn_t *tsdn, rtree_t *rtree, rtree_ctx_t *rtree_ctx,
-    uintptr_t key) {
-	rtree_leaf_elm_t *elm;
-
+    uintptr_t key, rtree_leaf_elm_t **elm) {
 	size_t slot = rtree_cache_direct_map(key);
 	uintptr_t leafkey = rtree_leafkey(key);
 	assert(leafkey != RTREE_LEAFKEY_INVALID);
 
-	if (likely(rtree_ctx->cache[slot].leafkey == leafkey)) {
-		rtree_leaf_elm_t *leaf = rtree_ctx->cache[slot].leaf;
-		assert(leaf != NULL);
-		uintptr_t subkey = rtree_subkey(key, RTREE_HEIGHT-1);
-		elm = &leaf[subkey];
-		return elm;
-	} else {
-		return NULL;
+	if (unlikely(rtree_ctx->cache[slot].leafkey != leafkey)) {
+		return true;
 	}
+
+	rtree_leaf_elm_t *leaf = rtree_ctx->cache[slot].leaf;
+	assert(leaf != NULL);
+	uintptr_t subkey = rtree_subkey(key, RTREE_HEIGHT-1);
+	*elm = &leaf[subkey];
+
+	return false;
 }
 
 JEMALLOC_ALWAYS_INLINE rtree_leaf_elm_t *
@@ -452,16 +448,22 @@ rtree_metadata_read(tsdn_t *tsdn, rtree_t *rtree, rtree_ctx_t *rtree_ctx,
 }
 
 /*
- * Returns true on error.
+ * Returns true when the request cannot be fulfilled by fastpath.
  */
 static inline bool
 rtree_metadata_try_read_fast(tsdn_t *tsdn, rtree_t *rtree, rtree_ctx_t *rtree_ctx,
     uintptr_t key, rtree_metadata_t *r_rtree_metadata) {
-	rtree_leaf_elm_t *elm = rtree_leaf_elm_lookup_fast(tsdn, rtree, rtree_ctx,
-	    key);
-	if (elm == NULL) {
+	rtree_leaf_elm_t *elm;
+	/*
+	 * Should check the bool return value (lookup success or not) instead of
+	 * elm == NULL (which will result in an extra branch).  This is because
+	 * when the cache lookup succeeds, there will never be a NULL pointer
+	 * returned (which is unknown to the compiler).
+	 */
+	if (rtree_leaf_elm_lookup_fast(tsdn, rtree, rtree_ctx, key, &elm)) {
 		return true;
 	}
+	assert(elm != NULL);
 	*r_rtree_metadata = rtree_leaf_elm_read(tsdn, rtree, elm,
 	    /* dependent */ true).metadata;
 	return false;
