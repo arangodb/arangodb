@@ -7,6 +7,7 @@ import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
 import AddCollectionNameToNodesSelector from './AddCollectionNameToNodesSelector';
 import AddCollectionNameToEdgesSelector from './AddCollectionNameToEdgesSelector';
+import { Headerinfo } from './Headerinfo';
 import LayoutSelector from './LayoutSelector.js';
 import styles from './graphview.module.css';
 import menustyles from './graphview.menu.css';
@@ -462,6 +463,10 @@ export class GraphView extends React.Component {
     });
   }
 
+  downloadScreenshot = () => {
+    this.graph.downloadImage();
+  }
+
   /*
   <button onClick={this.changeLayout}>Change layout</button>
   <button onClick={this.updateNodeModel}>Update "frenchCity/Paris"</button>
@@ -472,17 +477,23 @@ export class GraphView extends React.Component {
   <button onClick={this.addEdge}>Add edge (new)</button>
   <button onClick={this.updateNodeGraphData}>Update node graph data (new)</button>
   <button onClick={this.updateEdgeGraphData}>Update edge graph data (new)</button>
+  <button onClick={this.changeLayout}>Change layout</button>
+
+  <LayoutSelector value={this.type} onChange={this.changeLayout} />
   */
 
   render() {
     return <>
-      <LayoutSelector value={this.type} onChange={this.changeLayout} />
-
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
       <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
       <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
       <AddCollectionNameToEdgesSelector onAddCollectionNameToEdgesChange={(value) => this.addCollectionNameToEdges(value)} />
-      
+      <Headerinfo
+        graphName={this.props.graphName}
+        graphData={this.props.data}
+        responseDuration={this.props.responseDuration}
+        onDownloadScreenshot={() => this.downloadScreenshot()}
+      />
       <Card
           title={this.props.graphName}
         >

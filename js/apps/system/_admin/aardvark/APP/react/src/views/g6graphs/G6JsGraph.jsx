@@ -596,6 +596,11 @@ const G6JsGraph = () => {
     });
   }
 
+  const receiveDrawnGraph = (drawnGraph) => {
+    console.log("drawnnGraph in parent (G6JsGraph): ", drawnGraph);
+    drawnGraph.downloadImage();
+  }
+
   /*
   <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
         <EdgeStyleSelector onEdgeStyleChange={(typeModel) => changeEdgeStyle(typeModel)} />
@@ -618,7 +623,13 @@ const G6JsGraph = () => {
       <button onClick={() => openEditNodeModal()}>Open edit node modal</button>
       <button onClick={() => openEditModal()}>Open edit modal</button>
       <LayoutSelector options={layouts} value={type} onChange={handleChange} />
+      <Headerinfo
+        graphName={graphName}
+        graphData={graphData}
+        responseDuration={responseTimes.fetchDuration}
+      />
       */
+
   return (
     <div>
       <SlideInMenu>
@@ -713,11 +724,7 @@ const G6JsGraph = () => {
       >
         <strong>Add node</strong>
       </AddNodeModal2>
-      <Headerinfo
-        graphName={graphName}
-        graphData={graphData}
-        responseDuration={responseTimes.fetchDuration}
-      />
+      
       <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
@@ -731,7 +738,9 @@ const G6JsGraph = () => {
             onAddNodeToDb={() => openAddNodeModal()}
             onExpandNode={(node) => expandNode(node)}
             onSetStartnode={(node) => setStartnode(node)}
+            onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
             graphName={graphName}
+            responseDuration={responseTimes.fetchDuration}
       />     
     </div>
   );

@@ -5,7 +5,7 @@ import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined
 import LayoutSelector from './LayoutSelector.js';
 import { ResponseInfo } from './ResponseInfo';
 
-export const Headerinfo = ({ graphName, graphData, responseDuration }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -72,7 +72,10 @@ export const Headerinfo = ({ graphName, graphData, responseDuration }) => {
             <Button key="4"><DownloadOutlined /></Button>
           </Tooltip>
           <Tooltip placement="bottom" title={"Download visible graph as screenshot"}>
-            <Button key="3"><CameraOutlined /></Button>
+            <Button key="3" onClick={() => {
+              console.log("Screenshot button clicked");
+              onDownloadScreenshot();
+            }}><CameraOutlined /></Button>
           </Tooltip>
           <Tooltip placement="bottom" title={"Switch to fullscreen mode"}>
             <Button key="2"><FullscreenOutlined /></Button>
