@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix potential access to dangling reference in cancellation of shard synchronisation.
+
 * Limited module resolution in arangosh to the path from which arangosh is invoked.
 
 * Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is

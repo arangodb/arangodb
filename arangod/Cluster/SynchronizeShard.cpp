@@ -557,8 +557,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     SynchronizeShard& job,
     std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice config,
     std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy) {
-  auto& vocbase = col->vocbase();
-  auto database = vocbase.name();
+  std::shared_ptr<TRI_vocbase_t> vocbase(&col->vocbase());
+  auto database = std::make_shared<std::string>(vocbase->name());
 
   std::string leaderId;
   if (config.hasKey(LEADER_ID)) {
@@ -566,13 +566,13 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config,
-                                                      database);
+      ReplicationApplierConfiguration::fromVelocyPack(vocbase->server(), config,
+                                                      *database);
   configuration.setClientInfo(job.clientInfoString());
   configuration.validate();
 
   // database-specific synchronization
-  auto syncer = DatabaseInitialSyncer::create(vocbase, configuration);
+  auto syncer = DatabaseInitialSyncer::create(*vocbase, configuration);
 
   if (!leaderId.empty()) {
     // In this phase we use the normal leader ID without following term id:
@@ -587,15 +587,13 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         return tailingSyncer->inheritFromInitialSyncer(syncer);
       });
 
-  syncer->setAbortionCheckCallback([&]() -> bool {
+  syncer->setCancellationCheckCallback([=]() -> bool {
     // Will return true if the SynchronizeShard job should be aborted.
-    auto& agencyCache =
-        job.feature().server().getFeature<ClusterFeature>().agencyCache();
-    std::string path = "Plan/Collections/" + database + "/" +
+    std::string path = "Plan/Collections/" + *database + "/" +
                        std::to_string(col->planId().id()) + "/shards/" +
                        col->name();
     VPackBuilder builder;
-    agencyCache.get(builder, path);
+    vocbase->server().getFeature<ClusterFeature>().agencyCache().get(builder, path);
 
     if (!builder.isEmpty()) {
       VPackSlice plan = builder.slice();
@@ -616,7 +614,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
     // abort synchronization
     LOG_TOPIC("f6dbc", INFO, Logger::REPLICATION)
-        << "aborting initial sync for " << database << "/" << col->name()
+        << "aborting initial sync for " << *database << "/" << col->name()
         << " because we are not planned as a follower anymore";
     return true;
   });
@@ -624,12 +622,12 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    std::string const context = "syncing shard " + database + "/" + col->name();
+    std::string const context = "syncing shard " + *database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
 
     if (r.fail()) {
       LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
-          << "initial sync failed for " << database << "/" << col->name()
+          << "initial sync failed for " << *database << "/" << col->name()
           << ": " << r.errorMessage();
       return r;
     }
