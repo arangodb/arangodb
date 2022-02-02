@@ -118,12 +118,6 @@
     this.require = createRequire(this);
     this.parent = parent;
 
-    if (!parent) {
-      this[$_MODULE_ROOT] = NATIVE_MODULES.process.cwd();
-    } else if (parent.children) {
-      parent.children.push(this);
-    }
-
     Object.defineProperty(this, $_MODULE_CONTEXT, {
       value: {
         print: internal.print,
@@ -138,6 +132,7 @@
     });
 
     if (parent) {
+      parent.children.push(this);
       this.context = parent.context;
       this.require.cache = parent.require.cache;
       this.require.aliases = parent.require.aliases;
@@ -147,6 +142,8 @@
           this[$_MODULE_CONTEXT][key] = parent[$_MODULE_CONTEXT][key];
         }
       }.bind(this));
+    } else {
+      this[$_MODULE_ROOT] = NATIVE_MODULES.process.cwd();
     }
 
     Object.defineProperty(this, 'filename', {
