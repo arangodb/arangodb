@@ -72,8 +72,7 @@ ReplicatedState<S>::ReplicatedState(
 
 template<typename S>
 void ReplicatedState<S>::flush(StateGeneration planGeneration) {
-  auto action = guardedData.getLockedGuard()->flush(planGeneration);
-  (void)action;
+  std::ignore = guardedData.getLockedGuard()->flush(planGeneration);
 }
 
 template<typename S>
@@ -117,16 +116,14 @@ template<typename S>
 void ReplicatedState<S>::forceRebuild() {
   LOG_TOPIC("8041a", TRACE, Logger::REPLICATED_STATE)
       << "Force rebuild of replicated state";
-  auto action = guardedData.getLockedGuard()->forceRebuild();
-  (void)action;
+  std::ignore = guardedData.getLockedGuard()->forceRebuild();
 }
 
 template<typename S>
 void ReplicatedState<S>::start(std::unique_ptr<ReplicatedStateToken> token) {
   auto core = std::make_unique<ReplicatedStateCore>();
-  auto action =
+  std::ignore =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
-  (void)action;
 }
 
 template<typename S>
