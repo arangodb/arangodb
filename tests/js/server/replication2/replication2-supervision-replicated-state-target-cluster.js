@@ -128,7 +128,7 @@ const replicatedStateSuite = function () {
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
-      participants = {};
+      let participants = {};
       for (const server of servers) {
         participants[server] = {};
       }
@@ -154,7 +154,7 @@ const replicatedStateSuite = function () {
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
-      participants = {};
+      let participants = {};
       for (const server of servers) {
         participants[server] = {};
       }
