@@ -423,6 +423,21 @@ describe('Foxx Swagger', function () {
             .that.is.eql({
               in: 'body',
               name: 'body',
+              required: true,
+              schema: {type: 'string'}
+            });
+        });
+
+        it('includes explicit optional JSON schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: {type: 'string'}, optional: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              required: false,
               schema: {type: 'string'}
             });
         });
@@ -483,6 +498,7 @@ describe('Foxx Swagger', function () {
               in: 'query',
               name: 'q',
               description: 'custom query',
+              required: false,
               type: 'string'
             });
         });
@@ -511,6 +527,21 @@ describe('Foxx Swagger', function () {
             .that.is.eql({
               in: 'query',
               name: 'q',
+              required: true,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit optional JSON schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', {schema: {type: 'string'}, optional: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              required: false,
               type: 'string'
             });
         });
@@ -527,6 +558,7 @@ describe('Foxx Swagger', function () {
               in: 'header',
               name: 'x-custom',
               description: 'custom header',
+              required: false,
               type: 'string'
             });
         });
@@ -555,6 +587,21 @@ describe('Foxx Swagger', function () {
             .that.is.eql({
               in: 'header',
               name: 'x-custom',
+              required: true,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit optionl JSON schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', {schema: {type: 'string'}, optional: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              required: false,
               type: 'string'
             });
         });

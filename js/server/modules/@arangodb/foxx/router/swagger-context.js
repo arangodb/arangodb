@@ -33,8 +33,8 @@ const { uuidv4 } = require('@arangodb/crypto');
 
 const MIME_JSON = 'application/json; charset=utf-8';
 const MATCH_ALL_MODEL = check.validateSchema(true).value;
-const MATCH_REQ_STRINGS_MODEL = check.validateSchema({type: 'string'}, false).value;
-const MATCH_OPT_STRINGS_MODEL = check.validateSchema({type: 'string'}, true).value;
+const MATCH_REQ_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: false}).value;
+const MATCH_OPT_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: true}).value;
 const DEFAULT_ERROR_MODEL = check.validateSchema({
   type: 'object',
   properties: {
@@ -506,7 +506,7 @@ module.exports = exports =
           const parameter = swaggerifyBody(def.model.schema);
           parameter.name = 'body';
           parameter.in = 'body';
-          parameter.required = !def.optional;
+          parameter.required = !def.model.optional;
           if (def.description) {
             parameter.description = def.description;
           }
