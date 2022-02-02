@@ -63,6 +63,9 @@ ClusterFeature::ClusterFeature(Server& server)
       _metrics{server.getFeature<metrics::MetricsFeature>()},
       _agency_comm_request_time_ms(
           _metrics.add(arangodb_agencycomm_request_time_msec{})) {
+  static_assert(
+      Server::isCreatedAfter<ClusterFeature, metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<application_features::CommunicationFeaturePhase>();
   startsAfter<application_features::DatabaseFeaturePhase>();

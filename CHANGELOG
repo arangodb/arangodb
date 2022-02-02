@@ -3,6 +3,9 @@ devel
 
 * Replaced internal JS dependency ansi-html with ansi-html-community
 
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
+  in upgrade mode in the same time.
+
 * Changed default value of startup option 
   `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
   This makes RocksDB track all loaded index and filter blocks in the block

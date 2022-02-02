@@ -141,7 +141,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
       new ClusterCollection(collection, engineType(), info));
 }
 
-void ClusterEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
+void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
   Result res = getEngineStatsFromDBServers(
       server().getFeature<ClusterFeature>(), builder);
   if (res.fail()) {
