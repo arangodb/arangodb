@@ -76,14 +76,9 @@
   delete global.MODULES_PATH;
 
   function internalModuleStat (path) {
-    try {
-      if (fs.isDirectory(path)) return 1;
-      else if (fs.isFile(path)) return 0;
-      else return -1;
-    } catch (e) {
-      if (e.errorNum === internal.errors.ERROR_FORBIDDEN.code) return -1;
-      throw e;
-    }
+    if (fs.isDirectory(path)) return 1;
+    else if (fs.isFile(path)) return 0;
+    else return -1;
   }
 
   // If obj.hasOwnProperty has been overridden, then calling
@@ -147,8 +142,6 @@
           this[$_MODULE_CONTEXT][key] = parent[$_MODULE_CONTEXT][key];
         }
       }.bind(this));
-    } else {
-      this[$_MODULE_ROOT] = NATIVE_MODULES.process.cwd();
     }
 
     Object.defineProperty(this, 'filename', {
