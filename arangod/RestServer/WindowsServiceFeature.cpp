@@ -639,6 +639,7 @@ void WindowsServiceFeature::validateOptions(
               break;
             case ApplicationServer::State::UNINITIALIZED:
             case ApplicationServer::State::STOPPED:
+            case ApplicationServer::State::IN_UNPREPARE:
               break;
           }
         },

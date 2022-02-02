@@ -59,12 +59,17 @@ class ClientFeature final : public HttpEndpointProvider {
                       maxNumEndpoints,
                       connectionTimeout,
                       requestTimeout} {
-    startsAfter<CommunicationFeaturePhase, Server>();
-    startsAfter<GreetingsFeaturePhase, Server>();
+    static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
+                                                  CommunicationFeaturePhase>());
 
     if constexpr (Server::template contains<ShellConsoleFeature>()) {
+      static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
+                                                    ShellConsoleFeature>());
       _console = &server.template getFeature<ShellConsoleFeature>();
     }
+
+    startsAfter<CommunicationFeaturePhase, Server>();
+    startsAfter<GreetingsFeaturePhase, Server>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
