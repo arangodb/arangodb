@@ -368,7 +368,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration, [this](std::string const& msg) -> void { setProgress(msg); }),
       _config{_state.applier, _batch, _state.connection, false, _state.leader, _progress, _state, vocbase},
-      _lastAbortionCheck(std::chrono::steady_clock::now()),
+      _lastCancellationCheck(std::chrono::steady_clock::now()),
       _isClusterRole(ServerState::instance()->isClusterRole()),
       _quickKeysNumDocsLimit(vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -542,13 +542,13 @@ bool DatabaseInitialSyncer::isAborted() const {
     }
   }
 
-  if (_checkAbortion) {
+  if (_checkCancellation) {
     // execute custom check for abortion only every few seconds, in case
     // it is expensive
     auto now = std::chrono::steady_clock::now();
-    if (now - _lastAbortionCheck >= std::chrono::seconds(5)) {
-      _lastAbortionCheck = now;
-      if (_checkAbortion()) {
+    if (now - _lastCancellationCheck >= std::chrono::seconds(5)) {
+      _lastCancellationCheck = now;
+      if (_checkCancellation()) {
         return true;
       }
     }
