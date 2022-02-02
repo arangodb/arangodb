@@ -61,18 +61,58 @@ auto checkStateAdded(replication2::replicated_state::agency::State const& state)
   }
 }
 
-auto checkStateLog(
-    std::optional<arangodb::replication2::agency::Log> const& log,
+auto checkParticipantAdded(
+    arangodb::replication2::agency::Log const& log,
     replication2::replicated_state::agency::State const& state)
     -> std::unique_ptr<Action> {
-  if (!log) {
-    return std::make_unique<CreateLogForStateAction>(
-        replication2::replicated_state::agency::Plan{});
-  } else {
+  auto const& targetParticipants = state.target.participants;
+
+  if (!state.plan) {
     return std::make_unique<EmptyAction>();
   }
+
+  auto const& planParticipants = state.plan->participants;
+
+  for (auto const& [participant, flags] : targetParticipants) {
+    if (!planParticipants.contains(participant)) {
+      return std::make_unique<AddParticipantAction>(
+          log.plan->id, participant,
+          StateGeneration{state.plan->generation.value});
+    }
+  }
+  return std::make_unique<EmptyAction>();
 }
 
+/* Check whether there is a participant that is excluded but reported snapshot
+ * complete */
+auto checkSnapshotComplete(
+    arangodb::replication2::agency::Log const& log,
+    replication2::replicated_state::agency::State const& state)
+    -> std::unique_ptr<Action> {
+  if (state.current and log.plan) {
+    // TODO generation?
+    for (auto const& [participant, flags] :
+         log.plan->participantsConfig.participants) {
+      if (flags.excluded) {
+        auto const& plannedGeneration =
+            state.plan->participants.at(participant).generation;
+
+        if (auto const& status = state.current->participants.find(participant);
+            status != std::end(state.current->participants)) {
+          auto const& participantStatus = status->second;
+
+          if (participantStatus.snapshot.status ==
+                  SnapshotStatus::kCompleted and
+              participantStatus.generation == plannedGeneration) {
+            return std::make_unique<UnExcludeParticipantAction>(state.plan->id,
+                                                                participant);
+          }
+        }
+      }
+    }
+  }
+  return std::make_unique<EmptyAction>();
+}
 auto isEmptyAction(std::unique_ptr<Action>& action) {
   return action->type() == Action::ActionType::EmptyAction;
 }
@@ -85,7 +125,23 @@ auto checkReplicatedState(
     return action;
   }
 
-  if (auto action = checkStateLog(log, state); !isEmptyAction(action)) {
+  // TGODO if the log isn't there yet we do nothing;
+  // It will need to be observable in future that we are doing nothing because
+  // weŕe waiting for the log to appear.
+  if (!log) {
+    return std::make_unique<EmptyAction>();
+  }
+  // TODO: check for healthy leader?
+  // TODO: is there something to be checked here?
+
+  if (auto action = checkParticipantAdded(*log, state);
+      !isEmptyAction(action)) {
+    return action;
+  }
+
+  if (auto action = checkSnapshotComplete(*log, state);
+      !isEmptyAction(action)) {
+    return action;
   }
 
   return std::make_unique<EmptyAction>();

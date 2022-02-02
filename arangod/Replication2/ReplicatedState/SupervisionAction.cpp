@@ -21,9 +21,10 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "SupervisionAction.h"
 #include "Agency/AgencyPaths.h"
 #include "Agency/TransactionBuilder.h"
-#include "SupervisionAction.h"
+#include "Basics/StringUtils.h"
 #include "velocypack/Builder.h"
 
 namespace paths = arangodb::cluster::paths::aliases;
@@ -37,32 +38,35 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::AddStateToPlanAction: {
       return "AddStateToPlan";
     }
-    case Action::ActionType::CreateLogForStateAction: {
-      return "CreateLogForStateAction";
+    case Action::ActionType::AddParticipantAction: {
+      return "AddParticipantAction";
+    }
+    case Action::ActionType::UnExcludeParticipantAction: {
+      return "UnExcludeParticipantAction";
     }
   }
   return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
          "is-a-bug";
 }
 
-auto operator<<(std::ostream& os, Action::ActionType const& action)
-    -> std::ostream& {
+auto operator<<(std::ostream &os, Action::ActionType const &action)
+    -> std::ostream & {
   return os << to_string(action);
 }
-auto to_string(Action const& action) -> std::string {
+auto to_string(Action const &action) -> std::string {
   VPackBuilder bb;
   action.toVelocyPack(bb);
   return bb.toString();
 }
 
-auto operator<<(std::ostream& os, Action const& action) -> std::ostream& {
+auto operator<<(std::ostream &os, Action const &action) -> std::ostream & {
   return os << to_string(action);
 }
 
 /*
  * EmptyAction
  */
-void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
+void EmptyAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -74,7 +78,7 @@ auto EmptyAction::execute(std::string dbName,
   return envelope;
 }
 
-void AddStateToPlanAction::toVelocyPack(VPackBuilder& builder) const {
+void AddStateToPlanAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -101,10 +105,10 @@ auto AddStateToPlanAction::execute(std::string dbName,
   return envelope.write()
       .emplace_object(
           logTargetPath,
-          [&](VPackBuilder& builder) { logTarget.toVelocyPack(builder); })
+          [&](VPackBuilder &builder) { logTarget.toVelocyPack(builder); })
       .emplace_object(
           statePlanPath,
-          [&](VPackBuilder& builder) { statePlan.toVelocyPack(builder); })
+          [&](VPackBuilder &builder) { statePlan.toVelocyPack(builder); })
       .inc(paths::target()->version()->str())
       .inc(paths::plan()->version()->str())
       .precs()
@@ -113,26 +117,69 @@ auto AddStateToPlanAction::execute(std::string dbName,
       .end();
 }
 
-void CreateLogForStateAction::toVelocyPack(VPackBuilder& builder) const {
+void AddParticipantAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
-  builder.add(VPackValue("spec"));
-  spec.toVelocyPack(builder);
+  builder.add("participant", VPackValue(participant));
 }
 
-auto CreateLogForStateAction::execute(std::string dbName,
-                                      arangodb::agency::envelope envelope)
+auto AddParticipantAction::execute(std::string dbName,
+                                   arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
-  auto path =
-      paths::target()->replicatedLogs()->database(dbName)->log(spec.id)->str();
+  // TODO: I got fed up with AgencyPaths. shame on me
+  auto logTargetParticipantPath = basics::StringUtils::concatT(
+      paths::target()->replicatedLogs()->database(dbName)->log(log)->str(),
+      "/participants/", participant);
+
+  auto statePlanPath =
+      paths::plan()->replicatedStates()->database(dbName)->state(log)->str();
+  auto statePlanParticipantPath = basics::StringUtils::concatT(
+      statePlanPath, "/participants/", participant);
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+          logTargetParticipantPath,
+          [&](VPackBuilder &builder) {
+            ParticipantFlags{.excluded = true}.toVelocyPack(builder);
+          })
+      .emplace_object(
+          statePlanParticipantPath,
+          [&](VPackBuilder &builder) {
+            agency::Plan::Participant{.generation = generation}.toVelocyPack(
+                builder);
+          })
+      .inc(paths::target()->version()->str())
       .inc(paths::plan()->version()->str())
+      .inc(basics::StringUtils::concatT(statePlanPath, "/generation"))
       .precs()
-      .isEmpty(path)
+      .isEmpty(logTargetParticipantPath)
+      .isEmpty(statePlanParticipantPath)
+      .isEqual(basics::StringUtils::concatT(statePlanPath, "/generation"),
+               generation)
+      .end();
+}
+
+void UnExcludeParticipantAction::toVelocyPack(VPackBuilder &builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+  builder.add("participant", VPackValue(participant));
+}
+
+auto UnExcludeParticipantAction::execute(std::string dbName,
+                                         arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  // TODO: I got fed up with AgencyPaths. shame on me
+  auto logTargetPath = basics::StringUtils::concatT(
+      paths::target()->replicatedLogs()->database(dbName)->log(log)->str(),
+      "/participants/", participant, "/excluded");
+
+  return envelope.write()
+      .emplace_object(
+          logTargetPath,
+          [&](VPackBuilder &builder) { builder.add(VPackValue(false)); })
+      .inc(paths::target()->version()->str())
       .end();
 }
 

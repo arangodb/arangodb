@@ -28,13 +28,15 @@
 #include <Replication2/ReplicatedState/AgencySpecification.h>
 
 #include <memory>
+#include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2::replicated_state {
 struct Action {
   enum class ActionType {
     EmptyAction,
     AddStateToPlanAction,
-    CreateLogForStateAction
+    AddParticipantAction,
+    UnExcludeParticipantAction
   };
   virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope = 0;
@@ -70,18 +72,36 @@ struct AddStateToPlanAction : Action {
   agency::Plan statePlan;
 };
 
-struct CreateLogForStateAction : Action {
+struct AddParticipantAction : Action {
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+
+  ActionType type() const override { return ActionType::AddParticipantAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  AddParticipantAction(LogId const& log, ParticipantId const& participant,
+                       StateGeneration const& generation)
+      : log{log}, participant{participant}, generation{generation} {};
+
+  LogId log;
+  ParticipantId participant;
+  StateGeneration generation;
+};
+
+struct UnExcludeParticipantAction : Action {
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
 
   ActionType type() const override {
-    return ActionType::CreateLogForStateAction;
+    return ActionType::UnExcludeParticipantAction;
   };
   void toVelocyPack(VPackBuilder& builder) const override;
 
-  CreateLogForStateAction(agency::Plan const& spec) : spec{spec} {};
+  UnExcludeParticipantAction(LogId const& log, ParticipantId const& participant)
+      : log{log}, participant{participant} {};
 
-  agency::Plan spec;
+  LogId log;
+  ParticipantId participant;
 };
 
 }  // namespace arangodb::replication2::replicated_state

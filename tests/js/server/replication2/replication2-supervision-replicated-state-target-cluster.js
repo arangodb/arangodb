@@ -186,6 +186,10 @@ const replicatedStateSuite = function () {
       const newServers = [...servers, newParticipant];
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
+
+      lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
+        [newParticipant]: {excluded: false, forced: false},
+      }));
     }
 
   };
