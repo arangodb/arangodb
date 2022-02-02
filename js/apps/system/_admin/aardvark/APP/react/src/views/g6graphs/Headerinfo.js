@@ -140,8 +140,8 @@ export const Headerinfo = ({ graphName }) => {
             <Input
               addonBefore="Label"
               placeholder="Attribute"
-              suffix={
-                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
+              suffix = {
+                <Tooltip title="Node label. Please choose a valid and available node attribute.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -154,6 +154,9 @@ export const Headerinfo = ({ graphName }) => {
               onChange={onSwitchChange}
               style={{ marginTop: '24px' }}
             />
+            <Tooltip title="Append collection name to the label?">
+              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
+            </Tooltip>
             <br />
             <Switch
               checkedChildren="Color by collections"
@@ -161,12 +164,15 @@ export const Headerinfo = ({ graphName }) => {
               onChange={onSwitchChange}
               style={{ marginTop: '24px' }}
             />
+            <Tooltip title="Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored.">
+              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
+            </Tooltip>
             <br />
             <Input
               addonBefore="Color"
               placeholder="Color"
-              suffix={
-                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
+              suffix = {
+                <Tooltip title="Default node color. RGB or HEX value.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -177,7 +183,7 @@ export const Headerinfo = ({ graphName }) => {
               addonBefore="Color attribute"
               placeholder="Attribute"
               suffix={
-                <Tooltip title="Search depth, starting from your startnode">
+                <Tooltip title="If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -190,12 +196,15 @@ export const Headerinfo = ({ graphName }) => {
               onChange={onSwitchChange}
               style={{ marginTop: '24px' }}
             />
+            <Tooltip title="Should nodes be sized by their edges count? If enabled, node sizing attribute will be ignored.">
+              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
+            </Tooltip>
             <br />
             <Input
               addonBefore="Sizing attribute"
               placeholder="Attribute"
               suffix={
-                <Tooltip title="Search depth, starting from your startnode">
+                <Tooltip title="Default node size. Numeric value > 0.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -215,7 +224,7 @@ export const Headerinfo = ({ graphName }) => {
               addonBefore="Label"
               placeholder="Attribute"
               suffix={
-                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
+                <Tooltip title="Default edge label">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -228,6 +237,9 @@ export const Headerinfo = ({ graphName }) => {
               onChange={onSwitchChange}
               style={{ marginTop: '24px' }}
             />
+            <Tooltip title="Set label text by collection. If activated edge label attribute will be ignored.">
+              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
+            </Tooltip>
             <br />
             <Switch
               checkedChildren="Color by collections"
@@ -235,12 +247,15 @@ export const Headerinfo = ({ graphName }) => {
               onChange={onSwitchChange}
               style={{ marginTop: '24px' }}
             />
+            <Tooltip title="Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored.">
+              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
+            </Tooltip>
             <br />
             <Input
               addonBefore="Color"
               placeholder="Color"
               suffix={
-                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
+                <Tooltip title="Default node color. RGB or HEX value.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -251,7 +266,7 @@ export const Headerinfo = ({ graphName }) => {
               addonBefore="Color attribute"
               placeholder="Attribute"
               suffix={
-                <Tooltip title="Search depth, starting from your startnode">
+                <Tooltip title="If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }
@@ -263,7 +278,7 @@ export const Headerinfo = ({ graphName }) => {
               style={{ width: 240, marginBottom: '24px' , marginTop: '24px' }}
               onChange={handleChange}
               suffix={
-                <Tooltip title="Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes).">
+                <Tooltip title="The type of the edge">
                   <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
                 </Tooltip>
               }>
