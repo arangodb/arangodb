@@ -53,14 +53,17 @@ class ParticipantsCache final
     return true;
   }
 
+  void setAgencyCallback(std::shared_ptr<AgencyCallback> callback) {
+    TRI_ASSERT(agencyCallback == nullptr);
+    agencyCallback = std::move(callback);
+  }
+
   void start(AgencyCallbackRegistry* agencyCallbackRegistry);
   void stop(AgencyCallbackRegistry* agencyCallbackRegistry);
 
  private:
   std::unordered_map<std::string, bool> isFailed;
   std::shared_ptr<AgencyCallback> agencyCallback;
-
-  friend ParticipantsCacheFeature;
 };
 
 void ParticipantsCache::start(AgencyCallbackRegistry* agencyCallbackRegistry) {
@@ -82,7 +85,7 @@ void ParticipantsCache::stop(AgencyCallbackRegistry* agencyCallbackRegistry) {
 }
 
 ParticipantsCacheFeature::ParticipantsCacheFeature(Server& server)
-    : ArangodFeature{server, *this}, cache(createHealthCache(server)) {
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<ClusterFeature>();
 }
@@ -104,6 +107,8 @@ void ParticipantsCacheFeature::start() {
                                    "Expected non-null AgencyCallbackRegistry "
                                    "when starting ParticipantsCacheFeature.");
   }
+
+  initHealthCache();
   cache->start(agencyCallbackRegistry);
   LOG_TOPIC("42af3", DEBUG, Logger::REPLICATION2)
       << "ParticipantsCacheFeature is ready";
@@ -131,13 +136,13 @@ auto ParticipantsCacheFeature::getFailureOracle()
 const std::string_view ParticipantsCacheFeature::kParticipantsHealthPath =
     "Supervision/Health";
 
-auto ParticipantsCacheFeature::createHealthCache(Server& server)
-    -> std::shared_ptr<ParticipantsCache> {
+void ParticipantsCacheFeature::initHealthCache() {
   // static_assert(Server::contains<ClusterFeature>());
+  TRI_ASSERT(cache == nullptr);
 
-  auto cache = std::make_shared<ParticipantsCache>();
-  cache->agencyCallback = std::make_shared<AgencyCallback>(
-      server, std::string(kParticipantsHealthPath),
+  cache = std::make_shared<ParticipantsCache>();
+  cache->setAgencyCallback(std::make_shared<AgencyCallback>(
+      server(), std::string(kParticipantsHealthPath),
       [cache = std::weak_ptr(cache)](VPackSlice const& result) {
         LOG_DEVEL << "ParticipantsCacheFeature agencyCallback called";
         auto watcher = cache.lock();
@@ -152,8 +157,7 @@ auto ParticipantsCacheFeature::createHealthCache(Server& server)
         }
         return true;
       },
-      true, false);
-  return cache;
+      true, true));
 }
 
 }  // namespace arangodb::replication2

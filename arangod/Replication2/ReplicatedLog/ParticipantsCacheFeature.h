@@ -52,8 +52,7 @@ class ParticipantsCacheFeature final : public ArangodFeature {
   auto getFailureOracle() -> std::shared_ptr<FailureOracle>;
 
  private:
-  static auto createHealthCache(Server& server)
-      -> std::shared_ptr<ParticipantsCache>;
+  void initHealthCache();
 
   std::shared_ptr<ParticipantsCache> cache;
 };
