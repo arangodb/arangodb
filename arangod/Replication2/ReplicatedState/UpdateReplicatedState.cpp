@@ -56,7 +56,7 @@ auto algorithms::updateReplicatedState(
 
     auto token = std::invoke([&] {
       if (current) {
-        if (auto const& p = current->participants.find(serverId);
+        if (auto const p = current->participants.find(serverId);
             p != std::end(current->participants)) {
           if (p->second.generation == expectedGeneration) {
             // we are allowed to use the information stored here
