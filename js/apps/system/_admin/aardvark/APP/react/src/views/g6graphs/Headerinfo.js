@@ -3,8 +3,9 @@ import { Switch, Input, Space, Tag, Card, Select, PageHeader, Tabs, Button, Stat
 import GraphDataInfo from './GraphDataInfo';
 import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined } from '@ant-design/icons';
 import LayoutSelector from './LayoutSelector.js';
+import { ResponseInfo } from './ResponseInfo';
 
-export const Headerinfo = ({ graphName, graphData }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -30,7 +31,10 @@ export const Headerinfo = ({ graphName, graphData }) => {
   const renderContent = (column = 2) => (
     <>
       <Descriptions size="small" column={column}>
-        <Descriptions.Item label="Response time">[12]ms
+        <Descriptions.Item label="Response time">
+          <ResponseInfo
+            duration={responseDuration}
+          />ms
         </Descriptions.Item>
       </Descriptions>
       <Tag color="cyan">{graphData.nodes.length} nodes</Tag>

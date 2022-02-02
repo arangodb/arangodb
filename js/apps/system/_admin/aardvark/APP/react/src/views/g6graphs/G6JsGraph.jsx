@@ -25,6 +25,12 @@ import { JsonEditor as Editor } from 'jsoneditor-react';
 import './tooltip.css';
 
 const G6JsGraph = () => {
+  let responseTimesObject = {
+    fetchStarted: null,
+    fetchFinished: null,
+    fetchDuration: null
+  }
+  const [responseTimes, setResponseTimes] = useState(responseTimesObject);
   const currentUrl = window.location.href;
   const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
   console.log('graphName: ', graphName);
@@ -73,11 +79,15 @@ const G6JsGraph = () => {
 
   // fetching data # start
   const fetchData = useCallback(() => {
+    responseTimesObject.fetchStarted = new Date();
     arangoFetch(arangoHelper.databaseUrl(queryString), {
       method: queryMethod,
     })
     .then(response => response.json())
     .then(data => {
+      responseTimesObject.fetchFinished = new Date();
+      responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+      setResponseTimes(responseTimesObject);
       console.log("NEW DATA for graphData: ", data);
       setGraphData(data);
     })
@@ -705,6 +715,8 @@ const G6JsGraph = () => {
       </AddNodeModal2>
       <Headerinfo
         graphName={graphName}
+        graphData={graphData}
+        responseDuration={responseTimes.fetchDuration}
       />
       <GraphView
             data={graphData}
