@@ -24,48 +24,38 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Replication2/ReplicatedLog/FailureOracle.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "Cluster/AgencyCallbackRegistry.h"
-#include "Cluster/AgencyCallback.h"
-#include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
+#include "RestServer/arangod.h"
 
+#include <memory>
 #include <unordered_map>
 
 namespace arangodb::replication2 {
 
-class ParticipantsCacheFeature final
-    : public ArangodFeature,
-      public FailureOracle,
-      public std::enable_shared_from_this<ParticipantsCacheFeature> {
+struct FailureOracle;
+class ParticipantsCache;
+
+class ParticipantsCacheFeature final : public ArangodFeature {
+ public:
   static const std::string_view kParticipantsHealthPath;
 
- public:
   static constexpr std::string_view name() noexcept {
     return "ParticipantsCache";
   }
 
   explicit ParticipantsCacheFeature(Server& server);
 
-  ~ParticipantsCacheFeature() override = default;
-
   void prepare() override;
-
-  auto isServerFailed(std::string_view serverId) const noexcept
-      -> bool override;
 
   void start() override;
   void stop() override;
 
+  auto getFailureOracle() -> std::shared_ptr<FailureOracle>;
+
  private:
-  std::unordered_map<std::string, bool> isFailed;
-  // ApplicationServer& agencyCallbackRegistry;
-  // application_features::ApplicationServer& server;
-  std::shared_ptr<AgencyCallback> agencyCallback;
+  static auto createHealthCache(Server& server)
+      -> std::shared_ptr<ParticipantsCache>;
+
+  std::shared_ptr<ParticipantsCache> cache;
 };
 
 }  // namespace arangodb::replication2

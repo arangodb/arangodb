@@ -24,52 +24,97 @@
 
 #include "ParticipantsCacheFeature.h"
 
+#include "Replication2/ReplicatedLog/FailureOracle.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "Cluster/AgencyCallbackRegistry.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/AgencyCallback.h"
-#include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/FinalFeaturePhase.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Cluster/ClusterFeature.h"
+#include "Logger/LogMacros.h"
+
+#include <memory>
+#include <unordered_map>
 
 namespace arangodb::replication2 {
 
-const std::string_view ParticipantsCacheFeature::kParticipantsHealthPath =
-    "arango/Supervision/Health";
+class ParticipantsCache final
+    : public FailureOracle,
+      public std::enable_shared_from_this<ParticipantsCache> {
+ public:
+  ParticipantsCache() = default;
+  ~ParticipantsCache() override = default;
+
+  auto isServerFailed(std::string_view const serverId) const noexcept
+      -> bool override {
+    if (auto status = isFailed.find(std::string(serverId));
+        status != std::end(isFailed)) [[likely]] {
+      return status->second;
+    }
+    return true;
+  }
+
+  void start(AgencyCallbackRegistry* agencyCallbackRegistry);
+  void stop(AgencyCallbackRegistry* agencyCallbackRegistry);
+
+ private:
+  std::unordered_map<std::string, bool> isFailed;
+  std::shared_ptr<AgencyCallback> agencyCallback;
+
+  friend ParticipantsCacheFeature;
+};
+
+void ParticipantsCache::start(AgencyCallbackRegistry* agencyCallbackRegistry) {
+  Result res = agencyCallbackRegistry->registerCallback(agencyCallback, true);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
+void ParticipantsCache::stop(AgencyCallbackRegistry* agencyCallbackRegistry) {
+  try {
+    agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("42bf2", WARN, Logger::REPLICATION2)
+        << "Caught unexpected exception while unregistering agency callback "
+           "for ParticipantsCache: "
+        << ex.what();
+  }
+}
 
 ParticipantsCacheFeature::ParticipantsCacheFeature(Server& server)
-    : ArangodFeature{server, *this} {
-  agencyCallback = std::make_shared<AgencyCallback>(
-      server, std::string(kParticipantsHealthPath),
-      [self = weak_from_this()](VPackSlice const& result) {
-        auto watcher = self.lock();
-        if (watcher) {
-          if (result.isNone()) {
-            LOG_DEVEL << "result is None";
-          } else {
-            LOG_DEVEL << result.toString();
-          }
-        } else {
-          LOG_DEVEL << "watcher destroyed";
-        }
-        return true;
-      },
-      true, false);
-
+    : ArangodFeature{server, *this}, cache(createHealthCache(server)) {
   setOptional(true);
   startsAfter<ClusterFeature>();
 }
 
+void ParticipantsCacheFeature::prepare() {
+  if (ServerState::instance()->isAgent()) {
+    disable();
+  } else {
+    enable();
+  }
+}
+
+void ParticipantsCacheFeature::start() {
+  LOG_DEVEL << "ParticipantsCacheFeature started";
+  auto agencyCallbackRegistry =
+      server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
+  if (agencyCallbackRegistry == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Expected non-null AgencyCallbackRegistry "
+                                   "when starting ParticipantsCacheFeature.");
+  }
+  cache->start(agencyCallbackRegistry);
+  LOG_TOPIC("42af3", DEBUG, Logger::REPLICATION2)
+      << "ParticipantsCacheFeature is ready";
+}
+
 void ParticipantsCacheFeature::stop() {
+  LOG_DEVEL << "ParticipantsCacheFeature stopped";
   try {
     auto agencyCallbackRegistry =
         server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
-    agencyCallbackRegistry->unregisterCallback(agencyCallback);
+    cache->stop(agencyCallbackRegistry);
   } catch (std::exception const& ex) {
     LOG_TOPIC("42af2", WARN, Logger::REPLICATION2)
         << "caught unexpected exception while unregistering agency callback in "
@@ -78,29 +123,37 @@ void ParticipantsCacheFeature::stop() {
   }
 }
 
-void ParticipantsCacheFeature::start() {
-  auto agencyCallbackRegistry =
-      server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
-  Result res = agencyCallbackRegistry->registerCallback(agencyCallback, true);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+auto ParticipantsCacheFeature::getFailureOracle()
+    -> std::shared_ptr<FailureOracle> {
+  return std::dynamic_pointer_cast<FailureOracle>(cache);
 }
 
-void ParticipantsCacheFeature::prepare() {
-  if (ServerState::instance()->isAgent()) {
-    disable();
-  }
-}
+const std::string_view ParticipantsCacheFeature::kParticipantsHealthPath =
+    "Supervision/Health";
 
-// TODO ask agency for initial state in case the server is restarted
-auto ParticipantsCacheFeature::isServerFailed(
-    std::string_view serverId) const noexcept -> bool {
-  if (auto status = isFailed.find(std::string(serverId));
-      status != std::end(isFailed)) {
-    return status->second;
-  }
-  return false;
+auto ParticipantsCacheFeature::createHealthCache(Server& server)
+    -> std::shared_ptr<ParticipantsCache> {
+  // static_assert(Server::contains<ClusterFeature>());
+
+  auto cache = std::make_shared<ParticipantsCache>();
+  cache->agencyCallback = std::make_shared<AgencyCallback>(
+      server, std::string(kParticipantsHealthPath),
+      [cache = std::weak_ptr(cache)](VPackSlice const& result) {
+        LOG_DEVEL << "ParticipantsCacheFeature agencyCallback called";
+        auto watcher = cache.lock();
+        if (watcher) {
+          if (result.isNone()) {
+            LOG_DEVEL << "result is None";
+          } else {
+            LOG_DEVEL << result.toJson();
+          }
+        } else {
+          LOG_DEVEL << "watcher destroyed";
+        }
+        return true;
+      },
+      true, false);
+  return cache;
 }
 
 }  // namespace arangodb::replication2
