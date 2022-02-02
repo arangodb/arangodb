@@ -8,6 +8,9 @@ devel
   The performance improvements are due to some improved handling of index
   lookup conditions in the internals of the VelocyPack-based index.
 
+* Limited module resolution in arangosh to the path from which arangosh is 
+  invoked.
+
 * Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
