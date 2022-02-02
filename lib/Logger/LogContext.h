@@ -646,19 +646,14 @@ inline LogContext::~LogContext() {
   auto* t = _tail;
   while (t != nullptr) {
     auto prev = t->_prev;
-    if (t->_refCount.load(std::memory_order_relaxed) == 1) {
-      // we have the only reference to this Entry, so we can "reuse" t's
+    if (t->_refCount.load(std::memory_order_relaxed) == 1 || t->decRefCnt() == 1) {
+      // we have/had the only reference to this Entry, so we can "reuse" t's
       // reference to prev and therefore do not need to update any refCount.
       t->release(cache);
     } else {
-      if (prev) {
-        prev->incRefCnt();
-      }
-      if (t->decRefCnt() == 1) {
-        TRI_ASSERT(prev->_refCount.load() > 1);
-        std::ignore = prev->decRefCnt();
-        t->release(cache);
-      }
+      // we have decremented the refcnt, but some other LogContext still holds
+      // a reference to this entry, so there is nothing left for us to do!
+      break;
     }
     t = prev;
   }
@@ -755,15 +750,15 @@ inline void LogContext::popTail(EntryCache& cache) noexcept {
     // we have the only reference to this Entry, so we can "reuse" _tail's
     // reference to prev and therefore do not need to update any refCount.
     _tail->release(cache);
-  } else {
-    if (prev) {
+  } else if (prev) {
       prev->incRefCnt();
-    }
-    if (_tail->decRefCnt() == 1) {
-      TRI_ASSERT(prev->_refCount.load() > 1);
-      std::ignore = prev->decRefCnt();
-      _tail->release(cache);
-    }
+      if (_tail->decRefCnt() == 1) {
+        TRI_ASSERT(prev->_refCount.load() > 1);
+        std::ignore = prev->decRefCnt();
+        _tail->release(cache);
+      }
+  } else if (_tail->decRefCnt() == 1) {
+    _tail->release(cache);
   }
   _tail = prev;
 }
