@@ -86,11 +86,7 @@
         name: "Update sigle node",
         desc: "Add different node label to different collections.",
         nodeIds: {
-          0: { id: "frenchCity/Lyon" },
-          1: { id: "frenchCity/Paris" },
-          2: { id: "germanCity/Berlin" },
-          3: { id: "germanCity/Hamburg" },
-          4: { id: "germanCity/Cologne" }
+          0: { id: "default" },
         }
       },
 
@@ -287,24 +283,36 @@
       } else if (e.target.id === "g_singleNode") {
         self.updateSingleNode(e);
       } else if (e.target.id === 'g_nodeLabelByCollection') {
+        if ($('#g_nodeLabelByCollection').val() === 'false') {
+          $('#g_singleNode').prop('disabled', true);
+        }
         self.populateNodeIds(e);
       }
     },
 
     populateNodeIds: function (e) {
       console.log(e);
-      let cNodes = window.App.graphViewer.currentGraph.graph.nodes();
+      if ($(`#${e.target.id}`).val() !== "false") {
 
-      if (!$('#g_singleNode').prop('disabled', true)) {
-        $("#_singleNode").prop('disabled', true);
+        let cNodes = window.App.graphViewer.currentGraph.graph.nodes();
+        $("#g_singleNode").removeAttr('disabled');
+
+        let extOpts = $('#g_singleNode option');
+        let singleNode = $('#g_singleNode');
+        let toLoop = [];
+
+        for (let opt = 0; opt < extOpts.length; opt++) {
+          const element = extOpts[opt];
+          toLoop.push(element.value);
+        }
+
+        _.each(cNodes, function (n, key) {
+          if (toLoop[key] === n.id) throw "Option can't be added";
+          singleNode.append($('<option />').val(n.id).text(n.id));
+        });
       }
-
-      let singleNode = $('#g_singleNode');
-      _.each(cNodes, function (n) {
-        console.log(n);
-        singleNode.append($('<option />').val(n.id).text(n.id));
-      });
       debugger;
+      this.handleDependencies();
     },
 
     /**
