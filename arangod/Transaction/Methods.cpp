@@ -1605,6 +1605,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
         case FollowerInfo::WriteState::FORBIDDEN:
           // We cannot fulfill minimum replication Factor. Reject write.
           return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
                                  options);
@@ -1867,6 +1868,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
         case FollowerInfo::WriteState::FORBIDDEN:
           // We cannot fulfill minimum replication Factor. Reject write.
           return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
                                  options);
