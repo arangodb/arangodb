@@ -593,7 +593,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
                        std::to_string(col->planId().id()) + "/shards/" +
                        col->name();
     VPackBuilder builder;
-    vocbase->server().getFeature<ClusterFeature>().agencyCache().get(builder, path);
+    vocbase->server().getFeature<ClusterFeature>().agencyCache().get(builder,
+                                                                     path);
 
     if (!builder.isEmpty()) {
       VPackSlice plan = builder.slice();
@@ -622,7 +623,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   SyncerId syncerId{syncer->syncerId()};
 
   try {
-    std::string const context = "syncing shard " + *database + "/" + col->name();
+    std::string const context =
+        "syncing shard " + *database + "/" + col->name();
     Result r = syncer->run(configuration._incremental, context.c_str());
 
     if (r.fail()) {
