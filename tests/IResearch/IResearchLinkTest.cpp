@@ -2330,7 +2330,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(
             key);
     if (metric != nullptr) {
-      metric->toPrometheus(result, "", "");
+      metric->toPrometheus(result, false, "");
     }
   }
 
@@ -2518,7 +2518,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
   {
     LinkStats actualStat = l->stats();
     std::string realStr;
-    l->stats().toPrometheus(realStr, "", "");
+    l->stats().toPrometheus(realStr, false, "", "");
     std::string expectedStr;
     expectedStr.reserve(1024);
 
@@ -2583,7 +2583,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     std::string realStr;
-    l->stats().toPrometheus(realStr, "", "");
+    l->stats().toPrometheus(realStr, false, "", "");
     std::string expectedStr;
     expectedStr.reserve(1024);
 
@@ -2612,7 +2612,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     std::string realStr;
-    l->stats().toPrometheus(realStr, "test",
+    l->stats().toPrometheus(realStr, false, "test",
                             R"(view="foo",collection="bar","shard"="s0001")");
     std::string expectedStr;
     expectedStr +=

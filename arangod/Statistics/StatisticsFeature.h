@@ -96,7 +96,7 @@ class StatisticsFeature final : public ArangodFeature {
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double const& now, bool v2);
+  void toPrometheus(std::string& result, double const& now);
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
@@ -106,10 +106,9 @@ class StatisticsFeature final : public ArangodFeature {
   static void appendHistogram(std::string& result,
                               statistics::Distribution const& dist,
                               std::string const& label,
-                              std::initializer_list<std::string> const& les,
-                              bool v2);
+                              std::initializer_list<std::string> const& les);
   static void appendMetric(std::string& result, std::string const& val,
-                           std::string const& label, bool v2);
+                           std::string const& label);
 
   Result getClusterSystemStatistics(
       TRI_vocbase_t& vocbase, double start,

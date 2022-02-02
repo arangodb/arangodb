@@ -3034,9 +3034,9 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 
-void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
+void RocksDBEngine::getStatistics(std::string& result) const {
   VPackBuilder stats;
-  getStatistics(stats, v2);
+  getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
   for (auto const& a : VPackObjectIterator(sslice)) {
@@ -3054,7 +3054,7 @@ void RocksDBEngine::getStatistics(std::string& result, bool v2) const {
   }
 }
 
-void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
+void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // add int properties
   auto addInt = [&](std::string const& s) {
     std::string v;
@@ -3222,13 +3222,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   builder.close();
 
   if (_throttleListener) {
-    if (v2) {
-      builder.add("rocksdb_engine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
-    } else {
-      builder.add("rocksdbengine.throttle.bps",
-                  VPackValue(_throttleListener->GetThrottle()));
-    }
+    builder.add("rocksdb_engine.throttle.bps",
+                VPackValue(_throttleListener->GetThrottle()));
   }  // if
 
   {

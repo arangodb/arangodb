@@ -706,38 +706,28 @@ void IResearchLink::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   aql::QueryCache::instance()->invalidate(vocbase, _viewGuid);
 }
 
-void IResearchLink::LinkStats::needName() const { _needName = true; }
-
-void IResearchLink::LinkStats::toPrometheus(std::string& result,
+void IResearchLink::LinkStats::toPrometheus(std::string& result, bool first,
                                             std::string_view globals,
                                             std::string_view labels) const {
   auto writeAnnotation = [&] {
-    result.push_back('{');
-    result.append(globals);
+    (result += '{') += globals;
     if (!labels.empty()) {
       if (!globals.empty()) {
-        result.push_back(',');
+        result += ',';
       }
-      result.append(labels);
+      result += labels;
     }
-    result.push_back('}');
+    result += '}';
   };
   auto writeMetric = [&](std::string_view name, std::string_view help,
                          size_t value) {
-    if (_needName) {
-      result.append("# HELP ");
-      result.append(name);
-      result.push_back(' ');
-      result.append(help);
-      result.push_back('\n');
-      result.append("# TYPE ");
-      result.append(name);
-      result.append(" gauge\n");
+    if (first) {
+      (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+      result.append("# TYPE ").append(name) += " gauge\n";
     }
     result.append(name);
     writeAnnotation();
-    result.append(std::to_string(value));
-    result.push_back('\n');
+    result.append(std::to_string(value)) += '\n';
   };
   writeMetric(arangosearch_num_buffered_docs::kName,
               "Number of buffered documents", numBufferedDocs);
@@ -749,7 +739,6 @@ void IResearchLink::LinkStats::toPrometheus(std::string& result,
   writeMetric(arangosearch_num_files::kName, "Number of files", numFiles);
   writeMetric(arangosearch_index_size::kName, "Size of the index in bytes",
               indexSize);
-  _needName = false;
 }
 
 }  // namespace arangodb::iresearch
