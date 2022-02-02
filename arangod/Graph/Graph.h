@@ -238,7 +238,7 @@ class Graph {
    *
    * @param builder The builder the result should be written in. Expects an open
    * object.
-   * @param md5Calculation If enabled, we will not include individual attributes
+   * @param md5Calculation If disabled, we will not include individual attributes
    * like e.g. initial collection id (StaticStrings::GraphInitialCid) which
    * might differ when comparing two individual datacenters.
    */
