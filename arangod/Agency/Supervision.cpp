@@ -2699,7 +2699,7 @@ void Supervision::checkReplicatedStates() {
               return replication2::replicated_state::checkReplicatedState(
                   log, state);
             } catch (std::exception const& err) {
-              LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
+              LOG_TOPIC("676d1", ERR, Logger::REPLICATION2)
                   << "Supervision caught exception in checkReplicatedLog "
                      "for "
                      "replicated log "
@@ -2718,7 +2718,7 @@ void Supervision::checkReplicatedStates() {
   if (builder->slice().length() > 0) {
     write_ret_t res = _agent->write(builder);
     if (!res.successful()) {
-      LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
+      LOG_TOPIC("12e37", WARN, Logger::SUPERVISION)
           << "failed to update term in agency. Will retry. "
           << builder->toJson();
     }
