@@ -38,14 +38,9 @@ class Batch final : public Metric {
   [[nodiscard]] std::string_view type() const noexcept final {
     return "untyped";
   }
-  void toPrometheus(std::string& result, std::string_view globals,
-                    std::string_view) const final {
-    load().toPrometheus(result, globals, labels());
-  }
-  void toPrometheusBegin(std::string& result,
-                         std::string_view name) const final {
-    std::lock_guard guard{_m};
-    _metric.needName();
+  void toPrometheus(std::string& result, bool first,
+                    std::string_view globals) const final {
+    load().toPrometheus(result, first, globals, labels());
   }
 
   void store(T&& metric) {

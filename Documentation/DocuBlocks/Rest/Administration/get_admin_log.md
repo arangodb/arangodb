@@ -19,7 +19,7 @@ Returns all log entries of log level *level*. Note that the query parameters
 *upto* and *level* are mutually exclusive.
 
 @RESTQUERYPARAM{start,number,optional}
-Returns all log entries such that their log entry identifier (*lid* value)
+Returns all log entries such that their log entry identifier (*lid* .)
 is greater or equal to *start*.
 
 @RESTQUERYPARAM{size,number,optional}
@@ -160,7 +160,7 @@ is returned if there are insufficient privileges to access the logs.
 @endDocuBlock
 
 
-@startDocuBlock get_admin_loglevel
+@startDocuBlock get_admin_log_level
 @brief returns the current log level settings
 
 @RESTHEADER{GET /_admin/log/level, Return the current server log level}
@@ -185,7 +185,7 @@ is returned if there are insufficient privileges to read log levels.
 @endDocuBlock
 
 
-@startDocuBlock put_admin_loglevel
+@startDocuBlock put_admin_log_level
 @brief modifies the current log level settings
 
 @RESTHEADER{PUT /_admin/log/level, Modify and return the current server log level}
@@ -408,8 +408,7 @@ is returned when an invalid HTTP method is used.
 @startDocuBlock get_admin_log_structured
 @brief returns the current structured log settings
 
-@RESTHEADER{GET /_admin/log/structured, Return the current server log 
-structured parameters}
+@RESTHEADER{GET /_admin/log/structured, Return the current server log structured parameters}
 
 @RESTDESCRIPTION
 Returns the server's current structured log settings.
@@ -439,8 +438,7 @@ is returned when an invalid HTTP method is used.
 @startDocuBlock put_admin_log_structured
 @brief modifies the current structured log settings
 
-@RESTHEADER{PUT /_admin/log/level, Modify and return the current server log 
-parameters}
+@RESTHEADER{PUT /_admin/log/structured, Modify and return the current server log parameters}
 
 @RESTDESCRIPTION
 Modifies and returns the server's current structured log settings.
@@ -457,13 +455,13 @@ the API is disabled, all requests will be responded to with HTTP 403. If the
 API is enabled, accessing it requires admin privileges, or even superuser
 privileges, depending on the value of the `--log.api-enabled` startup option.
 
-@RESTBODYPARAM{database,string,value,boolean}
+@RESTBODYPARAM{database,boolean,optional,}
 One of the possible log parameters.
 
-@RESTBODYPARAM{username,string,value,boolean}
+@RESTBODYPARAM{username,boolean,optional,}
 One of the possible log parameters.
 
-@RESTBODYPARAM{url,string,value,boolean}
+@RESTBODYPARAM{url,boolean,optional,}
 One of the possible log parameters.
 
 @RESTRETURNCODES
@@ -477,4 +475,4 @@ is returned if there are insufficient privileges to adjust log levels.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 
-@edDocuBlock
+@endDocuBlock

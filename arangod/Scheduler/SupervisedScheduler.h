@@ -218,9 +218,6 @@ class SupervisedScheduler final : public Scheduler {
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
   metrics::Gauge<uint64_t>& _metricsQueueLength;
-  metrics::Gauge<uint64_t>& _metricsJobsDone;
-  metrics::Gauge<uint64_t>& _metricsJobsSubmitted;
-  metrics::Gauge<uint64_t>& _metricsJobsDequeued;
   metrics::Counter& _metricsJobsDoneTotal;
   metrics::Counter& _metricsJobsSubmittedTotal;
   metrics::Counter& _metricsJobsDequeuedTotal;
