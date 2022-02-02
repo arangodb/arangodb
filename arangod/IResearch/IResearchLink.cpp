@@ -1130,11 +1130,14 @@ Result IResearchLink::init(velocypack::Slice definition,
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
+
+    bool const clusterWideLink =
+        _collection.id() == _collection.planId() && _collection.isAStub();
+    auto const clusterIsEnabled =
+        vocbase.server().getFeature<ClusterFeature>().isEnabled();
+    if (clusterIsEnabled) {
       auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-      bool const clusterWideLink =
-          _collection.id() == _collection.planId() && _collection.isAStub();
 
       // upgrade step for old link definition without collection name
       // this could be received from  agency while shard of the collection was
@@ -1154,7 +1157,7 @@ Result IResearchLink::init(velocypack::Slice definition,
               << "' for new link '" << this->id().id() << "'";
         }
         if (ADB_UNLIKELY(meta._collectionName.empty())) {
-          LOG_TOPIC("67da6", WARN, TOPIC)
+          LOG_TOPIC_IF("67da6", WARN, TOPIC, meta.willIndexIdAttribute())
               << "Failed to init collection name for the link '"
               << this->id().id()
               << "'. Link will not index '_id' attribute. Please recreate the "
@@ -1168,19 +1171,40 @@ Result IResearchLink::init(velocypack::Slice definition,
         }
 #endif
       }
+    }
 
-      if (!clusterWideLink) {
-        // prepare data-store which can then update options
-        // via the IResearchView::link(...) call
-        auto const res =
-            initDataStore(initCallback, meta._version, sorted,
-                          storedValuesColumns, primarySortCompression);
-
-        if (!res.ok()) {
-          return res;
-        }
+    if (!clusterWideLink) {
+      if (meta._collectionName.empty() && !clusterIsEnabled &&
+          vocbase.server()
+              .getFeature<EngineSelectorFeature>()
+              .engine()
+              .inRecovery() &&
+          meta.willIndexIdAttribute()) {
+        LOG_TOPIC("f25ce", FATAL, TOPIC)
+            << "Upgrade conflicts with recovering ArangoSearch link '"
+            << this->id().id()
+            << "' Please rollback the updated arangodb binary and finish the "
+               "recovery "
+               "first.";
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "Upgrade conflicts with recovering ArangoSearch link."
+            " Please rollback the updated arangodb binary and finish the "
+            "recovery "
+            "first.");
       }
+      // prepare data-store which can then update options
+      // via the IResearchView::link(...) call
+      auto const res =
+          initDataStore(initCallback, meta._version, sorted,
+                        storedValuesColumns, primarySortCompression);
 
+      if (!res.ok()) {
+        return res;
+      }
+    }
+    if (clusterIsEnabled) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
       // valid to call ClusterInfo (initialized in ClusterFeature::prepare())
       // even from DatabaseFeature::start()
       auto logicalView = ci.getView(vocbase.name(), viewId);
