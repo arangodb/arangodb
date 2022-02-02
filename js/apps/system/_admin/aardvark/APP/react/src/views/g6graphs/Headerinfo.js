@@ -1,9 +1,12 @@
+import React, { useCallback, useEffect, useState } from 'react';
 import { Switch, Input, Space, Tag, Card, Select, PageHeader, Tabs, Button, Statistic, Descriptions, Tooltip } from 'antd';
 import GraphDataInfo from './GraphDataInfo';
 import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined } from '@ant-design/icons';
+import LayoutSelector from './LayoutSelector.js';
 
-export const Headerinfo = ({ graphName }) => {
+export const Headerinfo = ({ graphName, graphData }) => {
   
+  const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
   const { TabPane } = Tabs;
 
@@ -15,14 +18,23 @@ export const Headerinfo = ({ graphName }) => {
     console.log(`switch to ${checked}`);
   }
 
+  const changeLayout = ({ newLayout }) => {
+    /*
+    this.graph.updateLayout({
+      type: value,
+    });
+    */
+   console.log("New graph newLayout: ", newLayout);
+  }
+
   const renderContent = (column = 2) => (
     <>
       <Descriptions size="small" column={column}>
         <Descriptions.Item label="Response time">[12]ms
         </Descriptions.Item>
       </Descriptions>
-      <Tag color="cyan">[4] nodes</Tag>
-      <Tag color="magenta">[12] nodes</Tag>
+      <Tag color="cyan">{graphData.nodes.length} nodes</Tag>
+      <Tag color="magenta">{graphData.edges.length} edges</Tag>
     </>
   );
 
@@ -89,6 +101,10 @@ export const Headerinfo = ({ graphName }) => {
               style={{ width: 240, marginTop: '24px' }}
             />
             <br />
+            <LayoutSelector
+              value={layout}
+              onChange={(value) => changeLayout}
+              onLayoutChange={(layoutvalue) => console.log("New layout value in Headerinfo: ", layoutvalue)} />
             <Select
               defaultValue="lucy"
               style={{ width: 240, marginTop: '24px' }}
