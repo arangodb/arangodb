@@ -588,7 +588,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   
   syncer->setCancellationCheckCallback([=]() -> bool {
     // Will return true if the SynchronizeShard job should be aborted.
-    auto& agencyCache = vocbase.server().getFeature<ClusterFeature>().agencyCache();
+    auto& agencyCache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     std::string path = "Plan/Collections/" + *database + "/" +
           std::to_string(col->planId().id()) + "/shards/" + col->name();
     VPackBuilder builder;
