@@ -727,18 +727,18 @@ bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
 }
 
 Result GraphManager::readGraphs(velocypack::Builder& builder) const {
-  std::string const queryStr{
-      "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
-  return readGraphByQuery(builder, queryStr);
+  std::string const queryStr{"FOR g IN _graphs RETURN {name: g._key}"};
+  return readGraphByQuery(builder, queryStr, true);
 }
 
 Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g._key"};
-  return readGraphByQuery(builder, queryStr);
+  return readGraphByQuery(builder, queryStr, false);
 }
 
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
-                                      std::string const& queryStr) const {
+                                      std::string const& queryStr,
+                                      bool extra) const {
   auto query = arangodb::aql::Query::create(
       ctx(), arangodb::aql::QueryString(queryStr), nullptr);
   query->queryOptions().skipAudit = true;
@@ -765,9 +765,36 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
         << "cannot read graphs from _graphs collection";
   }
 
-  builder.add(VPackValue(VPackValueType::Object));
-  builder.add("graphs", graphsSlice);
+  builder.openObject();
+  for (VPackSlice graphSlice : VPackArrayIterator(graphsSlice)) {
+    auto res = writeGraphToBuilder(builder, graphSlice, extra);
+    if (res.fail()) {
+      return res;
+    }
+  }
   builder.close();
+
+  return Result(TRI_ERROR_NO_ERROR);
+}
+
+Result GraphManager::writeGraphToBuilder(VPackBuilder& builder,
+                                       VPackSlice const& graphSlice,
+                                       bool extra) const {
+  TRI_ASSERT(builder.isOpenObject());
+  TRI_ASSERT(graphSlice.isObject());
+  TRI_ASSERT(graphSlice.get(StaticStrings::GraphName).isString());
+  auto res = lookupGraphByName(graphSlice.get(StaticStrings::GraphName).copyString());
+  if (res.fail()) {
+    return res.result();
+  }
+
+  auto& graph = res.get();
+  if (extra) {
+    graph->graphForClientWithExtra(builder, _vocbase);
+  } else {
+    graph->graphForClient(builder);
+  }
+
 
   return Result(TRI_ERROR_NO_ERROR);
 }

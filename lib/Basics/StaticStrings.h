@@ -256,6 +256,7 @@ class StaticStrings {
   static std::string const GraphDropCollections;
   static std::string const GraphDropCollection;
   static std::string const GraphCreateCollection;
+  static std::string const GraphEdgeDefinition;
   static std::string const GraphEdgeDefinitions;
   static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
@@ -264,12 +265,12 @@ class StaticStrings {
 
   // smart graph relevant attributes
   static std::string const IsDisjoint;
-  static std::string const IsHybrid;
   static std::string const GraphIsSatellite;
   static std::string const GraphSatellites;
   static std::string const GraphIsSmart;
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
+  static std::string const GraphChecksum;
   static std::string const ShadowCollections;
   static std::string const FullLocalPrefix;
   static std::string const FullFromPrefix;

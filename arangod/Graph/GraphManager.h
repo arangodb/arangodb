@@ -55,6 +55,9 @@ class GraphManager {
   Result createCollection(std::string const& name, TRI_col_type_e colType,
                           bool waitForSync, VPackSlice options);
 
+  Result writeGraphToBuilder(VPackBuilder& builder,
+                             VPackSlice const& graphSlice, bool extra) const;
+
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
@@ -62,8 +65,18 @@ class GraphManager {
 
   Result readGraphKeys(velocypack::Builder& builder) const;
 
+  /**
+   * @brief Write all available graphs into the builder
+   *
+   * @param builder The destination builder for all graphs
+   * @param queryStr The query string to be used to fetch the actual results
+   * @param extra Whether to fetch additional information which needs to be
+   *        calculated on demand (e.g. satellite collections that are part of
+   *        the graph).
+   *
+   */
   Result readGraphByQuery(velocypack::Builder& builder,
-                          std::string const& queryStr) const;
+                          std::string const& queryStr, bool extra = false) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available

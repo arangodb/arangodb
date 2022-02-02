@@ -47,6 +47,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
+#include "Ssl/SslInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -239,6 +240,30 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
   }
 }
 
+std::set<std::string> const& Graph::vertexCollectionsUsedAsSatellites(
+    TRI_vocbase_t const& vocbase) const {
+  std::set<std::string> list{};
+  for (auto const& vertexCollection : vertexCollections()) {
+    auto const& logicalCollection = vocbase.lookupCollection(vertexCollection);
+    if (logicalCollection->isSatellite()) {
+      list.emplace(vertexCollection);
+    }
+  }
+
+  return std::move(list);
+}
+
+std::string Graph::calculateMd5() const {
+  // Creates VelocyPack graph representation
+  VPackBuilder md5Builder;
+  md5Builder.openObject();
+  toPersistence(md5Builder, true);
+  md5Builder.close();
+
+  // Creates md5 checksum based on graph representation
+  return arangodb::rest::SslInterface::sslMD5(md5Builder.toString());
+}
+
 std::set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;
 }
@@ -364,7 +389,7 @@ void Graph::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-void Graph::toPersistence(VPackBuilder& builder) const {
+void Graph::toPersistence(VPackBuilder& builder, bool md5Calculation) const {
   TRI_ASSERT(builder.isOpenObject());
 
   // The name
@@ -396,7 +421,7 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   builder.add(VPackValue(StaticStrings::GraphEdgeDefinitions));
   builder.openArray();
   for (auto const& it : edgeDefinitions()) {
-    it.second.addToBuilder(builder);
+    it.second.addToBuilder(builder, md5Calculation);
   }
   builder.close();  // EdgeDefinitions
 
@@ -407,6 +432,27 @@ void Graph::toPersistence(VPackBuilder& builder) const {
     builder.add(VPackValue(on));
   }
   builder.close();  // Orphans
+}
+
+void Graph::toPersistenceWithExtra(VPackBuilder& builder,
+                                   TRI_vocbase_t const& vocbase) const {
+  toPersistence(builder, true);
+
+  // calculate md5 checksum based on the graph itself (todo check location
+  // here)
+  if (isSmart()) {
+    // additionally, check whether there are any collections created as
+    // satellite collections (Hybrid Smart Graph case).
+    auto satellites = vertexCollectionsUsedAsSatellites(vocbase);
+    builder.add(VPackValue(StaticStrings::GraphSatellites));
+
+    builder.openArray();
+    for (auto const& satCollection : satellites) {
+      builder.add(VPackValue(satCollection));
+    }
+    builder.close();
+  }
+  builder.add(StaticStrings::GraphChecksum, VPackValue(calculateMd5()));
 }
 
 void Graph::enhanceEngineInfo(VPackBuilder&) const {}
@@ -420,14 +466,15 @@ Result EdgeDefinition::validateEdgeDefinition(
   }
 
   for (auto const& key : std::array<std::string, 3>{
-           {"collection", StaticStrings::GraphFrom, StaticStrings::GraphTo}}) {
+           {StaticStrings::GraphEdgeDefinition, StaticStrings::GraphFrom,
+            StaticStrings::GraphTo}}) {
     if (!edgeDefinition.hasKey(key)) {
       return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                     "Attribute '" + key + "' missing in edge definition!");
     }
   }
 
-  if (!edgeDefinition.get("collection").isString()) {
+  if (!edgeDefinition.get(StaticStrings::GraphEdgeDefinition).isString()) {
     return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                   "edge definition is not a string!");
   }
@@ -454,13 +501,13 @@ Result EdgeDefinition::validateEdgeDefinition(
 void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
-  builder.add("collection", VPackValue(getName()));
-  builder.add("from", VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphEdgeDefinition, VPackValue(getName()));
+  builder.add(StaticStrings::GraphFrom, VPackValue(VPackValueType::Array));
   for (auto const& from : getFrom()) {
     builder.add(VPackValue(from));
   }
   builder.close();  // array
-  builder.add("to", VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphFrom, VPackValue(VPackValueType::Array));
   for (auto const& to : getTo()) {
     builder.add(VPackValue(to));
   }
@@ -473,7 +520,8 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
   if (res.fail()) {
     return res;
   }
-  std::string collection = edgeDefinition.get("collection").copyString();
+  std::string collection =
+      edgeDefinition.get(StaticStrings::GraphEdgeDefinition).copyString();
   VPackSlice from = edgeDefinition.get(StaticStrings::GraphFrom);
   VPackSlice to = edgeDefinition.get(StaticStrings::GraphTo);
 
@@ -561,24 +609,37 @@ bool EdgeDefinition::isVertexCollectionUsed(
   return false;
 }
 
-void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {
+void EdgeDefinition::addToBuilder(VPackBuilder& builder,
+                                  bool md5Calculation) const {
   builder.add(VPackValue(VPackValueType::Object));
-  builder.add("collection", VPackValue(getName()));
+  builder.add(StaticStrings::GraphEdgeDefinition, VPackValue(getName()));
 
-  builder.add("from", VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphFrom, VPackValue(VPackValueType::Array));
   for (auto const& from : getFrom()) {
     builder.add(VPackValue(from));
   }
   builder.close();  // from
 
   // to
-  builder.add("to", VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphTo, VPackValue(VPackValueType::Array));
   for (auto const& to : getTo()) {
     builder.add(VPackValue(to));
   }
   builder.close();  // to
 
+  if (md5Calculation) {
+    builder.add(StaticStrings::GraphChecksum, VPackValue(this->calculateMd5()));
+  }
+
   builder.close();  // obj
+}
+
+std::string EdgeDefinition::calculateMd5() const {
+  VPackBuilder md5Builder;
+  addToBuilder(md5Builder);
+
+  // Creates md5 checksum based on the VelocyPack EdgeDefinition
+  return arangodb::rest::SslInterface::sslMD5(md5Builder.toString());
 }
 
 bool EdgeDefinition::hasFrom(std::string const& vertexCollection) const {
@@ -731,6 +792,21 @@ bool Graph::renameCollections(std::string const& oldName,
   }
 
   return renamed;
+}
+
+void Graph::graphForClientWithExtra(VPackBuilder& builder,
+                                    const TRI_vocbase_t& vocbase) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue("graph"));
+  builder.openObject();
+
+  toPersistenceWithExtra(builder, vocbase);
+
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(StaticStrings::RevString, VPackValue(rev()));
+  builder.add(StaticStrings::IdString, VPackValue(id()));
+  builder.add(StaticStrings::GraphName, VPackValue(_graphName));
+  builder.close();  // graph object
 }
 
 void Graph::graphForClient(VPackBuilder& builder) const {

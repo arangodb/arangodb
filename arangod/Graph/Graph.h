@@ -71,7 +71,8 @@ class EdgeDefinition {
 
   /// @brief Adds the edge definition as a new object {collection, from, to}
   /// to the builder.
-  void addToBuilder(velocypack::Builder& builder) const;
+  void addToBuilder(velocypack::Builder& builder,
+                    bool md5Calculation = false) const;
 
   bool hasFrom(std::string const& vertexCollection) const;
   bool hasTo(std::string const& vertexCollection) const;
@@ -93,6 +94,9 @@ class EdgeDefinition {
   bool isToVertexCollectionUsed(std::string const& collectionName) const;
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
+
+ private:
+  std::string calculateMd5() const;
 
  private:
   std::string _edgeCollection;
@@ -181,6 +185,11 @@ class Graph {
   virtual void createSatelliteCollectionOptions(VPackBuilder& builder,
                                                 bool waitForSync) const;
 
+  std::set<std::string> const& vertexCollectionsUsedAsSatellites(
+      TRI_vocbase_t const& vocbase) const;
+
+  std::string calculateMd5() const;
+
  public:
   /// @brief get the cids of all vertexCollections
   std::set<std::string> const& vertexCollections() const;
@@ -229,8 +238,24 @@ class Graph {
    *
    * @param builder The builder the result should be written in. Expects an open
    * object.
+   * @param md5Calculation If enabled, we will not include individual attributes
+   * like e.g. initial collection id (StaticStrings::GraphInitialCid) which
+   * might differ when comparing two individual datacenters.
    */
-  virtual void toPersistence(velocypack::Builder& builder) const;
+  virtual void toPersistence(velocypack::Builder& builder,
+                             bool md5Calculation = false) const;
+
+  /**
+   * @brief Same as toPersistence but will add additional information which
+   * needs to be read out of the vocbase.
+   *
+   * @param builder The builder the result should be written in.
+   * @param vocbase Required to fetch additional information which needs to be
+   *        calculated on demand (e.g. satellite collections that are part of
+   *        the graph). Default set to false.
+   */
+  virtual void toPersistenceWithExtra(velocypack::Builder& builder,
+                                      TRI_vocbase_t const& vocbase) const;
 
   /**
    * @brief Create the Graph Json Representation to be given to the client.
@@ -241,6 +266,18 @@ class Graph {
    * object.
    */
   void graphForClient(VPackBuilder& builder) const;
+
+  /**
+   * @brief same as above but with additional information
+   *
+   * @param builder The builder the result should be written in. Expects an open
+   *                object.
+   * @param extra Whether to fetch additional information which needs to be
+   *              calculated on demand (e.g. satellite collections that are part
+   *              of the graph). Default set to false.
+   */
+  void graphForClientWithExtra(VPackBuilder& builder,
+                               TRI_vocbase_t const& vocbase) const;
 
   /**
    * @brief Check if the collection is allowed to be used
