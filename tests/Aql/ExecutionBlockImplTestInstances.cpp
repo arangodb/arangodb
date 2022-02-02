@@ -22,7 +22,11 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+// Macro defined to avoid duplicate symbols when linking
+#define ARANGODB_INCLUDED_FROM_GTESTS
 #include "Aql/ExecutionBlockImpl.cpp"
+#undef ARANGODB_INCLUDED_FROM_GTESTS
+
 #include "TestEmptyExecutorHelper.h"
 #include "TestLambdaExecutor.h"
 

@@ -154,9 +154,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _pendingCompactionBytesSlowdownTrigger(8 * 1073741824ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
-      _enforceBlockCacheSizeLimit(false),
-      _cacheIndexAndFilterBlocks(
-          rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
+      _enforceBlockCacheSizeLimit(true),
+      _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(
           rocksDBTableOptionsDefaults
               .cache_index_and_filter_blocks_with_high_priority),

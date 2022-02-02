@@ -210,7 +210,7 @@ add_library(arango STATIC
 #     -fno-rtti may not work. For example, programs may fail to
 #     link if a class compiled with -fno-rtti is used as a
 #     base for a class compiled with -frtti.
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if(MSVC)
   set_source_files_properties(
     Containers/MerkleTreeHelpers.cpp
     PROPERTIES COMPILE_FLAGS "/GR-")
@@ -330,7 +330,7 @@ target_link_libraries(arango_geo
   s2
 )
 
-if (WINDOWS)
+if (MSVC)
   target_compile_options(arango_geo PUBLIC "-J")
 endif()
 
@@ -396,6 +396,12 @@ if (USE_FAIL_ON_WARNINGS)
     target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
     target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+      # There's a warning about /MP being unused if compiling only a single file
+      target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
+      target_compile_options(arango_geo PRIVATE -Wno-unused-command-line-argument)
+      target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
+    endif()
   else ()
     target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
     target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)

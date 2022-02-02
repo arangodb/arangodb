@@ -332,8 +332,6 @@ class Supervision : public arangodb::Thread {
   metrics::Histogram<metrics::LogScale<uint64_t>>& _supervision_runtime_msec;
   metrics::Histogram<metrics::LogScale<uint64_t>>&
       _supervision_runtime_wait_for_sync_msec;
-  metrics::Counter& _supervision_accum_runtime_msec;
-  metrics::Counter& _supervision_accum_runtime_wait_for_sync_msec;
   metrics::Counter& _supervision_failed_server_counter;
 };
 
