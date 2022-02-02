@@ -260,6 +260,8 @@ auto GlobalStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
       status.toVelocyPack(builder);
     }
   }
+  builder.add(VPackValue("specification"));
+  specification.toVelocyPack(builder);
   if (leaderId.has_value()) {
     builder.add(kLeaderId, VPackValue(*leaderId));
   }
@@ -270,16 +272,133 @@ auto GlobalStatus::fromVelocyPack(VPackSlice slice) -> GlobalStatus {
   auto sup = slice.get(kSupervision);
   TRI_ASSERT(!sup.isNone())
       << "expected " << kSupervision << " key in GlobalStatus";
-  status.supervision =
-      agency::LogCurrentSupervision{agency::from_velocypack, sup};
+  status.supervision = SupervisionStatus::fromVelocyPack(sup);
+  status.specification =
+      Specification::fromVelocyPack(slice.get("specification"));
   for (auto [key, value] :
        VPackObjectIterator(slice.get(StaticStrings::Participants))) {
     auto id = ParticipantId{key.copyString()};
-    auto stat = LogStatus::fromVelocyPack(value);
+    auto stat = ParticipantStatus::fromVelocyPack(value);
     status.participants.emplace(std::move(id), stat);
   }
   if (auto leaderId = slice.get(kLeaderId); !leaderId.isNone()) {
     status.leaderId = leaderId.copyString();
   }
   return status;
+}
+
+void GlobalStatus::Connection::toVelocyPack(
+    arangodb::velocypack::Builder& b) const {
+  velocypack::ObjectBuilder ob(&b);
+  b.add(StaticStrings::ErrorCode, VPackValue(error));
+  if (!errorMessage.empty()) {
+    b.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+  }
+}
+
+auto GlobalStatus::Connection::fromVelocyPack(arangodb::velocypack::Slice slice)
+    -> GlobalStatus::Connection {
+  auto code = ErrorCode(slice.get(StaticStrings::ErrorCode).extract<int>());
+  auto message = std::string{};
+  if (auto ms = slice.get(StaticStrings::ErrorMessage); !ms.isNone()) {
+    message = ms.copyString();
+  }
+  return Connection{.error = code, .errorMessage = message};
+}
+
+void GlobalStatus::ParticipantStatus::Response::toVelocyPack(
+    arangodb::velocypack::Builder& b) const {
+  if (std::holds_alternative<LogStatus>(value)) {
+    std::get<LogStatus>(value).toVelocyPack(b);
+  } else {
+    TRI_ASSERT(std::holds_alternative<velocypack::UInt8Buffer>(value));
+    auto slice = VPackSlice(std::get<velocypack::UInt8Buffer>(value).data());
+    b.add(slice);
+  }
+}
+
+auto GlobalStatus::ParticipantStatus::Response::fromVelocyPack(
+    arangodb::velocypack::Slice s)
+    -> GlobalStatus::ParticipantStatus::Response {
+  if (s.hasKey("role")) {
+    return Response{.value = LogStatus::fromVelocyPack(s)};
+  } else {
+    auto buffer = velocypack::UInt8Buffer(s.byteSize());
+    buffer.append(s.start(), s.byteSize());
+    return Response{.value = buffer};
+  }
+}
+
+void GlobalStatus::ParticipantStatus::toVelocyPack(
+    arangodb::velocypack::Builder& b) const {
+  velocypack::ObjectBuilder ob(&b);
+  b.add(VPackValue("connection"));
+  connection.toVelocyPack(b);
+  if (response.has_value()) {
+    b.add(VPackValue("response"));
+    response->toVelocyPack(b);
+  }
+}
+
+auto GlobalStatus::ParticipantStatus::fromVelocyPack(
+    arangodb::velocypack::Slice s) -> GlobalStatus::ParticipantStatus {
+  auto connection = Connection::fromVelocyPack(s.get("connection"));
+  auto response = std::optional<Response>{};
+  if (auto rs = s.get("response"); !rs.isNone()) {
+    response = Response::fromVelocyPack(rs);
+  }
+  return ParticipantStatus{.connection = std::move(connection),
+                           .response = std::move(response)};
+}
+
+void GlobalStatus::SupervisionStatus::toVelocyPack(
+    arangodb::velocypack::Builder& b) const {
+  velocypack::ObjectBuilder ob(&b);
+  b.add(VPackValue("connection"));
+  connection.toVelocyPack(b);
+  if (response.has_value()) {
+    b.add(VPackValue("response"));
+    response->toVelocyPack(b);
+  }
+}
+
+auto GlobalStatus::SupervisionStatus::fromVelocyPack(
+    arangodb::velocypack::Slice s) -> GlobalStatus::SupervisionStatus {
+  auto connection = Connection::fromVelocyPack(s.get("connection"));
+  auto response = std::optional<agency::LogCurrentSupervision>{};
+  if (auto rs = s.get("response"); !rs.isNone()) {
+    response = agency::LogCurrentSupervision{agency::from_velocypack, rs};
+  }
+  return SupervisionStatus{.connection = std::move(connection),
+                           .response = std::move(response)};
+}
+
+auto replicated_log::to_string(GlobalStatus::SpecificationSource source)
+    -> std::string_view {
+  switch (source) {
+    case GlobalStatus::SpecificationSource::kLocalCache:
+      return "LocalCache";
+    case GlobalStatus::SpecificationSource::kRemoteAgency:
+      return "RemoteAgency";
+    default:
+      return "(unknown)";
+  }
+}
+
+void GlobalStatus::Specification::toVelocyPack(
+    arangodb::velocypack::Builder& b) const {
+  velocypack::ObjectBuilder ob(&b);
+  b.add(VPackValue("plan"));
+  plan.toVelocyPack(b);
+  b.add("source", VPackValue(to_string(source)));
+}
+
+auto GlobalStatus::Specification::fromVelocyPack(arangodb::velocypack::Slice s)
+    -> Specification {
+  auto plan = agency::LogPlanSpecification::fromVelocyPack(s.get("plan"));
+  auto source = GlobalStatus::SpecificationSource::kLocalCache;
+  if (s.get("source").isEqualString("RemoteAgency")) {
+    source = GlobalStatus::SpecificationSource::kRemoteAgency;
+  }
+  return Specification{.source = source, .plan = std::move(plan)};
 }

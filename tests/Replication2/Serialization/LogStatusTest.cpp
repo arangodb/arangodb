@@ -264,8 +264,16 @@ TEST(LogStatusTest, global_status) {
 
   auto participants = std::unordered_map<ParticipantId, LogStatus>{
       {"LeaderId", LogStatus{UnconfiguredStatus{}}}};
-  auto status = GlobalStatus{
-      supervision, {{"LeaderId", LogStatus{UnconfiguredStatus{}}}}, "LeaderId"};
+  auto status =
+      GlobalStatus{{{}, supervision},
+                   {{"LeaderId",
+                     GlobalStatus::ParticipantStatus{
+                         .connection = {},
+                         .response =
+                             GlobalStatus::ParticipantStatus::Response{
+                                 .value = LogStatus{UnconfiguredStatus{}}}}}},
+                   {},
+                   "LeaderId"};
 
   VPackBuilder builder;
   status.toVelocyPack(builder);
@@ -273,17 +281,27 @@ TEST(LogStatusTest, global_status) {
 
   auto jsonBuffer = R"({
     "supervision": {
-      "election": {
-        "term": 1,
-        "participantsRequired": 2,
-        "participantsAvailable": 0,
-        "details": {}
+      "connection":{"errorCode":0},
+      "response": {
+        "election": {
+          "term": 1,
+          "participantsRequired": 2,
+          "participantsAvailable": 0,
+          "details": {}
+        }
       }
     },
     "participants": {
       "LeaderId": {
-        "role": "unconfigured"
+        "connection":{"errorCode":0},
+        "response":{
+          "role": "unconfigured"
+        }
       }
+    },
+    "specification":{
+      "plan":{"id":0,"participantsConfig":{"generation":0,"participants":{}}},
+      "source": "LocalCache"
     },
     "leaderId": "LeaderId"
   })"_vpack;

@@ -6743,6 +6743,26 @@ void ClusterInfo::triggerWaiting(
   }
 }
 
+auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
+    DatabaseID const& database, replication2::LogId id) const
+    -> ResultT<
+        std::shared_ptr<replication2::agency::LogPlanSpecification const>> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto it2 = it->second->replicatedLogs.find(id);
+  if (it2 == std::end(it->second->replicatedLogs)) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+  }
+
+  TRI_ASSERT(it2->second != nullptr);
+  return it2->second;
+}
+
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(
     DatabaseID const& database, ClusterInfo* ci, bool cleanup)
     : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
