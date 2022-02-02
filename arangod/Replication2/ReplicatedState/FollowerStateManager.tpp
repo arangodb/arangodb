@@ -226,6 +226,8 @@ void FollowerStateManager<S>::awaitLeaderShip() {
   } catch (basics::Exception const& e) {
     if (e.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED) {
       if (auto p = parent.lock(); p) {
+        LOG_TOPIC("1cb5c", TRACE, Logger::REPLICATED_STATE)
+            << "forcing rebuild because participant resigned";
         return p->forceRebuild();
       } else {
         LOG_TOPIC("a62cb", TRACE, Logger::REPLICATED_STATE)
