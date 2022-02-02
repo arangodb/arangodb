@@ -52,7 +52,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 std::string const ClusterEngine::EngineName("Cluster");
-std::string const ClusterEngine::FeatureName("ClusterEngine");
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // fall back to the using the mock storage engine
@@ -60,8 +59,8 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
-    : StorageEngine(server, EngineName, FeatureName,
+ClusterEngine::ClusterEngine(Server& server)
+    : StorageEngine(server, EngineName, name(), Server::id<ClusterEngine>(),
                     std::make_unique<ClusterIndexFactory>(server)),
       _actualEngine(nullptr) {
   setOptional(true);
@@ -73,7 +72,7 @@ void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&
-         _actualEngine->name() == RocksDBEngine::FeatureName;
+         _actualEngine->name() == RocksDBEngine::name();
 }
 
 bool ClusterEngine::isMock() const {
@@ -142,7 +141,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
       new ClusterCollection(collection, engineType(), info));
 }
 
-void ClusterEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
+void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
   Result res = getEngineStatsFromDBServers(
       server().getFeature<ClusterFeature>(), builder);
   if (res.fail()) {

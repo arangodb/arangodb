@@ -30,14 +30,11 @@
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
@@ -48,12 +45,11 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final
-    : public application_features::ApplicationFeature {
+class RocksDBOptionFeature final : public ArangodFeature {
  public:
-  explicit RocksDBOptionFeature(
-      application_features::ApplicationServer& server);
-  ~RocksDBOptionFeature() = default;
+  static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
+
+  explicit RocksDBOptionFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

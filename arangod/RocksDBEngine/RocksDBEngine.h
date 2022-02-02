@@ -127,8 +127,10 @@ class RocksDBEngine final : public StorageEngine {
   friend class RocksDBFilePurgeEnabler;
 
  public:
+  static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
+
   // create the storage engine
-  explicit RocksDBEngine(application_features::ApplicationServer& server);
+  explicit RocksDBEngine(Server& server);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -159,8 +161,8 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) override;
 
-  void getStatistics(velocypack::Builder& builder, bool v2) const override;
-  void getStatistics(std::string& result, bool v2) const override;
+  void getStatistics(velocypack::Builder& builder) const override;
+  void getStatistics(std::string& result) const override;
 
   // inventory functionality
   // -----------------------
@@ -465,8 +467,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
 
  public:
-  static std::string const EngineName;
-  static std::string const FeatureName;
+  static constexpr std::string_view kEngineName = "rocksdb";
 
  private:
   /// single rocksdb database used in this storage engine

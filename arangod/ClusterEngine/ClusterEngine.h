@@ -37,8 +37,10 @@ namespace arangodb {
 
 class ClusterEngine final : public StorageEngine {
  public:
+  static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
+
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer& server);
+  explicit ClusterEngine(ArangodServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);
@@ -50,8 +52,8 @@ class ClusterEngine final : public StorageEngine {
   // storage engine overrides
   // ------------------------
 
-  std::string const& typeName() const override {
-    return _actualEngine ? _actualEngine->typeName() : StaticStrings::Empty;
+  std::string_view typeName() const override {
+    return _actualEngine ? _actualEngine->typeName() : std::string_view{};
   }
 
   // inherited from ApplicationFeature
@@ -74,7 +76,7 @@ class ClusterEngine final : public StorageEngine {
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) override;
 
-  void getStatistics(velocypack::Builder& builder, bool v2) const override;
+  void getStatistics(velocypack::Builder& builder) const override;
 
   // inventory functionality
   // -----------------------

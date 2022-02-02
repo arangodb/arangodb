@@ -163,7 +163,7 @@ class Slice {
           tag = readIntegerFixed<uint64_t, 8>(start + 1);
           offset = 9;
         } else {
-          throw new Exception(Exception::InternalError, "Invalid tag type ID");
+          throw Exception(Exception::InternalError, "Invalid tag type ID");
         }
 
         ret.push_back(tag);
@@ -189,7 +189,7 @@ class Slice {
         tag = readIntegerFixed<uint64_t, 8>(start + 1);
         offset = 9;
       } else {
-        throw new Exception(Exception::InternalError, "Invalid tag type ID");
+        throw Exception(Exception::InternalError, "Invalid tag type ID");
       }
 
       if (tag == tagId) {
@@ -1197,8 +1197,13 @@ class Slice {
   uint8_t tagsOffset(uint8_t const* start) const noexcept {
     uint8_t ret = 0;
 
-    while(SliceStaticData::TypeMap[*start] == ValueType::Tagged) {
+    while (SliceStaticData::TypeMap[*start] == ValueType::Tagged) {
       uint8_t offset = tagOffset(start);
+      VELOCYPACK_ASSERT(offset != 0);
+      if (VELOCYPACK_UNLIKELY(offset == 0)) {
+        // prevent endless loop
+        break;
+      }
       ret += offset;
       start += offset;
     }
@@ -1272,6 +1277,9 @@ class Slice {
 
       case ValueType::Tagged: {
         uint8_t offset = tagsOffset(start);
+        if (VELOCYPACK_UNLIKELY(offset == 0)) {
+          throw Exception(Exception::InternalError, "Invalid tag data in byteSize()");
+        }
         return byteSize(start + offset) + offset;
       }
 

@@ -25,7 +25,6 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -34,7 +33,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -59,15 +57,18 @@ struct ClusterFeatureScale {
 DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
                   "Request time for Agency requests [ms]");
 
-ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster"),
+ClusterFeature::ClusterFeature(Server& server)
+    : ArangodFeature{server, *this},
       _apiJwtPolicy("jwt-compat"),
+      _metrics{server.getFeature<metrics::MetricsFeature>()},
       _agency_comm_request_time_ms(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agencycomm_request_time_msec{})) {
+          _metrics.add(arangodb_agencycomm_request_time_msec{})) {
+  static_assert(
+      Server::isCreatedAfter<ClusterFeature, metrics::MetricsFeature>());
+
   setOptional(true);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<DatabaseFeaturePhase>();
+  startsAfter<application_features::CommunicationFeaturePhase>();
+  startsAfter<application_features::DatabaseFeaturePhase>();
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -507,8 +508,7 @@ void ClusterFeature::prepare() {
 
   reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config(
-      server().getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config config(_metrics);
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
@@ -656,17 +656,13 @@ void ClusterFeature::start() {
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _followersDroppedCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_dropped_followers_total{});
+        &_metrics.add(arangodb_dropped_followers_total{});
     _followersRefusedCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_refused_followers_total{});
+        &_metrics.add(arangodb_refused_followers_total{});
     _followersWrongChecksumCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_sync_wrong_checksum_total{});
+        &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
-        &server().getFeature<metrics::MetricsFeature>().add(
-            arangodb_sync_rebuilds_total{});
+        &_metrics.add(arangodb_sync_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)

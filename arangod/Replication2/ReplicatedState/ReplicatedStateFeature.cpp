@@ -20,13 +20,14 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "ReplicatedStateFeature.h"
 
-#include "Basics/Exceptions.h"
-
-#include "Logger/LogMacros.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
+#include "Basics/Exceptions.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -55,5 +56,5 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
 }
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "ReplicatedState") {}
+    Server& server)
+    : ArangodFeature{server, *this} {}

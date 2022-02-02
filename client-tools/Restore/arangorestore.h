@@ -18,30 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8ShellFeaturePhase.h"
+#pragma once
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "Shell/ShellConsoleFeature.h"
-#include "Shell/V8ShellFeature.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
 
-V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8ShellPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
+class TempFeature;
+class RestoreFeature;
+class EncryptionFeature;
 
-  startsAfter<ShellConsoleFeature>();
-  startsAfter<V8ShellFeature>();
-  startsAfter<V8PlatformFeature>();
-  startsAfter<V8SecurityFeature>();
-}
+using ArangoRestoreFeatures = ArangoClientFeatures<
+#ifdef USE_ENTERPRISE
+    EncryptionFeature,
+#endif
+    BasicFeaturePhaseClient, TempFeature, RestoreFeature>;
 
-}  // namespace application_features
+using ArangoRestoreServer = ApplicationServerT<ArangoRestoreFeatures>;
+using ArangoRestoreFeature = ApplicationFeatureT<ArangoRestoreServer>;
+
 }  // namespace arangodb

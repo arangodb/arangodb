@@ -155,14 +155,14 @@ const replicatedLogSuite = function () {
       },
       stopServer: function (serverId) {
         if (stoppedServers[serverId] !== undefined) {
-          throw Error(`{serverId} already stopped`);
+          throw Error(`${serverId} already stopped`);
         }
         helper.stopServer(serverId);
         stoppedServers[serverId] = true;
       },
       continueServer: function (serverId) {
         if (stoppedServers[serverId] === undefined) {
-          throw Error(`{serverId} not stopped`);
+          throw Error(`${serverId} not stopped`);
         }
         helper.continueServer(serverId);
         delete stoppedServers[serverId];
@@ -396,9 +396,8 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, newLeader);
 
       // nothing should happen (supervision should not elect leader)
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term, {
-        [newLeader]: 3,
-      }));
+      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newLeader]: {excluded: false},
@@ -464,8 +463,9 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term, [..._.difference(servers, oldServer), newServer], leader));
     },
 
-    // This tests replaces the leader in Target with a new server that has the
-    // excluded flag set. It then waits for the replicated log to converge and
+    // This tests removes the participant that is currently the leader from Target
+    // while simultaneously adding a new server that has the excluded flag set.
+    // It then waits for the replicated log to converge and
     // then removes the excluded flag.
     testReplaceLeaderWithNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
@@ -478,27 +478,27 @@ const replicatedLogSuite = function () {
         target.participants[newServer] = {excluded: true};
         replicatedLogSetTarget(database, logId, target);
       }
+
+      // Wait for the new participant to appear, while excluded
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: true, forced: false},
-        [leader]: null,
       }));
-
+	   
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {excluded: false},
       });
+
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: false, forced: false},
-        [leader]: null,
       }));
 
       // we expect to have a new leader and the new follower
       waitFor(replicatedLogLeaderEstablished(database, logId, term + 1, [...followers, newServer]));
     },
 
-    // This test replaces the old leader in target with a new server that is excluded
-    // and additionally requests that this new server shall become the leader.
-    // It expects the supervision to fail and then removes the excluded flag.
+    // This test adds a new participant to the replicated log 
+    // and requests that this new participant shall become the leader.
     testChangeLeaderToNewFollower: function () {
       const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
 
@@ -514,15 +514,11 @@ const replicatedLogSuite = function () {
       }
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [newServer]: {excluded: true, forced: false},
-      //  [leader]: null,
       }));
 
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
-        [newServer]: 3,
-        [servers[0]]: 0,
-        [servers[1]]: 0,
-        [servers[2]]: 0,
-      }));
+      // the new leader is excluded
+      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
@@ -577,14 +573,28 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
       waitForReplicatedLogAvailable(logId);
 
-      let log = db._replicatedLog(logId);
-      let globalStatus = log.status();
-      assertEqual(globalStatus.leaderId, leader);
-      let localStatus = helper.getLocalStatus(database, logId, leader);
-      assertEqual(localStatus.role, "leader");
-      assertEqual(globalStatus.participants[leader], localStatus);
-      localStatus = helper.getLocalStatus(database, logId, followers[1]);
-      assertEqual(localStatus.role, "follower");
+      const log = db._replicatedLog(logId);
+      waitFor(function () {
+        let globalStatus = log.status();
+        if (globalStatus.leaderId !== leader) {
+          return Error(`Current leader is reported as ${globalStatus.leader}, expected ${leader}`);
+        }
+
+        let localStatus = helper.getLocalStatus(database, logId, leader);
+        if (localStatus.role !== "leader") {
+          return Error('Designated leader does not report as leader');
+        }
+
+        if (!_.isEqual(globalStatus.participants[leader], localStatus)) {
+          return Error("Copy of local status does not yet match actual local status, " +
+              `found = ${JSON.stringify(globalStatus.participants[leader])}; expected = ${JSON.stringify(localStatus)}`);
+        }
+        localStatus = helper.getLocalStatus(database, logId, followers[1]);
+        if (localStatus.role !== "follower") {
+          return Error('Designated follower does not report as follower');
+        }
+        return true;
+      });
 
       stopServer(leader);
       stopServer(followers[0]);
@@ -595,15 +605,22 @@ const replicatedLogSuite = function () {
         [followers[1]]: 0,
       }));
 
-      globalStatus = log.status();
-      const {current} = readReplicatedLogAgency(database, logId);
-      const election = current.supervision.election;
+      waitFor(function () {
+        const globalStatus = log.status();
+        const {current} = readReplicatedLogAgency(database, logId);
+        const election = current.supervision.election;
 
-      assertEqual(election, globalStatus.supervision.election);
+        if (!_.isEqual(election, globalStatus.supervision.election)) {
+          return Error('Coordinator not reporting latest state from supervision' +
+              `found = ${globalStatus.supervision.election}; expected = ${election}`);
+        }
+
+        return true;
+      });
 
       replicatedLogDeleteTarget(database, logId);
       continueServer(leader);
-      continueServer(servers[1]);
+      continueServer(followers[0]);
     },
   };
 };

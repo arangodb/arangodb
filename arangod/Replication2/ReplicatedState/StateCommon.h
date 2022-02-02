@@ -61,7 +61,7 @@ struct StateGeneration {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
-enum SnapshotStatus {
+enum class SnapshotStatus {
   kUninitialized,
   kInProgress,
   kCompleted,

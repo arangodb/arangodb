@@ -80,7 +80,7 @@ struct LeaderStateManager
     recoveryRange = range;
   }
 
-  void waitForParticipantResigned();
+  void beginWaitingForParticipantResigned();
 
   // TODO locking
 };

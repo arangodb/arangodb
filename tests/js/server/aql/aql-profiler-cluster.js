@@ -195,13 +195,13 @@ function ahuacatlProfilerTestSuite () {
       const coordinatorBatches = (rowsPerShard) => addIntervals(fuzzyDBServerBatches(rowsPerShard), localCalls(rowsPerShard));
 
       const genNodeList = (rowsPerShard, rowsPerServer) => [
-        { type : SingletonBlock, calls : numberOfShards, items : numberOfShards },
-        { type : EnumerateCollectionBlock, calls : groupedBatches(rowsPerShard), items : totalItems(rowsPerShard) },
+        { type : SingletonBlock, calls : numberOfShards, items : numberOfShards, filtered: 0 },
+        { type : EnumerateCollectionBlock, calls : groupedBatches(rowsPerShard), items : totalItems(rowsPerShard), filtered: 0 },
         // Twice the number due to WAITING, fuzzy, because the Gather does not know
-        { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard) },
+        { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard), filtered: 0 },
         // We get dbServerBatches(rowsPerShard) times WAITING, plus the non-waiting getSome calls.
-        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) },
-        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) }
+        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 },
+        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 }
       ];
       const options = {optimizer: { rules: ["-parallelize-gather"] } };
       profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList, options});

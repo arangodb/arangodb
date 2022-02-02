@@ -23,6 +23,7 @@
 
 #include "RestAdminExecuteHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Basics/Exceptions.h"
@@ -46,9 +47,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminExecuteHandler::RestAdminExecuteHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAdminExecuteHandler::RestAdminExecuteHandler(ArangodServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminExecuteHandler::execute() {

@@ -215,14 +215,16 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       _context(*static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context.vocbase()),
       _scopeVocbaseValues(
-          LogContext::makeValue().with<structuredParams::DatabaseName>(_vocbase.name()).share()) {
+          LogContext::makeValue()
+              .with<structuredParams::DatabaseName>(_vocbase.name())
+              .share()) {
   TRI_ASSERT(request->requestContext());
 }
 

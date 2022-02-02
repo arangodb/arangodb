@@ -368,10 +368,9 @@ class ClusterInfo final {
       DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
-  class SyncerThread final : public arangodb::Thread {
+  class SyncerThread final : public arangodb::ServerThread<ArangodServer> {
    public:
-    explicit SyncerThread(application_features::ApplicationServer&,
-                          std::string const& section,
+    explicit SyncerThread(Server&, std::string const& section,
                           std::function<void()> const&,
                           AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
@@ -430,7 +429,7 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer& server,
+  explicit ClusterInfo(ArangodServer& server,
                        AgencyCallbackRegistry* agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode);
 
@@ -1007,7 +1006,7 @@ class ClusterInfo final {
     return timeout;
   }
 
-  application_features::ApplicationServer& server() const;
+  ArangodServer& server() const;
 
  private:
   /// @brief worker function for dropIndexCoordinator
@@ -1083,7 +1082,7 @@ class ClusterInfo final {
   void triggerBackgroundGetIds();
 
   /// underlying application server
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication
@@ -1265,15 +1264,8 @@ class ClusterInfo final {
 
   /// @brief histogram for loadPlan runtime
   metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
-
-  /// @brief total time for loadPlan runtime
-  metrics::Counter& _lpTotal;
-
   /// @brief histogram for loadCurrent runtime
   metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
-
-  /// @brief total time for loadCurrent runtime
-  metrics::Counter& _lcTotal;
 };
 
 namespace cluster {

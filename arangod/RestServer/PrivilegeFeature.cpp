@@ -42,7 +42,6 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/conversions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -57,9 +56,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-PrivilegeFeature::PrivilegeFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Privilege"), _numericUid(0), _numericGid(0) {
+PrivilegeFeature::PrivilegeFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

@@ -104,8 +104,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 struct arangodb::VocBaseLogManager {
-  explicit VocBaseLogManager(application_features::ApplicationServer& server,
-                             DatabaseID database)
+  explicit VocBaseLogManager(ArangodServer& server, DatabaseID database)
       : _server(server),
         _logContext(
             LoggerContext{Logger::REPLICATION2}.with<logContextKeyDatabaseName>(
@@ -314,7 +313,7 @@ struct arangodb::VocBaseLogManager {
         });
   }
 
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   LoggerContext const _logContext;
 
   struct GuardedData {
@@ -355,8 +354,7 @@ struct arangodb::VocBaseLogManager {
   static auto createReplicatedLogOnData(
       TRI_vocbase_t& vocbase, replication2::LogId id,
       std::optional<std::string> const& collectionName, GuardedData& data,
-      LoggerContext const& outerLogContext,
-      application_features::ApplicationServer& server)
+      LoggerContext const& outerLogContext, ArangodServer& server)
       -> arangodb::ResultT<
           std::shared_ptr<replication2::replicated_log::ReplicatedLog>> {
     LOG_CTX("04b14", DEBUG, outerLogContext)
