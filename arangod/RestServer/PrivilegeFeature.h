@@ -53,8 +53,12 @@ class PrivilegeFeature final : public ArangodFeature {
  private:
   void extractPrivileges();
 
-  TRI_uid_t _numericUid;
-  TRI_gid_t _numericGid;
+#ifdef ARANGODB_HAVE_SETUID
+  TRI_uid_t _numericUid{};
+#endif
+#ifdef ARANGODB_HAVE_SETGID
+  TRI_gid_t _numericGid{};
+#endif
 };
 
 }  // namespace arangodb

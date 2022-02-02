@@ -97,6 +97,11 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _quickKeysLimit(1000000),
       _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_cluster_inventory_requests_total{})) {
+  static_assert(
+      Server::isCreatedAfter<ReplicationFeature,
+                             application_features::CommunicationFeaturePhase,
+                             metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

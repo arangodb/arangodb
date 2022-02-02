@@ -39,11 +39,21 @@ class Metric {
   [[nodiscard]] std::string_view labels() const noexcept;
 
   virtual std::string_view type() const noexcept = 0;
-  virtual void toPrometheus(std::string& result, std::string_view globals,
-                            std::string_view alternativeName) const = 0;
-  virtual void toPrometheusBegin(std::string& result,
-                                 std::string_view name) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// \param result toPrometheus handler response
+  /// \param first is the first call toPrometheus for a metric with that name,
+  ///              so you should write type and help string
+  /// \param globals labels that all metrics have
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void toPrometheus(std::string& result, bool first,
+                            std::string_view globals) const = 0;
+
   virtual ~Metric();
+
+ protected:
+  void addHelpType(std::string& result) const;
+  void addName(std::string& result, std::string_view globals) const;
 
  private:
   std::string_view _name;

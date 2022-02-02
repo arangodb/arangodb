@@ -127,27 +127,20 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
 
   if (plan.currentTerm && plan.currentTerm->leader &&
       !target.participants.contains(plan.currentTerm->leader->serverId)) {
-    // run Election to determine whether there is a participant that could
-    // become leader
-    auto election =
-        runElectionCampaign(current.localState, plan.participantsConfig, health,
-                            plan.currentTerm->term);
-
-    // TODO: see whether we can use views and filter here
+    // A participant is acceptable if it is neither excluded nor
+    // already the leader
     auto acceptableLeaderSet = std::vector<ParticipantId>{};
-    std::copy_if(std::begin(election.electibleLeaderSet),
-                 std::end(election.electibleLeaderSet),
-                 std::back_inserter(acceptableLeaderSet),
-                 [&](ParticipantId const& id) {
-                   return id != current.leader->serverId;
-                 });
-    //
+    for (auto const& [participant, flags] :
+         current.leader->committedParticipantsConfig->participants) {
+      if (participant != current.leader->serverId and (not flags.excluded)) {
+        acceptableLeaderSet.emplace_back(participant);
+      }
+    }
+
     //  Check whether we already have a participant that is
-    //  * electable
-    //  * forced
-    //  * *not* the current leader
+    //  acceptable and forced
     //
-    //  if so, do make them leader
+    //  if so, make them leader
     for (auto const& participant : acceptableLeaderSet) {
       auto const& flags =
           current.leader->committedParticipantsConfig->participants.at(
@@ -167,17 +160,22 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
     // Did not find a  participant above, so pick one at random
     // and force them.
     auto const numElectible = acceptableLeaderSet.size();
-    auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-    auto const& chosenOne =
-        acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
+    if (numElectible > 0) {
+      auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+      auto const& chosenOne =
+          acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
 
-    auto flags =
-        current.leader->committedParticipantsConfig->participants.at(chosenOne);
+      auto flags = current.leader->committedParticipantsConfig->participants.at(
+          chosenOne);
 
-    flags.forced = true;
+      flags.forced = true;
 
-    return std::make_unique<UpdateParticipantFlagsAction>(
-        target.id, chosenOne, flags, plan.participantsConfig.generation);
+      return std::make_unique<UpdateParticipantFlagsAction>(
+          target.id, chosenOne, flags, plan.participantsConfig.generation);
+    } else {
+      // We should be signaling that we could not determine a leader
+      // because noone suitable was available
+    }
   }
 
   return std::make_unique<EmptyAction>();
@@ -186,7 +184,6 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
 /*
  * Check whether Target contains an entry for a leader;
  * This means that leadership is supposed to be forced
- *
  *
  */
 auto checkLeaderInTarget(LogTarget const& target,
@@ -210,10 +207,6 @@ auto checkLeaderInTarget(LogTarget const& target,
       return std::make_unique<EmptyAction>();
     }
 
-    auto election =
-        runElectionCampaign(current.localState, plan.participantsConfig, health,
-                            plan.currentTerm->term);
-
     if (!plan.participantsConfig.participants.contains(*target.leader)) {
       if (current.supervision && current.supervision->error &&
           current.supervision->error ==
@@ -229,15 +222,14 @@ auto checkLeaderInTarget(LogTarget const& target,
         plan.participantsConfig.participants.at(*target.leader);
 
     if (planLeaderConfig.forced != true || planLeaderConfig.excluded == true) {
-      election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
-      return std::make_unique<LeaderElectionAction>(plan.id, election);
+      return std::make_unique<ErrorAction>(
+          plan.id, LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
     }
 
     if (!health.isHealthy(*target.leader)) {
-      election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
       return std::make_unique<EmptyAction>();
-      // TODO: use ErrorAction
-      // problem:
+      // TODO: we need to be able to trace why actions were not taken
+      //       distinguishing between errors and conditions not being met (?)
     };
 
     auto const rebootId = health._health.at(*target.leader).rebootId;

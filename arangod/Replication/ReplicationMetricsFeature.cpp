@@ -156,6 +156,9 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(Server& server)
           arangodb_replication_synchronous_requests_total_time_total{})),
       _syncOpsTotal(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_synchronous_requests_total_number_total{})) {
+  static_assert(Server::isCreatedAfter<ReplicationMetricsFeature,
+                                       metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
