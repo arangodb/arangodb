@@ -23,6 +23,7 @@
 
 #include "IResearchRocksDBInvertedIndex.h"
 #include "IResearchRocksDBEncryption.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -33,7 +34,7 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBInvertedIndexFactory::equal(

@@ -66,9 +66,9 @@ network::Headers buildHeaders(
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestMetricsHandler::RestMetricsHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestMetricsHandler::RestMetricsHandler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestMetricsHandler::execute() {
@@ -153,15 +153,8 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  bool v2 = false;
-  if (suffixes.size() > 0 && suffixes[0] == "v2") {
-    v2 = true;
-  }
-
   std::string result;
-  metrics.toPrometheus(result, v2);
+  metrics.toPrometheus(result);
   _response->setResponseCode(rest::ResponseCode::OK);
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(result);

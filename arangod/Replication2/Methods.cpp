@@ -25,6 +25,7 @@
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -48,8 +49,7 @@ struct ReplicatedLogMethodsDBServer final
       std::enable_shared_from_this<ReplicatedLogMethodsDBServer> {
   explicit ReplicatedLogMethodsDBServer(TRI_vocbase_t& vocbase)
       : vocbase(vocbase) {}
-  auto createReplicatedLog(
-      replication2::agency::LogPlanSpecification const& spec) const
+  auto createReplicatedLog(replication2::agency::LogTarget const& spec) const
       -> futures::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -180,8 +180,7 @@ struct VPackLogIterator final : PersistedLogIterator {
 struct ReplicatedLogMethodsCoordinator final
     : ReplicatedLogMethods,
       std::enable_shared_from_this<ReplicatedLogMethodsCoordinator> {
-  auto createReplicatedLog(
-      replication2::agency::LogPlanSpecification const& spec) const
+  auto createReplicatedLog(replication2::agency::LogTarget const& spec) const
       -> futures::Future<Result> override {
     return replication2::agency::methods::createReplicatedLog(vocbase.name(),
                                                               spec)

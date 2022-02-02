@@ -49,9 +49,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ImportFeature::ImportFeature(application_features::ApplicationServer& server,
-                             int* result)
-    : ApplicationFeature(server, "Import"),
+ImportFeature::ImportFeature(Server& server, int* result)
+    : ArangoImportFeature{server, *this},
       _filename(""),
       _useBackslash(false),
       _convert(true),
@@ -478,9 +477,17 @@ void ImportFeature::start() {
 
   _httpClient->disconnect();  // we do not reuse this anymore
 
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
+
   SimpleHttpClientParams params = _httpClient->params();
-  arangodb::import::ImportHelper ih(client, client.endpoint(), params,
-                                    _chunkSize, _threadCount, _autoChunkSize);
+  arangodb::import::ImportHelper ih(encryption, client, client.endpoint(),
+                                    params, _chunkSize, _threadCount,
+                                    _autoChunkSize);
 
   // create colletion
   if (_createCollection) {

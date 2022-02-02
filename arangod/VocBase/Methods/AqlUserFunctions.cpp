@@ -23,6 +23,7 @@
 
 #include "AqlUserFunctions.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
@@ -67,7 +68,7 @@ bool isValidFunctionNameFilter(std::string const& testName) {
   return std::regex_match(testName, funcFilterRegEx);
 }
 
-void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
+void reloadAqlUserFunctions(ArangodServer& server) {
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>() &&
       server.getFeature<V8DealerFeature>().isEnabled()) {

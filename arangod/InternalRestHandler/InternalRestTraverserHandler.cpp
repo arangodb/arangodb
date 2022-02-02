@@ -42,8 +42,8 @@ using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
 InternalRestTraverserHandler::InternalRestTraverserHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, aql::QueryRegistry* engineRegistry)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    aql::QueryRegistry* engineRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);

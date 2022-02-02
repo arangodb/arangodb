@@ -29,6 +29,7 @@
 #include "Mocks/LogLevels.h"
 
 #include "Agency/Store.h"
+#include "RestServer/arangod.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
@@ -67,7 +68,7 @@ class MockServer {
              bool injectClusterIndexes = false);
   virtual ~MockServer();
 
-  application_features::ApplicationServer& server();
+  ArangodServer& server();
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
@@ -120,7 +121,7 @@ class MockServer {
   arangodb::application_features::ApplicationServer::State
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
-  arangodb::application_features::ApplicationServer _server;
+  arangodb::ArangodServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>
       _features;

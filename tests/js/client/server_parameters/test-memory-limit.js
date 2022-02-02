@@ -36,18 +36,9 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
 const db = require('internal').db;
+const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
 function testSuite() {
-  let getMetric = function(name) {
-    let res = arango.GET_RAW("/_admin/metrics/v2").body.toString();
-    let re = new RegExp("^" + name + "\\{");
-    let matches = res.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-    if (!matches.length) {
-      throw "Metric " + name + " not found";
-    }
-    return Number(matches[0].replace(/^.*?\} (\d+)$/, '$1'));
-  };
-
   return {
     testQueryBelowLimit: function() {
       let result = db._query("FOR i IN 1..1000 RETURN i").toArray();

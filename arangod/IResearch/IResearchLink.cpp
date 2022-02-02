@@ -283,11 +283,14 @@ Result IResearchLink::init(velocypack::Slice definition,
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
-      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-      clusterWideLink =
-          _collection.id() == _collection.planId() && _collection.isAStub();
+    clusterWideLink =
+        _collection.id() == _collection.planId() && _collection.isAStub();
+
+    auto const clusterIsEnabled =
+        vocbase.server().getFeature<ClusterFeature>().isEnabled();
+    if (clusterIsEnabled) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
       // upgrade step for old link definition without collection name
       // this could be received from  agency while shard of the collection was
@@ -307,7 +310,7 @@ Result IResearchLink::init(velocypack::Slice definition,
               << "' for new link '" << this->id().id() << "'";
         }
         if (ADB_UNLIKELY(meta._collectionName.empty())) {
-          LOG_TOPIC("67da6", WARN, TOPIC)
+          LOG_TOPIC_IF("67da6", WARN, TOPIC, meta.willIndexIdAttribute())
               << "Failed to init collection name for the link '"
               << this->id().id()
               << "'. Link will not index '_id' attribute. Please recreate the "
@@ -321,18 +324,40 @@ Result IResearchLink::init(velocypack::Slice definition,
         }
 #endif
       }
+    }
 
-      if (!clusterWideLink) {
-        // prepare data-store which can then update options
-        // via the IResearchView::link(...) call
-        auto res = initDataStore(initCallback, meta._version, sorted,
-                                 storedValuesColumns, primarySortCompression);
-
-        if (!res.ok()) {
-          return res;
-        }
+    if (!clusterWideLink) {
+      if (meta._collectionName.empty() && !clusterIsEnabled &&
+          vocbase.server()
+              .getFeature<EngineSelectorFeature>()
+              .engine()
+              .inRecovery() &&
+          meta.willIndexIdAttribute()) {
+        LOG_TOPIC("f25ce", FATAL, TOPIC)
+            << "Upgrade conflicts with recovering ArangoSearch link '"
+            << this->id().id()
+            << "' Please rollback the updated arangodb binary and finish the "
+               "recovery "
+               "first.";
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "Upgrade conflicts with recovering ArangoSearch link."
+            " Please rollback the updated arangodb binary and finish the "
+            "recovery "
+            "first.");
       }
+      // prepare data-store which can then update options
+      // via the IResearchView::link(...) call
+      auto res = initDataStore(initCallback, meta._version, sorted,
+                               storedValuesColumns, primarySortCompression);
 
+      if (!res.ok()) {
+        return res;
+      }
+    }
+
+    if (clusterIsEnabled) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
       // valid to call ClusterInfo (initialized in ClusterFeature::prepare())
       // even from DatabaseFeature::start()
       auto logicalView = ci.getView(vocbase.name(), viewId);
@@ -681,38 +706,28 @@ void IResearchLink::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   aql::QueryCache::instance()->invalidate(vocbase, _viewGuid);
 }
 
-void IResearchLink::LinkStats::needName() const { _needName = true; }
-
-void IResearchLink::LinkStats::toPrometheus(std::string& result,
+void IResearchLink::LinkStats::toPrometheus(std::string& result, bool first,
                                             std::string_view globals,
                                             std::string_view labels) const {
   auto writeAnnotation = [&] {
-    result.push_back('{');
-    result.append(globals);
+    (result += '{') += globals;
     if (!labels.empty()) {
       if (!globals.empty()) {
-        result.push_back(',');
+        result += ',';
       }
-      result.append(labels);
+      result += labels;
     }
-    result.push_back('}');
+    result += '}';
   };
   auto writeMetric = [&](std::string_view name, std::string_view help,
                          size_t value) {
-    if (_needName) {
-      result.append("# HELP ");
-      result.append(name);
-      result.push_back(' ');
-      result.append(help);
-      result.push_back('\n');
-      result.append("# TYPE ");
-      result.append(name);
-      result.append(" gauge\n");
+    if (first) {
+      (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+      result.append("# TYPE ").append(name) += " gauge\n";
     }
     result.append(name);
     writeAnnotation();
-    result.append(std::to_string(value));
-    result.push_back('\n');
+    result.append(std::to_string(value)) += '\n';
   };
   writeMetric(arangosearch_num_buffered_docs::kName,
               "Number of buffered documents", numBufferedDocs);
@@ -724,7 +739,6 @@ void IResearchLink::LinkStats::toPrometheus(std::string& result,
   writeMetric(arangosearch_num_files::kName, "Number of files", numFiles);
   writeMetric(arangosearch_index_size::kName, "Size of the index in bytes",
               indexSize);
-  _needName = false;
 }
 
 }  // namespace arangodb::iresearch

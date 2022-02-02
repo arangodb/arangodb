@@ -27,6 +27,7 @@
 #include <rocksdb/listener.h>
 
 #include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
@@ -37,7 +38,7 @@ class ApplicationServer;
 /// alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
-  explicit RocksDBMetricsListener(application_features::ApplicationServer&);
+  explicit RocksDBMetricsListener(ArangodServer&);
 
   void OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) override;
 
