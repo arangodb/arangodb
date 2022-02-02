@@ -66,6 +66,8 @@ NetworkFeature::NetworkFeature(Server& server)
     : NetworkFeature(server,
                      network::ConnectionPool::Config{
                          server.getFeature<metrics::MetricsFeature>()}) {
+  static_assert(
+      Server::isCreatedAfter<NetworkFeature, metrics::MetricsFeature>());
   this->_numIOThreads = 2;  // override default
 }
 

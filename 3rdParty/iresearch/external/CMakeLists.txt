@@ -92,10 +92,13 @@ if (MSVC)
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 else()
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst
-    PRIVATE "-fPIC"
-  )
+  CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
+  if (SUPPORT_FPIC)
+    target_compile_options(
+      ${IResearch_TARGET_NAME}-ofst
+      PRIVATE "-fPIC"
+    )
+  endif ()
 endif()
 
 target_include_directories(

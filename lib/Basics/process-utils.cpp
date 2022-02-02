@@ -375,7 +375,8 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
     }                                             \
   } while (false);
 
-static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
+[[maybe_unused]] static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf,
+                                                  char const* p) {
   auto err = TRI_ERROR_NO_ERROR;
 
   appendChar(buf, '"');
@@ -709,7 +710,7 @@ static uint64_t _TimeAmount(FILETIME* ft) {
   return ts;
 }
 
-static time_t _FileTime_to_POSIX(FILETIME* ft) {
+[[maybe_unused]] static time_t _FileTime_to_POSIX(FILETIME* ft) {
   LONGLONG ts, help;
   ts = ft->dwLowDateTime;
   help = ft->dwHighDateTime;

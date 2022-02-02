@@ -1630,6 +1630,8 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
                      Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
+  static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
+
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();

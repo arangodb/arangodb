@@ -150,6 +150,9 @@ V8DealerFeature::V8DealerFeature(Server& server)
           arangodb_v8_context_exited_total{})),
       _contextsEnterFailures(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_v8_context_enter_failures_total{})) {
+  static_assert(
+      Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 

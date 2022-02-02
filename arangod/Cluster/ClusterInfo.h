@@ -1264,15 +1264,8 @@ class ClusterInfo final {
 
   /// @brief histogram for loadPlan runtime
   metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
-
-  /// @brief total time for loadPlan runtime
-  metrics::Counter& _lpTotal;
-
   /// @brief histogram for loadCurrent runtime
   metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
-
-  /// @brief total time for loadCurrent runtime
-  metrics::Counter& _lcTotal;
 };
 
 namespace cluster {
