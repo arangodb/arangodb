@@ -1,6 +1,8 @@
 devel
 -----
 
+* Limited module resolution in arangosh to the path from which arangosh is invoked.
+
 * Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
   in upgrade mode in the same time.
 
@@ -6035,8 +6037,6 @@ devel
 * Fixed agency nodes to not create bogus keys on delete / observe / unobserve.
 
 * Fixed an agency bug found in Windows tests.
-
-* Limited module resolution in arangosh to the path from which arangosh is invoked.
 
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
