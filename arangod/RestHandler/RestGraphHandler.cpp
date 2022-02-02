@@ -1051,9 +1051,10 @@ Result RestGraphHandler::graphActionCreateGraph() {
 
 Result RestGraphHandler::graphActionReadGraphs() {
   transaction::StandaloneContext ctx(_vocbase);
+  bool details = _request->parsedValue(StaticStrings::GraphDetails, false);
 
   VPackBuilder builder;
-  _graphManager.readGraphs(builder);
+  _graphManager.readGraphs(builder, details);
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 

@@ -726,9 +726,10 @@ bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
   return true;
 }
 
-Result GraphManager::readGraphs(velocypack::Builder& builder) const {
+Result GraphManager::readGraphs(velocypack::Builder& builder,
+                                bool details) const {
   std::string const queryStr{"FOR g IN _graphs RETURN {name: g._key}"};
-  return readGraphByQuery(builder, queryStr, true);
+  return readGraphByQuery(builder, queryStr, details);
 }
 
 Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
@@ -766,10 +767,17 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
   }
 
   builder.openObject();
-  for (VPackSlice graphSlice : VPackArrayIterator(graphsSlice)) {
-    auto res = writeGraphToBuilder(builder, graphSlice, extra);
-    if (res.fail()) {
-      return res;
+  builder.add(VPackValue("graphs"));  // TODO: static string
+  {
+    VPackArrayBuilder graphsArray(&builder);
+    for (VPackSlice graphSlice : VPackArrayIterator(graphsSlice)) {
+      builder.openObject();
+      auto res = writeGraphToBuilder(builder, graphSlice, extra);
+      if (res.fail()) {
+        builder.close();
+        return res;
+      }
+      builder.close();
     }
   }
   builder.close();
@@ -778,23 +786,26 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
 }
 
 Result GraphManager::writeGraphToBuilder(VPackBuilder& builder,
-                                       VPackSlice const& graphSlice,
-                                       bool extra) const {
+                                         VPackSlice const& graphSlice,
+                                         bool extra) const {
   TRI_ASSERT(builder.isOpenObject());
   TRI_ASSERT(graphSlice.isObject());
   TRI_ASSERT(graphSlice.get(StaticStrings::GraphName).isString());
-  auto res = lookupGraphByName(graphSlice.get(StaticStrings::GraphName).copyString());
+  auto res =
+      lookupGraphByName(graphSlice.get(StaticStrings::GraphName).copyString());
   if (res.fail()) {
     return res.result();
   }
 
   auto& graph = res.get();
-  if (extra) {
-    graph->graphForClientWithExtra(builder, _vocbase);
-  } else {
-    graph->graphForClient(builder);
-  }
 
+  bool includeNestedGraphContainer = false;
+  if (extra) {
+    graph->graphForClientWithExtra(builder, _vocbase,
+                                   includeNestedGraphContainer);
+  } else {
+    graph->graphForClient(builder, includeNestedGraphContainer);
+  }
 
   return Result(TRI_ERROR_NO_ERROR);
 }

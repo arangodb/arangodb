@@ -238,9 +238,9 @@ class Graph {
    *
    * @param builder The builder the result should be written in. Expects an open
    * object.
-   * @param md5Calculation If disabled, we will not include individual attributes
-   * like e.g. initial collection id (StaticStrings::GraphInitialCid) which
-   * might differ when comparing two individual datacenters.
+   * @param md5Calculation If disabled, we will not include individual
+   * attributes like e.g. initial collection id (StaticStrings::GraphInitialCid)
+   * which might differ when comparing two individual datacenters.
    */
   virtual void toPersistence(velocypack::Builder& builder,
                              bool md5Calculation = false) const;
@@ -265,7 +265,8 @@ class Graph {
    * @param builder The builder the result should be written in. Expects an open
    * object.
    */
-  void graphForClient(VPackBuilder& builder) const;
+  void graphForClient(VPackBuilder& builder,
+                      bool addNestedGraphContainer = true) const;
 
   /**
    * @brief same as above but with additional information
@@ -277,7 +278,8 @@ class Graph {
    *              of the graph). Default set to false.
    */
   void graphForClientWithExtra(VPackBuilder& builder,
-                               TRI_vocbase_t const& vocbase) const;
+                               TRI_vocbase_t const& vocbase,
+                               bool addNestedGraphContainer = true) const;
 
   /**
    * @brief Check if the collection is allowed to be used

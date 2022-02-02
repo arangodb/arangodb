@@ -284,6 +284,7 @@ std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
 
 // smart graph relevant attributes
 std::string const StaticStrings::IsDisjoint("isDisjoint");
+std::string const StaticStrings::GraphDetails("details");
 std::string const StaticStrings::GraphIsSmart("isSmart");
 std::string const StaticStrings::GraphIsSatellite("isSatellite");
 std::string const StaticStrings::GraphSatellites("satellites");

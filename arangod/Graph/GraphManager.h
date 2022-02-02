@@ -61,7 +61,7 @@ class GraphManager {
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
-  Result readGraphs(velocypack::Builder& builder) const;
+  Result readGraphs(velocypack::Builder& builder, bool extra = false) const;
 
   Result readGraphKeys(velocypack::Builder& builder) const;
 
@@ -85,7 +85,7 @@ class GraphManager {
       const TRI_vocbase_t& vocbase, std::string const& name);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief checks wheter a graph exists or not
+  /// @brief checks whether a graph exists or not
   ////////////////////////////////////////////////////////////////////////////////
   bool graphExists(std::string const& graphName) const;
 

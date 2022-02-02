@@ -43,7 +43,6 @@ const wait = internal.wait;
 const url = '/_api/gharial';
 
 describe('_api/gharial', () => {
-
   const graphName = 'UnitTestGraph';
   const vColName = 'UnitTestVertices';
   const eColName = 'UnitTestRelations';
@@ -89,40 +88,88 @@ describe('_api/gharial', () => {
     }
   };
 
-  const validateGraphFormat = (graph) => {
-    const edgeDefinition = Joi.object({
-      collection: Joi.string().required(),
-      from: Joi.array().items(Joi.string()).required(),
-      to: Joi.array().items(Joi.string()).required()
+  // @brief validate the graph format including all expected properties.
+  // Expected values relay on the environment.
+  const validateGraphFormat = (
+    graph,
+    shouldBeSmart = false,
+    shouldBeHybrid = false,
+    hasExtra = false
+  ) => {
+    /*
+     * Edge Definition Schema
+     */
+    let edgeDefinitionSchema;
+    if (hasExtra) {
+      edgeDefinitionSchema = Joi.object({
+        collection: Joi.string().required(),
+        from: Joi.array().items(Joi.string()).required(),
+        to: Joi.array().items(Joi.string()).required(),
+        checksum: Joi.string().required()
+      });
+    } else {
+      edgeDefinitionSchema = Joi.object({
+        collection: Joi.string().required(),
+        from: Joi.array().items(Joi.string()).required(),
+        to: Joi.array().items(Joi.string()).required()
+      });
+    }
+
+    /*
+     * Collection Properties Schema
+     */
+    let graphSchemasToTest = [];
+
+    // This is always required to be available
+    const generalGraphSchema = Joi.object({
+      "_key": Joi.string().required(),
+      "_rev": Joi.string().required(),
+      "_id": Joi.string().required(),
+      name: Joi.string().required(),
+      orphanCollections: Joi.array().items(Joi.string()).required(),
+      edgeDefinitions: Joi.array().items(edgeDefinitionSchema).required()
     });
-    let schema;
-    if (isCluster) {
-      schema = Joi.object({
-        "_key": Joi.string().required(),
-        "_rev": Joi.string().required(),
-        "_id": Joi.string().required(),
-        name: Joi.string().required(),
+    graphSchemasToTest.push(generalGraphSchema);
+
+    if (isCluster || shouldBeSmart) {
+      // Those properties are either:
+      // - Required for all graphs which are being created in a cluster
+      // - OR SmartGraphs (incl. Disjoint & Hybrid, as SmartGraphs can now be created
+      //   in a SingleServer environment as well)
+      const distributionGraphSchema = Joi.object({
         numberOfShards: Joi.number().integer().min(1).required(),
         replicationFactor: Joi.number().integer().min(1).required(),
         minReplicationFactor: Joi.number().integer().min(1).required(),
-        writeConcern: Joi.number().integer().min(1).required(),
-        isSmart: Joi.boolean().required(),
-        isSatellite: Joi.boolean().required(),
-        orphanCollections: Joi.array().items(Joi.string()).required(),
-        edgeDefinitions: Joi.array().items(edgeDefinition).required()
+        writeConcern: Joi.number().integer().min(1).required()
       });
-    } else {
-      schema = Joi.object({
-        "_key": Joi.string().required(),
-        "_rev": Joi.string().required(),
-        "_id": Joi.string().required(),
-        name: Joi.string().required(),
-        orphanCollections: Joi.array().items(Joi.string()).required(),
-        edgeDefinitions: Joi.array().items(edgeDefinition).required()
-      });
+      graphSchemasToTest.push(distributionGraphSchema);
     }
-    const res = schema.validate(graph);
-    expect(res.error).to.be.null;
+
+    if (shouldBeSmart) {
+      // Those properties are bound only to SmartGraphs
+      const smartGraphSchema = Joi.object({
+        isSmart: Joi.boolean().required(),
+        isSatellite: Joi.boolean().required()
+      });
+      graphSchemasToTest.push(smartGraphSchema);
+    }
+
+    if (shouldBeHybrid) {
+      // This is a special case, means:
+      // Combination out of a SmartGraph and additional collections which
+      // should be created as SatelliteCollections. In that case the API
+      // should expose the collections which are created as satellites as
+      // well.
+      const hybridSmartGraphSchema = Joi.object({
+        satellites: Joi.array().items(Joi.string()).required()
+      });
+      graphSchemasToTest.push(hybridSmartGraphSchema);
+    }
+
+    for (const schema of graphSchemasToTest) {
+      const res = schema.validate(graph);
+      expect(res.error).to.be.null;
+    }
   };
 
   beforeEach(cleanup);
@@ -157,7 +204,7 @@ describe('_api/gharial', () => {
 
       expect(db._collection(eColName)).to.not.be.null;
       expect(db._collection(vColName)).to.not.be.null;
-    
+
       expect(req).to.have.keys("error", "code", "graph");
       expect(req.code).to.equal(200);
       expect(req.error).to.be.false;
@@ -236,9 +283,9 @@ describe('_api/gharial', () => {
 
     it('should list all graphs in correct format', () => {
       const res = arango.GET(url);
-      expect(res).to.have.keys("error", "code", "graphs");
       expect(res.code).to.equal(200);
       expect(res.error).to.be.false;
+      expect(res).to.have.keys("error", "code", "graphs");
       res.graphs.map(validateGraphFormat);
     });
 
@@ -286,7 +333,7 @@ describe('_api/gharial', () => {
             _from: 'persons/bob',
             _to: 'persons/charlie'
           };
-          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef );
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(202);
 
           expect(db._collection(eName)).to.not.be.null;
@@ -1170,8 +1217,7 @@ describe('_api/gharial', () => {
           expect(reqx.code).to.equal(202);
 
           // DELETE that edge
-          reqx = arango.DELETE(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, {
-          });
+          reqx = arango.DELETE(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, {});
           expect(reqx.code).to.equal(202);
         });
       });
@@ -1272,7 +1318,7 @@ describe('_api/gharial', () => {
 
         revisions.forEach(function (rev) {
           let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
-              'if-match': rev
+            'if-match': rev
           });
           expect(req.error).to.equal(true);
           expect(req.code).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
@@ -1297,7 +1343,7 @@ describe('_api/gharial', () => {
         const revision = doc._rev; // get a valid revision
 
         let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
-            'if-none-match': revision
+          'if-none-match': revision
         });
         expect(req.code).to.equal(304);
       });
@@ -1323,7 +1369,7 @@ describe('_api/gharial', () => {
 
         revisions.forEach(function (rev) {
           let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
-              'if-none-match': rev
+            'if-none-match': rev
           });
           expect(req.code).to.equal(200);
           expect(req.edge).to.deep.equal(doc);
@@ -1487,5 +1533,16 @@ describe('_api/gharial', () => {
         graph._drop(gName, true);
       });
     });
+  });
+
+  describe('WIP - graph properties API', () => {
+    it('list graphs - should hide additional properties', () => {
+
+    });
+
+    it('list graphs - should show additional properties', () => {
+
+    });
+
   });
 });

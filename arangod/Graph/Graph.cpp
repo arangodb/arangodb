@@ -795,31 +795,54 @@ bool Graph::renameCollections(std::string const& oldName,
 }
 
 void Graph::graphForClientWithExtra(VPackBuilder& builder,
-                                    const TRI_vocbase_t& vocbase) const {
+                                    const TRI_vocbase_t& vocbase,
+                                    bool addNestedGraphContainer) const {
   TRI_ASSERT(builder.isOpenObject());
-  builder.add(VPackValue("graph"));
-  builder.openObject();
 
-  toPersistenceWithExtra(builder, vocbase);
+  auto writeGraph = [&](VPackBuilder& builder) {
+    toPersistenceWithExtra(builder, vocbase);
+    TRI_ASSERT(builder.isOpenObject());
+    builder.add(StaticStrings::RevString, VPackValue(rev()));
+    builder.add(StaticStrings::IdString, VPackValue(id()));
+    builder.add(StaticStrings::GraphName, VPackValue(_graphName));
+  };
 
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add(StaticStrings::RevString, VPackValue(rev()));
-  builder.add(StaticStrings::IdString, VPackValue(id()));
-  builder.add(StaticStrings::GraphName, VPackValue(_graphName));
-  builder.close();  // graph object
+  if (addNestedGraphContainer) {
+    // This is required for writes and modifications where we store the result
+    // of the API into a nested "graph" object. This is actually being used
+    // when only one graph is processed.
+    builder.add(VPackValue("graph"));
+    builder.openObject();
+    writeGraph(builder);
+    builder.close();
+  } else {
+    writeGraph(builder);
+  }
 }
 
-void Graph::graphForClient(VPackBuilder& builder) const {
+void Graph::graphForClient(VPackBuilder& builder,
+                           bool addNestedGraphContainer) const {
   TRI_ASSERT(builder.isOpenObject());
-  builder.add(VPackValue("graph"));
-  builder.openObject();
 
-  toPersistence(builder);
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add(StaticStrings::RevString, VPackValue(rev()));
-  builder.add(StaticStrings::IdString, VPackValue(id()));
-  builder.add(StaticStrings::GraphName, VPackValue(_graphName));
-  builder.close();  // graph object
+  auto writeGraph = [&](VPackBuilder& builder) {
+    toPersistence(builder);
+    TRI_ASSERT(builder.isOpenObject());
+    builder.add(StaticStrings::RevString, VPackValue(rev()));
+    builder.add(StaticStrings::IdString, VPackValue(id()));
+    builder.add(StaticStrings::GraphName, VPackValue(_graphName));
+  };
+
+  if (addNestedGraphContainer) {
+    // This is required for writes and modifications where we store the result
+    // of the API into a nested "graph" object. This is actually being used
+    // when only one graph is processed.
+    builder.add(VPackValue("graph"));
+    builder.openObject();
+    writeGraph(builder);
+    builder.close();
+  } else {
+    writeGraph(builder);
+  }
 }
 
 Result Graph::validateCollection(LogicalCollection& col) const {
