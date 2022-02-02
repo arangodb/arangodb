@@ -1,0 +1,8 @@
+option('leaf_hpp',type:'boolean',value:false,description:'Unit tests #include <boost/leaf.hpp> instead of individual headers')
+option('leaf_boost_examples',type:'boolean',value:false,description:'Builds the Boost examples and Boost Outcome benchmark')
+option('leaf_lua_examples',type:'boolean',value:false,description:'Enable or disable downloading of Lua and building the Lua examples')
+option('leaf_diagnostics',type:'integer',value:1,description:'BOOST_LEAF_DIAGNOSTICS value')
+option('leaf_suppress_warnings',type:'boolean',value:true,description:'Suppress compiler warnings (#pragma system_header)')
+option('leaf_enable_unit_tests',type:'boolean',value:true,description:'Enable the building of unit test programs')
+option('leaf_enable_examples',type:'boolean',value:true,description:'Enable the building of example programs')
+option('leaf_enable_benchmarks',type:'boolean',value:false,description:'Enable the building of benchmark programs')

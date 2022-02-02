@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,13 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 PruneExpressionEvaluator::PruneExpressionEvaluator(
-    transaction::Methods& trx,
-    QueryContext& query,
-    AqlFunctionsInternalCache& cache,
-    std::vector<Variable const*> vars, std::vector<RegisterId> regs,
-    size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx, Expression* expr)
+    transaction::Methods& trx, QueryContext& query,
+    AqlFunctionsInternalCache& cache, std::vector<Variable const*> vars,
+    std::vector<RegisterId> regs, size_t vertexVarIdx, size_t edgeVarIdx,
+    size_t pathVarIdx, Expression* expr)
     : _pruneExpression(expr),
-      _ctx(trx, query, cache, std::move(vars),
-           std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx) {}
+      _ctx(trx, query, cache, std::move(vars), std::move(regs), vertexVarIdx,
+           edgeVarIdx, pathVarIdx) {}
 
 PruneExpressionEvaluator::~PruneExpressionEvaluator() = default;
 

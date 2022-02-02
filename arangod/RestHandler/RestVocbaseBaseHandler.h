@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,8 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/vocbase.h"
+
+#include <memory>
 
 struct TRI_vocbase_t;
 
@@ -123,8 +125,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   static std::string const INTERNAL_TRAVERSER_PATH;
 
  public:
-  RestVocbaseBaseHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
+  RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
   virtual void cancel() override {
@@ -132,13 +133,17 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     _context.cancel();
   }
 
+  void prepareExecute(bool isContinue) override;
+
+  void shutdownExecute(bool isFinalized) noexcept override;
+
  protected:
   /// @brief returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
-  std::string assembleDocumentId(std::string const& collectionName, 
+  std::string assembleDocumentId(std::string const& collectionName,
                                  std::string const& key, bool urlEncode);
 
   /// @brief generates a HTTP 201 or 202 response
@@ -159,7 +164,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates document not found error message, no transaction info
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   /// @brief generates not implemented
@@ -176,7 +182,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
-  void generateDocument(arangodb::velocypack::Slice const& input, 
+  void generateDocument(arangodb::velocypack::Slice const& input,
                         bool generateBody,
                         arangodb::velocypack::Options const* options = nullptr);
 
@@ -192,13 +198,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief extracts a string parameter value
   void extractStringParameter(std::string const& name, std::string& ret) const;
-  
+
   /**
    * @brief Helper to create a new Transaction for a single collection. The
-   * helper method will will lock the collection accordingly. It will additionally
-   * check if there is a transaction-id header and will make use of an existing
-   * transaction if a transaction id is specified. it can also start a new
-   * transaction lazily if requested.
+   * helper method will will lock the collection accordingly. It will
+   * additionally check if there is a transaction-id header and will make use of
+   * an existing transaction if a transaction id is specified. it can also start
+   * a new transaction lazily if requested.
    *
    * @param collectionName Name of the collection to be locked
    * @param mode The access mode (READ / WRITE / EXCLUSIVE)
@@ -206,12 +212,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking or a leased transaction.
    */
-  std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
-                                                          AccessMode::Type mode,
-                                                          OperationOptions const& opOptions) const;
-  
+  std::unique_ptr<transaction::Methods> createTransaction(
+      std::string const& cname, AccessMode::Type mode,
+      OperationOptions const& opOptions) const;
+
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
+  std::shared_ptr<transaction::Context> createTransactionContext(
+      AccessMode::Type mode) const;
 
  protected:
   /// @brief request context
@@ -219,7 +226,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief the vocbase, managed by VocbaseContext
   TRI_vocbase_t& _vocbase;
+
+ private:
+  std::shared_ptr<LogContext::Values> _scopeVocbaseValues;
+  LogContext::EntryPtr _logContextVocbaseEntry;
 };
 
 }  // namespace arangodb
-

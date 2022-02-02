@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.13)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -278,6 +278,16 @@ endif ()
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (USE_FAIL_ON_WARNINGS
+    AND CMAKE_GENERATOR MATCHES "^Visual Studio"
+    AND CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
+  message(WARNING [[
+    clang-cl is used with USE_FAIL_ON_WARNINGS (i.e. /WX).
+    The build will probably fail, because system header includes aren't passed
+    as system header includes to clang-cl through the VS toolchain.
+  ]])
+endif()
+
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
@@ -534,12 +544,12 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.spawn"
+    COMMAND ${PYTHON_EXECUTABLE} -c "from shutil import which"
     RESULT_VARIABLE EXIT_CODE
     OUTPUT_QUIET
     )
 if (NOT "${EXIT_CODE}" EQUAL "0")
-  message(FATAL_ERROR "python distutils package is required! ")
+  message(FATAL_ERROR "python shutil.which package is required! ")
 endif()
 
 # FIXME the build containers seem to have a
@@ -574,25 +584,24 @@ add_definitions("-DARANGODB_BITS=${BITS}")
 ## COMPILER FEATURES
 ################################################################################
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 endif ()
 
-if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
+set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
+set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
+set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
+set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
+set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+
+if (MSVC)
+  set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
   # Increase the reserved stack size for all threads to 4MB
   # Note: this is only _reserved_ memory, not necessarily _committed_ memory
-  set(BASE_LD_FLAGS  "/STACK:4194304"             CACHE STRING "base linker flags")
-else ()
-  set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
-  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
-  set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
-  set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+  set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -604,9 +613,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++20")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(MSVC)
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
@@ -619,13 +626,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
     message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
-  # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
-  # remain restricted to /std:c++latest due to WG21's upcoming changes.
-  # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++latest")
 endif()
 
-if (CMAKE_COMPILER_IS_CLANG)
+if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
   if (APPLE)
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
       set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
@@ -646,6 +649,17 @@ endif ()
 # need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilties
 set(CMAKE_CXX_STANDARD 20)
+# turn off compiler language extensions (e.g. don't use -std=gnu++20, but
+# -std=c++20).
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # we need to exclude clang-cl
+  # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
+  # remain restricted to /std:c++latest due to WG21's upcoming changes.
+  # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895")
+  set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "-std:c++latest")
+  set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std:c++latest")
+endif ()
 
 # need threads
 find_package(Threads REQUIRED)
@@ -662,9 +676,11 @@ if (MSVC)
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
-  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:ICF")
-  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:ICF")
-  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:ICF")
+  # We currently need to disable ICF because unfortunately we have some code
+  # that depends on unique addresses for functions or read-only data members.
+  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:NOICF")
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
@@ -690,20 +706,6 @@ if (APPLE)
   if (USE_LOCAL_CLOCK_GETTIME)
     message(STATUS "using a home-made clock_gettime")
   endif ()
-endif ()
-
-################################################################################
-## INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(${PROJECT_BINARY_DIR})
-include_directories(${PROJECT_BINARY_DIR}/lib)
-
-include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/lib)
-
-if (CUSTOM_INCLUDES)
-  include_directories(${CUSTOM_INCLUDES})
 endif ()
 
 ################################################################################
@@ -747,11 +749,15 @@ set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
 # iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-if (NOT MSVC)
+if (NOT WIN32)
   find_package(Backtrace)
 endif()
 
-set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+if (Backtrace_LIBRARY)
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+else()
+  set(BT_LIBS "" CACHE PATH "Debug Helper libraries")
+endif()
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
@@ -999,6 +1005,9 @@ if (MSVC)
   endif ()
 
   add_definitions(/bigobj)
+  if (CMAKE_COMPILER_IS_CLANG) # clang-cl
+    set(BASE_FLAGS "-Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  endif()
 else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
@@ -1072,7 +1081,7 @@ else () # NOT MSVC
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       # On Darwin -fstandalone-debug is enabled by default, so we don't need
       # to add it for AppleClang.
       set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
@@ -1190,7 +1199,6 @@ endif ()
 
 message(${OPENSSL_INCLUDE_DIR})
 
-include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
 add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
 add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
@@ -1245,29 +1253,11 @@ add_subdirectory(3rdParty)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
-
-################################################################################
-## 3rd Party INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/function2)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
-
-set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
 add_dependencies(rocksdb snappy)
 
@@ -1285,16 +1275,9 @@ add_definitions("-DVELOCYPACK_XXHASH=1")
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 ################################################################################
-## ICU
-################################################################################
-
-include_directories(SYSTEM ${ICU_INCLUDE_DIR})
-
-################################################################################
 ## V8
 ################################################################################
 
-include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
@@ -1305,7 +1288,6 @@ endforeach()
 ## ZLIB
 ################################################################################
 
-include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
 
@@ -1400,10 +1382,11 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
+  absl-static
 )
 
 add_subdirectory(lib)
-add_subdirectory(arangosh)
+add_subdirectory(client-tools)
 add_subdirectory(arangod)
 
 

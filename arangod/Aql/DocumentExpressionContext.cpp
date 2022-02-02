@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,21 +24,26 @@
 #include "DocumentExpressionContext.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Variable.h"
 
 using namespace arangodb::aql;
 
-DocumentExpressionContext::DocumentExpressionContext(arangodb::transaction::Methods& trx,
-                                                     QueryContext& query,
-                                                     AqlFunctionsInternalCache& cache,
-                                                     arangodb::velocypack::Slice document) noexcept
+DocumentExpressionContext::DocumentExpressionContext(
+    arangodb::transaction::Methods& trx, QueryContext& query,
+    AqlFunctionsInternalCache& cache,
+    arangodb::velocypack::Slice document) noexcept
     : QueryExpressionContext(trx, query, cache), _document(document) {}
 
-AqlValue DocumentExpressionContext::getVariableValue(Variable const*, bool doCopy,
+AqlValue DocumentExpressionContext::getVariableValue(Variable const* variable,
+                                                     bool doCopy,
                                                      bool& mustDestroy) const {
-  if (doCopy) {
-    mustDestroy = true;  // as we are copying
-    return AqlValue(AqlValueHintCopy(_document.start()));
-  }
-  mustDestroy = false;
-  return AqlValue(AqlValueHintDocumentNoCopy(_document.start()));
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        mustDestroy = doCopy;
+        if (doCopy) {
+          return AqlValue(AqlValueHintSliceCopy(_document));
+        }
+        return AqlValue(AqlValueHintSliceNoCopy(_document));
+      });
 }

@@ -1,0 +1,68 @@
+[#last_of]
+[section last_of]
+
+[h1 Synopsis]
+
+  template <class... Ps>
+  struct last_of;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]       [Type]]
+  [[`Ps...`]    [[link parser parser]s]]
+]
+
+[h1 Description]
+
+`last_of` applies the `Ps...` parsers in sequence. It accepts an input when all
+parsers accept it. The result of parsing is the result of the last parser.
+
+On compilers, which are not C++11-compliant, the maximum number of parsers
+`last_of` accepts can be specified with the
+`BOOST_METAPARSE_LIMIT_SEQUENCE_SIZE` macro. Its default value is `5`.
+
+[h1 Header]
+
+  #include <boost/metaparse/last_of.hpp>
+
+[h1 Expression semantics]
+
+For any `p1`, ... `pn` parsers
+
+  first_of<p1, ..., pn>
+
+is equivalent to
+
+  nth_of_c<n, p1, ..., pn>
+
+[h1 Example]
+
+  #include <boost/metaparse/last_of.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  using comma_int = last_of<lit_c<','>, int_>;
+  
+  static_assert(
+    is_error<comma_int::apply<BOOST_METAPARSE_STRING("13"), start>>::type::value,
+    "int without comma is rejected"
+  );
+  
+  static_assert(
+    get_result<
+      comma_int::apply<BOOST_METAPARSE_STRING(",13"), start>
+    >::type::value,
+    "the result is the result of the last parser"
+  );
+
+[endsect]
+

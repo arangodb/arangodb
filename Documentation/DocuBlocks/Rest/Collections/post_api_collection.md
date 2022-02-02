@@ -70,8 +70,8 @@ Not used for other key generator types.
 @RESTBODYPARAM{type,integer,optional,int64}
 (The default is *2*): the type of the collection to create.
 The following values for *type* are valid:<br>
-- *2*: document collection
-- *3*: edge collection
+ - *2*: document collection
+ - *3*: edge collection
 
 @RESTBODYPARAM{cacheEnabled,boolean,optional,}
 Whether the in-memory hash cache for documents should be enabled for this

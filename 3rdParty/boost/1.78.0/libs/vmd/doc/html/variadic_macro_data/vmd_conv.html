@@ -1,0 +1,434 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Version 1.7 to 1.8 conversion</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="up" href="../index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="prev" href="vmd_vc_isms.html" title="Visual C++ gotchas in VMD">
+<link rel="next" href="vmd_examples.html" title="Examples using VMD functionality">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_vc_isms.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_examples.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="variadic_macro_data.vmd_conv"></a><a class="link" href="vmd_conv.html" title="Version 1.7 to 1.8 conversion">Version 1.7 to 1.8 conversion</a>
+</h2></div></div></div>
+<p>
+      Since the current version of VMD has been drastically changed to make it easier
+      to use VMD functionality this section details equivalent functionality for
+      previous version 1.7 VMD macros.
+    </p>
+<p>
+      The changes in functionality involve the parsing of sequences. The equivalent
+      to all the V1.7 functionality, which looks for various data types at the beginning
+      of a sequence, is encompassed by the V1.8 macro BOOST_VMD_ELEM(0,sequence,...),
+      where '0' is the first sequence element and 'sequence' is the sequence, with
+      its optional parameters.
+    </p>
+<h4>
+<a name="variadic_macro_data.vmd_conv.h0"></a>
+      <span class="phrase"><a name="variadic_macro_data.vmd_conv.identifier"></a></span><a class="link" href="vmd_conv.html#variadic_macro_data.vmd_conv.identifier">Identifier</a>
+    </h4>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_IDENTIFIER(sequence,keys,...) looked for an identifier at the beginning
+      of a sequence and returned a 2-element tuple, where the first element is the
+      matching index starting with 1, or 0 if no identifier is found, and the second
+      tuple element is the rest of the sequence or emptiness if no identifier is
+      found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,(identifiers),BOOST_VMD_TYPE_IDENTIFIER,BOOST_VMD_RETURN_AFTER,BOOST_VMD_RETURN_INDEX)
+      returns a 3-element tuple where the identifier found is the first tuple element,
+      the rest of the sequence is the second tuple element, and the matching index,
+      starting with 0, is the 3rd tuple element. If no identifier is found all elements
+      of the returned tuple are empty.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_BEGIN_IDENTIFIER(sequence,keys,...) looked for an identifier at the
+      beginning of a sequence and returned the matching index starting with 1, or
+      0 if no identifier is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,(identifiers),BOOST_VMD_TYPE_IDENTIFIER,BOOST_VMD_RETURN_INDEX)
+      returns a 2-element tuple where the identifier found is the first tuple element
+      and the matching index, starting with 0, is the 2nd tuple element. If no identifier
+      is found both elements of the returned tuple are empty.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_AFTER_IDENTIFIER(sequence,keys,...) looked for an identifier at the
+      beginning of a sequence and returned the rest of the sequence or emptiness
+      if no identifier is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,(identifiers),BOOST_VMD_TYPE_IDENTIFIER,BOOST_VMD_RETURN_ONLY_AFTER)
+      is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_IS_BEGIN_IDENTIFIER(sequence,keys,...) returns 1 if input begins
+      with an identifier, else 0 if it does not.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,(identifiers),BOOST_VMD_TYPE_IDENTIFIER) returns
+      the identifier found, otherwise emptiness if not found. You can use BOOST_PP_COMPL(BOOST_VMD_IS_EMPTY(BOOST_VMD_ELEM(0,sequence,identifiers,BOOST_VMD_TYPE_IDENTIFIER)))
+      as the exact equivalent.
+    </p>
+<h4>
+<a name="variadic_macro_data.vmd_conv.h1"></a>
+      <span class="phrase"><a name="variadic_macro_data.vmd_conv.number"></a></span><a class="link" href="vmd_conv.html#variadic_macro_data.vmd_conv.number">Number</a>
+    </h4>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_NUMBER(sequence,...) looked for a number at the beginning of a sequence
+      and returned a 2-element tuple, where the first element is the number and the
+      second tuple element is the rest of the sequence. If no number is found both
+      tuple elements are empty.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_NUMBER,BOOST_VMD_RETURN_AFTER) is
+      the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_BEGIN_NUMBER(sequence,...) looked for a number at the beginning of
+      a sequence and returned the number if found or emptiness if no number is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_NUMBER) is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_AFTER_NUMBER(sequence,...) looked for a number at the beginning of
+      a sequence and returned the rest of the sequence or emptiness if no number
+      is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_NUMBER,BOOST_VMD_RETURN_ONLY_AFTER)
+      is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_IS_BEGIN_NUMBER(sequence,...) returns 1 if input begins with a number,
+      else 0 if it does not.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_NUMBER) returns the number found,
+      otherwise emptiness if not found. You can use BOOST_PP_COMPL(BOOST_VMD_IS_EMPTY(BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_NUMBER)))
+      as the exact equivalent.
+    </p>
+<h4>
+<a name="variadic_macro_data.vmd_conv.h2"></a>
+      <span class="phrase"><a name="variadic_macro_data.vmd_conv.array"></a></span><a class="link" href="vmd_conv.html#variadic_macro_data.vmd_conv.array">Array</a>
+    </h4>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_ARRAY(sequence) looked for an array at the beginning of a sequence
+      and returned a 2-element tuple, where the first element is the array and the
+      second tuple element is the rest of the sequence. If no array is found both
+      tuple elements are empty.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_ARRAY,BOOST_VMD_RETURN_AFTER) is the
+      exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_BEGIN_ARRAY(sequence) looked for an array at the beginning of a sequence
+      and returned the array if found or emptiness if no array is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_ARRAY) is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_AFTER_ARRAY(sequence) looked for an array at the beginning of a sequence
+      and returned the rest of the sequence or emptiness if no array is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_ARRAY,BOOST_VMD_RETURN_ONLY_AFTER)
+      is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_IS_BEGIN_ARRAY(sequence,...) returns 1 if input begins with an array,
+      else 0 if it does not.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_ARRAY) returns the array found, otherwise
+      emptiness if not found. You can use BOOST_PP_COMPL(BOOST_VMD_IS_EMPTY(BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_ARRAY)))
+      as the exact equivalent.
+    </p>
+<h4>
+<a name="variadic_macro_data.vmd_conv.h3"></a>
+      <span class="phrase"><a name="variadic_macro_data.vmd_conv.list"></a></span><a class="link" href="vmd_conv.html#variadic_macro_data.vmd_conv.list">List</a>
+    </h4>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_LIST(sequence) looked for an list at the beginning of a sequence
+      and returned a 2-element tuple, where the first element is the list and the
+      second tuple element is the rest of the sequence. If no list is found both
+      tuple elements are empty.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_LIST,BOOST_VMD_RETURN_AFTER) is the
+      exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_BEGIN_LIST(sequence) looked for a list at the beginning of a sequence
+      and returned the list if found or emptiness if no list is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_LIST) is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_AFTER_LIST(sequence) looked for an list at the beginning of a sequence
+      and returned the rest of the sequence or emptiness if no list is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_LIST,BOOST_VMD_RETURN_ONLY_AFTER)
+      is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_IS_BEGIN_LIST(sequence,...) returns 1 if input begins with an list,
+      else 0 if it does not.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_LIST) returns the list found, otherwise
+      emptiness if not found. You can use BOOST_PP_COMPL(BOOST_VMD_IS_EMPTY(BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_LIST)))
+      as the exact equivalent.
+    </p>
+<h4>
+<a name="variadic_macro_data.vmd_conv.h4"></a>
+      <span class="phrase"><a name="variadic_macro_data.vmd_conv.seq"></a></span><a class="link" href="vmd_conv.html#variadic_macro_data.vmd_conv.seq">Seq</a>
+    </h4>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_SEQ(sequence) looked for a seq at the beginning of a sequence and
+      returned a 2-element tuple, where the first element is the seq and the second
+      tuple element is the rest of the sequence. If no seq is found both tuple elements
+      are empty.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_SEQ,BOOST_VMD_RETURN_AFTER) is the
+      exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_BEGIN_SEQ(sequence) looked for a seq at the beginning of a sequence
+      and returned the seq if found or emptiness if no seq is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_SEQ) is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_AFTER_SEQ(sequence) looked for an seq at the beginning of a sequence
+      and returned the rest of the sequence or emptiness if no seq is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_SEQ,BOOST_VMD_RETURN_ONLY_AFTER) is
+      the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_IS_BEGIN_SEQ(sequence,...) returns 1 if input begins with an seq,
+      else 0 if it does not.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_SEQ) returns the seq found, otherwise
+      emptiness if not found. You can use BOOST_PP_COMPL(BOOST_VMD_IS_EMPTY(BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_SEQ)))
+      as the exact equivalent.
+    </p>
+<h4>
+<a name="variadic_macro_data.vmd_conv.h5"></a>
+      <span class="phrase"><a name="variadic_macro_data.vmd_conv.tuple"></a></span><a class="link" href="vmd_conv.html#variadic_macro_data.vmd_conv.tuple">Tuple</a>
+    </h4>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_TUPLE(sequence) looked for an tuple at the beginning of a sequence
+      and returned a 2-element tuple, where the first element is the tuple and the
+      second tuple element is the rest of the sequence. If no tuple is found both
+      tuple elements are empty.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_TUPLE,BOOST_VMD_RETURN_AFTER) is the
+      exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_BEGIN_TUPLE(sequence) looked for a tuple at the beginning of a sequence
+      and returned the tuple if found or emptiness if no tuple is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_TUPLE) is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_AFTER_TUPLE(sequence) looked for an tuple at the beginning of a sequence
+      and returned the rest of the sequence or emptiness if no tuple is found.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_TUPLE,BOOST_VMD_RETURN_ONLY_AFTER)
+      is the exact equivalent.
+    </p>
+<p>
+      V1.7
+    </p>
+<p>
+      BOOST_VMD_IS_BEGIN_TUPLE(sequence,...) returns 1 if input begins with an tuple,
+      else 0 if it does not.
+    </p>
+<p>
+      V1.8 equivalent
+    </p>
+<p>
+      BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_TUPLE) returns the tuple found, otherwise
+      emptiness if not found. You can use BOOST_PP_COMPL(BOOST_VMD_IS_EMPTY(BOOST_VMD_ELEM(0,sequence,BOOST_VMD_TYPE_TUPLE)))
+      as the exact equivalent.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_vc_isms.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_examples.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

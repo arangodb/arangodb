@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,9 +91,9 @@ class Mutex {
   SRWLOCK _mutex;
 #endif
 
-#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
+#if defined(ARANGODB_ENABLE_DEADLOCK_DETECTION) && \
+    defined(TRI_HAVE_POSIX_THREADS)
   TRI_tid_t _holder;
 #endif
 };
 }  // namespace arangodb
-

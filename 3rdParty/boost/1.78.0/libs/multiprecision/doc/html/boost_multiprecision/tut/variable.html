@@ -1,0 +1,916 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Variable Precision Arithmetic</title>
+<link rel="stylesheet" href="../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../tut.html" title="Tutorial">
+<link rel="prev" href="mixed.html" title="Mixed Precision Arithmetic">
+<link rel="next" href="gen_int.html" title="Generic Integer Operations">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mixed.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gen_int.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_multiprecision.tut.variable"></a><a class="link" href="variable.html" title="Variable Precision Arithmetic">Variable Precision
+      Arithmetic</a>
+</h3></div></div></div>
+<p>
+        There are a number of types in this library whose precision can be changed
+        at runtime, the purpose of this section is to explain how these types interoperate
+        with each other when two variables of the same type can have different precisions.
+      </p>
+<p>
+        The main variable precision types being discussed here are:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="floats/gmp_float.html" title="gmp_float">gmp_float</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="floats/mpfr_float.html" title="mpfr_float">mpfr_float</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="interval/mpfi.html" title="mpfi_float">mpfi_float</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="complex/mpc_complex.html" title="mpc_complex">mpc_complex</a>.
+          </li>
+</ul></div>
+<p>
+        Functions for setting the current working precision are as follows, with
+        type <code class="computeroutput"><span class="identifier">Num</span></code> being one of <code class="computeroutput"><span class="identifier">mpf_float</span></code>, <code class="computeroutput"><span class="identifier">mpfr_float</span></code>,
+        <code class="computeroutput"><span class="identifier">mpfi_float</span></code> or <code class="computeroutput"><span class="identifier">mpc_float</span></code>, and <code class="computeroutput"><span class="identifier">val</span></code>
+        being an object of type <code class="computeroutput"><span class="identifier">Num</span></code>:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Comments
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">val</span><span class="special">.</span><span class="identifier">precision</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">unsigned</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the precision of variable <code class="computeroutput"><span class="identifier">val</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">val</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">void</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets the precision of variable <code class="computeroutput"><span class="identifier">val</span></code>
+                  to <code class="computeroutput"><span class="identifier">n</span></code> decimal places.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">unsigned</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the current global default precision, in decimal digits
+                  - this is the precision that all new threads will inherit.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">unsigned</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the current thread default precision, in decimal digits
+                  - this is the precision that the current thread will use when constructing
+                  new objects of type <code class="computeroutput"><span class="identifier">Num</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">(</span><span class="identifier">Digits10</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">void</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets the global default precision to Digits10 decimal places, this
+                  is the precision that all new threads will inherit, also sets the
+                  working precision for the current thread.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">(</span><span class="identifier">Digits10</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">void</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets the default precision for the current thread to Digits10 decimal
+                  places.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        We must now consider what happens in an expression such as:
+      </p>
+<pre class="programlisting"><span class="identifier">variable</span> <span class="special">=</span> <span class="identifier">some_expression</span><span class="special">;</span>
+</pre>
+<p>
+        There are basically 2 options here when the precision of <code class="computeroutput"><span class="identifier">variable</span></code>
+        and <code class="computeroutput"><span class="identifier">some_expression</span></code> differ:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            We can preserve the precision of the source, so that post assignment,
+            source and target are equal.
+          </li>
+<li class="listitem">
+            We can preserve the precision of the target, so that the precision of
+            <code class="computeroutput"><span class="identifier">variable</span></code> doesn't change.
+          </li>
+</ul></div>
+<p>
+        In addition we must consider what happens if <code class="computeroutput"><span class="identifier">some_expression</span></code>
+        contains types other than <code class="computeroutput"><span class="identifier">Num</span></code>.
+      </p>
+<p>
+        The behaviour of the library is controlled by the following enumerated values:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span> <span class="special">{</span>
+
+   <span class="keyword">enum</span> <span class="keyword">struct</span> <span class="identifier">variable_precision_options</span>
+   <span class="special">{</span>
+      <span class="identifier">assume_uniform_precision</span> <span class="special">=</span> <span class="special">-</span><span class="number">1</span><span class="special">,</span>
+      <span class="identifier">preserve_target_precision</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span>
+      <span class="identifier">preserve_source_precision</span> <span class="special">=</span> <span class="number">1</span><span class="special">,</span>
+      <span class="identifier">preserve_component_precision</span> <span class="special">=</span> <span class="number">2</span><span class="special">,</span>
+      <span class="identifier">preserve_related_precision</span> <span class="special">=</span> <span class="number">3</span><span class="special">,</span>
+      <span class="identifier">preserve_all_precision</span> <span class="special">=</span> <span class="number">4</span><span class="special">,</span>
+   <span class="special">};</span>
+
+<span class="special">}</span>
+</pre>
+<p>
+        The enumerated values have the following meanings, with <code class="computeroutput"><span class="identifier">preserve_related_precision</span></code>
+        being the default.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Value
+                </p>
+              </th>
+<th>
+                <p>
+                  Meaning
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  assume_uniform_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  This is the most efficient option - it simply assumes that all
+                  variables in the current thread have the same precision, and ignores
+                  the precision of all other types. Should these assumptions not
+                  hold, then strange unexpected things may happen. No checks are
+                  made to ensure that all variables really are of the same precision.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_target_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  All expressions are evaluated at the precision of the highest precision
+                  variable within the expression, and then rounded to the precision
+                  of the target variable upon assignment. The precision of other
+                  types (including related or component types - see preserve_component_precision/preserve_related_precision)
+                  contained within the expression are ignored. This option has the
+                  unfortunate side effect, that moves may become full deep copies.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_source_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  All expressions are evaluated at the precision of the highest precision
+                  variable within the expression, and that precision is preserved
+                  upon assignment. The precision of other types (including related
+                  or component types - see preserve_component_precision/preserve_related_precision)
+                  contained within the expression are ignored. Moves, are true moves
+                  not copies.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_component_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  All expressions are evaluated at the precision of the highest precision
+                  variable within the expression, and that precision is preserved
+                  upon assignment. If the expression contains component types then
+                  these are also considered when calculating the precision of the
+                  expression. Component types are the types which make up the two
+                  components of the number when dealing with interval or complex
+                  numbers. They are the same type as <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">value_type</span></code>.
+                  Moves, are true moves not copies.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_related_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  All expressions are evaluated at the precision of the highest precision
+                  variable within the expression, and that precision is preserved
+                  upon assignment. If the expression contains component types then
+                  these are also considered when calculating the precision of the
+                  expression. In addition to component types, all related types are
+                  considered when evaluating the precision of the expression. Related
+                  types are considered to be instantiations of the same template,
+                  but with different parameters. So for example <code class="computeroutput"><span class="identifier">mpfr_float_100</span></code>
+                  would be a related type to <code class="computeroutput"><span class="identifier">mpfr_float</span></code>,
+                  and all expressions containing an <code class="computeroutput"><span class="identifier">mpfr_float_100</span></code>
+                  variable would have at least 100 decimal digits of precision when
+                  evaluated as an <code class="computeroutput"><span class="identifier">mpfr_float</span></code>
+                  expression. Moves, are true moves not copies.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_all_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  All expressions are evaluated at the precision of the highest precision
+                  variable within the expression, and that precision is preserved
+                  upon assignment. In addition to component and related types, all
+                  types are considered when evaluating the precision of the expression.
+                  For example, if the expression contains an <code class="computeroutput"><span class="identifier">mpz_int</span></code>,
+                  then the precision of the expression will be sufficient to store
+                  all of the digits in the integer unchanged. This option should
+                  generally be used with extreme caution, as it can easily cause
+                  unintentional precision inflation. Moves, are true moves not copies.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        Note how the values <code class="computeroutput"><span class="identifier">preserve_source_precision</span></code>,
+        <code class="computeroutput"><span class="identifier">preserve_component_precision</span></code>,
+        <code class="computeroutput"><span class="identifier">preserve_related_precision</span></code>
+        and <code class="computeroutput"><span class="identifier">preserve_all_precision</span></code>
+        form a hierarchy, with each adding progressively more types to the one before
+        to the list of types that are considered when calculating the precision of
+        an expression:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Value
+                </p>
+              </th>
+<th>
+                <p>
+                  Considers types (lowest in hierarchy first, each builds on the
+                  one before)
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  preserve_source_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  Considers types the same as the result in the expression only.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_component_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  Also considers component types, ie <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">value_type</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_related_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  Also considers all instantiations of the backend-template, not
+                  just the same type as the result.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  preserve_all_precision
+                </p>
+              </td>
+<td>
+                <p>
+                  Considers everything, including completely unrelated types such
+                  as (possibly arbitrary precision) integers.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        As with working precision, the above options can be set or queried on either
+        a global or thread-local level, note that these options can not be set on
+        a per-variable basis since they control whole expressions, not individual
+        variables:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Comments
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">default_variable_precision_options</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">variable_precision_options</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the current global default options, these are the options
+                  that all new threads will inherit.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">thread_default_variable_precision_options</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">variable_precision_options</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the options in use in the current thread when evaluating
+                  expressions containing type <code class="computeroutput"><span class="identifier">Num</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">default_variable_precision_options</span><span class="special">(</span><span class="identifier">opts</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">void</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets the global default options to <code class="computeroutput"><span class="identifier">opts</span></code>
+                  which must be one of the enumerated <code class="computeroutput"><span class="identifier">variable_precision_options</span></code>
+                  values, this is setting that all new threads will inherit, also
+                  sets the options for the current thread.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Num</span><span class="special">::</span><span class="identifier">thread_default_variable_precision_options</span><span class="special">(</span><span class="identifier">opts</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">void</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets the options for the current thread to <code class="computeroutput"><span class="identifier">opts</span></code>
+                  which must be one of the <code class="computeroutput"><span class="identifier">variable_precision_options</span></code>
+                  enumerated values.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_multiprecision.tut.variable.h0"></a>
+        <span class="phrase"><a name="boost_multiprecision.tut.variable.examples"></a></span><a class="link" href="variable.html#boost_multiprecision.tut.variable.examples">Examples</a>
+      </h5>
+<p>
+        All our precision changing examples are based around <code class="computeroutput"><span class="identifier">mpfr_float</span></code>.
+        However, in order to make running this example a little easier to debug,
+        we'll use <code class="computeroutput"><span class="identifier">debug_adaptor</span></code> throughout
+        so that the values of all variables can be displayed in your debugger of
+        choice:
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">mp_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">debug_adaptor_t</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">mpfr_float</span><span class="special">&gt;;</span>
+</pre>
+<p>
+        Our first example will investigate calculating the Bessel J function via
+        it's well known series representation:
+      </p>
+<p>
+        <span class="inlinemediaobject"><object type="image/svg+xml" data="../../../bessel2.svg"></object></span>
+      </p>
+<p>
+        This simple series suffers from catastrophic cancellation error near the
+        roots of the function, so we'll investigate slowly increasing the precision
+        of the calculation until we get the result to N-decimal places. We'll begin
+        by defining a function to calculate the series for Bessel J, the details
+        of which we'll leave in the source code:
+      </p>
+<pre class="programlisting"><span class="identifier">mp_t</span> <span class="identifier">calculate_bessel_J_as_series</span><span class="special">(</span><span class="identifier">mp_t</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">mp_t</span> <span class="identifier">v</span><span class="special">,</span> <span class="identifier">mp_t</span><span class="special">*</span> <span class="identifier">err</span><span class="special">)</span>
+</pre>
+<p>
+        Next come some simple helper classes, these allow us to modify the current
+        precision and precision-options via scoped objects which will put everything
+        back as it was at the end. We'll begin with the class to modify the working
+        precision:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">scoped_mpfr_precision</span>
+<span class="special">{</span>
+   <span class="keyword">unsigned</span> <span class="identifier">saved_digits10</span><span class="special">;</span>
+   <span class="identifier">scoped_mpfr_precision</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">digits10</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">saved_digits10</span><span class="special">(</span><span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">())</span>
+   <span class="special">{</span>
+      <span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="special">~</span><span class="identifier">scoped_mpfr_precision</span><span class="special">()</span>
+   <span class="special">{</span>
+      <span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">(</span><span class="identifier">saved_digits10</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">digits10</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="keyword">void</span> <span class="identifier">reset</span><span class="special">()</span>
+   <span class="special">{</span>
+      <span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">(</span><span class="identifier">saved_digits10</span><span class="special">);</span>
+   <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        And a second class to modify the precision options:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">scoped_mpfr_precision_options</span>
+<span class="special">{</span>
+   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span> <span class="identifier">saved_options</span><span class="special">;</span>
+   <span class="identifier">scoped_mpfr_precision_options</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span> <span class="identifier">opts</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">saved_options</span><span class="special">(</span><span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_variable_precision_options</span><span class="special">())</span>
+   <span class="special">{</span>
+      <span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_variable_precision_options</span><span class="special">(</span><span class="identifier">opts</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="special">~</span><span class="identifier">scoped_mpfr_precision_options</span><span class="special">()</span>
+   <span class="special">{</span>
+      <span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_variable_precision_options</span><span class="special">(</span><span class="identifier">saved_options</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="keyword">void</span> <span class="identifier">reset</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span> <span class="identifier">opts</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_variable_precision_options</span><span class="special">(</span><span class="identifier">opts</span><span class="special">);</span>
+   <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        We can now begin writing a function to calculate J<sub>v</sub>(z) to a specified precision.
+        In order to keep the logic as simple as possible, we'll adopt a <span class="emphasis"><em>uniform
+        precision computing</em></span> approach, which is to say, within the body
+        of the function, all variables are always at the same working precision.
+      </p>
+<pre class="programlisting"><span class="identifier">mp_t</span> <span class="identifier">Bessel_J_to_precision</span><span class="special">(</span><span class="identifier">mp_t</span> <span class="identifier">v</span><span class="special">,</span> <span class="identifier">mp_t</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">digits10</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="comment">//</span>
+   <span class="comment">// Begin by backing up digits10:</span>
+   <span class="comment">//</span>
+   <span class="keyword">unsigned</span> <span class="identifier">saved_digits10</span> <span class="special">=</span> <span class="identifier">digits10</span><span class="special">;</span>
+   <span class="comment">// </span>
+   <span class="comment">//</span>
+   <span class="comment">// Start by defining 2 scoped objects to control precision and associated options.</span>
+   <span class="comment">// We'll begin by setting the working precision to the required target precision,</span>
+   <span class="comment">// and since all variables will always be of uniform precision, we can tell the</span>
+   <span class="comment">// library to ignore all precision control by setting variable_precision_options::assume_uniform_precision:</span>
+   <span class="comment">//</span>
+   <span class="identifier">scoped_mpfr_precision</span>           <span class="identifier">scoped</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="identifier">scoped_mpfr_precision_options</span>   <span class="identifier">scoped_opts</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span><span class="special">::</span><span class="identifier">assume_uniform_precision</span><span class="special">);</span>
+
+   <span class="identifier">mp_t</span>            <span class="identifier">result</span><span class="special">;</span>
+   <span class="identifier">mp_t</span>            <span class="identifier">current_error</span><span class="special">{</span><span class="number">1</span><span class="special">};</span>
+   <span class="identifier">mp_t</span>            <span class="identifier">target_error</span> <span class="special">{</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">pow</span><span class="special">(</span><span class="number">10.</span><span class="special">,</span> <span class="special">-</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">digits10</span><span class="special">))};</span>
+
+   <span class="keyword">while</span> <span class="special">(</span><span class="identifier">target_error</span> <span class="special">&lt;</span> <span class="identifier">current_error</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="comment">//</span>
+      <span class="comment">// Everything must be of uniform precision in here, including</span>
+      <span class="comment">// our input values, so we'll begin by setting their precision:</span>
+      <span class="comment">//</span>
+      <span class="identifier">v</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+      <span class="identifier">x</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+      <span class="comment">//</span>
+      <span class="comment">// Calculate our approximation and error estimate:</span>
+      <span class="comment">//</span>
+      <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">calculate_bessel_J_as_series</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="identifier">v</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">current_error</span><span class="special">);</span>
+      <span class="comment">//</span>
+      <span class="comment">// If the error from the current approximation is too high we'll need </span>
+      <span class="comment">// to loop round and try again, in this case we use the simple heuristic</span>
+      <span class="comment">// of doubling the working precision with each loop.  More refined approaches</span>
+      <span class="comment">// are certainly available:</span>
+      <span class="comment">//</span>
+      <span class="identifier">digits10</span> <span class="special">*=</span> <span class="number">2</span><span class="special">;</span>
+      <span class="identifier">scoped</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="comment">//</span>
+   <span class="comment">// We now have an accurate result, but it may have too many digits,</span>
+   <span class="comment">// so lets round the result to the requested precision now:</span>
+   <span class="comment">//</span>
+   <span class="identifier">result</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">saved_digits10</span><span class="special">);</span>
+   <span class="comment">//</span>
+   <span class="comment">// To maintain uniform precision during function return, lets</span>
+   <span class="comment">// reset the default precision now:</span>
+   <span class="comment">//</span>
+   <span class="identifier">scoped</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="identifier">saved_digits10</span><span class="special">);</span>
+   <span class="keyword">return</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        So far, this is all well and good, but there is still a potential trap for
+        the unwary here, when the function returns the variable may be copied/moved
+        either once or twice depending on whether the compiler implements the named-return-value
+        optimisation. And since this all happens outside the scope of this function,
+        the precision of the returned value may get unexpected changed - and potentially
+        with different behaviour once optimisations are turned on!
+      </p>
+<p>
+        To prevent these kinds of unintended consequences, a function returning a
+        value with specified precision must either:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Be called in a <span class="emphasis"><em>uniform-precision-environment</em></span>, with
+            the current working precision, the same as both the returned value and
+            the variable to which the result will be assigned.
+          </li>
+<li class="listitem">
+            Be called in an environment that has one of the following set:
+            <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                  variable_precision_options::preserve_source_precision
+                </li>
+<li class="listitem">
+                  variable_precision_options::preserve_component_precision
+                </li>
+<li class="listitem">
+                  variable_precision_options::preserve_related_precision
+                </li>
+<li class="listitem">
+                  variable_precision_options::preserve_all_precision
+                </li>
+</ul></div>
+          </li>
+</ul></div>
+<p>
+        In the case of our example program, we use a <span class="emphasis"><em>uniform-precision-environment</em></span>
+        and call the function with the value of <code class="computeroutput"><span class="number">6541389046624379</span>
+        <span class="special">/</span> <span class="number">562949953421312</span></code>
+        which happens to be near a root of J<sub>v</sub>(x) and requires a high-precision calculation
+        to obtain low relative error in the result of <code class="computeroutput"><span class="special">-</span><span class="number">9.31614245636402072613249153246313221710284959883647822724e-15</span></code>.
+      </p>
+<p>
+        You will note in the example we have so far that there are a number of unnecessary
+        temporaries created: we pass values to our functions by value, and we call
+        the <code class="computeroutput"><span class="special">.</span><span class="identifier">precision</span><span class="special">()</span></code> member function to change the working precision
+        of some variables - something that requires a reallocation internally. We'll
+        now make our example just a little more efficient, by removing these temporaries,
+        though in the process, we'll need just a little more control over how mixed-precision
+        arithmetic behaves.
+      </p>
+<p>
+        It's tempting to simply define the function that calculates the series to
+        take arguments by constant reference like so:
+      </p>
+<pre class="programlisting"><span class="identifier">mp_t</span> <span class="identifier">calculate_bessel_J_as_series_2</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">mp_t</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">mp_t</span><span class="special">&amp;</span> <span class="identifier">v</span><span class="special">,</span> <span class="identifier">mp_t</span><span class="special">*</span> <span class="identifier">err</span><span class="special">)</span>
+</pre>
+<p>
+        And to then pass our arguments to it, without first altering their precision
+        to match the current working default. However, imagine that <code class="computeroutput"><span class="identifier">calculate_bessel_J_as_series_2</span></code> calculates
+        x<sup>2</sup> internally, what precision is the result? If it's the same as the precision
+        of <span class="emphasis"><em>x</em></span>, then our calculation will loose precision, since
+        we really want the result calculated to the full current working precision,
+        which may be significantly higher than that of our input variables. Our new
+        version of Bessel_J_to_precision therefore uses <code class="computeroutput"><span class="identifier">variable_precision_options</span><span class="special">::</span><span class="identifier">preserve_target_precision</span></code>
+        internally, so that expressions containing only the low-precision input variables
+        are calculated at the precision of (at least) the target - which will have
+        been constructed at the current working precision.
+      </p>
+<p>
+        Here's our revised code:
+      </p>
+<pre class="programlisting"><span class="identifier">mp_t</span> <span class="identifier">Bessel_J_to_precision_2</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">mp_t</span><span class="special">&amp;</span> <span class="identifier">v</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">mp_t</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">digits10</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="comment">//</span>
+   <span class="comment">// Begin with 2 scoped objects, one to manage current working precision, one to</span>
+   <span class="comment">// manage mixed precision arithmetic.  Use of variable_precision_options::preserve_target_precision</span>
+   <span class="comment">// ensures that expressions containing only low-precision input variables are evaluated at the precision</span>
+   <span class="comment">// of the variable they are being assigned to (ie current working precision).</span>
+   <span class="comment">//</span>
+   <span class="identifier">scoped_mpfr_precision</span> <span class="identifier">scoped</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="identifier">scoped_mpfr_precision_options</span> <span class="identifier">scoped_opts</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span><span class="special">::</span><span class="identifier">preserve_target_precision</span><span class="special">);</span>
+
+   <span class="identifier">mp_t</span>                    <span class="identifier">result</span><span class="special">;</span>
+   <span class="identifier">mp_t</span>            <span class="identifier">current_error</span><span class="special">{</span><span class="number">1</span><span class="special">};</span>
+   <span class="identifier">mp_t</span>            <span class="identifier">target_error</span><span class="special">{</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">pow</span><span class="special">(</span><span class="number">10.</span><span class="special">,</span> <span class="special">-</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">digits10</span><span class="special">))};</span>
+
+   <span class="keyword">while</span> <span class="special">(</span><span class="identifier">target_error</span> <span class="special">&lt;</span> <span class="identifier">current_error</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="comment">//</span>
+      <span class="comment">// The assignment here, rounds the high precision result</span>
+      <span class="comment">// returned by calculate_bessel_J_as_series_2, to the precision</span>
+      <span class="comment">// of variable result: ie to the target precision we specified in</span>
+      <span class="comment">// the function call.  This is only the case because we have</span>
+      <span class="comment">// variable_precision_options::preserve_target_precision set.</span>
+      <span class="comment">//</span>
+      <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">calculate_bessel_J_as_series_2</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="identifier">v</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">current_error</span><span class="special">);</span>
+
+      <span class="identifier">digits10</span> <span class="special">*=</span> <span class="number">2</span><span class="special">;</span>
+      <span class="identifier">scoped</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="comment">//</span>
+   <span class="comment">// There may be temporaries created when we return, we must make sure</span>
+   <span class="comment">// that we reset the working precision and options before we return.</span>
+   <span class="comment">// In the case of the options, we must preserve the precision of the source</span>
+   <span class="comment">// object during the return, not only here, but in the calling function too:</span>
+   <span class="comment">//</span>
+   <span class="identifier">scoped</span><span class="special">.</span><span class="identifier">reset</span><span class="special">();</span>
+   <span class="identifier">scoped_opts</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span><span class="special">::</span><span class="identifier">preserve_source_precision</span><span class="special">);</span>
+   <span class="keyword">return</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        In our final example, we'll look at a (somewhat contrived) case where we
+        reduce the argument by N * PI, in this case we change the mixed-precision
+        arithmetic options several times, depending what it is we are trying to achieve
+        at that moment in time:
+      </p>
+<pre class="programlisting"><span class="identifier">mp_t</span> <span class="identifier">reduce_n_pi</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">mp_t</span><span class="special">&amp;</span> <span class="identifier">arg</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="comment">//</span>
+   <span class="comment">// We begin by estimating how many multiples of PI we will be reducing by, </span>
+   <span class="comment">// note that this is only an estimate because we're using low precision</span>
+   <span class="comment">// arithmetic here to get a quick answer:</span>
+   <span class="comment">//</span>
+   <span class="keyword">unsigned</span> <span class="identifier">n</span> <span class="special">=</span> <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">unsigned</span><span class="special">&gt;(</span><span class="identifier">arg</span> <span class="special">/</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">constants</span><span class="special">::</span><span class="identifier">pi</span><span class="special">&lt;</span><span class="identifier">mp_t</span><span class="special">&gt;());</span>
+   <span class="comment">//</span>
+   <span class="comment">// Now that we have an estimate for N, we can up the working precision and obtain</span>
+   <span class="comment">// a high precision value for PI, best to play safe and preserve the precision of the</span>
+   <span class="comment">// source here.  Though note that expressions are evaluated at the highest precision</span>
+   <span class="comment">// of any of their components: in this case that's the current working precision</span>
+   <span class="comment">// returned by boost::math::constants::pi, and not the precision of arg.</span>
+   <span class="comment">// However, should this function be called with assume_uniform_precision set</span>
+   <span class="comment">// then all bets are off unless we do this:</span>
+   <span class="comment">//</span>
+   <span class="identifier">scoped_mpfr_precision</span>            <span class="identifier">scope_1</span><span class="special">(</span><span class="identifier">mp_t</span><span class="special">::</span><span class="identifier">thread_default_precision</span><span class="special">()</span> <span class="special">*</span> <span class="number">2</span><span class="special">);</span>
+   <span class="identifier">scoped_mpfr_precision_options</span>    <span class="identifier">scope_2</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span><span class="special">::</span><span class="identifier">preserve_source_precision</span><span class="special">);</span>
+
+   <span class="identifier">mp_t</span> <span class="identifier">reduced</span> <span class="special">=</span> <span class="identifier">arg</span> <span class="special">-</span> <span class="identifier">n</span> <span class="special">*</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">constants</span><span class="special">::</span><span class="identifier">pi</span><span class="special">&lt;</span><span class="identifier">mp_t</span><span class="special">&gt;();</span>
+   <span class="comment">//</span>
+   <span class="comment">// Since N was only an estimate, we may have subtracted one PI too many,</span>
+   <span class="comment">// correct if that's the case now:</span>
+   <span class="comment">//</span>
+   <span class="keyword">if</span> <span class="special">(</span><span class="identifier">reduced</span> <span class="special">&lt;</span> <span class="number">0</span><span class="special">)</span>
+      <span class="identifier">reduced</span> <span class="special">+=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">constants</span><span class="special">::</span><span class="identifier">pi</span><span class="special">&lt;</span><span class="identifier">mp_t</span><span class="special">&gt;();</span>
+   <span class="comment">//</span>
+   <span class="comment">// Our variable "reduced" now has the correct answer, but too many digits precision, </span>
+   <span class="comment">// we can either call its .precision() member function, or assign to a new variable</span>
+   <span class="comment">// with variable_precision_options::preserve_target_precision set:</span>
+   <span class="comment">//</span>
+   <span class="identifier">scope_1</span><span class="special">.</span><span class="identifier">reset</span><span class="special">();</span>
+   <span class="identifier">scope_2</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span><span class="special">::</span><span class="identifier">preserve_target_precision</span><span class="special">);</span>
+   <span class="identifier">mp_t</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">reduced</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// As with previous examples, returning the result may create temporaries, so lets</span>
+   <span class="comment">// make sure that we preserve the precision of result.  Note that this isn't strictly</span>
+   <span class="comment">// required if the calling context is always of uniform precision, but we can't be sure </span>
+   <span class="comment">// of our calling context:</span>
+   <span class="comment">//</span>
+   <span class="identifier">scope_2</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">variable_precision_options</span><span class="special">::</span><span class="identifier">preserve_source_precision</span><span class="special">);</span>
+   <span class="keyword">return</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        And finally... we need to mention <code class="computeroutput"><span class="identifier">preserve_component_precision</span></code>,
+        <code class="computeroutput"><span class="identifier">preserve_related_precision</span></code>
+        and <code class="computeroutput"><span class="identifier">preserve_all_precision</span></code>.
+      </p>
+<p>
+        These form a hierarchy, with each inheriting the properties of those before
+        it. <code class="computeroutput"><span class="identifier">preserve_component_precision</span></code>
+        is used when dealing with complex or interval numbers, for example if we
+        have:
+      </p>
+<pre class="programlisting"><span class="identifier">mpc_complex</span> <span class="identifier">val</span> <span class="special">=</span> <span class="identifier">some_expression</span><span class="special">;</span>
+</pre>
+<p>
+        And <code class="computeroutput"><span class="identifier">some_expression</span></code> contains
+        scalar values of type <code class="computeroutput"><span class="identifier">mpfr_float</span></code>,
+        then the precision of these is ignored unless we specify at least <code class="computeroutput"><span class="identifier">preserve_component_precision</span></code>.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">preserve_related_precision</span></code>
+        we'll somewhat skip over - it extends the range of types whose precision
+        is considered within an expression to related types - for example all instantiations
+        of <code class="computeroutput"><span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpfr_float_backend</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;,</span> <span class="identifier">ET</span><span class="special">&gt;</span></code>
+        when dealing with expression of type <code class="computeroutput"><span class="identifier">mpfr_float</span></code>.
+        However, such situations are - and should be - very rare.
+      </p>
+<p>
+        The final option - <code class="computeroutput"><span class="identifier">preserve_all_precision</span></code>
+        - is used to preserve the precision of all the types in an expression, for
+        example:
+      </p>
+<pre class="programlisting"><span class="comment">// calculate 2^1000 - 1:</span>
+<span class="identifier">mpz_int</span> <span class="identifier">i</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>
+<span class="identifier">i</span> <span class="special">&lt;&lt;=</span> <span class="number">1000</span><span class="special">;</span>
+<span class="identifier">i</span> <span class="special">-=</span> <span class="number">1</span><span class="special">;</span>
+
+<span class="identifier">mp_t</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">i</span><span class="special">;</span>
+</pre>
+<p>
+        The final assignment above will round the value in <span class="emphasis"><em>i</em></span>
+        to the current working precision, unless <code class="computeroutput"><span class="identifier">preserve_all_precision</span></code>
+        is set, in which case <span class="emphasis"><em>f</em></span> will end up with sufficient
+        precision to store <span class="emphasis"><em>i</em></span> unchanged.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mixed.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gen_int.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,96 @@
+////
+Copyright 2020 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+[#enums]
+# Describing Enumeration Types
+:idprefix: enums_
+
+If you have an enumeration type
+
+```
+enum E
+{
+    v1 = 1,
+    v2 = 2,
+    v3 = 4,
+};
+```
+
+you can add reflection metadata to it via the `BOOST_DESCRIBE_ENUM` macro:
+
+```
+BOOST_DESCRIBE_ENUM(E, v1, v2, v3)
+```
+
+The macro is defined in `<boost/describe/enum.hpp>` and should be placed in
+the same namespace as the enum.
+
+If your enumerators don't have initializers, instead of repeating them
+
+```
+enum E2 { a, b, c, d };
+BOOST_DESCRIBE_ENUM(E2, a, b, c, d)
+```
+
+you can use the convenience macro
+
+```
+BOOST_DEFINE_ENUM(E2, a, b, c, d)
+```
+
+which expands to the two previous lines.
+
+For defining `enum class E2` instead, use `BOOST_DEFINE_ENUM_CLASS`. To add
+an underlying type, i.e. `enum E3: int` or `enum class E4: unsigned char`,
+use `BOOST_DEFINE_FIXED_ENUM` and `BOOST_DEFINE_FIXED_ENUM_CLASS`, respectively.
+
+If your enumeration type is nested inside a class or a `struct`, use the
+`BOOST_DESCRIBE_NESTED_ENUM` macro next to the `enum`, as follows:
+
+```
+class X
+{
+private:
+
+    enum class E
+    {
+        v1,
+        v2
+    };
+
+    BOOST_DESCRIBE_NESTED_ENUM(E, v1, v2)
+
+public:
+
+    // ...
+};
+```
+
+Once an enumeration type `E` is annotated, one can use `describe_enumerators<E>`
+to obtain a _descriptor list_. (`describe_enumerators` is defined in the
+`boost::describe` namespace, in `<boost/describe/enumerators.hpp>`.)
+
+A descriptor list is a type of the form `L<D1, D2, ..., Dn>`, where `L` is of
+the form `template<class... T> struct L {};` and `Di` is of the form
+
+```
+struct Di
+{
+    static constexpr E value;
+    static constexpr char const* name;
+};
+```
+
+To <<example_printing_enums_ct,iterate over the descriptor list>>, you can
+use `mp_for_each` from https://boost.org/libs/mp11[Mp11]:
+
+```
+boost::mp11::mp_for_each< boost::describe::describe_enumerators<E> >([](auto D){
+
+    std::printf( "%s: %d\n", D.name, D.value );
+
+});
+```

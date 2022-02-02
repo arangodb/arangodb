@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' width='1100' height='679'>
+<style>svg { background-color: black; }
+</style>
+<text x='550' y='20' font-family='Palatino' font-size='25' fill='white'  alignment-baseline='middle' text-anchor='middle'>Modified Akima spline (blue), Cubic B-spline (orange)</text>
+<g transform='translate(25, 40)'>
+<line x1='0' y1='0' x2='0' y2='619' stroke='gray' stroke-width='1' />
+<line x1='0' y1='309.5' x2='1055' y2='309.5' stroke='gray' stroke-width='1' />
+<line x1='0' y1='541.625' x2='1055' y2='541.625' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='538.625' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 546.625)'>-0.8088</text>
+<line x1='0' y1='464.2' x2='1055' y2='464.2' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='461.2' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 469.2)'>-0.5392</text>
+<line x1='0' y1='386.9' x2='1055' y2='386.9' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='383.9' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 391.9)'>-0.2696</text>
+<line x1='0' y1='309.5' x2='1055' y2='309.5' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='306.5' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 314.5)'>2.22e-16</text>
+<line x1='0' y1='232.1' x2='1055' y2='232.1' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='229.1' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 237.1)'>0.2696</text>
+<line x1='0' y1='154.7' x2='1055' y2='154.7' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='151.7' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 159.7)'>0.5392</text>
+<line x1='0' y1='77.37' x2='1055' y2='77.37' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='74.37' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 82.37)'>0.8088</text>
+<line x1='0' y1='-6.373e-14' x2='1055' y2='-6.373e-14' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='-1' y='-3' font-family='times' font-size='10' fill='white' transform='rotate(-90 5 5)'>1.078</text>
+<line x1='105.5' y1='0' x2='105.5' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='95.5' y='629' font-family='times' font-size='10' fill='white'>0.8</text>
+<line x1='211' y1='0' x2='211' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='201' y='629' font-family='times' font-size='10' fill='white'>1.6</text>
+<line x1='316.5' y1='0' x2='316.5' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='306.5' y='629' font-family='times' font-size='10' fill='white'>2.4</text>
+<line x1='422' y1='0' x2='422' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='412' y='629' font-family='times' font-size='10' fill='white'>3.2</text>
+<line x1='527.5' y1='0' x2='527.5' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='517.5' y='629' font-family='times' font-size='10' fill='white'>4</text>
+<line x1='633' y1='0' x2='633' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='623' y='629' font-family='times' font-size='10' fill='white'>4.8</text>
+<line x1='738.5' y1='0' x2='738.5' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='728.5' y='629' font-family='times' font-size='10' fill='white'>5.6</text>
+<line x1='844' y1='0' x2='844' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='834' y='629' font-family='times' font-size='10' fill='white'>6.4</text>
+<line x1='949.5' y1='0' x2='949.5' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='939.5' y='629' font-family='times' font-size='10' fill='white'>7.2</text>
+<line x1='1055' y1='0' x2='1055' y2='619' stroke='gray' stroke-width='1' opacity='0.5' stroke-dasharray='4' />
+<text x='1045' y='629' font-family='times' font-size='10' fill='white'>8</text>
+<path d='M0 596.5 L10.66 596.5 L21.31 596.5 L31.97 596.5 L42.63 596.5 L53.28 596.5 L63.94 596.5 L74.6 596.5 L85.25 596.5 L95.91 596.5 L106.6 596.5 L117.2 596.5 L127.9 596.5 L138.5 596.5 L149.2 596.5 L159.8 596.5 L170.5 596.5 L181.2 596.5 L191.8 596.5 L202.5 596.5 L213.1 596.5 L223.8 596.5 L234.4 596.5 L245.1 596.5 L255.8 596.5 L266.4 596.5 L277.1 596.5 L287.7 596.5 L298.4 596.5 L309 596.5 L319.7 596.5 L330.4 596.5 L341 596.5 L351.7 596.5 L362.3 596.5 L373 596.5 L383.6 596.5 L394.3 596.5 L404.9 593.7 L415.6 584.3 L426.3 569.1 L436.9 549 L447.6 525 L458.2 497.8 L468.9 468.6 L479.5 438 L490.2 407.1 L500.9 376.8 L511.5 348 L522.2 321.5 L532.8 297.5 L543.5 271 L554.1 242.2 L564.8 211.9 L575.5 181 L586.1 150.4 L596.8 121.2 L607.4 94.03 L618.1 69.96 L628.7 49.88 L639.4 34.67 L650.1 25.26 L660.7 22.49 L671.4 22.49 L682 22.49 L692.7 22.49 L703.3 22.49 L714 22.49 L724.6 22.49 L735.3 22.49 L746 22.49 L756.6 22.49 L767.3 22.49 L777.9 22.49 L788.6 22.49 L799.2 22.49 L809.9 22.49 L820.6 22.49 L831.2 22.49 L841.9 22.49 L852.5 22.49 L863.2 22.49 L873.8 22.49 L884.5 22.49 L895.2 22.49 L905.8 22.49 L916.5 22.49 L927.1 22.49 L937.8 22.49 L948.4 22.49 L959.1 22.49 L969.7 22.49 L980.4 22.49 L991.1 22.49 L1002 22.49 L1012 22.49 L1023 22.49 L1034 22.49 L1044 22.49 L1055 22.49' stroke='steelblue' stroke-width='1' fill='none'></path>
+<path d='M0 596.5 L10.66 596.6 L21.31 596.7 L31.97 596.9 L42.63 597.1 L53.28 597.4 L63.94 597.6 L74.6 597.7 L85.25 597.8 L95.91 597.8 L106.6 597.6 L117.2 597.3 L127.9 596.8 L138.5 596 L149.2 595.1 L159.8 594.1 L170.5 593.1 L181.2 592.1 L191.8 591.3 L202.5 590.8 L213.1 590.5 L223.8 590.7 L234.4 591.4 L245.1 592.7 L255.8 594.6 L266.4 597.2 L277.1 600.6 L287.7 604.4 L298.4 608.3 L309 612.1 L319.7 615.3 L330.4 617.7 L341 619 L351.7 618.9 L362.3 617 L373 613.1 L383.6 606.8 L394.3 597.8 L404.9 586 L415.6 571.3 L426.3 554.1 L436.9 534.5 L447.6 512.9 L458.2 489.5 L468.9 464.5 L479.5 438.1 L490.2 410.7 L500.9 382.4 L511.5 353.5 L522.2 324.2 L532.8 294.8 L543.5 265.5 L554.1 236.6 L564.8 208.3 L575.5 180.9 L586.1 154.5 L596.8 129.5 L607.4 106.1 L618.1 84.45 L628.7 64.92 L639.4 47.7 L650.1 33.04 L660.7 21.17 L671.4 12.22 L682 5.941 L692.7 2.016 L703.3 0.1385 L714 0 L724.6 1.291 L735.3 3.703 L746 6.927 L756.6 10.65 L767.3 14.57 L777.9 18.37 L788.6 21.75 L799.2 24.42 L809.9 26.35 L820.6 27.61 L831.2 28.29 L841.9 28.47 L852.5 28.25 L863.2 27.7 L873.8 26.9 L884.5 25.95 L895.2 24.92 L905.8 23.91 L916.5 22.98 L927.1 22.24 L937.8 21.71 L948.4 21.38 L959.1 21.21 L969.7 21.18 L980.4 21.26 L991.1 21.42 L1002 21.63 L1012 21.87 L1023 22.1 L1034 22.3 L1044 22.44 L1055 22.49' stroke='orange' stroke-width='1' fill='none'></path>
+</g>
+</svg>

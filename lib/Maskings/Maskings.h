@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,8 +83,10 @@ class Maskings {
                       std::vector<std::string>& path, VPackSlice const& data);
   void addMaskedObject(Collection& collection, VPackBuilder& builder,
                        std::vector<std::string>& path, VPackSlice const& data);
-  void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice  data);
-  void addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice slice);
+  void addMasked(Collection& collection, VPackBuilder& builder,
+                 VPackSlice data);
+  void addMasked(Collection& collection, basics::StringBuffer& data,
+                 VPackSlice slice);
 
  private:
   std::map<std::string, Collection> _collections;
@@ -95,4 +97,3 @@ class Maskings {
 
 }  // namespace maskings
 }  // namespace arangodb
-

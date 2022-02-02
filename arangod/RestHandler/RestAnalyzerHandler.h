@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,40 +30,27 @@
 namespace arangodb {
 namespace iresearch {
 
-class IResearchAnalyzerFeature; // forward declaration
+class IResearchAnalyzerFeature;
 
-class RestAnalyzerHandler: public RestVocbaseBaseHandler {
+class RestAnalyzerHandler : public RestVocbaseBaseHandler {
  public:
-  // @note RestHandlerFactory::createHandler(...) passes raw pointers for
-  //       request/response to RestHandlerCreator::createNoData(...)
-  RestAnalyzerHandler(  // constructor
-      application_features::ApplicationServer& server,
-      arangodb::GeneralRequest* request,   // request
-      arangodb::GeneralResponse* response  // response
-  );
+  RestAnalyzerHandler(ArangodServer& server, GeneralRequest* request,
+                      GeneralResponse* response);
 
-  virtual arangodb::RestStatus execute() override;
+  virtual RestStatus execute() override;
 
-  virtual arangodb::RequestLane lane() const override {
-    return arangodb::RequestLane::CLIENT_SLOW;
-  }
+  virtual RequestLane lane() const override { return RequestLane::CLIENT_SLOW; }
 
   virtual char const* name() const override { return "RestAnalyzerHandler"; }
 
  private:
   void createAnalyzer(IResearchAnalyzerFeature& analyzers);
-  void getAnalyzer(
-    IResearchAnalyzerFeature& analyzers, 
-    std::string const& requestedName 
-  );
+  void getAnalyzer(IResearchAnalyzerFeature& analyzers,
+                   std::string const& requestedName);
   void getAnalyzers(IResearchAnalyzerFeature& analyzers);
-  void removeAnalyzer(
-    IResearchAnalyzerFeature& analyzers, 
-    std::string const& requestedName, 
-    bool force
-  );
+  void removeAnalyzer(IResearchAnalyzerFeature& analyzers,
+                      std::string const& requestedName, bool force);
 };
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

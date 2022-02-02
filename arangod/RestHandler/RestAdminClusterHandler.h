@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +37,7 @@ namespace arangodb {
 
 class RestAdminClusterHandler : public RestVocbaseBaseHandler {
  public:
-  RestAdminClusterHandler(application_features::ApplicationServer&,
-                          GeneralRequest*, GeneralResponse*);
+  RestAdminClusterHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestAdminClusterHandler() override = default;
 
  public:
@@ -70,7 +69,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleMaintenance();
 
   // timeout can be used to set an arbitrary timeout for the maintenance
-  // duration. it will be ignored if "state" is not true. 
+  // duration. it will be ignored if "state" is not true.
   RestStatus setMaintenance(bool state, uint64_t timeout);
   RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
@@ -106,9 +105,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string collectionID;
     bool remainsFollower;
 
-    MoveShardContext(std::string database, std::string collection, std::string shard,
-                     std::string from, std::string to, std::string collectionID,
-                     bool remainsFollower)
+    MoveShardContext(std::string database, std::string collection,
+                     std::string shard, std::string from, std::string to,
+                     std::string collectionID, bool remainsFollower)
         : database(std::move(database)),
           collection(std::move(collection)),
           shard(std::move(shard)),
@@ -117,13 +116,15 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
           collectionID(std::move(collectionID)),
           remainsFollower(true) {}
 
-    static std::unique_ptr<MoveShardContext> fromVelocyPack(arangodb::velocypack::Slice slice);
+    static std::unique_ptr<MoveShardContext> fromVelocyPack(
+        arangodb::velocypack::Slice slice);
   };
 
   RestStatus handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx);
 
   RestStatus handleSingleServerJob(std::string const& job);
-  RestStatus handleCreateSingleServerJob(std::string const& job, std::string const& server);
+  RestStatus handleCreateSingleServerJob(std::string const& job,
+                                         std::string const& server);
 
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;
@@ -136,15 +137,19 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     size_t tries;
     std::string server;
 
-    explicit RemoveServerContext(std::string s) : tries(0), server(std::move(s)) {}
+    explicit RemoveServerContext(std::string s)
+        : tries(0), server(std::move(s)) {}
   };
 
   FutureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
   FutureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
-  FutureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, velocypack::Slice plan);
+  FutureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx,
+                             velocypack::Slice plan);
 
-  RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
-  RestStatus handleGetCollectionShardDistribution(std::string const& collection);
+  RestStatus handleProxyGetRequest(std::string const& url,
+                                   std::string const& serverFromParameter);
+  RestStatus handleGetCollectionShardDistribution(
+      std::string const& collection);
 
   RestStatus handlePostRemoveServer(std::string const& server);
 
@@ -161,7 +166,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
              isLeader == other.isLeader;
     }
   };
-  void getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
+  void getShardDistribution(
+      std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
 
   struct MoveShardDescription {
     std::string collection;
@@ -171,12 +177,12 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     bool isLeader;
   };
 
-  using ShardMap = std::map<std::string, std::unordered_set<CollectionShardPair>>;
-  using ReshardAlgorithm =
-      std::function<void(ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
+  using ShardMap =
+      std::map<std::string, std::unordered_set<CollectionShardPair>>;
+  using ReshardAlgorithm = std::function<void(
+      ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
 };
 }  // namespace arangodb
-

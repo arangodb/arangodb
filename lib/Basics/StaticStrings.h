@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,6 +132,7 @@ class StaticStrings {
   static std::string const IndexIsBuilding;    // index build in-process
   static std::string const IndexName;          // index name
   static std::string const IndexSparse;        // index sparsity marker
+  static std::string const IndexStoredValues;  // index stored values
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
   static std::string const IndexEstimates;     // index estimates flag
@@ -145,15 +146,10 @@ class StaticStrings {
   static std::string const IndexNameTime;
 
   // index hint strings
-  static std::string const IndexHintAny;
-  static std::string const IndexHintCollection;
-  static std::string const IndexHintHint;
-  static std::string const IndexHintDepth;
-  static std::string const IndexHintInbound;
+  static std::string const IndexHintDisableIndex;
+  static std::string const IndexHintMaxProjections;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
-  static std::string const IndexHintOutbound;
-  static std::string const IndexHintWildcard;
 
   // HTTP headers
   static std::string const Accept;
@@ -193,6 +189,7 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
+  static std::string const LockLocation;
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
@@ -248,6 +245,7 @@ class StaticStrings {
   static std::string const ShardingSingle;
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
+  static std::string_view const SoftWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -344,6 +342,7 @@ class StaticStrings {
   static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
+  static std::string const Outcome;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -406,4 +405,3 @@ class StaticStrings {
   static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
-

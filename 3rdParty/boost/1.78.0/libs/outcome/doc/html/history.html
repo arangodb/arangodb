@@ -1,0 +1,200 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>History - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="./css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="./images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="./changelog/v22.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./requirements.html"><img src="./images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">History</h1></div></div></div>
+  <div class="toc"><dl class="toc">
+<dt>
+<dd><dl>
+<dt><a href="#the-genesis-of-outcome-v1">The genesis of Outcome v1</a></dt>
+<dt><a href="#outcome-v2">Outcome v2</a></dt>
+<dt><a href="#outcome-v2-1">Outcome v2.1</a></dt>
+<dt><a href="#outcome-v2-2">Outcome v2.2</a></dt>
+</dl></dd></dt>
+</dl>
+  </div>
+
+
+<p>Outcome has had an interesting history, and it is worth summarising it here to show how a
+Boost library comes to life. The following recollections are by Niall Douglas, and may be
+faulty due to his aging memory.</p>
+
+
+<center><img src="./history/graph.png"></center>
+
+<h2 id="the-genesis-of-outcome-v1">The genesis of Outcome v1</h2>
+
+<p>The git repo began life as a &ldquo;Boost.Spinlock&rdquo; in June 2014 hived out of Boost.AFIO v1 where it had existed
+for some time as an internal library. In October 2014 I added in the original prototype
+Boost.Expected reference library as a git submodule, and began developing a non-allocating
+<code>future&lt;T&gt;</code>/<code>promise&lt;T&gt;</code> as an extension of <code>expected&lt;T, std::exception_ptr&gt;</code> as a faster,
+monadic future-promise was something which AFIO v1 sorely needed.</p>
+
+<p>The original prototype Boost.Expected library was a large and very complex beastie.
+I was fortunate to be employed on a contract in late 2014 early 2015 where I saw it deployed at
+scale into an existing large C++ codebase. Expected was really great and powerful, but it absolutely
+murdered compile times in a large C++ codebase, and made LTO effectively infeasible.
+I also found its implementation non-conducive to implementing
+future-promise with it, and so I resolved to implement a much more powerful policy driven
+monad factory which could stamp out everything from an <code>option&lt;T&gt;</code> right through to a
+future-promise pair, all using the exact same <code>basic_monad&lt;&gt;</code> and therefore all with a full
+monadic programming API, C++ 17 continuations/monadic bind and intelligently convertible into one another.
+Moreover, all this needed to have an absolute minimum impact on compile times and runtime
+overheads, neither of which were strengths of the original prototype Boost.Expected library.</p>
+
+<p>By August 2015 &ldquo;Boost.Monad&rdquo; was delivering on all those requirements and then some, but it lacked
+maturity through use in other code. Summer 2015 saw the Boost peer review of AFIO v1 which
+was roundly rejected. After considering the ample review feedback, it was realised that
+<a href="https://ned14.github.io/llfio/">AFIO v2</a> would be a very different design, one no longer using futures, memory allocation
+nor C++ exceptions. As AFIO v2 was started from scratch and using Outcome heavily from the
+very beginning (every AFIO v2 API returns a <code>result&lt;T&gt;</code>), Outcome began to gain bug fixes and
+shed features, with the non-allocating future-promise implementation being dropped in May
+2016 and a large chunk of type based metaprogramming being replaced with cleaner variable template metaprogramming
+in June. After CppCon 2016 in September, then began the long process of getting Outcome
+ready for Boost peer review in Q1 2017 which involved a repeated sequence of complete rewrites
+of the tutorial in response to multiple rounds of feedback from the C++ community, with
+at least four complete rewrites currently at the time of writing.</p>
+
+<p>In parallel to all this development on Outcome, Expected went before the LEWG and entered
+the C++ standards track. As the WG21 meetings went by, Expected experienced a period
+of being stripped back and much of the complexity which had so murdered compile and
+link times in 2014-2015 fell away, thus the Expected proposed in P0323R1 ended up landing
+so close to Outcome that in January 2017 it was just a few hours work to implement
+Expected using the core <code>basic_monad</code> infrastructure in Outcome. That highly flexible
+policy based design which made monadic future-promise possible made it similarly easy
+to implement a highly conforming Expected, indeed in early 2017 Outcome&rsquo;s Expected was much
+closer to <a href="http://wg21.link/P0323">P0323R1</a> than any other implementation including the LEWG reference implementation.
+And unlike the LEWG reference implementation, Outcome has had eighteen months of that
+finely tuned patina you only get when a library is in use by other code bases.</p>
+
+<p>In February 2017 it became realised that the userbase really wanted a high quality <code>expected&lt;T, E&gt;</code>
+implementation rather than anything similar but not the same which Outcome had invented.
+The only just implemented Expected implementation based on <code>basic_monad</code> therefore took
+primacy. The final rewrite of the documentation before peer review submission was one
+which made it look like Outcome was primarily an <code>expected&lt;T, E&gt;</code> implementation with a
+few useful extensions like <code>outcome&lt;T&gt;</code> and <code>result&lt;T&gt;</code>. I was sad to so pivot, but it
+was obvious that Outcome would see far wider popularity and usage as primarily an Expected
+implementation.</p>
+
+<p>Almost three years after its beginning, Outcome v1 finally went before Boost peer review
+in May 2017 which turned into one of the longest and most detailed peer reviews Boost has
+done in recent years, with over 800 pieces of review feedback submitted. It was by consensus
+rejected, <a href="https://lists.boost.org/boost-announce/2017/06/0510.php">with substantial feedback on what to do instead</a>.</p>
+
+<h2 id="outcome-v2">Outcome v2</h2>
+
+<p>During the very lengthy peer review, roughly three groups of opinion emerged as to what
+a <code>value|error</code> transporting class ought to look like:</p>
+
+<dl>
+<dt><b>1. Lightweight</b></dt>
+<dd>A simple-as-possible <code>T</code> and/or <code>E</code> transport without any
+implementation complexity.</dd>
+<dt><b>2. Medium</b></dt>
+<dd>A variant stored <code>T</code> or <code>E1</code> ... <code>E<i>n</i></code>
+where <code>T</code> is the expected value and <code>E1 ...</code>
+are the potential unexpected values. This implemention really ought to be implemented
+using C++ 17's <code>std::variant<...></code> except with stronger never-empty guarantees.
+</dd>
+<dt><b>3. Heavy</b></dt>
+<dd>A full fat Either monad participating fully in a wider monadic programming framework for C++.</dd>
+</dl>
+
+<p>Peter Dimov was very quickly able to implement an <code>expected&lt;T, E1, ...&gt;</code> using his
+<a href="https://github.com/pdimov/variant2">variant2</a> library, and thus there seemed little
+point in replicating his work in an Outcome v2. The lightweight choice seemed to be the
+best path forwards, so in June 2017 the bare minimum <code>result&lt;T, E&gt;</code> and <code>outcome&lt;T, EC, P&gt;</code>
+as presented in this library was built, using the same constructor design as <code>std::variant&lt;...&gt;</code>.
+Significant backwards compatibility with v1 Outcome code was retained, as the review
+had felt the basic proposed design fine.</p>
+
+<p>A period of maturation then followed by porting a large existing codebase using Outcome v1
+to v2, and writing a significant amount of new code using v2 to test it for unanticipated
+surprises and bugs. Quite a few corner cases were found and fixed. At the end of September
+2017, Outcome v2 was deemed to be &ldquo;mature&rdquo;, and a script generated &ldquo;Boost edition&rdquo; made
+available.</p>
+
+<p>All that remained before it was ready for a second Boost peer review was the
+documentation. This took four months to write (same time as to write the library itself!),
+and in January 2018 Outcome had its second Boost peer review, which it passed!</p>
+
+<h2 id="outcome-v2-1">Outcome v2.1</h2>
+
+<p>The changes requsted during the review of v2.0 were fairly modest: <code>result</code> and <code>outcome</code> would
+be renamed to <code>basic_result</code> and <code>basic_outcome</code>, and a clean separation of concerns between the
+<code>basic_*</code> layer and the &ldquo;convenience&rdquo; layer would be created. That suited Outcome nicely,
+as the <code>basic_*</code> layer could have minimum possible header dependencies and thus minimum possible build times
+impact, which was great for big iron users with multi-million line C++ codebases. This also
+had the nice side effect of permitting both Boost and <code>std</code> implementations to be supported
+concurrently in both Outcome and Boost.Outcome.</p>
+
+<p>By April 2018, v2.1 was feature complete and entered a six month period of maturation and
+battle hardening under its already extensive userbase. However Outcome passing its review in January 2018 had much more consequence than I could have ever
+expected. Unbeknownst to me, some of the WG21 leadership had interpreted the success of
+Outcome, and especially its divergences from WG21 Expected into a more complete substitute
+for C++ exception handling, as a sign that the C++
+exception handling mechanism was no longer fit for purpose. <a href="http://wg21.link/P0709">It was thus proposed
+to remedy the standard exception handling mechanism into something much more
+efficient, thus rendering Outcome obsolete in future C++ standards (P0709 <em>Zero overhead exceptions</em>)</a>.</p>
+
+<p>Concurrently to that, just before the review of Outcome 2.0, I had mooted a number of semantic and compile time performance
+improvements to <code>&lt;system_error&gt;</code> with the proposal that we mildly break Boost.System with
+improvements and see how badly real world code broke in response. This was not widely
+accepted at that time (though they have been since incorporated into Boost.System, and proposed
+defect remedies for <code>&lt;system_error&gt;</code> for C++ 23). I therefore wrote <a href="https://ned14.github.io/status-code/">an improved <code>&lt;system_error2&gt;</code></a> which fixed all the problems
+listed at <a href="https://wg21.link/P0824">P0824 (Summary of SG14 discussion on <code>&lt;system_error&gt;</code>)</a>
+and fixed up Outcome so one could use it without any system error implementation,
+or with the STL one or with the proposed improved one. This improved <code>&lt;system_error2&gt;</code>
+was then proposed as <a href="http://wg21.link/P1028">the standard library support for Zero overhead exceptions as proposed
+<code>std::error</code></a>.</p>
+
+<p>A flurry of papers and discussion then resulted, running up to the Prague 2020 WG21
+meeting where WG21 liked the library part of deterministic exceptions i.e. <code>std::error</code>,
+and wanted to see a working implementation of a compiler implementing the language
+part before moving further. The covid pandemic then ceased face to face meetings which
+deeply impacted WG21 productivity, so everything large which was not yet approved for
+entry into C++ 23 went on pause.</p>
+
+<h2 id="outcome-v2-2">Outcome v2.2</h2>
+
+<p>Outcome was sufficiently popular, and widely known as the closest simulacrum of deterministic
+exceptions currently available in C++, that it was regularly benchmarked as such on an &lsquo;as if&rsquo;
+basis by a number of people in the wider C++ ecosystem, including comparing their &lsquo;better Outcome
+alternatives&rsquo; to Outcome, where invariably Outcome appeared to lose badly in various
+synthetic tests. Whilst any empirical measurements in the real world code never showed
+a statistically significant difference, it was certainly true that v2.1&rsquo;s codegen in
+assembler was not ideal.</p>
+
+<p>On the behalf of WG21, Ben Craig did some benchmarking work on Outcome v2.1 in <a href="https://wg21.link/P1886">P1886 <em>Error speed benchmarking</em></a>,
+where it did not perform as well as expected compared to alternatives such as returning
+a simple integer from a function. This led to a
+<a href="https://github.com/ned14/outcome/tree/better_optimisation"><code>better_optimisation</code></a> branch.
+The changes were felt worth merging into Outcome as v2.2.0, the first major version release
+since Outcome entered Boost in early 2019. To give enough time to sign post to users that these
+source incompatible changes were coming, all of 2020 was given over to announcement of the
+upcoming merge of the breaking v2.2 branch into master branch in early 2021.</p>
+
+<p>In terms of codegen benefits for proposed <code>std::error</code> based code (i.e. code using
+<a href="./experimental.html">Outcome experimental</a>), v2.2 implements a library-based
+emulation of <a href="https://wg21.link/P1029">P1029 <em>move = bitcopies</em></a>, a proposed compiler
+enhancement which can treat some move-only types as bags of bits. This very significantly
+improves the appearance in assembler of experimental Outcome based code.</p>
+
+
+
+        </div><p><small>Last revised: September 16, 2020 at 11:58:04 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="./changelog/v22.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./requirements.html"><img src="./images/next.png" alt="Next"></a></div></body>
+</html>

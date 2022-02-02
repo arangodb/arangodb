@@ -1,0 +1,62 @@
+[section boost/python/args.hpp]
+[section Introduction]
+Supplies a family of overloaded functions for specifying argument keywords for wrapped C++ functions.
+[section keyword-expressions]
+A keyword-expression results in an object which holds a sequence of [link ntbs]\ es, and whose type encodes the number of keywords specified. The keyword-expression may contain default values for some or all of the keywords it holds
+[endsect]
+[endsect]
+[section Class `arg`]
+The objects of class arg are keyword-expressions holding one keyword ( size one )
+``
+namespace boost { namespace python
+{
+        struct arg 
+        {
+          template <class T>
+                  arg &operator = (T const &value);
+          explicit arg (char const *name){elements[0].name = name;}
+        };
+
+}}
+``
+[endsect]
+[section Class `arg` constructor]
+``arg(char const* name);``
+[variablelist
+[[Requires][The argument must be a [link ntbs].]]
+[[Effects][Constructs an arg object holding a keyword with name name.]]
+]
+[endsect]
+[section Class `arg` operator=]
+``template <class T> arg &operator = (T const &value);``
+[variablelist
+[[Requires][The argument must convertible to python.]]
+[[Effects][Assigns default value for the keyword.]]
+[[Returns][Reference to `this`.]]
+]
+[endsect]
+[section Keyword-expression operator,]
+``
+keyword-expression operator , (keyword-expression, const arg &kw) const
+keyword-expression operator , (keyword-expression, const char *name) const;
+``
+[variablelist
+[[Requires][The argument name must be a [link ntbs].]]
+[[Effects][Extends the keyword-expression argument with one more keyword.]]
+[[Returns][The extended keyword-expression.]]
+]
+[endsect]
+[section Example]
+``
+#include <boost/python/def.hpp>
+using namespace boost::python;
+
+int f(double x, double y, double z=0.0, double w=1.0);
+
+BOOST_PYTHON_MODULE(xxx)
+{
+  def("f", f, (arg("x"), "y", arg("z")=0.0, arg("w")=1.0));
+}
+``
+[endsect]
+[endsect]

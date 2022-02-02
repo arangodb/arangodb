@@ -22,6 +22,7 @@
 #include "icu_locale_utils.hpp"
 
 #include <absl/container/flat_hash_set.h>
+#include <string_view>
 
 #include "utils/string_utils.hpp"
 #include "utils/vpack_utils.hpp"
@@ -31,10 +32,10 @@
 namespace iresearch {
 namespace icu_locale_utils {
 
-constexpr VPackStringRef LANGUAGE_PARAM_NAME {"language"};
-constexpr VPackStringRef COUNTRY_PARAM_NAME  {"country"};
-constexpr VPackStringRef VARIANT_PARAM_NAME  {"variant"};
-constexpr VPackStringRef ENCODING_PARAM_NAME {"encoding"};
+constexpr std::string_view LANGUAGE_PARAM_NAME {"language"};
+constexpr std::string_view COUNTRY_PARAM_NAME  {"country"};
+constexpr std::string_view VARIANT_PARAM_NAME  {"variant"};
+constexpr std::string_view ENCODING_PARAM_NAME {"encoding"};
 
 bool get_locale_from_vpack(const VPackSlice locale_slice,
                            icu::Locale& locale,

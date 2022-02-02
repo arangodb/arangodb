@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,17 +29,21 @@ namespace arangodb {
 class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState;
 
-class ReplicatedRocksDBTransactionCollection final : public RocksDBTransactionCollection {
+class ReplicatedRocksDBTransactionCollection final
+    : public RocksDBTransactionCollection {
  public:
   ReplicatedRocksDBTransactionCollection(ReplicatedRocksDBTransactionState* trx,
-                                         DataSourceId cid, AccessMode::Type accessType);
+                                         DataSourceId cid,
+                                         AccessMode::Type accessType);
   ~ReplicatedRocksDBTransactionCollection();
 
   Result beginTransaction();
   Result commitTransaction();
   Result abortTransaction();
 
-  RocksDBTransactionMethods* rocksdbMethods() const { return _rocksMethods.get(); }
+  RocksDBTransactionMethods* rocksdbMethods() const {
+    return _rocksMethods.get();
+  }
 
   void beginQuery(bool isModificationQuery);
   void endQuery(bool isModificationQuery) noexcept;
@@ -58,10 +62,9 @@ class ReplicatedRocksDBTransactionCollection final : public RocksDBTransactionCo
 
  private:
   void maybeDisableIndexing();
-  
+
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 };
 
 }  // namespace arangodb
-

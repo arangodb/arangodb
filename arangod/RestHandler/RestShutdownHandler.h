@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,13 +25,11 @@
 
 #include "RestHandler/RestBaseHandler.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-
 namespace arangodb {
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  explicit RestShutdownHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
+  explicit RestShutdownHandler(ArangodServer&, GeneralRequest*,
+                               GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestShutdownHandler"; }
@@ -39,4 +37,3 @@ class RestShutdownHandler : public RestBaseHandler {
   RestStatus execute() override;
 };
 }  // namespace arangodb
-

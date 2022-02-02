@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,13 +62,15 @@ QueryOptions::QueryOptions()
       traversalProfile(TraversalProfileLevel::None),
       allPlans(false),
       verbosePlans(false),
+      explainInternals(true),
       stream(false),
       silent(false),
-      failOnWarning(QueryOptions::defaultFailOnWarning),  // use global "failOnWarning" value
+      failOnWarning(
+          QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
+                                                // value
       cache(false),
       fullCount(false),
       count(false),
-      verboseErrors(false),
       skipAudit(false),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
@@ -168,7 +170,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     traversalProfile = value.getBool() ? TraversalProfileLevel::Basic
                                        : TraversalProfileLevel::None;
   } else if (value.isNumber()) {
-    traversalProfile = static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
+    traversalProfile =
+        static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
   if (value = slice.get("allPlans"); value.isBool()) {
@@ -176,6 +179,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
   if (value = slice.get("verbosePlans"); value.isBool()) {
     verbosePlans = value.getBool();
+  }
+  if (value = slice.get("explainInternals"); value.isBool()) {
+    explainInternals = value.getBool();
   }
   if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
@@ -195,11 +201,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value = slice.get("count"); value.isBool()) {
     count = value.getBool();
   }
-  if (value = slice.get("verboseErrors"); value.isBool()) {
-    verboseErrors = value.getBool();
-  }
   if (value = slice.get("explainRegisters"); value.isBool()) {
-    explainRegisters = value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+    explainRegisters =
+        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
 
   // note: skipAudit is intentionally not read here.
@@ -250,7 +254,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   transactionOptions.fromVelocyPack(slice);
 }
 
-void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRules) const {
+void QueryOptions::toVelocyPack(VPackBuilder& builder,
+                                bool disableOptimizerRules) const {
   builder.openObject();
 
   builder.add("memoryLimit", VPackValue(memoryLimit));
@@ -265,15 +270,16 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
               VPackValue(static_cast<uint32_t>(traversalProfile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
+  builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
-  builder.add("verboseErrors", VPackValue(verboseErrors));
-if (!forceOneShardAttributeValue.empty()) {
-    builder.add("forceOneShardAttributeValue", VPackValue(forceOneShardAttributeValue));
+  if (!forceOneShardAttributeValue.empty()) {
+    builder.add("forceOneShardAttributeValue",
+                VPackValue(forceOneShardAttributeValue));
   }
 
   // note: skipAudit is intentionally not serialized here.

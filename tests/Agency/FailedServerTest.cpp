@@ -61,7 +61,9 @@ const std::string FREE_SERVER2 = "free2";
 
 bool aborts = false;
 
-typedef std::function<std::unique_ptr<Builder>(Slice const&, std::string const&)> TestStructureType;
+typedef std::function<std::unique_ptr<Builder>(Slice const&,
+                                               std::string const&)>
+    TestStructureType;
 
 const char* agency =
 #include "FailedServerTest.json"
@@ -102,7 +104,8 @@ inline std::string typeName(Slice const& slice) {
 
 class FailedServerTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   std::string const jobId = "1";
   std::shared_ptr<Builder> transBuilder;
@@ -126,36 +129,44 @@ TEST_F(FailedServerTest, creating_a_job_should_create_a_job_in_todo) {
   Mock<AgentInterface> mockAgent;
 
   std::string jobId = "1";
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    auto expectedJobKey = PREFIX + toDoPrefix + jobId;
-    EXPECT_EQ(typeName(q->slice()), "array");
-    EXPECT_EQ(q->slice().length(), 1);
-    EXPECT_EQ(typeName(q->slice()[0]), "array");
-    EXPECT_EQ(q->slice()[0].length(), 2);
-    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-    EXPECT_EQ(q->slice()[0][0].length(), 2);
-    EXPECT_EQ(typeName(q->slice()[0][0].get(expectedJobKey)), "object");
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](query_t const& q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        auto expectedJobKey = PREFIX + toDoPrefix + jobId;
+        EXPECT_EQ(typeName(q->slice()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(q->slice()[0].length(), 2);
+        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(q->slice()[0][0].length(), 2);
+        EXPECT_EQ(typeName(q->slice()[0][0].get(expectedJobKey)), "object");
 
-    auto job = q->slice()[0][0].get(expectedJobKey);
-    EXPECT_EQ(typeName(job.get("creator")), "string");
-    EXPECT_EQ(typeName(job.get("type")), "string");
-    EXPECT_EQ(job.get("type").copyString(), "failedServer");
-    EXPECT_EQ(typeName(job.get("server")), "string");
-    EXPECT_EQ(job.get("server").copyString(), SHARD_LEADER);
-    EXPECT_EQ(typeName(job.get("jobId")), "string");
-    EXPECT_EQ(typeName(job.get("timeCreated")), "string");
+        auto job = q->slice()[0][0].get(expectedJobKey);
+        EXPECT_EQ(typeName(job.get("creator")), "string");
+        EXPECT_EQ(typeName(job.get("type")), "string");
+        EXPECT_EQ(job.get("type").copyString(), "failedServer");
+        EXPECT_EQ(typeName(job.get("server")), "string");
+        EXPECT_EQ(job.get("server").copyString(), SHARD_LEADER);
+        EXPECT_EQ(typeName(job.get("jobId")), "string");
+        EXPECT_EQ(typeName(job.get("timeCreated")), "string");
 
-    return fakeWriteResult;
-  });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+        return fakeWriteResult;
+      });
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
   auto builder = agency.toBuilder();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
+  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
+               SHARD_LEADER)
+      .create();
   Verify(Method(mockAgent, write));
 }
 
-TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_snapshot_violate_good) {
-  TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
+TEST_F(
+    FailedServerTest,
+    the_state_is_still_bad_and_faileservers_is_still_in_snapshot_violate_good) {
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
     std::unique_ptr<Builder> builder;
     if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION) {
       return builder;
@@ -186,40 +197,52 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_EQ(typeName(q->slice()), "array");
-    EXPECT_EQ(q->slice().length(), 1);
-    EXPECT_EQ(typeName(q->slice()[0]), "array");
-    // we always simply override! no preconditions...
-    EXPECT_EQ(q->slice()[0].length(), 2);
-    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-    EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](query_t const& q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        EXPECT_EQ(typeName(q->slice()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        // we always simply override! no preconditions...
+        EXPECT_EQ(q->slice()[0].length(), 2);
+        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
 
-    auto writes = q->slice()[0][0];
-    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
-    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("server").copyString(), SHARD_LEADER);
+        auto writes = q->slice()[0][0];
+        EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+        EXPECT_EQ(
+            writes.get("/arango/Target/ToDo/1").get("server").copyString(),
+            SHARD_LEADER);
 
-    auto precond = q->slice()[0][1];
-    EXPECT_TRUE(typeName(precond.get(
-                    "/arango/Supervision/Health/leader/Status")) == "object");
-    EXPECT_TRUE(
-        precond.get("/arango/Supervision/Health/leader/Status").get("old").copyString() ==
-        "BAD");
-    EXPECT_TRUE(typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
-                "object");
+        auto precond = q->slice()[0][1];
+        EXPECT_TRUE(
+            typeName(precond.get("/arango/Supervision/Health/leader/Status")) ==
+            "object");
+        EXPECT_TRUE(precond.get("/arango/Supervision/Health/leader/Status")
+                        .get("old")
+                        .copyString() == "BAD");
+        EXPECT_TRUE(
+            typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
+            "object");
 
-    return fakeWriteResult;
-  });
+        return fakeWriteResult;
+      });
 
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
+  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
+               SHARD_LEADER)
+      .create();
 
   Verify(Method(mockAgent, write));
 }
 
-TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_snapshot_violate_failed) {
-  TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
+TEST_F(
+    FailedServerTest,
+    the_state_is_still_bad_and_faileservers_is_still_in_snapshot_violate_failed) {
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
     std::unique_ptr<Builder> builder;
     if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION) {
       return builder;
@@ -250,38 +273,49 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_EQ(typeName(q->slice()), "array");
-    EXPECT_EQ(q->slice().length(), 1);
-    EXPECT_EQ(typeName(q->slice()[0]), "array");
-    // we always simply override! no preconditions...
-    EXPECT_EQ(q->slice()[0].length(), 2);
-    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-    EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](query_t const& q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        EXPECT_EQ(typeName(q->slice()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        // we always simply override! no preconditions...
+        EXPECT_EQ(q->slice()[0].length(), 2);
+        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
 
-    auto writes = q->slice()[0][0];
-    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
-    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("server").copyString(), SHARD_LEADER);
+        auto writes = q->slice()[0][0];
+        EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+        EXPECT_EQ(
+            writes.get("/arango/Target/ToDo/1").get("server").copyString(),
+            SHARD_LEADER);
 
-    auto precond = q->slice()[0][1];
-    EXPECT_TRUE(typeName(precond.get(
-                    "/arango/Supervision/Health/leader/Status")) == "object");
-    EXPECT_TRUE(
-        precond.get("/arango/Supervision/Health/leader/Status").get("old").copyString() ==
-        "BAD");
-    EXPECT_TRUE(typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
-                "object");
+        auto precond = q->slice()[0][1];
+        EXPECT_TRUE(
+            typeName(precond.get("/arango/Supervision/Health/leader/Status")) ==
+            "object");
+        EXPECT_TRUE(precond.get("/arango/Supervision/Health/leader/Status")
+                        .get("old")
+                        .copyString() == "BAD");
+        EXPECT_TRUE(
+            typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
+            "object");
 
-    return fakeWriteResult;
-  });
+        return fakeWriteResult;
+      });
 
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
+  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest",
+               SHARD_LEADER)
+      .create();
 }
 
-TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_snapshot) {
-  TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
+TEST_F(FailedServerTest,
+       the_state_is_still_bad_and_faileservers_is_still_in_snapshot) {
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
     std::unique_ptr<Builder> builder;
     if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION) {
       return builder;
@@ -315,33 +349,40 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_EQ(typeName(q->slice()), "array");
-    EXPECT_EQ(q->slice().length(), 1);
-    EXPECT_EQ(typeName(q->slice()[0]), "array");
-    // we always simply override! no preconditions...
-    EXPECT_EQ(q->slice()[0].length(), 1);
-    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](query_t const& q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        EXPECT_EQ(typeName(q->slice()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        // we always simply override! no preconditions...
+        EXPECT_EQ(q->slice()[0].length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
-    auto writes = q->slice()[0][0];
-    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
-                "string");
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
-                "delete");
-    EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
-    return fakeWriteResult;
-  });
+        auto writes = q->slice()[0][0];
+        EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+        EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
+                    "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
+            "delete");
+        EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
+        return fakeWriteResult;
+      });
 
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 
   Verify(Method(mockAgent, write));
 }
 
-TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_snapshot_2) {
-  TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
+TEST_F(FailedServerTest,
+       the_state_is_still_bad_and_faileservers_is_still_in_snapshot_2) {
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
     std::unique_ptr<Builder> builder;
     if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION) {
       return builder;
@@ -379,27 +420,32 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
   Node agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_EQ(typeName(q->slice()), "array");
-    EXPECT_EQ(q->slice().length(), 1);
-    EXPECT_EQ(typeName(q->slice()[0]), "array");
-    // we always simply override! no preconditions...
-    EXPECT_EQ(q->slice()[0].length(), 1);
-    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](query_t const& q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        EXPECT_EQ(typeName(q->slice()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        // we always simply override! no preconditions...
+        EXPECT_EQ(q->slice()[0].length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
-    auto writes = q->slice()[0][0];
-    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
-                "string");
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
-                "delete");
-    EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
-    return fakeWriteResult;
-  });
+        auto writes = q->slice()[0][0];
+        EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+        EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
+                    "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
+            "delete");
+        EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
+        return fakeWriteResult;
+      });
 
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  FailedServer(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 
   Verify(Method(mockAgent, write));
 }

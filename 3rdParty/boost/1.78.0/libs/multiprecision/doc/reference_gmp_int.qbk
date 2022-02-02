@@ -1,0 +1,29 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:gmp_int_ref gmp_int]
+
+   namespace boost{ namespace multiprecision{
+
+   class gmp_int;
+
+   typedef number<gmp_int >         mpz_int;
+
+   }} // namespaces
+
+Class template `gmp_int` fulfils all of the requirements for a [link boost_multiprecision.ref.backendconc Backend] type.
+Its members and non-member functions are deliberately not documented: these are considered implementation details that are subject
+to change.
+
+The type of `number_category<cpp_int<Args...> >::type` is `std::integral_constant<int, number_kind_integer>`.
+
+More information on this type can be found in the [link boost_multiprecision.tut.ints.gmp_int tutorial].
+
+[endsect]

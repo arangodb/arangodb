@@ -10,7 +10,7 @@ const StyledTextarea = styled.textarea`
 
 type TextareaProps = {
   id?: string;
-  label: ReactNode;
+  label?: ReactNode;
   disabled?: boolean;
   [key: string]: any;
 };
@@ -25,7 +25,7 @@ const Textarea = ({ id, label, disabled, ...rest }: TextareaProps) => {
   }, [id]);
 
   return <>
-    <PlainLabel htmlFor={thisId}>{label}</PlainLabel>
+    {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
     <StyledTextarea id={thisId} disabled={disabled} {...rest}/>
   </>;
 };

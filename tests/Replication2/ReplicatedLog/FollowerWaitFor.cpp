@@ -33,15 +33,17 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
 struct FollowerWaitForTest : ReplicatedLogTest {
-  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId) -> std::shared_ptr<ReplicatedLog> {
+  auto makeFollower(ParticipantId id, LogTerm term, ParticipantId leaderId)
+      -> std::shared_ptr<ReplicatedLog> {
     auto core = makeLogCore(LogId{3});
-    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock, _optionsMock, defaultLogger());
+    auto log = std::make_shared<ReplicatedLog>(std::move(core), _logMetricsMock,
+                                               _optionsMock, defaultLogger());
     log->becomeFollower(std::move(id), term, std::move(leaderId));
     return log;
   }
 };
 
-TEST_F(FollowerWaitForTest, update_send_append_entries){
+TEST_F(FollowerWaitForTest, update_send_append_entries) {
   auto log = makeFollower("follower", LogTerm{5}, "leader");
   auto follower = log->getFollower();
 
@@ -57,14 +59,15 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
     request.leaderCommit = LogIndex{0};
     request.messageId = ++nextMessageId;
     request.entries = {InMemoryLogEntry(
-        PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
+        PersistingLogEntry(LogTerm{1}, LogIndex{1},
+                           LogPayload::createFromString("some payload")))};
     auto f = follower->appendEntries(std::move(request));
     ASSERT_TRUE(f.isReady());
     {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
     }
   }
 
@@ -84,7 +87,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries){
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
     }
   }
 

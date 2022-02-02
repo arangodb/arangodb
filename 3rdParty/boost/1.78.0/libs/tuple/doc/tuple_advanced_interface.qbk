@@ -1,0 +1,159 @@
+[/
+ /  Copyright (c) 2001 Jaakko Järvi
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[article Tuple library advanced features
+  [quickbook 1.6]
+  [id tuple_advanced_interface]
+  [copyright 2001 Jaakko J\u00E4rvi]
+  [license Distributed under the
+    [@http://boost.org/LICENSE_1_0.txt Boost Software License,
+      Version 1.0].
+  ]
+]
+
+[template simplesect[title]
+[block '''<simplesect><title>'''[title]'''</title>''']]
+
+[template endsimplesect[]
+[block '''</simplesect>''']]
+
+The advanced features described in this document are all under namespace
+`::boost::tuples`
+
+[section Metafunctions for tuple types]
+
+Suppose `T` is a tuple type, and `N` is a constant integral expression.
+
+    element<N, T>::type
+
+gives the type of the `N`-th element in the tuple type `T`. If `T` is `const`,
+the resulting type is `const` qualified as well. Note that the constness of `T`
+does not affect reference type elements.
+
+    length<T>::value
+
+gives the length of the tuple type `T`.
+
+[endsect]
+
+[section Cons lists]
+
+Tuples are internally represented as /cons lists/. For example, the tuple
+
+    tuple<A, B, C, D>
+
+inherits from the type
+
+    cons<A, cons<B, cons<C, cons<D, null_type> > > >
+
+The tuple template provides the typedef inherited to access the cons list
+representation. E.g.: `tuple<A>::inherited` is the type `cons<A, null_type>`.
+
+[section Empty tuple]
+
+The internal representation of the empty tuple `tuple<>` is `null_type`.
+
+[endsect]
+
+[section Head and tail]
+
+Both tuple template and the cons templates provide the typedefs `head_type`
+and `tail_type`. The `head_type` typedef gives the type of the first element
+of the tuple (or the cons list). The `tail_type` typedef gives the remaining
+cons list after removing the first element. The head element is stored in the
+member variable `head` and the tail list in the member variable `tail`. Cons
+lists provide the member function `get_head()` for getting a reference to the
+head of a cons list, and `get_tail()` for getting a reference to the tail.
+There are const and non-const versions of both functions.
+
+Note that in a one element tuple, `tail_type` equals `null_type` and the
+`get_tail()` function returns an object of type `null_type`.
+
+The empty tuple (`null_type`) has no head or tail, hence the `get_head` and
+`get_tail` functions are not provided.
+
+Treating tuples as cons lists gives a convenient means to define generic
+functions to manipulate tuples. For example, the following pair of function
+templates assign `0` to each element of a tuple (obviously, the assignments
+must be valid operations for the element types):
+
+    inline void set_to_zero(const null_type&) {};
+
+    template <class H, class T>
+    inline void set_to_zero(cons<H, T>& x) { x.get_head() = 0; set_to_zero(x.get_tail()); }
+
+[endsect]
+
+[section Constructing cons lists]
+
+A cons list can be default constructed provided that all its elements can be
+default constructed.
+
+A cons list can be constructed from its head and tail. The prototype of the
+constructor is:
+
+    cons(typename access_traits<head_type>::parameter_type h, const tail_type& t)
+
+The traits template for the head parameter selects correct parameter types for
+different kinds of element types (for reference elements the parameter type
+equals the element type, for non-reference types the parameter type is a
+reference to const non-volatile element type).
+
+For a one-element cons list the tail argument (`null_type`) can be omitted.
+
+[endsect]
+
+[endsect]
+
+[section Traits classes for tuple element types]
+
+[section access_traits]
+
+The template `access_traits` defines three type functions. Let `T` be a type
+of an element in a tuple:
+
+* `access_traits<T>::non_const_type` maps `T` to the return type of the no
+  n-const access functions (nonmember and member `get` functions, and the
+  `get_head` function).
+
+* `access_traits<T>::const_type` maps `T` to the return type of the const
+  access functions.
+
+* `access_traits<T>::parameter_type` maps `T` to the parameter type of the
+  tuple constructor.
+
+[endsect]
+
+[section make_tuple_traits]
+
+The element types of the tuples that are created with the `make_tuple`
+functions are computed with the type function `make_tuple_traits`. The type
+function call `make_tuple_traits<T>::type` implements the following type
+mapping:
+
+* /any reference type/ -> /compile time error/
+
+* /any array type/ -> /constant reference to the array type/
+
+* `reference_wrapper<T>` -> `T&`
+
+* `T` -> `T`
+
+Objects of type `reference_wrapper` are created with the `ref` and `cref`
+functions (see [link tuple.constructing_tuples.make_tuple The `make_tuple`
+function]).
+
+Reference wrappers were originally part of the tuple library, but they are now
+a general utility of boost. The `reference_wrapper` template and the `ref` and
+`cref` functions are defined in a separate file
+[@boost:/libs/core/doc/html/core/ref.html `ref.hpp`] in the main boost include
+directory; and directly in the `boost` namespace.
+
+[endsect]
+
+[endsect]

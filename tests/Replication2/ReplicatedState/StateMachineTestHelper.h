@@ -38,7 +38,8 @@ class Slice;
 
 struct StateMachineTest : ::testing::Test {
   // returns two replicated logs, the seconds is the leader of the first
-  static auto createReplicatedLog() -> std::shared_ptr<replication2::replicated_log::ReplicatedLog>;
+  static auto createReplicatedLog()
+      -> std::shared_ptr<replication2::replicated_log::ReplicatedLog>;
 };
 
 struct TestLogEntry {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "RestServer/arangod.h"
 #include "Node.h"
 #include <map>
 
@@ -70,7 +71,7 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(application_features::ApplicationServer& server, Agent* agent,
+  explicit Store(arangodb::ArangodServer& server, Agent* agent,
                  std::string const& name = "root");
 
   /// @brief Destruct
@@ -108,11 +109,11 @@ class Store {
                                     index_t index, term_t term, bool inform);
 
   /// @brief Read multiple entries from store
-  std::vector<bool> readMultiple(arangodb::velocypack::Slice query, 
+  std::vector<bool> readMultiple(arangodb::velocypack::Slice query,
                                  arangodb::velocypack::Builder& result) const;
 
   /// @brief Read individual entry specified in slice into builder
-  bool read(arangodb::velocypack::Slice query, 
+  bool read(arangodb::velocypack::Slice query,
             arangodb::velocypack::Builder& result) const;
 
   /// @brief Dump everything to builder
@@ -128,7 +129,8 @@ class Store {
   Node const* nodePtr(std::string const& path = std::string("/")) const;
 
   /// @brief Get node at path under mutex and store it in velocypack
-  void get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const;
+  void get(std::string const& path, arangodb::velocypack::Builder& b,
+           bool showHidden) const;
 
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
@@ -144,10 +146,11 @@ class Store {
   void removeTTL(std::string const&);
 
   std::unordered_multimap<std::string, std::string>& observedTable();
-  std::unordered_multimap<std::string, std::string> const& observedTable() const;
-  
+  std::unordered_multimap<std::string, std::string> const& observedTable()
+      const;
+
   static std::string normalize(char const* key, size_t length);
-  
+
   /// @brief Normalize node URIs
   static std::string normalize(std::string const& key) {
     return normalize(key.data(), key.size());
@@ -159,7 +162,7 @@ class Store {
 
 #if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
  private:
-#endif // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
+#endif  // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
 
   /// @brief Notify observers
   void notifyObservers() const;
@@ -172,14 +175,15 @@ class Store {
   std::multimap<TimePoint, std::string>& timeTable();
   std::multimap<TimePoint, std::string> const& timeTable() const;
   /// @brief Check precondition
-  check_ret_t check(arangodb::velocypack::Slice slice, CheckMode = FIRST_FAIL) const;
+  check_ret_t check(arangodb::velocypack::Slice slice,
+                    CheckMode = FIRST_FAIL) const;
 
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
 
  private:
   /// @brief underlying application server, needed for testing code
-  application_features::ApplicationServer& _server;
+  arangodb::ArangodServer& _server;
 
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
@@ -208,4 +212,3 @@ inline std::ostream& operator<<(std::ostream& o, Store const& store) {
 
 }  // namespace consensus
 }  // namespace arangodb
-

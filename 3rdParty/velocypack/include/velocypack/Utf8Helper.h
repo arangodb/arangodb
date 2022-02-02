@@ -22,19 +22,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_UTF8HELPER_H
-#define VELOCYPACK_UTF8HELPER_H 1
+#pragma once
 
 #include "velocypack/velocypack-common.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 struct Utf8Helper {
   static bool isValidUtf8(uint8_t const* p, ValueLength len);
 };
 
-}
-}
+}  // namespace arangodb::velocypack
 
-#endif
+using VPackUtf8Helper = arangodb::velocypack::Utf8Helper;

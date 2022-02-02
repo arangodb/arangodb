@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_HEXDUMP_H
-#define VELOCYPACK_HEXDUMP_H 1
+#pragma once
 
 #include <iosfwd>
 
@@ -32,8 +31,7 @@
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 struct HexDump {
   HexDump() = delete;
@@ -59,6 +57,5 @@ struct HexDump {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackHexDump = arangodb::velocypack::HexDump;

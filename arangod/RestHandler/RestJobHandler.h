@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +39,8 @@ class Dispatcher;
 
 class RestJobHandler : public RestBaseHandler {
  public:
-  RestJobHandler(application_features::ApplicationServer&, GeneralRequest*,
-                 GeneralResponse*, rest::AsyncJobManager*);
+  RestJobHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+                 rest::AsyncJobManager*);
 
  public:
   char const* name() const override final { return "RestJobHandler"; }
@@ -94,4 +94,3 @@ class RestJobHandler : public RestBaseHandler {
   rest::AsyncJobManager* _jobManager;
 };
 }  // namespace arangodb
-

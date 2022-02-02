@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numeric.exception_policies">
+  <title>exception_policy&lt;AE, IDB, UB, UV&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>Create a valid exception policy from 4 function objects. This
+    specifies the actions to be taken for different types of invalid
+    results.</para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="3*"/>
+
+        <colspec align="left" colwidth="10*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Symbol</entry>
+
+            <entry align="left">Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>e</code></entry>
+
+            <entry>instance of a the type <link
+            linkend="safe_numerics.safe_numerics_error">safe_numerics_error</link><code/></entry>
+          </row>
+
+          <row>
+            <entry>message</entry>
+
+            <entry>pointer to const char * error message</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Template Parameters</title>
+
+    <informaltable>
+      <tgroup cols="3">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="6*"/>
+
+        <colspec align="left" colwidth="9*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Parameter</entry>
+
+            <entry align="left">Type Requirements</entry>
+
+            <entry>Invoked when:</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>AE</code></entry>
+
+            <entry>Function object callable with the expression AE()(e,
+            message)</entry>
+
+            <entry><para>The operation cannot produce valid arithmetic result
+            such as overflows, divide by zero, etc.</para></entry>
+          </row>
+
+          <row>
+            <entry><code>UB</code></entry>
+
+            <entry>Function object callable with the expression UB()(e,
+            message)</entry>
+
+            <entry><para>The result is undefined by the C++
+            standard</para></entry>
+          </row>
+
+          <row>
+            <entry><code>IDB</code></entry>
+
+            <entry>Function object callable with the expression
+            IDB()(e,</entry>
+
+            <entry><para>The result depends upon implementation defined
+            behavior according to the C++ standard</para></entry>
+          </row>
+
+          <row>
+            <entry><code>UV</code></entry>
+
+            <entry>Function object callable with the expression UV()(e,
+            message)</entry>
+
+            <entry><para>A variable is not initialized</para></entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Model of</title>
+
+    <para><link
+    linkend="safe_numerics.exception_policy">ExceptionPolicy</link></para>
+  </section>
+
+  <section>
+    <title>Inherited Valid Expressions</title>
+
+    <para>This class implements all the valid operations from the type
+    requirements <link
+    linkend="safe_numerics.promotion_policy">ExceptionPolicy</link>. Aside
+    from these, there are no other operations implemented.</para>
+  </section>
+
+  <section>
+    <title>Function Objects</title>
+
+    <para>In order to create an exception policy, one needs some function
+    objects. The library includes some appropriate examples of these:</para>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Name</entry>
+
+            <entry align="left">Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>ignore_exception</code></entry>
+
+            <entry>Ignore any runtime exception and just return - thus
+            propagating the error. This is what would happen with unsafe data
+            types</entry>
+          </row>
+
+          <row>
+            <entry><code>throw_exception</code></entry>
+
+            <entry>throw an exception of type std::system_error</entry>
+          </row>
+
+          <row>
+            <entry><code>trap_exception</code></entry>
+
+            <entry>Invoke a function which is undefined. Compilers will
+            include this function if and only if there is a possibility of a
+            runtime error. Conversely, This will create a compile time error
+            if there is any possibility that the operation will fail at
+            runtime. Use the action to guarantee that your application will
+            never produce an invalid result. Any operation invoke</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+
+    <para>But of course one is free to provide his own. Here is an example of
+    a function object which would could be used exception conditions.</para>
+
+    <programlisting>// log an exception condition but continue processing as though nothing has happened
+// this would emulate the behavior of an unsafe type.
+struct log_runtime_exception {
+    log_runtime_exception() = default;
+    void operator () (
+        const boost::safe_numerics::safe_numerics_error &amp; e,
+        const char * message
+    ){
+        std::cout
+            &lt;&lt; "Caught system_error with code "
+            &lt;&lt; boost::safe_numerics::literal_string(e)
+            &lt;&lt; " and message " &lt;&lt; message &lt;&lt; '\n';
+    }
+};
+
+</programlisting>
+  </section>
+
+  <section>
+    <title>Policies Provided by the library</title>
+
+    <para>The above function object can be composed into an exception policy
+    by this class. The library provides common policies all ready to use. In
+    the table below, the word "loose" is used to indicate that implementation
+    defined and undefined behavior is not considered an exceptional condition,
+    while "strict" means the opposite. The word "exception" means that a
+    runtime exception will be thrown. The word "trap" means that the mere
+    possibility of an error condition will result in a compile time
+    error.</para>
+
+    <para><informaltable>
+        <tgroup cols="2">
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="3*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Name</entry>
+
+              <entry align="left">Description</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry
+              id="safe_numerics.exception_policies.loose_exception_policy"><code>loose_exception_policy</code></entry>
+
+              <entry>Throws runtime exception on any arithmetic error.
+              Undefined and implementation defined behavior is permitted as
+              long as it does not produce an arithmetic error.</entry>
+            </row>
+
+            <row>
+              <entry
+              id="safe_numerics.exception_policies.loose_trap_policy"><code>loose_trap_policy</code></entry>
+
+              <entry>Invoke a compile time error in any case where it's
+              possible to result in an arithmetic error.</entry>
+            </row>
+
+            <row>
+              <entry
+              id="safe_numerics.exception_policies.strict_exception_policy"><code>strict_exception_policy</code></entry>
+
+              <entry>Throws runtime exception on any arithmetic error. Any
+              undefined or implementation defined behavior also results in
+              throwing an exception.</entry>
+            </row>
+
+            <row>
+              <entry
+              id="safe_numerics.exception_policies.strict_trap_policy"><code>strict_trap_policy</code></entry>
+
+              <entry>Invoke a compile time error in any case where it's
+              possible to result in an arithmetic error, undefined behavior or
+              implementation defined behavior</entry>
+            </row>
+
+            <row>
+              <entry
+              id="safe_numerics.exception_policies.default_exception_policy"><code>default_exception_policy</code></entry>
+
+              <entry>an alias for <code>strict_exception_policy</code></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </informaltable>If none of the above suit your needs, you're free to
+    create your own. Here is one where use the logging function object defined
+    above as a component in a loose exception policy which logs any arithmetic
+    errors and ignores any other types of errors.</para>
+
+    <para><programlisting>// logging policy
+// log arithmetic errors but ignore them and continue to execute
+// implementation defined and undefined behavior is just executed
+// without logging.
+
+using logging_exception_policy = exception_policy&lt;
+    log_runtime_exception,    // arithmetic error
+    ignore_exception,         // implementation defined behavior
+    ignore_exception,         // undefined behavior
+    ignore_exception          // uninitialized value
+&gt;;
+</programlisting></para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/exception_policies.hpp"><code>#include
+    &lt;boost/numeric/safe_numerics/exception_policies.hpp&gt;</code></ulink></para>
+  </section>
+</section>

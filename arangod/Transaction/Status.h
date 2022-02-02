@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,9 +62,8 @@ static inline char const* statusString(Status status) {
 
 Status statusFromString(char const* str, size_t len);
 
-std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::transaction::Status const& s);
 
 }  // namespace transaction
 }  // namespace arangodb
-
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -39,8 +38,8 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-LockfileFeature::LockfileFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Lockfile") {
+LockfileFeature::LockfileFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -68,7 +67,8 @@ void LockfileFeature::start() {
     } else {
       LOG_TOPIC("1f4eb", FATAL, arangodb::Logger::FIXME)
           << "database is locked by process " << otherPID
-          << "; please stop it first and check that the lockfile '" << _lockFilename
+          << "; please stop it first and check that the lockfile '"
+          << _lockFilename
           << "' goes away. If you are sure no other arangod process is "
              "running, please remove the lockfile '"
           << _lockFilename << "' and try again";
@@ -97,7 +97,9 @@ void LockfileFeature::start() {
   }
 
   auto cleanup = std::make_unique<CleanupFunctions::CleanupFunction>(
-      [&](int code, void* data) { TRI_DestroyLockFile(_lockFilename.c_str()); });
+      [&](int code, void* data) {
+        TRI_DestroyLockFile(_lockFilename.c_str());
+      });
   CleanupFunctions::registerFunction(std::move(cleanup));
 }
 

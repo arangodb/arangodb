@@ -1,6 +1,414 @@
 devel
 -----
 
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
+  in upgrade mode in the same time.
+
+* Changed default value of startup option 
+  `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
+  This makes RocksDB track all loaded index and filter blocks in the block
+  cache, so they are accounted for in RocksDB's block cache. Also the default
+  value for the startup option `--rocksdb.enforce-block-cache-size-limit`
+  was flipped from `false` to `true` to make the RocksDB block cache not
+  temporarily exceed the configured memory limit (`--rocksdb.block-cache-size`).
+
+  These default value changes will make RocksDB adhere much better to the
+  configured memory limit. This is a trade-off between memory usage stability
+  and performance. These change may have a small negative impact on performance
+  because if the block cache is not large enough to hold the data plus the
+  index and filter blocks, additional disk I/O may be performed compared to
+  previous versions. In case there is still unused RAM capacity available, it
+  may be sensible to increase the total size of the RocksDB block cache.
+
+* Add "filtered" column to AQL query profiling output.
+  This column shows how many documents were filtered by the node and thus
+  provides insights into if additional indexes could help.
+
+* Reuse ExecutorExpressionContext inside IndexExecutor, so that repeated
+  setup and teardown of expression contexts can be avoided.
+
+* Reduce memory usage of inner joins if they were performed by the 
+  IndexExecutor with dynamic index lookup expressions that needed to be
+  recomputed for input from the outer loop.
+
+  For example, in the query
+  ```
+  FOR i IN 1..1000
+    FOR doc IN collection
+      FILTER doc.indexAttribute == i
+      RETURN doc
+  ```
+  the inner loop will be executed 1000 times. The IndexExecutor in the inner
+  loop needed to rebuild the index lookup attribute from the value of `i` 1000
+  times as well. The memory for index lookup attributes came from the Ast's
+  memory allocator and was not freed until the end of the query. In this
+  query, it would mean that up to 1000 lookup values were held in memory. With
+  larger inputs even more memory would be used.
+
+  Now the memory for index lookup values is freed when a new lookup value is
+  computed, i.e. only a single lookup value is held in memory.
+  This drastically reduces peak memory usage for queries that use index lookups
+  in inner loops and that get lots of different inputs from outer loops.
+
+* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+  column family, setting it from `false` to `true`. This should reduce memory
+  and disk space requirements for the bottom-most .sst files of the documents
+  column family.
+
+* Upgrade VelocyPack library to latest version.
+
+* Slightly improve the explain output of SingleRemoteOperationNodes.
+
+* Added more detail to the log messages that display the total time consumption
+  and total amount of data parsed for the client tools arangodump and 
+  arangorestore. 
+
+* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
+  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of
+  multiple Coordinators.
+
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
+  determining the shard in SingleRemoteModification nodes was incorrect. E.g. this could
+  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
+  contained this bug.
+
+* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+  Smart Graph could led to wrong shard location calculation and therefore to
+  wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
+
+* Upgraded bundled version of RocksDB to 6.29.
+
+* Fix creation of satellite graphs with a `numberOfShards` value != 1.
+  
+* Disable optimizer rule "optimize-cluster-single-document-operations" when a
+  collection is accessed in exclusive mode, because the optimized query would
+  use a slightly different mode of locking then.
+
+* Upgraded boost to 1.78.0.
+
+* Fixed issue #15501: Regression when using "exclusive" query option?
+  This fixes a regression in AQL query execution when exclusive locks are used
+  for a query and the query also uses the DOCUMENT() AQL function. In this
+  case, when there were more concurrent requests to the underlying collection
+  than available scheduler threads for the low priority queue, the query
+  start successfully acquired the exclusive lock, but could not get its 
+  follow-up requests through and starve while holding the exclusive lock.
+
+* Improve performance of `db._explain()` for very large query execution plans.
+  Higher performance is achieved by not serializing some internal data
+  structures when serializing execution plans. Serializing internal data is
+  now opt-in and turned off if not needed. Apart from performance, there should 
+  be no end user visible changes.
+
+* APM-24: Log messages can be displayed together with some other useful 
+  parameters, e.g., the name of the database, username, query id, and so on. 
+  There are some predefined parameters that we consider displaying, but, 
+  for the moment, only database, username and url are being displayed.
+  The usage upon starting the server is, for example: 
+  `arangod --log.structured-param database --log.structured-param username`
+
+* Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
+
+* Add optional "storedValues" attribute for persistent indexes.
+
+  This will add the specified extra fields to the index, so that they can be
+  used for projections, but not for lookups or sorting.
+
+  Example:
+
+      db.<collection>.ensureIndex({ 
+        type: "persistent", 
+        fields: ["value1"], 
+        storedValues: ["value2"] 
+      });
+
+  This will index `value1` in the traditional sense, so the index can be
+  used for looking up by `value1` or for sorting by `value1`. The index also
+  supports projections on `value1` as usual.
+  In addition, due to `storedValues` being used here, the index can now also 
+  supply the values for the `value2` attribute for projections.
+
+  This allows covering index scans in more cases and helps to avoid making
+  extra document lookups in the documents column family. This can have a
+  great positive effect on index scan performance if the number of scanned 
+  index entries is large.
+
+  The maximum number of attributes to store in `storedValues` is 32.
+
+* Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
+
+* Updated Enterprise license behavior: now there will be a 48 hour period for a
+  new deployment and upgrade decision to provide the license. After that period,
+  the read-only mode will be enforced.
+  Upgrade procedure for a deployment without license will not take upgrade
+  period into account for the read-only mode will enforcement.
+
+* Added agency push-queue operation.
+
+* Fixed issue #15476: FATAL {crash} occurs on a simple query.
+
+* Added `disableIndex` index hint for AQL FOR loops. This index hint disables
+  the usage of any index (except geo or full text indexes) and will cause a
+  full scan over the collection.
+  In some circumstances a full scan can be more efficient than an index scan,
+  for example if the index scan produces many matches (close to the number of
+  documents in the collection) and the index is not fully covering the query.
+  The `disableIndex` hint can be given per FOR loop in the query, e.g.:
+
+      FOR doc IN collection OPTIONS { disableIndex: true } 
+        RETURN doc.value
+
+  The default value of `disableIndex` is `false`.
+  In case a different index hint is provided, `disableIndex: true` takes
+  precendence and produces a warning about the ambiguous settings.
+
+* Added `maxProjections` hint for AQL FOR loops. This hint can be used to set
+  the maximum number of document attributes that are taken into account for
+  using projections.
+
+  For example, in the following query, no projections will be used because the
+  number of potential projection attributes (`value1`, value2`, `value3`) is 
+  higher than the maximum number of projection attributes set via the
+  `maxProjections` option:
+
+      FOR doc IN collection OPTIONS { maxProjections: 2 } 
+        RETURN [ doc.value1, doc.value2, doc.value3 ]
+
+  The default value for `maxProjections` is `5`, which is compatible with the
+  previous hard-coded default value.
+
+* Fixed potentially undefined behavior for exit code of arangodump.
+
+* Ignore signals such as SIGPIPE in client tools.
+
+* Fixed ES-1025: fixed a performance regression caused by different hash
+  calculation for primitive types like `uint64_t` and new the `Identifier`
+  wrapper and derived types.
+
+* APM-292: Added new AQL function SHARD_ID.
+
+* BTS-707: rename "hardened" option value for `--server.support-info-api`
+  startup option to "admin".
+
+* Extend timeouts for caching collection counts and index selectivity estimates
+  on coordinators from 15s/90s to 180s. This change will cause less requests to
+  be made from coordinators to DB servers to refresh info about collection
+  counts and index estimates as part of AQL queries. The cached info is used in
+  cluster query execution plans only and is not required to be fully up-to-date.
+
+* BTS-590: When creating a new database in Web UI the value of the write concern
+  has to be smaller or equal to the replication factor. Otherwise an error
+  message will be displayed and no database will be created.
+  
+* Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
+  to avoid possible invalid results in the fullCount data.
+
+* Added new AQL function SHARD_ID.
+
+* Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
+
+* Improved performance in replication dump protocol by inserting arrays of 
+  documents instead of one document at a time and also not retrieving the
+  document revision field when not needed.
+
+* Changed various default values for RocksDB to tune operations for different
+  typical scenarios like gp2 type volumes and gp3 type volumes and locally
+  attached SSDs with RAID0:
+  - `--rocksdb.level0-slowdown-trigger` has been decreased from 20 to 16
+  - `--rocksdb.level0-stop-trigger` has been increased from 36 to 256
+  - `--rocksdb.max-background-jobs` has been increased to the number of cores
+    and is no longer limited to 8
+  - `--rocksdb.enabled-pipelined-write` is now `true` by default instead of `false`
+  - `--rocksdb.throttle-frequency` has been decreased from 60000ms down to
+    1000ms per iteration, which makes the RocksDB throttle react much quicker
+  - `--rocksdb.pending-compactions-slowdown-trigger` has been decreased from
+    64 GB down to 8 GB
+  - `--rocksdb.pending-compactions-stop-trigger` has been decreased from
+    256 GB down to 16 GB
+  - `--rocksdb.throttle-slots` has been increased from 63 to 120
+  - `--rocksdb.encryption-hardware-acceleration` is now `true` by default,
+    which helps performance and should not create any problems, since we
+    require sandybridge anyway.
+  Combined, these changes help ArangoDB/RocksDB to react quicker to a backlog
+  of background jobs and thus to prevent catastrophic stops which abort
+  data ingestion or lead to cluster internal timeouts.
+
+* Added startup options to adjust previously hard-coded parameters for RocksDB's
+  behavior:
+
+  - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
+    setting `soft_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it slows down writes.
+  - `--rocksdb.pending-compactions-bytes-stop-trigger` controls RocksDB's
+    setting `hard_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it stops writes entirely.
+  - `--rocksdb.throttle-lower-bound-bps`, which controls a lower bound for the
+    bandwidth restriction on RocksDB writes the throttle imposes.
+
+* Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen 
+  that a buffer containing only the header would be sent to the server, and 
+  also batches would contain the documents equivalent to the csv rows in them, 
+  but not the header, which should be sent together with the documents. 
+
+* Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
+  to 2. This allows compactions jobs to be broken up into disjoint ranges which
+  can be processed in parallel.
+
+* Allow initial, full dump shard synchronization to abort prematurely if it 
+  turns out that the follower was removed from the plan as a follower (e.g. if 
+  there are enough other in-sync followers).
+
+* Make per-server values "numberOfCores" and "physicalMemory" available to
+  agency to improve quality of potential future shard rebalancing algorithms.
+
+* Unify the result structure of `db._version(true)` calls for arangosh and
+  server console. Previously such a call in the server console would return
+  a different structure that only consisted of the `details` subobject.
+  This is now unified so that the result structure in the server console is
+  consistent with arangosh, but strictly speaking this is a breaking change.
+
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
+
+* Updated arangosync to 2.7.0.
+
+* Updated Enterprise license behavior: now there will be a one hour period for
+  a new deployment to provide the license. After that period, the read-only mode
+  will be enforced.
+
+* APM-78: Added startup security option `--foxx.allow-install-from-remote` to
+  allow installing Foxx apps from remote URLs other than Github. The option is
+  turned off by default.
+
+* Cancel ongoing RocksDB compactions on server shutdown.
+
+* Added new option `--custom-query-bindvars` to arangoexport, so queries given 
+  via option `--custom-query` can have bind variables in them. Also changed the 
+  flag names `--query` to `--custom-query` and `--query-max-runtime` to 
+  `--custom-query-max-runtime` to be like in the other client-tools.
+
+* Improve some RocksDB-related error messages during server startup.
+
+* Added startup options to adjust previously hard-coded parameters for the 
+  RocksDB throttle:
+  - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
+    (in milliseconds, default value is 60000, i.e. 60 seconds).
+  - `--rocksdb.throttle-slots`: number of historic measures to use for throttle
+    value calculation (default value is 63).
+  - `--rocksdb.throttle-scaling-factor`: adaptiveness scaling factor for write-
+    throttle calculations (default value is 17). There is normally no need to
+    change this value.
+  - `--rocksdb.throttle-max-write-rate`: maximum write rate enforced by the
+    throttle (in bytes per second, default value is 0, meaning "unlimited").
+    The actual write rate will be the minimum of this value and the value the
+    throttle calculation produces.
+  - `--rocksdb.throttle-slow-down-writes-trigger`: number of level 0 files whose
+    payload is not considered in throttle calculations when penalizing the 
+    presence of L0 files. There is normally no need to change this value.
+  All these options will only have an effect if `--rocksdb.throttle` is enabled
+  (which is the default). The configuration options introduced here use the
+  previously hard-coded settings as their default values, so there should not be
+  a change in behavior if the options are not adjusted.
+
+* Raised minimal macOS supported version to 10.15 (Catalina).
+
+* Remove background thread `RocksDBShaThread` for background SHA256 checksum
+  calculation for .sst files in the Enterprise Edition. The checksums are now
+  calculated incrementally while writing into the .sst files, and the checksum
+  files will be stored on disk as soon as an .sst file is made durable by
+  RocksDB. There is no more need to periodically scan the database directory
+  and look for any additional .sst files.
+
+* Fix BTS-580: Trimmed the password field from the payload in the client 
+  requests when displaying error messages in arangorestore, because they 
+  displayed the password as plain text. 
+
+* Refactored unit tests with the `grey` keyword, which is for skipping certain 
+  tests. A test file that did not perform any test, but only had a function to 
+  sleep, was removed. Two test files were renamed so they would not be skipped.
+
+* Fixed BTS-611: In some cases AQL queries, in particular in a cluster,
+  reported the wrong fullCount when the optimizer rule(s)
+  `late-document-materialization and/or `sort-limit` were active.
+
+* Fix BTS-535: TakeoverShardLeadership waits properly for Current data in
+  ClusterInfo. This avoids a fake warning and fake test failure.
+
+* APM-256: make arangoexport escape potential formulae in CSV exports.
+  This addresses a potential security issue when exporting specially
+  crafted documents to CSV, opening the CSV file in MS Excel or OpenOffice
+  and then clicking links in any of the tainted cells.
+  
+  This change also adds a new option `--escape-csv-formulae` to
+  toggle the escaping behavior for potential formulae values. The
+  option is turned on by default.
+
+* Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
+  as well as old, seemingly unfinished jobs.
+
+* Defer intermediate commits in the middle of a multi-document (array)
+  operation. This is to ensure that the RocksDB key locks for all participating
+  document keys are still held while the operations are replicating via the
+  synchronous replication.
+
+* Fix potential read inconsistency for single document operations.
+  Wen reading a single document that is concurrently being updated or replaced,
+  the read operation could erroneously return a "document not found" error
+  although the document actually existed. This only happened for single
+  document operations, i.e., no transactions or AQL queries.
+
+* Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
+  queries that used the NeighborsEnumerator (though other PathEnumerators
+  might have been affected as well).
+
+* Cleanup and properly fail hotbackup upload and download jobs if a dbserver
+  fails or is restarted during the transfer. This gets rid of upload and
+  download blockages in these circumstances.
+
+* Added new option `--custom-query-bindvars` to arangobench, so queries given via 
+  option `--custom-query` can have bind variables in them.
+
+* BTS-624: The `move-calculations-up` optimization rule is now also applied to
+  subqueries, when they don't have dependencies on the outer nodes, don't have
+  modification nodes and don't read their own writes. This fixed the execution
+  of a query without the splicing-subqueries option being faster than the
+  execution of a query with this option (after version 3.8, this option cannot
+  be switched off). 
+
+* Changed arangobench concurrency flag name from `--concurrency` to `--threads`.
+
+* Added the following metrics for revision trees:
+  - `arangodb_revision_tree_hibernations_total`: number of times a revision
+    tree was compressed in RAM and set to hibernation
+  - `arangodb_revision_tree_resurrections_total`: number of times a revision
+    tree was resurrected from hibernation and uncompressed in RAM
+  - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by
+    all active revision trees
+
+* Added metric `rocksdb_wal_sequence` to track the current tip of the
+  WAL's sequence number.
+
+* APM-217: deprecate the usage of fulltext indexes.
+
+* Improve visibility in case of potential data corruption between primary
+  index and actual document store in documents column family.
+
+* Changed "arangosh" directory name to "client-tools", because the directory 
+  contains the code for all client tools and not just arangosh.
+
+* Make `db.<collection>.figures(true)` operate on the same snapshot when 
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
+* Upgraded bundled version of RocksDB to 6.27.
+
 * Updated immer to version 0.7.0.
 
 * Improved sync protocol to commit after each chunk and get rid of
@@ -18,6 +426,8 @@ devel
   when no positional argument (operation type) was specified. Previously,
   arangobackup insisted on specifying the operation type alongside the
   `--version` or `--version-json` commands.
+
+* Updated boost to version 1.77.0.
 
 * Removed the following deprecated arangobench testcases:
   * aqltrx

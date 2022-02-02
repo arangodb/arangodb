@@ -24,19 +24,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <thread>
+#include <iostream>
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/MaintenanceFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-//
 // structure used to store expected states of action properties
-//
 struct Expected {
   int _id;
   int _result;
@@ -46,11 +46,9 @@ struct Expected {
 
 typedef std::vector<Expected> ExpectedVec_t;
 
-//
 // TestProgressHandler lets us know once ApplicationServer is ready
-//
-class TestProgressHandler
-    : public arangodb::application_features::ApplicationServer::ProgressHandler {
+class TestProgressHandler : public arangodb::application_features::
+                                ApplicationServer::ProgressHandler {
  public:
   TestProgressHandler() {
     _serverReady = false;
@@ -62,16 +60,19 @@ class TestProgressHandler
     _feature = std::bind(&TestProgressHandler::FeatureChange, this, _1, _2);
   }
 
-  void StateChange(arangodb::application_features::ApplicationServer::State newState) {
-    if (arangodb::application_features::ApplicationServer::State::IN_WAIT == newState) {
+  void StateChange(
+      arangodb::application_features::ApplicationServer::State newState) {
+    if (arangodb::application_features::ApplicationServer::State::IN_WAIT ==
+        newState) {
       CONDITION_LOCKER(clock, _serverReadyCond);
       _serverReady = true;
       _serverReadyCond.broadcast();
     }
   }
 
-  void FeatureChange(arangodb::application_features::ApplicationServer::State newState,
-                     std::string const&) {}
+  void FeatureChange(
+      arangodb::application_features::ApplicationServer::State newState,
+      std::string_view) {}
 
   arangodb::basics::ConditionVariable _serverReadyCond;
   std::atomic_bool _serverReady;
@@ -88,7 +89,7 @@ using namespace arangodb::maintenance;
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
  public:
-  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
+  TestMaintenanceFeature(arangodb::ArangodServer& as)
       : arangodb::MaintenanceFeature(as) {
     // force activation of the feature, even in agency/single-server mode
     // (the catch tests use single-server mode)
@@ -103,14 +104,17 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
 
   virtual ~TestMaintenanceFeature() = default;
 
-  void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
+  void validateOptions(
+      std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
 
   void setSecondsActionsBlock(uint32_t seconds) {
     _secondsActionsBlock = seconds;
   }
 
-  /// @brief set thread count, then activate the threads via start().  One time usage only.
-  ///   Code waits until background ApplicationServer known to have fully started.
+  /// @brief set thread count, then activate the threads via start().  One time
+  /// usage only.
+  ///   Code waits until background ApplicationServer known to have fully
+  ///   started.
   void setMaintenanceThreadsMax(uint32_t threads) {
     CONDITION_LOCKER(clock, _progressHandler._serverReadyCond);
     while (!_progressHandler._serverReady) {
@@ -122,14 +126,17 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
     start();
   }  // setMaintenanceThreadsMax
 
-  virtual arangodb::Result addAction(std::shared_ptr<arangodb::maintenance::Action> action,
-                                     bool executeNow = false) override {
+  virtual arangodb::Result addAction(
+      std::shared_ptr<arangodb::maintenance::Action> action,
+      bool executeNow = false) override {
     _recentAction = action;
     return MaintenanceFeature::addAction(action, executeNow);
   }
 
-  virtual arangodb::Result addAction(std::shared_ptr<arangodb::maintenance::ActionDescription> const& description,
-                                     bool executeNow = false) override {
+  virtual arangodb::Result addAction(
+      std::shared_ptr<arangodb::maintenance::ActionDescription> const&
+          description,
+      bool executeNow = false) override {
     return MaintenanceFeature::addAction(description, executeNow);
   }
 
@@ -142,7 +149,8 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
     auto action = registry.begin();
     auto check = expected.begin();
 
-    for (; registry.end() != action && expected.end() != check; ++action, ++check) {
+    for (; registry.end() != action && expected.end() != check;
+         ++action, ++check) {
       VPackSlice id = (*action).get("id");
       if (!(id.isInteger() && id.getInt() == check->_id)) {
         std::cerr << "Id mismatch: action has " << id.getInt() << " expected "
@@ -196,7 +204,8 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       VPackArrayIterator registry(registryBuilder.slice());
       for (auto action : registry) {
         VPackSlice state = action.get("state");
-        again = again || (COMPLETE != state.getInt() && FAILED != state.getInt());
+        again =
+            again || (COMPLETE != state.getInt() && FAILED != state.getInt());
       }  // for
     } while (again);
   }  // waitRegistryComplete

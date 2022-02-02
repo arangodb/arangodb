@@ -18,6 +18,8 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterGeoTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterInTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchIndexTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexConditionTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexIteratorTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkCoordinatorTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkHelperTest.cpp
@@ -97,17 +99,19 @@ target_link_libraries(arangodbtests-iresearch
 )
 
 target_include_directories(arangodbtests-iresearch PRIVATE
-  ${INCLUDE_DIRECTORIES}
+  ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+  ${PROJECT_SOURCE_DIR}/tests
 )
 
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
-  ${V8_INCLUDE_DIR}
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
+target_link_libraries(arangodbtests-iresearch v8_interface)
 
 if (USE_JEMALLOC)
   add_dependencies(arangodbtests-iresearch jemalloc_build)

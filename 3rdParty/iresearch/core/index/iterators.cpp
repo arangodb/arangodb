@@ -140,14 +140,34 @@ struct empty_field_iterator final : irs::field_iterator {
 
 empty_field_iterator EMPTY_FIELD_ITERATOR;
 
+struct empty_column_reader final : irs::column_reader {
+  virtual irs::field_id id() const override { return irs::field_limits::invalid(); }
+
+  // Returns optional column name.
+  virtual irs::string_ref name() const override { return irs::string_ref::NIL; }
+
+  // Returns column header.
+  virtual irs::bytes_ref payload() const override { return irs::bytes_ref::NIL; }
+
+  // Returns the corresponding column iterator.
+  // If the column implementation supports document payloads then it
+  // can be accessed via the 'payload' attribute.
+  virtual irs::doc_iterator::ptr iterator(bool /*consolidtaion*/) const override {
+    return irs::doc_iterator::empty();
+  }
+
+  virtual irs::doc_id_t size() const override { return 0; }
+};
+
+const empty_column_reader EMPTY_COLUMN_READER;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_column_iterator
 /// @brief represents a reader with no columns
 //////////////////////////////////////////////////////////////////////////////
 struct empty_column_iterator final : irs::column_iterator {
-  virtual const irs::column_meta& value() const override {
-    static const irs::column_meta EMPTY;
-    return EMPTY;
+  virtual const irs::column_reader& value() const override {
+    return EMPTY_COLUMN_READER;
   }
 
   virtual bool seek(const irs::string_ref&) override {

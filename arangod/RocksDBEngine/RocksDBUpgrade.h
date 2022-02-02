@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "RestServer/arangod.h"
+
 namespace rocksdb {
 class TransactionDB;
 }
@@ -32,7 +34,6 @@ namespace application_features {
 class ApplicationServer;
 }
 
-void rocksdbStartupVersionCheck(application_features::ApplicationServer& server,
-                                rocksdb::TransactionDB*, bool dbExisted);
+void rocksdbStartupVersionCheck(ArangodServer& server, rocksdb::TransactionDB*,
+                                bool dbExisted);
 }  // namespace arangodb
-

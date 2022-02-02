@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,21 +23,19 @@
 
 #include "ActionFeature.h"
 
-#include "Actions/actions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "Actions/actions.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
 
-ActionFeature::ActionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Action"), _allowUseDatabase(false) {
+ActionFeature::ActionFeature(Server& server)
+    : ArangodFeature{server, *this}, _allowUseDatabase(false) {
   setOptional(true);
-  startsAfter<ClusterFeaturePhase>();
+  startsAfter<application_features::ClusterFeaturePhase>();
 }
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -49,10 +47,7 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-
-void ActionFeature::unprepare() {
-  TRI_CleanupActions();
-}
+void ActionFeature::unprepare() { TRI_CleanupActions(); }
 
 bool ActionFeature::allowUseDatabase() const { return _allowUseDatabase; }
 

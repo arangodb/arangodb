@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,21 +38,30 @@ ExecutorExpressionContext::ExecutorExpressionContext(
       _inputRow(inputRow),
       _varsToRegister(varsToRegister) {}
 
-AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+void ExecutorExpressionContext::adjustInputRow(
+    InputAqlItemRow const& inputRow) noexcept {
+  _inputRow = inputRow;
+}
+
+AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
+                                                     bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = false;
-  auto const searchId = variable->id;
-  for (auto const& [varId, regId] : _varsToRegister) {
-    if (varId == searchId) {
-      if (doCopy) {
-        mustDestroy = true;  // as we are copying
-        return _inputRow.getValue(regId).clone();
-      }
-      return _inputRow.getValue(regId);
-    }
-  }
-  std::string msg("variable not found '");
-  msg.append(variable->name);
-  msg.append("' in executeSimpleExpression()");
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        mustDestroy = doCopy;
+        auto const searchId = variable->id;
+        for (auto const& [varId, regId] : _varsToRegister) {
+          if (varId == searchId) {
+            if (doCopy) {
+              return _inputRow.get().getValue(regId).clone();
+            }
+            return _inputRow.get().getValue(regId);
+          }
+        }
+        std::string msg("variable not found '");
+        msg.append(variable->name);
+        msg.append("' in executeSimpleExpression()");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+      });
 }

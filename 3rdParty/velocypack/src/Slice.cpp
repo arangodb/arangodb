@@ -239,7 +239,7 @@ uint32_t Slice::normalizedHash32(uint32_t seed) const {
 
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found
-Slice Slice::get(StringRef const& attribute) const {
+Slice Slice::get(std::string_view attribute) const {
   if (VELOCYPACK_UNLIKELY(!isObject())) {
     throw Exception(Exception::InvalidValueType, "Expecting Object");
   }
@@ -427,7 +427,7 @@ int64_t Slice::getSmallInt() const {
   throw Exception(Exception::InvalidValueType, "Expecting type SmallInt");
 }
 
-int Slice::compareString(StringRef const& value) const {
+int Slice::compareString(std::string_view value) const {
   std::size_t const length = value.size();
   ValueLength keyLength;
   char const* k = getString(keyLength);
@@ -441,7 +441,7 @@ int Slice::compareString(StringRef const& value) const {
   return res;
 }
 
-int Slice::compareStringUnchecked(StringRef const& value) const noexcept {
+int Slice::compareStringUnchecked(std::string_view value) const noexcept {
   std::size_t const length = value.size();
   ValueLength keyLength;
   char const* k = getStringUnchecked(keyLength);
@@ -455,21 +455,21 @@ int Slice::compareStringUnchecked(StringRef const& value) const noexcept {
   return res;
 }
 
-bool Slice::isEqualString(StringRef const& attribute) const {
+bool Slice::isEqualString(std::string_view attribute) const {
   ValueLength keyLength;
   char const* k = getString(keyLength);
   return (static_cast<std::size_t>(keyLength) == attribute.size()) &&
           (std::memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
-bool Slice::isEqualStringUnchecked(StringRef const& attribute) const noexcept {
+bool Slice::isEqualStringUnchecked(std::string_view attribute) const noexcept {
   ValueLength keyLength;
   char const* k = getStringUnchecked(keyLength);
   return (static_cast<std::size_t>(keyLength) == attribute.size()) &&
           (std::memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
-Slice Slice::getFromCompactObject(StringRef const& attribute) const {
+Slice Slice::getFromCompactObject(std::string_view attribute) const {
   ObjectIterator it(*this);
   while (it.valid()) {
     Slice key = it.key(false);
@@ -603,7 +603,7 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
 }
 
 // perform a linear search for the specified attribute inside an Object
-Slice Slice::searchObjectKeyLinear(StringRef const& attribute,
+Slice Slice::searchObjectKeyLinear(std::string_view attribute,
                                    ValueLength ieBase, ValueLength offsetSize,
                                    ValueLength n) const {
   bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
@@ -640,7 +640,7 @@ Slice Slice::searchObjectKeyLinear(StringRef const& attribute,
 
 // perform a binary search for the specified attribute inside an Object
 template<ValueLength offsetSize>
-Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
+Slice Slice::searchObjectKeyBinary(std::string_view attribute,
                                    ValueLength ieBase,
                                    ValueLength n) const {
   bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
@@ -656,7 +656,7 @@ Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
 
     int res;
     if (key.isString()) {
-      res = key.compareStringUnchecked(attribute.data(), attribute.size());
+      res = key.compareStringUnchecked(attribute);
     } else {
       VELOCYPACK_ASSERT(key.isSmallInt() || key.isUInt());
       // translate key
@@ -685,10 +685,10 @@ Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
 }
 
 // template instanciations for searchObjectKeyBinary
-template Slice Slice::searchObjectKeyBinary<1>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
-template Slice Slice::searchObjectKeyBinary<2>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
-template Slice Slice::searchObjectKeyBinary<4>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
-template Slice Slice::searchObjectKeyBinary<8>(StringRef const& attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<1>(std::string_view attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<2>(std::string_view attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<4>(std::string_view attribute, ValueLength ieBase, ValueLength n) const;
+template Slice Slice::searchObjectKeyBinary<8>(std::string_view attribute, ValueLength ieBase, ValueLength n) const;
 
 std::ostream& operator<<(std::ostream& stream, Slice const* slice) {
   stream << "[Slice " << valueTypeName(slice->type()) << " ("

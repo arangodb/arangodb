@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,16 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Pregel/PregelFeature.h"
-#include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
-#include "RestServer/ScriptFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -44,21 +40,20 @@ using namespace arangodb::options;
 namespace {
 
 void queueShutdownChecker(std::mutex& mutex,
-    arangodb::Scheduler::WorkHandle& workItem,
-    std::function<void(bool)>& checkFunc) {
-
+                          arangodb::Scheduler::WorkHandle& workItem,
+                          std::function<void(bool)>& checkFunc) {
   arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
   std::lock_guard<std::mutex> guard(mutex);
   workItem = scheduler->queueDelayed(arangodb::RequestLane::CLUSTER_INTERNAL,
                                      std::chrono::seconds(2), checkFunc);
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 
-SoftShutdownFeature::SoftShutdownFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "SoftShutdown") {
+SoftShutdownFeature::SoftShutdownFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
@@ -84,13 +79,12 @@ void SoftShutdownTracker::cancelChecker() {
   }
 }
 
-SoftShutdownTracker::SoftShutdownTracker(
-    application_features::ApplicationServer& server)
-  : _server(server), _softShutdownOngoing(false) {
-  _checkFunc = [this](bool cancelled) {
+SoftShutdownTracker::SoftShutdownTracker(ArangodServer& server)
+    : _server(server), _softShutdownOngoing(false) {
+  _checkFunc = [this](bool /*cancelled*/) {
     if (_server.isStopping()) {
-      return;   // already stopping, do nothing, and in particular
-                // let's not schedule ourselves again!
+      return;  // already stopping, do nothing, and in particular
+               // let's not schedule ourselves again!
     }
     if (!this->checkAndShutdownIfAllClear()) {
       // Rearm ourselves:
@@ -109,8 +103,7 @@ void SoftShutdownTracker::initiateSoftShutdown() {
     return;
   }
 
-  LOG_TOPIC("fedd2", INFO, Logger::STARTUP)
-      << "Initiating soft shutdown...";
+  LOG_TOPIC("fedd2", INFO, Logger::STARTUP) << "Initiating soft shutdown...";
 
   // Tell GeneralServerFeature, which will forward to all features which
   // overload the initiateSoftShutdown method:
@@ -122,7 +115,7 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   // And initiate our checker to watch numbers:
   queueShutdownChecker(_workItemMutex, _workItem, _checkFunc);
 }
-    
+
 bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
   Status status = getStatus();
   if (!status.allClear()) {
@@ -151,8 +144,8 @@ void SoftShutdownTracker::initiateActualShutdown() const {
   });
 }
 
-void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
-    SoftShutdownTracker::Status const& status) {
+void SoftShutdownTracker::toVelocyPack(
+    VPackBuilder& builder, SoftShutdownTracker::Status const& status) {
   VPackObjectBuilder guard(&builder);
   builder.add("softShutdownOngoing", VPackValue(status.softShutdownOngoing));
   builder.add("AQLcursors", VPackValue(status.AQLcursors));
@@ -160,8 +153,10 @@ void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
   builder.add("pendingJobs", VPackValue(status.pendingJobs));
   builder.add("doneJobs", VPackValue(status.doneJobs));
   builder.add("pregelConductors", VPackValue(status.pregelConductors));
-  builder.add("lowPrioOngoingRequests", VPackValue(status.lowPrioOngoingRequests));
-  builder.add("lowPrioQueuedRequests", VPackValue(status.lowPrioQueuedRequests));
+  builder.add("lowPrioOngoingRequests",
+              VPackValue(status.lowPrioOngoingRequests));
+  builder.add("lowPrioQueuedRequests",
+              VPackValue(status.lowPrioQueuedRequests));
   builder.add("allClear", VPackValue(status.allClear()));
 }
 
@@ -171,9 +166,9 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   // Get number of active AQL cursors from each database:
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
   databaseFeature.enumerate([&status](TRI_vocbase_t* vocbase) {
-        CursorRepository* repo = vocbase->cursorRepository();
-        status.AQLcursors += repo->count();
-      });
+    CursorRepository* repo = vocbase->cursorRepository();
+    status.AQLcursors += repo->count();
+  });
 
   // Get number of active transactions from Manager:
   auto& managerFeature = _server.getFeature<transaction::ManagerFeature>();
@@ -185,17 +180,16 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   // Get numbers of pending and done asynchronous jobs:
   auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
   auto& jobManager = generalServerFeature.jobManager();
-  std::tie(status.pendingJobs, status.doneJobs)
-      = jobManager.getNrPendingAndDone();
+  std::tie(status.pendingJobs, status.doneJobs) =
+      jobManager.getNrPendingAndDone();
 
   // Get number of active Pregel conductors on this coordinator:
   auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
   status.pregelConductors = pregelFeature.numberOfActiveConductors();
 
   // Get number of ongoing and queued requests from scheduler:
-  std::tie(status.lowPrioOngoingRequests,
-           status.lowPrioQueuedRequests)
-      = SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
+  std::tie(status.lowPrioOngoingRequests, status.lowPrioQueuedRequests) =
+      SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
 
   return status;
 }

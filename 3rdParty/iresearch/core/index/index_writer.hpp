@@ -441,16 +441,10 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   struct init_options : public segment_options {
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief a set of all allowed custom field features the index writer
-    ///        supports
-    ////////////////////////////////////////////////////////////////////////////
-    field_features_t features;
-
-    ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info for a feature the writer should use for
     ///        columnstore
     ////////////////////////////////////////////////////////////////////////////
-    feature_column_info_provider_t feature_column_info;
+    feature_info_provider_t features;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief returns column info the writer should use for columnstore
@@ -709,8 +703,8 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   ////////////////////////////////////////////////////////////////////////////
   /// @returns field features
   ////////////////////////////////////////////////////////////////////////////
-  const field_features_t& field_features() const noexcept {
-    return field_features_;
+  const feature_info_provider_t& feature_info() const noexcept {
+    return feature_info_;
   }
 
  private:
@@ -877,17 +871,15 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     static segment_context::ptr make(
       directory& dir,
       segment_meta_generator_t&& meta_generator,
-      const field_features_t& field_features,
       const column_info_provider_t& column_info,
-      const feature_column_info_provider_t& feature_column_info,
+      const feature_info_provider_t& feature_info,
       const comparer* comparator);
 
     segment_context(
       directory& dir,
       segment_meta_generator_t&& meta_generator,
-      const field_features_t& field_features,
       const column_info_provider_t& column_info,
-      const feature_column_info_provider_t& feature_column_info,
+      const feature_info_provider_t& feature_info,
       const comparer* comparator);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1105,9 +1097,8 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const payload_provider_t& meta_payload_provider,
-    const field_features_t& field_features,
     index_meta&& meta,
     committed_state_t&& committed_state);
 
@@ -1125,8 +1116,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   void abort(); // aborts transaction
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  field_features_t field_features_;
-  feature_column_info_provider_t feature_column_info_;
+  feature_info_provider_t feature_info_;
   column_info_provider_t column_info_;
   payload_provider_t meta_payload_provider_; // provides payload for new segments
   const comparer* comparator_;

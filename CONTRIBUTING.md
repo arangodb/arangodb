@@ -425,19 +425,6 @@ This is known to work under Linux and the `jeprof` tool comes with the
 Using it with the integration tests is possible; snapshots will be taken before
 the first and after each subsequent testcase executed.
 
-The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
-specified amount of time:
-
-    export SLEEP_FOR=$((5*60))
-    ./scripts/unittest shell_client \
-       --memprof true \
-       --test shell-sleep-grey.js \
-       --oneTestTimeout ((6*60)) \
-       --cleanup false
-    ...
-    ... Saved /tmp/arangosh_qFu12G/shell_client/single_2207100_0_.heap
-    ...
-
 ### Core Dumps
 
 A core dump consists of the recorded state of the working memory of a process at
@@ -530,7 +517,7 @@ Make the above change permanent:
 
 `echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf`
 
-**Please note that GDB 9 is required for ArangoDB 3.6 and later; GDB 8 is required for ArangoDB 3.4 and 3.5; GDB7 won't see threads**
+**Please note that at least GDB 9 is required.**
 
 You can also generate core dumps from running processes without killing them by
 using gdb:
@@ -614,8 +601,8 @@ will be printed above.
 ##### Windows Debugging Symbols
 
 Releases are supported by a public symbol server so you will be able to debug
-cores.  Please replace `XX` with the major and minor release number (e.g. `35`
-for v3.5).  Note that you should run the latest version of a release series
+cores.  Please replace `XX` with the major and minor release number (e.g. `38`
+for v3.8).  Note that you should run the latest version of a release series
 before reporting bugs.  Either
 [WinDbg](https://docs.microsoft.com/de-de/windows-hardware/drivers/debugger/debugger-download-tools)
 or Visual Studio support setting the symbol path via the environment variable or
@@ -631,17 +618,18 @@ You may also try to download the symbols manually using:
     symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
 
 The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is
-browseable; thus you can easily download the files you need by hand.  It
-contains of a list of directories corresponding to the components of ArangoDB:
+browseable; thus you can easily download the files you need by hand. It
+contains of a list of directories corresponding to the components of ArangoDB, e.g.:
 
   - arango - the basic arangodb library needed by all components
   - arango_v8 - the basic V8 wrappers needed by all components
   - arangod - the server process
   - the client utilities:
-    - arangob
+    - arangobackup
     - arangobench
+    - arangodump
     - arangoexport
-    - arangoimp
+    - arangoimport
     - arangorestore
     - arangosh
     - arangovpack
@@ -855,6 +843,14 @@ Testing a single rspec test:
 
     scripts/unittest http_server --test api-users-spec.rb
 
+Testing a single rspec test, using SSL:
+
+    scripts/unittest ssl_server --test api-users-spec.rb
+
+Testing a single rspec test, with and without SSL (`http_server` and `ssl_server`):
+
+    scripts/unittest auto --test api-users-spec.rb
+
 Running a test against a server you started (instead of letting the script start its own server):
 
     scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
@@ -929,6 +925,43 @@ All tests with `-spec` in their names are using the
 arangosh, use this:
 
     require("@arangodb/mocha-runner").runTest('tests/js/client/endpoint-spec.js', true)
+
+### Release tests
+[RTA](https://github.com/arangodb/release-test-automation) has some tests to verify production integration.
+To aid their development, they can also be used from the ArangoDB source tree.
+
+#### MakeData / CheckData suite
+The [makedata framework](https://github.com/arangodb/release-test-automation#makedata--checkdata-framework)
+is implemented in arangosh javascript.
+It uses the respective interface to execute DDL and DML operations. 
+It falicitates a per database approach, and can be run multiple times in loops. 
+It has hooks, that are intended to create DDL/DML objects in a way their existence
+can be revalidated later on by other script hooks. The check hooks must respect a 
+flag whether they can create resources or whether they're talking to a read-only source.
+Thus, the check-hooks may create data, but must remove it on success.
+The checks should be considered not as time intense as the creation of the data. 
+
+It is used by RTA to:
+- revalidate data can be created
+- data survives hot backup / restore
+- data makes it across the replication
+- data is accessible with clusters with one failing DB-Server
+- data makes it across DC2DC replication
+
+With this integration additional DDL/DML checks can be more easily be developed without the 
+rather time and resource consuming and complex RTA framework.
+
+The `rta_makedata` testsuite can be invoked with:
+- `--cluster false` - to be ran on a single server setup.
+- `--activefailover true` to be ran on an active failover setup.
+- `--cluster true` to be ran on a 3 db-server node cluster; one run will check resillience with 2 remaining dbservers.
+
+Invoke it like this:
+
+    ./scripts/unittest rta_makedata --cluster true --rtasource ../release-test-automation/
+
+(with `--rtasource ../release-test-automation` being the default value, 
+that can be overriden with another directory with a git clone of RTA) 
 
 ### Driver tests
 

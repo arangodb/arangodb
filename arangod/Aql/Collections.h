@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,23 +55,25 @@ class Collections {
  public:
   Collection* get(std::string_view name) const;
 
-  Collection* add(std::string const& name, AccessMode::Type accessType, Collection::Hint hint);
+  Collection* add(std::string const& name, AccessMode::Type accessType,
+                  Collection::Hint hint);
 
   std::vector<std::string> collectionNames() const;
 
   bool empty() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  
-  void visit(std::function<bool(std::string const&, Collection&)> const& visitor) const;
+
+  void visit(std::function<bool(std::string const&, Collection&)> const&
+                 visitor) const;
 
  private:
   TRI_vocbase_t* _vocbase;
 
-  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>> _collections;
+  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>>
+      _collections;
 
   static size_t const MaxCollections = 2048;
 };
 }  // namespace aql
 }  // namespace arangodb
-

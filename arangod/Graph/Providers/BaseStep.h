@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@ namespace arangodb {
 
 namespace graph {
 
-template <class StepDetails>
+template<class StepDetails>
 class BaseStep {
  public:
   BaseStep(size_t prev = std::numeric_limits<size_t>::max(), size_t depth = 0,

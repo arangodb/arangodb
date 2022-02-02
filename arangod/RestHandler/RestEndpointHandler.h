@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +29,7 @@
 namespace arangodb {
 class RestEndpointHandler : public RestVocbaseBaseHandler {
  public:
-  RestEndpointHandler(application_features::ApplicationServer&, GeneralRequest*,
-                      GeneralResponse*);
+  RestEndpointHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;
@@ -41,4 +40,3 @@ class RestEndpointHandler : public RestVocbaseBaseHandler {
   void retrieveEndpoints();
 };
 }  // namespace arangodb
-

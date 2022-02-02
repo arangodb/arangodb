@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,14 +68,15 @@ struct RocksDBColumnFamilyManager {
   static char const* name(rocksdb::ColumnFamilyHandle* handle,
                           NameMode mode = NameMode::External);
 
-  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const& allHandles();
+  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const&
+  allHandles();
 
  private:
   static std::array<char const*, numberOfColumnFamilies> _internalNames;
   static std::array<char const*, numberOfColumnFamilies> _externalNames;
-  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> _handles;
+  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies>
+      _handles;
   static rocksdb::ColumnFamilyHandle* _defaultHandle;
 };
 
 }  // namespace arangodb
-

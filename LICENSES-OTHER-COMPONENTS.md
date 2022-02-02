@@ -16,8 +16,8 @@
 ### Boost
 
 * Name: Boost
-* Version: 1.71.0
-* Date: 2019-08-19 15:31:00Z
+* Version: 1.78.0
+* Date: 2021-12-08 03:45:00
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
 * License Name: Boost Software License 1.0
@@ -444,10 +444,10 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.26.0 (f72fd5856585774063ac3fc8926f70626963d488)
-* Date: 2021-10-20 21:33:32 2021 -0700
+* Version: 6.29.0 (e8f116deabc601a5eae011f2fd8a38d02d87be8d)
+* Date: 2022-01-21 17:23:03 -0800
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.26/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.29/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 

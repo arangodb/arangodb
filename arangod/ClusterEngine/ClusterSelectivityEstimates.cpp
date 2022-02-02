@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,26 +31,28 @@
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
-      
-ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& collection)
-    : _collection(collection),
-      _updating(false) {}
+
+ClusterSelectivityEstimates::ClusterSelectivityEstimates(
+    LogicalCollection& collection)
+    : _collection(collection), _updating(false) {}
 
 void ClusterSelectivityEstimates::flush() {
   // wait until we ourselves are able to set the _updating flag
-  while (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
+  while (_updating.load(std::memory_order_relaxed) ||
+         _updating.exchange(true, std::memory_order_acquire)) {
     std::this_thread::yield();
   }
 
-  auto guard = scopeGuard([this]() noexcept {
-    _updating.store(false, std::memory_order_release);
-  });
-  
+  auto guard = scopeGuard(
+      [this]() noexcept { _updating.store(false, std::memory_order_release); });
+
   std::atomic_store(&_data, std::shared_ptr<InternalData>());
 }
 
-IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId tid) {
-  auto data = std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
+IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating,
+                                             TransactionId tid) {
+  auto data =
+      std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
 
   if (allowUpdating) {
     double const now = TRI_microtime();
@@ -62,13 +64,16 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId t
         auto const& estimates = data->estimates;
         if (!estimates.empty() && (data->expireStamp > now || useExpired)) {
           // already have an estimate, and it is not yet expired
-          // or, we have an expired estimate, and another thread is currently updating it
+          // or, we have an expired estimate, and another thread is currently
+          // updating it
           return estimates;
         }
       }
 
-      // only one thread is allowed to fetch the estimates from the DB servers at any given time
-      if (_updating.load(std::memory_order_relaxed) || _updating.exchange(true, std::memory_order_acquire)) {
+      // only one thread is allowed to fetch the estimates from the DB servers
+      // at any given time
+      if (_updating.load(std::memory_order_relaxed) ||
+          _updating.exchange(true, std::memory_order_acquire)) {
         useExpired = true;
       } else {
         auto guard = scopeGuard([this]() noexcept {
@@ -87,8 +92,9 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId t
           return estimates;
         }
       }
-      
-      data = std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
+
+      data =
+          std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
     } while (++tries <= 3);
   }
 
@@ -112,13 +118,15 @@ void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
       idx->updateClusterSelectivityEstimate(it->second);
     }
   }
-  
+
   double ttl = defaultTtl;
   // let selectivity estimates expire less often for system collections
   if (!_collection.name().empty() && _collection.name()[0] == '_') {
     ttl = systemCollectionTtl;
   }
-  
+
   // finally update the cache
-  std::atomic_store(&_data, std::make_shared<ClusterSelectivityEstimates::InternalData>(estimates, TRI_microtime() + ttl));
+  std::atomic_store(&_data,
+                    std::make_shared<ClusterSelectivityEstimates::InternalData>(
+                        estimates, TRI_microtime() + ttl));
 }

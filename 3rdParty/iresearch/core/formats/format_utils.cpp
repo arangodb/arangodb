@@ -82,7 +82,7 @@ int32_t check_header(
   const ptrdiff_t left = in.length() - in.file_pointer();
 
   if (left < 0) {
-    throw illegal_state();
+    throw illegal_state{"Header has invalid length."};
   }
 
   const size_t expected = header_length(req_format);

@@ -1,0 +1,31 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:floats Floating-point Types]
+
+The following back-ends provide floating-point arithmetic:
+
+[table
+[[Backend Type][Header][Radix][Dependencies][Pros][Cons]]
+[[`cpp_bin_float<N>`][boost/multiprecision/cpp_bin_float.hpp][2][None][Header only, all C++ implementation. Boost licence.][Approximately 2x slower than the [mpfr] or [gmp] libraries.]]
+[[`cpp_dec_float<N>`][boost/multiprecision/cpp_dec_float.hpp][10][None][Header only, all C++ implementation. Boost licence.][Approximately 2x slower than the [mpfr] or [gmp] libraries.]]
+[[`mpf_float<N>`][boost/multiprecision/gmp.hpp][2][[gmp]][Very fast and efficient back-end.][Dependency on GNU licensed [gmp] library.]]
+[[`mpfr_float<N>`][boost/multiprecision/mpfr.hpp][2][[gmp] and [mpfr]][Very fast and efficient back-end, with its own standard library implementation.][Dependency on GNU licensed [gmp] and [mpfr] libraries.]]
+[[`float128`][boost/multiprecision/float128.hpp][2][Either [quadmath] or the Intel C++ Math library.][Very fast and efficient back-end for 128-bit floating-point values (113-bit mantissa, equivalent to FORTRAN's QUAD real)][Depends on the compiler being either recent GCC or Intel C++ versions.]]
+]
+
+[include tutorial_cpp_bin_float.qbk]
+[include tutorial_cpp_dec_float.qbk]
+[include tutorial_gmp_float.qbk]
+[include tutorial_mpfr_float.qbk]
+[include tutorial_float128.qbk]
+[include tutorial_float_eg.qbk]
+
+[endsect] [/section:floats floating-point Numbers]

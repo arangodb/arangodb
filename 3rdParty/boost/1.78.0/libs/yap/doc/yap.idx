@@ -1,0 +1,3 @@
+!scan-path "boost/yap" ".*\.hpp" true
+
+!scan-path "libs/yap/example" ".*\.cpp"

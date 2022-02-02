@@ -1,0 +1,428 @@
+//
+//  Copyright (c) 2009-2011 Artyom Beilis (Tonkikh)
+//  Copyright (c) 2019-2020 Alexander Grund
+//
+//  Distributed under the Boost Software License, Version 1.0. (See
+//  accompanying file LICENSE or copy at
+//  http://www.boost.org/LICENSE_1_0.txt)
+//
+
+
+/*!
+
+\mainpage Boost.Nowide
+
+\ref changelog_page
+
+Table of Contents:
+
+- \ref main
+- \ref main_rationale
+    - \ref main_the_problem
+    - \ref main_the_solution
+    - \ref main_wide
+    - \ref alternative
+    - \ref main_reading
+- \ref using
+    - \ref using_standard
+    - \ref using_custom
+    - \ref using_integration
+- \ref technical
+    - \ref technical_imple
+    - \ref technical_cio
+- \ref qna
+- \ref standalone_version
+- \ref sources
+
+\section main What is Boost.Nowide
+
+Boost.Nowide is a library originally implemented by Artyom Beilis
+that makes cross platform Unicode aware programming easier.
+
+The library provides an implementation of standard C and C++ library
+functions, such that their inputs are UTF-8 aware on Windows without
+requiring to use the Wide API.
+On Non-Windows/POSIX platforms the StdLib equivalents are aliased instead,
+so no conversion is performed there as UTF-8 is commonly used already.
+
+
+Hence you can use the Boost.Nowide functions with the same name as their
+std counterparts with narrow strings on all platforms and just have it work.
+
+
+\section main_rationale Rationale
+\subsection main_the_problem The Problem
+
+Consider a simple application that splits a big file into chunks, such that
+they can be sent by e-mail. It requires doing a few very simple tasks:
+
+- Access command line arguments: <code>int main(int argc,char **argv)</code>
+- Open an input file, open several output files: <code>std::fstream::open(const char*,std::ios::openmode m)</code>
+- Remove the files in case of fault: <code>std::remove(const char* file)</code>
+- Print a progress report onto the console: <code>std::cout << file_name </code>
+
+Unfortunately it is impossible to implement this simple task in plain C++
+if the file names contain non-ASCII characters.
+
+The simple program that uses the API would work on the systems that use UTF-8
+internally -- the vast majority of Unix-Line operating systems: Linux, Mac OS X,
+Solaris, BSD. But it would fail on files like <code>War and Peace - Война и мир - מלחמה ושלום.zip</code>
+under Microsoft Windows because the native Windows Unicode aware API is Wide-API -- UTF-16.
+
+This incredibly trivial task is very hard to implement in a cross platform manner.
+
+\subsection main_the_solution The Solution
+
+Boost.Nowide provides a set of standard library functions that are UTF-8 aware on Windows
+and make Unicode aware programming easier.
+
+The library provides:
+
+- Easy to use functions for converting UTF-8 to/from UTF-16
+- A class to make the \c argc, \c argc and \c env parameters of \c main use UTF-8
+- UTF-8 aware functions
+    - \c cstdio functions:
+        - \c fopen
+        - \c freopen
+        - \c remove
+        - \c rename
+    - \c cstdlib functions:
+        - \c system
+        - \c getenv
+        - \c setenv
+        - \c unsetenv
+        - \c putenv
+    - \c fstream
+        - \c filebuf
+        - \c fstream/ofstream/ifstream
+    - \c iostream
+        - \c cout
+        - \c cerr
+        - \c clog
+        - \c cin
+
+All these functions are available in Boost.Nowide in headers of the same name.
+So instead of including \c cstdio and using \c std::fopen
+you simply include \c boost/nowide/cstdio.hpp and use \c boost::nowide::fopen.
+The functions accept the same arguments as their \c std counterparts,
+in fact on non-Windows builds they are just aliases for those.
+But on Windows Boost.Nowide does its magic: The narrow string arguments are
+interpreted as UTF-8, converted to wide strings (UTF-16) and passed to the wide
+API which handles special chars correctly.
+
+If there are non-UTF-8 characters in the passed string, the conversion will
+replace them by a replacement character (default: \c U+FFFD) similar to
+what the NT kernel does.
+This means invalid UTF-8 sequences will not roundtrip from narrow->wide->narrow
+resulting in e.g. failure to open a file if the filename is ilformed.
+
+\subsection main_wide Why Not Narrow and Wide?
+
+Why not provide both Wide and Narrow implementations so the
+developer can choose to use Wide characters on Unix-like platforms?
+
+Several reasons:
+
+- \c wchar_t is not really portable, it can be 2 bytes, 4 bytes or even 1 byte making Unicode aware programming harder
+- The C and C++ standard libraries use narrow strings for OS interactions. This library follows the same general rule. There is
+  no such thing as <code>fopen(const wchar_t*, const wchar_t*)</code> in the standard library, so it is better
+  to stick to the standards rather than re-implement Wide API in "Microsoft Windows Style"
+
+
+\subsection alternative Alternatives
+
+Since the May 2019 update Windows 10 does support UTF-8 for narrow strings via a manifest file.
+So setting "UTF-8" as the active code page would allow using the narrow API without any other changes with UTF-8 encoded strings.
+See <a href="https://docs.microsoft.com/en-us/windows/uwp/design/globalizing/use-utf8-code-page">the documentation</a> for details.
+
+Since April 2018 there is a (Beta) function available in Windows 10 to use UTF-8 code pages by default via a user setting.
+
+Both methods do work but have a major drawback: They are not fully reliable for the app developer.
+The code page via manifest method falls back to a legacy code page when an older Windows version than 1903 is used.
+Hence it is only usable if the targetted system is Windows 10 after May 2019.   
+The second method relies on user interaction prior to starting the program.
+Obviously this is not reliable when expecting only UTF-8 in the code.
+
+Hence under some circumstances (and hopefully always somewhen in the future) this library will not be required and even Windows I/O can be used with UTF-8 encoded text.
+
+\subsection main_reading Further Reading
+
+- <a href="http://www.utf8everywhere.org/">www.utf8everywhere.org</a>
+- <a href="http://alfps.wordpress.com/2011/11/22/unicode-part-1-windows-console-io-approaches/">Windows console I/O approaches</a>
+
+\section using Using The Library
+\subsection using_standard Standard Features
+
+As a developer you are expected to use \c boost::nowide functions instead of the functions available in the
+\c std namespace.
+
+For example, here is a Unicode unaware implementation of a line counter:
+\code
+#include <fstream>
+#include <iostream>
+
+int main(int argc,char **argv)
+{
+    if(argc!=2) {
+        std::cerr << "Usage: file_name" << std::endl;
+        return 1;
+    }
+
+    std::ifstream f(argv[1]);
+    if(!f) {
+        std::cerr << "Can't open " << argv[1] << std::endl;
+        return 1;
+    }
+    int total_lines = 0;
+    while(f) {
+        if(f.get() == '\n')
+            total_lines++;
+    }
+    f.close();
+    std::cout << "File " << argv[1] << " has " << total_lines << " lines" << std::endl;
+    return 0;
+}
+\endcode
+
+To make this program handle Unicode properly, we do the following changes:
+
+\code
+#include <boost/nowide/args.hpp>
+#include <boost/nowide/fstream.hpp>
+#include <boost/nowide/iostream.hpp>
+
+int main(int argc,char **argv)
+{
+    boost::nowide::args a(argc,argv); // Fix arguments - make them UTF-8
+    if(argc!=2) {
+        boost::nowide::cerr << "Usage: file_name" << std::endl; // Unicode aware console
+        return 1;
+    }
+
+    boost::nowide::ifstream f(argv[1]); // argv[1] - is UTF-8
+    if(!f) {
+        // the console can display UTF-8
+        boost::nowide::cerr << "Can't open " << argv[1] << std::endl;
+        return 1;
+    }
+    int total_lines = 0;
+    while(f) {
+        if(f.get() == '\n')
+            total_lines++;
+    }
+    f.close();
+    // the console can display UTF-8
+    boost::nowide::cout << "File " << argv[1] << " has " << total_lines << " lines" << std::endl;
+    return 0;
+}
+\endcode
+
+This very simple and straightforward approach helps writing Unicode aware programs.
+
+Watch the use of \c boost::nowide::args, \c boost::nowide::ifstream and \c boost::nowide::cerr/cout.
+On Non-Windows it does nothing, but on Windows the following happens:
+
+- \c boost::nowide::args retrieves UTF-16 arguments from the Windows API, converts them to UTF-8,
+and temporarily replaces the original \c argv (and optionally \c env) with pointers to those internally stored
+UTF-8 strings for the lifetime of the instance.
+- \c boost::nowide::ifstream converts the passed filename (which is now valid UTF-8) to UTF-16
+and calls the Windows Wide API to open the file stream which can then be used as usual.
+- Similarily \c boost::nowide::cerr and \c boost::nowide::cout use an underlying stream buffer
+that converts the UTF-8 string to UTF-16 and use another Wide API function to write it to console.
+
+\subsection using_custom Custom API
+
+Of course, this simple set of functions does not cover all needs. If you need
+to access Wide API from a Windows application that uses UTF-8 internally you can use
+the functions \c boost::nowide::widen and \c boost::nowide::narrow.
+
+For example:
+\code
+CopyFileW(  boost::nowide::widen(existing_file).c_str(),
+            boost::nowide::widen(new_file).c_str(),
+            TRUE);
+\endcode
+
+The conversion is done at the last stage, and you continue using UTF-8
+strings everywhere else. You only switch to the Wide API at glue points.
+
+\c boost::nowide::widen returns \c std::string. Sometimes
+it is useful to prevent allocation and use on-stack buffers
+instead. Boost.Nowide provides the \c boost::nowide::basic_stackstring
+class for this purpose.
+
+The example above could be rewritten as:
+
+\code
+boost::nowide::basic_stackstring<wchar_t,char,64> wexisting_file(existing_file), wnew_file(new_file);
+CopyFileW(wexisting_file.c_str(),wnew_file.c_str(),TRUE);
+\endcode
+
+\note There are a few convenience typedefs: \c stackstring and \c wstackstring using
+256-character buffers, and \c short_stackstring and \c wshort_stackstring using 16-character
+buffers. If the string is longer, they fall back to heap memory allocation.
+
+\subsection using_windows_h The windows.h header
+
+The library does not include the \c windows.h in order to prevent namespace pollution with numerous
+defines and types. Instead, the library defines the prototypes of the Win32 API functions.
+
+However, you may request to use the \c windows.h header by defining \c BOOST_USE_WINDOWS_H
+before including any of the Boost.Nowide headers
+
+\subsection using_integration Integration with Boost.Filesystem
+
+Boost.Filesystem supports selection of narrow encoding.
+Unfortunatelly the default narrow encoding on Windows isn't UTF-8.
+But you can enable UTF-8 as default encoding on Boost.Filesystem by calling
+`boost::nowide::nowide_filesystem()` in the beginning of your program which
+imbues a locale with a UTF-8 conversion facet to convert between \c char \c wchar_t.
+This interprets all narrow strings passed to and from \c boost::filesystem::path as UTF-8
+when converting them to wide strings (as required for internal storage).
+On POSIX this has usually no effect, as no conversion is done due to narrow strings being
+used as the storage format.
+
+
+\section technical Technical Details
+\subsection technical_imple Windows vs POSIX
+
+For Microsoft Windows, the library provides UTF-8 aware variants of some \c std:: functions in the \c boost::nowide namespace.
+For example, \c std::fopen becomes \c boost::nowide::fopen.
+
+Under POSIX platforms, the functions in boost::nowide are aliases of their standard library counterparts:
+
+\code
+namespace boost {
+namespace nowide {
+#ifdef BOOST_WINDOWS
+inline FILE *fopen(const char* name, const char* mode)
+{
+    ...
+}
+#else
+using std::fopen
+#endif
+} // nowide
+} // boost
+\endcode
+
+There is also a \c std::filebuf compatible implementation provided for Windows which supports UTF-8 filepaths
+for \c open and behaves otherwise identical (API-wise).
+
+On all systems the \c std::fstream class and friends are provided as custom implementations supporting
+\c std::string and \c \*\::filesystem::path as well as \c wchar_t\* (Windows only) overloads for the
+constructor and \c open.
+This is done so users can use e.g. \c boost::filesystem::path with \c boost::nowide::fstream without
+depending on C++17 support.
+Furthermore any path-like class is supported if it matches the interface of \c std::filesystem::path "enough".
+
+Note that there is no universal support for \c path and \c std::string in \c boost::nowide::filebuf.
+This is due to using the std variant on non-Windows systems which might be faster in some cases.
+As \c filebuf is rarely used by user code but rather indirectly through \c fstream not having string or
+path support seems a small price to pay especially as C++11 adds \c std::string support, C++17 \c path support
+and usage via \c string_or_path.c_str() is still possible and portable.
+
+\subsection technical_cio Console I/O
+
+Console I/O is implemented as a wrapper around ReadConsoleW/WriteConsoleW when the stream goes to the "real" console.
+When the stream was piped/redirected the standard \c cin/cout is used instead.
+
+This approach eliminates a need of manual code page handling.
+If TrueType fonts are used the Unicode aware input and output works as intended.
+
+\section qna Q & A
+
+<b>Q: What happens to invalid UTF passed through Boost.Nowide? For example Windows using UCS-2 instead of UTF-16.</b>
+
+A: The policy of Boost.Nowide is to always yield valid UTF encoded strings.
+So invalid UTF characters are replaced by the replacement character \c U+FFFD.
+
+This happens in both directions:\n
+When passing a (presumptly) UTF-8 encoded string to Boost.Nowide it will convert it to UTF-16 and replace every invalid character before passing it to the OS.\n
+On retrieval of a value from the OS (e.g. \c boost::nowide::getenv or command line arguments through \c boost::nowide::args) the value is assumed to be UTF-16 and converted to UTF-8 replacing any invalid character.
+
+This means that if one somehow manages to create an invalid UTF-16 filename in Windows it will be **impossible** to handle it with Boost.Nowide.
+But as Microsoft switched from UCS-2 (aka strings with arbitrary 2 Byte values) to UTF-16 in Windows 2000 it won't be a problem in most environments.
+
+<b>Q: What kind of error reporting is used?</b>
+
+A: There are in fact 3:
+
+- Invalid UTF encoded strings are used by replacing invalid chars by the replacement character U+FFFD
+- API calls mirroring the standard API use the same error reporting as that, e.g. by returning a non-zero value on failure
+- Non-continuable errors are reported by standard exceptions. Main example is failure to get the command line parameters via the WinAPI
+
+<b>Q: Why doesn't the library convert the string to/from the locale's encoding (instead of UTF-8) on POSIX systems?</b>
+
+A: It is inherently incorrect to convert strings to/from locale encodings on POSIX platforms.
+
+You can create a file named "\xFF\xFF.txt" (invalid UTF-8), remove it, pass its name as a parameter to a program
+and it would work whether the current locale is UTF-8 or not.
+Also, changing the locale from let's say \c en_US.UTF-8 to \c en_US.ISO-8859-1 would not magically change all
+files in the OS or the strings a user may pass to the program (which is different on Windows)
+
+POSIX OSs treat strings as \c NULL terminated cookies.
+
+So altering their content according to the locale would actually lead to incorrect behavior.
+
+For example, this is a naive implementation of a standard program "rm"
+
+\code
+#include <cstdio>
+
+int main(int argc,char **argv)
+{
+    for(int i=1;i<argc;i++)
+        std::remove(argv[i]);
+    return 0;
+}
+\endcode
+
+It would work with ANY locale and changing the strings would lead to incorrect behavior.
+
+The meaning of a locale under POSIX and Windows platforms is different and has very different effects.
+
+\subsection standalone_version Standalone Version
+
+It is possible to use Nowide library without having the huge Boost project as a dependency. There is a standalone version that has all the functionality in the \c nowide namespace instead of \c boost::nowide. The example above would look like
+
+\code
+#include <nowide/args.hpp>
+#include <nowide/fstream.hpp>
+#include <nowide/iostream.hpp>
+
+int main(int argc,char **argv)
+{
+    nowide::args a(argc,argv); // Fix arguments - make them UTF-8
+    if(argc!=2) {
+        nowide::cerr << "Usage: file_name" << std::endl; // Unicode aware console
+        return 1;
+    }
+
+    nowide::ifstream f(argv[1]); // argv[1] - is UTF-8
+    if(!f) {
+        // the console can display UTF-8
+        nowide::cerr << "Can't open a file " << argv[1] << std::endl;
+        return 1;
+    }
+    int total_lines = 0;
+    while(f) {
+        if(f.get() == '\n')
+            total_lines++;
+    }
+    f.close();
+    // the console can display UTF-8
+    nowide::cout << "File " << argv[1] << " has " << total_lines << " lines" << std::endl;
+    return 0;
+}
+\endcode
+
+\subsection sources Sources and Downloads
+
+The upstream sources can be found at GitHub: <a href="https://github.com/boostorg/nowide">https://github.com/boostorg/nowide</a>
+
+You can download the latest sources there:
+
+- Standard Version: <a href="https://github.com/boostorg/nowide/archive/master.zip">nowide-master.zip</a>
+
+*/

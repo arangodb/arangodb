@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,9 +38,11 @@ class SortCondition;
 struct Variable;
 
 /// @brief condition finder
-class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class ConditionFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes);
+  ConditionFinder(ExecutionPlan* plan,
+                  std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes);
 
   ~ConditionFinder() = default;
 
@@ -51,7 +53,8 @@ class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniquenes
   bool producesEmptyResult() const { return _producesEmptyResult; }
 
  protected:
-  bool handleFilterCondition(ExecutionNode* en, std::unique_ptr<Condition> const& condition);
+  bool handleFilterCondition(ExecutionNode* en,
+                             std::unique_ptr<Condition> const& condition);
   void handleSortCondition(ExecutionNode* en, Variable const* outVar,
                            std::unique_ptr<Condition> const& condition,
                            std::unique_ptr<SortCondition>& sortCondition);
@@ -67,4 +70,3 @@ class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniquenes
 };
 }  // namespace aql
 }  // namespace arangodb
-

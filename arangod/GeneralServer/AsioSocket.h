@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,10 +33,10 @@ enum class SocketType { Tcp = 1, Ssl = 2, Unix = 3 };
 
 /// Wrapper class that contains sockets / ssl-stream
 /// and the corrsponding peer endpoint
-template <SocketType T>
+template<SocketType T>
 struct AsioSocket {};
 
-template <>
+template<>
 struct AsioSocket<SocketType::Tcp> {
   explicit AsioSocket(arangodb::rest::IoContext& ctx)
       : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
@@ -61,7 +61,7 @@ struct AsioSocket<SocketType::Tcp> {
     return socket.lowest_layer().available(ec);
   }
 
-  template <typename F>
+  template<typename F>
   void shutdown(F&& cb) {
     asio_ns::error_code ec;
     if (socket.is_open()) {
@@ -86,10 +86,14 @@ struct AsioSocket<SocketType::Tcp> {
   asio_ns::streambuf buffer;
 };
 
-template <>
+template<>
 struct AsioSocket<SocketType::Ssl> {
-  AsioSocket(arangodb::rest::IoContext& ctx, SslServerFeature::SslContextList sslContexts)
-      : context(ctx), storedSslContexts(std::move(sslContexts)), socket(ctx.io_context, (*storedSslContexts)[0]), timer(ctx.io_context) {
+  AsioSocket(arangodb::rest::IoContext& ctx,
+             SslServerFeature::SslContextList sslContexts)
+      : context(ctx),
+        storedSslContexts(std::move(sslContexts)),
+        socket(ctx.io_context, (*storedSslContexts)[0]),
+        timer(ctx.io_context) {
     context.incClients();
   }
 
@@ -111,14 +115,15 @@ struct AsioSocket<SocketType::Ssl> {
     return 0;  // always disable
   }
 
-  template <typename F>
+  template<typename F>
   void handshake(F&& cb) {
     // Perform SSL handshake and verify the remote host's certificate.
     socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
-    socket.async_handshake(asio_ns::ssl::stream_base::server, std::forward<F>(cb));
+    socket.async_handshake(asio_ns::ssl::stream_base::server,
+                           std::forward<F>(cb));
   }
 
-  template <typename F>
+  template<typename F>
   void shutdown(F&& cb) {
     if (socket.lowest_layer().is_open()) {
       // a graceful SSL shutdown performs a write & read
@@ -152,7 +157,7 @@ struct AsioSocket<SocketType::Ssl> {
 };
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(ASIO_HAS_LOCAL_SOCKETS)
-template <>
+template<>
 struct AsioSocket<SocketType::Unix> {
   AsioSocket(arangodb::rest::IoContext& ctx)
       : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
@@ -176,7 +181,7 @@ struct AsioSocket<SocketType::Unix> {
     return socket.lowest_layer().available(ec);
   }
 
-  template <typename F>
+  template<typename F>
   void shutdown(F&& cb) {
     asio_ns::error_code ec;
     if (socket.is_open()) {

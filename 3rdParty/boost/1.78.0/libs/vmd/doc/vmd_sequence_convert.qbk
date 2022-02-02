@@ -1,0 +1,73 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_sequence_convert Converting sequences]
+
+The easiest way to work with a sequence is to convert it to a Boost PP
+data type. Likewise you can also convert a sequence to variadic data, even though the
+Boost PP data types have much greater functionality than variadic data in Boost PP.
+
+To convert a sequence to a Boost PP data type or variadic data the macros to be used are:
+
+* BOOST_VMD_TO_ARRAY(sequence) to convert the sequence to an array
+* BOOST_VMD_TO_LIST(sequence) to convert the sequence to a list
+* BOOST_VMD_TO_SEQ(sequence) to convert the sequence to a seq
+* BOOST_VMD_TO_TUPLE(sequence) to convert the sequence to a tuple
+* BOOST_VMD_ENUM(sequence) to convert the sequence to variadic data
+
+After the conversion the elements of a sequence become the elements
+of the corresponding composite data type.
+
+Once the elements of the sequence have been converted to the elements
+of the composite data type the full power of that composite data type can be used
+to process each element. Furthermore the programmer can use VMD to discover
+the type of an individual element for further processing.
+
+For single element sequences the result is always a single element composite
+data type. For multi-element sequences the result is always a composite data
+type of more than one element.
+
+For a sequence that is empty the result is emptiness when converting to
+a seq, tuple, or variadic data; the result is an empty array or list when
+converting to each of those composite data types respectively.
+
+ #include <boost/vmd/enum.hpp>
+ #include <boost/vmd/to_array.hpp>
+ #include <boost/vmd/to_list.hpp>
+ #include <boost/vmd/to_seq.hpp>
+ #include <boost/vmd/to_tuple.hpp>
+ 
+ #define BOOST_VMD_REGISTER_ANID (ANID)
+ 
+ #define SEQUENCE_EMPTY
+ #define SEQUENCE_SINGLE 35
+ #define SEQUENCE_SINGLE_2 ANID
+ #define SEQUENCE_MULTI (0,1) (2)(3)(4)
+ #define SEQUENCE_MULTI_2 BOOST_VMD_TYPE_SEQ (2,(5,6))
+
+ BOOST_VMD_TO_ARRAY(SEQUENCE_EMPTY) will return an empty array '(0,())'
+ BOOST_VMD_TO_LIST(SEQUENCE_SINGLE) will return a one-element list '(35,BOOST_PP_NIL)'
+ BOOST_VMD_TO_SEQ(SEQUENCE_SINGLE_2) will return a one-element seq '(ANID)'
+ BOOST_VMD_TO_TUPLE(SEQUENCE_MULTI) will return a multi-element tuple '((0,1),(2)(3)(4))'
+ BOOST_VMD_ENUM(SEQUENCE_MULTI_2) will return multi-element variadic data 'BOOST_VMD_TYPE_SEQ,(2,(5,6))'
+
+[heading Usage]
+
+You can use the general header file:
+
+ #include <boost/vmd/vmd.hpp>
+ 
+or you can use individual header files for each of these macros.
+The individual header files are:
+
+ #include <boost/vmd/to_array.hpp> //  for the BOOST_VMD_TO_ARRAY macro
+ #include <boost/vmd/to_list.hpp> //  for the BOOST_VMD_TO_LIST macro
+ #include <boost/vmd/to_seq.hpp> //  for the BOOST_VMD_TO_SEQ macro
+ #include <boost/vmd/to_tuple.hpp> // for the BOOST_VMD_TO_TUPLE macro.
+ #include <boost/vmd/enum.hpp> // for the BOOST_VMD_ENUM macro.
+
+[endsect]

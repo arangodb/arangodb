@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<explicit-failures-markup>
+    <!-- json -->
+    <library name="json">
+        <mark-unusable>
+            <toolset name="*c++98"/>
+            <toolset name="*gnu98"/>
+            <toolset name="*c++0x"/>
+            <toolset name="*gnu0x"/>
+            <toolset name="gcc-4.7*"/>
+            <toolset name="msvc-7.1"/>
+            <toolset name="msvc-8.*"/>
+            <toolset name="msvc-9.*"/>
+            <toolset name="msvc-10.*"/>
+            <toolset name="msvc-11.*"/>
+            <toolset name="msvc-12.*"/>
+            <note author="Vinnie Falco">C++11 is the minimum requirement.</note>
+        </mark-unusable>
+    </library>
+</explicit-failures-markup>

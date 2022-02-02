@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +28,12 @@ namespace arangodb {
 /**
  * @brief Construct an overloaded callable from multiple callables.
  */
-template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
-template<class... Ts> overload(Ts...) -> overload<Ts...>;
+template<class... Ts>
+struct overload : Ts... {
+  using Ts::operator()...;
+};
+template<class... Ts>
+overload(Ts...) -> overload<Ts...>;
 
 /*
  * Usage example:
@@ -41,6 +45,5 @@ template<class... Ts> overload(Ts...) -> overload<Ts...>;
  *   },
  *   intOrFloat;
  * );
-  */
-}
-
+ */
+}  // namespace arangodb

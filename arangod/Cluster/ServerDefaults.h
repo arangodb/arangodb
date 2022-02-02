@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,19 +24,16 @@
 #pragma once
 
 #include <cstdint>
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
 struct ServerDefaults {
   uint64_t numberOfShards = 1;
   uint64_t replicationFactor = 1;
   uint64_t writeConcern = 1;
 
-  explicit ServerDefaults(application_features::ApplicationServer& server);
+  explicit ServerDefaults(ArangodServer& server);
 };
 
 }  // namespace arangodb
-

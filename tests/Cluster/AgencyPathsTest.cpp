@@ -142,17 +142,16 @@ static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs>
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::Id>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig::ReplicationFactor>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig::WriteConcern>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Generation>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Term>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::WaitForSync>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::WriteConcern>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::ReplicationFactor>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader::ServerId>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader::RebootId>::value, CONSTRUCTIBLE_MESSAGE);
@@ -308,20 +307,18 @@ static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs, Root::A
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database, Root::Arango::Plan::ReplicatedLogs>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log, Root::Arango::Plan::ReplicatedLogs::Database>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::Id, Root::Arango::Plan::ReplicatedLogs::Database::Log>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig, Root::Arango::Plan::ReplicatedLogs::Database::Log>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig::ReplicationFactor, Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig::WriteConcern, Root::Arango::Plan::ReplicatedLogs::Database::Log::TargetConfig>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm, Root::Arango::Plan::ReplicatedLogs::Database::Log>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Term, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::WaitForSync, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::WriteConcern, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config::ReplicationFactor, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Config>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader::ServerId, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader::RebootId, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Leader>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Generation, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision, Root::Arango>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::State, Root::Arango::Supervision>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::State::Timestamp, Root::Arango::Supervision::State>::value, CONSTRUCTIBLE_MESSAGE);
@@ -396,28 +393,34 @@ static_assert(!std::is_constructible<Root::Arango::Supervision::Health::Server, 
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server, Root::Arango::Target::MapUniqueToShortId, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database, Root::Arango::Plan::ReplicatedLogs, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log, Root::Arango::Plan::ReplicatedLogs::Database, std::string>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 
 #endif
 // clang-format on
 #undef CONSTRUCTIBLE_MESSAGE
 
 // Check the types of aliases, so we need only basic tests for them later.
-static_assert(std::is_same<decltype(root()->arango()), decltype(aliases::arango())>::value,
+static_assert(std::is_same<decltype(root()->arango()),
+                           decltype(aliases::arango())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->plan()), decltype(aliases::plan())>::value,
+static_assert(std::is_same<decltype(root()->arango()->plan()),
+                           decltype(aliases::plan())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->current()), decltype(aliases::current())>::value,
+static_assert(std::is_same<decltype(root()->arango()->current()),
+                           decltype(aliases::current())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->target()), decltype(aliases::target())>::value,
+static_assert(std::is_same<decltype(root()->arango()->target()),
+                           decltype(aliases::target())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->supervision()), decltype(aliases::supervision())>::value,
+static_assert(std::is_same<decltype(root()->arango()->supervision()),
+                           decltype(aliases::supervision())>::value,
               "Aliases should have the same type as the aliased expression!");
 
 class AgencyPathsTest : public ::testing::Test {
  protected:
   // Vector of {expected, actual} pairs.
-  std::vector<std::pair<std::vector<std::string> const, std::shared_ptr<Path const> const>> const ioPairs{
+  std::vector<std::pair<std::vector<std::string> const,
+                        std::shared_ptr<Path const> const>> const ioPairs{
       // Turn autoformat off here, to allow for easy multiline editing!
       // clang-format off
       {{"arango"}, root()->arango()},
@@ -477,18 +480,17 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Plan", "ReplicatedLogs", "_system", "12345"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("12345")},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "id"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->id()},
-      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "targetConfig"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->targetConfig()},
-      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "targetConfig", "replicationFactor"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->targetConfig()->replicationFactor()},
-      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "targetConfig", "writeConcern"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->targetConfig()->writeConcern()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "participantsConfig"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->participantsConfig()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "participantsConfig", "generation"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->participantsConfig()->generation()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "participantsConfig", "participants"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->participantsConfig()->participants()},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "participantsConfig", "participants", "12345"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->participantsConfig()->participants()->server("12345")},
+      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "participantsConfig", "participants", "98765"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->participantsConfig()->participants()->server("98765")},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "term"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->term()},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config", "waitForSync"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()->waitForSync()},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config", "writeConcern"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()->writeConcern()},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "config", "replicationFactor"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->config()->replicationFactor()},
-      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "participants"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->participants()},
-      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "participants", "12345"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->participants()->server("12345")},
-      {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "participants", "98765"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->participants()->server("98765")},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "leader"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->leader()},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "leader", "serverId"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->leader()->serverId()},
       {{"arango", "Plan", "ReplicatedLogs", "_system", "98765", "currentTerm", "leader", "rebootId"}, root()->arango()->plan()->replicatedLogs()->database("_system")->log("98765")->currentTerm()->leader()->rebootId()},

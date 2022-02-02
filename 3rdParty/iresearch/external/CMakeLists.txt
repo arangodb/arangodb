@@ -21,7 +21,7 @@ add_subdirectory(highway)
 
 add_library(sse2neon INTERFACE)
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+if (IS_ARM)
   set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
 
   target_include_directories(
@@ -92,10 +92,13 @@ if (MSVC)
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 else()
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst
-    PRIVATE "-fPIC"
-  )
+  CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
+  if (SUPPORT_FPIC)
+    target_compile_options(
+      ${IResearch_TARGET_NAME}-ofst
+      PRIVATE "-fPIC"
+    )
+  endif ()
 endif()
 
 target_include_directories(

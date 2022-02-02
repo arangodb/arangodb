@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,8 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) noexcept {
 ///
 /// Note that you must hold the lock.
 void TRI_WaitCondition(TRI_condition_t* cond) noexcept {
-  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, INFINITE);
+  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
+                           INFINITE);
 }
 
 /// @brief waits for a signal with a timeout in micro-seconds

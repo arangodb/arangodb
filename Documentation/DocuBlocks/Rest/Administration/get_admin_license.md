@@ -19,7 +19,7 @@ The `expires` key lists the expiry date as Unix timestamp (seconds since
 January 1st, 1970 UTC).
 
 @RESTREPLYBODY{license,string,required,}
-The encrypted license key in base64 encoding.
+The encrypted license key in Base64 encoding.
 
 @RESTREPLYBODY{version,number,required,}
 The license version number.

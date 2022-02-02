@@ -38,7 +38,8 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchLinkMock::IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection)
+IResearchLinkMock::IResearchLinkMock(IndexId iid,
+                                     arangodb::LogicalCollection& collection)
     : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -57,8 +58,8 @@ void IResearchLinkMock::toVelocyPack(
             std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
-  auto forPersistence = // definition for persistence
-    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
+  auto forPersistence =  // definition for persistence
+      arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
 
   builder.openObject();
 

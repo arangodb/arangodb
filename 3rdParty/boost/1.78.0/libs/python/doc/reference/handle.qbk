@@ -1,0 +1,190 @@
+[section boost/python/handle.hpp]
+[section Introduction]
+<boost/python/handle.hpp> provides class template `handle`, a smart pointer for managing reference-counted Python objects.
+[endsect]
+[section Class template `handle`]
+`handle` is a smart pointer to a Python object type; it holds a pointer of type `T*`, where `T` is its template parameter. T must be either a type derived from `PyObject` or a [link pod POD] type whose initial `sizeof(PyObject)` bytes are layout-compatible with `PyObject`. Use `handle<>` at the boundary between the Python/'C' API and high-level code; prefer object for a generalized interface to Python objects.
+
+In this document, the term "upcast" refers to an operation which converts a pointer `Y*` to a base class `pointer T*` via `static_cast<T*>` if `Y` is derived from `T`, or via C-style cast (`T*`) if it is not. However, in the latter case the "upcast" is ill-formed if the initial `sizeof(PyObject)` bytes of `Y` are not layout-compatible with `PyObject`.
+
+``
+namespace boost { namespace python
+{
+  template <class T>
+  class handle
+  {
+      typedef unspecified-member-function-pointer bool_type;
+
+   public: // types
+      typedef T element_type;
+
+   public: // member functions
+      ~handle();
+
+      template <class Y>
+      explicit handle(detail::borrowed<null_ok<Y> >* p);
+
+      template <class Y>
+      explicit handle(null_ok<detail::borrowed<Y> >* p);
+
+      template <class Y>
+      explicit handle(detail::borrowed<Y>* p);
+
+      template <class Y>
+      explicit handle(null_ok<Y>* p);
+
+      template <class Y>
+      explicit handle(Y* p);
+
+      handle();
+
+      handle& operator=(handle const& r);
+
+      template<typename Y>
+      handle& operator=(handle<Y> const & r); // never throws
+
+
+      template <typename Y>
+      handle(handle<Y> const& r);
+
+      handle(handle const& r);
+
+      T* operator-> () const;
+      T& operator* () const;
+      T* get() const;
+      void reset();
+      T* release();
+
+      operator bool_type() const; // never throws
+   private:
+      T* m_p;
+  };
+  
+  template <class T> struct null_ok;
+  namespace detail { template <class T> struct borrowed; }
+}}
+``
+[section Class template `handle` constructors and destructor]
+``virtual ~handle();``
+[variablelist
+[[Effects][`Py_XDECREF(upcast<PyObject*>(m_p))`]]
+]
+``template <class Y>
+explicit handle(detail::borrowed<null_ok<Y> >* p);
+``
+[variablelist
+[[Effects][
+``Py_XINCREF(upcast<PyObject*>(p));
+m_p = upcast<T*>(p);
+``
+]]
+]
+``template <class Y>
+explicit handle(null_ok<detail::borrowed<Y> >* p);``
+[variablelist
+[[Effects][
+``Py_XINCREF(upcast<PyObject*>(p));
+      m_p = upcast<T*>(p);
+``
+]]
+]
+``template <class Y>
+explicit handle(detail::borrowed<Y>* p);``
+[variablelist
+[[Effects][
+``Py_XINCREF(upcast<PyObject*>(p));
+      m_p = upcast<T*>(expect_non_null(p));
+``
+]]
+]
+``template <class Y>
+explicit handle(null_ok<Y>* p);
+``
+[variablelist
+[[Effects][`m_p = upcast<T*>(p);`]]
+]
+``
+template <class Y>
+explicit handle(Y* p);
+``
+[variablelist
+[[Effects][`m_p = upcast<T*>(expect_non_null(p));`]]
+]
+``
+handle();
+``
+[variablelist
+[[Effects][`m_p = 0;`]]
+]
+``
+template <typename Y>
+handle(handle<Y> const& r);
+handle(handle const& r);
+``
+[variablelist
+[[Effects][m_p = r.m_p; Py_XINCREF(upcast<PyObject*>(m_p));]]
+]
+[endsect]
+[section Class template `handle` modifiers]
+``
+handle& operator=(handle const& r);
+template<typename Y>
+handle& operator=(handle<Y> const & r); // never throws
+``
+[variablelist
+[[Effects][`Py_XINCREF(upcast<PyObject*>(r.m_p)); Py_XDECREF( upcast<PyObject*>(m_p)); m_p = r.m_p;`]]
+]
+``
+T* release();
+``
+[variablelist
+[[Effects][`T* x = m_p; m_p = 0; return x;`]]
+]
+``
+void reset();
+``
+[variablelist
+[[Effects][`*this = handle<T>();`]]
+]
+[endsect]
+[section Class template `handle` observers]
+``
+T* operator-> () const;
+T* get() const;
+``
+[variablelist
+[[Returns][`m_p;`]]
+]
+``
+T& operator* () const;
+``
+[variablelist
+[[Returns][`*m_p;`]]
+]
+``
+operator bool_type() const; // never throws
+``
+[variablelist
+[[Returns][`0` if `m_p == 0`, a pointer convertible to true otherwise.]]
+]
+[endsect]
+[endsect]
+[section Function `borrowed`]
+``
+template <class T>
+detail::borrowed<T>* borrowed(T* p)
+{
+    return (detail::borrowed<T>*)p;
+}
+``
+[endsect]
+[section Function `allow_null`]
+``
+template <class T>
+null_ok<T>* allow_null(T* p)
+{
+    return (null_ok<T>*)p;
+}
+``
+[endsect]
+[endsect]

@@ -1,0 +1,41 @@
+////
+Copyright 2019 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#changelog]
+# Revision History
+
+## Changes in 1.75.0
+
+* `endian_arithmetic` no longer inherits from `endian_buffer`
+* When `BOOST_ENDIAN_NO_CTORS` is defined, the unaligned `endian_buffer` and
+  `endian_arithmetic` are {cpp}03 PODs, to enable use of `++__attribute__((packed))++`
+
+## Changes in 1.74.0
+
+* Enabled scoped enumeration types in `endian_reverse`
+* Enabled `bool`, `enum`, `float`, `double` in `endian_reverse_inplace`
+* Added an overload of `endian_reverse_inplace` for arrays
+
+## Changes in 1.72.0
+
+* Made `endian_reverse`, `conditional_reverse` and `\*\_to_*` `constexpr`
+  on GCC and Clang
+* Added convenience load and store functions
+* Added floating point convenience typedefs
+* Added a non-const overload of `data()`; changed its return type to `unsigned char*`
+* Added `__int128` support to `endian_reverse` when available
+* Added a convenience header `boost/endian.hpp`
+
+## Changes in 1.71.0
+
+* Clarified requirements on the value type template parameter
+* Added support for `float` and `double` to `endian_buffer` and `endian_arithmetic`
+* Added `endian_load`, `endian_store`
+* Updated `endian_reverse` to correctly support all non-`bool` integral types
+* Moved deprecated names to the deprecated header `endian.hpp`

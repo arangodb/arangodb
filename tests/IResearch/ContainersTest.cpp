@@ -29,10 +29,93 @@
 
 #include "IResearch/Containers.h"
 
+TEST(AsyncValue, empty) {
+  {
+    arangodb::iresearch::AsyncValue<char> asyncValue{nullptr};
+    EXPECT_TRUE(asyncValue.empty());
+    asyncValue.reset();
+    EXPECT_TRUE(asyncValue.empty());
+  }
+  {
+    char c = 'a';
+    arangodb::iresearch::AsyncValue<char> asyncValue{&c};
+    EXPECT_FALSE(asyncValue.empty());
+    asyncValue.reset();
+    EXPECT_TRUE(asyncValue.empty());
+  }
+}
+
+TEST(AsyncValue, lock) {
+  {
+    arangodb::iresearch::AsyncValue<char> asyncValue{nullptr};
+    EXPECT_FALSE(asyncValue.lock());
+    asyncValue.reset();
+    EXPECT_FALSE(asyncValue.lock());
+  }
+  {
+    char c = 'a';
+    arangodb::iresearch::AsyncValue<char> asyncValue{&c};
+    auto value = asyncValue.lock();
+    EXPECT_TRUE(value);
+    EXPECT_EQ(*value.get(), 'a');
+  }
+}
+
+TEST(AsyncValue, multithread) {
+  char c = 'a';
+  arangodb::iresearch::AsyncValue<char> asyncValue{&c};
+  std::atomic_size_t count = 0;
+  std::thread lock1{[&] {
+    count.fetch_add(1);
+    EXPECT_FALSE(asyncValue.empty());
+    auto value = asyncValue.lock();
+    EXPECT_TRUE(value);
+    EXPECT_EQ(*value.get(), 'a');
+    count.fetch_add(10);
+  }};
+  std::thread lock2{[&] {
+    count.fetch_add(1);
+    EXPECT_FALSE(asyncValue.empty());
+    auto value = asyncValue.lock();
+    EXPECT_TRUE(value);
+    EXPECT_EQ(*value.get(), 'a');
+    count.fetch_add(10);
+  }};
+  std::thread reset1{[&] {
+    while (count.load() % 10 != 2) {
+    }
+    count.fetch_add(100);
+    asyncValue.reset();
+  }};
+  std::thread reset2{[&] {
+    while (count.load() % 10 != 2) {
+    }
+    count.fetch_add(100);
+    asyncValue.reset();
+    auto value = asyncValue.lock();
+    EXPECT_FALSE(value);
+  }};
+  std::thread lockAfterReset{[&] {
+    while (count.load() < 100) {
+    }
+    arangodb::iresearch::AsyncValue<char>::Value value;
+    do {
+      value = asyncValue.lock();
+    } while (value);
+    EXPECT_TRUE(asyncValue.empty());
+  }};
+  lockAfterReset.join();
+  reset2.join();
+  reset1.join();
+  lock2.join();
+  lock1.join();
+}
+
 TEST(ContainersTest, test_Hasher) {
   // ensure hashing of irs::bytes_ref is possible
   {
-    typedef arangodb::iresearch::UnorderedRefKeyMapBase<irs::byte_type, int>::KeyHasher Hasher;
+    typedef arangodb::iresearch::UnorderedRefKeyMapBase<irs::byte_type,
+                                                        int>::KeyHasher Hasher;
     Hasher hasher;
     irs::string_ref strRef("abcdefg");
     irs::bytes_ref ref = irs::ref_cast<irs::byte_type>(strRef);
@@ -41,7 +124,8 @@ TEST(ContainersTest, test_Hasher) {
 
   // ensure hashing of irs::string_ref is possible
   {
-    typedef arangodb::iresearch::UnorderedRefKeyMapBase<char, int>::KeyHasher Hasher;
+    typedef arangodb::iresearch::UnorderedRefKeyMapBase<char, int>::KeyHasher
+        Hasher;
     Hasher hasher;
     irs::string_ref ref("abcdefg");
     EXPECT_FALSE((0 == hasher(ref)));
@@ -109,7 +193,8 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
       instance1 = std::move(instance);
       EXPECT_TRUE((ptr == instance1.get()));
 
-      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(std::move(instance1));
+      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(
+          std::move(instance1));
       EXPECT_TRUE((ptr == instance2.get()));
     }
 
@@ -125,7 +210,8 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
       instance1 = std::move(*instance);
       EXPECT_TRUE((id == instance1->id));
 
-      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(std::move(*instance1));
+      arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(
+          std::move(*instance1));
       EXPECT_TRUE((id == instance2->id));
     }
   }
@@ -241,7 +327,9 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     std::set<std::string> expected({"abc", "def", "ghi"});
 
     for (auto& entry : map) {
-      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(entry.key())))); // FIXME: after C++20 remove cast and use heterogeneous lookup
+      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(
+                            entry.key()))));  // FIXME: after C++20 remove cast
+                                              // and use heterogeneous lookup
     }
 
     EXPECT_TRUE((expected.empty()));

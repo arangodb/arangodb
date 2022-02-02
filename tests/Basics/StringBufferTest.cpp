@@ -39,17 +39,17 @@ using namespace std;
 TEST(StringBufferTest, test_StringBuffer1) {
   StringBuffer buffer(true);
 
-  EXPECT_EQ(buffer.length(), (size_t) 0);
+  EXPECT_EQ(buffer.length(), (size_t)0);
   EXPECT_EQ(std::string(buffer.c_str()), "");
 
   buffer = "";
 
-  EXPECT_EQ(buffer.length(), (size_t) 0);
+  EXPECT_EQ(buffer.length(), (size_t)0);
   EXPECT_EQ(std::string(buffer.c_str()), "");
 
   buffer = "Hallo World!";
 
-  EXPECT_EQ(buffer.length(), (size_t) 12);
+  EXPECT_EQ(buffer.length(), (size_t)12);
   EXPECT_EQ(std::string(buffer.c_str()), "Hallo World!");
 }
 
@@ -60,10 +60,10 @@ TEST(StringBufferTest, test_StringBuffer1) {
 TEST(StringBufferTest, test_StringBuffer2) {
   StringBuffer buffer(true);
 
-  EXPECT_EQ(buffer.length(), (size_t) 0);
+  EXPECT_EQ(buffer.length(), (size_t)0);
   EXPECT_EQ(std::string(buffer.c_str()), "");
-  
+
   buffer.appendText("Hallo World");
-  EXPECT_EQ(buffer.length(), (size_t) 11);
+  EXPECT_EQ(buffer.length(), (size_t)11);
   EXPECT_EQ(std::string(buffer.c_str()), "Hallo World");
 }

@@ -57,15 +57,13 @@ schema-enforcing persistence engine.
 
 Other features of ArangoDB include:
 
+- **Horizontal scalability**: ArangoDB will seamlessly shard your data horizontally across multiple machines.
 - Use a **data-centric microservices** approach with ArangoDB Foxx and fuse your
   application-logic and database together for maximal throughput
 - JavaScript for all: **no language zoo**, you can use one language from your
   browser to your back-end
 - **Flexible data modeling**: model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
-- Different **storage engines**: ArangoDB provides a storage engine for mostly
-  in-memory operations and an alternative storage engine based on RocksDB which 
-  handle datasets that are much bigger than RAM.
 - **Powerful query language** (AQL) to retrieve and modify data 
 - **Transactions**: run queries on multiple documents or collections with
   optional transactional consistency and isolation

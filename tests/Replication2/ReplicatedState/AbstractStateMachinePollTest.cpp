@@ -37,8 +37,10 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 namespace {
-struct MyTestStateMachine : replicated_state::AbstractStateMachine<TestLogEntry> {
-  explicit MyTestStateMachine(std::shared_ptr<replicated_log::ReplicatedLog> log)
+struct MyTestStateMachine
+    : replicated_state::AbstractStateMachine<TestLogEntry> {
+  explicit MyTestStateMachine(
+      std::shared_ptr<replicated_log::ReplicatedLog> log)
       : replicated_state::AbstractStateMachine<TestLogEntry>(std::move(log)) {}
 
   auto add(std::string_view value) -> LogIndex {
@@ -58,7 +60,8 @@ struct MyTestStateMachine : replicated_state::AbstractStateMachine<TestLogEntry>
   }
 
  protected:
-  auto installSnapshot(ParticipantId const& id) -> futures::Future<Result> override {
+  auto installSnapshot(ParticipantId const& id)
+      -> futures::Future<Result> override {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -77,30 +80,47 @@ struct MyTestStateMachine : replicated_state::AbstractStateMachine<TestLogEntry>
 };
 
 struct ParticipantBase {
-  explicit ParticipantBase(std::shared_ptr<replicated_log::ReplicatedLog> const& log)
+  explicit ParticipantBase(
+      std::shared_ptr<replicated_log::ReplicatedLog> const& log)
       : state(std::make_shared<MyTestStateMachine>(log)) {}
   std::shared_ptr<MyTestStateMachine> state;
 };
 
 struct Follower : ParticipantBase {
   explicit Follower(std::shared_ptr<replicated_log::ReplicatedLog> const& log,
-                    ParticipantId const& p, LogTerm term, ParticipantId const& leader)
+                    ParticipantId const& p, LogTerm term,
+                    ParticipantId const& leader)
       : ParticipantBase(log), log(log->becomeFollower(p, term, leader)) {}
 
   std::shared_ptr<replicated_log::LogFollower> log;
 };
 
 struct Leader : ParticipantBase {
-  explicit Leader(std::shared_ptr<replicated_log::ReplicatedLog> const& log,
-                  LogConfig config, ParticipantId id, LogTerm term,
-                  std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const& follower)
-      : ParticipantBase(log),
-        log(log->becomeLeader(config, std::move(id), term, follower)) {}
+  explicit Leader(
+      std::shared_ptr<replicated_log::ReplicatedLog> const& log,
+      LogConfig config, ParticipantId id, LogTerm term,
+      std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
+          follower)
+      : ParticipantBase(log) {
+    auto participants =
+        std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+    for (auto const& participant : follower) {
+      participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+    }
+    auto participantsConfig =
+        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+            .generation = 1,
+            .participants = std::move(participants),
+        });
+
+    this->log = log->becomeLeader(config, std::move(id), term, follower,
+                                  participantsConfig);
+  }
 
   std::shared_ptr<replicated_log::LogLeader> log;
 };
 
-}
+}  // namespace
 
 struct PollStateMachineTest : StateMachineTest {};
 
@@ -111,8 +131,9 @@ TEST_F(PollStateMachineTest, check_apply_entries) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{1}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{1},
-        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{1},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{
+            follower->log});
 
     leader->state->add("first");
     auto f = follower->state->triggerPollEntries();
@@ -135,8 +156,9 @@ TEST_F(PollStateMachineTest, check_apply_entries) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{2}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{2},
-        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{2},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{
+            follower->log});
 
     auto f1 = leader->state->triggerPollEntries();
     ASSERT_FALSE(f1.isReady());
@@ -169,8 +191,9 @@ TEST_F(PollStateMachineTest, insert_multiple) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{1}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{1},
-        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{1},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{
+            follower->log});
 
     leader->state->add("first");
     leader->state->add("second");
@@ -189,8 +212,9 @@ TEST_F(PollStateMachineTest, insert_multiple) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{2}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{2},
-        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{2},
+        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{
+            follower->log});
 
     auto f2 = follower->state->triggerPollEntries();
     ASSERT_FALSE(f2.isReady());

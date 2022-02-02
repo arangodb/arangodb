@@ -37,24 +37,51 @@
 
 namespace arangodb::replication2::test {
 
-struct LogMultiplexerTestBase : ::testing::Test, public ::arangodb::tests::LogSuppressor<Logger::REPLICATION2, LogLevel::ERR> {
+struct LogMultiplexerTestBase
+    : ::testing::Test,
+      public ::arangodb::tests::LogSuppressor<Logger::REPLICATION2,
+                                              LogLevel::ERR> {
   static auto createReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
-    return createReplicatedLogImpl<replicated_log::ReplicatedLog, test::MockLog>(id);
+    return createReplicatedLogImpl<replicated_log::ReplicatedLog,
+                                   test::MockLog>(id);
   }
 
   static auto createAsyncReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
-    return createReplicatedLogImpl<replicated_log::ReplicatedLog, test::AsyncMockLog>(id);
+    return createReplicatedLogImpl<replicated_log::ReplicatedLog,
+                                   test::AsyncMockLog>(id);
   }
 
   static auto createFakeReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::test::TestReplicatedLog> {
-    return createReplicatedLogImpl<replication2::test::TestReplicatedLog, test::MockLog>(id);
+    return createReplicatedLogImpl<replication2::test::TestReplicatedLog,
+                                   test::MockLog>(id);
+  }
+
+  static auto createLeaderWithDefaultFlags(
+      std::shared_ptr<replication2::replicated_log::ReplicatedLog>& log,
+      ParticipantId id, LogTerm term,
+      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+      std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+    auto config =
+        LogConfig{writeConcern, writeConcern, follower.size() + 1, false};
+    auto participants =
+        std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+    for (auto const& participant : follower) {
+      participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+    }
+    auto participantsConfig =
+        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+            .generation = 1,
+            .participants = std::move(participants),
+        });
+    return log->becomeLeader(config, std::move(id), term, follower,
+                             std::move(participantsConfig));
   }
 
  private:
-  template <typename Impl, typename MockLog>
+  template<typename Impl, typename MockLog>
   static auto createReplicatedLogImpl(LogId id) -> std::shared_ptr<Impl> {
     auto persisted = std::make_shared<MockLog>(id);
     auto core = std::make_unique<replicated_log::LogCore>(persisted);
@@ -67,15 +94,16 @@ struct LogMultiplexerTestBase : ::testing::Test, public ::arangodb::tests::LogSu
 };
 
 struct default_deserializer {
-  template <typename T>
+  template<typename T>
   auto operator()(streams::serializer_tag_t<T>, velocypack::Slice s) -> T {
     return s.extract<T>();
   }
 };
 
 struct default_serializer {
-  template <typename T>
-  void operator()(streams::serializer_tag_t<T>, T const& t, velocypack::Builder& b) {
+  template<typename T>
+  void operator()(streams::serializer_tag_t<T>, T const& t,
+                  velocypack::Builder& b) {
     b.add(velocypack::Value(t));
   }
 };
@@ -108,5 +136,7 @@ using MyTestSpecification = streams::stream_descriptor_set<
 
 }  // namespace arangodb::replication2::test
 
-extern template struct arangodb::replication2::streams::LogMultiplexer<arangodb::replication2::test::MyTestSpecification>;
-extern template struct arangodb::replication2::streams::LogDemultiplexer<arangodb::replication2::test::MyTestSpecification>;
+extern template struct arangodb::replication2::streams::LogMultiplexer<
+    arangodb::replication2::test::MyTestSpecification>;
+extern template struct arangodb::replication2::streams::LogDemultiplexer<
+    arangodb::replication2::test::MyTestSpecification>;

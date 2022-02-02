@@ -1,0 +1,29 @@
+[/ 
+  Copyright 2018 John Maddock.
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:is_complete is_complete]
+
+   template <class T>
+   struct is_complete : public __tof {};
+  
+__inherit If `T` is a complete type then inherits from __true_type, 
+otherwise inherits from __false_type.
+
+[important This trait is designed for one use only: to trigger a hard error (via a `static_assert`) when a template
+is accidentally instantiated on an incomplete type.  Any other use case will cause ODR violations as the "completeness"
+of type `T` may vary at different points in the current translation unit, as well as across translations units.
+['[*In particular this trait should never ever be used to change code paths depending on the completeness of a type]].]
+
+__header ` #include <boost/type_traits/is_complete.hpp>` or ` #include <boost/type_traits.hpp>`
+
+__compat Requires C++11 SFINAE-expressions to function fully.  The macro `BOOST_TT_HAS_WORKING_IS_COMPLETE` is defined
+when the trait is fully functional.
+
+[endsect]
+
+
+

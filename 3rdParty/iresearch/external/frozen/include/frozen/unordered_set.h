@@ -142,6 +142,11 @@ constexpr auto make_unordered_set(T const (&keys)[N]) {
   return unordered_set<T, N>{keys};
 }
 
+template <typename T, std::size_t N>
+constexpr auto make_unordered_set(std::array<T, N> const &keys) {
+  return unordered_set<T, N>{keys};
+}
+
 } // namespace frozen
 
 #endif

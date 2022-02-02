@@ -1,0 +1,574 @@
+[section boost/python/object.hpp]
+[section Introduction]
+Exposes the generic Python object wrapper class object, and related classes. In order to avoid some potenential problems with argument-dependent lookup and the generalized operators defined on object, all these facilities are defined in namespace boost::python::api, and object is imported into namespace boost::python with a using-declaration.
+[endsect]
+[section Class `slice_nil`]
+``
+class slice_nil;
+static const _ = slice_nil();
+``
+A type that can be used to get the effect of leaving out an index in a Python slice expression:
+``
+>>> x[:-1]
+>>> x[::-1]
+``
+C++ equivalent:
+``
+x.slice(_,-1)
+x[slice(_,_,-1)]
+``
+[endsect]
+[section Class `const_attribute_policies`]
+The policies which are used for proxies representing an attribute access to a const object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct const_attribute_policies
+  {
+      typedef char const* key_type;
+      static object get(object const& target, char const* key);
+  };
+}}}
+``
+[endsect]
+[section Class `const_attribute_policies` static functions]
+``
+static object get(object const& target, char const* key);
+``
+[variablelist
+[[Requires][key is an [link ntbs].]]
+[[Effects][accesses the attribute of target named by key.]]
+[[Returns][An object managing the result of the attribute access.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class `attribute_policies`]
+The policies which are used for proxies representing an attribute access to a mutable object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct attribute_policies : const_attribute_policies
+  {
+      static object const& set(object const& target, char const* key, object const& value);
+      static void del(object const&target, char const* key);
+  };
+}}}
+``
+[endsect]
+[section Class `attribute_policies` static functions]
+``
+static object const& set(object const& target, char const* key, object const& value);
+``
+[variablelist
+[[Requires][key is an [link ntbs].]]
+[[Effects][sets the attribute of target named by key to value.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+``
+static void del(object const&target, char const* key);
+``
+[variablelist
+[[Requires][key is an [link ntbs].]]
+[[Effects][deletes the attribute of target named by key.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class `const_objattribute_policies`]
+The policies which are used for proxies representing an attribute access to a const object when the attribute name is given as a const object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct const_objattribute_policies
+  {
+      typedef object const& key_type;
+      static object get(object const& target, object const& key);
+  };
+}}}
+``
+[endsect]
+[section Class `const_objattribute_policies` static functions]
+``
+static object get(object const& target, object const& key);
+``
+[variablelist
+[[Requires][key is an object holding a string.]]
+[[Effects][accesses the attribute of target named by key.]]
+[[Returns][An object managing the result of the attribute access.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class `objattribute_policies`]
+The policies which are used for proxies representing an attribute access to a mutable object when the attribute name is given as a const object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct objattribute_policies : const_objattribute_policies
+  {
+      static object const& set(object const& target, object const& key, object const& value);
+      static void del(object const&target, object const& key);
+  };
+}}}
+``
+[endsect]
+[section Class `objattribute_policies` static functions]
+``
+static object const& set(object const& target, object const& key, object const& value);
+``
+[variablelist
+[[Requires][key is an object holding a string.]]
+[[Effects][sets the attribute of target named by key to value.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+``
+static void del(object const&target, object const& key);
+``
+[variablelist
+[[Requires][key is an object holding a string.]]
+[[Effects][deletes the attribute of target named by key.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class `const_item_policies`]
+The policies which are used for proxies representing an item access (via the Python bracket operators []) to a const object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct const_item_policies
+  {
+      typedef object key_type;
+      static object get(object const& target, object const& key);
+  };
+}}}
+``
+[endsect]
+[section Class `const_item_policies` static functions]
+``
+static object get(object const& target, object const& key);
+``
+[variablelist
+[[Effects][accesses the item of target specified by key.]]
+[[Returns][An object managing the result of the item access.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class `item_policies`]
+The policies which are used for proxies representing an item access (via the Python bracket operators []) to a mutable object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct item_policies : const_item_policies
+  {
+      static object const& set(object const& target, object const& key, object const& value);
+      static void del(object const& target, object const& key);
+  };
+}}}
+``
+[endsect]
+[section Class `item_policies` static functions]
+``
+static object const& set(object const& target, object const& key, object const& value);
+``
+[variablelist
+[[Effects][sets the item of target specified by key to value.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+``
+static void del(object const& target, object const& key);
+``
+[variablelist
+[[Effects][deletes the item of target specified by key.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class `const_slice_policies`]
+The policies which are used for proxies representing an slice access (via the Python slice notation [x:y]) to a const object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct const_slice_policies
+  {
+      typedef std::pair<handle<>, handle<> > key_type;
+      static object get(object const& target, key_type const& key);
+  };
+}}}
+``
+[endsect]
+[section Class `const_slice_policies` static functions]
+``
+static object get(object const& target, key_type const& key);
+``
+[variablelist
+[[Effects][accesses the slice of target specified by key.]]
+[[Returns][An object managing the result of the slice access.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class `slice_policies`]
+The policies which are used for proxies representing an slice access to a mutable object.
+``
+namespace boost { namespace python { namespace api
+{
+  struct slice_policies : const_slice_policies
+  {
+      static object const& set(object const& target, key_type const& key, object const& value);
+      static void del(object const& target, key_type const& key);
+  };
+}}}
+``
+[endsect]
+[section Class `slice_policies` static functions]
+``
+static object const& set(object const& target, key_type const& key, object const& value);
+``
+[variablelist
+[[Effects][sets the slice of target specified by key to value.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+``
+static void del(object const& target, key_type const& key);
+``
+[variablelist
+[[Effects][deletes the slice of target specified by key.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] if a Python exception is raised.]]
+]
+[endsect]
+[section Class template `object_operators`]
+This is the base class of object and its proxy template used to supply common interface: member functions, and operators which must be defined within the class body. Its template parameter U is expected to be a class derived from object_operators<U>. In practice users should never use this class directly, but it is documented here because it supplies important interface to object and its proxies.
+``
+namespace boost { namespace python { namespace api
+{
+  template <class U>
+  class object_operators
+  {
+   public:
+      // function call
+      //
+      object operator()() const;
+
+      template <class A0>
+      object operator()(A0 const&) const;
+      template <class A0, class A1>
+      object operator()(A0 const&, A1 const&) const;
+      ...
+      template <class A0, class A1,...class An>
+      object operator()(A0 const&, A1 const&,...An const&) const;
+
+      detail::args_proxy operator* () const; 
+      object operator()(detail::args_proxy const &args) const; 
+      object operator()(detail::args_proxy const &args, 
+                        detail::kwds_proxy const &kwds) const; 
+
+      // truth value testing
+      //
+      typedef unspecified bool_type;
+      operator bool_type() const;
+
+      // Attribute access
+      //
+      proxy<const_object_attribute> attr(char const*) const;
+      proxy<object_attribute> attr(char const*);
+      proxy<const_object_objattribute> attr(object const&) const;
+      proxy<object_objattribute> attr(object const&);
+
+      // item access
+      //
+      template <class T>
+      proxy<const_object_item> operator[](T const& key) const;
+    
+      template <class T>
+      proxy<object_item> operator[](T const& key);
+
+      // slicing
+      //
+      template <class T, class V>
+      proxy<const_object_slice> slice(T const& start, V const& end) const
+    
+      template <class T, class V>
+      proxy<object_slice> slice(T const& start, V const& end);
+  };
+}}}
+``
+[endsect]
+[section Class template `object_operators` observer functions]
+``
+object operator()() const;
+template <class A0>
+object operator()(A0 const&) const;
+template <class A0, class A1>
+object operator()(A0 const&, A1 const&) const;
+...
+template <class A0, class A1,...class An>
+object operator()(A0 const& a1, A1 const& a2,...An const& aN) const;
+``
+[variablelist
+[[Effects][`call<object>(object(*static_cast<U*>(this)).ptr(), a1, a2,...aN)`]]
+]
+``object operator()(detail::args_proxy const &args) const; ``
+[variablelist
+[[Effects][`call object with arguments given by the tuple args`]]
+]
+``object operator()(detail::args_proxy const &args, 
+                  detail::kwds_proxy const &kwds) const; 
+
+``
+[variablelist
+[[Effects][`call object with arguments given by the tuple args, and named arguments given by the dictionary kwds`]]
+]
+``operator bool_type() const;``
+[variablelist
+[[Effects][Tests truth value of `*this`.]]
+[[Returns][`call<object>(object(*static_cast<U*>(this)).ptr(), a1, a2,...aN)`]]
+]
+``
+proxy<const_object_attribute> attr(char const* name) const;
+proxy<object_attribute> attr(char const* name);
+``
+[variablelist
+[[Requires][name is an [link ntbs].]]
+[[Effects][accesses the named attribute of *this.]]
+[[Returns][a proxy object which binds `object(*static_cast<U*>(this))` as its target, and name as its key.]]
+]
+``
+proxy<const_object_objattribute> attr(const object& name) const;
+proxy<object_objattribute> attr(const object& name);
+``
+[variablelist
+[[Requires][name is a object holding a string.]]
+[[Effects][accesses the named attribute of `*this`.]]
+[[Returns][a proxy object which binds `object(*static_cast<U*>(this))` as its target, and name as its key.]]
+]
+``
+template <class T>
+proxy<const_object_item> operator[](T const& key) const;
+template <class T>
+proxy<object_item> operator[](T const& key);
+``
+[variablelist
+[[Effects][accesses the item of `*this` indicated by key.]]
+[[Returns][a proxy object which binds `object(*static_cast<U*>(this))` as its target, and object(key) as its key.]]
+]
+``
+template <class T, class V>
+proxy<const_object_slice> slice(T const& start; start, V const& finish) const
+template <class T, class V>
+proxy<object_slice> slice(T const& start; start, V const& finish);
+``
+[variablelist
+[[Effects][accesses the slice of `*this` indicated by `std::make_pair(object(start), object(finish))`.]]
+[[Returns][a proxy object which binds `object(*static_cast<U*>(this))` as its target, and `std::make_pair(object(start), object(finish))` as its key.]]
+]
+[endsect]
+[section Class `object`]
+The intention is that object acts as much like a Python variable as possible. Thus expressions you'd expect to work in Python should generally work in the same way from C++. Most of object's interface is provided by its base class `object_operators<object>`, and the free functions defined in this header.
+``
+namespace boost { namespace python { namespace api
+{
+  class object : public object_operators<object>
+  {
+   public:
+      object();
+      object(object const&);
+      template <class T>
+      explicit object(T const& x);
+
+      ~object();
+
+      object& operator=(object const&); 
+      PyObject* ptr() const;
+      bool is_none() const;
+  };
+}}}
+``
+[endsect]
+[section Class `object` constructors and destructor]
+``object();``
+[variablelist
+[[Effects][Constructs an object managing a reference to the Python None object.]]
+[[Throws][nothing.]]
+]
+``template <class T>
+explicit object(T const& x);
+``
+[variablelist
+[[Effects][converts x to python and manages a reference to it.]]
+[[Throws][[link high_level_components.boost_python_errors_hpp.class_error_already_set error_already_set] and sets a Python TypeError exception if no such conversion is possible.]]
+]
+``
+~object();
+``
+[variablelist
+[[Effects][decrements the reference count of the internally-held object.]]
+]
+[endsect]
+[section Class `object` modifiers]
+``PyObject* ptr() const;``
+
+[variablelist
+[[Returns] [a pointer to the internally-held Python object.]]
+]
+``bool is_none() const;``
+
+[variablelist
+[[Returns] [result of `(ptr() == Py_None)`]]
+]
+[endsect]
+[section Class template `proxy`]
+This template is instantiated with various Policies described in this document in order to implement attribute, item, and slice access for object. It stores an object of type Policies::key_type.
+``
+namespace boost { namespace python { namespace api
+{
+  template <class Policies>
+  class proxy : public object_operators<proxy<Policies> >
+  {
+   public:
+      operator object() const;
+
+      proxy const& operator=(proxy const&) const;
+      template <class T>
+      inline proxy const& operator=(T const& rhs) const;
+      
+      void del() const;
+
+      template <class R>
+      proxy operator+=(R const& rhs);
+      template <class R>
+      proxy operator-=(R const& rhs);
+      template <class R>
+      proxy operator*=(R const& rhs);
+      template <class R>
+      proxy operator/=(R const& rhs);
+      template <class R>
+      proxy operator%=(R const& rhs);
+      template <class R>
+      proxy operator<<=(R const& rhs);
+      template <class R>
+      proxy operator>>=(R const& rhs);
+      template <class R>
+      proxy operator&=(R const& rhs);
+      template <class R>
+      proxy operator|=(R const& rhs);
+  };
+}}}
+``
+[endsect]
+[section Class template `proxy` observer functions]
+``operator object() const;``
+[variablelist
+[[Effects][applies `Policies::get(target, key)` with the proxy's target and key objects.]]
+]
+[endsect]
+[section Class template `proxy` modifier functions]
+``
+proxy const& operator=(proxy const& rhs) const;
+template <class T>
+inline proxy const& operator=(T const& rhs) const;
+``
+[variablelist
+[[Effects][ `Policies::set(target, key , object(rhs))` with the proxy's target and key objects.]]
+]
+``
+template <class R>
+proxy operator+=(R const& rhs);
+template <class R>
+proxy operator-=(R const& rhs);
+template <class R>
+proxy operator*=(R const& rhs);
+template <class R>
+proxy operator/=(R const& rhs);
+template <class R>
+proxy operator%=(R const& rhs);
+template <class R>
+proxy operator<<=(R const& rhs);
+template <class R>
+proxy operator>>=(R const& rhs);
+template <class R>
+proxy operator&=(R const& rhs);
+template <class R>
+proxy operator|=(R const& rhs);
+``
+[variablelist
+[[Effects][for a given `operator@=`, `object(*this) @= rhs;`]]
+[[Returns][`*this`]]
+]
+``void del() const;``
+[variablelist
+[[Effects][Policies::del(target, key ) with the proxy's target and key objects.]]
+]
+[endsect]
+[section Functions]
+``
+template <class T>
+void del(proxy<T> const& x);
+``
+[variablelist
+[[Effects][`x.del()`]]
+]
+``
+template<class L,class R> object operator>(L const&l,R const&r);
+template<class L,class R> object operator>=(L const&l,R const&r);
+template<class L,class R> object operator<(L const&l,R const&r);
+template<class L,class R> object operator<=(L const&l,R const&r);
+template<class L,class R> object operator==(L const&l,R const&r);
+template<class L,class R> object operator!=(L const&l,R const&r);
+``
+[variablelist
+[[Effects][returns the result of applying the operator to `object(l)` and `object(r)`, respectively, in Python.]]
+]
+``
+template<class L,class R> object operator+(L const&l,R const&r);
+template<class L,class R> object operator-(L const&l,R const&r);
+template<class L,class R> object operator*(L const&l,R const&r);
+template<class L,class R> object operator/(L const&l,R const&r);
+template<class L,class R> object operator%(L const&l,R const&r);
+template<class L,class R> object operator<<(L const&l,R const&r);
+template<class L,class R> object operator>>(L const&l,R const&r);
+template<class L,class R> object operator&(L const&l,R const&r);
+template<class L,class R> object operator^(L const&l,R const&r);
+template<class L,class R> object operator|(L const&l,R const&r);
+``
+[variablelist
+[[Effects][returns the result of applying the operator to `object(l)` and `object(r)`, respectively, in Python.]]
+]
+``
+template<class R> object& operator+=(object&l,R const&r);
+template<class R> object& operator-=(object&l,R const&r);
+template<class R> object& operator*=(object&l,R const&r);
+template<class R> object& operator/=(object&l,R const&r);
+template<class R> object& operator%=(object&l,R const&r);
+template<class R> object& operator<<=(object&l,R const&r)
+template<class R> object& operator>>=(object&l,R const&r);
+template<class R> object& operator&=(object&l,R const&r);
+template<class R> object& operator^=(object&l,R const&r);
+template<class R> object& operator|=(object&l,R const&r);
+``
+[variablelist
+[[Effects][assigns to `l` the result of applying the corresponding Python inplace operator to `l` and `object(r)`, respectively.]]
+[[Returns][l]]
+]
+``long len(object const& obj);``
+[variablelist
+[[Effects][`PyObject_Length(obj.ptr())`]]
+[[Returns][`len()` of object.]]
+]
+[endsect]
+[section Example]
+Python code:
+``
+def sum_items(seq):
+   result = 0
+   for x in seq:
+      result += x
+   return result
+``
+C++ version
+``
+object sum_items(object seq)
+{
+   object result = object(0);
+   for (int i = 0; i < len(seq); ++i)
+      result += seq[i];
+   return result;
+}
+``
+[endsect]
+[endsect]

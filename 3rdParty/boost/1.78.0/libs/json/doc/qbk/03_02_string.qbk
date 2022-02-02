@@ -1,0 +1,83 @@
+[/
+    Copyright (c) 2019 Vinnie Falco (vinnie.falco@gmail.com)
+    Copyright (c) 2020 Krystian Stasiowski (sdkrystian@gmail.com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/cppalliance/json
+]
+
+[/-----------------------------------------------------------------------------]
+
+[section string]
+
+Modifiable sequences of characters are represented using objects of type __string__.
+The interface and functionality of __string__ is
+the same as `std::basic_string` except that:
+
+* __string__ is not a class template,
+
+* __string__ uses `char` as its character type,
+
+* redundant overloads for string operations have been replaced
+with a __string_view__ based interface,
+
+* access to characters in the range `[size(), capacity())` is permitted, and
+
+* __storage_ptr__ is used instead of __Allocator__.
+
+With augmented interface, operations requiring an input string
+are implemented as a single overload with a parameter of type
+__string_view__, and can accept most string-like objects.
+Objects such as null terminated character pointers, `std::string`,
+`json::string`, subranges of strings, and objects
+convertible to __string_view__ can all be passed to these functions.
+
+[snippet_strings_4]
+
+More formally, `std::string` member function overloads that accept any of the
+following parameter combinations as an input string:
+
+* a `std::string` parameter, or
+
+* a `std::string` parameter and two `size_type` parameters that specify a substring, or
+
+* a parameter of a type convertible to __string_view__, or
+
+* a parameter of a type convertible to __string_view__ and two
+`size_type` parameters that specify a substring, or
+
+* a `const_pointer`, or
+
+* a parameter of type `const_pointer` and a `size_type` parameter
+that specifies the length of the string
+
+are replaced with an overload accepting a __string_view__ parameter.
+
+This design removes several redundant overloads from the interface.
+For example, the 11 overloads of `std::string::insert` are reduced
+to just 3 in __string__, while still providing identical functionality.
+In addition to these changes, overloads taking a `std::initializer_list<char>`
+parameter have been removed. Such overloads have little use,
+as they serve as little more than a wrappers for arrays with an inefficient syntax:
+
+[snippet_strings_3]
+
+With the removal of overloads that specify parameters for a substring, a member function
+`subview` that returns a __string_view__ is provided to facilitate cheap substring operations:
+
+[snippet_strings_2]
+
+A __string__ may be constructed using the default memory resource without incurring any
+memory allocations. Alternatively, a __storage_ptr__ can be provided explicitly:
+
+[snippet_strings_1]
+
+[heading Formatted Output]
+
+When a __string__ is formatted to a __std_ostream__, the result is a valid
+JSON. That is, the result will be double quoted and the contents properly
+escaped per the JSON specification.
+
+[endsect]

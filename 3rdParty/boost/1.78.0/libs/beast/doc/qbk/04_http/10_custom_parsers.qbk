@@ -1,0 +1,31 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Custom Parsers]
+
+While the parsers included in the library will handle a broad number of
+use-cases, the __basic_parser__ interface can be subclassed to implement
+custom strategies for storing parsed results: the basic parser processes
+input buffers into elements according to the HTTP/1 protocol specification,
+while the derived class decides what to do with those elements. Custom parsers
+will work with all of the HTTP stream read algorithms, as those algorithms use
+only the basic parser interface. Some use cases for implementing custom
+parsers are:
+
+* Inspect incoming header fields and keep or discard them.
+
+* Use a container provided by an external interface.
+
+The basic parser uses virtual functions. To declare your user-defined parser,
+derive from __basic_parser__ and implement all the required virtual functions.
+A declaration for the derived class may look like this:
+
+[code_http_10_custom_parser]
+
+[endsect]

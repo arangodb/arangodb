@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,13 +33,10 @@ namespace aql {
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
   DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
-                            AqlFunctionsInternalCache& cache, arangodb::velocypack::Slice document) noexcept;
+                            AqlFunctionsInternalCache& cache,
+                            arangodb::velocypack::Slice document) noexcept;
 
   ~DocumentExpressionContext() = default;
-
-  bool isDataFromCollection(Variable const* variable) const override {
-    return true;
-  }
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

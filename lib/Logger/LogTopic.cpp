@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,7 @@ class Topics {
     return INSTANCE;
   }
 
-  template <typename Visitor>
+  template<typename Visitor>
   bool visit(Visitor const& visitor) const {
     MUTEX_LOCKER(guard, _namesLock);
 
@@ -144,6 +144,7 @@ LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
+LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::TRACE);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
@@ -163,8 +164,10 @@ LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 #ifdef USE_ENTERPRISE
 LogTopic LdapAuthProvider::LDAP_TOPIC("ldap", LogLevel::INFO);
 
-LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
-LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication",
+                                            LogLevel::DEBUG);
+LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization",
+                                           LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
@@ -188,7 +191,8 @@ std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
 
 void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
   if (!Topics::instance().setLogLevel(name, level)) {
-    LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
+    LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME)
+        << "strange topic '" << name << "'";
   }
 }
 

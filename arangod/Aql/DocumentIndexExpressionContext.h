@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,22 +31,17 @@ class QueryContext;
 
 class DocumentIndexExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentIndexExpressionContext(transaction::Methods& trx,
-                                 QueryContext& query,
+  DocumentIndexExpressionContext(transaction::Methods& trx, QueryContext& query,
                                  AqlFunctionsInternalCache& cache,
-                                 AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+                                 AqlValue (*getValue)(void const* ctx,
+                                                      Variable const* var,
+                                                      bool doCopy),
                                  void const* ctx);
 
   ~DocumentIndexExpressionContext() = default;
 
-  /// true if the variable we are referring to is set by
-  /// a collection enumeration/index enumeration
-  virtual bool isDataFromCollection(Variable const* variable) const override {
-    return false;
-  }
-
-  virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                                    bool& mustDestroy) const override;
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
 
  private:
   /// @brief returns var's aql value
@@ -58,4 +53,3 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
 
 }  // namespace aql
 }  // namespace arangodb
-

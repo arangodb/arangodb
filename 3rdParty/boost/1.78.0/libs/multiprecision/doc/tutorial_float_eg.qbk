@@ -1,0 +1,137 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:fp_eg Examples]
+
+[include tutorial_float_builtin_ctor.qbk]
+
+[import ../example/floating_point_examples.cpp]
+
+[section:aos Area of Circle]
+
+[/I:\boost\libs\multiprecision\example\floating_point_examples.cpp]
+[AOS1]
+[AOS2]
+[AOS3]
+
+[endsect] [/section:aos Area of Circle]
+
+
+[section:caveats Drop-in Caveats]
+[import ../example/big_seventh.cpp]
+
+[big_seventh_example_1]
+[big_seventh_example_2]
+[big_seventh_example_3]
+[big_seventh_example_constexpr]  [/ Hopefully a temporary restriction.]
+[big_seventh_example_4]
+
+Typical output is:
+[big_seventh_example_output]
+
+[endsect] [/section:caveats Caveats]
+
+[section:jel Defining a Special Function.]
+
+[JEL]
+
+[endsect] [/section:jel Defining a Special Function.]
+
+
+[section:nd Calculating a Derivative]
+
+[ND1]
+[ND2]
+[ND3]
+
+[endsect] [/section:nd Calculating a Derivative]
+
+
+[section:gi Calculating an Integral]
+
+[GI1]
+[GI2]
+
+[endsect] [/section:gi Calculating an Integral]
+
+
+[section:poly_eg Polynomial Evaluation]
+
+[POLY]
+
+[endsect] [/section:poly_eg Polynomial Evaluation]
+
+[section:variable_precision Variable-Precision Newton Evaluation]
+
+[mpfr_variable]
+
+[endsect] [/section:variable_precision Variable-Precision Newton Evaluation]
+
+[section:gauss_lagerre_quadrature Gauss-Laguerre quadrature]
+
+[import ../example/gauss_laguerre_quadrature.cpp]
+
+This example uses __Boost_Multiprecision to implement a high-precision Gauss-Laguerre quadrature integration.
+The quadrature is used to calculate the `airy_ai(x)` function for real-valued `x` on the positive axis with `x >= 1`.
+
+In this way, the integral representation could be seen as part of a scheme to calculate 
+real-valued Airy functions on the positive axis for medium to large argument.
+A Taylor series or hypergeometric function (not part of this example) could be used for smaller arguments.
+
+This example has been tested with decimal digits counts ranging from 21...301, by adjusting the parameter
+`local::my_digits10` at compile time.
+
+The quadrature integral representaion of `airy_ai(x)` used in this example can be found in:
+
+A. Gil, J. Segura, N.M. Temme, "Numerical Methods for Special Functions"
+(SIAM Press 2007), ISBN 9780898717822, Sect. 5.3.3, in particular Eq. 5.110, page 145.
+
+Subsequently, Gil et al's book cites the another work:
+W. Gautschi, "Computation of Bessel and Airy functions and of related Gaussian quadrature formulae",
+BIT, 42 (2002), pp. 110-118, [@https://doi.org/10.1023/A:1021974203359] that is also available as
+[@https://www.cs.purdue.edu/homes/wxg/selected_works/section_02/169.pdf Gautschi_169.pdf].
+
+This Gauss-Laguerre quadrature is designed for `airy_ai(x)` with real-valued `x >= 1`.
+
+The example uses Gauss-Laguerre quadrature integration to compute `airy_ai(x / 7)` 
+with `7 <= x <= 120` and where `x` is incremented in steps of 1.
+
+During development of this example, we have empirically found the numbers of Gauss-Laguerre coefficients
+needed for convergence when using various counts of base-10 digits.
+
+Let's calibrate, for instance, the number of coefficients needed at the point `x = 1`.
+
+Empirical data were used with __WolframAlpha :
+``
+Fit[{{21.0, 3.5}, {51.0, 11.1}, {101.0, 22.5}, {201.0, 46.8}}, {1, d, d^2}, d]FullSimplify[%]  
+  0.0000178915 d^2 + 0.235487 d - 1.28301
+  or
+  -1.28301 + (0.235487 + 0.0000178915 d) d
+``
+  
+We need significantly more coefficients at smaller real values than are needed
+at larger real values because the slope derivative of `airy_ai(x)` gets more
+steep as x approaches zero.  `laguerre_order` is calculated using this equation.
+
+
+Snippets from (copious) output from a progress bar during calculation of approximate root estimates 
+followed by calculation of accurate abscissa and weights is:
+
+[gauss_laguerre_quadrature_output_1]
+
+Finally the result using Gauss-Laguerre quadrature is compared with a calculation using `cyl_bessel_k`,
+and both are listed, finally confirming that none differ more than a small tolerance.
+[gauss_laguerre_quadrature_output_2]
+
+For more detail see comments in the source code for this example at [@../../example/gauss_laguerre_quadrature.cpp gauss_laguerre_quadrature.cpp].
+
+[endsect] [/section:gauss_lagerre_quadrature Gauss-Laguerre quadrature]
+
+[endsect] [/section:fp_eg Examples]

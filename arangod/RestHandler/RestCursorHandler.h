@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,8 +53,8 @@ class Cursor;
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(application_features::ApplicationServer&, GeneralRequest*,
-                    GeneralResponse*, arangodb::aql::QueryRegistry*);
+  RestCursorHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+                    arangodb::aql::QueryRegistry*);
 
   ~RestCursorHandler();
 
@@ -204,4 +204,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 };
 }  // namespace arangodb
-

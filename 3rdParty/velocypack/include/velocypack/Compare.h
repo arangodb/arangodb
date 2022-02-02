@@ -22,13 +22,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_COMPARE_H
-#define VELOCYPACK_COMPARE_H 1
+#pragma once
 
 #include "velocypack/velocypack-common.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 struct Options;
 class Slice;
 
@@ -56,34 +54,32 @@ struct Equal {
 
 // helper struct for comparing VelocyPack Slices in a normalized way
 struct NormalizedCompare {
+  // function to compare two numeric values
+  static bool equalsNumbers(Slice lhs, Slice rhs);
 
-// function to compare two numeric values
-static bool equalsNumbers(Slice lhs, Slice rhs);
+  // function to compare two string values
+  static bool equalsStrings(Slice lhs, Slice rhs);
 
-// function to compare two string values
-static bool equalsStrings(Slice lhs, Slice rhs);
+  // function to compare two arbitrary Slices
+  static bool equals(Slice lhs, Slice rhs);
 
-// function to compare two arbitrary Slices
-static bool equals(Slice lhs, Slice rhs);
+  struct Hash {
+    size_t operator()(arangodb::velocypack::Slice const&) const;
+  };
+    
+  struct Equal {
+    arangodb::velocypack::Options const* _options;
 
-struct Hash {
-  size_t operator()(arangodb::velocypack::Slice const&) const;
+    Equal() : _options(nullptr) {}
+    explicit Equal(arangodb::velocypack::Options const* opts)
+        : _options(opts) {}
+
+    bool operator()(arangodb::velocypack::Slice const&,
+                    arangodb::velocypack::Slice const&) const;
+  };
+
 };
   
-struct Equal {
-  arangodb::velocypack::Options const* _options;
+} // namespace arangodb::velocypack
 
-  Equal() : _options(nullptr) {}
-  explicit Equal(arangodb::velocypack::Options const* opts)
-      : _options(opts) {}
-
-  bool operator()(arangodb::velocypack::Slice const&,
-                  arangodb::velocypack::Slice const&) const;
-};
-
-};
-  
-}
-}
-
-#endif
+using VPackNormalizedCompare = arangodb::velocypack::NormalizedCompare;

@@ -1,0 +1,103 @@
+[section:user_data_types User-defined data types]
+
+The inclusion of `boost/serialization/string.hpp` in the previous
+examples is very important: it makes values of type `std::string`
+serializable, so that they can be be transmitted using Boost.MPI. In
+general, built-in C++ types (`int`s, `float`s, characters, etc.) can
+be transmitted over MPI directly, while user-defined and
+library-defined types will need to first be serialized (packed) into a
+format that is amenable to transmission. Boost.MPI relies on the
+_Serialization_ library to serialize and deserialize data types. 
+
+For types defined by the standard library (such as `std::string` or
+`std::vector`) and some types in Boost (such as `boost::variant`), the
+_Serialization_ library already contains all of the required
+serialization code. In these cases, you need only include the
+appropriate header from the `boost/serialization` directory. 
+
+[def _gps_position_ [link gps_position `gps_position`]]
+For types that do not already have a serialization header, you will
+first need to implement serialization code before the types can be
+transmitted using Boost.MPI. Consider a simple class _gps_position_
+that contains members `degrees`, `minutes`, and `seconds`. This class
+is made serializable by making it a friend of
+`boost::serialization::access` and introducing the templated
+`serialize()` function, as follows:[#gps_position]
+
+  class gps_position
+  {
+  private:
+      friend class boost::serialization::access;
+
+      template<class Archive>
+      void serialize(Archive & ar, const unsigned int version)
+      {
+          ar & degrees;
+          ar & minutes;
+          ar & seconds;
+      }
+
+      int degrees;
+      int minutes;
+      float seconds;
+  public:
+      gps_position(){};
+      gps_position(int d, int m, float s) :
+          degrees(d), minutes(m), seconds(s)
+      {}
+  };
+
+Complete information about making types serializable is beyond the
+scope of this tutorial. For more information, please see the
+_Serialization_ library tutorial from which the above example was
+extracted. One important side benefit of making types serializable for
+Boost.MPI is that they become serializable for any other usage, such
+as storing the objects to disk and manipulated them in XML.
+
+
+Some serializable types, like _gps_position_ above, have a fixed
+amount of data stored at fixed offsets and are fully defined by
+the values of their data member (most POD with no pointers are a good example).
+When this is the case, Boost.MPI can optimize their serialization and 
+transmission by avoiding extraneous copy operations. 
+To enable this optimization, users must specialize the type trait [classref
+boost::mpi::is_mpi_datatype `is_mpi_datatype`], e.g.:
+
+  namespace boost { namespace mpi {
+    template <>
+    struct is_mpi_datatype<gps_position> : mpl::true_ { };
+  } }
+
+For non-template types we have defined a macro to simplify declaring a type 
+as an MPI datatype
+
+  BOOST_IS_MPI_DATATYPE(gps_position)
+
+For composite traits, the specialization of [classref
+boost::mpi::is_mpi_datatype `is_mpi_datatype`] may depend on
+`is_mpi_datatype` itself. For instance, a `boost::array` object is
+fixed only when the type of the parameter it stores is fixed:
+
+  namespace boost { namespace mpi {
+    template <typename T, std::size_t N>
+    struct is_mpi_datatype<array<T, N> > 
+      : public is_mpi_datatype<T> { };
+  } }
+  
+The redundant copy elimination optimization can only be applied when
+the shape of the data type is completely fixed. Variable-length types
+(e.g., strings, linked lists) and types that store pointers cannot use
+the optimization, but Boost.MPI will be unable to detect this error at
+compile time. Attempting to perform this optimization when it is not
+correct will likely result in segmentation faults and other strange
+program behavior.
+
+Boost.MPI can transmit any user-defined data type from one process to
+another. Built-in types can be transmitted without any extra effort;
+library-defined types require the inclusion of a serialization header;
+and user-defined types will require the addition of serialization
+code. Fixed data types can be optimized for transmission using the
+[classref boost::mpi::is_mpi_datatype `is_mpi_datatype`]
+type trait.
+
+[endsect:user_data_types]
