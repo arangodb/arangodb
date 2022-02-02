@@ -290,6 +290,11 @@
       }
     },
 
+    /**
+     * Populates the single node select dropdown with
+     * the current node Ids.
+     * @param {e} e
+     */
     populateNodeIds: function (e) {
       console.log(e);
       if ($(`#${e.target.id}`).val() !== "false") {
@@ -297,21 +302,22 @@
         let cNodes = window.App.graphViewer.currentGraph.graph.nodes();
         $("#g_singleNode").removeAttr('disabled');
 
-        let extOpts = $('#g_singleNode option');
+        let opts = $('#g_singleNode option');
         let singleNode = $('#g_singleNode');
-        let toLoop = [];
 
-        for (let opt = 0; opt < extOpts.length; opt++) {
-          const element = extOpts[opt];
-          toLoop.push(element.value);
+        for (let n = 0; n < cNodes.length; n++) {
+          let exst = false;
+          for (let opt = 0; opt < opts.length; opt++) {
+            if (cNodes[n].id == opts[opt].value) {
+              exst = true;
+              break;
+            }
+          }
+          if (!exst) {
+            singleNode.append($('<option />').val(cNodes[n].id).text(cNodes[n].id));
+          }
         }
-
-        _.each(cNodes, function (n, key) {
-          if (toLoop[key] === n.id) throw "Option can't be added";
-          singleNode.append($('<option />').val(n.id).text(n.id));
-        });
       }
-      debugger;
       this.handleDependencies();
     },
 
