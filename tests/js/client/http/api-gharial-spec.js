@@ -34,6 +34,7 @@ chai.Assertion.addProperty('does', function () {
 
 const arangodb = require('@arangodb');
 const arango = arangodb.arango;
+const gM = require("@arangodb/general-graph");
 
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
@@ -93,8 +94,8 @@ describe('_api/gharial', () => {
   const validateGraphFormat = (
     graph,
     shouldBeSmart = false,
-    hybridCollections = [],
-    hasExtra = false
+    hasExtra = false,
+    hybridCollections = []
   ) => {
     /*
      * Edge Definition Schema
@@ -146,7 +147,18 @@ describe('_api/gharial', () => {
       Object.assign(generalGraphSchema, distributionGraphSchema);
     }
 
-    if (hybridCollections.length > 0 || shouldBeSmart) {
+    if (shouldBeSmart) {
+      // SmartGraph related only
+      const smartGraphSchema = {
+        initial: Joi.string().required(),
+        initialCid: Joi.number().integer().min(1).required(),
+        smartGraphAttribute: Joi.string().required(),
+        isDisjoint: Joi.boolean().required()
+      };
+      Object.assign(generalGraphSchema, smartGraphSchema);
+    }
+
+    if (hasExtra && shouldBeSmart) {
       // This is a special case, means:
       // Combination out of a SmartGraph and additional collections which
       // should be created as SatelliteCollections. In that case the API
@@ -195,7 +207,7 @@ describe('_api/gharial', () => {
       expect(req).to.have.keys("error", "code", "graph");
       expect(req.code).to.equal(202);
       expect(req.error).to.be.false;
-      validateGraphFormat(req.graph, false, [], false);
+      validateGraphFormat(req.graph);
 
       // This is all async give it some time
       do {
@@ -290,7 +302,7 @@ describe('_api/gharial', () => {
 
       res.graphs.map(
         function (graph) {
-          return validateGraphFormat(graph, false, [], false);
+          return validateGraphFormat(graph);
         }
       );
     });
@@ -1540,10 +1552,53 @@ describe('_api/gharial', () => {
     });
   });
 
-  describe('WIP - graph properties API', () => {
-    it('list graphs - should hide additional properties', () => {
-
+  describe('extended graph properties', () => {
+    afterEach(() => {
+      // Applies only to tests in this describe block
+      try {
+        return gM._drop(graphName, true);
+      } catch (ignore) {
+      }
     });
+
+    // basic graph constructs
+    const firstEdgeDef = [{
+      collection: 'firstEdge',
+      from: ['firstFrom'],
+      to: ['firstTo']
+    }];
+    const secondEdgeDef = [{
+      collection: 'secondEdge',
+      from: ['secondFrom'],
+      to: ['secondTo']
+    }];
+    const noOrphans = [];
+    const smartOptions = {
+      isSmart: true,
+      smartGraphAttribute: "Jansen>Sabitzer"
+    }
+
+    // basic validation methods
+    const validateBasicGraphResponse = (res) => {
+      expect(res.code).to.equal(200);
+      expect(res.error).to.be.false;
+      expect(res).to.have.keys("error", "code", "graph");
+    };
+
+    if (!isCluster) {
+      it('Single server (Community Graph) - do not expose satellites', () => {
+        gM._create(graphName, firstEdgeDef);
+        const res = arango.GET(`${url}/${graphName}`);
+        validateGraphFormat(res.graph, false, false);
+      });
+
+      it('Single server (SmartGraph) - expose empty satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+        const res = arango.GET(`${url}/${graphName}`);
+        validateGraphFormat(res.graph, true, false);
+      });
+    }
+
 
     it('list graphs - should show additional properties', () => {
 
