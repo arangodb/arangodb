@@ -1057,7 +1057,8 @@ Result GraphManager::pushCollectionIfMayBeDropped(
     return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
   }
 
-  for (auto graph : VPackArrayIterator(graphs.get(StaticStrings::GraphsArray))) {
+  for (auto graph :
+       VPackArrayIterator(graphs.get(StaticStrings::GraphsArray))) {
     graph = graph.resolveExternals();
     if (!collectionUnused) {
       // Short circuit
