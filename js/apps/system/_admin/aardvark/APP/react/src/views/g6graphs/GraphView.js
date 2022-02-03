@@ -488,14 +488,20 @@ export class GraphView extends React.Component {
       <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
       <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
       <AddCollectionNameToEdgesSelector onAddCollectionNameToEdgesChange={(value) => this.addCollectionNameToEdges(value)} />
+      <button onClick={() => this.changeLayout('radial')}>Change Layout to radial</button>
       <Headerinfo
         graphName={this.props.graphName}
         graphData={this.props.data}
         responseDuration={this.props.responseDuration}
         onDownloadScreenshot={() => this.downloadScreenshot()}
+        onChangeLayout={(layout) => {
+          console.log("Change layout to: ", layout);
+          this.changeLayout(layout);
+        }}
       />
       <Card
           title={this.props.graphName}
+          id="graph-card"
         >
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>

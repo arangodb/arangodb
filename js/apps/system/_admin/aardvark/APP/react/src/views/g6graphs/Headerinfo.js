@@ -5,7 +5,7 @@ import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined
 import LayoutSelector from './LayoutSelector.js';
 import { ResponseInfo } from './ResponseInfo';
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -117,7 +117,10 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
             <LayoutSelector
               value={layout}
               onChange={(value) => changeLayout}
-              onLayoutChange={(layoutvalue) => console.log("New layout value in Headerinfo: ", layoutvalue)} />
+              onLayoutChange={(layoutvalue) => {
+                console.log("New layout value in Headerinfo: ", layoutvalue);
+                onChangeLayout(layoutvalue);
+              }} />
             <Select
               defaultValue="lucy"
               style={{ width: 240, marginTop: '24px' }}
