@@ -1,5 +1,5 @@
-v3.9.0 (XXXX-XX-XX)
--------------------
+v3.9.0-rc.1 (2022-02-03)
+------------------------
 
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
