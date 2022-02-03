@@ -515,7 +515,7 @@ struct ReplicatedLogMethodsCoordinator final
     opts.database = vocbase.name();
     return network::sendRequest(pool, "server:" + participant,
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .then([self = shared_from_this(), id, participant](
+        .then([self = shared_from_this(), participant](
                   futures::Try<network::Response>&& tryResult) mutable {
           auto result = basics::catchToResultT(
               [&] { return std::move(tryResult.get()); });
