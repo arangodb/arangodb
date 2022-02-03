@@ -269,7 +269,12 @@
     checkinput: function (e) {
       if ((new Date() - this.lastSaved > 500)) {
         if (e.currentTarget.id === this.lastFocussed) {
-          if (this.lastFocussedValue !== $(e.currentTarget).val()) {
+          if (e.currentTarget.id === "g_nodeLabel" && this.lastFocussedValue !== $(e.currentTarget).val()) {
+            if ($('#g_nodeLabelByCollection').val() === 'true') {
+              this.populateNodeIds();
+            }
+            //debugger;
+          } else if (this.lastFocussedValue !== $(e.currentTarget).val()) {
             this.saveGraphSettings();
           }
         }
@@ -281,23 +286,21 @@
       if (e.type === "change" && e.target.id !== "g_singleNode" && e.target.id !== 'g_nodeLabelByCollection') {
         self.saveGraphSettings(self.getLabels());
       } else if (e.target.id === "g_singleNode") {
-        self.updateSingleNode(e);
+        self.updateSingleNode();
       } else if (e.target.id === 'g_nodeLabelByCollection') {
         if ($('#g_nodeLabelByCollection').val() === 'false') {
           $('#g_singleNode').prop('disabled', true);
         }
-        self.populateNodeIds(e);
+        self.populateNodeIds();
       }
     },
 
     /**
      * Populates the single node select dropdown with
      * the current node Ids.
-     * @param {e} e
      */
-    populateNodeIds: function (e) {
-      console.log(e);
-      if ($(`#${e.target.id}`).val() !== "false") {
+    populateNodeIds: function () {
+      if ($(`#g_nodeLabelByCollection`).val() !== "false") {
 
         let cNodes = window.App.graphViewer.currentGraph.graph.nodes();
         $("#g_singleNode").removeAttr('disabled');
@@ -328,35 +331,40 @@
     updateSingleNode: function (e) {
       var self = this;
       var newNodeLabel = $("#g_nodeLabel").val();
-      var nodeId = $(`#${e.target.id}`).val();
+      var nodeId = $('#g_singleNode').val();
       var graphViewer = window.App.graphViewer;
       var graphNodes = graphViewer.currentGraph.graph.nodes();
+      var attributes = [];
 
-
-      /**
-       * returns an array of string entered
-       * as a search query for the update.
-       * @param {string} str
-       * @returns {Array} strArr;
-       */
-      let formatNodeLabel = (str) => {
-        let strArr;
-        if (str.includes(",")) {
-          return strArr = str.split(",");
+      var getAttributes = function (n, cb) {
+        var callBack = function (error, data, id) {
+          if (!error && data.documents[0].length !== 0) {
+            cb(data.documents);
+          }
+        }
+        if (n) {
+          window.App.arangoDocumentStore.getDocument(n.id.split("/")[0], n.id.split("/")[1], callBack);;
+        } else {
+          throw new Error("No node supplied")
         }
       }
 
+
       _.each(graphNodes, function (n, k) {
-        //console.log(n);
         if (n.id === nodeId) {
-          console.log(graphNodes[k]);
-          if (graphNodes[k].label !== newNodeLabel) {
-            graphNodes[k].label = newNodeLabel;
+
+          const callback = function (attr) {
+            if (attr[0].length !== 0) {
+              if (n.label !== newNodeLabel) {
+                n.label = attr[0][newNodeLabel];
+              }
+            }
           }
+
+          getAttributes(n, callback);
         }
       });
       graphViewer.currentGraph.refresh({ skipIndexation: true });
-      // debugger;
     },
 
     getLabels: function () {
