@@ -1,4 +1,4 @@
-v3.8.5.1 (XXXX-XX-XX)
+v3.8.5.1 (2022-02-03)
 ---------------------
 
 * Fix potential access to dangling reference in cancellation of shard
