@@ -479,7 +479,8 @@ struct ReplicatedLogMethodsCoordinator final
                               ->replicatedLogs()
                               ->database(vocbase.name())
                               ->log(id)
-                              ->supervision());
+                              ->supervision(),
+                          2 * std::chrono::seconds{});
     return std::move(f).then([self = shared_from_this()](
                                  futures::Try<AgencyReadResult>&& tryResult) {
       auto result =
