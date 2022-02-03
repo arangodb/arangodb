@@ -1,6 +1,8 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
-
+* Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
+  aggregate function without any arguments.
+  
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
 
