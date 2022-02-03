@@ -151,8 +151,8 @@ template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   if (token == nullptr || core == nullptr) {
     TRI_ASSERT(core == nullptr && token == nullptr);
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    throw replicated_log::ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
   }
   LeaderStatus status;
   status.managerState.state = internalState;

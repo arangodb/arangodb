@@ -971,16 +971,14 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     diffReplicatedLogs(dbname, localLogs, planLogs, serverId, errors, makeDirty,
                        callNotify, actions);
 
-    if (!localStatesByDatabase.contains(dbname)) {
-      continue;
+    if (localStatesByDatabase.contains(dbname)) {
+      auto const& [localStates, planStates, currentStates] =
+          collectStateInformation();
+
+      diffReplicatedStates(dbname, localLogs, localStates, planLogs, planStates,
+                           currentStates, serverId, errors, makeDirty, callNotify,
+                           actions);
     }
-
-    auto const& [localStates, planStates, currentStates] =
-        collectStateInformation();
-
-    diffReplicatedStates(dbname, localLogs, localStates, planLogs, planStates,
-                         currentStates, serverId, errors, makeDirty, callNotify,
-                         actions);
   }
 
   // See if shard errors can be thrown out:
@@ -1704,7 +1702,7 @@ static void reportCurrentReplicatedState(
   auto updatePath = cluster::paths::aliases::current()
                         ->replicatedStates()
                         ->database(dbName)
-                        ->state(to_string(id))
+                        ->state(id)
                         ->participants()
                         ->participant(serverId);
 

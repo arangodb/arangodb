@@ -223,18 +223,14 @@ void FollowerStateManager<S>::awaitLeaderShip() {
             FATAL_ERROR_EXIT();
           }
         });
-  } catch (basics::Exception const& e) {
-    if (e.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED) {
-      if (auto p = parent.lock(); p) {
-        LOG_TOPIC("1cb5c", TRACE, Logger::REPLICATED_STATE)
-            << "forcing rebuild because participant resigned";
-        return p->forceRebuild();
-      } else {
-        LOG_TOPIC("a62cb", TRACE, Logger::REPLICATED_STATE)
-            << "replicated state already gone";
-      }
+  } catch (replicated_log::ParticipantResignedException const&) {
+    if (auto p = parent.lock(); p) {
+      LOG_TOPIC("1cb5c", TRACE, Logger::REPLICATED_STATE)
+          << "forcing rebuild because participant resigned";
+      return p->forceRebuild();
     } else {
-      throw;
+      LOG_TOPIC("a62cb", TRACE, Logger::REPLICATED_STATE)
+          << "replicated state already gone";
     }
   }
 }
@@ -268,8 +264,8 @@ template<typename S>
 auto FollowerStateManager<S>::getStatus() const -> StateStatus {
   if (token == nullptr || core == nullptr) {
     TRI_ASSERT(core == nullptr && token == nullptr);
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    throw replicated_log::ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
   }
   FollowerStatus status;
   status.managerState.state = internalState;
