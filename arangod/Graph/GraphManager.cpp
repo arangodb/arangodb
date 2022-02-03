@@ -1041,7 +1041,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::pushCollectionIfMayBeDropped(
     std::string const& colName, std::string const& graphName,
-    std::unordered_set<std::string>& toBeRemoved) {
+    std::unordered_set<std::string>& toBeRemoved) const {
   VPackBuilder graphsBuilder;
   Result result = readGraphs(graphsBuilder);
   if (result.fail()) {
@@ -1054,7 +1054,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(
   TRI_ASSERT(graphs.get(StaticStrings::GraphsArray).isArray());
 
   if (!graphs.get(StaticStrings::GraphsArray).isArray()) {
-    return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+    return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
   }
 
   for (auto graph :
@@ -1091,7 +1091,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(
         }
       }
     } else {
-      return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+      return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
     }
 
     // check orphan collections
@@ -1108,7 +1108,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(
     toBeRemoved.emplace(colName);
   }
 
-  return Result(TRI_ERROR_NO_ERROR);
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result GraphManager::checkDropGraphPermissions(

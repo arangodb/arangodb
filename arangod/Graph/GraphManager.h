@@ -47,7 +47,7 @@ class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
 
-  std::shared_ptr<transaction::Context> ctx() const;
+  [[nodiscard]] std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
@@ -88,18 +88,19 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether a graph exists or not
   ////////////////////////////////////////////////////////////////////////////////
-  bool graphExists(std::string const& graphName) const;
+  [[nodiscard]] bool graphExists(std::string const& graphName) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup a graph by name
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::unique_ptr<Graph>> lookupGraphByName(
+  [[nodiscard]] ResultT<std::unique_ptr<Graph>> lookupGraphByName(
       std::string const& name) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createGraph(VPackSlice document, bool waitForSync) const;
+  [[nodiscard]] OperationResult createGraph(VPackSlice document,
+                                            bool waitForSync) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
@@ -125,14 +126,14 @@ class GraphManager {
 
   /// @brief check if the edge definitions conflicts with one in an existing
   /// graph
-  Result checkForEdgeDefinitionConflicts(
+  [[nodiscard]] Result checkForEdgeDefinitionConflicts(
       std::map<std::string, arangodb::graph::EdgeDefinition> const&
           edgeDefinitions,
       std::string const& graphName) const;
 
   /// @brief check if the edge definition conflicts with one in an existing
   /// graph
-  Result checkForEdgeDefinitionConflicts(
+  [[nodiscard]] Result checkForEdgeDefinitionConflicts(
       arangodb::graph::EdgeDefinition const& edgeDefinition,
       std::string const& graphName) const;
 
@@ -142,9 +143,9 @@ class GraphManager {
 
   Result pushCollectionIfMayBeDropped(
       const std::string& colName, const std::string& graphName,
-      std::unordered_set<std::string>& toBeRemoved);
+      std::unordered_set<std::string>& toBeRemoved) const;
 
-  bool collectionExists(std::string const& collection) const;
+  [[nodiscard]] bool collectionExists(std::string const& collection) const;
 
   /**
    * @brief Helper function to make sure all collections required
@@ -170,8 +171,8 @@ class GraphManager {
    *
    * @return The result of the insrt transaction or Error.
    */
-  OperationResult storeGraph(Graph const& graph, bool waitForSync,
-                             bool isUpdate) const;
+  [[nodiscard]] OperationResult storeGraph(Graph const& graph, bool waitForSync,
+                                           bool isUpdate) const;
 
   /**
    * @brief Apply callback on all graphs. The callback
@@ -217,7 +218,7 @@ class GraphManager {
    *
    * @return A temporary Graph object
    */
-  ResultT<std::unique_ptr<Graph>> buildGraphFromInput(
+  [[nodiscard]] ResultT<std::unique_ptr<Graph>> buildGraphFromInput(
       std::string const& graphName, arangodb::velocypack::Slice input) const;
 
   Result checkCreateGraphPermissions(Graph const* graph) const;

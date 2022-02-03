@@ -93,7 +93,7 @@ describe('_api/gharial', () => {
   const validateGraphFormat = (
     graph,
     shouldBeSmart = false,
-    shouldBeHybrid = false,
+    hybridCollections = [],
     hasExtra = false
   ) => {
     /*
@@ -154,12 +154,12 @@ describe('_api/gharial', () => {
       graphSchemasToTest.push(smartGraphSchema);
     }
 
-    if (shouldBeHybrid) {
+    if (hybridCollections.length > 0 || shouldBeSmart) {
       // This is a special case, means:
       // Combination out of a SmartGraph and additional collections which
       // should be created as SatelliteCollections. In that case the API
       // should expose the collections which are created as satellites as
-      // well.
+      // well. Otherwise, it will be an empty array.
       const hybridSmartGraphSchema = Joi.object({
         satellites: Joi.array().items(Joi.string()).required()
       });
@@ -169,6 +169,12 @@ describe('_api/gharial', () => {
     for (const schema of graphSchemasToTest) {
       const res = schema.validate(graph);
       expect(res.error).to.be.null;
+    }
+
+    if (hybridCollections.length > 0) {
+      for (const hybridCol in hybridCollections) {
+        expect(hybridCollections.find(hybridCol));
+      }
     }
   };
 
@@ -286,7 +292,12 @@ describe('_api/gharial', () => {
       expect(res.code).to.equal(200);
       expect(res.error).to.be.false;
       expect(res).to.have.keys("error", "code", "graphs");
-      res.graphs.map(validateGraphFormat);
+
+      res.graphs.map(
+        function (graph) {
+          return validateGraphFormat(graph, false, [], false);
+        }
+      );
     });
 
     it('should be able to add an orphan', () => {
@@ -295,8 +306,11 @@ describe('_api/gharial', () => {
       expect(res).to.have.keys("error", "code", "graph");
       expect(res.code).to.equal(202);
       expect(res.error).to.be.false;
-      validateGraphFormat(res.graph);
-
+      res.graphs.map(
+        function (graph) {
+          return validateGraphFormat(graph, false, [], false);
+        }
+      );
       expect(db._collection(oColName)).to.not.be.null;
     });
 
@@ -309,7 +323,11 @@ describe('_api/gharial', () => {
       expect(res).to.have.keys("error", "code", "graph");
       expect(res.code).to.equal(202);
       expect(res.error).to.be.false;
-      validateGraphFormat(res.graph);
+            res.graphs.map(
+        function (graph) {
+          return validateGraphFormat(graph, false, [], false);
+        }
+      );
 
       expect(db._collection(oColName)).to.not.be.null;
     });
