@@ -88,7 +88,7 @@ describe('_api/gharial', () => {
     }
   };
 
-  // @brief validate the graph format including all expected properties.
+  // @brief validates the graph format including all expected properties.
   // Expected values relay on the environment.
   const validateGraphFormat = (
     graph,
@@ -118,40 +118,32 @@ describe('_api/gharial', () => {
     /*
      * Collection Properties Schema
      */
-    let graphSchemasToTest = [];
 
     // This is always required to be available
-    const generalGraphSchema = Joi.object({
+    let generalGraphSchema = {
       "_key": Joi.string().required(),
       "_rev": Joi.string().required(),
       "_id": Joi.string().required(),
       name: Joi.string().required(),
       orphanCollections: Joi.array().items(Joi.string()).required(),
       edgeDefinitions: Joi.array().items(edgeDefinitionSchema).required()
-    });
-    graphSchemasToTest.push(generalGraphSchema);
+    };
 
     if (isCluster || shouldBeSmart) {
       // Those properties are either:
       // - Required for all graphs which are being created in a cluster
       // - OR SmartGraphs (incl. Disjoint & Hybrid, as SmartGraphs can now be created
       //   in a SingleServer environment as well)
-      const distributionGraphSchema = Joi.object({
+      const distributionGraphSchema = {
         numberOfShards: Joi.number().integer().min(1).required(),
         replicationFactor: Joi.number().integer().min(1).required(),
         minReplicationFactor: Joi.number().integer().min(1).required(),
-        writeConcern: Joi.number().integer().min(1).required()
-      });
-      graphSchemasToTest.push(distributionGraphSchema);
-    }
-
-    if (shouldBeSmart) {
-      // Those properties are bound only to SmartGraphs
-      const smartGraphSchema = Joi.object({
+        writeConcern: Joi.number().integer().min(1).required(),
         isSmart: Joi.boolean().required(),
         isSatellite: Joi.boolean().required()
-      });
-      graphSchemasToTest.push(smartGraphSchema);
+      };
+
+      Object.assign(generalGraphSchema, distributionGraphSchema);
     }
 
     if (hybridCollections.length > 0 || shouldBeSmart) {
@@ -160,16 +152,19 @@ describe('_api/gharial', () => {
       // should be created as SatelliteCollections. In that case the API
       // should expose the collections which are created as satellites as
       // well. Otherwise, it will be an empty array.
-      const hybridSmartGraphSchema = Joi.object({
+      const hybridSmartGraphSchema = {
         satellites: Joi.array().items(Joi.string()).required()
-      });
-      graphSchemasToTest.push(hybridSmartGraphSchema);
+      };
+
+      Object.assign(generalGraphSchema, hybridSmartGraphSchema);
     }
 
-    for (const schema of graphSchemasToTest) {
-      const res = schema.validate(graph);
-      expect(res.error).to.be.null;
-    }
+    // now create the actual joi object out of the completed schema combination
+    generalGraphSchema = Joi.object(generalGraphSchema);
+
+    // start schema validation
+    const res = generalGraphSchema.validate(graph);
+    expect(res.error).to.be.null;
 
     if (hybridCollections.length > 0) {
       for (const hybridCol in hybridCollections) {
@@ -200,7 +195,7 @@ describe('_api/gharial', () => {
       expect(req).to.have.keys("error", "code", "graph");
       expect(req.code).to.equal(202);
       expect(req.error).to.be.false;
-      validateGraphFormat(req.graph);
+      validateGraphFormat(req.graph, false, [], false);
 
       // This is all async give it some time
       do {
@@ -306,11 +301,7 @@ describe('_api/gharial', () => {
       expect(res).to.have.keys("error", "code", "graph");
       expect(res.code).to.equal(202);
       expect(res.error).to.be.false;
-      res.graphs.map(
-        function (graph) {
-          return validateGraphFormat(graph, false, [], false);
-        }
-      );
+      validateGraphFormat(res.graph);
       expect(db._collection(oColName)).to.not.be.null;
     });
 
@@ -323,11 +314,7 @@ describe('_api/gharial', () => {
       expect(res).to.have.keys("error", "code", "graph");
       expect(res.code).to.equal(202);
       expect(res.error).to.be.false;
-            res.graphs.map(
-        function (graph) {
-          return validateGraphFormat(graph, false, [], false);
-        }
-      );
+      validateGraphFormat(res.graph);
 
       expect(db._collection(oColName)).to.not.be.null;
     });
