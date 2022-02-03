@@ -68,10 +68,10 @@ void Pregel3Feature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 Pregel3Feature::~Pregel3Feature() = default;
 
-void Pregel3Feature::createQuery(std::string queryId,
+void Pregel3Feature::createQuery(TRI_vocbase_t& vocbase, std::string queryId,
                                  const pregel3::GraphSpecification& graph) {
   // TODO: setup query
   LOG_DEVEL << "Create a query now";
 
-  _queries.emplace(queryId, Query(queryId, graph));
+  _queries.emplace(queryId, std::make_shared<Query>(vocbase, queryId, graph));
 }

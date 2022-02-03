@@ -53,7 +53,8 @@ struct Pregel3MethodsSingleServer final
 
   auto createQuery(std::string queryId, GraphSpecification const& graph) const
       -> arangodb::futures::Future<Result> override {
-    vocbase.server().getFeature<Pregel3Feature>().createQuery(queryId, graph);
+    vocbase.server().getFeature<Pregel3Feature>().createQuery(vocbase, queryId,
+                                                              graph);
     return Result{};
   }
 

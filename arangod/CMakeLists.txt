@@ -259,7 +259,7 @@ set(LIB_ARANGO_PREGEL3_SOURCES
         Pregel3/Utils.cpp
         RestHandler/RestPregel3Handler.cpp
         Pregel3/GraphSpecification.cpp
-        Pregel3/GraphSpecification.h)
+        Pregel3/GraphSpecification.h Pregel3/Graph.cpp Pregel3/Graph.h)
 
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
@@ -1070,6 +1070,7 @@ target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
 
 target_link_libraries(arango_pregel3 arango)
+target_link_libraries(arango_pregel3 arango_network)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)

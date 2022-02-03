@@ -59,5 +59,9 @@ class RestPregel3Handler : public arangodb::RestVocbaseBaseHandler {
 
  private:
   Pregel3Feature& _pregel3Feature;
+  bool _ensureQueryId(const VPackSlice& body,
+                      pregel3::Pregel3Methods const& methods,
+                      std::string& queryId);
+  bool _getPostBody(VPackSlice& body);
 };
 }  // namespace arangodb

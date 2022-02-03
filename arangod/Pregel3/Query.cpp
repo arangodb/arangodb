@@ -22,4 +22,45 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Query.h"
+#include "Transaction/Options.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/Methods.h"
 
+namespace arangodb::pregel3 {
+
+void Query::loadGraph() {
+  // todo clean up
+  transaction::Options trxOpts;
+  trxOpts.waitForSync = false;
+  trxOpts.allowImplicitCollectionsForRead = true;
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
+  Result res = trx.begin();
+
+  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
+    LOG_DEVEL << slice.toJson();
+    return true;  // this is needed to make cursor->nextDocument(cb, batchSize)
+                  // happy
+  };
+
+  if (std::holds_alternative<
+          GraphSpecification::GraphSpecificationByCollections>(
+          _graphSpec._graphSpec)) {
+    for (auto const& collName :
+         std::get<GraphSpecification::GraphSpecificationByCollections>(
+             _graphSpec._graphSpec)
+             .vertexCollectionNames) {
+      auto cursor = trx.indexScan(
+          collName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+      constexpr uint64_t batchSize = 10000;
+      while (cursor->nextDocument(cb, batchSize)) {
+      }
+    }
+    // tell the formatter the number of docs we are about to load
+    //    LogicalCollection* coll = cursor->collection();
+    //    uint64_t numVertices =
+    //        coll->numberDocuments(&trx, transaction::CountType::Normal);
+  }
+}
+
+};  // namespace arangodb::pregel3

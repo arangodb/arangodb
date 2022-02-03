@@ -72,10 +72,53 @@ auto RestPregel3Handler::executeByMethod(Pregel3Methods const& methods)
   return RestStatus::DONE;
 }
 
+/**
+ * If the body has a query id, get it. Otherwise generate it.
+ * The result is written to queryId. If body is erroneous of queryId already
+ * exists, return false, otherwise return true.
+ * @param body
+ * @param methods
+ * @param queryId
+ * @return
+ */
+bool RestPregel3Handler::_ensureQueryId(VPackSlice const& body,
+                                        pregel3::Pregel3Methods const& methods,
+                                        std::string& queryId) {
+  if (body.hasKey(Utils::queryId)) {
+    auto queryIdSlice = body.get(Utils::queryId);
+    if (!queryIdSlice.isString()) {
+      _generateErrorWrongInput("The value of " + std::string(Utils::queryId) +
+                               " is not of type String.");
+      return false;
+    }
+    queryId = queryIdSlice.copyString();
+    if (methods.getPregel3Feature()->hasQueryId(queryId)) {
+      _generateErrorWrongInput(" Query id " + queryId +
+                               " exists already. Please, choose another one.");
+      return false;
+    }
+  } else {
+    // otherwise generate a new queryId
+    queryId = _pregel3Feature.generateQueryId();
+  }
+  return true;
+}
+
+bool RestPregel3Handler::_getPostBody(VPackSlice& body) {
+  bool parseSuccess = false;
+  body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || !body.isObject()) {
+    _generateErrorWrongInput("Malformed JSON document.");
+    return false;
+  }
+  return true;
+}
+
 auto RestPregel3Handler::handlePostRequest(
     pregel3::Pregel3Methods const& methods) -> RestStatus {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  // this has to be change when the API has more POST queries
+  // verify suffixes
+  // this has to be changed when the API has more POST queries
   if (suffixes.size() != 1 || suffixes[0] != "query") {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   ErrorCode(TRI_ERROR_NOT_IMPLEMENTED),
@@ -83,32 +126,18 @@ auto RestPregel3Handler::handlePostRequest(
   }
 
   // get the body of the request
-  bool parseSuccess = false;
-  VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess || !body.isObject()) {
-    _generateErrorWrongInput("Malformed JSON document.");
+  VPackSlice body;
+  if (!_getPostBody(body)) {
     return RestStatus::DONE;
   }
 
   // parse the body of the request
-  // read queryId if it is given
+
+  // Read queryId if it is given. If it already exists, return an error.
+  // If it is not given, generate it.
   std::string queryId;
-  if (body.hasKey(Utils::queryId)) {
-    auto queryIdSlice = body.get(Utils::queryId);
-    if (!queryIdSlice.isString()) {
-      _generateErrorWrongInput("The value of " + std::string(Utils::queryId) +
-                               " is not of type String.");
-      return RestStatus::DONE;
-    }
-    queryId = queryIdSlice.copyString();
-    if (methods.getPregel3Feature()->hasQueryId(queryId)) {
-      _generateErrorWrongInput(" Query id " + queryId +
-                               " exists already. Please, choose another one.");
-      return RestStatus::DONE;
-    }
-  } else {
-    // otherwise generate a new queryId
-    queryId = _pregel3Feature.generateQueryId();
+  if (!_ensureQueryId(body, methods, queryId)) {
+    return RestStatus::DONE;
   }
 
   // read the graph specification
@@ -120,7 +149,7 @@ auto RestPregel3Handler::handlePostRequest(
       GraphSpecification::fromVelocyPack(body.get(Utils::graphSpec));
 
   // create a query
-  _pregel3Feature.createQuery(queryId, graphSpec);
+  _pregel3Feature.createQuery(_vocbase, queryId, graphSpec);
 
   // send the answer
   VPackBuilder builder;
@@ -165,6 +194,7 @@ auto RestPregel3Handler::handleGetRequest(
   // now suffixes.size() == 3
   if (suffixes[2] == "loadGraph") {
     query->setState(Query::State::LOADING);
+    query->loadGraph();
     // todo
   } else if (suffixes[2] == "start") {
     query->setState(Query::State::RUNNING);

@@ -32,6 +32,7 @@
 #include "velocypack/Iterator.h"
 #include "Utils.h"
 #include "GraphSpecification.h"
+#include "Utils/DatabaseGuard.h"
 
 namespace arangodb::pregel3 {
 
@@ -47,8 +48,10 @@ struct Graph {
 
 using QueryId = std::string;
 struct Query : std::enable_shared_from_this<Query> {
-  Query(QueryId id, GraphSpecification graphSpec)
-      : id{std::move(id)}, _graphSpec{std::move(graphSpec)} {};
+  Query(TRI_vocbase_t& vocbase, QueryId id, GraphSpecification graphSpec)
+      : id{std::move(id)},
+        _graphSpec{std::move(graphSpec)},
+        _vocbase(vocbase){};
 
   void loadGraph();
 
@@ -65,5 +68,6 @@ struct Query : std::enable_shared_from_this<Query> {
   GraphSpecification _graphSpec;
   std::shared_ptr<Graph> graph{nullptr};
   State _state = State::CREATED;
+  TRI_vocbase_t& _vocbase;
 };
 }  // namespace arangodb::pregel3

@@ -39,7 +39,7 @@ class Pregel3Feature final : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() override;
 
-  void createQuery(std::string queryId,
+  void createQuery(TRI_vocbase_t& vocbase, std::string queryId,
                    pregel3::GraphSpecification const& graph);
 
   /**
@@ -66,11 +66,12 @@ class Pregel3Feature final : public ArangodFeature {
     if (it == _queries.end()) {
       return nullptr;
     }
-    return it->second.shared_from_this();  // todo: error here
+    return it->second;
   }
 
  private:
-  std::unordered_map<pregel3::QueryId, pregel3::Query> _queries;
+  std::unordered_map<pregel3::QueryId, std::shared_ptr<pregel3::Query>>
+      _queries;
   uint64_t nextFreeQueryId = 0;
   pregel3::GlobalSettings _settings;
 };
