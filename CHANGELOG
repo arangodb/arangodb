@@ -1,3 +1,10 @@
+v3.8.5.1 (XXXX-XX-XX)
+---------------------
+
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
+
 v3.8.5 (2022-01-20)
 -------------------
 
