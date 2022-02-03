@@ -78,7 +78,13 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
             }}><CameraOutlined /></Button>
           </Tooltip>
           <Tooltip placement="bottom" title={"Switch to fullscreen mode"}>
-            <Button key="2"><FullscreenOutlined /></Button>
+            <Button key="2"
+              onClick={() => {
+                const elem = document.getElementById("graph-card");
+                if (elem.requestFullscreen) {
+                  elem.requestFullscreen();
+                }}}><FullscreenOutlined />
+            </Button>
           </Tooltip>
           <Button key="1">
             Primary
