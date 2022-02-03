@@ -249,6 +249,7 @@ class StaticStrings {
 
   // graph attribute names
   static std::string const GraphCollection;
+  static std::string const GraphsArray;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;

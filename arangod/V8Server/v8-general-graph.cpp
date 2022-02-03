@@ -163,7 +163,8 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!result.isEmpty()) {
     transaction::StandaloneContext ctx(vocbase);
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"),
+    TRI_V8_RETURN(TRI_VPackToV8(isolate,
+                                result.slice().get(StaticStrings::GraphsArray),
                                 ctx.getVPackOptions()));
   }
 
@@ -186,7 +187,8 @@ static void JS_GetGraphKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!result.isEmpty()) {
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs")));
+    TRI_V8_RETURN(
+        TRI_VPackToV8(isolate, result.slice().get(StaticStrings::GraphsArray)));
   }
 
   TRI_V8_RETURN_UNDEFINED();

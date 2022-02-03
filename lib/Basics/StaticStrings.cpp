@@ -269,6 +269,7 @@ std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
+std::string const StaticStrings::GraphsArray("graphs");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphOptions("options");

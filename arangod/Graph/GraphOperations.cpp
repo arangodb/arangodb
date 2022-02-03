@@ -276,7 +276,7 @@ OperationResult GraphOperations::editEdgeDefinition(
   gmngr.readGraphs(graphsBuilder);
   VPackSlice graphs = graphsBuilder.slice();
 
-  if (!graphs.get("graphs").isArray()) {
+  if (!graphs.get(StaticStrings::GraphsArray).isArray()) {
     return OperationResult{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT, options};
   }
 
@@ -289,7 +289,8 @@ OperationResult GraphOperations::editEdgeDefinition(
     return OperationResult(res, options);
   }
 
-  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
+  for (auto singleGraph :
+       VPackArrayIterator(graphs.get(StaticStrings::GraphsArray))) {
     std::unique_ptr<Graph> graph =
         Graph::fromPersistence(_vocbase, singleGraph.resolveExternals());
     if (graph->hasEdgeCollection(edgeDefinition.getName())) {

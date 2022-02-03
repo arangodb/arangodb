@@ -767,7 +767,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
   }
 
   builder.openObject();
-  builder.add(VPackValue("graphs"));  // TODO: static string
+  builder.add(VPackValue(StaticStrings::GraphsArray));
   {
     VPackArrayBuilder graphsArray(&builder);
     for (VPackSlice graphSlice : VPackArrayIterator(graphsSlice)) {
@@ -1051,13 +1051,13 @@ Result GraphManager::pushCollectionIfMayBeDropped(
   VPackSlice graphs = graphsBuilder.slice();
 
   bool collectionUnused = true;
-  TRI_ASSERT(graphs.get("graphs").isArray());
+  TRI_ASSERT(graphs.get(StaticStrings::GraphsArray).isArray());
 
-  if (!graphs.get("graphs").isArray()) {
+  if (!graphs.get(StaticStrings::GraphsArray).isArray()) {
     return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
   }
 
-  for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
+  for (auto graph : VPackArrayIterator(graphs.get(StaticStrings::GraphsArray))) {
     graph = graph.resolveExternals();
     if (!collectionUnused) {
       // Short circuit
