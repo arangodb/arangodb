@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
 * Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
   determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
   be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0

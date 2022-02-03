@@ -603,6 +603,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         return tailingSyncer->inheritFromInitialSyncer(syncer);
       });
 
+  /*
   syncer->setAbortionCheckCallback([&]() -> bool {
     // Will return true if the SynchronizeShard job should be aborted.
     auto& agencyCache =
@@ -636,6 +637,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         << " because we are not planned as a follower anymore";
     return true;
   });
+  */
 
   SyncerId syncerId{syncer->syncerId()};
 
