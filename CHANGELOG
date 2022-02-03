@@ -1,5 +1,6 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
+
 * Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
   aggregate function without any arguments.
   
