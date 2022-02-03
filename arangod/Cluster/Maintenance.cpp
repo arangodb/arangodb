@@ -976,8 +976,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           collectStateInformation();
 
       diffReplicatedStates(dbname, localLogs, localStates, planLogs, planStates,
-                           currentStates, serverId, errors, makeDirty, callNotify,
-                           actions);
+                           currentStates, serverId, errors, makeDirty,
+                           callNotify, actions);
     }
   }
 
