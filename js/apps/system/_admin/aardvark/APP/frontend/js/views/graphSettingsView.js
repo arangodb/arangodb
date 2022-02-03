@@ -83,7 +83,7 @@
       },
       "singleNode": {
         type: "singleLabel",
-        name: "Update sigle node",
+        name: "Update single node",
         desc: "Add different node label to different collections.",
         nodeIds: {
           0: { id: "default" },
@@ -334,12 +334,13 @@
       var nodeId = $('#g_singleNode').val();
       var graphViewer = window.App.graphViewer;
       var graphNodes = graphViewer.currentGraph.graph.nodes();
-      var attributes = [];
 
       var getAttributes = function (n, cb) {
         var callBack = function (error, data, id) {
           if (!error && data.documents[0].length !== 0) {
             cb(data.documents);
+          } else {
+            self.currentGraph.refresh();
           }
         }
         if (n) {
@@ -354,9 +355,10 @@
         if (n.id === nodeId) {
 
           const callback = function (attr) {
+            console.log(typeof (attr[0][newNodeLabel]));
             if (attr[0].length !== 0) {
               if (n.label !== newNodeLabel) {
-                n.label = attr[0][newNodeLabel];
+                n.label = JSON.stringify(attr[0][newNodeLabel]).split('"').join('');
               }
             }
           }
