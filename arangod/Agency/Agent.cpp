@@ -93,9 +93,8 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(application_features::ApplicationServer& server,
-             config_t const& config)
-    : Thread(server, "Agent"),
+Agent::Agent(ArangodServer& server, config_t const& config)
+    : arangodb::ServerThread<ArangodServer>(server, "Agent"),
       _constituent(server),
       _supervision(server),
       _state(server),
@@ -109,29 +108,29 @@ Agent::Agent(application_features::ApplicationServer& server,
       _ready(false),
       _preparing(0),
       _loaded(false),
-      _write_ok(_server.getFeature<arangodb::metrics::MetricsFeature>().add(
+      _write_ok(server.getFeature<arangodb::metrics::MetricsFeature>().add(
           arangodb_agency_write_ok_total{})),
       _write_no_leader(
-          _server.getFeature<arangodb::metrics::MetricsFeature>().add(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
               arangodb_agency_write_no_leader_total{})),
-      _read_ok(_server.getFeature<arangodb::metrics::MetricsFeature>().add(
+      _read_ok(server.getFeature<arangodb::metrics::MetricsFeature>().add(
           arangodb_agency_read_ok_total{})),
       _read_no_leader(
-          _server.getFeature<arangodb::metrics::MetricsFeature>().add(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
               arangodb_agency_read_no_leader_total{})),
       _write_hist_msec(
-          _server.getFeature<arangodb::metrics::MetricsFeature>().add(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
               arangodb_agency_write_hist{})),
       _commit_hist_msec(
-          _server.getFeature<arangodb::metrics::MetricsFeature>().add(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
               arangodb_agency_commit_hist{})),
       _append_hist_msec(
-          _server.getFeature<arangodb::metrics::MetricsFeature>().add(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
               arangodb_agency_append_hist{})),
       _compaction_hist_msec(
-          _server.getFeature<arangodb::metrics::MetricsFeature>().add(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
               arangodb_agency_compaction_hist{})),
-      _local_index(_server.getFeature<arangodb::metrics::MetricsFeature>().add(
+      _local_index(server.getFeature<arangodb::metrics::MetricsFeature>().add(
           arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
@@ -591,7 +590,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  auto const& nf = server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
   // _lastSent only accessed in main thread
@@ -694,7 +693,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot(_server, this, "snapshot");
+      Store snapshot(server(), this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
@@ -860,7 +859,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
-  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  auto const& nf = server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
   // Send request
@@ -1060,8 +1059,8 @@ void Agent::activateAgency() {
 /// Load persistent state called once
 void Agent::load() {
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      _server.hasFeature<SystemDatabaseFeature>()
-          ? _server.getFeature<SystemDatabaseFeature>().use()
+      server().hasFeature<SystemDatabaseFeature>()
+          ? server().getFeature<SystemDatabaseFeature>().use()
           : nullptr;
   if (vocbase == nullptr) {
     LOG_TOPIC("63e36", FATAL, Logger::AGENCY)
@@ -2387,7 +2386,7 @@ void Agent::emptyCbTrashBin() {
 }
 
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
-  Store store(_server, this);
+  Store store(server(), this);
   index_t oldIndex;
   term_t term;
   if (!_state.loadLastCompactedSnapshot(store, oldIndex, term)) {

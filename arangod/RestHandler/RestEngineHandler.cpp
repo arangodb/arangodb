@@ -35,9 +35,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestEngineHandler::RestEngineHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestEngineHandler::execute() {
@@ -92,7 +92,7 @@ void RestEngineHandler::getCapabilities() {
 void RestEngineHandler::getStats() {
   VPackBuilder result;
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getStatistics(result, true);
+  engine.getStatistics(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

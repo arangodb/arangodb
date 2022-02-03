@@ -1102,8 +1102,6 @@ arangodb::Result arangodb::maintenance::phaseOne(
           .count();
   TRI_ASSERT(feature._phase1_runtime_msec != nullptr);
   feature._phase1_runtime_msec->count(total_ms);
-  TRI_ASSERT(feature._phase1_accum_runtime_msec != nullptr);
-  feature._phase1_accum_runtime_msec->count(total_ms);
 
   return result;
 }
@@ -2177,8 +2175,6 @@ arangodb::Result arangodb::maintenance::phaseTwo(
           .count();
   TRI_ASSERT(feature._phase2_runtime_msec != nullptr);
   feature._phase2_runtime_msec->count(total_ms);
-  TRI_ASSERT(feature._phase2_accum_runtime_msec != nullptr);
-  feature._phase2_accum_runtime_msec->count(total_ms);
 
   TRI_ASSERT(feature._shards_out_of_sync != nullptr);
   feature._shards_out_of_sync->store(shardStats.numOutOfSyncShards,

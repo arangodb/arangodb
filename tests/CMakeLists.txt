@@ -101,6 +101,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
@@ -337,6 +338,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/RewriteLogTest.cpp
   Replication2/ReplicatedLog/RocksDBLogTest.cpp
   Replication2/ReplicatedLog/SimpleInsertTests.cpp
+  Replication2/ReplicatedLog/SupervisionTest.cpp
   Replication2/ReplicatedLog/TestHelper.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
@@ -349,7 +351,6 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.h
-  Replication2/ReplicatedState/SupervisionTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/Mocks/PersistedLog.cpp
   Replication2/Mocks/PersistedLog.h
@@ -468,6 +469,13 @@ if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+    # There's a warning about /MP being unused if compiling only a single file
+    target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
+    if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+      target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    endif()
   endif()
 endif()
 

@@ -123,7 +123,7 @@ class SharedMaintenanceTest : public ::testing::Test {
   Node originalPlan{""};
   Node supervision{""};
   Node current{""};
-  application_features::ApplicationServer server;
+  ArangodServer server;
   StorageEngineMock engine;
 
   // map <shortId, UUID>
@@ -530,7 +530,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
  protected:
   int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
-  arangodb::application_features::ApplicationServer as;
+  arangodb::ArangodServer as;
   std::unordered_set<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
@@ -549,7 +549,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
     as.addFeature<arangodb::metrics::MetricsFeature>();
-    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+        std::false_type{});
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
 
     // need to construct this after adding the MetricsFeature to the application

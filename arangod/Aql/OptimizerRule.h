@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <type_traits>
+#include <memory>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {

@@ -1610,7 +1610,10 @@ void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"
 #endif
-
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
+#endif
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
@@ -1884,6 +1887,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic pop
 #endif
 
 bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(

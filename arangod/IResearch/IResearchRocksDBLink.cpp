@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
@@ -91,8 +92,7 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.close();
 }
 
-IResearchRocksDBLink::IndexFactory::IndexFactory(
-    application_features::ApplicationServer& server)
+IResearchRocksDBLink::IndexFactory::IndexFactory(ArangodServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBLink::IndexFactory::equal(
@@ -139,8 +139,7 @@ Result IResearchRocksDBLink::IndexFactory::normalize(
 }
 
 std::shared_ptr<IResearchRocksDBLink::IndexFactory>
-IResearchRocksDBLink::createFactory(
-    application_features::ApplicationServer& server) {
+IResearchRocksDBLink::createFactory(ArangodServer& server) {
   return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
       new IResearchRocksDBLink::IndexFactory(server));
 }

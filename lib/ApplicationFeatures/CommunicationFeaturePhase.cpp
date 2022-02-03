@@ -22,14 +22,3 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CommunicationFeaturePhase.h"
-
-namespace arangodb {
-namespace application_features {
-
-CommunicationFeaturePhase::CommunicationFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "CommunicationPhase") {
-  setOptional(false);
-}
-
-}  // namespace application_features
-}  // namespace arangodb

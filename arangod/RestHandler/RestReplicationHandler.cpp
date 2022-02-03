@@ -254,12 +254,10 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   return {};
 }
 
-RestReplicationHandler::RestReplicationHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
-
-RestReplicationHandler::~RestReplicationHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
