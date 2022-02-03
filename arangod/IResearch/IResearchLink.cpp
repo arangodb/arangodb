@@ -1138,7 +1138,6 @@ Result IResearchLink::init(velocypack::Slice definition,
     if (clusterIsEnabled) {
       auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-
       // upgrade step for old link definition without collection name
       // this could be received from  agency while shard of the collection was
       // moved (or added) to the server. New links already has collection name
