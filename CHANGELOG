@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Reintroduce shard synchronization cancellation check that was disabled
+  before.
+
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
 
