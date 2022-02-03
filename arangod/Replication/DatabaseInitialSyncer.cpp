@@ -571,7 +571,7 @@ bool DatabaseInitialSyncer::isAborted() const {
       return true;
     }
   }
-  
+
   if (_checkCancellation) {
     // execute custom check for abortion only every few seconds, in case
     // it is expensive
@@ -590,7 +590,7 @@ bool DatabaseInitialSyncer::isAborted() const {
       }
     }
   }
-  
+
   return Syncer::isAborted();
 }
 
@@ -1029,9 +1029,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       sharedStatus->request([this, self, baseUrl, sharedStatus, coll,
                              leaderColl, batch, fromTick, chunkSize]() {
         TRI_IF_FAILURE("Replication::forceCheckCancellation") {
-          // we intentionally sleep here for a while, so the next call gets executed
-          // after the scheduling thread has thrown its TRI_ERROR_INTERNAL exception
-          // for our failure point
+          // we intentionally sleep here for a while, so the next call gets
+          // executed after the scheduling thread has thrown its
+          // TRI_ERROR_INTERNAL exception for our failure point
           std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, batch + 1,
