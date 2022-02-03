@@ -356,7 +356,6 @@ void WindowNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       VPackObjectBuilder obj(&nodes);
       nodes.add(VPackValue("outVariable"));
       aggregateVariable.outVar->toVelocyPack(nodes);
-      nodes.add(VPackValue("inVariable"));
       if (aggregateVariable.inVar) {
         nodes.add(VPackValue("inVariable"));
         aggregateVariable.inVar->toVelocyPack(nodes);
