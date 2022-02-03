@@ -33,41 +33,51 @@
 #include "Logger/LogMacros.h"
 
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
-
+// TODO remove LOG_DEVEL
 namespace arangodb::replication2 {
 
 class ParticipantsCache final
     : public FailureOracle,
       public std::enable_shared_from_this<ParticipantsCache> {
  public:
+  static constexpr std::string_view kSupervisionHealthPath =
+      "Supervision/Health";
+
   ParticipantsCache() = default;
   ~ParticipantsCache() override = default;
 
   auto isServerFailed(std::string_view const serverId) const noexcept
       -> bool override {
-    if (auto status = isFailed.find(std::string(serverId));
-        status != std::end(isFailed)) [[likely]] {
+    std::shared_lock readLock(_mutex);
+    if (auto status = _isFailed.find(std::string(serverId));
+        status != std::end(_isFailed)) [[likely]] {
       return status->second;
     }
     return true;
   }
 
   void setAgencyCallback(std::shared_ptr<AgencyCallback> callback) {
-    TRI_ASSERT(agencyCallback == nullptr);
-    agencyCallback = std::move(callback);
+    TRI_ASSERT(_agencyCallback == nullptr);
+    _agencyCallback = std::move(callback);
   }
 
   void start(AgencyCallbackRegistry* agencyCallbackRegistry);
   void stop(AgencyCallbackRegistry* agencyCallbackRegistry);
 
+  template<typename Server>
+  void createAgencyCallback(Server& server);
+
  private:
-  std::unordered_map<std::string, bool> isFailed;
-  std::shared_ptr<AgencyCallback> agencyCallback;
+  mutable std::shared_mutex _mutex;
+  std::unordered_map<std::string, bool> _isFailed;
+  std::shared_ptr<AgencyCallback> _agencyCallback;
 };
 
 void ParticipantsCache::start(AgencyCallbackRegistry* agencyCallbackRegistry) {
-  Result res = agencyCallbackRegistry->registerCallback(agencyCallback, true);
+  Result res = agencyCallbackRegistry->registerCallback(_agencyCallback, true);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -75,13 +85,38 @@ void ParticipantsCache::start(AgencyCallbackRegistry* agencyCallbackRegistry) {
 
 void ParticipantsCache::stop(AgencyCallbackRegistry* agencyCallbackRegistry) {
   try {
-    agencyCallbackRegistry->unregisterCallback(agencyCallback);
+    agencyCallbackRegistry->unregisterCallback(_agencyCallback);
   } catch (std::exception const& ex) {
     LOG_TOPIC("42bf2", WARN, Logger::REPLICATION2)
         << "Caught unexpected exception while unregistering agency callback "
            "for ParticipantsCache: "
         << ex.what();
   }
+}
+
+template<typename Server>
+void ParticipantsCache::createAgencyCallback(Server& server) {
+  setAgencyCallback(std::make_shared<AgencyCallback>(
+      server, std::string(kSupervisionHealthPath),
+      [weak = weak_from_this()](VPackSlice const& result) {
+        LOG_DEVEL << "ParticipantsCacheFeature agencyCallback called";
+        auto self = weak.lock();
+        if (self && !result.isNone()) {
+          TRI_ASSERT(result.isObject())
+              << " expected object in agency at " << kSupervisionHealthPath
+              << " but got " << result.toString();
+          std::unique_lock writeLock(self->_mutex);
+          for (auto [key, value] : VPackObjectIterator(result)) {
+            auto serverId = key.copyString();
+            auto isServerGood = value.get("Status").isEqualString("GOOD");
+            self->_isFailed[serverId] = !isServerGood;
+            LOG_DEVEL << "Setting " << serverId << " to "
+                      << self->_isFailed[serverId];
+          }
+        }
+        return true;
+      },
+      true, true));
 }
 
 ParticipantsCacheFeature::ParticipantsCacheFeature(Server& server)
@@ -109,7 +144,7 @@ void ParticipantsCacheFeature::start() {
   }
 
   initHealthCache();
-  cache->start(agencyCallbackRegistry);
+  _cache->start(agencyCallbackRegistry);
   LOG_TOPIC("42af3", DEBUG, Logger::REPLICATION2)
       << "ParticipantsCacheFeature is ready";
 }
@@ -119,7 +154,7 @@ void ParticipantsCacheFeature::stop() {
   try {
     auto agencyCallbackRegistry =
         server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
-    cache->stop(agencyCallbackRegistry);
+    _cache->stop(agencyCallbackRegistry);
   } catch (std::exception const& ex) {
     LOG_TOPIC("42af2", WARN, Logger::REPLICATION2)
         << "caught unexpected exception while unregistering agency callback in "
@@ -130,34 +165,15 @@ void ParticipantsCacheFeature::stop() {
 
 auto ParticipantsCacheFeature::getFailureOracle()
     -> std::shared_ptr<FailureOracle> {
-  return std::dynamic_pointer_cast<FailureOracle>(cache);
+  return std::dynamic_pointer_cast<FailureOracle>(_cache);
 }
 
-const std::string_view ParticipantsCacheFeature::kParticipantsHealthPath =
-    "Supervision/Health";
-
 void ParticipantsCacheFeature::initHealthCache() {
-  // static_assert(Server::contains<ClusterFeature>());
-  TRI_ASSERT(cache == nullptr);
+  static_assert(Server::contains<ClusterFeature>());
+  TRI_ASSERT(_cache == nullptr);
 
-  cache = std::make_shared<ParticipantsCache>();
-  cache->setAgencyCallback(std::make_shared<AgencyCallback>(
-      server(), std::string(kParticipantsHealthPath),
-      [cache = std::weak_ptr(cache)](VPackSlice const& result) {
-        LOG_DEVEL << "ParticipantsCacheFeature agencyCallback called";
-        auto watcher = cache.lock();
-        if (watcher) {
-          if (result.isNone()) {
-            LOG_DEVEL << "result is None";
-          } else {
-            LOG_DEVEL << result.toJson();
-          }
-        } else {
-          LOG_DEVEL << "watcher destroyed";
-        }
-        return true;
-      },
-      true, true));
+  _cache = std::make_shared<ParticipantsCache>();
+  _cache->createAgencyCallback(server());
 }
 
 }  // namespace arangodb::replication2

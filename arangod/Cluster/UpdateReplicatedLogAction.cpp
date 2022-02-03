@@ -34,6 +34,7 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/ParticipantsCacheFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
@@ -89,9 +90,12 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
+  auto failureOracle = _feature.server()
+                           .getFeature<ParticipantsCacheFeature>()
+                           .getFailureOracle();
   auto result = replication2::algorithms::updateReplicatedLog(
       ctx, serverId, rebootId, logId,
-      spec.has_value() ? &spec.value() : nullptr);
+      spec.has_value() ? &spec.value() : nullptr, std::move(failureOracle));
   std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
                                   futures::Try<Result>&& tryResult) noexcept {
     try {

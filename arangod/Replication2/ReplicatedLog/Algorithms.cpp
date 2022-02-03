@@ -126,7 +126,8 @@ auto keySetDifference = [](auto const& left, auto const& right) {
 
 auto algorithms::updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec) noexcept
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<FailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result> {
   auto result = basics::catchToResultT([&]() -> futures::Future<
                                                  arangodb::Result> {
@@ -190,7 +191,8 @@ auto algorithms::updateReplicatedLog(
       auto newLeader = log->becomeLeader(
           spec->currentTerm->config, myServerId, spec->currentTerm->term,
           followers,
-          std::make_shared<ParticipantsConfig>(spec->participantsConfig));
+          std::make_shared<ParticipantsConfig>(spec->participantsConfig),
+          std::move(failureOracle));
       newLeader->triggerAsyncReplication();  // TODO move this call into
                                              // becomeLeader?
       return newLeader->waitForLeadership().thenValue(

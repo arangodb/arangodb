@@ -66,9 +66,10 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
-                         RebootId myRebootId, LogId logId,
-                         agency::LogPlanSpecification const* spec) noexcept
+auto updateReplicatedLog(
+    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<FailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result>;
 
 struct ParticipantStateTuple {

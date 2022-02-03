@@ -36,8 +36,6 @@ class ParticipantsCache;
 
 class ParticipantsCacheFeature final : public ArangodFeature {
  public:
-  static const std::string_view kParticipantsHealthPath;
-
   static constexpr std::string_view name() noexcept {
     return "ParticipantsCache";
   }
@@ -54,7 +52,7 @@ class ParticipantsCacheFeature final : public ArangodFeature {
  private:
   void initHealthCache();
 
-  std::shared_ptr<ParticipantsCache> cache;
+  std::shared_ptr<ParticipantsCache> _cache;
 };
 
 }  // namespace arangodb::replication2

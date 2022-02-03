@@ -58,6 +58,7 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Replication2/ReplicatedLog/FailureOracle.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
@@ -95,7 +96,7 @@ replicated_log::LogLeader::LogLeader(
     LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     LogConfig config, ParticipantId id, LogTerm term, LogIndex firstIndex,
-    InMemoryLog inMemoryLog)
+    InMemoryLog inMemoryLog, std::shared_ptr<FailureOracle const> failureOracle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
@@ -291,7 +292,8 @@ auto replicated_log::LogLeader::construct(
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    std::shared_ptr<FailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
@@ -316,10 +318,12 @@ auto replicated_log::LogLeader::construct(
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
         LogConfig config, ParticipantId id, LogTerm term,
-        LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog)
+        LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
+        std::shared_ptr<FailureOracle const> failureOracle)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(options), config, std::move(id), term,
-                    firstIndexOfCurrentTerm, std::move(inMemoryLog)) {}
+                    firstIndexOfCurrentTerm, std::move(inMemoryLog),
+                    std::move(failureOracle)) {}
   };
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
@@ -342,7 +346,7 @@ auto replicated_log::LogLeader::construct(
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
       std::move(logMetrics), std::move(options), config, std::move(id), term,
-      lastIndex.index + 1u, log);
+      lastIndex.index + 1u, log, std::move(failureOracle));
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
@@ -892,8 +896,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
 
     indexes.emplace_back(algorithms::ParticipantStateTuple{
         .lastAckedEntry = follower->lastAckedEntry,
-        .id = follower->_impl->getParticipantId(),
-        .failed = false,
+        .id = pid,
+        .failed = _self._failureOracle->isServerFailed(pid),
         .flags = flags->second});
 
     largestCommonIndex =
