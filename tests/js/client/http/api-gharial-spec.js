@@ -1589,12 +1589,14 @@ describe('_api/gharial', () => {
       it('Single server (Community Graph) - do not expose satellites', () => {
         gM._create(graphName, firstEdgeDef);
         const res = arango.GET(`${url}/${graphName}`);
+        validateBasicGraphResponse(res);
         validateGraphFormat(res.graph, false, false);
       });
 
       it('Single server (SmartGraph) - expose empty satellites', () => {
         gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
         const res = arango.GET(`${url}/${graphName}`);
+        validateBasicGraphResponse(res);
         validateGraphFormat(res.graph, true, false);
       });
     }
