@@ -1591,8 +1591,6 @@ IResearchDataStore::Stats IResearchDataStore::statsUnsafe() const {
   if (!_dataStore) {
     return {};
   }
-  stats.numBufferedDocs = _dataStore._writer->buffered_docs();
-
   // copy of 'reader' is important to hold reference to the current snapshot
   auto reader = _dataStore._reader;
   if (!reader) {
@@ -1620,7 +1618,6 @@ void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
 
   auto const stats = this->statsSynced();
 
-  builder.add("numBufferedDocs", VPackValue(stats.numBufferedDocs));
   builder.add("numDocs", VPackValue(stats.numDocs));
   builder.add("numLiveDocs", VPackValue(stats.numLiveDocs));
   builder.add("numSegments", VPackValue(stats.numSegments));

@@ -65,24 +65,24 @@ using namespace std::literals;
 namespace arangodb::iresearch {
 namespace {
 
-DECLARE_GAUGE(arangosearch_num_buffered_docs, uint64_t,
-              "Number of buffered documents");
-DECLARE_GAUGE(arangosearch_num_docs, uint64_t, "Number of documents");
-DECLARE_GAUGE(arangosearch_num_live_docs, uint64_t, "Number of live documents");
-DECLARE_GAUGE(arangosearch_num_segments, uint64_t, "Number of segments");
-DECLARE_GAUGE(arangosearch_num_files, uint64_t, "Number of files");
-DECLARE_GAUGE(arangosearch_index_size, uint64_t, "Size of the index in bytes");
-DECLARE_GAUGE(arangosearch_num_failed_commits, uint64_t,
+DECLARE_GAUGE(arangodb_search_num_docs, uint64_t, "Number of documents");
+DECLARE_GAUGE(arangodb_search_num_live_docs, uint64_t,
+              "Number of live documents");
+DECLARE_GAUGE(arangodb_search_num_segments, uint64_t, "Number of segments");
+DECLARE_GAUGE(arangodb_search_num_files, uint64_t, "Number of files");
+DECLARE_GAUGE(arangodb_search_index_size, uint64_t,
+              "Size of the index in bytes");
+DECLARE_GAUGE(arangodb_search_num_failed_commits, uint64_t,
               "Number of failed commits");
-DECLARE_GAUGE(arangosearch_num_failed_cleanups, uint64_t,
+DECLARE_GAUGE(arangodb_search_num_failed_cleanups, uint64_t,
               "Number of failed cleanups");
-DECLARE_GAUGE(arangosearch_num_failed_consolidations, uint64_t,
+DECLARE_GAUGE(arangodb_search_num_failed_consolidations, uint64_t,
               "Number of failed consolidations");
-DECLARE_GAUGE(arangosearch_commit_time, uint64_t,
+DECLARE_GAUGE(arangodb_search_commit_time, uint64_t,
               "Average time of few last commits");
-DECLARE_GAUGE(arangosearch_cleanup_time, uint64_t,
+DECLARE_GAUGE(arangodb_search_cleanup_time, uint64_t,
               "Average time of few last cleanups");
-DECLARE_GAUGE(arangosearch_consolidation_time, uint64_t,
+DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
               "Average time of few last consolidations");
 
 // Ensures that all referenced analyzer features are consistent.
@@ -287,7 +287,7 @@ IResearchLink::~IResearchLink() {
 
   if (!res.ok()) {
     LOG_TOPIC("2b41f", ERR, TOPIC)
-        << "failed to unload arangosearch link in link destructor: "
+        << "failed to unload arangodb_search link in link destructor: "
         << res.errorNumber() << " " << res.errorMessage();
   }
 }
@@ -547,15 +547,16 @@ void IResearchLink::insertStats() {
   builder.setName(arangosearch_link_stats_name);
   _linkStats = &metric.add(std::move(builder));
   _numFailedCommits =
-      &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
+      &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
-      &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
+      &metric.add(getMetric<arangodb_search_num_failed_cleanups>(*this));
   _numFailedConsolidations =
-      &metric.add(getMetric<arangosearch_num_failed_consolidations>(*this));
-  _avgCommitTimeMs = &metric.add(getMetric<arangosearch_commit_time>(*this));
-  _avgCleanupTimeMs = &metric.add(getMetric<arangosearch_cleanup_time>(*this));
+      &metric.add(getMetric<arangodb_search_num_failed_consolidations>(*this));
+  _avgCommitTimeMs = &metric.add(getMetric<arangodb_search_commit_time>(*this));
+  _avgCleanupTimeMs =
+      &metric.add(getMetric<arangodb_search_cleanup_time>(*this));
   _avgConsolidationTimeMs =
-      &metric.add(getMetric<arangosearch_consolidation_time>(*this));
+      &metric.add(getMetric<arangodb_search_consolidation_time>(*this));
 }
 
 void IResearchLink::removeStats() {
@@ -569,28 +570,28 @@ void IResearchLink::removeStats() {
   }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
-    metricFeature.remove(getMetric<arangosearch_num_failed_commits>(*this));
+    metricFeature.remove(getMetric<arangodb_search_num_failed_commits>(*this));
   }
   if (_numFailedCleanups) {
     _numFailedCleanups = nullptr;
-    metricFeature.remove(getMetric<arangosearch_num_failed_cleanups>(*this));
+    metricFeature.remove(getMetric<arangodb_search_num_failed_cleanups>(*this));
   }
   if (_numFailedConsolidations) {
     _numFailedConsolidations = nullptr;
     metricFeature.remove(
-        getMetric<arangosearch_num_failed_consolidations>(*this));
+        getMetric<arangodb_search_num_failed_consolidations>(*this));
   }
   if (_avgCommitTimeMs) {
     _avgCommitTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangosearch_commit_time>(*this));
+    metricFeature.remove(getMetric<arangodb_search_commit_time>(*this));
   }
   if (_avgCleanupTimeMs) {
     _avgCleanupTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangosearch_cleanup_time>(*this));
+    metricFeature.remove(getMetric<arangodb_search_cleanup_time>(*this));
   }
   if (_avgConsolidationTimeMs) {
     _avgConsolidationTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangosearch_consolidation_time>(*this));
+    metricFeature.remove(getMetric<arangodb_search_consolidation_time>(*this));
   }
 }
 
@@ -621,15 +622,13 @@ void IResearchLink::LinkStats::toPrometheus(std::string& result, bool first,
     writeAnnotation();
     result.append(std::to_string(value)) += '\n';
   };
-  writeMetric(arangosearch_num_buffered_docs::kName,
-              "Number of buffered documents", numBufferedDocs);
-  writeMetric(arangosearch_num_docs::kName, "Number of documents", numDocs);
-  writeMetric(arangosearch_num_live_docs::kName, "Number of live documents",
+  writeMetric(arangodb_search_num_docs::kName, "Number of documents", numDocs);
+  writeMetric(arangodb_search_num_live_docs::kName, "Number of live documents",
               numLiveDocs);
-  writeMetric(arangosearch_num_segments::kName, "Number of segments",
+  writeMetric(arangodb_search_num_segments::kName, "Number of segments",
               numSegments);
-  writeMetric(arangosearch_num_files::kName, "Number of files", numFiles);
-  writeMetric(arangosearch_index_size::kName, "Size of the index in bytes",
+  writeMetric(arangodb_search_num_files::kName, "Number of files", numFiles);
+  writeMetric(arangodb_search_index_size::kName, "Size of the index in bytes",
               indexSize);
 }
 
