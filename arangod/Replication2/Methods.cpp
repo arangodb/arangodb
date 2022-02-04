@@ -516,8 +516,7 @@ struct ReplicatedLogMethodsCoordinator final
     opts.timeout = std::chrono::seconds{5};
     return network::sendRequest(pool, "server:" + participant,
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .then([](
-                  futures::Try<network::Response>&& tryResult) mutable {
+        .then([](futures::Try<network::Response>&& tryResult) mutable {
           auto result = basics::catchToResultT(
               [&] { return std::move(tryResult.get()); });
 
@@ -561,31 +560,30 @@ struct ReplicatedLogMethodsCoordinator final
     });
     auto af = readSupervisionStatus(spec->id);
     return futures::collect(std::move(af), std::move(psf))
-        .thenValue(
-            [spec, source](auto&& pairResult) {
-              auto& [agency, participantResults] = pairResult;
+        .thenValue([spec, source](auto&& pairResult) {
+          auto& [agency, participantResults] = pairResult;
 
-              auto leader = std::optional<ParticipantId>{};
-              if (spec->currentTerm && spec->currentTerm->leader) {
-                leader = spec->currentTerm->leader->serverId;
-              }
-              auto participantsMap =
-                  std::unordered_map<ParticipantId,
-                                     GlobalStatus::ParticipantStatus>{};
+          auto leader = std::optional<ParticipantId>{};
+          if (spec->currentTerm && spec->currentTerm->leader) {
+            leader = spec->currentTerm->leader->serverId;
+          }
+          auto participantsMap =
+              std::unordered_map<ParticipantId,
+                                 GlobalStatus::ParticipantStatus>{};
 
-              auto const& participants = spec->participantsConfig.participants;
-              std::size_t idx = 0;
-              for (auto const& [id, flags] : participants) {
-                auto& result = participantResults.at(idx++);
-                participantsMap[id] = std::move(result.get());
-              }
+          auto const& participants = spec->participantsConfig.participants;
+          std::size_t idx = 0;
+          for (auto const& [id, flags] : participants) {
+            auto& result = participantResults.at(idx++);
+            participantsMap[id] = std::move(result.get());
+          }
 
-              return GlobalStatus{
-                  .supervision = agency,
-                  .participants = participantsMap,
-                  .specification = {.source = source, .plan = *spec},
-                  .leaderId = std::move(leader)};
-            });
+          return GlobalStatus{
+              .supervision = agency,
+              .participants = participantsMap,
+              .specification = {.source = source, .plan = *spec},
+              .leaderId = std::move(leader)};
+        });
   }
 
   TRI_vocbase_t& vocbase;
