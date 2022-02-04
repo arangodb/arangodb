@@ -458,7 +458,6 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
 
   fuerte::StringMap params;
   std::string url = fuerte::extractPathParameters(urlIn, params);
-
   return agencyAsyncSend(
              _manager,
              RequestMeta({timeout, method, type, url, std::move(clientIds),
@@ -563,10 +562,7 @@ const char* AGENCY_URL_POLL = "/_api/agency/poll";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(
     std::string const& path, std::optional<network::Timeout> timeout) const {
-  if (!timeout.has_value()) {
-    timeout = 120s;
-  }
-  return sendTransaction(*timeout, AgencyReadTransaction(path));
+  return sendTransaction(timeout.value_or(120s), AgencyReadTransaction(path));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::poll(network::Timeout timeout,
@@ -577,10 +573,8 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::poll(network::Timeout timeout,
 AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(
     std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
     std::optional<network::Timeout> timeout) const {
-  if (!timeout.has_value()) {
-    timeout = 120s;
-  }
-  return sendTransaction(*timeout, AgencyReadTransaction(path->str()))
+  return sendTransaction(timeout.value_or(120s),
+                         AgencyReadTransaction(path->str()))
       .thenValue([path = path](AsyncAgencyCommResult&& result) mutable {
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
           return futures::makeFuture(

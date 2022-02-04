@@ -474,13 +474,12 @@ struct ReplicatedLogMethodsCoordinator final
     AsyncAgencyComm ac;
     using Status = GlobalStatus::SupervisionStatus;
     // TODO move this into the agency methods
-    // TODO reduce timeout to 5s
     auto f = ac.getValues(arangodb::cluster::paths::aliases::current()
                               ->replicatedLogs()
                               ->database(vocbase.name())
                               ->log(id)
                               ->supervision(),
-                          2 * std::chrono::seconds{});
+                          std::chrono::seconds{5});
     return std::move(f).then([self = shared_from_this()](
                                  futures::Try<AgencyReadResult>&& tryResult) {
       auto result =
@@ -514,6 +513,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "local-status");
     network::RequestOptions opts;
     opts.database = vocbase.name();
+    opts.timeout = std::chrono::seconds{5};
     return network::sendRequest(pool, "server:" + participant,
                                 fuerte::RestVerb::Get, path, {}, opts)
         .then([self = shared_from_this(), participant](
