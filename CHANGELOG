@@ -1,9 +1,12 @@
-v3.9.0 (XXXX-XX-XX)
+v3.9.1 (XXXX-XX-XX)
 -------------------
 
 * Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
   skip over some subquery results. This did only show up if the subquery fills
   exactly one internal batch before it is completed, so it is rather unlikely.
+
+v3.9.0 (XXXX-XX-XX)
+-------------------
 
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
