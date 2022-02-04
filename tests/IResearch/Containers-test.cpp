@@ -73,7 +73,6 @@ TEST(AsyncValue, multithread) {
     if (value) {
       EXPECT_EQ(*value.get(), 'a');
     }
-    count.fetch_add(10);
   }};
   std::thread lock2{[&] {
     EXPECT_FALSE(asyncValue.empty());
@@ -83,30 +82,24 @@ TEST(AsyncValue, multithread) {
     if (value) {
       EXPECT_EQ(*value.get(), 'a');
     }
-    count.fetch_add(10);
   }};
   std::thread reset1{[&] {
-    while (count.load() % 10 != 2) {
+    while (count.load() != 2) {
       std::this_thread::yield();
     }
-    count.fetch_add(100);
     asyncValue.reset();
     auto value = asyncValue.lock();
     EXPECT_FALSE(value);
   }};
   std::thread reset2{[&] {
-    while (count.load() % 10 != 2) {
+    while (count.load() != 2) {
       std::this_thread::yield();
     }
-    count.fetch_add(100);
     asyncValue.reset();
     auto value = asyncValue.lock();
     EXPECT_FALSE(value);
   }};
   std::thread lockAfterReset{[&] {
-    while (count.load() < 100) {
-      std::this_thread::yield();
-    }
     arangodb::iresearch::AsyncValue<char>::Value value;
     do {
       value = asyncValue.lock();
