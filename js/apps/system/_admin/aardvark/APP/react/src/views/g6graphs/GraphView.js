@@ -241,6 +241,12 @@ export class GraphView extends React.Component {
     this.graph.data(this.props.data);
     this.graph.render();
 
+    this.graph.on('click', (e) => {
+      console.log("I clicked a node (e.item._cfg): ", e.item._cfg);
+      console.log("I clicked a node (e.item._cfg.id): ", e.item._cfg.id);
+      this.props.onClickNode(e);
+    })
+
     this.graph.on('aftercreateedge', (e) => {
       console.log("Newly added edge (e): ", e);
       console.log("Newly added edge (e.edge._cfg.model.source): ", e.edge._cfg.model.source);

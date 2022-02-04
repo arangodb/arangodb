@@ -34,12 +34,12 @@ const G6JsGraph = () => {
   let urlParamsObject = {
     depth: 1,
     limit: 1,
+    nodeColorByCollection: true,
+    edgeColorByCollection: false,
     nodeColor: "#2ecc71",
     nodeColorAttribute: '',
-    nodeColorByCollection: true,
     edgeColor: '#cccccc',
     edgeColorAttribute: '',
-    edgeColorByCollection: false,
     nodeLabel: 'key',
     edgeLabel: '',
     nodeSize: '',
@@ -656,6 +656,37 @@ const G6JsGraph = () => {
     drawnGraph.downloadImage();
   }
 
+  const lookUpNode = (node) => {
+    console.log("node.item._cfg.id in parent: ", node.item._cfg.id);
+    const nodeId = node.item._cfg.id
+    const slashPos = nodeId.indexOf("/");
+    const nodeDataObject = {
+      "keys": [
+        nodeId.substring(slashPos + 1)
+      ],
+      "collection": nodeId.substring(0, slashPos)
+    };
+      arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+        method: "PUT",
+        body: JSON.stringify(nodeDataObject),
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Node info loaded: ");
+        console.log("Node info loaded (data): ", data);
+        console.log("Node info loaded (data.documents): ", data.documents);
+        console.log("Node info loaded (data.documents[0]): ", data.documents[0]);
+        const attributes = data.documents[0];
+        let attributeList = Object.keys(attributes)
+        .map((key) => key + ": " + attributes[key])
+        .join("&");
+        console.log("attributeList: ", attributeList);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }
+
   /*
   <NodeStyleSelector onNodeStyleChange={(typeModel) => changeNodeStyle(typeModel)} />
         <EdgeStyleSelector onEdgeStyleChange={(typeModel) => changeEdgeStyle(typeModel)} />
@@ -797,6 +828,7 @@ const G6JsGraph = () => {
             graphName={graphName}
             responseDuration={responseTimes.fetchDuration}
             onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
+            onClickNode={(node) => lookUpNode(node)}
       />     
     </div>
   );
