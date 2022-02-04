@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var disableViewTests = true;
-var disableKnownBad = true;
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
@@ -157,7 +156,9 @@ function geoSuite () {
       print("Errors with index: ", oi.msg);
       print("Errors with view: ", ov.msg);
     }
-    ov.good = disableViewTests;   // fake goodness
+    if (disableViewTests) {
+      ov.good = true;   // fake goodness
+    }
     return {oi, ov};
   }
 
@@ -483,9 +484,7 @@ function geoSuite () {
           `FILTER GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}`,
           `SEARCH ANALYZER(GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}, "geo_json")`
         );
-        if (!disableKnownBad) {
-          assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
-        }
+        assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
       }
     },
 
