@@ -249,8 +249,7 @@ auto operator<=>(ParticipantStateTuple const& left,
                  ParticipantStateTuple const& right) noexcept {
   // return std::tie(left.index, left.id) <=> std::tie(right.index, right.id);
   // -- not supported by apple clang
-  if (auto c = left.lastIndex() <=> right.lastIndex();
-      c != std::strong_ordering::equal) {
+  if (auto c = left.lastIndex() <=> right.lastIndex(); c != 0) {
     return c;
   }
   return left.id.compare(right.id) <=> 0;
