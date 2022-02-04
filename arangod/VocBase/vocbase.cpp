@@ -1320,15 +1320,19 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
   }
 
   TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second));
-
-  auto doSync = databaseFeature.forceSyncProperties();
-  auto res = engine.inRecovery()
-                 ? arangodb::Result()  // skip persistence while in recovery
-                                       // since definition already from engine
-                 : engine.changeView(*this, *view, doSync);
-
-  if (!res.ok()) {
-    return res;
+  // skip persistence while in recovery since definition already from engine
+  if (!engine.inRecovery()) {
+    velocypack::Builder build;
+    build.openObject();
+    auto r = view->properties(
+        build, LogicalDataSource::Serialization::PersistenceWithInProgress);
+    if (!r.ok()) {
+      return r;
+    }
+    r = engine.changeView(*view, build.close().slice());
+    if (!r.ok()) {
+      return r;
+    }
   }
 
   // stores the parameters on disk
