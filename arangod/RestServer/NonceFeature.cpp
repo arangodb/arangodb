@@ -18,37 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GreetingsFeaturePhase.h"
+#include "NonceFeature.h"
 
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
-#include "Logger/LoggerFeature.h"
-#include "Random/RandomFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Nonce.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+
+using namespace arangodb::basics;
+using namespace arangodb::options;
 
 namespace arangodb {
-namespace application_features {
 
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server,
-                                             bool isClient)
-    : ApplicationFeaturePhase(server, "GreetingsPhase") {
-  setOptional(false);
-
-  startsAfter<ConfigFeature>();
-  startsAfter<LoggerFeature>();
-  startsAfter<RandomFeature>();
-  startsAfter<ShellColorsFeature>();
-  startsAfter<VersionFeature>();
-
-  if (!isClient) {
-    // These are server only features
-    startsAfter<GreetingsFeature>();
-  }
+NonceFeature::NonceFeature(Server& server) : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-}  // namespace application_features
+void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("nonce", "nonces", "", true, true);
+  options->addObsoleteOption("--nonce.size",
+                             "the size of the hash array for nonces", true);
+}
+
+void NonceFeature::prepare() {
+  constexpr uint64_t initialSize = 2 * 1024 * 1024;
+  Nonce::setInitialSize(static_cast<size_t>(initialSize));
+}
+
+void NonceFeature::unprepare() { Nonce::destroy(); }
+
 }  // namespace arangodb

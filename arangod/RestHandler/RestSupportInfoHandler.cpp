@@ -25,7 +25,6 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
@@ -45,6 +44,7 @@
 #include "RestServer/EnvironmentFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -72,9 +72,9 @@ network::Headers buildHeaders() {
 }
 }  // namespace
 
-RestSupportInfoHandler::RestSupportInfoHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestSupportInfoHandler::RestSupportInfoHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestSupportInfoHandler::execute() {
@@ -303,7 +303,7 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
     VPackBuilder stats;
     StorageEngine& engine =
         server().getFeature<EngineSelectorFeature>().engine();
-    engine.getStatistics(stats, /*v2*/ true);
+    engine.getStatistics(stats);
 
     auto names = {
         // edge cache

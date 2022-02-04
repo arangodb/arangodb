@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "DatabaseReplicationApplier.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"

@@ -18,38 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andreas Dominik Jung
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "NonceFeature.h"
+#pragma once
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Basics/Nonce.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include <memory>
+#include <string>
 
-using namespace arangodb::basics;
-using namespace arangodb::options;
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-
-NonceFeature::NonceFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Nonce") {
-  setOptional(true);
-  startsAfter<application_features::GreetingsFeaturePhase>();
+namespace options {
+class ProgramOptions;
 }
 
-void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("nonce", "nonces", "", true, true);
-  options->addObsoleteOption("--nonce.size",
-                             "the size of the hash array for nonces", true);
-}
+class TimeZoneFeature final : public ArangodFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "TimeZone"; }
 
-void NonceFeature::prepare() {
-  constexpr uint64_t initialSize = 2 * 1024 * 1024;
-  Nonce::setInitialSize(static_cast<size_t>(initialSize));
-}
+  explicit TimeZoneFeature(Server& server);
 
-void NonceFeature::unprepare() { Nonce::destroy(); }
+  void prepare() override final;
+  void start() override final;
+
+  static void prepareTimeZoneData(std::string const& binaryPath,
+                                  std::string const& binaryExecutionPath,
+                                  std::string const& binaryName);
+
+ private:
+  char const* _binaryPath;
+};
 
 }  // namespace arangodb

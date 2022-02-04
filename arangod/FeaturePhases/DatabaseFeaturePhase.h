@@ -24,14 +24,15 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "RestServer/arangod.h"
 
-namespace arangodb {
-namespace application_features {
+namespace arangodb::application_features {
 
 class DatabaseFeaturePhase : public ApplicationFeaturePhase {
  public:
-  explicit DatabaseFeaturePhase(ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "DatabasePhase"; }
+
+  explicit DatabaseFeaturePhase(ArangodServer& server);
 };
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

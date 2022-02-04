@@ -137,10 +137,9 @@ struct FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(application_features::ApplicationServer& server,
-            velocypack::Slice const& slice, std::string& errorField,
-            irs::string_ref defaultVocbase, LinkVersion version,
-            FieldMeta const& defaults,
+  bool init(ArangodServer& server, velocypack::Slice const& slice,
+            std::string& errorField, irs::string_ref defaultVocbase,
+            LinkVersion version, FieldMeta const& defaults,
             std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
             Mask* mask);
 
@@ -158,8 +157,7 @@ struct FieldMeta {
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(application_features::ApplicationServer& server,
-            velocypack::Builder& builder,
+  bool json(ArangodServer& server, velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
@@ -244,8 +242,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param defaultVersion fallback version if not present in definition
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(application_features::ApplicationServer& server, VPackSlice slice,
-            std::string& errorField,
+  bool init(ArangodServer& server, VPackSlice slice, std::string& errorField,
             irs::string_ref defaultVocbase = irs::string_ref::NIL,
             LinkVersion defaultVersion = LinkVersion::MIN,
             Mask* mask = nullptr);
@@ -264,8 +261,8 @@ struct IResearchLinkMeta : public FieldMeta {
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(application_features::ApplicationServer& server,
-            velocypack::Builder& builder, bool writeAnalyzerDefinition,
+  bool json(ArangodServer& server, velocypack::Builder& builder,
+            bool writeAnalyzerDefinition,
             IResearchLinkMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
@@ -274,6 +271,11 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @brief amount of memory in bytes occupied by this IResearchLinkMeta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks if this link will index '_id' attribute
+  ////////////////////////////////////////////////////////////////////////////////
+  bool willIndexIdAttribute() const noexcept;
 };
 
 }  // namespace iresearch

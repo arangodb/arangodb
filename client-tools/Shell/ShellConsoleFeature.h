@@ -23,16 +23,17 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Shell/arangosh.h"
 
 namespace arangodb {
 
 class ClientFeature;
 
-class ShellConsoleFeature final
-    : public application_features::ApplicationFeature {
+class ShellConsoleFeature final : public ArangoshFeature {
  public:
-  explicit ShellConsoleFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Console"; }
+
+  explicit ShellConsoleFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;

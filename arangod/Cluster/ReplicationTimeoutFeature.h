@@ -25,16 +25,15 @@
 
 #include "Basics/Common.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class ReplicationTimeoutFeature
-    : public application_features::ApplicationFeature {
+class ReplicationTimeoutFeature : public ArangodFeature {
  public:
-  explicit ReplicationTimeoutFeature(
-      application_features::ApplicationServer& server);
+  static const std::string_view name() noexcept { return "ReplicationTimeout"; }
+
+  explicit ReplicationTimeoutFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -23,7 +23,6 @@
 
 #include "ReplicationMetricsFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
 
@@ -97,9 +96,8 @@ DECLARE_COUNTER(arangodb_replication_synchronous_requests_total_number_total,
                 "Total number of synchronous replication requests");
 namespace arangodb {
 
-ReplicationMetricsFeature::ReplicationMetricsFeature(
-    arangodb::application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicationMetrics"),
+ReplicationMetricsFeature::ReplicationMetricsFeature(Server& server)
+    : ArangodFeature{server, *this},
       _numDumpRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_dump_requests_total{})),
       _numDumpBytesReceived(server.getFeature<metrics::MetricsFeature>().add(
@@ -158,6 +156,9 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(
           arangodb_replication_synchronous_requests_total_time_total{})),
       _syncOpsTotal(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_synchronous_requests_total_number_total{})) {
+  static_assert(Server::isCreatedAfter<ReplicationMetricsFeature,
+                                       metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }

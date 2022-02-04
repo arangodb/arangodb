@@ -68,11 +68,6 @@ struct WaitForReplicationScale {
   static metrics::LogScale<uint64_t> scale() { return {2, 10, 2000, 10}; }
 };
 
-DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
-                       "Accumulated Supervision Runtime [ms]");
-DECLARE_LEGACY_COUNTER(
-    arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total,
-    "Accumulated Supervision wait for replication time [ms]");
 DECLARE_COUNTER(arangodb_agency_supervision_failed_server_total,
                 "Counter for FailedServer jobs");
 DECLARE_HISTOGRAM(arangodb_agency_supervision_runtime_msec, RuntimeScale,
@@ -201,7 +196,7 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(application_features::ApplicationServer& server)
+Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _spearhead(server, _agent),
@@ -223,12 +218,6 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _supervision_runtime_wait_for_sync_msec(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
-      _supervision_accum_runtime_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_accum_runtime_msec_total{})),
-      _supervision_accum_runtime_wait_for_sync_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total{})),
       _supervision_failed_server_counter(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_agency_supervision_failed_server_total{})) {}
@@ -1234,7 +1223,6 @@ void Supervision::run() {
                     wait_for_repl_end - wait_for_repl_start)
                     .count();
             _supervision_runtime_wait_for_sync_msec.count(repl_ms);
-            _supervision_accum_runtime_wait_for_sync_msec.count(repl_ms);
           }
         }
 
@@ -1243,7 +1231,6 @@ void Supervision::run() {
                            .count();
 
         _supervision_runtime_msec.count(lapTime / 1000);
-        _supervision_accum_runtime_msec.count(lapTime / 1000);
 
         if (lapTime < 1000000) {
           _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));

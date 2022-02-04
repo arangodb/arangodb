@@ -57,6 +57,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
       builder.add("id", VPackValue(pair.first.id()));
       builder.add("calls", VPackValue(pair.second.calls));
       builder.add("items", VPackValue(pair.second.items));
+      builder.add("filtered", VPackValue(pair.second.filtered));
       builder.add("runtime", VPackValue(pair.second.runtime));
       builder.close();
     }
@@ -168,8 +169,11 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
     for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
       auto nid =
           ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
-      node.calls = val.get("calls").getNumber<size_t>();
-      node.items = val.get("items").getNumber<size_t>();
+      node.calls = val.get("calls").getNumber<uint64_t>();
+      node.items = val.get("items").getNumber<uint64_t>();
+      if (VPackSlice s = val.get("filtered"); !s.isNone()) {
+        node.filtered = s.getNumber<uint64_t>();
+      }
       node.runtime = val.get("runtime").getNumber<double>();
       auto const& alias = _nodeAliases.find(nid);
       if (alias != _nodeAliases.end()) {

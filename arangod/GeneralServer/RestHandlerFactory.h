@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
@@ -46,16 +47,17 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef std::shared_ptr<RestHandler> (*create_fptr)(
-      application_features::ApplicationServer&, GeneralRequest*,
-      GeneralResponse*, void* data);
+  typedef std::shared_ptr<RestHandler> (*create_fptr)(ArangodServer&,
+                                                      GeneralRequest*,
+                                                      GeneralResponse*,
+                                                      void* data);
 
   // cppcheck-suppress *
   RestHandlerFactory() = default;
 
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(
-      application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
+      ArangodServer&, std::unique_ptr<GeneralRequest>,
       std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory

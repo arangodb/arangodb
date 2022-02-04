@@ -52,7 +52,6 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -343,7 +342,7 @@ bool upgradeArangoSearchLinkCollectionName(
               LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
                   << "Setting collection name '" << clusterCollectionName
                   << "' for link " << indexPtr->id().id();
-              if (selector.engineName() == RocksDBEngine::EngineName) {
+              if (selector.engineName() == RocksDBEngine::kEngineName) {
                 auto& engine = selector.engine<RocksDBEngine>();
                 auto builder = collection->toVelocyPackIgnore(
                     {"path", "statusString"}, LogicalDataSource::Serialization::
@@ -576,7 +575,7 @@ namespace {
 template<typename T>
 void registerSingleFactory(
     std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> const& m,
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
   IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
   if (server.hasFeature<T>()) {
@@ -599,7 +598,7 @@ void registerSingleFactory(
 
 void registerIndexFactory(
     std::map<std::type_index, std::shared_ptr<IndexTypeFactory>>& m,
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   m.emplace(
       std::type_index(typeid(ClusterEngine)),
       arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
@@ -645,7 +644,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
       });
 }
 
-void registerRecoveryHelper(application_features::ApplicationServer& server) {
+void registerRecoveryHelper(ArangodServer& server) {
   auto helper = std::make_shared<IResearchRocksDBRecoveryHelper>(server);
   auto res = RocksDBEngine::registerRecoveryHelper(helper);
   if (res.fail()) {
@@ -654,7 +653,7 @@ void registerRecoveryHelper(application_features::ApplicationServer& server) {
   }
 }
 
-void registerUpgradeTasks(application_features::ApplicationServer& server) {
+void registerUpgradeTasks(ArangodServer& server) {
   if (!server.hasFeature<UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be
              // applied)
@@ -699,7 +698,7 @@ void registerUpgradeTasks(application_features::ApplicationServer& server) {
   }
 }
 
-void registerViewFactory(application_features::ApplicationServer& server) {
+void registerViewFactory(ArangodServer& server) {
   static_assert(IResearchView::typeInfo() ==
                 IResearchViewCoordinator::typeInfo());
   constexpr std::string_view kViewType{IResearchView::typeInfo().second};
@@ -851,9 +850,8 @@ bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
-IResearchFeature::IResearchFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, std::string{name()}),
+IResearchFeature::IResearchFeature(Server& server)
+    : ArangodFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _consolidationThreads(0),
