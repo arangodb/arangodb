@@ -66,29 +66,37 @@ TEST(AsyncValue, multithread) {
   arangodb::iresearch::AsyncValue<char> asyncValue{&c};
   std::atomic_size_t count = 0;
   std::thread lock1{[&] {
-    count.fetch_add(1);
     EXPECT_FALSE(asyncValue.empty());
     auto value = asyncValue.lock();
+    count.fetch_add(1);
     EXPECT_TRUE(value);
-    EXPECT_EQ(*value.get(), 'a');
+    if (value) {
+      EXPECT_EQ(*value.get(), 'a');
+    }
     count.fetch_add(10);
   }};
   std::thread lock2{[&] {
-    count.fetch_add(1);
     EXPECT_FALSE(asyncValue.empty());
     auto value = asyncValue.lock();
+    count.fetch_add(1);
     EXPECT_TRUE(value);
-    EXPECT_EQ(*value.get(), 'a');
+    if (value) {
+      EXPECT_EQ(*value.get(), 'a');
+    }
     count.fetch_add(10);
   }};
   std::thread reset1{[&] {
     while (count.load() % 10 != 2) {
+      std::this_thread::yield();
     }
     count.fetch_add(100);
     asyncValue.reset();
+    auto value = asyncValue.lock();
+    EXPECT_FALSE(value);
   }};
   std::thread reset2{[&] {
     while (count.load() % 10 != 2) {
+      std::this_thread::yield();
     }
     count.fetch_add(100);
     asyncValue.reset();
@@ -97,6 +105,7 @@ TEST(AsyncValue, multithread) {
   }};
   std::thread lockAfterReset{[&] {
     while (count.load() < 100) {
+      std::this_thread::yield();
     }
     arangodb::iresearch::AsyncValue<char>::Value value;
     do {
