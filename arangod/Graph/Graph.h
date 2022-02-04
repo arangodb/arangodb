@@ -254,8 +254,8 @@ class Graph {
    *        calculated on demand (e.g. satellite collections that are part of
    *        the graph). Default set to false.
    */
-  virtual void toPersistenceWithExtra(velocypack::Builder& builder,
-                                      TRI_vocbase_t const& vocbase) const;
+  virtual void toPersistenceWithDetails(velocypack::Builder& builder,
+                                        TRI_vocbase_t const& vocbase) const;
 
   /**
    * @brief Create the Graph Json Representation to be given to the client.
@@ -277,9 +277,12 @@ class Graph {
    *              calculated on demand (e.g. satellite collections that are part
    *              of the graph). Default set to false.
    */
-  void graphForClientWithExtra(VPackBuilder& builder,
-                               TRI_vocbase_t const& vocbase,
-                               bool addNestedGraphContainer = true) const;
+  void graphForClientWithDetails(VPackBuilder& builder,
+                                 TRI_vocbase_t const& vocbase,
+                                 bool addNestedGraphContainer = true) const;
+
+  void graphForClientOnlyHash(std::set<std::string>& checksums,
+                              TRI_vocbase_t const& vocbase) const;
 
   /**
    * @brief Check if the collection is allowed to be used

@@ -56,12 +56,16 @@ class GraphManager {
                           bool waitForSync, VPackSlice options);
 
   Result writeGraphToBuilder(VPackBuilder& builder,
-                             VPackSlice const& graphSlice, bool extra) const;
+                             VPackSlice const& graphSlice, bool details) const;
+
+  Result writeGraphsChecksumsToBuilder(VPackBuilder& builder,
+                                       VPackSlice const& graphsSlice) const;
 
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
-  Result readGraphs(velocypack::Builder& builder, bool extra = false) const;
+  Result readGraphs(velocypack::Builder& builder, bool details = false,
+                    bool onlyHash = false) const;
 
   Result readGraphKeys(velocypack::Builder& builder) const;
 
@@ -70,14 +74,14 @@ class GraphManager {
    *
    * @param builder The destination builder for all graphs
    * @param queryStr The query string to be used to fetch the actual results
-   * @param extra Whether to fetch additional information which needs to be
+   * @param details Whether to fetch additional information which needs to be
    *        calculated on demand (e.g. satellite collections that are part of
    *        the graph).
    *
    */
   Result readGraphByQuery(velocypack::Builder& builder,
-                          std::string const& queryStr,
-                          bool extra = false) const;
+                          std::string const& queryStr, bool details = false,
+                          bool onlyHash = false) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available

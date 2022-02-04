@@ -254,6 +254,10 @@ std::set<std::string> const& Graph::vertexCollectionsUsedAsSatellites(
 }
 
 std::string Graph::calculateMd5() const {
+  // Note: This implementation can be improved in the future.
+  // We can improve performance here, when we totally get rid of using
+  // the builder here.
+
   // Creates VelocyPack graph representation
   VPackBuilder md5Builder;
   md5Builder.openObject();
@@ -434,8 +438,8 @@ void Graph::toPersistence(VPackBuilder& builder, bool md5Calculation) const {
   builder.close();  // Orphans
 }
 
-void Graph::toPersistenceWithExtra(VPackBuilder& builder,
-                                   TRI_vocbase_t const& vocbase) const {
+void Graph::toPersistenceWithDetails(VPackBuilder& builder,
+                                     TRI_vocbase_t const& vocbase) const {
   toPersistence(builder, true);
 
   // calculate md5 checksum based on the graph itself (todo check location
@@ -794,13 +798,18 @@ bool Graph::renameCollections(std::string const& oldName,
   return renamed;
 }
 
-void Graph::graphForClientWithExtra(VPackBuilder& builder,
-                                    const TRI_vocbase_t& vocbase,
-                                    bool addNestedGraphContainer) const {
+void Graph::graphForClientOnlyHash(std::set<std::string>& checksums,
+                                   TRI_vocbase_t const& vocbase) const {
+  checksums.emplace(calculateMd5());
+}
+
+void Graph::graphForClientWithDetails(VPackBuilder& builder,
+                                      const TRI_vocbase_t& vocbase,
+                                      bool addNestedGraphContainer) const {
   TRI_ASSERT(builder.isOpenObject());
 
   auto writeGraph = [&](VPackBuilder& builder) {
-    toPersistenceWithExtra(builder, vocbase);
+    toPersistenceWithDetails(builder, vocbase);
     TRI_ASSERT(builder.isOpenObject());
     builder.add(StaticStrings::RevString, VPackValue(rev()));
     builder.add(StaticStrings::IdString, VPackValue(id()));

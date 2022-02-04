@@ -1567,7 +1567,7 @@ describe('_api/gharial', () => {
     });
   });
 
-  describe('extended graph properties', () => {
+  describe('graph list extended properties', () => {
     afterEach(() => {
       // Applies only to tests in this describe block
       try {
@@ -1613,6 +1613,10 @@ describe('_api/gharial', () => {
       return `${url}/${graphName}?details=true`
     };
 
+    const generateAllGraphsUrlWithChecksum = () => {
+      return `${url}?onlyHash=true`
+    };
+
     if (!isCluster) {
       it('Single server (Community Graph) - do not expose satellites', () => {
         gM._create(graphName, firstEdgeDef);
@@ -1635,19 +1639,30 @@ describe('_api/gharial', () => {
         validateGraphFormat(res.graph, {isSmart: true, isDisjoint: true});
       });
 
-      it.only('Single server (SmartGraph) - expose empty satellites', () => {
+      it('Single server (SmartGraph) - expose empty satellites', () => {
         gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
         const res = arango.GET(generateSingleUrlWithExtra(graphName));
         validateBasicGraphResponse(res);
-        console.warn(res.graph);
         validateGraphFormat(res.graph, {isSmart: true, hasExtra: true});
       });
-
-
     }
 
 
-    it('list graphs - should show additional properties', () => {
+    it('graphs, return only checksum', () => {
+      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+      const res = arango.GET(generateAllGraphsUrlWithChecksum());
+      expect(res.code).to.equal(200);
+      expect(res.error).to.be.false;
+      expect(res).to.have.keys("error", "code", "checksum");
+      expect(res.checksum).to.be.string;
+      expect(res.checksum.length).to.be.greaterThan(1);
+    });
+
+    it('graphs, return details including all checksums', () => {
+
+    });
+
+    it('graphs, should revoke invalid checksum and details call', () => {
 
     });
 

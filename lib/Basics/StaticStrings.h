@@ -267,6 +267,7 @@ class StaticStrings {
   // smart graph relevant attributes
   static std::string const IsDisjoint;
   static std::string const GraphDetails;
+  static std::string const GraphOnlyHash;
   static std::string const GraphIsSatellite;
   static std::string const GraphSatellites;
   static std::string const GraphIsSmart;

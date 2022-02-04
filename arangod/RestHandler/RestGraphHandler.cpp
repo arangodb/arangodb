@@ -985,7 +985,7 @@ Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
   VPackBuilder builder;
   builder.openObject();
   if (details) {
-    graph.graphForClientWithExtra(builder, _vocbase);
+    graph.graphForClientWithDetails(builder, _vocbase);
   } else {
     graph.graphForClient(builder);
   }
@@ -1059,9 +1059,16 @@ Result RestGraphHandler::graphActionCreateGraph() {
 Result RestGraphHandler::graphActionReadGraphs() {
   transaction::StandaloneContext ctx(_vocbase);
   bool details = _request->parsedValue(StaticStrings::GraphDetails, false);
+  bool onlyHash = _request->parsedValue(StaticStrings::GraphOnlyHash, false);
+
+  if (onlyHash && details) {
+    return returnError(
+        TRI_ERROR_GRAPH_INVALID_PARAMETER,
+        "Combination of onlyHash and details both set to true is not allowed.");
+  }
 
   VPackBuilder builder;
-  _graphManager.readGraphs(builder, details);
+  _graphManager.readGraphs(builder, details, onlyHash);
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
