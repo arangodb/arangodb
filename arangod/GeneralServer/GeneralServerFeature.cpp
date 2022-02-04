@@ -160,6 +160,9 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
           arangodb_http2_connections_total{})),
       _vstConnections(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_vst_connections_total{})) {
+  static_assert(
+      Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 

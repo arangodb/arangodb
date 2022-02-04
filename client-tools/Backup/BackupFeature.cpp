@@ -688,6 +688,8 @@ BackupFeature::BackupFeature(Server& server, int& exitCode)
       _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
                      Logger::BACKUP},
       _exitCode{exitCode} {
+  static_assert(Server::isCreatedAfter<BackupFeature, HttpEndpointProvider>());
+
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<HttpEndpointProvider>();

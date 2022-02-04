@@ -161,23 +161,35 @@ exports.getChecksum = function (endpoint, name) {
   }
 };
 
+function getMetricName(text, name) {
+  let re = new RegExp("^" + name);
+  let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+  if (!matches.length) {
+    throw "Metric " + name + " not found";
+  }
+  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+}
+
 exports.getMetric = function (endpoint, name) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW( '/_admin/metrics/v2');
+    let res = arango.GET_RAW("/_admin/metrics");
     if (res.code !== 200) {
       throw "error fetching metric";
     }
-    let re = new RegExp("^" + name);
-    let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-    if (!matches.length) {
-      throw "Metric " + name + " not found";
-    }
-    return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
+    return getMetricName(res.body, name);
   } finally {
     reconnectRetry(primaryEndpoint, "_system", "root", "");
   }
+};
+
+exports.getMetricSingle = function (name) {
+  let res = arango.GET_RAW("/_admin/metrics");
+  if (res.code !== 200) {
+    throw "error fetching metric";
+  }
+  return getMetricName(res.body, name);
 };
 
 const debug = function (text) {
