@@ -30,6 +30,61 @@ const G6JsGraph = () => {
     fetchFinished: null,
     fetchDuration: null
   }
+
+  let urlParamsObject = {
+    depth: 1,
+    limit: 1,
+    nodeColor: "#2ecc71",
+    nodeColorAttribute: '',
+    nodeColorByCollection: true,
+    edgeColor: '#cccccc',
+    edgeColorAttribute: '',
+    edgeColorByCollection: false,
+    nodeLabel: 'key',
+    edgeLabel: '',
+    nodeSize: '',
+    nodeSizeByEdges: true,
+    edgeEditable: true,
+    nodeLabelByCollection: false,
+    edgeLabelByCollection: false,
+    nodeStart: '',
+    barnesHutOptimize: true,
+    query: '',
+    mode: 'all'
+  };
+
+  //http://localhost:8529/_db/_system/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&mode=all
+
+  const [urlParams, setUrlParams] = useState(urlParamsObject);
+
+  let apiParameters = Object.keys(urlParams)
+  .map((key) => key + "=" + urlParams[key])
+  .join("&");
+
+  console.log("apiParameters 2: ", apiParameters);
+
+  const testApiParams = () => {
+    let apiParameters = Object.keys(urlParams)
+    .map((key) => key + "=" + urlParams[key])
+    .join("&");
+
+    console.log("urlParams: ", urlParams);
+    console.log("urlParams.nodeColor: ", urlParams.nodeColor);
+    const testUrl = `/_admin/aardvark/g6graph/${graphName}?${apiParameters}`;
+    console.log("testUrl: ", testUrl);
+    arangoFetch(arangoHelper.databaseUrl(testUrl), {
+      method: queryMethod,
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("testApiParams: ", data);
+      setGraphData(data);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  }
+
   const [responseTimes, setResponseTimes] = useState(responseTimesObject);
   const currentUrl = window.location.href;
   const [graphName, setGraphName] = useState(currentUrl.substring(currentUrl.lastIndexOf("/") + 1));
@@ -724,7 +779,7 @@ const G6JsGraph = () => {
       >
         <strong>Add node</strong>
       </AddNodeModal2>
-      
+      <button onClick={() => testApiParams()}>Test API Params</button>
       <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
@@ -741,6 +796,7 @@ const G6JsGraph = () => {
             onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
             graphName={graphName}
             responseDuration={responseTimes.fetchDuration}
+            onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
       />     
     </div>
   );
