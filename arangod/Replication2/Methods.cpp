@@ -516,7 +516,7 @@ struct ReplicatedLogMethodsCoordinator final
     opts.timeout = std::chrono::seconds{5};
     return network::sendRequest(pool, "server:" + participant,
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .then([self = shared_from_this(), participant](
+        .then([](
                   futures::Try<network::Response>&& tryResult) mutable {
           auto result = basics::catchToResultT(
               [&] { return std::move(tryResult.get()); });
@@ -562,7 +562,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto af = readSupervisionStatus(spec->id);
     return futures::collect(std::move(af), std::move(psf))
         .thenValue(
-            [self = shared_from_this(), spec, source](auto&& pairResult) {
+            [spec, source](auto&& pairResult) {
               auto& [agency, participantResults] = pairResult;
 
               auto leader = std::optional<ParticipantId>{};
