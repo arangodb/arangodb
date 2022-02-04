@@ -841,6 +841,90 @@ function geoSuite () {
         assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
       }
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief further non-convex cases
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoreNonConvex : function () {
+      let lat = 6.537;
+      let long = 50.332;
+      for (let x = 0; x < 100; ++x) {
+        let points = [];
+        for (let y = 0; y < 100; ++y) {
+          points.push({ geo: { type: "Point",
+              coordinates: [lat + x/1000, long + y/1000] } });
+        }
+        insertAll(points);
+      }
+      insertAll([{ geo: { "type": "Polygon", "coordinates": [
+        [[ 37.614323, 55.705898 ],
+          [ 37.615825, 55.705898 ],
+          [ 37.615825, 55.70652  ],
+          [ 37.614323, 55.70652  ],
+          [ 37.614323, 55.705898 ]]
+      ]}}]);
+      insertAll([{ geo: {"type": "LineString", "coordinates": [
+        [ 6.537, 50.332 ], [ 6.537, 50.376 ]]
+      }}]);
+      insertAll([{ geo: { "type": "MultiLineString", "coordinates": [
+        [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
+        [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
+      ]}}]);
+      insertAll([{ geo: { "type": "MultiPoint", "coordinates": [
+        [ 6.537, 50.332 ], [ 6.537, 50.376 ],
+        [ 6.621, 50.332 ], [ 6.621, 50.376 ]
+      ]}}]);
+      insertAll([{ geo: { "type": "MultiPolygon", "coordinates": [
+        [[[ 37.614323, 55.705898 ],
+          [ 37.615825, 55.705898 ],
+          [ 37.615825, 55.70652  ],
+          [ 37.614323, 55.70652  ],
+          [ 37.614323, 55.705898 ]]],
+        [[[ 37.614, 55.7050 ],
+          [ 37.615, 55.7050 ],
+          [ 37.615, 55.7058 ],
+          [ 37.614, 55.7058 ],
+          [ 37.614, 55.7050 ]]]
+      ]}}]);
+      waitForArangoSearch();
+      let multiLineString = {
+        "type": "MultiLineString",
+        "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
+                         [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ] };
+      let c = compare(
+        `FILTER GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100`,
+        `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "geo_json")`
+      );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      multiLineString = {
+        "type": "MultiLineString",
+        "coordinates": [ [[ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ]],
+                         [[ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ]] ] };
+      c = compare(
+        `FILTER GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100`,
+        `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "geo_json")`
+      );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      let multiPoint = {
+        type: "MultiPoint",
+        coordinates: [ [ 6.537, 50.332 ], [ 6.537, 50.376 ],
+                       [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] };
+      c = compare(
+        `FILTER GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100`,
+        `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "geo_json")`
+      );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      multiPoint = {
+        type: "MultiPoint",
+        "coordinates": [ [ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ],
+                         [ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ] ] };
+      c = compare(
+        `FILTER GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100`,
+        `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "geo_json")`
+      );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+    },
   };
 }
 
