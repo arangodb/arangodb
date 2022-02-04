@@ -93,10 +93,12 @@ describe('_api/gharial', () => {
   // Expected values relay on the environment.
   const validateGraphFormat = (
     graph,
-    shouldBeSmart = false,
-    hasExtra = false,
-    hybridCollections = []
+    validationProperties
   ) => {
+    const shouldBeSmart = (validationProperties && validationProperties.isSmart) || false;
+    const isDisjoint = (validationProperties && validationProperties.isDisjoint) || false;
+    const hasExtra = (validationProperties && validationProperties.hasExtra) || false;
+    const hybridCollections = (validationProperties && validationProperties.hybridCollections) || [];
     /*
      * Edge Definition Schema
      */
@@ -115,6 +117,7 @@ describe('_api/gharial', () => {
         to: Joi.array().items(Joi.string()).required()
       });
     }
+    Object.freeze(edgeDefinitionSchema);
 
     /*
      * Collection Properties Schema
@@ -129,6 +132,9 @@ describe('_api/gharial', () => {
       orphanCollections: Joi.array().items(Joi.string()).required(),
       edgeDefinitions: Joi.array().items(edgeDefinitionSchema).required()
     };
+    if (hasExtra) {
+      generalGraphSchema.checksum = Joi.string().required();
+    }
 
     if (isCluster || shouldBeSmart) {
       // Those properties are either:
@@ -149,12 +155,18 @@ describe('_api/gharial', () => {
 
     if (shouldBeSmart) {
       // SmartGraph related only
-      const smartGraphSchema = {
+      let smartGraphSchema = {
         initial: Joi.string().required(),
-        initialCid: Joi.number().integer().min(1).required(),
         smartGraphAttribute: Joi.string().required(),
         isDisjoint: Joi.boolean().required()
       };
+      if (isCluster) {
+        smartGraphSchema.initialCid = Joi.number().integer().min(1).required();
+      }
+      if (isDisjoint) {
+        expect(graph.isDisjoint).to.be.true;
+      }
+      Object.freeze(smartGraphSchema);
       Object.assign(generalGraphSchema, smartGraphSchema);
     }
 
@@ -169,6 +181,15 @@ describe('_api/gharial', () => {
       };
 
       Object.assign(generalGraphSchema, hybridSmartGraphSchema);
+
+      if (hybridCollections.length > 0) {
+        for (const hybridCol in hybridCollections) {
+          expect(graph.satellites.find(hybridCol));
+        }
+      } else {
+        expect(graph.satellites).to.be.an('array');
+        expect(graph.satellites.length).to.equal(0);
+      }
     }
 
     // now create the actual joi object out of the completed schema combination
@@ -177,12 +198,6 @@ describe('_api/gharial', () => {
     // start schema validation
     const res = generalGraphSchema.validate(graph);
     expect(res.error).to.be.null;
-
-    if (hybridCollections.length > 0) {
-      for (const hybridCol in hybridCollections) {
-        expect(hybridCollections.find(hybridCol));
-      }
-    }
   };
 
   beforeEach(cleanup);
@@ -1576,7 +1591,12 @@ describe('_api/gharial', () => {
     const smartOptions = {
       isSmart: true,
       smartGraphAttribute: "Jansen>Sabitzer"
-    }
+    };
+    const smartDisjointOptions = {
+      isSmart: true,
+      isDisjoint: true,
+      smartGraphAttribute: "Jansen>Sabitzer"
+    };
 
     // basic validation methods
     const validateBasicGraphResponse = (res) => {
@@ -1585,20 +1605,45 @@ describe('_api/gharial', () => {
       expect(res).to.have.keys("error", "code", "graph");
     };
 
+    const generateSingleUrl = (graphName) => {
+      return `${url}/${graphName}`
+    };
+
+    const generateSingleUrlWithExtra = (graphName) => {
+      return `${url}/${graphName}?details=true`
+    };
+
     if (!isCluster) {
       it('Single server (Community Graph) - do not expose satellites', () => {
         gM._create(graphName, firstEdgeDef);
-        const res = arango.GET(`${url}/${graphName}`);
+        const res = arango.GET(generateSingleUrl(graphName));
         validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, false, false);
+        validateGraphFormat(res.graph);
       });
 
-      it('Single server (SmartGraph) - expose empty satellites', () => {
+      it('Single server (SmartGraph) - do not expose satellites', () => {
         gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-        const res = arango.GET(`${url}/${graphName}`);
+        const res = arango.GET(generateSingleUrl(graphName));
         validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, true, false);
+        validateGraphFormat(res.graph, {isSmart: true});
       });
+
+      it('Single server (Disjoint SmartGraph) - do not expose satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
+        const res = arango.GET(generateSingleUrl(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {isSmart: true, isDisjoint: true});
+      });
+
+      it.only('Single server (SmartGraph) - expose empty satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+        const res = arango.GET(generateSingleUrlWithExtra(graphName));
+        validateBasicGraphResponse(res);
+        console.warn(res.graph);
+        validateGraphFormat(res.graph, {isSmart: true, hasExtra: true});
+      });
+
+
     }
 
 
