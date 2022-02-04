@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/DownCast.h"
 
 #include "Metrics/Gauge.h"
 #include "RestServer/FlushFeature.h"
@@ -542,13 +543,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     auto prev = state->cookie(key, nullptr);  // get existing cookie
 
     if (prev) {
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& ctx = dynamic_cast<IResearchTrxState&>(*prev);
-#else
-      auto& ctx = static_cast<IResearchTrxState&>(*prev);
-#endif
-
+      // TODO FIXME find a better way to look up a ViewState
+      auto& ctx = basics::downCast<IResearchTrxState>(*prev);
       if (transaction::Status::COMMITTED != status) {  // rollback
         ctx.reset();
       } else {
@@ -1280,14 +1276,8 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   }
 
   auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+  // TODO FIXME find a better way to look up a ViewState
+  auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
     auto linkLock = _asyncSelf->lock();
@@ -1417,14 +1407,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return insertImpl(ctx);
   }
   auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+  // TODO FIXME find a better way to look up a ViewState
+  auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
     auto linkLock = _asyncSelf->lock();
@@ -1500,14 +1484,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     auto* key = this;
 
     auto& state = *(trx->state());
-
     // TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-    auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+    auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
     if (ctx) {
       // throw away all pending operations as clear will overwrite them all
       ctx->reset();
