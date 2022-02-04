@@ -782,7 +782,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
   }
   builder.close();
 
-  return Result(TRI_ERROR_NO_ERROR);
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result GraphManager::writeGraphToBuilder(VPackBuilder& builder,
@@ -807,7 +807,7 @@ Result GraphManager::writeGraphToBuilder(VPackBuilder& builder,
     graph->graphForClient(builder, includeNestedGraphContainer);
   }
 
-  return Result(TRI_ERROR_NO_ERROR);
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result GraphManager::checkForEdgeDefinitionConflicts(

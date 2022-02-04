@@ -626,7 +626,7 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph,
                   result.slice().get(StaticStrings::Old),
                   *ctx->getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /// @brief If rev is a string, set the Etag header to its value.
@@ -767,7 +767,7 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
   generateCreatedEdgeDefinition(waitForSync, builder.slice(),
                                 *ctx->getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result RestGraphHandler::modifyVertexDefinition(
@@ -816,7 +816,7 @@ Result RestGraphHandler::modifyVertexDefinition(
   generateCreatedEdgeDefinition(waitForSync, builder.slice(),
                                 *ctx->getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 Result RestGraphHandler::removeEdgeDefinition(
     graph::Graph& graph, const std::string& edgeDefinitionName) {
@@ -895,7 +895,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
       TRI_ASSERT(false);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result RestGraphHandler::documentCreate(graph::Graph& graph,
@@ -975,18 +975,25 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
                   result.slice().get(StaticStrings::Old),
                   *ctx->getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
   transaction::StandaloneContext ctx(_vocbase);
+  bool details = _request->parsedValue(StaticStrings::GraphDetails, false);
+
   VPackBuilder builder;
   builder.openObject();
-  graph.graphForClient(builder);
+  if (details) {
+    graph.graphForClientWithExtra(builder, _vocbase);
+  } else {
+    graph.graphForClient(builder);
+  }
+
   builder.close();
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
@@ -1007,7 +1014,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
   generateGraphRemoved(true, result.options.waitForSync,
                        *ctx.getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result RestGraphHandler::graphActionCreateGraph() {
@@ -1046,7 +1053,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
   generateCreatedGraphConfig(waitForSync, builder.slice(),
                              *ctx.getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result RestGraphHandler::graphActionReadGraphs() {
@@ -1058,7 +1065,7 @@ Result RestGraphHandler::graphActionReadGraphs() {
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph,
@@ -1078,7 +1085,7 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph,
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
-  return Result();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 RequestLane RestGraphHandler::lane() const { return RequestLane::CLIENT_SLOW; }
