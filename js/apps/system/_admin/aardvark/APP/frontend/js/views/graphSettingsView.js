@@ -354,11 +354,15 @@
       _.each(graphNodes, function (n, k) {
         if (n.id === nodeId) {
 
+          let formatInput = function (str) {
+            return JSON.stringify(str).split('"').join('');
+          }
+
           const callback = function (attr) {
-            console.log(typeof (attr[0][newNodeLabel]));
             if (attr[0].length !== 0) {
-              if (n.label !== newNodeLabel) {
-                n.label = JSON.stringify(attr[0][newNodeLabel]).split('"').join('');
+              let newLabel = attr[0][newNodeLabel];
+              if (n.label !== formatInput(newLabel)) {
+                n.label = formatInput(newLabel);
               }
             }
           }
