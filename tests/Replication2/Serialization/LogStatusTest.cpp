@@ -264,16 +264,20 @@ TEST(LogStatusTest, global_status) {
 
   auto participants = std::unordered_map<ParticipantId, LogStatus>{
       {"LeaderId", LogStatus{UnconfiguredStatus{}}}};
-  auto status =
-      GlobalStatus{{{}, supervision},
-                   {{"LeaderId",
-                     GlobalStatus::ParticipantStatus{
-                         .connection = {},
-                         .response =
-                             GlobalStatus::ParticipantStatus::Response{
-                                 .value = LogStatus{UnconfiguredStatus{}}}}}},
-                   {},
-                   "LeaderId"};
+
+  GlobalStatus::SupervisionStatus supervisionStatus{.connection = {},
+                                                    .response = supervision};
+  std::unordered_map<ParticipantId, GlobalStatus::ParticipantStatus>
+      globalStatusParticipants{
+          {"LeaderId",
+           GlobalStatus::ParticipantStatus{
+               .connection = {},
+               .response = GlobalStatus::ParticipantStatus::Response{
+                   .value = LogStatus{UnconfiguredStatus{}}}}}};
+  GlobalStatus status{.supervision = std::move(supervisionStatus),
+                      .participants = std::move(globalStatusParticipants),
+                      .specification = {},
+                      .leaderId = "LeaderId"};
 
   VPackBuilder builder;
   status.toVelocyPack(builder);
