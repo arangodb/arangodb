@@ -265,15 +265,19 @@ TEST(LogStatusTest, global_status) {
   auto participants = std::unordered_map<ParticipantId, LogStatus>{
       {"LeaderId", LogStatus{UnconfiguredStatus{}}}};
 
-  GlobalStatus::SupervisionStatus supervisionStatus{.connection = {},
-                                                    .response = supervision};
+  GlobalStatus::SupervisionStatus supervisionStatus{
+      .connection = {}, .response = std::move(supervision)};
   std::unordered_map<ParticipantId, GlobalStatus::ParticipantStatus>
-      globalStatusParticipants{
-          {"LeaderId",
-           GlobalStatus::ParticipantStatus{
-               .connection = {},
-               .response = GlobalStatus::ParticipantStatus::Response{
-                   .value = LogStatus{UnconfiguredStatus{}}}}}};
+      globalStatusParticipants;
+  {
+    LogStatus responseValue = LogStatus{UnconfiguredStatus{}};
+    GlobalStatus::ParticipantStatus::Response response{
+        .value = std::move(responseValue)};
+    GlobalStatus::ParticipantStatus participantStatus{
+        .connection = {}, .response = std::move(response)};
+    globalStatusParticipants[ParticipantId("LeaderId")] =
+        std::move(participantStatus);
+  }
   GlobalStatus status{.supervision = std::move(supervisionStatus),
                       .participants = std::move(globalStatusParticipants),
                       .specification = {},
