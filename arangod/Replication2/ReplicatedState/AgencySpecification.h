@@ -47,17 +47,16 @@ struct ImplementationSpec {
       -> ImplementationSpec;
 };
 
+struct Properties {
+  ImplementationSpec implementation;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
+};
+
 struct Plan {
   LogId id;
   StateGeneration generation;
-
-  struct Properties {
-    ImplementationSpec implementation;
-
-    void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
-  };
-
   Properties properties;
 
   struct Participant {
@@ -91,6 +90,29 @@ struct Current {
       -> bool = default;
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
+};
+
+struct Target {
+  LogId id;
+
+  Properties properties;
+
+  struct Participant {
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
+  };
+
+  std::unordered_map<ParticipantId, Participant> participants;
+  LogConfig config;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;
+};
+
+struct State {
+  Target target;
+  std::optional<Plan> plan;
+  std::optional<Current> current;
 };
 
 }  // namespace arangodb::replication2::replicated_state::agency

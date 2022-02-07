@@ -8,6 +8,8 @@ devel
   The performance improvements are due to some improved handling of index
   lookup conditions in the internals of the VelocyPack-based index.
 
+* Improve usefulness of `storedValues` together with late materialization.
+
 * Reintroduce shard synchronization cancellation check that was disabled
   before.
 
