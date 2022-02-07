@@ -1738,7 +1738,52 @@ describe('_api/gharial', () => {
       });
     });
 
-    it('Hybrid Disjoint SmartGraph - expose satellites', () => {
+    it('Hybrid Disjoint SmartGraph - expose satellites (from vertex)', () => {
+      let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
+      hybridSmartOptions.satellites = firstEdgeDef[0].from;
+
+      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {
+        isSmart: true,
+        isDisjoint: true,
+        hasDetails: true,
+        hybridCollections: hybridSmartOptions.satellites
+      });
+    });
+
+    it('Hybrid Disjoint SmartGraph - expose satellites (to vertex)', () => {
+      let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
+      hybridSmartOptions.satellites = firstEdgeDef[0].to;
+
+      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {
+        isSmart: true,
+        isDisjoint: true,
+        hasDetails: true,
+        hybridCollections: hybridSmartOptions.satellites
+      });
+    });
+
+    it('Hybrid Disjoint SmartGraph - expose satellites (from && to vertices)', () => {
+      let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
+      hybridSmartOptions.satellites = [];
+      hybridSmartOptions.satellites.push(firstEdgeDef[0].from[0]);
+      hybridSmartOptions.satellites.push(firstEdgeDef[0].to[0]);
+
+      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {
+        isSmart: true,
+        isDisjoint: true,
+        hasDetails: true,
+        hybridCollections: hybridSmartOptions.satellites,
+        onlySatellitesCreated: true
+      });
     });
 
     /* Checksum tests */
