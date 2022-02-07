@@ -186,7 +186,7 @@ class Graph {
                                                 bool waitForSync) const;
 
   std::set<std::string> const& vertexCollectionsUsedAsSatellites(
-      TRI_vocbase_t const& vocbase) const;
+      TRI_vocbase_t& vocbase) const;
 
   std::string calculateMd5() const;
 
@@ -257,7 +257,7 @@ class Graph {
    *        the graph). Default set to false.
    */
   virtual void toPersistenceWithDetails(velocypack::Builder& builder,
-                                        TRI_vocbase_t const& vocbase) const;
+                                        TRI_vocbase_t& vocbase) const;
 
   /**
    * @brief Create the Graph Json Representation to be given to the client.
@@ -279,12 +279,11 @@ class Graph {
    *              calculated on demand (e.g. satellite collections that are part
    *              of the graph). Default set to false.
    */
-  void graphForClientWithDetails(VPackBuilder& builder,
-                                 TRI_vocbase_t const& vocbase,
+  void graphForClientWithDetails(VPackBuilder& builder, TRI_vocbase_t& vocbase,
                                  bool addNestedGraphContainer = true) const;
 
   void graphForClientOnlyHash(std::set<std::string>& checksums,
-                              TRI_vocbase_t const& vocbase) const;
+                              TRI_vocbase_t& vocbase) const;
 
   /**
    * @brief Check if the collection is allowed to be used

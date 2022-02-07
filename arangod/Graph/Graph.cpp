@@ -24,30 +24,24 @@
 #include "Graph.h"
 
 #include <Logger/LogMacros.h>
-#include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <utility>
 
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
-#include "Aql/Query.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
-#include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 #include "Ssl/SslInterface.h"
+#include "GraphManager.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -241,11 +235,15 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
 }
 
 std::set<std::string> const& Graph::vertexCollectionsUsedAsSatellites(
-    TRI_vocbase_t const& vocbase) const {
+    TRI_vocbase_t& vocbase) const {
   std::set<std::string> list{};
+
+  graph::GraphManager gmngr{vocbase};
+  std::shared_ptr<LogicalCollection> logicalCollection;
+
   for (auto const& vertexCollection : vertexCollections()) {
-    auto const& logicalCollection = vocbase.lookupCollection(vertexCollection);
-    if (logicalCollection->isSatellite()) {
+    logicalCollection = gmngr.getCollectionByName(vocbase, vertexCollection);
+    if (logicalCollection != nullptr && logicalCollection->isSatellite()) {
       list.emplace(vertexCollection);
     }
   }
@@ -443,7 +441,7 @@ void Graph::toPersistence(VPackBuilder& builder, bool md5Calculation) const {
 }
 
 void Graph::toPersistenceWithDetails(VPackBuilder& builder,
-                                     TRI_vocbase_t const& vocbase) const {
+                                     TRI_vocbase_t& vocbase) const {
   toPersistence(builder, true);
 
   // calculate md5 checksum based on the graph itself
@@ -802,12 +800,12 @@ bool Graph::renameCollections(std::string const& oldName,
 }
 
 void Graph::graphForClientOnlyHash(std::set<std::string>& checksums,
-                                   TRI_vocbase_t const& vocbase) const {
+                                   TRI_vocbase_t& vocbase) const {
   checksums.emplace(calculateMd5());
 }
 
 void Graph::graphForClientWithDetails(VPackBuilder& builder,
-                                      const TRI_vocbase_t& vocbase,
+                                      TRI_vocbase_t& vocbase,
                                       bool addNestedGraphContainer) const {
   TRI_ASSERT(builder.isOpenObject());
 
