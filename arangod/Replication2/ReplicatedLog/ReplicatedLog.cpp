@@ -71,7 +71,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     LogConfig config, ParticipantId id, LogTerm newTerm,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
-    std::shared_ptr<FailureOracle const> failureOracle)
+    std::shared_ptr<IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);

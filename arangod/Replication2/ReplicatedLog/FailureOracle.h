@@ -28,10 +28,10 @@
 
 namespace arangodb::replication2 {
 
-struct FailureOracle {
+struct IFailureOracle {
   [[nodiscard]] virtual auto isServerFailed(
       std::string_view serverId) const noexcept -> bool = 0;
-  virtual ~FailureOracle() = default;
+  virtual ~IFailureOracle() = default;
 };
 
 }  // namespace arangodb::replication2

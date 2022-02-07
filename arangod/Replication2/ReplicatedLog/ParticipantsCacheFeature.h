@@ -31,7 +31,7 @@
 
 namespace arangodb::replication2 {
 
-struct FailureOracle;
+struct IFailureOracle;
 class ParticipantsCache;
 
 class ParticipantsCacheFeature final : public ArangodFeature {
@@ -47,7 +47,7 @@ class ParticipantsCacheFeature final : public ArangodFeature {
   void start() override;
   void stop() override;
 
-  auto getFailureOracle() -> std::shared_ptr<FailureOracle>;
+  auto getFailureOracle() -> std::shared_ptr<IFailureOracle>;
 
  private:
   void initHealthCache();

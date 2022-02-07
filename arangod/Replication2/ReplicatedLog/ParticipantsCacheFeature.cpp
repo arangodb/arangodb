@@ -40,7 +40,7 @@
 namespace arangodb::replication2 {
 
 class ParticipantsCache final
-    : public FailureOracle,
+    : public IFailureOracle,
       public std::enable_shared_from_this<ParticipantsCache> {
  public:
   static constexpr std::string_view kSupervisionHealthPath =
@@ -164,8 +164,8 @@ void ParticipantsCacheFeature::stop() {
 }
 
 auto ParticipantsCacheFeature::getFailureOracle()
-    -> std::shared_ptr<FailureOracle> {
-  return std::dynamic_pointer_cast<FailureOracle>(_cache);
+    -> std::shared_ptr<IFailureOracle> {
+  return std::dynamic_pointer_cast<IFailureOracle>(_cache);
 }
 
 void ParticipantsCacheFeature::initHealthCache() {
