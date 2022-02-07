@@ -35,6 +35,9 @@ function VPackIndexRearmingSuite (unique) {
   const n = 10 * 1000;
   const pad = `CONCAT('${prefix}', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i))), i)`;
   const pad2 = `CONCAT('${prefix}', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i + 1))), i + 1)`;
+  // the following values will intentionally not match anything
+  const padBeyond = `CONCAT('${prefix}', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i + 50000))), i + 50000)`;
+  const padBeyond2 = `CONCAT('${prefix}', SUBSTRING('00000', 0, 5 - LENGTH(TO_STRING(i + 50000 + 1))), i + 50000 + 1)`;
 
   return {
     setUpAll : function () {
@@ -195,8 +198,121 @@ function VPackIndexRearmingSuite (unique) {
 
       let qr = db._query(q, null, opts);
       let stats = qr.getExtra().stats;
+      // no rearming used here, because IN creates a MultiIndexIterator
       assertEqual(n - 1, stats.cursorsCreated);
       assertEqual(0, stats.cursorsRearmed);
+      let results = qr.toArray();
+      assertEqual(n - 1, results.length);
+
+      for (let i = 0; i < n - 1; ++i) {
+        let doc = results[i];
+        assertEqual(prefix + String(i).padStart(5, "0"), doc.value1);
+        assertEqual(i, doc.value2);
+      }
+    },
+    
+    testLookupByMultipleAttributesUsingInAndEq : function () {
+      const q = `FOR i IN 0..${n - 2} FOR doc IN ${cn} FILTER doc.value1 IN [${pad}, 'piff'] FILTER doc.value2 == i RETURN doc`;
+
+      const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+
+      let nodes = AQL_EXPLAIN(q, null, opts).plan.nodes;
+      let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+      assertEqual(1, indexNodes.length);
+      assertEqual(1, indexNodes[0].indexes.length);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      // no rearming used here, because IN creates a MultiIndexIterator
+      assertEqual(n - 1, stats.cursorsCreated);
+      assertEqual(0, stats.cursorsRearmed);
+      let results = qr.toArray();
+      assertEqual(n - 1, results.length);
+
+      for (let i = 0; i < n - 1; ++i) {
+        let doc = results[i];
+        assertEqual(prefix + String(i).padStart(5, "0"), doc.value1);
+        assertEqual(i, doc.value2);
+      }
+    },
+    
+    testLookupByMultipleAttributesUsingInAndRange : function () {
+      const q = `FOR i IN 0..${n - 2} FOR doc IN ${cn} FILTER doc.value1 IN [${pad}, 'piff'] FILTER doc.value2 >= i && doc.value2 < (i + 1) RETURN doc`;
+
+      const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+
+      let nodes = AQL_EXPLAIN(q, null, opts).plan.nodes;
+      let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+      assertEqual(1, indexNodes.length);
+      assertEqual(1, indexNodes[0].indexes.length);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      // no rearming used here, because IN creates a MultiIndexIterator
+      assertEqual(n - 1, stats.cursorsCreated);
+      assertEqual(0, stats.cursorsRearmed);
+      let results = qr.toArray();
+      assertEqual(n - 1, results.length);
+
+      for (let i = 0; i < n - 1; ++i) {
+        let doc = results[i];
+        assertEqual(prefix + String(i).padStart(5, "0"), doc.value1);
+        assertEqual(i, doc.value2);
+      }
+    },
+    
+    testLookupBySingleAttributeWithOredConditions1 : function () {
+      // OR-ed conditions, using the same index for the same ranges.
+      // however, that that the 2 ranges are equivalent is not detected
+      // at query compile time, because the range expressions are too
+      // complex to be merged.
+      const q = `FOR i IN 0..${n - 2} FOR doc IN ${cn} FILTER (doc.value1 >= ${pad} && doc.value1 < ${pad2}) || (doc.value1 >= ${pad} && doc.value1 < ${pad2}) RETURN doc`;
+
+      const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+
+      let nodes = AQL_EXPLAIN(q, null, opts).plan.nodes;
+      let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+      assertEqual(1, indexNodes.length);
+      assertEqual(2, indexNodes[0].indexes.length);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[1].name);
+
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      // 2 indexes here, and thus 2 cursors. the cursors *are* rearmed
+      assertEqual(2, stats.cursorsCreated);
+      assertEqual((n - 2) * 2, stats.cursorsRearmed);
+      let results = qr.toArray();
+      assertEqual(n - 1, results.length);
+
+      for (let i = 0; i < n - 1; ++i) {
+        let doc = results[i];
+        assertEqual(prefix + String(i).padStart(5, "0"), doc.value1);
+        assertEqual(i, doc.value2);
+      }
+    },
+    
+    testLookupBySingleAttributeWithOredConditions2 : function () {
+      // OR-ed conditions, using the same index for 2 different ranges.
+      // note: the second range will never produce any results
+      const q = `FOR i IN 0..${n - 2} FOR doc IN ${cn} FILTER (doc.value1 >= ${pad} && doc.value1 < ${pad2}) || (doc.value1 >= ${padBeyond} && doc.value1 < ${padBeyond2}) RETURN doc`;
+
+      const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+
+      let nodes = AQL_EXPLAIN(q, null, opts).plan.nodes;
+      let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
+      assertEqual(1, indexNodes.length);
+      assertEqual(2, indexNodes[0].indexes.length);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
+      assertEqual("UnitTestsIndex", indexNodes[0].indexes[1].name);
+
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      // 2 indexes here, and thus 2 cursors. the cursors *are* rearmed
+      assertEqual(2, stats.cursorsCreated);
+      assertEqual((n - 2) * 2, stats.cursorsRearmed);
       let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
