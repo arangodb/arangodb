@@ -1631,56 +1631,54 @@ describe('_api/gharial', () => {
       return `${url}?onlyHash=true`
     };
 
+    it('Community Graph - do not expose satellites', () => {
+      gM._create(graphName, firstEdgeDef);
+      const res = arango.GET(generateSingleUrl(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph);
+    });
 
-      it('Community Graph - do not expose satellites', () => {
-        gM._create(graphName, firstEdgeDef);
-        const res = arango.GET(generateSingleUrl(graphName));
-        validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph);
-      });
+    it('SmartGraph - do not expose satellites', () => {
+      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+      const res = arango.GET(generateSingleUrl(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {isSmart: true});
+    });
 
-      it('SmartGraph - do not expose satellites', () => {
-        gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-        const res = arango.GET(generateSingleUrl(graphName));
-        validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, {isSmart: true});
-      });
+    it('Disjoint SmartGraph - do not expose satellites', () => {
+      gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
+      const res = arango.GET(generateSingleUrl(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {isSmart: true, isDisjoint: true});
+    });
 
-      it('Disjoint SmartGraph - do not expose satellites', () => {
-        gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
-        const res = arango.GET(generateSingleUrl(graphName));
-        validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, {isSmart: true, isDisjoint: true});
-      });
+    it('SatelliteGraph - do not expose satellites', () => {
+      gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
+      const res = arango.GET(generateSingleUrl(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {isSatellite: true});
+    });
 
-      it('SatelliteGraph - do not expose satellites', () => {
-        gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
-        const res = arango.GET(generateSingleUrl(graphName));
-        validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, {isSatellite: true});
-      });
+    it('SmartGraph - expose empty satellites', () => {
+      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+      const res = arango.GET(generateSingleUrlWithExtra(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
+    });
 
-      it('SmartGraph - expose empty satellites', () => {
-        gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-        const res = arango.GET(generateSingleUrlWithExtra(graphName));
-        validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
-      });
+    it('Disjoint SmartGraph - expose empty satellites', () => {
+      gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
+      const res = arango.GET(generateSingleUrlWithExtra(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
+    });
 
-      it('Disjoint SmartGraph - expose empty satellites', () => {
-        gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
-        const res = arango.GET(generateSingleUrlWithExtra(graphName));
-        validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
-      });
-
-      it('Satellite Graph - expose empty satellites', () => {
-        gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
-        const res = arango.GET(generateSingleUrlWithExtra(graphName));
-        validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, {isSatellite: true, hasDetails: true});
-      });
-
+    it('Satellite Graph - expose empty satellites', () => {
+      gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
+      const res = arango.GET(generateSingleUrlWithExtra(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {isSatellite: true, hasDetails: true});
+    });
 
 
     it('graphs, return only checksum', () => {
