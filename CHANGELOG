@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improve usefulness of `storedValues` together with late materialization.
+
 * Reintroduce shard synchronization cancellation check that was disabled
   before.
 
