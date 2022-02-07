@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <velocypack/HashedStringRef.h>
+#include "velocypack/HashedStringRef.h"
 #include "Basics/ResultT.h"
 
 #include <numeric>

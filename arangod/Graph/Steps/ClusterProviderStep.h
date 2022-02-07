@@ -1,6 +1,6 @@
 #include <utility>
 
-#include "Graph/Providers/BaseStep.h"
+#include "BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Transaction/Methods.h"
 

@@ -119,7 +119,7 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
   arangodb::graph::RefactoredClusterTraverserCache& cache() { return *_cache; }
 
   void TearDown() override {
-    // After every test ensure that the ResourceMonitor is conting down to 0
+    // After every test ensure that the ResourceMonitor is counting down to 0
     // again
     _cache.reset();
     EXPECT_EQ(_monitor.current(), 0)
