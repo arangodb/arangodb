@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improve usefulness of `storedValues` together with late materialization.
+
 * Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
   skip over some subquery results. This did only show up if the subquery fills
   exactly one internal batch before it is completed, so it is rather unlikely.
