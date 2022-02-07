@@ -30,6 +30,8 @@
 #include "Transaction/Status.h"
 #include "VocBase/LogicalView.h"
 
+#include <boost/thread/v2/shared_mutex.hpp>
+
 #include <atomic>
 #include <functional>
 #include <map>
@@ -45,7 +47,6 @@ namespace transaction {
 class Methods;
 
 }  // namespace transaction
-
 namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -77,7 +78,7 @@ class AsyncValue;
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchView final : public LogicalView {
-  typedef std::shared_ptr<AsyncLinkHandle> AsyncLinkPtr;
+  using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -184,7 +185,7 @@ class IResearchView final : public LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sort column compression method
   ///////////////////////////////////////////////////////////////////////////////
-  auto const& primarySortCompression() const noexcept {
+  irs::type_info::type_id const& primarySortCompression() const noexcept {
     return _meta._primarySortCompression;
   }
 
@@ -195,13 +196,13 @@ class IResearchView final : public LogicalView {
     return _meta._storedValues;
   }
 
- protected:
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  Result appendVelocyPackImpl(velocypack::Builder& builder,
-                              Serialization context) const final;
+  Result appendVPackImpl(velocypack::Builder& build, Serialization ctx,
+                         bool safe) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -214,19 +215,17 @@ class IResearchView final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result renameImpl(std::string const& oldName) final;
 
- private:
   using AsyncViewPtr = std::shared_ptr<AsyncValue<IResearchView>>;
   struct ViewFactory;
 
   AsyncViewPtr _asyncSelf;
   // 'this' for the lifetime of the view (for use with asynchronous calls)
+  // (AsyncLinkPtr may be nullptr on single-server if link did not come up yet)
   using Links = containers::FlatHashMap<DataSourceId, AsyncLinkPtr>;
   Links _links;
-  // (AsyncLinkPtr may be nullptr on single-server if link did not come up yet)
-  IResearchViewMeta _meta;  // the view configuration
-  mutable kludge::read_write_mutex _mutex;
-  // for use with member '_meta', '_links'
-  std::mutex _updateLinksLock;  // prevents simultaneous 'updateLinks'
+  IResearchViewMeta _meta;              // the view configuration
+  mutable boost::upgrade_mutex _mutex;  // for '_meta', '_links'
+  std::mutex _updateLinksLock;          // prevents simultaneous 'updateLinks'
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;  // for snapshot(...)
   std::atomic<bool> _inRecovery;
