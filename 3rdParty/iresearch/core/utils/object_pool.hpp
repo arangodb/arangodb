@@ -625,7 +625,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     node* head = nullptr;
 
     // reset all cached instances
-    while (head = this->free_objects_.pop()) {
+    while ((head = this->free_objects_.pop())) {
       auto p = head->value.value.exchange(nullptr, std::memory_order_relaxed);
       assert(p);
       typename base_t::deleter_type{}(p);

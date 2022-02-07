@@ -252,10 +252,8 @@ void MaintenanceWorker::recordJobStats(bool failed) {
     auto queuetime = std::chrono::duration_cast<std::chrono::milliseconds>(
                          _curAction->getQueueDuration())
                          .count();
-    metrics._accum_runtime.count(runtime);
     metrics._runtime_histogram.count(runtime);
     metrics._queue_time_histogram.count(queuetime);
-    metrics._accum_queue_time.count(queuetime);
     if (failed) {
       metrics._failure_counter.count();
     }

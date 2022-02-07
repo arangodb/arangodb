@@ -483,7 +483,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     // non-version 0 IResearchView implementations no longer drop from vocbase
     // on db-server, do it explicitly
     if (ServerState::instance()->isDBServer()) {
-      res = LogicalViewHelperStorageEngine::drop(*view);
+      res = storage_helper::drop(*view);
 
       if (!res.ok()) {
         LOG_TOPIC("bfb3d", WARN, arangodb::iresearch::TOPIC)

@@ -94,12 +94,12 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
   builder.close();  // object
 }
 
-void StorageEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
+void StorageEngine::getStatistics(velocypack::Builder& builder) const {
   builder.openObject();
   builder.close();
 }
 
-void StorageEngine::getStatistics(std::string& result, bool v2) const {}
+void StorageEngine::getStatistics(std::string& result) const {}
 
 void StorageEngine::registerCollection(
     TRI_vocbase_t& vocbase,

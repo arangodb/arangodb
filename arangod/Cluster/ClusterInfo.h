@@ -975,6 +975,15 @@ class ClusterInfo final {
   auto getReplicatedLogLeader(DatabaseID const& database,
                               replication2::LogId) const -> ResultT<ServerID>;
 
+  auto getReplicatedLogParticipants(DatabaseID const& database,
+                                    replication2::LogId) const
+      -> ResultT<std::vector<ServerID>>;
+
+  auto getReplicatedLogPlanSpecification(DatabaseID const& database,
+                                         replication2::LogId) const
+      -> ResultT<
+          std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -1264,15 +1273,8 @@ class ClusterInfo final {
 
   /// @brief histogram for loadPlan runtime
   metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
-
-  /// @brief total time for loadPlan runtime
-  metrics::Counter& _lpTotal;
-
   /// @brief histogram for loadCurrent runtime
   metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
-
-  /// @brief total time for loadCurrent runtime
-  metrics::Counter& _lcTotal;
 };
 
 namespace cluster {
