@@ -25,13 +25,13 @@ const LH = require("@arangodb/testutils/replicated-logs-helper");
 const SH = require("@arangodb/testutils/replicated-state-helper");
 const _ = require("lodash");
 
-// This predicate waits for the replicated state to be ready, i.e. it waits for
-// 1. all servers in _servers_ have received the snapshot.
-// 2. the underlying replicated log has a leader
 const isError = function (value) {
   return value instanceof Error;
 };
 
+// This predicate waits for the replicated state to be ready, i.e. it waits for
+// 1. all servers in _servers_ have received the snapshot.
+// 2. the underlying replicated log has a leader
 const serverReceivedSnapshotGeneration = function (database, logId, server, generation) {
   return function () {
     const {current} = SH.readReplicatedStateAgency(database, logId);

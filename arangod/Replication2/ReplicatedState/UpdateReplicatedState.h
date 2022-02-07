@@ -32,7 +32,7 @@ namespace arangodb::replication2::algorithms {
 struct StateActionContext {
   virtual ~StateActionContext() = default;
 
-  virtual auto getReplicatedStateById(LogId)
+  virtual auto getReplicatedStateById(LogId) noexcept
       -> std::shared_ptr<replicated_state::ReplicatedStateBase> = 0;
 
   virtual auto createReplicatedState(LogId, std::string_view, velocypack::Slice)
