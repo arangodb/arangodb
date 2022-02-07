@@ -101,6 +101,7 @@ describe('_api/gharial', () => {
     const isSatellite = (validationProperties && validationProperties.isSatellite) || false;
     const hasDetails = (validationProperties && validationProperties.hasDetails) || false;
     const hybridCollections = (validationProperties && validationProperties.hybridCollections) || [];
+    const onlySatellitesCreated = (validationProperties && validationProperties.onlySatellitesCreated) || false;
     /*
      * Edge Definition Schema
      */
@@ -173,7 +174,7 @@ describe('_api/gharial', () => {
       Object.assign(generalGraphSchema, smartGraphSchema);
     }
 
-    if (isSmart || isSatellite) {
+    if ((isSmart || isSatellite) && !onlySatellitesCreated) {
       let smartOrSatSchema = {
         initial: Joi.string().required(),
         initialCid: Joi.number().integer().min(1).required()
@@ -195,9 +196,9 @@ describe('_api/gharial', () => {
       Object.assign(generalGraphSchema, hybridSmartGraphSchema);
 
       if (hybridCollections.length > 0) {
-        for (const hybridCol in hybridCollections) {
-          expect(graph.satellites.find(hybridCol));
-        }
+        hybridCollections.forEach((hybridCol) => {
+          expect(graph.satellites.indexOf(hybridCol)).to.be.greaterThan(-1);
+        });
       } else {
         expect(graph.satellites).to.be.an('array');
         expect(graph.satellites.length).to.equal(0);
@@ -1649,6 +1650,7 @@ describe('_api/gharial', () => {
       return `${url}?onlyHash=true`
     };
 
+    /* Satellite exposure tests */
     it('Community Graph - do not expose satellites', () => {
       gM._create(graphName, firstEdgeDef);
       const res = arango.GET(generateSingleUrl(graphName));
@@ -1691,6 +1693,55 @@ describe('_api/gharial', () => {
       validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
     });
 
+    it('Hybrid SmartGraph - expose satellites (from vertex)', () => {
+      let hybridSmartOptions = _.cloneDeep(smartOptions);
+      hybridSmartOptions.satellites = firstEdgeDef[0].from;
+
+      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {
+        isSmart: true,
+        hasDetails: true,
+        hybridCollections: hybridSmartOptions.satellites
+      });
+    });
+
+    it('Hybrid SmartGraph - expose satellites (to vertex)', () => {
+      let hybridSmartOptions = _.cloneDeep(smartOptions);
+      hybridSmartOptions.satellites = firstEdgeDef[0].to;
+
+      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {
+        isSmart: true,
+        hasDetails: true,
+        hybridCollections: hybridSmartOptions.satellites
+      });
+    });
+
+    it('Hybrid SmartGraph - expose satellites (from && to vertices)', () => {
+      let hybridSmartOptions = _.cloneDeep(smartOptions);
+      hybridSmartOptions.satellites = [];
+      hybridSmartOptions.satellites.push(firstEdgeDef[0].from[0]);
+      hybridSmartOptions.satellites.push(firstEdgeDef[0].to[0]);
+
+      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
+      validateBasicGraphResponse(res);
+      validateGraphFormat(res.graph, {
+        isSmart: true,
+        hasDetails: true,
+        hybridCollections: hybridSmartOptions.satellites,
+        onlySatellitesCreated: true
+      });
+    });
+
+    it('Hybrid Disjoint SmartGraph - expose satellites', () => {
+    });
+
+    /* Checksum tests */
     it('graphs, return only checksum', () => {
       gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
       const res = arango.GET(generateAllGraphsUrlWithChecksum());
@@ -1770,6 +1821,16 @@ describe('_api/gharial', () => {
       const checksumEdgeDefinition = res.graphs[0].edgeDefinitions[0].checksum;
       const checksumEdgeDefinition2 = res.graphs[1].edgeDefinitions[0].checksum;
       expect(checksumEdgeDefinition).to.not.be.equal(checksumEdgeDefinition2);
+    });
+
+    /* Re-Creation tests */
+    it('create SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+    });
+    it('create Disjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+    });
+    it('create Satellite SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+    });
+    it('create HybridDisjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
     });
 
   });

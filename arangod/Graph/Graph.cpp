@@ -234,12 +234,11 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
   }
 }
 
-std::set<std::string> const& Graph::vertexCollectionsUsedAsSatellites(
+std::set<std::string> Graph::vertexCollectionsUsedAsSatellites(
     TRI_vocbase_t& vocbase) const {
   std::set<std::string> list{};
 
   std::shared_ptr<LogicalCollection> logicalCollection;
-
   for (auto const& vertexCollection : vertexCollections()) {
     logicalCollection =
         graph::GraphManager::getCollectionByName(vocbase, vertexCollection);
@@ -248,7 +247,7 @@ std::set<std::string> const& Graph::vertexCollectionsUsedAsSatellites(
     }
   }
 
-  return std::move(list);
+  return list;
 }
 
 std::string Graph::calculateMd5() const {

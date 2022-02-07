@@ -185,7 +185,7 @@ class Graph {
   virtual void createSatelliteCollectionOptions(VPackBuilder& builder,
                                                 bool waitForSync) const;
 
-  std::set<std::string> const& vertexCollectionsUsedAsSatellites(
+  std::set<std::string> vertexCollectionsUsedAsSatellites(
       TRI_vocbase_t& vocbase) const;
 
   std::string calculateMd5() const;
