@@ -1650,6 +1650,93 @@ describe('_api/gharial', () => {
       return `${url}?onlyHash=true`
     };
 
+    const recreateGraphMethod = (isSmart, isDisjoint, isSatellite, isHybrid) => {
+      let toCreateGraphProperties;
+
+      if (isSmart && isDisjoint) {
+        toCreateGraphProperties = _.cloneDeep(smartDisjointOptions);
+      } else if (isSmart) {
+        toCreateGraphProperties = _.cloneDeep(smartOptions);
+      } else if (isSatellite) {
+        toCreateGraphProperties = _.cloneDeep(satelliteOptions);
+      } else {
+        toCreateGraphProperties = {}; // use servers defaults
+      }
+
+      if (isHybrid) {
+        toCreateGraphProperties.satellites = firstEdgeDef[0].from;
+      }
+
+      gM._create(graphName, firstEdgeDef, noOrphans, toCreateGraphProperties);
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
+
+      // graphs are under test above, just a simple double-check to be sure
+      if (isSmart) {
+        expect(res.graph.isSmart).to.be.true;
+        expect(res.graph.isSatellite).to.be.false;
+        if (isDisjoint) {
+          expect(res.graph.isDisjoint).to.be.true;
+        } else {
+          expect(res.graph.isDisjoint).to.be.false;
+        }
+      } else if (isSatellite) {
+        expect(res.graph.isSatellite).to.be.true;
+      }
+
+      // only pick the values we need for creation
+      const attributePickList = [
+        'name',
+        'isDisjoint',
+        'smartGraphAttribute',
+        'isSatellite',
+        'isSmart',
+        'writeConcern',
+        'minReplicationFactor',
+        'replicationFactor',
+        'numberOfShards'
+      ];
+      if (isHybrid) {
+        attributePickList.push('satellites');
+      }
+
+      const originalCreatedGraphOrphans = res.graph.orphanCollections;
+      const originalCreatedGraphEdgeDefinition = [_.pick(
+        res.graph.edgeDefinitions[0], ['collection', 'from', 'to']
+      )];
+      const originalCreatedGraph = _.pick(res.graph, attributePickList);
+
+      // Now drop the graph again.
+      gM._drop(graphName, true);
+
+      // Double check that the graph has been dropped
+      const check = arango.GET(generateSingleUrlWithDetails(graphName));
+      expect(check.code).to.equal(404);
+
+      // Try to re-create the graph from the created properties
+      gM._create(
+        originalCreatedGraph.name,
+        originalCreatedGraphEdgeDefinition,
+        originalCreatedGraphOrphans,
+        originalCreatedGraph
+      );
+
+      // compare original and newly created graph
+      const newly = arango.GET(generateSingleUrlWithDetails(graphName)).graph;
+      const newlyOrphans = newly.orphanCollections;
+      const newlyEdgeDefinition = [_.pick(
+        newly.edgeDefinitions[0], ['collection', 'from', 'to']
+      )];
+      const newlyCreatedGraph = _.pick(newly, attributePickList);
+
+      expect(newlyOrphans).to.eql(originalCreatedGraphOrphans); // check orphans
+      expect(newlyEdgeDefinition).to.eql(originalCreatedGraphEdgeDefinition); // check edgeDefinition
+      expect(newlyCreatedGraph).to.eql(originalCreatedGraph); // check properties
+      if (isHybrid) {
+        expect(newlyCreatedGraph.satellites).to.be.an('array'); // check satellites
+        expect(newlyCreatedGraph.satellites.length).to.equal(1);
+      }
+    };
+
     /* Satellite exposure tests */
     it('Community Graph - do not expose satellites', () => {
       gM._create(graphName, firstEdgeDef);
@@ -1870,12 +1957,23 @@ describe('_api/gharial', () => {
 
     /* Re-Creation tests */
     it('create SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+      recreateGraphMethod(true, false, false, false);
     });
+
     it('create Disjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+      recreateGraphMethod(true, true, false, false);
     });
+
     it('create Satellite SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+      recreateGraphMethod(false, false, true, false);
     });
-    it('create HybridDisjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+
+    it('create Hybrid SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+      recreateGraphMethod(true, false, false, true);
+    });
+
+    it('create Hybrid Disjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+      recreateGraphMethod(true, true, false, true);
     });
 
   });
