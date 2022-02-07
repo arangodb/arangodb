@@ -261,7 +261,7 @@ std::string Graph::calculateMd5() const {
   // Creates VelocyPack graph representation
   VPackBuilder md5Builder;
   md5Builder.openObject();
-  toPersistence(md5Builder, true);
+  generateMD5Representation(md5Builder);
   md5Builder.close();
 
   // Creates md5 checksum based on graph representation
@@ -393,6 +393,10 @@ void Graph::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
+void Graph::generateMD5Representation(VPackBuilder& builder) const {
+  toPersistence(builder, true);
+}
+
 void Graph::toPersistence(VPackBuilder& builder, bool md5Calculation) const {
   TRI_ASSERT(builder.isOpenObject());
 
@@ -442,8 +446,7 @@ void Graph::toPersistenceWithDetails(VPackBuilder& builder,
                                      TRI_vocbase_t const& vocbase) const {
   toPersistence(builder, true);
 
-  // calculate md5 checksum based on the graph itself (todo check location
-  // here)
+  // calculate md5 checksum based on the graph itself
   if (isSmart()) {
     // additionally, check whether there are any collections created as
     // satellite collections (Hybrid Smart Graph case).

@@ -245,6 +245,8 @@ class Graph {
   virtual void toPersistence(velocypack::Builder& builder,
                              bool md5Calculation = false) const;
 
+  virtual void generateMD5Representation(velocypack::Builder& builder) const;
+
   /**
    * @brief Same as toPersistence but will add additional information which
    * needs to be read out of the vocbase.

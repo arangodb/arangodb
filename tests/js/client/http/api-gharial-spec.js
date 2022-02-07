@@ -97,13 +97,13 @@ describe('_api/gharial', () => {
   ) => {
     const shouldBeSmart = (validationProperties && validationProperties.isSmart) || false;
     const isDisjoint = (validationProperties && validationProperties.isDisjoint) || false;
-    const hasExtra = (validationProperties && validationProperties.hasExtra) || false;
+    const hasDetails = (validationProperties && validationProperties.hasDetails) || false;
     const hybridCollections = (validationProperties && validationProperties.hybridCollections) || [];
     /*
      * Edge Definition Schema
      */
     let edgeDefinitionSchema;
-    if (hasExtra) {
+    if (hasDetails) {
       edgeDefinitionSchema = Joi.object({
         collection: Joi.string().required(),
         from: Joi.array().items(Joi.string()).required(),
@@ -132,7 +132,7 @@ describe('_api/gharial', () => {
       orphanCollections: Joi.array().items(Joi.string()).required(),
       edgeDefinitions: Joi.array().items(edgeDefinitionSchema).required()
     };
-    if (hasExtra) {
+    if (hasDetails) {
       generalGraphSchema.checksum = Joi.string().required();
     }
 
@@ -158,11 +158,9 @@ describe('_api/gharial', () => {
       let smartGraphSchema = {
         initial: Joi.string().required(),
         smartGraphAttribute: Joi.string().required(),
-        isDisjoint: Joi.boolean().required()
+        isDisjoint: Joi.boolean().required(),
+        initialCid: Joi.number().integer().min(1).required()
       };
-      if (isCluster) {
-        smartGraphSchema.initialCid = Joi.number().integer().min(1).required();
-      }
       if (isDisjoint) {
         expect(graph.isDisjoint).to.be.true;
       }
@@ -170,7 +168,7 @@ describe('_api/gharial', () => {
       Object.assign(generalGraphSchema, smartGraphSchema);
     }
 
-    if (hasExtra && shouldBeSmart) {
+    if (hasDetails && shouldBeSmart) {
       // This is a special case, means:
       // Combination out of a SmartGraph and additional collections which
       // should be created as SatelliteCollections. In that case the API
@@ -1643,7 +1641,7 @@ describe('_api/gharial', () => {
         gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
         const res = arango.GET(generateSingleUrlWithExtra(graphName));
         validateBasicGraphResponse(res);
-        validateGraphFormat(res.graph, {isSmart: true, hasExtra: true});
+        validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
       });
     }
 
