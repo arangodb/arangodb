@@ -53,7 +53,7 @@ const waitForReplicatedLogAvailable = function (id) {
       let status = db._replicatedLog(id).status();
       const leaderId = status.leaderId;
       if (leaderId !== undefined && status.participants !== undefined &&
-          status.participants[leaderId].role === "leader") {
+          status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
         break;
       }
       console.info("replicated log not yet available");
@@ -585,7 +585,12 @@ const replicatedLogSuite = function () {
           return Error('Designated leader does not report as leader');
         }
 
-        if (!_.isEqual(globalStatus.participants[leader], localStatus)) {
+        const leaderData = globalStatus.participants[leader];
+        if (leaderData.connection.errorCode !== 0) {
+          return Error(`Connection to leader failed: ${leaderData.connection.errorCode} ${leaderData.connection.errorMessage}`);
+        }
+
+        if (!_.isEqual(leaderData.response, localStatus)) {
           return Error("Copy of local status does not yet match actual local status, " +
               `found = ${JSON.stringify(globalStatus.participants[leader])}; expected = ${JSON.stringify(localStatus)}`);
         }
@@ -610,7 +615,12 @@ const replicatedLogSuite = function () {
         const {current} = readReplicatedLogAgency(database, logId);
         const election = current.supervision.election;
 
-        if (!_.isEqual(election, globalStatus.supervision.election)) {
+        const supervisionData = globalStatus.supervision;
+        if (supervisionData.connection.errorCode !== 0) {
+          return Error(`Connection to supervision failed: ${supervisionData.connection.errorCode} ${supervisionData.connection.errorMessage}`);
+        }
+
+        if (!_.isEqual(election, supervisionData.response.election)) {
           return Error('Coordinator not reporting latest state from supervision' +
               `found = ${globalStatus.supervision.election}; expected = ${election}`);
         }
