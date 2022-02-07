@@ -100,6 +100,7 @@ replicated_log::LogLeader::LogLeader(
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
+      _failureOracle(std::move(failureOracle)),
       _config(config),
       _id(std::move(id)),
       _currentTerm(term),
