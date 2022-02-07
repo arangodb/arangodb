@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { GraphView } from './GraphView';
+import { AttributesInfo } from './AttributesInfo';
 import { data } from './data';
 import { data2 } from './data2';
 import G6 from '@antv/g6';
@@ -20,7 +21,8 @@ import { EditEdgeModal } from './EditEdgeModal';
 import { AddNodeModal2 } from './AddNodeModal2';
 import AqlEditor from './AqlEditor';
 import { SlideInMenu } from './SlideInMenu';
-import omit from "lodash";
+//import omit from "lodash";
+import { omit } from "lodash";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import './tooltip.css';
 
@@ -56,6 +58,7 @@ const G6JsGraph = () => {
   //http://localhost:8529/_db/_system/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&mode=all
 
   const [urlParams, setUrlParams] = useState(urlParamsObject);
+  const [lookedUpData, setLookedUpData] = useState([]);
 
   let apiParameters = Object.keys(urlParams)
   .map((key) => key + "=" + urlParams[key])
@@ -657,7 +660,6 @@ const G6JsGraph = () => {
   }
 
   const lookUpNode = (node) => {
-    console.log("node.item._cfg.id in parent: ", node.item._cfg.id);
     const nodeId = node.item._cfg.id
     const slashPos = nodeId.indexOf("/");
     const nodeDataObject = {
@@ -672,15 +674,9 @@ const G6JsGraph = () => {
       })
       .then(response => response.json())
       .then(data => {
-        console.log("Node info loaded: ");
-        console.log("Node info loaded (data): ", data);
-        console.log("Node info loaded (data.documents): ", data.documents);
-        console.log("Node info loaded (data.documents[0]): ", data.documents[0]);
         const attributes = data.documents[0];
-        let attributeList = Object.keys(attributes)
-        .map((key) => key + ": " + attributes[key])
-        .join("&");
-        console.log("attributeList: ", attributeList);
+        const allowedAttributesList = omit(attributes, '_rev', '_key');
+        setLookedUpData(allowedAttributesList);
       })
       .catch((err) => {
         console.log(err);
@@ -829,7 +825,8 @@ const G6JsGraph = () => {
             responseDuration={responseTimes.fetchDuration}
             onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
             onClickNode={(node) => lookUpNode(node)}
-      />     
+      />    
+      <AttributesInfo attributes={lookedUpData} /> 
     </div>
   );
 }

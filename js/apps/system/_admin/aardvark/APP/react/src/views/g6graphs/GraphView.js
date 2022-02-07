@@ -6,7 +6,7 @@ import { data2 } from './data2';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import EdgeStyleSelector from './EdgeStyleSelector.js';
 import AddCollectionNameToNodesSelector from './AddCollectionNameToNodesSelector';
-import AddCollectionNameToEdgesSelector from './AddCollectionNameToEdgesSelector';
+import AddCollectionNameToEdgesSelector from './AddCollectionNameToEdgesSelector'
 import { Headerinfo } from './Headerinfo';
 import LayoutSelector from './LayoutSelector.js';
 import styles from './graphview.module.css';
@@ -242,8 +242,6 @@ export class GraphView extends React.Component {
     this.graph.render();
 
     this.graph.on('click', (e) => {
-      console.log("I clicked a node (e.item._cfg): ", e.item._cfg);
-      console.log("I clicked a node (e.item._cfg.id): ", e.item._cfg.id);
       this.props.onClickNode(e);
     })
 
