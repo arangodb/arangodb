@@ -238,11 +238,11 @@ std::set<std::string> const& Graph::vertexCollectionsUsedAsSatellites(
     TRI_vocbase_t& vocbase) const {
   std::set<std::string> list{};
 
-  graph::GraphManager gmngr{vocbase};
   std::shared_ptr<LogicalCollection> logicalCollection;
 
   for (auto const& vertexCollection : vertexCollections()) {
-    logicalCollection = gmngr.getCollectionByName(vocbase, vertexCollection);
+    logicalCollection =
+        graph::GraphManager::getCollectionByName(vocbase, vertexCollection);
     if (logicalCollection != nullptr && logicalCollection->isSatellite()) {
       list.emplace(vertexCollection);
     }
