@@ -68,7 +68,11 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(1, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
 
-      let results = db._query(q, null, opts).toArray();
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(0, stats.cursorsRearmed);
+      let results = qr.toArray();
       assertEqual(3 * n, results.length);
 
       for (let i = 0; i < 3 * n; ++i) {
@@ -88,7 +92,12 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(1, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
 
-      let results = db._query(q, null, opts).toArray();
+
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
+      let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
       for (let i = 0; i < n - 1; ++i) {
@@ -109,7 +118,11 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(1, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
 
-      let results = db._query(q, null, opts).toArray();
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
+      let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
       for (let i = 0; i < n - 1; ++i) {
@@ -129,8 +142,12 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(1, indexNodes.length);
       assertEqual(1, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
-
-      let results = db._query(q, null, opts).toArray();
+      
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
+      let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
       for (let i = 0; i < n - 1; ++i) {
@@ -151,7 +168,11 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(1, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
 
-      let results = db._query(q, null, opts).toArray();
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
+      let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
       for (let i = 0; i < n - 1; ++i) {
@@ -172,7 +193,11 @@ function VPackIndexRearmingSuite (unique) {
       assertEqual(1, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
 
-      let results = db._query(q, null, opts).toArray();
+      let qr = db._query(q, null, opts);
+      let stats = qr.getExtra().stats;
+      assertEqual(n - 1, stats.cursorsCreated);
+      assertEqual(0, stats.cursorsRearmed);
+      let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
       for (let i = 0; i < n - 1; ++i) {
