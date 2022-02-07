@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, beforeEach, afterEach, it */
+/* global describe, beforeEach, afterEach, it, _ */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1635,19 +1635,19 @@ describe('_api/gharial', () => {
     };
 
     const generateSingleUrl = (graphName) => {
-      return `${url}/${graphName}`
+      return `${url}/${graphName}`;
     };
 
     const generateSingleUrlWithDetails = (graphName) => {
-      return `${url}/${graphName}?details=true`
+      return `${url}/${graphName}?details=true`;
     };
 
     const generateAllGraphsUrlWithDetails = () => {
-      return `${url}?details=true`
+      return `${url}?details=true`;
     };
 
     const generateAllGraphsUrlWithChecksum = () => {
-      return `${url}?onlyHash=true`
+      return `${url}?onlyHash=true`;
     };
 
     const recreateGraphMethod = (isSmart, isDisjoint, isSatellite, isHybrid) => {
