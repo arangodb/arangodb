@@ -57,7 +57,6 @@ struct Properties {
 struct Plan {
   LogId id;
   StateGeneration generation;
-
   Properties properties;
 
   struct Participant {
