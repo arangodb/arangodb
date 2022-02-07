@@ -1,6 +1,6 @@
 #include <utility>
 
-#include "Graph/Providers/BaseStep.h"
+#include "BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Transaction/Methods.h"
 
@@ -32,7 +32,7 @@ class ClusterProviderStep
     void setVertex(VertexType thisIsATest) { _vertex = std::move(thisIsATest); }
 
    private:
-    VertexType _vertex;
+    VertexType _vertex;  // vertex id
   };
 
   class Edge {
@@ -45,10 +45,15 @@ class ClusterProviderStep
     [[nodiscard]] StepType const& getID()
         const;  // TODO: Performance Test compare EdgeType
                 // <-> EdgeDocumentToken
+    /**
+     * The first step in a path has no edge, so _edge is empty. In this case it
+     * is invalid.
+     * @return
+     */
     [[nodiscard]] bool isValid() const;
 
    private:
-    EdgeType _edge;
+    EdgeType _edge;  // edge id
   };
 
  private:
@@ -94,8 +99,8 @@ class ClusterProviderStep
   void setFetched() { _fetched = true; }
 
  private:
-  Vertex _vertex;
-  Edge _edge;
+  Vertex _vertex;  // vertex id
+  Edge _edge;      // edge id
   bool _fetched;
 };
 

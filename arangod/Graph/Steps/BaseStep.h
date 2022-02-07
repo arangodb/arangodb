@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include <velocypack/HashedStringRef.h>
-#include "Basics/ResultT.h"
+#include "../../../3rdParty/velocypack/include/velocypack/HashedStringRef.h"
+#include "../../../lib/Basics/ResultT.h"
 
-#include <numeric>
+#include "../../../../../../../usr/include/c++/10/numeric"
 
 namespace arangodb {
 
@@ -35,23 +35,23 @@ namespace graph {
 template<class StepDetails>
 class BaseStep {
  public:
-  BaseStep(size_t prev = std::numeric_limits<size_t>::max(), size_t depth = 0,
-           double weight = 1.0)
+  explicit BaseStep(size_t prev = std::numeric_limits<size_t>::max(),
+                    size_t depth = 0, double weight = 1.0)
       : _previous{prev}, _depth{depth}, _weight(weight) {}
 
-  size_t getPrevious() const { return _previous; }
+  [[nodiscard]] size_t getPrevious() const { return _previous; }
 
-  bool isFirst() const {
+  [[nodiscard]] bool isFirst() const {
     return _previous == std::numeric_limits<size_t>::max();
   }
 
-  bool isLooseEnd() const {
+  [[nodiscard]] bool isLooseEnd() const {
     return static_cast<StepDetails*>(this)->isLooseEnd();
   }
 
-  size_t getDepth() const { return _depth; }
+  [[nodiscard]] size_t getDepth() const { return _depth; }
 
-  double getWeight() const { return _weight; }
+  [[nodiscard]] double getWeight() const { return _weight; }
 
   [[nodiscard]] ResultT<std::pair<std::string, size_t>> extractCollectionName(
       arangodb::velocypack::HashedStringRef const& idHashed) const {
