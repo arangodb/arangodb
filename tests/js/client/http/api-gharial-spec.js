@@ -45,6 +45,7 @@ const url = '/_api/gharial';
 
 describe('_api/gharial', () => {
   const graphName = 'UnitTestGraph';
+  const graphName2 = 'UnitTestGraph2';
   const vColName = 'UnitTestVertices';
   const eColName = 'UnitTestRelations';
   const oColName = 'UnitTestOrphans';
@@ -95,7 +96,7 @@ describe('_api/gharial', () => {
     graph,
     validationProperties
   ) => {
-    const shouldBeSmart = (validationProperties && validationProperties.isSmart) || false;
+    const isSmart = (validationProperties && validationProperties.isSmart) || false;
     const isDisjoint = (validationProperties && validationProperties.isDisjoint) || false;
     const isSatellite = (validationProperties && validationProperties.isSatellite) || false;
     const hasDetails = (validationProperties && validationProperties.hasDetails) || false;
@@ -137,7 +138,7 @@ describe('_api/gharial', () => {
       generalGraphSchema.checksum = Joi.string().required();
     }
 
-    if (isCluster || shouldBeSmart || isSatellite) {
+    if (isCluster || isSmart || isSatellite) {
       // Those properties are either:
       // - Required for all graphs which are being created in a cluster
       // - OR SmartGraphs (incl. Disjoint & Hybrid, as SmartGraphs can now be created
@@ -159,7 +160,7 @@ describe('_api/gharial', () => {
       Object.assign(generalGraphSchema, distributionGraphSchema);
     }
 
-    if (shouldBeSmart) {
+    if (isSmart) {
       // SmartGraph related only
       let smartGraphSchema = {
         smartGraphAttribute: Joi.string().required(),
@@ -172,7 +173,7 @@ describe('_api/gharial', () => {
       Object.assign(generalGraphSchema, smartGraphSchema);
     }
 
-    if (shouldBeSmart || isSatellite) {
+    if (isSmart || isSatellite) {
       let smartOrSatSchema = {
         initial: Joi.string().required(),
         initialCid: Joi.number().integer().min(1).required()
@@ -181,7 +182,7 @@ describe('_api/gharial', () => {
       Object.assign(generalGraphSchema, smartOrSatSchema);
     }
 
-    if (hasDetails && shouldBeSmart) {
+    if (hasDetails && isSmart && !isSatellite) {
       // This is a special case, means:
       // Combination out of a SmartGraph and additional collections which
       // should be created as SatelliteCollections. In that case the API
@@ -1582,7 +1583,11 @@ describe('_api/gharial', () => {
     afterEach(() => {
       // Applies only to tests in this describe block
       try {
-        return gM._drop(graphName, true);
+        gM._drop(graphName, true);
+      } catch (ignore) {
+      }
+      try {
+        gM._drop(graphName2, true);
       } catch (ignore) {
       }
     });
@@ -1613,18 +1618,31 @@ describe('_api/gharial', () => {
     };
 
     // basic validation methods
+    const validateBasicGraphsResponse = (res) => {
+      expect(res.code).to.equal(200);
+      expect(res.error).to.be.false;
+      expect(res).to.have.keys("error", "code", "graphs");
+      expect(res.graphs).to.be.an('array');
+    };
+
+    // basic validation methods
     const validateBasicGraphResponse = (res) => {
       expect(res.code).to.equal(200);
       expect(res.error).to.be.false;
       expect(res).to.have.keys("error", "code", "graph");
+      expect(res.graph).to.be.an('object');
     };
 
     const generateSingleUrl = (graphName) => {
       return `${url}/${graphName}`
     };
 
-    const generateSingleUrlWithExtra = (graphName) => {
+    const generateSingleUrlWithDetails = (graphName) => {
       return `${url}/${graphName}?details=true`
+    };
+
+    const generateAllGraphsUrlWithDetails = () => {
+      return `${url}?details=true`
     };
 
     const generateAllGraphsUrlWithChecksum = () => {
@@ -1661,25 +1679,17 @@ describe('_api/gharial', () => {
 
     it('SmartGraph - expose empty satellites', () => {
       gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-      const res = arango.GET(generateSingleUrlWithExtra(graphName));
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
       validateBasicGraphResponse(res);
       validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
     });
 
     it('Disjoint SmartGraph - expose empty satellites', () => {
       gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
-      const res = arango.GET(generateSingleUrlWithExtra(graphName));
+      const res = arango.GET(generateSingleUrlWithDetails(graphName));
       validateBasicGraphResponse(res);
       validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
     });
-
-    it('Satellite Graph - expose empty satellites', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
-      const res = arango.GET(generateSingleUrlWithExtra(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {isSatellite: true, hasDetails: true});
-    });
-
 
     it('graphs, return only checksum', () => {
       gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
@@ -1691,10 +1701,6 @@ describe('_api/gharial', () => {
       expect(res.checksum.length).to.be.greaterThan(1);
     });
 
-    it('graphs, return details including all checksums', () => {
-
-    });
-
     it('graphs, should revoke checksum and details call (not allowed)', () => {
       gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
       const res = arango.GET(`${url}?onlyHash=true&details=true`);
@@ -1702,6 +1708,68 @@ describe('_api/gharial', () => {
       expect(res.code).to.equal(400);
       expect(res.error).to.be.true;
       expect(res.errorNum).to.equal(1936);
+    });
+
+    it('different graphs, return details including all checksums', () => {
+      // means every EdgeDefinition has md5 checksum and every graph has md5 checksum
+      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+      gM._create(graphName2, secondEdgeDef, noOrphans, smartOptions);
+
+      const res = arango.GET(generateAllGraphsUrlWithDetails());
+      validateBasicGraphsResponse(res);
+
+      expect(res.graphs.length).to.equal(2);
+      res.graphs.forEach((graph) => {
+        validateGraphFormat(graph, {isSmart: true, hasDetails: true});
+      });
+    });
+
+    it('different graphs, overlapping edge definition, return details including all checksums', () => {
+      // same edge definitions used in different graphs needs to have the same md5 checksum
+      gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
+      gM._create(graphName2, firstEdgeDef, noOrphans, satelliteOptions);
+
+      const res = arango.GET(generateAllGraphsUrlWithDetails());
+
+      validateBasicGraphsResponse(res);
+      expect(res.graphs.length).to.equal(2);
+      res.graphs.forEach((graph) => {
+        validateGraphFormat(graph, {isSatellite: true, hasDetails: true});
+      });
+
+      // global checksum must differ
+      const checksumGraph = res.graphs[0].checksum;
+      const checksumGraph2 = res.graphs[1].checksum;
+      expect(checksumGraph).to.not.equal(checksumGraph2);
+
+      // edge definition checksum must be equal
+      const checksumEdgeDefinition = res.graphs[0].edgeDefinitions[0].checksum;
+      const checksumEdgeDefinition2 = res.graphs[1].edgeDefinitions[0].checksum;
+      expect(checksumEdgeDefinition).to.be.equal(checksumEdgeDefinition2);
+    });
+
+    it('different graphs, non overlapping edge definition, return details including all checksums', () => {
+      // different edge definitions used in different graphs needs to have different md5 checksums
+      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+      gM._create(graphName2, secondEdgeDef, noOrphans, smartOptions);
+
+      const res = arango.GET(generateAllGraphsUrlWithDetails());
+
+      validateBasicGraphsResponse(res);
+      expect(res.graphs.length).to.equal(2);
+      res.graphs.forEach((graph) => {
+        validateGraphFormat(graph, {isSmart: true, hasDetails: true});
+      });
+
+      // global checksum must differ
+      const checksumGraph = res.graphs[0].checksum;
+      const checksumGraph2 = res.graphs[1].checksum;
+      expect(checksumGraph).to.not.equal(checksumGraph2);
+
+      // edge definition checksum must be equal
+      const checksumEdgeDefinition = res.graphs[0].edgeDefinitions[0].checksum;
+      const checksumEdgeDefinition2 = res.graphs[1].edgeDefinitions[0].checksum;
+      expect(checksumEdgeDefinition).to.not.be.equal(checksumEdgeDefinition2);
     });
 
   });
