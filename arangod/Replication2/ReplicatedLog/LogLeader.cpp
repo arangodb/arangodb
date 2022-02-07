@@ -529,6 +529,7 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
     -> LogIndex {
   auto index =
       insert(std::move(payload), waitForSync, doNotTriggerAsyncReplication);
+  LOG_DEVEL << "index " << index.value << " " << payload.slice().toJson();
   triggerAsyncReplication();
   return index;
 }
@@ -901,6 +902,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
         .id = pid,
         .failed = _self._failureOracle->isServerFailed(pid),
         .flags = flags->second});
+    LOG_DEVEL << "Follower " << pid << " " << indexes.back().isFailed();
 
     largestCommonIndex =
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);
