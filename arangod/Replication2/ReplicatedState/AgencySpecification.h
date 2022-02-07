@@ -39,9 +39,26 @@ class Slice;
 
 namespace arangodb::replication2::replicated_state::agency {
 
+struct ImplementationSpec {
+  std::string type;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
+      -> ImplementationSpec;
+};
+
 struct Plan {
   LogId id;
   StateGeneration generation;
+
+  struct Properties {
+    ImplementationSpec implementation;
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
+  };
+
+  Properties properties;
 
   struct Participant {
     StateGeneration generation;
@@ -57,44 +74,9 @@ struct Plan {
 };
 
 struct Current {
-  LogId id;
-
   struct ParticipantStatus {
     StateGeneration generation;
-
-    struct Snapshot {
-      enum class Status {
-        kInProgress,
-        kCompleted,
-        kFailed,
-      };
-
-      using clock = std::chrono::system_clock;
-
-      struct Error {
-        ErrorCode error;
-        std::optional<std::string> message;
-        clock::time_point retryAt;
-        void toVelocyPack(velocypack::Builder& builder) const;
-        [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
-
-        friend auto operator==(Error const&, Error const&) noexcept
-            -> bool = default;
-      };
-
-      void toVelocyPack(velocypack::Builder& builder) const;
-      [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Snapshot;
-
-      friend auto operator==(Snapshot const&, Snapshot const&) noexcept
-          -> bool = default;
-
-      Status status{Status::kInProgress};
-      clock::time_point timestamp;
-      std::optional<Error> error;
-    };
-
-    // TODO might become an array later?
-    Snapshot snapshot;
+    SnapshotInfo snapshot;  // TODO might become an array later?
 
     friend auto operator==(ParticipantStatus const&,
                            ParticipantStatus const&) noexcept -> bool = default;
@@ -110,10 +92,5 @@ struct Current {
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
-
-auto to_string(Current::ParticipantStatus::Snapshot::Status status)
-    -> std::string_view;
-auto from_string(std::string_view string)
-    -> Current::ParticipantStatus::Snapshot::Status;
 
 }  // namespace arangodb::replication2::replicated_state::agency

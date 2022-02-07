@@ -8,6 +8,9 @@ devel
   The performance improvements are due to some improved handling of index
   lookup conditions in the internals of the VelocyPack-based index.
 
+* Reintroduce shard synchronization cancellation check that was disabled
+  before.
+
 * Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
   skip over some subquery results. This did only show up if the subquery fills
   exactly one internal batch before it is completed, so it is rather unlikely.
