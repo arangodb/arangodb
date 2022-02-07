@@ -236,8 +236,6 @@ const replicatedLogSuite = function () {
       // now stop one server
       stopServer(followers[0]);
 
-      log = db._replicatedLog(logId);
-      log.insert({foo: "bar"});
       quorum = log.insert({foo: "bar"}); // index 3
       assertEqual(quorum.result.quorum.quorum.length, 2);
       console.log("____________________________________________-WTF_____________________________");
@@ -250,13 +248,14 @@ const replicatedLogSuite = function () {
       console.log(x);
 
       console.log("After continue server************************************");
-      waitFor(function (){
-        log.insert({foo: "bar"}); // index 4
+      waitFor(function () {
+        let quorum = log.insert({foo: "bar"}); // index 4
         x = db._replicatedLog(logId).status();
         console.log(x);
         if (quorum.result.quorum.quorum.length !== 3) {
-          return Error("quorum size not reached");
+          return Error(`quorum size not reached, found ${JSON.stringify(quorum.result)}`);
         }
+        return true;
       });
     },
   };

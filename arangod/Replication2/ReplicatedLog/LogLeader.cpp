@@ -552,6 +552,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
   auto const index = this->_inMemoryLog.getNextIndex();
+  LOG_DEVEL << "insert log entry " << index << " with payload "
+            << (payload.has_value() ? payload->slice()
+                                    : VPackSlice::noneSlice())
+                   .toJson();
   auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
   auto logEntry = InMemoryLogEntry(
       PersistingLogEntry(_self._currentTerm, index, std::move(payload)),
@@ -803,7 +807,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.lastAckedEntry = lastIndex;
         follower.lastAckedCommitIndex = currentCommitIndex;
         follower.lastAckedLCI = currentLCI;
-        toBeResolved = checkCommitIndex();
       } else {
         TRI_ASSERT(response.reason.error !=
                    AppendEntriesErrorReason::ErrorType::kNone);
@@ -856,6 +859,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   }
 
   // try sending the next batch
+  toBeResolved = checkCommitIndex();
   return std::make_pair(prepareAppendEntries(), std::move(toBeResolved));
 }
 
@@ -1185,6 +1189,7 @@ void replicated_log::LogLeader::establishLeadership(
 
         // Also make sure that this entry is written with waitForSync = true to
         // ensure that entries of the previous term are synced as well.
+        LOG_DEVEL << "establish leadership";
         auto firstIndex = data.insertInternal(std::nullopt, true, std::nullopt);
         TRI_ASSERT(firstIndex == lastIndex.index + 1);
         return firstIndex;
@@ -1306,7 +1311,7 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
                              }));
     }
 #endif
-
+    LOG_DEVEL << "updateParticipantsConfig";
     auto const idx = data.insertInternal(std::nullopt, true, std::nullopt);
     data.activeParticipantsConfig = config;
     data._follower.swap(followers);
