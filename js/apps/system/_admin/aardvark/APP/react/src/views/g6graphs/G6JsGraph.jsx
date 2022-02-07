@@ -19,6 +19,7 @@ import { LoadDocument } from './LoadDocument';
 import { EditModal } from './EditModal';
 import { EditEdgeModal } from './EditEdgeModal';
 import { AddNodeModal2 } from './AddNodeModal2';
+import { FetchFullGraphModal } from './FetchFullGraphModal';
 import AqlEditor from './AqlEditor';
 import { SlideInMenu } from './SlideInMenu';
 //import omit from "lodash";
@@ -97,6 +98,7 @@ const G6JsGraph = () => {
   let [graphData, setGraphData] = useState(data);
   const ref = React.useRef(null);
   let graph = null;
+  const [showFetchFullGraphModal, setShowFetchFullGraphModal] = useState(false);
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditEdgeModal, setShowEditEdgeModal] = useState(false);
@@ -787,6 +789,14 @@ const G6JsGraph = () => {
         <strong>Really edit node: {editNode}</strong>
         <strong>Edit node (object): {JSON.stringify(selectedNodeData, null, 2)}</strong>
       </EditNodeModal>
+      <FetchFullGraphModal
+        shouldShow={showFetchFullGraphModal}
+        onRequestClose={() => {
+          setShowFetchFullGraphModal(false);
+        }}
+      >
+        <strong>Fetch full graph</strong>
+      </FetchFullGraphModal>
       <AddNodeModal2
         shouldShow={showNodeToAddModal}
         onRequestClose={() => {
@@ -807,6 +817,7 @@ const G6JsGraph = () => {
         <strong>Add node</strong>
       </AddNodeModal2>
       <button onClick={() => testApiParams()}>Test API Params</button>
+      <button onClick={() => setShowFetchFullGraphModal(true)}>Open fetch full graph modal</button>
       <GraphView
             data={graphData}
             onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
