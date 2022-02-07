@@ -243,6 +243,7 @@
       this.userConfig = options.userConfig;
       this.saveCallback = options.saveCallback;
 
+
       if (options.noDefinedGraph) {
         this.noDefinedGraph = options.noDefinedGraph;
       }
@@ -271,7 +272,7 @@
         if (e.currentTarget.id === this.lastFocussed) {
           if (e.currentTarget.id === "g_nodeLabel" && this.lastFocussedValue !== $(e.currentTarget).val()) {
             if ($('#g_nodeLabelByCollection').val() === 'true') {
-              this.populateNodeIds();
+              this.populateNodeIds(this.handleDependencies());
             }
             //debugger;
           } else if (this.lastFocussedValue !== $(e.currentTarget).val()) {
@@ -286,12 +287,14 @@
       if (e.type === "change" && e.target.id !== "g_singleNode" && e.target.id !== 'g_nodeLabelByCollection') {
         self.saveGraphSettings(self.getLabels());
       } else if (e.target.id === "g_singleNode") {
-        self.updateSingleNode();
+        self.updateSingleNode(null, self.saveGraphSettings(null, null, null, null, self.populateNodeIds()));
       } else if (e.target.id === 'g_nodeLabelByCollection') {
         if ($('#g_nodeLabelByCollection').val() === 'false') {
           $('#g_singleNode').prop('disabled', true);
+        } else {
+          self.populateNodeIds(this.handleDependencies());
         }
-        self.populateNodeIds();
+
       }
     },
 
@@ -299,7 +302,7 @@
      * Populates the single node select dropdown with
      * the current node Ids.
      */
-    populateNodeIds: function () {
+    populateNodeIds: function (cb) {
       if ($(`#g_nodeLabelByCollection`).val() !== "false") {
 
         let cNodes = window.App.graphViewer.currentGraph.graph.nodes();
@@ -321,35 +324,38 @@
           }
         }
       }
-      this.handleDependencies();
+      if (typeof cb === "function") {
+        cb()
+      }
+      //this.handleDependencies();
+    },
+
+
+    getAttributes: function (n, cb) {
+      var callBack = function (error, data, id) {
+        if (!error && data.documents[0].length !== 0) {
+          cb(data.documents);
+        } else {
+          self.currentGraph.refresh();
+        }
+      }
+      if (n) {
+        window.App.arangoDocumentStore.getDocument(n.id.split("/")[0], n.id.split("/")[1], callBack);;
+      } else {
+        throw new Error("No node supplied")
+      }
     },
 
     /**
      * returns an event object
      * @param {event} e
      */
-    updateSingleNode: function (e) {
+    updateSingleNode: function (e, cb) {
       var self = this;
       var newNodeLabel = $("#g_nodeLabel").val();
       var nodeId = $('#g_singleNode').val();
       var graphViewer = window.App.graphViewer;
       var graphNodes = graphViewer.currentGraph.graph.nodes();
-
-      var getAttributes = function (n, cb) {
-        var callBack = function (error, data, id) {
-          if (!error && data.documents[0].length !== 0) {
-            cb(data.documents);
-          } else {
-            self.currentGraph.refresh();
-          }
-        }
-        if (n) {
-          window.App.arangoDocumentStore.getDocument(n.id.split("/")[0], n.id.split("/")[1], callBack);;
-        } else {
-          throw new Error("No node supplied")
-        }
-      }
-
 
       _.each(graphNodes, function (n, k) {
         if (n.id === nodeId) {
@@ -367,10 +373,14 @@
             }
           }
 
-          getAttributes(n, callback);
+          self.getAttributes(n, callback);
         }
       });
       graphViewer.currentGraph.refresh({ skipIndexation: true });
+
+      if (cb !== null && typeof cb === "function") {
+        cb();
+      }
     },
 
     getLabels: function () {
