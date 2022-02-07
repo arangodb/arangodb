@@ -33,18 +33,19 @@
 #include "Utils.h"
 #include "GraphSpecification.h"
 #include "Utils/DatabaseGuard.h"
+#include "Graph.h"
 
 namespace arangodb::pregel3 {
 
 using VertexId = std::string;
 
-struct Vertex {
-  std::vector<size_t> neighbours;
-};
-
-struct Graph {
-  std::vector<Vertex> vertices;
-};
+// struct Vertex {
+//   std::vector<size_t> neighbours;
+// };
+//
+// struct Graph {
+//   std::vector<Vertex> vertices;
+// };
 
 using QueryId = std::string;
 struct Query : std::enable_shared_from_this<Query> {
@@ -66,7 +67,7 @@ struct Query : std::enable_shared_from_this<Query> {
  private:
   QueryId id;
   GraphSpecification _graphSpec;
-  std::shared_ptr<Graph> graph{nullptr};
+  std::shared_ptr<BaseGraph> _graph{nullptr};
   State _state = State::CREATED;
   TRI_vocbase_t& _vocbase;
 };

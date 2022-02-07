@@ -25,20 +25,73 @@
 
 #include <vector>
 
-class BaseGraphParameters {
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "Containers/FlatHashMap.h"
+/// Every vertex has a unique id. The ids start from 0 and end with n-1 where n
+/// is the number of vertices in the graph. The same for edges.
+
+namespace arangodb::pregel3 {
+class BaseGraphProperties {
+ public:
   bool isDirected;
 };
 
-template<class GraphParameters>
-concept DerivedFromBaseGraphParameters =
-    std::is_base_of_v<BaseGraphParameters, GraphParameters>;
+class BaseVertexProperties {
+ public:
+  explicit BaseVertexProperties(LocalDocumentId const& token)
+      : localDocumentId(token) {}
+  // For directed graphs, the indexes of the out-neighbors.
+  // For undirected graphs, the indexes of all neighbors.
+  std::vector<size_t> neighbors;
+  // For directed graphs, the indexes of the outgoing edges.
+  // For undirected graphs, the indexes of all incident edges.
+  // The order of neighbors is the order of the corresponding edges.
+  std::vector<std::vector<size_t>> outEdges;
+  //  bool active = true;
+  arangodb::LocalDocumentId const& localDocumentId;
+};
 
-template<DerivedFromBaseGraphParameters GraphProperties, class VertexProperties,
-         class EdgeProperties>
+class BaseEdgeProperties {
+  // The edge does not know its endpoints, only its properties like the weight.
+};
 
+template<class GraphProperties>
+concept DerivedFromBaseGraphProperties =
+    std::is_base_of_v<BaseGraphProperties, GraphProperties> ||
+    std::is_same_v<BaseGraphProperties, GraphProperties>;
+
+template<class EdgeProperties>
+concept DerivedFromBaseEdgeProperties =
+    std::is_base_of_v<BaseEdgeProperties, EdgeProperties> ||
+    std::is_same_v<BaseEdgeProperties, EdgeProperties>;
+
+template<class VertexProperties>
+concept DerivedFromBaseVertexProperties =
+    std::is_base_of_v<BaseVertexProperties, VertexProperties> ||
+    std::is_same_v<BaseVertexProperties, VertexProperties>;
+
+template<DerivedFromBaseGraphProperties GraphProperties,
+         DerivedFromBaseVertexProperties VertexProperties,
+         DerivedFromBaseEdgeProperties EdgeProperties>
 class Graph {
- private:
+ public:
+  using GraphProps = GraphProperties;
+  using VertexProps = VertexProperties;
+  using EdgeProps = EdgeProperties;
+
+  Graph() = default;
+
   std::vector<VertexProperties> vertexProperties;
   std::vector<EdgeProperties> edgeProperties;
   GraphProperties graphProperties;
+  // maps a vertex _id to its index in vertexProperties
+  containers::FlatHashMap<std::string, size_t> vertexIdToIdx;
+  std::vector<std::string> idxToVertexId;
 };
+
+using BaseGraph =
+    Graph<BaseGraphProperties, BaseVertexProperties, BaseEdgeProperties>;
+}  // namespace arangodb::pregel3
+
+// parallelise load graph + measure what takes how much time
+// mincut in new pregel

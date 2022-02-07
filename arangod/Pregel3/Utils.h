@@ -34,6 +34,11 @@ class Utils {
   Utils() = delete;
 
   // constants
+
+  // numbers
+  static constexpr uint32_t standardBatchSize = 10000;
+
+  // strings
   static constexpr auto vertexCollNames = "vertexCollNames";
   static constexpr auto edgeCollNames = "edgeCollNames";
   static constexpr auto wrongGraphSpecErrMsg =
