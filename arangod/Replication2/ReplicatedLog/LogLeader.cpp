@@ -529,7 +529,6 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
     -> LogIndex {
   auto index =
       insert(std::move(payload), waitForSync, doNotTriggerAsyncReplication);
-  LOG_DEVEL << "index " << index.value << " " << payload.slice().toJson();
   triggerAsyncReplication();
   return index;
 }
@@ -552,10 +551,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
   auto const index = this->_inMemoryLog.getNextIndex();
-  LOG_DEVEL << "insert log entry " << index << " with payload "
-            << (payload.has_value() ? payload->slice()
-                                    : VPackSlice::noneSlice())
-                   .toJson();
   auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
   auto logEntry = InMemoryLogEntry(
       PersistingLogEntry(_self._currentTerm, index, std::move(payload)),
@@ -774,11 +769,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     std::chrono::steady_clock::duration latency, MessageId messageId)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>,
                  ResolvedPromiseSet> {
-  if (currentTerm != _self._currentTerm) {
-    LOG_CTX("7ab2e", WARN, follower.logContext)
-        << "received append entries response with wrong term: " << currentTerm;
-    return {};
-  }
+  TRI_ASSERT(currentTerm == _self._currentTerm);
 
   ResolvedPromiseSet toBeResolved;
 
@@ -858,8 +849,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     FATAL_ERROR_EXIT();
   }
 
-  // try sending the next batch
+  // checkCommitIndex is called regardless of follower response.
+  // The follower might be failed, but the agency can't tell that immediately.
+  // Thus, we might have to commit an entry without this follower.
   toBeResolved = checkCommitIndex();
+  // try sending the next batch
   return std::make_pair(prepareAppendEntries(), std::move(toBeResolved));
 }
 
@@ -906,7 +900,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
         .id = pid,
         .failed = _self._failureOracle->isServerFailed(pid),
         .flags = flags->second});
-    LOG_DEVEL << "Follower " << pid << " " << indexes.back().isFailed();
 
     largestCommonIndex =
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);
@@ -1189,7 +1182,6 @@ void replicated_log::LogLeader::establishLeadership(
 
         // Also make sure that this entry is written with waitForSync = true to
         // ensure that entries of the previous term are synced as well.
-        LOG_DEVEL << "establish leadership";
         auto firstIndex = data.insertInternal(std::nullopt, true, std::nullopt);
         TRI_ASSERT(firstIndex == lastIndex.index + 1);
         return firstIndex;
@@ -1311,7 +1303,7 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
                              }));
     }
 #endif
-    LOG_DEVEL << "updateParticipantsConfig";
+
     auto const idx = data.insertInternal(std::nullopt, true, std::nullopt);
     data.activeParticipantsConfig = config;
     data._follower.swap(followers);

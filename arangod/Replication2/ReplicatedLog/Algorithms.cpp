@@ -276,17 +276,10 @@ auto algorithms::calculateCommitIndex(
                  return !p.isFailed() && !p.isExcluded() &&
                         p.lastTerm() == lastTermIndex.term;
                });
-  LOG_DEVEL << "EligibleStart";
-  for (auto it : eligible) {
-    LOG_DEVEL << it.id;
-  }
 
   // We write to at least writeConcern servers, ideally more if available.
   auto actualWriteConcern = std::max(
       opt._writeConcern, std::min(eligible.size(), opt._softWriteConcern));
-  LOG_DEVEL << "actual WC " << actualWriteConcern << " indexes "
-            << indexes.size() << " eligible " << eligible.size();
-  LOG_DEVEL << "EligibleEnd";
 
   if (actualWriteConcern > indexes.size() &&
       indexes.size() == eligible.size()) {
@@ -307,7 +300,6 @@ auto algorithms::calculateCommitIndex(
   }
 
   auto const spearhead = lastTermIndex.index;
-  LOG_DEVEL << "spearhead " << spearhead;
 
   // The minimal commit index caused by forced participants.
   // If there are no forced participants, this component is just
@@ -316,8 +308,6 @@ auto algorithms::calculateCommitIndex(
   auto minForcedParticipantId = std::optional<ParticipantId>{};
   for (auto const& pt : indexes) {
     if (pt.isForced()) {
-      LOG_DEVEL << "forced participant " << pt.id << " index "
-                << pt.lastIndex();
       if (pt.lastTerm() != lastTermIndex.term) {
         // A forced participant has entries from a previous term. We can't use
         // this participant, hence it becomes impossible to commit anything.
@@ -352,8 +342,6 @@ auto algorithms::calculateCommitIndex(
 
     auto commitIndex =
         std::min(minForcedCommitIndex, minNonExcludedCommitIndex);
-    LOG_DEVEL << "minForced " << minForcedCommitIndex << " minNonExcluded "
-              << minNonExcludedCommitIndex;
 
     auto quorum = std::vector<ParticipantId>{};
     quorum.reserve(actualWriteConcern);
@@ -378,7 +366,6 @@ auto algorithms::calculateCommitIndex(
       // We commit as far away as we can get, but report the participant whose
       // id is the furthest away from the spearhead.
       auto const& who = nth->id;
-      LOG_DEVEL << "WHO " << who;
       return {commitIndex, CommitFailReason::withQuorumSizeNotReached(who),
               std::move(quorum)};
     }
