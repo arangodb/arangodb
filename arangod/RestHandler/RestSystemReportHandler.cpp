@@ -104,7 +104,7 @@ RestStatus RestSystemReportHandler::execute() {
   }
 
   using namespace std::chrono;
-  auto start = steady_clock::now();
+  [[maybe_unused]] auto start = steady_clock::now();
 
   VPackBuilder result;
   {

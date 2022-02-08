@@ -54,6 +54,9 @@ class ConfigFeature final : public application_features::ApplicationFeature {
         _file(configFilename),
         _progname(progname),
         _checkConfiguration(false) {
+    static_assert(
+        Server::template isCreatedAfter<ConfigFeature, VersionFeature>());
+
     setOptional(false);
     startsAfter<LoggerFeature, Server>();
     startsAfter<ShellColorsFeature, Server>();

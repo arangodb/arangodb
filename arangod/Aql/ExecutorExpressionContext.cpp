@@ -38,6 +38,11 @@ ExecutorExpressionContext::ExecutorExpressionContext(
       _inputRow(inputRow),
       _varsToRegister(varsToRegister) {}
 
+void ExecutorExpressionContext::adjustInputRow(
+    InputAqlItemRow const& inputRow) noexcept {
+  _inputRow = inputRow;
+}
+
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
@@ -49,9 +54,9 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
         for (auto const& [varId, regId] : _varsToRegister) {
           if (varId == searchId) {
             if (doCopy) {
-              return _inputRow.getValue(regId).clone();
+              return _inputRow.get().getValue(regId).clone();
             }
-            return _inputRow.getValue(regId);
+            return _inputRow.get().getValue(regId);
           }
         }
         std::string msg("variable not found '");

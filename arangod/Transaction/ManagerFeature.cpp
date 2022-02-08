@@ -54,6 +54,9 @@ ManagerFeature::ManagerFeature(Server& server)
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_transactions_expired_total{})) {
+  static_assert(
+      Server::isCreatedAfter<ManagerFeature, metrics::MetricsFeature>());
+
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();

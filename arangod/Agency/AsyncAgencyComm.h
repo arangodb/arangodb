@@ -193,9 +193,12 @@ class AsyncAgencyComm final {
   using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
   using FutureReadResult = arangodb::futures::Future<AgencyReadResult>;
 
-  [[nodiscard]] FutureResult getValues(std::string const& path) const;
+  [[nodiscard]] FutureResult getValues(
+      std::string const& path,
+      std::optional<network::Timeout> timeout = {}) const;
   [[nodiscard]] FutureReadResult getValues(
-      std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
+      std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
+      std::optional<network::Timeout> timeout = {}) const;
   [[nodiscard]] FutureResult poll(network::Timeout timeout,
                                   uint64_t index) const;
 
