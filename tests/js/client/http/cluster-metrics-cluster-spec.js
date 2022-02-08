@@ -335,7 +335,7 @@ describe('_admin/metrics', () => {
       const lines = prometheus.split('\n').filter((s) => !s.startsWith('#') && s !== '');
       const res = {};
       for (const l of lines) {
-        const [keypart, count] = l.split(' ');
+        const [keypart, count] = l.split('}');
         const [key, labels] = extractKeyAndLabel(keypart);
         if (labels.has("le")) {
           // Bucket case

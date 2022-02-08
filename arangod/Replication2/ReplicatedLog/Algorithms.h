@@ -44,18 +44,6 @@ struct ParticipantRecord {
 
 using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
 
-auto checkReplicatedLog(
-    DatabaseID const& database, agency::LogPlanSpecification const& spec,
-    agency::LogCurrent const& current,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification,
-                    agency::LogCurrentSupervisionElection>;
-
-auto checkReplicatedLogParticipants(
-    DatabaseID const& database, agency::LogPlanSpecification const& spec,
-    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, ParticipantsConfig>;
-
 enum class ConflictReason {
   LOG_ENTRY_AFTER_END,
   LOG_ENTRY_BEFORE_BEGIN,
@@ -84,7 +72,7 @@ auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
     -> futures::Future<arangodb::Result>;
 
 struct ParticipantStateTuple {
-  LogIndex index;
+  TermIndexPair lastAckedEntry;
   ParticipantId id;
   bool failed = false;
   ParticipantFlags flags{};
@@ -92,6 +80,9 @@ struct ParticipantStateTuple {
   [[nodiscard]] auto isExcluded() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
   [[nodiscard]] auto isFailed() const noexcept -> bool;
+
+  [[nodiscard]] auto lastTerm() const noexcept -> LogTerm;
+  [[nodiscard]] auto lastIndex() const noexcept -> LogIndex;
 
   friend auto operator<=>(ParticipantStateTuple const&,
                           ParticipantStateTuple const&) noexcept;
@@ -106,19 +97,17 @@ auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
     -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
-  std::size_t const _writeConcern{
-      0};  // might be called quorumSize in other places
+  std::size_t const _writeConcern{0};
   std::size_t const _softWriteConcern{0};
-  std::size_t const _replicationFactor{0};
 
   CalculateCommitIndexOptions(std::size_t writeConcern,
-                              std::size_t softWriteConcern,
-                              std::size_t replicationFactor);
+                              std::size_t softWriteConcern);
 };
 
 auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
-                          CalculateCommitIndexOptions const opt,
-                          LogIndex currentCommitIndex, LogIndex spearhead)
+                          CalculateCommitIndexOptions opt,
+                          LogIndex currentCommitIndex,
+                          TermIndexPair lastTermIndex)
     -> std::tuple<LogIndex, replicated_log::CommitFailReason,
                   std::vector<ParticipantId>>;
 

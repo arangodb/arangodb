@@ -45,6 +45,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
@@ -67,7 +68,7 @@ using namespace arangodb::iresearch;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
-aql::AstNode const ALL(aql::AstNodeValue(true));
+aql::AstNode const kAll{aql::AstNodeValue{true}};
 
 // -----------------------------------------------------------------------------
 // --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
@@ -86,7 +87,7 @@ void toVelocyPack(velocypack::Builder& builder,
 }
 
 std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
-                                   velocypack::Slice const& slice) {
+                                   velocypack::Slice slice) {
   if (!slice.isArray()) {
     LOG_TOPIC("b50b2", ERR, arangodb::iresearch::TOPIC)
         << "invalid json format detected while building IResearchViewNode "
@@ -768,7 +769,7 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node,
   auto* resolver = trx.resolver();
   TRI_ASSERT(resolver);
 
-  ::arangodb::containers::HashSet<DataSourceId> collections;
+  ::arangodb::containers::FlatHashSet<DataSourceId> collections;
   for (auto& shard : node.shards()) {
     auto collection = resolver->getCollection(shard);
 
@@ -898,7 +899,7 @@ void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
 void extractViewValuesVar(aql::VariableGenerator const* vars,
                           IResearchViewNode::ViewValuesVars& viewValuesVars,
                           ptrdiff_t const columnNumber,
-                          velocypack::Slice const& fieldVar) {
+                          velocypack::Slice fieldVar) {
   auto const fieldNumberSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_FIELD_NUMBER);
   if (!fieldNumberSlice.isNumber<size_t>()) {
     THROW_ARANGO_EXCEPTION_FORMAT(
@@ -978,7 +979,7 @@ namespace arangodb {
 namespace iresearch {
 
 bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept {
-  return filterCondition == &ALL;
+  return filterCondition == &kAll;
 }
 // -----------------------------------------------------------------------------
 // --SECTION--                                  IResearchViewNode implementation
@@ -998,11 +999,11 @@ IResearchViewNode::IResearchViewNode(
       _noMaterialization(false),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
-      _filterCondition(filterCondition ? filterCondition : &ALL),
+      _filterCondition(filterCondition ? filterCondition : &kAll),
       _scorers(std::move(scorers)) {
   TRI_ASSERT(_view);
-  TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
-  TRI_ASSERT(LogicalDataSource::Category::kView == _view->category());
+  TRI_ASSERT(ViewType::kSearch == _view->type());
+  TRI_ASSERT(LogicalView::category() == _view->category());
 
   auto* ast = plan.getAst();
 
@@ -1016,7 +1017,7 @@ IResearchViewNode::IResearchViewNode(
 }
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
-                                     velocypack::Slice const& base)
+                                     velocypack::Slice base)
     : aql::ExecutionNode(&plan, base),
       _vocbase(plan.getAst()->query().vocbase()),
       _outVariable(aql::Variable::varFromVPack(plan.getAst(), base,
@@ -1027,7 +1028,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
           plan.getAst(), base, NODE_OUT_NM_COL_PARAM, true)),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
-      _filterCondition(&ALL),
+      _filterCondition(&kAll),
       _scorers(fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))) {
   if ((_outNonMaterializedColPtr != nullptr) !=
       (_outNonMaterializedDocId != nullptr)) {
@@ -1064,7 +1065,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
             _vocbase.name(), viewId);
   }
 
-  if (!_view || iresearch::DATA_SOURCE_TYPE != _view->type()) {
+  if (!_view || ViewType::kSearch != _view->type()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
         "unable to find ArangoSearch view with id '" + viewId + "'");
@@ -1602,14 +1603,17 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
 }
 
 void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
-  _filterCondition = !node ? &ALL : node;
+  _filterCondition = !node ? &kAll : node;
 }
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch"
 #endif
-
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
+#endif
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
@@ -1884,6 +1888,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(
     aql::CalculationNode* calclulationNode) const {
@@ -1997,7 +2004,7 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
     return uniqueVariables;
   }
   // at first use variables from simple expressions
-  for (auto calcNode : _nodesToChange) {
+  for (auto const& calcNode : _nodesToChange) {
     // a node is already unlinked
     if (calcNode.first->getParents().empty()) {
       continue;
@@ -2021,7 +2028,7 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
   auto* ast = _nodesToChange.begin()->first->expression()->ast();
   TRI_ASSERT(ast);
   // create variables for complex expressions
-  for (auto calcNode : _nodesToChange) {
+  for (auto const& calcNode : _nodesToChange) {
     // a node is already unlinked
     if (calcNode.first->getParents().empty()) {
       continue;
@@ -2038,7 +2045,7 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
       }
     }
   }
-  for (auto calcNode : _nodesToChange) {
+  for (auto const& calcNode : _nodesToChange) {
     // a node is already unlinked
     if (calcNode.first->getParents().empty()) {
       continue;

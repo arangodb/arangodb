@@ -135,6 +135,7 @@ std::string const StaticStrings::IndexInBackground("inBackground");
 std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexStoredValues("storedValues");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
@@ -366,6 +367,7 @@ std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
+std::string const StaticStrings::Outcome("outcome");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");

@@ -47,23 +47,28 @@
 
 namespace {
 struct TestView : public arangodb::LogicalView {
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(42),
+                     std::string_view{"testViewType"}};
+  }
+
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder, Serialization) const override {
-    builder.add("properties", _properties.slice());
+      : arangodb::LogicalView(*this, vocbase, definition) {}
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
+                                   Serialization, bool) const override {
+    build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result dropImpl() override {
-    return arangodb::LogicalViewHelperStorageEngine::drop(*this);
+    return arangodb::storage_helper::drop(*this);
   }
   virtual void open() override {}
   virtual arangodb::Result renameImpl(std::string const& oldName) override {
-    return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
+    return arangodb::storage_helper::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
                                       bool isUserRequest,
@@ -100,10 +105,6 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class RestViewHandlerTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
@@ -114,15 +115,9 @@ class RestViewHandlerTest
 
   RestViewHandlerTest() {
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(
-                                 std::string_view("testViewType")),
-                             viewFactory);
+    viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 TEST_F(RestViewHandlerTest, test_auth) {
   // test create

@@ -288,27 +288,6 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     LogConfig config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    ParticipantId id, LogTerm const term, LoggerContext const& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-    -> std::shared_ptr<LogLeader> {
-  auto participantsConfig = std::make_shared<ParticipantsConfig>();
-  participantsConfig->generation = 0;
-  std::transform(followers.begin(), followers.end(),
-                 std::inserter(participantsConfig->participants,
-                               participantsConfig->participants.end()),
-                 [](auto& f) {
-                   return std::make_pair(f->getParticipantId(),
-                                         ParticipantFlags{});
-                 });
-  return construct(config, std::move(logCore), followers, participantsConfig,
-                   std::move(id), term, logContext, std::move(logMetrics),
-                   std::move(options));
-}
-
-auto replicated_log::LogLeader::construct(
-    LogConfig config, std::unique_ptr<LogCore> logCore,
-    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -369,6 +348,7 @@ auto replicated_log::LogLeader::construct(
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore), lastIndex);
 
+  TRI_ASSERT(participantsConfig != nullptr);
   {
     auto leaderDataGuard = leader->acquireMutex();
 
@@ -379,6 +359,14 @@ auto replicated_log::LogLeader::construct(
     TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
         << " writeConcern: " << config.writeConcern;
+    TRI_ASSERT(leaderDataGuard->_follower.size() ==
+               leaderDataGuard->activeParticipantsConfig->participants.size());
+    TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
+                           leaderDataGuard->_follower.end(),
+                           [&](auto const& it) {
+                             return leaderDataGuard->activeParticipantsConfig
+                                 ->participants.contains(it.first);
+                           }));
   }
 
   leader->establishLeadership(std::move(participantsConfig));
@@ -880,8 +868,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::getCommittedLogIterator(
   return _inMemoryLog.getIteratorRange(firstIndex, _commitIndex + 1);
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::
-    collectEligibleFollowerIndexes() const
+/*
+ * Collects last acknowledged term/index pairs from all followers.
+ * While doing so, it calculates the largest common index, which is
+ * the lowest acknowledged index of all followers.
+ * No followers are filtered out at this step.
+ */
+auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
+    const
     -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>> {
   auto largestCommonIndex = _commitIndex;
   std::vector<algorithms::ParticipantStateTuple> indexes;
@@ -891,38 +885,16 @@ auto replicated_log::LogLeader::GuardedLeaderData::
     // follower acknowledged - means we sent it. And we must not have entries
     // in our log with a term newer than currentTerm, which could have been
     // sent to a follower.
-    auto const& lastAckedEntry = follower->lastAckedEntry;
-    TRI_ASSERT(lastAckedEntry.term <= this->_self._currentTerm);
-    // We must never commit log entries for older terms, as these could still be
-    // overwritten later if a leader takes over that holds an entry with the
-    // same index, but with a newer term than that entry has.
-    // For more details and an example see the Raft paper, specifically on
-    // page 9 both subsection "5.4.2 Committing entries from previous terms" and
-    // figure 8.
-    // We may only commit these if we've written an entry in our current term.
-    // This also includes log entries persisted on this server, i.e. our
-    // LocalFollower is no exception.
-    if (lastAckedEntry.term == this->_self._currentTerm) {
-      auto flags = std::invoke([&, &pid = pid] {
-        if (auto f = activeParticipantsConfig->participants.find(pid);
-            f != std::end(activeParticipantsConfig->participants)) {
-          return f->second;
-        }
-        return ParticipantFlags{};
-      });
-      indexes.emplace_back(algorithms::ParticipantStateTuple{
-          .index = lastAckedEntry.index,
-          .id = follower->_impl->getParticipantId(),
-          .failed = false,
-          .flags = flags});
-    } else {
-      LOG_CTX("54869", TRACE, _self._logContext)
-          << "Will ignore follower " << follower->_impl->getParticipantId()
-          << " in the following commit index check, as its last log entry "
-             "(index "
-          << lastAckedEntry.index << ") is of term " << lastAckedEntry.term
-          << ", but we're in term " << _self._currentTerm << ".";
-    }
+    TRI_ASSERT(follower->lastAckedEntry.term <= this->_self._currentTerm);
+
+    auto flags = activeParticipantsConfig->participants.find(pid);
+    TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
+
+    indexes.emplace_back(algorithms::ParticipantStateTuple{
+        .lastAckedEntry = follower->lastAckedEntry,
+        .id = follower->_impl->getParticipantId(),
+        .failed = false,
+        .flags = flags->second});
 
     largestCommonIndex =
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);
@@ -933,24 +905,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     -> ResolvedPromiseSet {
-  auto const quorum_size = _self._config.writeConcern;
-
-  if (quorum_size == 0 || quorum_size > _follower.size()) {
-    LOG_CTX("24e92", WARN, _self._logContext)
-        << "not enough participants to fulfill quorum size requirement";
-    return {};
-  }
-
-  auto [newLargestCommonIndex, indexes] = collectEligibleFollowerIndexes();
-
-  LOG_CTX("a2d04", TRACE, _self._logContext)
-      << "checking commit index on set " << indexes;
-  if (quorum_size > indexes.size()) {
-    LOG_CTX("d8b19", DEBUG, _self._logContext)
-        << "not enough eligible participants to fulfill quorum size "
-           "requirement";
-    return {};
-  }
+  auto [newLargestCommonIndex, indexes] = collectFollowerIndexes();
 
   if (newLargestCommonIndex != _largestCommonIndex) {
     // This assertion is no longer true, as followers can now be added.
@@ -965,8 +920,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
       algorithms::calculateCommitIndex(
           indexes,
           algorithms::CalculateCommitIndexOptions{
-              quorum_size, _self._config.softWriteConcern, indexes.size()},
-          _commitIndex, _inMemoryLog.getLastIndex());
+              _self._config.writeConcern, _self._config.softWriteConcern},
+          _commitIndex, _inMemoryLog.getLastTermIndexPair());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
@@ -1109,22 +1064,6 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   });
 }
 
-auto replicated_log::LogLeader::construct(
-    const LoggerContext& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-    const std::vector<std::shared_ptr<AbstractFollower>>& followers,
-    std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-  LogConfig config;
-  config.writeConcern = writeConcern;
-  config.softWriteConcern = writeConcern;
-  config.waitForSync = false;
-  return LogLeader::construct(config, std::move(logCore), followers,
-                              std::move(id), term, logContext,
-                              std::move(logMetrics), std::move(options));
-}
-
 auto replicated_log::LogLeader::copyInMemoryLog() const
     -> replicated_log::InMemoryLog {
   return _guardedLeaderData.getLockedGuard()->_inMemoryLog;
@@ -1252,7 +1191,10 @@ void replicated_log::LogLeader::establishLeadership(
             result.throwIfFailed();
             self->_guardedLeaderData.doUnderLock([&](auto& data) {
               data._leadershipEstablished = true;
-              data.committedParticipantsConfig = std::move(config);
+              if (data.activeParticipantsConfig->generation ==
+                  config->generation) {
+                data.committedParticipantsConfig = std::move(config);
+              }
             });
             LOG_CTX("536f4", TRACE, self->_logContext)
                 << "leadership established";

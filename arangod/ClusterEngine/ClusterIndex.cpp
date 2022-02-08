@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -57,7 +58,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                            ClusterEngineType engineType, Index::IndexType itype,
-                           arangodb::velocypack::Slice const& info)
+                           arangodb::velocypack::Slice info)
     : Index(id, collection, info),
       _engineType(engineType),
       _indexType(itype),
@@ -86,6 +87,11 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
       // The Primary Index on RocksDB can serve _key and _id when being asked.
       _coveredFields = ::primaryIndexAttributes;
+    } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
+      _coveredFields = Index::mergeFields(
+          _fields, Index::parseFields(
+                       info.get(arangodb::StaticStrings::IndexStoredValues),
+                       /*allowEmpty*/ true, /*allowExpansion*/ false));
     }
 
     // check for "estimates" attribute
@@ -287,6 +293,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       // should not be called for these indexes
@@ -322,6 +329,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX: {
@@ -367,6 +375,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::specializeCondition(node, reference);  // unsupported
@@ -409,10 +418,8 @@ aql::AstNode* ClusterIndex::specializeCondition(
 
 std::vector<std::vector<arangodb::basics::AttributeName>> const&
 ClusterIndex::coveredFields() const {
-  if (_engineType == ClusterEngineType::RocksDBEngine &&
-      (_indexType == TRI_IDX_TYPE_EDGE_INDEX ||
-       _indexType == TRI_IDX_TYPE_PRIMARY_INDEX)) {
-    TRI_ASSERT(_coveredFields.size() == 2);
+  if (!_coveredFields.empty()) {
+    TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
     return _coveredFields;
   }
   return _fields;

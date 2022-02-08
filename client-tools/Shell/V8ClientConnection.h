@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Shell/arangosh.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
@@ -64,8 +65,7 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(application_features::ApplicationServer&,
-                              ClientFeature&);
+  explicit V8ClientConnection(ArangoshServer&, ClientFeature&);
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);
@@ -92,7 +92,7 @@ class V8ClientConnection {
   std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
 
-  application_features::ApplicationServer& server();
+  ArangoshServer& server();
 
   v8::Handle<v8::Value> getData(
       v8::Isolate* isolate, std::string_view location,
@@ -166,7 +166,7 @@ class V8ClientConnection {
   }
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangoshServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;

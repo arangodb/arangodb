@@ -141,11 +141,59 @@ struct LogStatus {
  * completely relying on the leader.
  */
 struct GlobalStatus {
-  agency::LogCurrentSupervision supervision;
-  std::unordered_map<ParticipantId, LogStatus> participants;
+  enum class SpecificationSource {
+    kLocalCache,
+    kRemoteAgency,
+  };
+
+  struct Connection {
+    ErrorCode error{0};
+    std::string errorMessage;
+
+    void toVelocyPack(velocypack::Builder&) const;
+    static auto fromVelocyPack(velocypack::Slice) -> Connection;
+  };
+
+  struct ParticipantStatus {
+    struct Response {
+      using VariantType = std::variant<LogStatus, velocypack::UInt8Buffer>;
+      VariantType value;
+
+      void toVelocyPack(velocypack::Builder&) const;
+      static auto fromVelocyPack(velocypack::Slice) -> Response;
+    };
+
+    Connection connection;
+    std::optional<Response> response;
+
+    void toVelocyPack(velocypack::Builder&) const;
+    static auto fromVelocyPack(velocypack::Slice) -> ParticipantStatus;
+  };
+
+  struct SupervisionStatus {
+    Connection connection;
+    std::optional<agency::LogCurrentSupervision> response;
+
+    void toVelocyPack(velocypack::Builder&) const;
+    static auto fromVelocyPack(velocypack::Slice) -> SupervisionStatus;
+  };
+
+  struct Specification {
+    SpecificationSource source{SpecificationSource::kLocalCache};
+    agency::LogPlanSpecification plan;
+
+    void toVelocyPack(velocypack::Builder&) const;
+    static auto fromVelocyPack(velocypack::Slice) -> Specification;
+  };
+
+  SupervisionStatus supervision;
+  std::unordered_map<ParticipantId, ParticipantStatus> participants;
+  Specification specification;
   std::optional<ParticipantId> leaderId;
   static auto fromVelocyPack(velocypack::Slice slice) -> GlobalStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
 };
+
+auto to_string(GlobalStatus::SpecificationSource source) -> std::string_view;
 
 }  // namespace arangodb::replication2::replicated_log

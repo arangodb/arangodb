@@ -29,8 +29,7 @@
 
 #include "EnvironmentFeature.h"
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
@@ -41,7 +40,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/LogBufferFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
 
 #ifdef __linux__
@@ -52,9 +50,8 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-EnvironmentFeature::EnvironmentFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Environment") {
+EnvironmentFeature::EnvironmentFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 

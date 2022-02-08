@@ -110,8 +110,7 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
   b.add("units", VPackValue(stats::fromUnit(units)));
 }
 
-stats::Descriptions::Descriptions(
-    application_features::ApplicationServer& server)
+stats::Descriptions::Descriptions(ArangodServer& server)
     : _server(server),
       _requestTimeCuts(statistics::RequestTimeDistributionCuts),
       _connectionTimeCuts(statistics::ConnectionTimeDistributionCuts),

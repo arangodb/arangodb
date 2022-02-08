@@ -1,5 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -353,6 +351,12 @@ struct ReplicatedLogGlobalSettings {
 };
 
 namespace replicated_log {
+/*
+ * Indicates why the commit index is not increasing as expected.
+ * Even though some pending entries might have been committed, unless all
+ * pending entries are committed, we say the commit index is behind. This object
+ * gives an indication of why might that be.
+ */
 struct CommitFailReason {
   CommitFailReason() = default;
 
@@ -384,6 +388,9 @@ struct CommitFailReason {
     enum Why {
       kExcluded,
       kFailed,
+      // WrongTerm might be misleading, because the follower might be in the
+      // right term, it just never has acked an entry of the current term.
+      kWrongTerm,
     };
     static auto to_string(Why) noexcept -> std::string_view;
 

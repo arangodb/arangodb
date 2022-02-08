@@ -23,6 +23,7 @@
 
 #include "Query.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
@@ -32,6 +33,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/GraphNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
@@ -303,9 +305,11 @@ void Query::prepareQuery(SerializationFormat format) {
         _queryOptions.profile >= ProfileLevel::Blocks &&
         ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
     if (keepPlan) {
+      unsigned flags =
+          ExecutionPlan::buildSerializationFlags(false, false, false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
       VPackBuilder b(*_planSliceCopy);
-      plan->toVelocyPack(b, _ast.get(), false, ExplainRegisterPlan::No);
+      plan->toVelocyPack(b, _ast.get(), flags);
     }
 
     // simon: assumption is _queryString is empty for DBServer snippets
@@ -404,6 +408,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get(), true);
+
+  TRI_ASSERT(plan != nullptr);
+  injectVertexCollectionIntoGraphNodes(*plan);
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -949,6 +956,9 @@ void Query::preparePlansForExplain(aql::Optimizer& opt) {
   std::unique_ptr<ExecutionPlan> plan =
       ExecutionPlan::instantiateFromAst(parser.ast(), true);
 
+  TRI_ASSERT(plan != nullptr);
+  injectVertexCollectionIntoGraphNodes(*plan);
+
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
   // get enabled/disabled rules
@@ -1000,6 +1010,11 @@ QueryResult Query::explain() {
           plan->prepareTraversalOptions();
         };
 
+    // build serialization flags for execution plan
+    unsigned flags = ExecutionPlan::buildSerializationFlags(
+        _queryOptions.verbosePlans, _queryOptions.explainInternals,
+        _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
+
     if (_queryOptions.allPlans) {
       result.data = std::make_shared<VPackBuilder>();
       {
@@ -1011,9 +1026,7 @@ QueryResult Query::explain() {
           TRI_ASSERT(pln != nullptr);
 
           preparePlanForSerialization(pln);
-          pln->toVelocyPack(*result.data.get(), _ast.get(),
-                            _queryOptions.verbosePlans,
-                            _queryOptions.explainRegisters);
+          pln->toVelocyPack(*result.data, _ast.get(), flags);
         }
       }
       // cacheability not available here
@@ -1025,9 +1038,7 @@ QueryResult Query::explain() {
       TRI_ASSERT(bestPlan != nullptr);
 
       preparePlanForSerialization(bestPlan);
-      result.data =
-          bestPlan->toVelocyPack(_ast.get(), _queryOptions.verbosePlans,
-                                 _queryOptions.explainRegisters);
+      bestPlan->toVelocyPack(*result.data, _ast.get(), flags);
 
       // cacheability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
@@ -1171,7 +1182,7 @@ void Query::init(bool createProfile) {
   TRI_ASSERT(_queryProfile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
   if (createProfile && !ServerState::instance()->isDBServer()) {
-    _queryProfile = std::make_unique<QueryProfile>(this);
+    _queryProfile = std::make_unique<QueryProfile>(*this);
   }
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
@@ -1471,9 +1482,6 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 }  // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
-  ScopeGuard endQueryGuard(
-      [this]() noexcept { unregisterQueryInTransactionState(); });
-
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;
@@ -1486,6 +1494,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
                                               std::memory_order_relaxed)) {
     return ExecutionState::WAITING;  // someone else got here
   }
+
+  ScopeGuard endQueryGuard(
+      [this]() noexcept { unregisterQueryInTransactionState(); });
 
   enterState(QueryExecutionState::ValueType::FINALIZATION);
 
@@ -1616,6 +1627,40 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   }
 }
 
+void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*>
+      graphNodesStorage;
+  auto& graphNodes = graphNodesStorage.vector();
+
+  plan.findNodesOfType(graphNodes,
+                       {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
+                        ExecutionNode::K_SHORTEST_PATHS},
+                       true);
+  for (auto& node : graphNodes) {
+    auto graphNode = ExecutionNode::castTo<GraphNode*>(node);
+    auto const& vCols = graphNode->vertexColls();
+
+    if (vCols.empty()) {
+      auto& myResolver = resolver();
+
+      // In case our graphNode does not have any collections added yet,
+      // we need to visit all query-known collections and add the
+      // vertex collections.
+      collections().visit(
+          [&myResolver, graphNode](std::string const& name,
+                                   aql::Collection& collection) {
+            // If resolver cannot resolve this collection
+            // it has to be a view.
+            if (myResolver.getCollection(name)) {
+              // All known edge collections will be ignored by this call!
+              graphNode->injectVertexCollection(collection);
+            }
+            return true;
+          });
+    }
+  }
+}
+
 void Query::debugKillQuery() {
 #ifndef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_ASSERT(false);
@@ -1668,7 +1713,9 @@ void Query::debugKillQuery() {
     isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
   }
   TRI_ASSERT(isInList || isStreaming || isInRegistry ||
-             _execState == QueryExecutionState::ValueType::FINALIZATION);
+             _execState == QueryExecutionState::ValueType::FINALIZATION)
+      << "_execState " << (int)_execState.load() << " queryList->enabled() "
+      << queryList->enabled();
   kill();
 #endif
 }

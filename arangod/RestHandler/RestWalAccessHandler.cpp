@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
@@ -76,9 +77,9 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
   CollectionNameResolver resolver;
 };
 
-RestWalAccessHandler::RestWalAccessHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestWalAccessHandler::RestWalAccessHandler(ArangodServer& server,
+                                           GeneralRequest* request,
+                                           GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {

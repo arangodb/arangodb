@@ -358,8 +358,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.1-dev, commit 12cd13cd418512d9e7596921ccdb62e25a103f87
-* Date: 2021-03-30 15:20:30 -0700
+* Version: 5.2.1-dev, commit a4e81221cceeb887708d53015d3d1f1f9642980a
+* Date: 2022-12-31 12:28:15 -0800
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -444,10 +444,10 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.27.0 (81016436110944d4763f0397aefe939c1254ff1b)
-* Date: 2021-11-19 22:10:43 -0800
+* Version: 6.29.0 (e8f116deabc601a5eae011f2fd8a38d02d87be8d)
+* Date: 2022-01-21 17:23:03 -0800
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.27/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.29/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 

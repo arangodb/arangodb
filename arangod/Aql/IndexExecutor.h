@@ -28,6 +28,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/Ast.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/IndexNode.h"
@@ -45,6 +46,7 @@ class IndexIterator;
 namespace aql {
 
 class ExecutionEngine;
+class ExecutorExpressionContext;
 class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
@@ -67,6 +69,7 @@ class IndexExecutorInfos {
       arangodb::aql::Projections projections,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
+      bool oneIndexCondition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
       IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -123,6 +126,8 @@ class IndexExecutorInfos {
     return _outNonMaterializedIndRegs;
   }
 
+  bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
+
  private:
   /// @brief _indexes holds all Indexes used in this block
   std::vector<transaction::Methods::IndexHandle> _indexes;
@@ -167,6 +172,9 @@ class IndexExecutorInfos {
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   bool _count;
+
+  bool _oneIndexCondition;
+
   ReadOwnWrites const _readOwnWrites;
 };
 
@@ -191,7 +199,7 @@ class IndexExecutor {
 
     CursorReader(const CursorReader&) = delete;
     CursorReader& operator=(const CursorReader&) = delete;
-    CursorReader(CursorReader&& other) noexcept;
+    CursorReader(CursorReader&& other) noexcept = default;
 
    private:
     enum Type { NoResult, Covering, Document, LateMaterialized, Count };
@@ -211,6 +219,8 @@ class IndexExecutor {
     IndexIterator::LocalDocumentIdCallback _documentNonProducer;
     IndexIterator::DocumentCallback _documentProducer;
     IndexIterator::DocumentCallback _documentSkipper;
+    IndexIterator::CoveringCallback _coveringProducer;
+    IndexIterator::CoveringCallback _coveringSkipper;
   };
 
  public:
@@ -265,6 +275,11 @@ class IndexExecutor {
 
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   Infos& _infos;
+  std::unique_ptr<ExecutorExpressionContext> _expressionContext;
+
+  // an AST owned by the IndexExecutor, used to store data of index
+  // expressions
+  Ast _ast;
 
   /// @brief a vector of cursors for the index block
   /// cursors can be reused

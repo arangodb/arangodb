@@ -28,16 +28,13 @@
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
-#include "VocBase/LogicalDataSource.h"
 
 namespace arangodb {
 namespace iresearch {
 
-arangodb::LogicalDataSource::Type const& dataSourceType();
-arangodb::LogTopic& logTopic();
-
-ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
+[[maybe_unused]] extern LogTopic TOPIC;
+[[maybe_unused]] inline constexpr std::string_view
+    IRESEARCH_INVERTED_INDEX_TYPE = "inverted";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines the implementation version of the iresearch view interface
@@ -77,77 +74,127 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 }
 
 struct StaticStrings {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the name of the field in the IResearch View definition denoting the
-  ///        corresponding link definitions
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::string const LinksField;
+  static constexpr std::string_view DataSourceType = "arangosearch";
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        corresponding link definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const VersionField;
+  static constexpr std::string_view LinksField{"links"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        corresponding link definitions
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view VersionField{"version"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the id of the field in the IResearch Link definition denoting the
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const ViewIdField;
+  static constexpr std::string_view ViewIdField{"view"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        referenced analyzer definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerDefinitionsField;
+  static constexpr std::string_view AnalyzerDefinitionsField{
+      "analyzerDefinitions"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer name
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerNameField;
+  static constexpr std::string_view AnalyzerNameField{"name"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer type
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerTypeField;
+  static constexpr std::string_view AnalyzerTypeField{"type"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer properties
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerPropertiesField;
+  static constexpr std::string_view AnalyzerPropertiesField{"properties"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer features
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerFeaturesField;
+  static constexpr std::string_view AnalyzerFeaturesField{"features"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        primary sort
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const PrimarySortField;
+  static constexpr std::string_view PrimarySortField{"primarySort"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        primary sort compression
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const PrimarySortCompressionField;
+  static constexpr std::string_view PrimarySortCompressionField{
+      "primarySortCompression"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        stored values
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const StoredValuesField;
+  static constexpr std::string_view StoredValuesField{"storedValues"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const CollectionNameField;
+  static constexpr std::string_view CollectionNameField{"collectionName"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running consolidations
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationIntervalMsec{
+      "consolidationIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running commits
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view CommitIntervalMsec{"commitIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        number of completed consolidtions before cleanup is run
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view CleanupIntervalStep{"cleanupIntervalStep"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///         consolidation policy properties
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationPolicy{"consolidationPolicy"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of concurrent active writers (segments) that perform
+  ///        a transaction. Other writers (segments) wait till current active
+  ///        writers (segments) finish.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferActive{"writebufferActive"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of writers (segments) cached in the pool.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferIdle{"writebufferIdle"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum memory byte size per writer (segment) before a writer
+  ///        (segment) flush is triggered
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferSizeMax{"writebufferSizeMax"};
 };
 
 }  // namespace iresearch

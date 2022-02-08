@@ -717,12 +717,12 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
   // No variables used, nothing todo
 }
 
-Collection const* GraphNode::collection() const {
+Collection const* GraphNode::getShardingPrototype() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(!_edgeColls.empty());
   for (auto const* c : _edgeColls) {
     // We are required to valuate non-satellites above
-    // satellites, as the collection is used as the protoype
+    // satellites, as the collection is used as the prototype
     // for this graphs sharding.
     // The Satellite collection does not have sharding.
     TRI_ASSERT(c != nullptr);
@@ -736,8 +736,52 @@ Collection const* GraphNode::collection() const {
   return _edgeColls.front();
 }
 
-void GraphNode::injectVertexCollection(aql::Collection& other) {
+Collection const* GraphNode::collection() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  TRI_ASSERT(!_vertexColls.empty());
+  if (_vertexColls.empty()) {
+    return getShardingPrototype();
+  }
+
+  for (auto const* vC : _vertexColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the prototype
+    // for these graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(vC != nullptr);
+    if (!vC->isSatellite() && vC->type() == TRI_COL_TYPE_DOCUMENT) {
+      auto const& shardID = vC->shardKeys(false);
+      if (shardID.size() == 1 &&
+          shardID.at(0) == StaticStrings::PrefixOfKeyString) {
+        return vC;
+      }
+    }
+  }
+
+  for (auto const* eC : _edgeColls) {
+    // We are required to valuate non-satellites above
+    // satellites, as the collection is used as the prototype
+    // for these graphs sharding.
+    // The Satellite collection does not have sharding.
+    TRI_ASSERT(eC != nullptr);
+    if (!eC->isSatellite() && eC->type() == TRI_COL_TYPE_EDGE) {
+      auto const& shardID = eC->shardKeys(false);
+      if (shardID.size() == 1 &&
+          shardID.at(0) == StaticStrings::PrefixOfKeyString) {
+        return eC;
+      }
+    }
+  }
+
+  // We have not found any non-satellite Collection
+  // just return the first satellite then.
+  TRI_ASSERT(_vertexColls.front() != nullptr);
+  return _vertexColls.front();
+}
+
+void GraphNode::injectVertexCollection(aql::Collection& other) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+             ServerState::instance()->isSingleServer());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into

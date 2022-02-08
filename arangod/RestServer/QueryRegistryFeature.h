@@ -23,21 +23,21 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 #include "Aql/QueryRegistry.h"
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
 
-class QueryRegistryFeature final
-    : public application_features::ApplicationFeature {
+class QueryRegistryFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "QueryRegistry"; }
+
   static aql::QueryRegistry* registry() {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit QueryRegistryFeature(
-      application_features::ApplicationServer& server);
+  explicit QueryRegistryFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -119,7 +119,6 @@ class QueryRegistryFeature final
   metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
   metrics::Counter& _totalQueryExecutionTime;
   metrics::Counter& _queriesCounter;
-  metrics::Counter& _slowQueriesCounter;
   metrics::Gauge<uint64_t>& _runningQueries;
   metrics::Gauge<uint64_t>& _globalQueryMemoryUsage;
   metrics::Gauge<uint64_t>& _globalQueryMemoryLimit;

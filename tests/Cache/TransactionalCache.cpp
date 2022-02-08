@@ -29,7 +29,7 @@
 #include <thread>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"

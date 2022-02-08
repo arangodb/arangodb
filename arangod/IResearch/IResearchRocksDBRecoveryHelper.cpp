@@ -34,6 +34,7 @@
 
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -236,7 +237,7 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : _server(server) {}
 
 void IResearchRocksDBRecoveryHelper::prepare() {
@@ -295,12 +296,12 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
+    IResearchRocksDBLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
 #else
-    IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
+    IResearchRocksDBLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.insert(trx, docId, doc);
+    impl.insert(trx, nullptr, docId, doc, {}, false);
   }
 
   res = trx.commit();
@@ -353,7 +354,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice());
+    impl.remove(trx, docId);
   }
 
   res = trx.commit();

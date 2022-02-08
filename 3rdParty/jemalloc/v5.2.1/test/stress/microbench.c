@@ -69,7 +69,7 @@ malloc_mus_free(void) {
 		test_fail("Unexpected malloc() failure");
 		return;
 	}
-	malloc_usable_size(p);
+	TEST_MALLOC_SIZE(p);
 	free(p);
 }
 

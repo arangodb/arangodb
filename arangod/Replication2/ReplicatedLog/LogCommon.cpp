@@ -332,7 +332,7 @@ auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
 }
 
 auto replication2::to_string(LogRange const& r) -> std::string {
-  return basics::StringUtils::concatT('[', r.from, ", ", r.to, ')');
+  return basics::StringUtils::concatT("[", r.from, ", ", r.to, ")");
 }
 
 auto LogRange::end() const noexcept -> LogRange::Iterator {
@@ -401,6 +401,7 @@ inline constexpr std::string_view WhoFieldName = "who";
 inline constexpr std::string_view CandidatesFieldName = "candidates";
 inline constexpr std::string_view NonEligibleFailed = "failed";
 inline constexpr std::string_view NonEligibleExcluded = "excluded";
+inline constexpr std::string_view NonEligibleWrongTerm = "wrongTerm";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(
@@ -482,6 +483,8 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
       return NonEligibleFailed;
     case kExcluded:
       return NonEligibleExcluded;
+    case kWrongTerm:
+      return NonEligibleWrongTerm;
     default:
       TRI_ASSERT(false);
       return "(unknown)";
@@ -501,6 +504,8 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
       candidates[key.copyString()] = kFailed;
     } else if (value.isEqualString(NonEligibleExcluded)) {
       candidates[key.copyString()] = kExcluded;
+    } else if (value.isEqualString(NonEligibleWrongTerm)) {
+      candidates[key.copyString()] = kWrongTerm;
     }
   }
   return NonEligibleServerRequiredForQuorum{std::move(candidates)};

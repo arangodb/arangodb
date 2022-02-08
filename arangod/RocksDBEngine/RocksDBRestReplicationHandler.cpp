@@ -24,7 +24,9 @@
 
 #include "RocksDBRestReplicationHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
@@ -59,8 +61,7 @@ using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(server.getFeature<EngineSelectorFeature>()
                    .engine<RocksDBEngine>()

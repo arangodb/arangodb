@@ -533,7 +533,7 @@ void PlanSnippet::GatherOutput::adjustSortElements(
     std::unordered_map<arangodb::aql::Variable const*,
                        arangodb::aql::Variable const*> const& replacements) {
   std::string cmp;
-  arangodb::basics::StringBuffer buffer(128, false);
+  std::string buffer;
   for (auto& it : _elements) {
     // replace variables
     auto it2 = replacements.find(it.var);
@@ -559,7 +559,7 @@ void PlanSnippet::GatherOutput::adjustSortElements(
         try {
           // stringifying an expression may fail with "too long" error
           buffer.clear();
-          expr->stringify(&buffer);
+          expr->stringify(buffer);
           if (cmp.size() == buffer.size() &&
               cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
             // finally a match!

@@ -22,26 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Builder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
 
 #include <map>
-#include <mutex>
-#include <unordered_map>
-#include <unordered_set>
+#include <shared_mutex>
 
 namespace arangodb::metrics {
 
-class MetricsFeature final : public application_features::ApplicationFeature {
+class MetricsFeature final : public ArangodFeature {
  public:
-  explicit MetricsFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Metrics"; }
+
+  explicit MetricsFeature(Server& server);
 
   bool exportAPI() const;
-  bool exportReadWriteMetrics() const;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -59,21 +58,22 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Metric* get(MetricKey const& key);
   bool remove(Builder const& builder);
 
-  void toPrometheus(std::string& result, bool V2) const;
+  void toPrometheus(std::string& result) const;
 
   ServerStatistics& serverStatistics() noexcept;
 
  private:
   std::shared_ptr<Metric> doAdd(Builder& builder);
+  void initGlobalLabels() const;
 
-  std::map<MetricKey, std::shared_ptr<Metric>>
-      _registry;  // TODO(MBkkt) abseil btree map?
+  // TODO(MBkkt) abseil btree map? or hashmap<name, hashmap<labels, Metric>>?
+  std::map<MetricKey, std::shared_ptr<Metric>> _registry;
 
-  mutable std::unordered_map<std::string, std::string>
-      _globalLabels;  // TODO(MBkkt) abseil hash map
-  mutable std::string _globalLabelsStr;
+  mutable bool hasShortname = false;
+  mutable bool hasRole = false;
+  mutable std::string _globals;
 
-  mutable std::recursive_mutex _lock;
+  mutable std::shared_mutex _mutex;
 
   std::unique_ptr<ServerStatistics> _serverStatistics;
 

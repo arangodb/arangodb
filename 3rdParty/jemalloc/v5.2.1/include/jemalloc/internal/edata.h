@@ -64,7 +64,7 @@ typedef struct e_prof_info_s e_prof_info_t;
 
 /*
  * The information about a particular edata that lives in an emap.  Space is
- * more previous there (the information, plus the edata pointer, has to live in
+ * more precious there (the information, plus the edata pointer, has to live in
  * a 64-bit word if we want to enable a packed representation.
  *
  * There are two things that are special about the information here:
@@ -79,10 +79,16 @@ struct edata_map_info_s {
 	szind_t szind;
 };
 
+typedef struct edata_cmp_summary_s edata_cmp_summary_t;
+struct edata_cmp_summary_s {
+	uint64_t sn;
+	uintptr_t addr;
+};
+
 /* Extent (span of pages).  Use accessor functions for e_* fields. */
 typedef struct edata_s edata_t;
-typedef ph(edata_t) edata_avail_t;
-typedef ph(edata_t) edata_heap_t;
+ph_structs(edata_avail, edata_t);
+ph_structs(edata_heap, edata_t);
 struct edata_s {
 	/*
 	 * Bitfield containing several fields:
@@ -92,12 +98,13 @@ struct edata_s {
 	 * c: committed
 	 * p: pai
 	 * z: zeroed
+	 * g: guarded
 	 * t: state
 	 * i: szind
 	 * f: nfree
 	 * s: bin_shard
 	 *
-	 * 00000000 ... 00000sss sssfffff fffffiii iiiiittt zpcbaaaa aaaaaaaa
+	 * 00000000 ... 0000ssss ssffffff ffffiiii iiiitttg zpcbaaaa aaaaaaaa
 	 *
 	 * arena_ind: Arena from which this extent came, or all 1 bits if
 	 *            unassociated.
@@ -116,6 +123,9 @@ struct edata_s {
 	 *
 	 * zeroed: The zeroed flag is used by extent recycling code to track
 	 *         whether memory is zero-filled.
+	 *
+	 * guarded: The guarded flag is use by the sanitizer to track whether
+	 *          the extent has page guards around it.
 	 *
 	 * state: The state flag is an extent_state_t.
 	 *
@@ -152,8 +162,12 @@ struct edata_s {
 #define EDATA_BITS_ZEROED_SHIFT  (EDATA_BITS_PAI_WIDTH + EDATA_BITS_PAI_SHIFT)
 #define EDATA_BITS_ZEROED_MASK  MASK(EDATA_BITS_ZEROED_WIDTH, EDATA_BITS_ZEROED_SHIFT)
 
+#define EDATA_BITS_GUARDED_WIDTH  1
+#define EDATA_BITS_GUARDED_SHIFT  (EDATA_BITS_ZEROED_WIDTH + EDATA_BITS_ZEROED_SHIFT)
+#define EDATA_BITS_GUARDED_MASK  MASK(EDATA_BITS_GUARDED_WIDTH, EDATA_BITS_GUARDED_SHIFT)
+
 #define EDATA_BITS_STATE_WIDTH  3
-#define EDATA_BITS_STATE_SHIFT  (EDATA_BITS_ZEROED_WIDTH + EDATA_BITS_ZEROED_SHIFT)
+#define EDATA_BITS_STATE_SHIFT  (EDATA_BITS_GUARDED_WIDTH + EDATA_BITS_GUARDED_SHIFT)
 #define EDATA_BITS_STATE_MASK  MASK(EDATA_BITS_STATE_WIDTH, EDATA_BITS_STATE_SHIFT)
 
 #define EDATA_BITS_SZIND_WIDTH  LG_CEIL(SC_NSIZES)
@@ -196,6 +210,7 @@ struct edata_s {
 	 * into pageslabs).  This tracks it.
 	 */
 	hpdata_t *e_ps;
+
 	/*
 	 * Serial number.  These are not necessarily unique; splitting an extent
 	 * results in two extents with the same serial number.
@@ -214,7 +229,10 @@ struct edata_s {
 		 * slabs_nonfull, or when the edata_t is unassociated with an
 		 * extent and sitting in an edata_cache.
 		 */
-		phn(edata_t)	ph_link;
+		union {
+			edata_heap_link_t heap_link;
+			edata_avail_link_t avail_link;
+		};
 	};
 
 	union {
@@ -281,6 +299,12 @@ static inline extent_state_t
 edata_state_get(const edata_t *edata) {
 	return (extent_state_t)((edata->e_bits & EDATA_BITS_STATE_MASK) >>
 	    EDATA_BITS_STATE_SHIFT);
+}
+
+static inline bool
+edata_guarded_get(const edata_t *edata) {
+	return (bool)((edata->e_bits & EDATA_BITS_GUARDED_MASK) >>
+	    EDATA_BITS_GUARDED_SHIFT);
 }
 
 static inline bool
@@ -496,6 +520,12 @@ edata_state_set(edata_t *edata, extent_state_t state) {
 }
 
 static inline void
+edata_guarded_set(edata_t *edata, bool guarded) {
+	edata->e_bits = (edata->e_bits & ~EDATA_BITS_GUARDED_MASK) |
+	    ((uint64_t)guarded << EDATA_BITS_GUARDED_SHIFT);
+}
+
+static inline void
 edata_zeroed_set(edata_t *edata, bool zeroed) {
 	edata->e_bits = (edata->e_bits & ~EDATA_BITS_ZEROED_MASK) |
 	    ((uint64_t)zeroed << EDATA_BITS_ZEROED_SHIFT);
@@ -578,6 +608,7 @@ edata_init(edata_t *edata, unsigned arena_ind, void *addr, size_t size,
 	edata_szind_set(edata, szind);
 	edata_sn_set(edata, sn);
 	edata_state_set(edata, state);
+	edata_guarded_set(edata, false);
 	edata_zeroed_set(edata, zeroed);
 	edata_committed_set(edata, committed);
 	edata_pai_set(edata, pai);
@@ -596,6 +627,7 @@ edata_binit(edata_t *edata, void *addr, size_t bsize, uint64_t sn) {
 	edata_szind_set(edata, SC_NSIZES);
 	edata_sn_set(edata, sn);
 	edata_state_set(edata, extent_state_active);
+	edata_guarded_set(edata, false);
 	edata_zeroed_set(edata, true);
 	edata_committed_set(edata, true);
 	/*
@@ -607,27 +639,11 @@ edata_binit(edata_t *edata, void *addr, size_t bsize, uint64_t sn) {
 }
 
 static inline int
-edata_sn_comp(const edata_t *a, const edata_t *b) {
-	uint64_t a_sn = edata_sn_get(a);
-	uint64_t b_sn = edata_sn_get(b);
-
-	return (a_sn > b_sn) - (a_sn < b_sn);
-}
-
-static inline int
 edata_esn_comp(const edata_t *a, const edata_t *b) {
 	size_t a_esn = edata_esn_get(a);
 	size_t b_esn = edata_esn_get(b);
 
 	return (a_esn > b_esn) - (a_esn < b_esn);
-}
-
-static inline int
-edata_ad_comp(const edata_t *a, const edata_t *b) {
-	uintptr_t a_addr = (uintptr_t)edata_addr_get(a);
-	uintptr_t b_addr = (uintptr_t)edata_addr_get(b);
-
-	return (a_addr > b_addr) - (a_addr < b_addr);
 }
 
 static inline int
@@ -638,17 +654,29 @@ edata_ead_comp(const edata_t *a, const edata_t *b) {
 	return (a_eaddr > b_eaddr) - (a_eaddr < b_eaddr);
 }
 
-static inline int
-edata_snad_comp(const edata_t *a, const edata_t *b) {
-	int ret;
+static inline edata_cmp_summary_t
+edata_cmp_summary_get(const edata_t *edata) {
+	return (edata_cmp_summary_t){edata_sn_get(edata),
+		(uintptr_t)edata_addr_get(edata)};
+}
 
-	ret = edata_sn_comp(a, b);
+static inline int
+edata_cmp_summary_comp(edata_cmp_summary_t a, edata_cmp_summary_t b) {
+	int ret;
+	ret = (a.sn > b.sn) - (a.sn < b.sn);
 	if (ret != 0) {
 		return ret;
 	}
-
-	ret = edata_ad_comp(a, b);
+	ret = (a.addr > b.addr) - (a.addr < b.addr);
 	return ret;
+}
+
+static inline int
+edata_snad_comp(const edata_t *a, const edata_t *b) {
+	edata_cmp_summary_t a_cmp = edata_cmp_summary_get(a);
+	edata_cmp_summary_t b_cmp = edata_cmp_summary_get(b);
+
+	return edata_cmp_summary_comp(a_cmp, b_cmp);
 }
 
 static inline int
@@ -664,7 +692,7 @@ edata_esnead_comp(const edata_t *a, const edata_t *b) {
 	return ret;
 }
 
-ph_proto(, edata_avail_, edata_avail_t, edata_t)
-ph_proto(, edata_heap_, edata_heap_t, edata_t)
+ph_proto(, edata_avail, edata_t)
+ph_proto(, edata_heap, edata_t)
 
 #endif /* JEMALLOC_INTERNAL_EDATA_H */

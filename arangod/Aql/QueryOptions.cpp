@@ -62,6 +62,7 @@ QueryOptions::QueryOptions()
       traversalProfile(TraversalProfileLevel::None),
       allPlans(false),
       verbosePlans(false),
+      explainInternals(true),
       stream(false),
       silent(false),
       failOnWarning(
@@ -70,7 +71,6 @@ QueryOptions::QueryOptions()
       cache(false),
       fullCount(false),
       count(false),
-      verboseErrors(false),
       skipAudit(false),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
@@ -180,6 +180,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value = slice.get("verbosePlans"); value.isBool()) {
     verbosePlans = value.getBool();
   }
+  if (value = slice.get("explainInternals"); value.isBool()) {
+    explainInternals = value.getBool();
+  }
   if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
@@ -197,9 +200,6 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
   if (value = slice.get("count"); value.isBool()) {
     count = value.getBool();
-  }
-  if (value = slice.get("verboseErrors"); value.isBool()) {
-    verboseErrors = value.getBool();
   }
   if (value = slice.get("explainRegisters"); value.isBool()) {
     explainRegisters =
@@ -270,13 +270,13 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
               VPackValue(static_cast<uint32_t>(traversalProfile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
+  builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
-  builder.add("verboseErrors", VPackValue(verboseErrors));
   if (!forceOneShardAttributeValue.empty()) {
     builder.add("forceOneShardAttributeValue",
                 VPackValue(forceOneShardAttributeValue));

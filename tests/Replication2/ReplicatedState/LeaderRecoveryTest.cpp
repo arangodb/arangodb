@@ -109,8 +109,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
@@ -118,14 +118,15 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
-  replicatedState->flush();
+  replicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state,
+    EXPECT_EQ(s.managerState.state,
               LeaderInternalState::kWaitingForLeadershipEstablished);
   }
 
@@ -145,11 +146,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   EXPECT_TRUE(leaderState->recoveryTriggered);
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kRecoveryInProgress);
+    EXPECT_EQ(s.managerState.state, LeaderInternalState::kRecoveryInProgress);
   }
 
   {
@@ -161,11 +162,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   leaderState->runRecovery();
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kServiceAvailable);
+    EXPECT_EQ(s.managerState.state, LeaderInternalState::kServiceAvailable);
   }
 
   {
@@ -187,8 +188,7 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
@@ -196,14 +196,15 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
-  replicatedState->flush();
+  replicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state,
+    EXPECT_EQ(s.managerState.state,
               LeaderInternalState::kWaitingForLeadershipEstablished);
   }
 
@@ -217,11 +218,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   EXPECT_TRUE(leaderState->recoveryTriggered);
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kRecoveryInProgress);
+    EXPECT_EQ(s.managerState.state, LeaderInternalState::kRecoveryInProgress);
   }
 
   // failing recovery should result in a crash
