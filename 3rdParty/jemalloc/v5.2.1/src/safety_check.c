@@ -10,7 +10,7 @@ void safety_check_fail_sized_dealloc(bool current_dealloc, const void *ptr,
 
 	safety_check_fail("<jemalloc>: size mismatch detected (true size %zu "
 	    "vs input size %zu), likely caused by application sized "
-	    "dealloction bugs (source address: %p, %s). Suggest building with "
+	    "deallocation bugs (source address: %p, %s). Suggest building with "
 	    "--enable-debug or address sanitizer for debugging. Abort.\n",
 	    true_size, input_size, ptr, src);
 }

@@ -1064,8 +1064,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE(
-        (l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -2330,7 +2329,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(
             key);
     if (metric != nullptr) {
-      metric->toPrometheus(result, "", "");
+      metric->toPrometheus(result, false, "");
     }
   }
 
@@ -2364,9 +2363,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(
-          l->remove(trx, arangodb::LocalDocumentId(begin), _docs[0]->slice())
-              .ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());
@@ -2518,7 +2515,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
   {
     LinkStats actualStat = l->stats();
     std::string realStr;
-    l->stats().toPrometheus(realStr, "", "");
+    l->stats().toPrometheus(realStr, false, "", "");
     std::string expectedStr;
     expectedStr.reserve(1024);
 
@@ -2583,7 +2580,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     std::string realStr;
-    l->stats().toPrometheus(realStr, "", "");
+    l->stats().toPrometheus(realStr, false, "", "");
     std::string expectedStr;
     expectedStr.reserve(1024);
 
@@ -2612,7 +2609,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     std::string realStr;
-    l->stats().toPrometheus(realStr, "test",
+    l->stats().toPrometheus(realStr, false, "test",
                             R"(view="foo",collection="bar","shard"="s0001")");
     std::string expectedStr;
     expectedStr +=

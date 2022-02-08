@@ -34,7 +34,7 @@ const waitFor = function (checkFn, maxTries = 100) {
   let result = null;
   while (count < maxTries) {
     result = checkFn();
-    if (result === true) {
+    if (result === true || result === undefined) {
       return result;
     }
     console.log(result);
@@ -411,6 +411,7 @@ exports.continueServerWaitOk = continueServerWaitOk;
 exports.stopServerWaitFailed = stopServerWaitFailed;
 exports.replicatedLogDeleteTarget = replicatedLogDeleteTarget;
 exports.getLocalStatus = getLocalStatus;
+exports.getServerRebootId = getServerRebootId;
 exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
 exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;

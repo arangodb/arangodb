@@ -302,7 +302,9 @@ TEST_F(SupervisionLogTest, test_log_created) {
       {"C", ParticipantFlags{.forced = false, .excluded = false}}};
 
   auto r =
-      checkLogAdded(Log{.target = LogTarget(LogId{44}, participants, config)},
+      checkLogAdded(Log{.target = LogTarget(LogId{44}, participants, config),
+                        .plan = std::nullopt,
+                        .current = std::nullopt},
                     ParticipantsHealth{});
 
   EXPECT_NE(r, nullptr);
@@ -326,7 +328,8 @@ TEST_F(SupervisionLogTest, test_log_present) {
 
   auto r =
       checkLogAdded(Log{.target = LogTarget(LogId(44), participants, config),
-                        .plan = LogPlanSpecification()},
+                        .plan = LogPlanSpecification(),
+                        .current = std::nullopt},
                     ParticipantsHealth());
 
   EXPECT_NE(r, nullptr);

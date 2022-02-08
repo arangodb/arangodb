@@ -398,12 +398,8 @@ struct ClusterInfoScale {
   }
 };
 
-DECLARE_LEGACY_COUNTER(arangodb_load_current_accum_runtime_msec_total,
-                       "Accumulated runtime of Current loading [ms]");
 DECLARE_HISTOGRAM(arangodb_load_current_runtime, ClusterInfoScale,
                   "Current loading runtimes [ms]");
-DECLARE_LEGACY_COUNTER(arangodb_load_plan_accum_runtime_msec_total,
-                       "Accumulated runtime of Plan loading [ms]");
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
@@ -423,12 +419,8 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
       _uniqid(),
       _lpTimer(_server.getFeature<metrics::MetricsFeature>().add(
           arangodb_load_plan_runtime{})),
-      _lpTotal(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_plan_accum_runtime_msec_total{})),
       _lcTimer(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_current_runtime{})),
-      _lcTotal(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_current_accum_runtime_msec_total{})) {
+          arangodb_load_current_runtime{})) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -1587,7 +1579,6 @@ void ClusterInfo::loadPlan() {
   }
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
-  _lpTotal += static_cast<uint64_t>(diff);
   _lpTimer.count(diff);
 }
 
@@ -1845,7 +1836,6 @@ void ClusterInfo::loadCurrent() {
   }
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
-  _lcTotal += static_cast<uint64_t>(diff);
   _lcTimer.count(diff);
 }
 
@@ -6741,6 +6731,26 @@ void ClusterInfo::triggerWaiting(
     }
     pit = mm.erase(pit);
   }
+}
+
+auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
+    DatabaseID const& database, replication2::LogId id) const
+    -> ResultT<
+        std::shared_ptr<replication2::agency::LogPlanSpecification const>> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto it2 = it->second->replicatedLogs.find(id);
+  if (it2 == std::end(it->second->replicatedLogs)) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+  }
+
+  TRI_ASSERT(it2->second != nullptr);
+  return it2->second;
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(

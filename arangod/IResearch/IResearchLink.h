@@ -53,7 +53,7 @@ class IResearchLink : public IResearchDataStore {
   IResearchLink& operator=(IResearchLink const&) = delete;
   IResearchLink& operator=(IResearchLink&&) = delete;
 
-  virtual ~IResearchLink();
+  ~IResearchLink() override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this IResearch Link reference the supplied view
@@ -133,8 +133,7 @@ class IResearchLink : public IResearchDataStore {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice definition,
-              InitCallback const& initCallback = {});
+  Result init(velocypack::Slice definition, InitCallback const& init = {});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return arangosearch internal format identifier
@@ -159,8 +158,8 @@ class IResearchLink : public IResearchDataStore {
   /// params
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx, LocalDocumentId const documentId,
-                velocypack::Slice const doc);
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc);
 
   std::string const& getViewId() const noexcept;
   std::string const& getDbName() const;
@@ -171,13 +170,8 @@ class IResearchLink : public IResearchDataStore {
   struct LinkStats : Stats {
     LinkStats() = default;
     explicit LinkStats(Stats const& storeStats) : Stats(storeStats) {}
-
-    void needName() const;
-    void toPrometheus(std::string& result, std::string_view globals,
+    void toPrometheus(std::string& result, bool first, std::string_view globals,
                       std::string_view labels) const;
-
-   private:
-    mutable bool _needName{false};
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -199,10 +193,18 @@ class IResearchLink : public IResearchDataStore {
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
  private:
+  template<typename T>
+  Result getView(LogicalView* logical, T*& view);
+  Result initAndLink(InitCallback const& init, IResearchView* view);
+
+  Result initSingleServer(InitCallback const& init);
+  Result initCoordinator(InitCallback const& init);
+  Result initDBServer(InitCallback const& init);
+
   metrics::Batch<LinkStats>* _linkStats;
-  IResearchLinkMeta const _meta;
+  IResearchLinkMeta _meta;
   // the identifier of the desired view (read-only, set via init())
-  std::string const _viewGuid;
+  std::string _viewGuid;
 };
 
 }  // namespace arangodb::iresearch

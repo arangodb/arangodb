@@ -73,6 +73,7 @@ struct arena_stats_s {
 
 	/* Number of bytes cached in tcache associated with this arena. */
 	size_t			tcache_bytes; /* Derived. */
+	size_t			tcache_stashed_bytes; /* Derived. */
 
 	mutex_prof_data_t mutex_prof_data[mutex_prof_num_arena_mutexes];
 

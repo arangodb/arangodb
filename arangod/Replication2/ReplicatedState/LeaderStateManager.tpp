@@ -39,9 +39,10 @@ void LeaderStateManager<S>::run() {
   updateInternalState(LeaderInternalState::kWaitingForLeadershipEstablished);
   logLeader->waitForLeadership()
       .thenValue([weak = this->weak_from_this()](auto&& result) {
-        auto self  = weak.lock();
+        auto self = weak.lock();
         if (self == nullptr) {
-          return futures::Future<Result>{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+          return futures::Future<Result>{
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
         }
         LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
             << "LeaderStateManager established";
@@ -59,9 +60,10 @@ void LeaderStateManager<S>::run() {
             .thenValue([weak](std::unique_ptr<Iterator>&& result) {
               LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
                   << "creating leader instance and starting recovery";
-              auto self  = weak.lock();
+              auto self = weak.lock();
               if (self == nullptr) {
-                return futures::Future<Result>{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+                return futures::Future<Result>{
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
               }
               self->updateInternalState(
                   LeaderInternalState::kRecoveryInProgress, result->range());
@@ -69,21 +71,24 @@ void LeaderStateManager<S>::run() {
                   self->factory->constructLeader();
               return machine->recoverEntries(std::move(result))
                   .then([weak,
-                         machine](futures::Try<Result>&& tryResult) mutable -> Result {
-                    auto self  = weak.lock();
+                         machine](futures::Try<Result>&& tryResult) mutable
+                        -> Result {
+                    auto self = weak.lock();
                     if (self == nullptr) {
-                      return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+                      return Result{
+                          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
                     }
                     try {
                       if (auto result = tryResult.get(); result.ok()) {
                         LOG_TOPIC("1a375", DEBUG, Logger::REPLICATED_STATE)
                             << "recovery on leader completed";
                         self->state = machine;
-                        self->core->snapshot.updateStatus(
+                        self->token->snapshot.updateStatus(
                             SnapshotStatus::kCompleted);
                         self->updateInternalState(
                             LeaderInternalState::kServiceAvailable);
                         self->state->_stream = self->stream;
+                        self->beginWaitingForParticipantResigned();
                         return result;
                       } else {
                         LOG_TOPIC("3fd49", FATAL, Logger::REPLICATED_STATE)
@@ -105,7 +110,7 @@ void LeaderStateManager<S>::run() {
       })
       .thenFinal(
           [weak = this->weak_from_this()](futures::Try<Result>&& result) {
-            auto self  = weak.lock();
+            auto self = weak.lock();
             if (self == nullptr) {
               return;
             }
@@ -130,31 +135,60 @@ LeaderStateManager<S>::LeaderStateManager(
     std::shared_ptr<ReplicatedState<S>> const& parent,
     std::shared_ptr<replicated_log::ILogLeader> leader,
     std::unique_ptr<ReplicatedStateCore> core,
+    std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logLeader(std::move(leader)),
       internalState(LeaderInternalState::kWaitingForLeadershipEstablished),
       core(std::move(core)),
-      factory(std::move(factory)) {}
+      token(std::move(token)),
+      factory(std::move(factory)) {
+  TRI_ASSERT(this->core != nullptr);
+  TRI_ASSERT(this->token != nullptr);
+}
 
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
+  if (token == nullptr || core == nullptr) {
+    TRI_ASSERT(core == nullptr && token == nullptr);
+    throw replicated_log::ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+  }
   LeaderStatus status;
-  status.log = std::get<replicated_log::LeaderStatus>(
-      logLeader->getStatus().getVariant());
-  status.state.state = internalState;
-  status.state.lastChange = lastInternalStateChange;
+  status.managerState.state = internalState;
+  status.managerState.lastChange = lastInternalStateChange;
   if (internalState == LeaderInternalState::kRecoveryInProgress &&
       recoveryRange) {
-    status.state.detail = "recovery range is " + to_string(*recoveryRange);
+    status.managerState.detail =
+        "recovery range is " + to_string(*recoveryRange);
   } else {
-    status.state.detail = std::nullopt;
+    status.managerState.detail = std::nullopt;
   }
+  status.snapshot = token->snapshot;
+  status.generation = token->generation;
   return StateStatus{.variant = std::move(status)};
 }
 
 template<typename S>
-auto LeaderStateManager<S>::getSnapshotStatus() const -> SnapshotStatus {
-  return core->snapshot;
+auto LeaderStateManager<S>::resign() && noexcept
+    -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+                 std::unique_ptr<ReplicatedStateToken>> {
+  LOG_TOPIC("edcf3", TRACE, Logger::REPLICATED_STATE)
+      << "Leader manager resign";
+  TRI_ASSERT(core != nullptr);
+  TRI_ASSERT(token != nullptr);
+  return {std::move(core), std::move(token)};
+}
+
+template<typename S>
+void LeaderStateManager<S>::beginWaitingForParticipantResigned() {
+  logLeader->waitFor(LogIndex{std::numeric_limits<std::uint64_t>::max()})
+      .thenFinal([weak = this->weak_from_this()](auto&&) {
+        if (auto self = weak.lock(); self != nullptr) {
+          if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
+            parentPtr->forceRebuild();
+          }
+        }
+      });
 }
 }  // namespace arangodb::replication2::replicated_state

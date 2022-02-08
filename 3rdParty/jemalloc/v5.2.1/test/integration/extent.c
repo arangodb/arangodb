@@ -2,17 +2,7 @@
 
 #include "test/extent_hooks.h"
 
-static bool
-check_background_thread_enabled(void) {
-	bool enabled;
-	size_t sz = sizeof(bool);
-	int ret = mallctl("background_thread", (void *)&enabled, &sz, NULL,0);
-	if (ret == ENOENT) {
-		return false;
-	}
-	expect_d_eq(ret, 0, "Unexpected mallctl error");
-	return enabled;
-}
+#include "jemalloc/internal/arena_types.h"
 
 static void
 test_extent_body(unsigned arena_ind) {
@@ -177,7 +167,7 @@ test_manual_hook_body(void) {
 	expect_ptr_ne(old_hooks->merge, extent_merge_hook,
 	    "Unexpected extent_hooks error");
 
-	if (!check_background_thread_enabled()) {
+	if (!is_background_thread_enabled()) {
 		test_extent_body(arena_ind);
 	}
 
@@ -235,8 +225,55 @@ TEST_BEGIN(test_extent_auto_hook) {
 	expect_d_eq(mallctl("arenas.create", (void *)&arena_ind, &sz,
 	    (void *)&new_hooks, new_size), 0, "Unexpected mallctl() failure");
 
-	test_skip_if(check_background_thread_enabled());
+	test_skip_if(is_background_thread_enabled());
 	test_extent_body(arena_ind);
+}
+TEST_END
+
+static void
+test_arenas_create_ext_base(arena_config_t config,
+	bool expect_hook_data, bool expect_hook_metadata)
+{
+	unsigned arena, arena1;
+	void *ptr;
+	size_t sz = sizeof(unsigned);
+
+	extent_hooks_prep();
+
+	called_alloc = false;
+	expect_d_eq(mallctl("experimental.arenas_create_ext",
+	    (void *)&arena, &sz, &config, sizeof(arena_config_t)), 0,
+	    "Unexpected mallctl() failure");
+	expect_b_eq(called_alloc, expect_hook_metadata,
+	    "expected hook metadata alloc mismatch");
+
+	called_alloc = false;
+	ptr = mallocx(42, MALLOCX_ARENA(arena) | MALLOCX_TCACHE_NONE);
+	expect_b_eq(called_alloc, expect_hook_data,
+	    "expected hook data alloc mismatch");
+
+	expect_ptr_not_null(ptr, "Unexpected mallocx() failure");
+	expect_d_eq(mallctl("arenas.lookup", &arena1, &sz, &ptr, sizeof(ptr)),
+	    0, "Unexpected mallctl() failure");
+	expect_u_eq(arena, arena1, "Unexpected arena index");
+	dallocx(ptr, 0);
+}
+
+TEST_BEGIN(test_arenas_create_ext_with_ehooks_no_metadata) {
+	arena_config_t config;
+	config.extent_hooks = &hooks;
+	config.metadata_use_hooks = false;
+
+	test_arenas_create_ext_base(config, true, false);
+}
+TEST_END
+
+TEST_BEGIN(test_arenas_create_ext_with_ehooks_with_metadata) {
+	arena_config_t config;
+	config.extent_hooks = &hooks;
+	config.metadata_use_hooks = true;
+
+	test_arenas_create_ext_base(config, true, true);
 }
 TEST_END
 
@@ -244,5 +281,7 @@ int
 main(void) {
 	return test(
 	    test_extent_manual_hook,
-	    test_extent_auto_hook);
+	    test_extent_auto_hook,
+	    test_arenas_create_ext_with_ehooks_no_metadata,
+	    test_arenas_create_ext_with_ehooks_with_metadata);
 }

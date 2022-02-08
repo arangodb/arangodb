@@ -70,7 +70,7 @@ thd_start(void *arg) {
 	expect_ptr_eq(ap0, ap1,
 	    "Pointer returned by \"thread.allocatedp\" should not change");
 
-	usize = malloc_usable_size(p);
+	usize = TEST_MALLOC_SIZE(p);
 	expect_u64_le(a0 + usize, a1,
 	    "Allocated memory counter should increase by at least the amount "
 	    "explicitly allocated");
