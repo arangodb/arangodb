@@ -574,12 +574,15 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
+  Replication2/ReplicatedState/Supervision.cpp
+  Replication2/ReplicatedState/SupervisionAction.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
-)
+  Replication2/ReplicatedState/UpdateReplicatedState.cpp
+  Replication2/ReplicatedState/UpdateReplicatedState.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp
@@ -701,6 +704,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
+  Cluster/UpdateReplicatedStateAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
