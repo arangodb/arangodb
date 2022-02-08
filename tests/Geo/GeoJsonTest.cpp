@@ -1816,6 +1816,9 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_nested_rings) {
         point->add(VPackValue(-1.0));
       }
     }
+    // Note that the following example is contrary to the rules of GeoJSON,
+    // since the inner loop is not running clockwise around the hole. However,
+    // we are lenient here and waive the problem, since the intention is clear.
     {
       velocypack::ArrayBuilder points(&builder);
       {
@@ -1837,6 +1840,91 @@ TEST_F(ValidGeoJSONInputTest, valid_polygon_nested_rings) {
         velocypack::ArrayBuilder point(&builder);
         point->add(VPackValue(0.0));
         point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::geojson::Type::POLYGON, geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape, false).ok());
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.99, -0.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.99, 1.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.99, 1.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.99, -0.99).ToPoint()));
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.5, -0.5).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.5, 0.5).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.5, 1.5).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.5, 0.5).ToPoint()));
+
+  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_polygon_nested_rings_standard) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+    }
+    // Note that the following example is correct according to the
+    // rules of GeoJSON, since the inner loop is running clockwise
+    // around the hole. We internally invert it to get nested loops and
+    // `InitNested` is happy. The intention is clear here.
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
       }
       {
         velocypack::ArrayBuilder point(&builder);
