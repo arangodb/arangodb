@@ -1685,7 +1685,7 @@ describe('_api/gharial', () => {
       }
 
       return res;
-    }
+    };
 
     const verifyChecksumAfterModifications = (isSmart, isDisjoint, isSatellite, isHybrid) => {
       const fetchChecksum = () => {
