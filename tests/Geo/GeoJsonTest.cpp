@@ -30,6 +30,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Aql/VelocyPackHelper.h"
 #include "Basics/Common.h"
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
@@ -2073,4 +2074,100 @@ TEST_F(ValidGeoJSONInputTest, valid_multipolygon) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
 }
 
+using namespace arangodb::tests;
+
+TEST_F(InvalidGeoJSONInputTest, self_intersecting_loop) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[10,10],[20,20],[20,10],[10,20],[10,10]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false)
+                  .is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, sharing_edges) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10,10],[20,10],[20,20],[10,20],[10,10]],
+                    [[10,10],[20,10],[15,15],[10,10]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false)
+                  .is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, intersecting_edges) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10,10],[20,10],[20,20],[10,20],[10,10]],
+                    [[10,10],[18,11],[15,15],[10,10]],
+                    [[12,12],[19,12],[15,19],[12,12]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false)
+                  .is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, repeated_vertices) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[10,10],[20,10],[15,15],[20,20],[10,20],[15,15],[10,10]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false)
+                  .is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, crosses_edges_multi) {
+  auto poly = R"({
+    "type": "MultiPolygon",
+    "coordinates": [[[[10,10],[20,10],[20,20],[10,20],[10,10]]],
+                    [[[9,9],[19,9],[15,15],[9,9]]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false)
+                  .is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, shares_edges_multi) {
+  auto poly = R"({
+    "type": "MultiPolygon",
+    "coordinates": [[[[10,10],[20,10],[20,20],[10,20],[10,10]]],
+                    [[[5,5],[20,10],[10,10],[5,5]]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false)
+                  .is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(ValidGeoJSONInputTest, containing_multi) {
+  auto poly = R"({
+    "type": "MultiPolygon",
+    "coordinates": [[[[10,10],[20,10],[20,20],[10,20],[10,10]]],
+                    [[[11,11],[19,11],[19,19],[11,19],[11,11]]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false).ok());
+}
+
+TEST_F(ValidGeoJSONInputTest, sharing_vertices) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10,10],[20,10],[20,20],[10,20],[10,10]],
+                    [[10,10],[18,11],[15,15],[10,10]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false).ok());
+}
+
+TEST_F(ValidGeoJSONInputTest, sharing_vertices_multi) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[[10,10],[20,10],[20,20],[10,20],[10,10]]],
+                    [[[10,10],[5,5],[18,9],[10,10]]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false).ok());
+}
 }  // namespace arangodb
