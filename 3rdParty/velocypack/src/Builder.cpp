@@ -641,7 +641,8 @@ Builder& Builder::close() {
       (head == 0x0b && (options->buildUnindexedObjects || index.size() == 1))) {
     if (closeCompactArrayOrObject(tos, isArray, index)) {
       // And, if desired, check attribute uniqueness:
-      if (options->checkAttributeUniqueness && 
+      if ((head == 0x0b || head == 0x14) &&
+          options->checkAttributeUniqueness && 
           index.size() > 1 &&
           !checkAttributeUniqueness(Slice(_start + tos))) {
         // duplicate attribute name!
