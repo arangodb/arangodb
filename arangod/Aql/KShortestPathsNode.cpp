@@ -311,9 +311,10 @@ void KShortestPathsNode::doToVelocyPack(VPackBuilder& nodes,
   _toCondition->toVelocyPack(nodes, flags);
 }
 
-// Provider is expected to be TracedKPathEnumerator<
-//            SingleServerProvider<SingleServerProviderStep>>
-// or SingleServerProvider<SingleServerProviderStep>
+// Provider is expected to be:
+// 1. TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>
+// 2. or SingleServerProvider<SingleServerProviderStep>
+// 3. or ClusterProvider<ClusterProviderStep>
 
 template<typename KPathRefactored, typename Provider, typename ProviderOptions>
 std::unique_ptr<ExecutionBlock> KShortestPathsNode::_makeExecutionBlockImpl(

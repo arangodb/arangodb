@@ -993,7 +993,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       }
 
       // Vertex Expressions Section
-      // TODO [GraphRefactor]: Currently not clear yet.
       // I. Set the list of allowed collections
       validatorOptions.addAllowedVertexCollections(opts->vertexCollections);
 
@@ -1003,8 +1002,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
             opts->_baseVertexExpression->clone(_plan->getAst());
         validatorOptions.setAllVerticesExpression(
             std::move(baseVertexExpression));
-        // TODO [GraphRefactor]: Clarify this, why is _baseVertexExpression and
-        // _vertexExpressions not populated in SS Case
       }
 
       // III. Depth-based prune expressions
