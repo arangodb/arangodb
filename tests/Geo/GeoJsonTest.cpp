@@ -2163,7 +2163,7 @@ TEST_F(ValidGeoJSONInputTest, sharing_vertices) {
 
 TEST_F(ValidGeoJSONInputTest, sharing_vertices_multi) {
   auto poly = R"({
-    "type": "Polygon",
+    "type": "MultiPolygon",
     "coordinates": [[[[10,10],[20,10],[20,20],[10,20],[10,10]]],
                     [[[10,10],[5,5],[18,9],[10,10]]]]
   })"_vpack;
