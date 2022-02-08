@@ -1650,7 +1650,7 @@ describe('_api/gharial', () => {
       return `${url}?onlyHash=true`;
     };
 
-    const recreateGraphMethod = (isSmart, isDisjoint, isSatellite, isHybrid) => {
+    const createGraphWithProperties = (isSmart, isDisjoint, isSatellite, isHybrid) => {
       let toCreateGraphProperties;
 
       if (isSmart && isDisjoint) {
@@ -1682,6 +1682,62 @@ describe('_api/gharial', () => {
       } else if (isSatellite) {
         expect(res.graph.isSatellite).to.be.true;
       }
+
+      return res;
+    }
+
+    const verifyChecksumAfterModifications = (isSmart, isDisjoint, isSatellite, isHybrid) => {
+      const fetchChecksum = () => {
+        const graph = arango.GET(generateSingleUrlWithDetails(graphName)).graph;
+        return graph.checksum;
+      };
+      const res = createGraphWithProperties(isSmart, isDisjoint, isSatellite, isHybrid);
+
+      console.warn(arango.GET(generateSingleUrlWithDetails(graphName)));
+
+      let checksum = fetchChecksum();
+      let jsGraph = gM._graph(graphName);
+
+      // add an orphan collection
+      jsGraph._addVertexCollection('deprecateMe');
+      expect(checksum).to.not.be.equal(fetchChecksum());
+      checksum = fetchChecksum();
+
+      // add a new relation
+      const aNewRelation = gM._relation("instructors", ["Padawans"], ["Jedis"]);
+      jsGraph._extendEdgeDefinitions(aNewRelation);
+      expect(checksum).to.not.be.equal(fetchChecksum());
+      checksum = fetchChecksum();
+
+      // modify existing relation
+      const aModifiedRelation = gM._relation("instructors", ["Padawans"], ["Jedis", "Siths"]);
+      jsGraph._editEdgeDefinitions(aModifiedRelation);
+      expect(checksum).to.not.be.equal(fetchChecksum());
+      checksum = fetchChecksum();
+
+      // delete existing relation
+      jsGraph._deleteEdgeDefinition("instructors", true);
+      expect(checksum).to.not.be.equal(fetchChecksum());
+      checksum = fetchChecksum();
+
+      // drop an orphan collection
+      jsGraph._removeVertexCollection('deprecateMe', true);
+      expect(checksum).to.not.be.equal(fetchChecksum());
+      checksum = fetchChecksum();
+
+      if (isHybrid) {
+        // additional check in case we're adding a new relation or orphan to be created as satellite
+        // in hybrid case
+        const aNewRelation = gM._relation("instructors", ["Padawans"], ["Jedis"]);
+        const satellites = ["Jedis"];
+        jsGraph._extendEdgeDefinitions(aNewRelation, {satellites: satellites});
+        expect(checksum).to.not.be.equal(fetchChecksum());
+        checksum = fetchChecksum();
+      }
+    };
+
+    const recreateGraphMethod = (isSmart, isDisjoint, isSatellite, isHybrid) => {
+      const res = createGraphWithProperties(isSmart, isDisjoint, isSatellite, isHybrid);
 
       // only pick the values we need for creation
       const attributePickList = [
@@ -1953,6 +2009,34 @@ describe('_api/gharial', () => {
       const checksumEdgeDefinition = res.graphs[0].edgeDefinitions[0].checksum;
       const checksumEdgeDefinition2 = res.graphs[1].edgeDefinitions[0].checksum;
       expect(checksumEdgeDefinition).to.not.be.equal(checksumEdgeDefinition2);
+    });
+
+    it('GeneralGraph - modifying a graph should led to a md5 checksum change', () => {
+      verifyChecksumAfterModifications(false, false, false, false);
+    });
+
+    it('SmartGraph - modifying a graph should led to a md5 checksum change', () => {
+      verifyChecksumAfterModifications(true, false, false, false);
+    });
+
+    it('Disjoint SmartGraph - modifying a graph should led to a md5 checksum change', () => {
+      verifyChecksumAfterModifications(true, true, false, false);
+    });
+
+    it('SatelliteGraph - modifying a graph should led to a md5 checksum change', () => {
+      verifyChecksumAfterModifications(false, false, true, false);
+    });
+
+    it('HybridGraph - modifying a graph should led to a md5 checksum change', () => {
+      verifyChecksumAfterModifications(true, false, false, true);
+    });
+
+    it('HybridDisjointGraph - modifying a graph should led to a md5 checksum change', () => {
+      verifyChecksumAfterModifications(true, true, false, true);
+    });
+
+    it('modifying a graphs edge should led to a md5 checksum change', () => {
+
     });
 
     /* Re-Creation tests */

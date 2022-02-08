@@ -511,7 +511,7 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
     builder.add(VPackValue(from));
   }
   builder.close();  // array
-  builder.add(StaticStrings::GraphFrom, VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphTo, VPackValue(VPackValueType::Array));
   for (auto const& to : getTo()) {
     builder.add(VPackValue(to));
   }
