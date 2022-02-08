@@ -26,6 +26,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include <rocksdb/slice.h>
 #include <rocksdb/slice_transform.h>
