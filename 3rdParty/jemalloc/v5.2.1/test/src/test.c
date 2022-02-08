@@ -87,8 +87,8 @@ test_fail(const char *format, ...) {
 }
 
 static const char *
-test_status_string(test_status_t test_status) {
-	switch (test_status) {
+test_status_string(test_status_t current_status) {
+	switch (current_status) {
 	case test_status_pass: return "pass";
 	case test_status_skip: return "skip";
 	case test_status_fail: return "fail";
@@ -231,17 +231,4 @@ void
 p_test_fail(const char *prefix, const char *message) {
 	malloc_cprintf(NULL, NULL, "%s%s\n", prefix, message);
 	test_status = test_status_fail;
-}
-
-void
-strncpy_cond(void *dst, const char *src, bool cond) {
-	if (cond) {
-		/*
-		 * Avoid strcpy and explicitly set length to 0 because the
-		 * `stringop-overflow` check may warn even if the specific test
-		 * is unreachable.
-		 */
-		size_t n = cond ? strlen(src) + 1 : 0;
-		strncpy(dst, src, n);
-	}
 }

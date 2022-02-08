@@ -45,7 +45,7 @@
 	 */								\
 	atomic_store_##ta(&atom, val1, ATOMIC_RELAXED);			\
 	success = false;						\
-	for (int i = 0; i < 10 && !success; i++) {			\
+	for (int retry = 0; retry < 10 && !success; retry++) {		\
 		expected = val2;					\
 		success = atomic_compare_exchange_weak_##ta(&atom,	\
 		    &expected, val3, ATOMIC_RELAXED, ATOMIC_RELAXED);	\
