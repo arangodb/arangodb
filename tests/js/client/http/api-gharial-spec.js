@@ -35,6 +35,7 @@ chai.Assertion.addProperty('does', function () {
 const arangodb = require('@arangodb');
 const arango = arangodb.arango;
 const gM = require("@arangodb/general-graph");
+const isEnterprise = require("internal").isEnterprise();
 
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
@@ -1801,137 +1802,143 @@ describe('_api/gharial', () => {
       validateGraphFormat(res.graph);
     });
 
-    it('SmartGraph - do not expose satellites', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-      const res = arango.GET(generateSingleUrl(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {isSmart: true});
-    });
-
-    it('Disjoint SmartGraph - do not expose satellites', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
-      const res = arango.GET(generateSingleUrl(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {isSmart: true, isDisjoint: true});
-    });
-
-    it('SatelliteGraph - do not expose satellites', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
-      const res = arango.GET(generateSingleUrl(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {isSatellite: true});
-    });
-
-    it('SmartGraph - expose empty satellites', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
-    });
-
-    it('Disjoint SmartGraph - expose empty satellites', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
-    });
-
-    it('Hybrid SmartGraph - expose satellites (from vertex)', () => {
-      let hybridSmartOptions = _.cloneDeep(smartOptions);
-      hybridSmartOptions.satellites = firstEdgeDef[0].from;
-
-      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {
-        isSmart: true,
-        hasDetails: true,
-        hybridCollections: hybridSmartOptions.satellites
+    if (isEnterprise) {
+      it('SmartGraph - do not expose satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+        const res = arango.GET(generateSingleUrl(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {isSmart: true});
       });
-    });
 
-    it('Hybrid SmartGraph - expose satellites (to vertex)', () => {
-      let hybridSmartOptions = _.cloneDeep(smartOptions);
-      hybridSmartOptions.satellites = firstEdgeDef[0].to;
-
-      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {
-        isSmart: true,
-        hasDetails: true,
-        hybridCollections: hybridSmartOptions.satellites
+      it('Disjoint SmartGraph - do not expose satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
+        const res = arango.GET(generateSingleUrl(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {isSmart: true, isDisjoint: true});
       });
-    });
 
-    it('Hybrid SmartGraph - expose satellites (from && to vertices)', () => {
-      let hybridSmartOptions = _.cloneDeep(smartOptions);
-      hybridSmartOptions.satellites = [];
-      hybridSmartOptions.satellites.push(firstEdgeDef[0].from[0]);
-      hybridSmartOptions.satellites.push(firstEdgeDef[0].to[0]);
-
-      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {
-        isSmart: true,
-        hasDetails: true,
-        hybridCollections: hybridSmartOptions.satellites,
-        onlySatellitesCreated: true
+      it('SatelliteGraph - do not expose satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
+        const res = arango.GET(generateSingleUrl(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {isSatellite: true});
       });
-    });
 
-    it('Hybrid Disjoint SmartGraph - expose satellites (from vertex)', () => {
-      let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
-      hybridSmartOptions.satellites = firstEdgeDef[0].from;
-
-      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {
-        isSmart: true,
-        isDisjoint: true,
-        hasDetails: true,
-        hybridCollections: hybridSmartOptions.satellites
+      it('SmartGraph - expose empty satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
       });
-    });
 
-    it('Hybrid Disjoint SmartGraph - expose satellites (to vertex)', () => {
-      let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
-      hybridSmartOptions.satellites = firstEdgeDef[0].to;
-
-      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {
-        isSmart: true,
-        isDisjoint: true,
-        hasDetails: true,
-        hybridCollections: hybridSmartOptions.satellites
+      it('Disjoint SmartGraph - expose empty satellites', () => {
+        gM._create(graphName, firstEdgeDef, noOrphans, smartDisjointOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {isSmart: true, hasDetails: true});
       });
-    });
 
-    it('Hybrid Disjoint SmartGraph - expose satellites (from && to vertices)', () => {
-      let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
-      hybridSmartOptions.satellites = [];
-      hybridSmartOptions.satellites.push(firstEdgeDef[0].from[0]);
-      hybridSmartOptions.satellites.push(firstEdgeDef[0].to[0]);
+      it('Hybrid SmartGraph - expose satellites (from vertex)', () => {
+        let hybridSmartOptions = _.cloneDeep(smartOptions);
+        hybridSmartOptions.satellites = firstEdgeDef[0].from;
 
-      gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
-      const res = arango.GET(generateSingleUrlWithDetails(graphName));
-      validateBasicGraphResponse(res);
-      validateGraphFormat(res.graph, {
-        isSmart: true,
-        isDisjoint: true,
-        hasDetails: true,
-        hybridCollections: hybridSmartOptions.satellites,
-        onlySatellitesCreated: true
+        gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {
+          isSmart: true,
+          hasDetails: true,
+          hybridCollections: hybridSmartOptions.satellites
+        });
       });
-    });
+
+      it('Hybrid SmartGraph - expose satellites (to vertex)', () => {
+        let hybridSmartOptions = _.cloneDeep(smartOptions);
+        hybridSmartOptions.satellites = firstEdgeDef[0].to;
+
+        gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {
+          isSmart: true,
+          hasDetails: true,
+          hybridCollections: hybridSmartOptions.satellites
+        });
+      });
+
+      it('Hybrid SmartGraph - expose satellites (from && to vertices)', () => {
+        let hybridSmartOptions = _.cloneDeep(smartOptions);
+        hybridSmartOptions.satellites = [];
+        hybridSmartOptions.satellites.push(firstEdgeDef[0].from[0]);
+        hybridSmartOptions.satellites.push(firstEdgeDef[0].to[0]);
+
+        gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {
+          isSmart: true,
+          hasDetails: true,
+          hybridCollections: hybridSmartOptions.satellites,
+          onlySatellitesCreated: true
+        });
+      });
+
+      it('Hybrid Disjoint SmartGraph - expose satellites (from vertex)', () => {
+        let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
+        hybridSmartOptions.satellites = firstEdgeDef[0].from;
+
+        gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {
+          isSmart: true,
+          isDisjoint: true,
+          hasDetails: true,
+          hybridCollections: hybridSmartOptions.satellites
+        });
+      });
+
+      it('Hybrid Disjoint SmartGraph - expose satellites (to vertex)', () => {
+        let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
+        hybridSmartOptions.satellites = firstEdgeDef[0].to;
+
+        gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {
+          isSmart: true,
+          isDisjoint: true,
+          hasDetails: true,
+          hybridCollections: hybridSmartOptions.satellites
+        });
+      });
+
+      it('Hybrid Disjoint SmartGraph - expose satellites (from && to vertices)', () => {
+        let hybridSmartOptions = _.cloneDeep(smartDisjointOptions);
+        hybridSmartOptions.satellites = [];
+        hybridSmartOptions.satellites.push(firstEdgeDef[0].from[0]);
+        hybridSmartOptions.satellites.push(firstEdgeDef[0].to[0]);
+
+        gM._create(graphName, firstEdgeDef, noOrphans, hybridSmartOptions);
+        const res = arango.GET(generateSingleUrlWithDetails(graphName));
+        validateBasicGraphResponse(res);
+        validateGraphFormat(res.graph, {
+          isSmart: true,
+          isDisjoint: true,
+          hasDetails: true,
+          hybridCollections: hybridSmartOptions.satellites,
+          onlySatellitesCreated: true
+        });
+      });
+    }
 
     /* Checksum tests */
     it('graphs, return only checksum', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+      let createOptions = {};
+      if (isEnterprise) {
+        createOptions = smartOptions;
+      }
+      gM._create(graphName, firstEdgeDef, noOrphans, createOptions);
       const res = arango.GET(generateAllGraphsUrlWithChecksum());
       expect(res.code).to.equal(200);
       expect(res.error).to.be.false;
@@ -1941,7 +1948,11 @@ describe('_api/gharial', () => {
     });
 
     it('graphs, should revoke checksum and details call (not allowed)', () => {
-      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
+      let createOptions = {};
+      if (isEnterprise) {
+        createOptions = smartOptions;
+      }
+      gM._create(graphName, firstEdgeDef, noOrphans, createOptions);
       const res = arango.GET(`${url}?onlyHash=true&details=true`);
       expect(res).to.have.keys("error", "code", "errorMessage", "errorNum");
       expect(res.code).to.equal(400);
@@ -1951,29 +1962,45 @@ describe('_api/gharial', () => {
 
     it('different graphs, return details including all checksums', () => {
       // means every EdgeDefinition has md5 checksum and every graph has md5 checksum
-      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-      gM._create(graphName2, secondEdgeDef, noOrphans, smartOptions);
+      let createOptions = {};
+      if (isEnterprise) {
+        createOptions = smartOptions;
+      }
+      gM._create(graphName, firstEdgeDef, noOrphans, createOptions);
+      gM._create(graphName2, secondEdgeDef, noOrphans, createOptions);
 
       const res = arango.GET(generateAllGraphsUrlWithDetails());
       validateBasicGraphsResponse(res);
 
       expect(res.graphs.length).to.equal(2);
       res.graphs.forEach((graph) => {
-        validateGraphFormat(graph, {isSmart: true, hasDetails: true});
+        if (isEnterprise) {
+          validateGraphFormat(graph, {isSmart: true, hasDetails: true});
+        } else {
+          validateGraphFormat(graph, {isSmart: false, hasDetails: true});
+        }
       });
     });
 
     it('different graphs, overlapping edge definition, return details including all checksums', () => {
       // same edge definitions used in different graphs needs to have the same md5 checksum
-      gM._create(graphName, firstEdgeDef, noOrphans, satelliteOptions);
-      gM._create(graphName2, firstEdgeDef, noOrphans, satelliteOptions);
+      let createOptions = {};
+      if (isEnterprise) {
+        createOptions = satelliteOptions;
+      }
+      gM._create(graphName, firstEdgeDef, noOrphans, createOptions);
+      gM._create(graphName2, firstEdgeDef, noOrphans, createOptions);
 
       const res = arango.GET(generateAllGraphsUrlWithDetails());
 
       validateBasicGraphsResponse(res);
       expect(res.graphs.length).to.equal(2);
       res.graphs.forEach((graph) => {
-        validateGraphFormat(graph, {isSatellite: true, hasDetails: true});
+        if (isEnterprise) {
+          validateGraphFormat(graph, {isSatellite: true, hasDetails: true});
+        } else {
+          validateGraphFormat(graph, {isSatellite: false, hasDetails: true});
+        }
       });
 
       // global checksum must differ
@@ -1989,15 +2016,24 @@ describe('_api/gharial', () => {
 
     it('different graphs, non overlapping edge definition, return details including all checksums', () => {
       // different edge definitions used in different graphs needs to have different md5 checksums
-      gM._create(graphName, firstEdgeDef, noOrphans, smartOptions);
-      gM._create(graphName2, secondEdgeDef, noOrphans, smartOptions);
+      let createOptions = {};
+      if (isEnterprise) {
+        createOptions = smartOptions;
+      }
+
+      gM._create(graphName, firstEdgeDef, noOrphans, createOptions);
+      gM._create(graphName2, secondEdgeDef, noOrphans, createOptions);
 
       const res = arango.GET(generateAllGraphsUrlWithDetails());
 
       validateBasicGraphsResponse(res);
       expect(res.graphs.length).to.equal(2);
       res.graphs.forEach((graph) => {
-        validateGraphFormat(graph, {isSmart: true, hasDetails: true});
+        if (isEnterprise) {
+          validateGraphFormat(graph, {isSmart: true, hasDetails: true});
+        } else {
+          validateGraphFormat(graph, {isSmart: false, hasDetails: true});
+        }
       });
 
       // global checksum must differ
@@ -2015,50 +2051,50 @@ describe('_api/gharial', () => {
       verifyChecksumAfterModifications(false, false, false, false);
     });
 
-    it('SmartGraph - modifying a graph should led to a md5 checksum change', () => {
-      verifyChecksumAfterModifications(true, false, false, false);
-    });
+    if (isEnterprise) {
+      it('SmartGraph - modifying a graph should led to a md5 checksum change', () => {
+        verifyChecksumAfterModifications(true, false, false, false);
+      });
 
-    it('Disjoint SmartGraph - modifying a graph should led to a md5 checksum change', () => {
-      verifyChecksumAfterModifications(true, true, false, false);
-    });
+      it('Disjoint SmartGraph - modifying a graph should led to a md5 checksum change', () => {
+        verifyChecksumAfterModifications(true, true, false, false);
+      });
 
-    it('SatelliteGraph - modifying a graph should led to a md5 checksum change', () => {
-      verifyChecksumAfterModifications(false, false, true, false);
-    });
+      it('SatelliteGraph - modifying a graph should led to a md5 checksum change', () => {
+        verifyChecksumAfterModifications(false, false, true, false);
+      });
 
-    it('HybridGraph - modifying a graph should led to a md5 checksum change', () => {
-      verifyChecksumAfterModifications(true, false, false, true);
-    });
+      it('HybridGraph - modifying a graph should led to a md5 checksum change', () => {
+        verifyChecksumAfterModifications(true, false, false, true);
+      });
 
-    it('HybridDisjointGraph - modifying a graph should led to a md5 checksum change', () => {
-      verifyChecksumAfterModifications(true, true, false, true);
-    });
-
-    it('modifying a graphs edge should led to a md5 checksum change', () => {
-
-    });
+      it('HybridDisjointGraph - modifying a graph should led to a md5 checksum change', () => {
+        verifyChecksumAfterModifications(true, true, false, true);
+      });
+    }
 
     /* Re-Creation tests */
-    it('create SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
-      recreateGraphMethod(true, false, false, false);
-    });
+    if (isEnterprise) {
+      it('create SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+        recreateGraphMethod(true, false, false, false);
+      });
 
-    it('create Disjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
-      recreateGraphMethod(true, true, false, false);
-    });
+      it('create Disjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+        recreateGraphMethod(true, true, false, false);
+      });
 
-    it('create Satellite SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
-      recreateGraphMethod(false, false, true, false);
-    });
+      it('create Satellite SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+        recreateGraphMethod(false, false, true, false);
+      });
 
-    it('create Hybrid SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
-      recreateGraphMethod(true, false, false, true);
-    });
+      it('create Hybrid SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+        recreateGraphMethod(true, false, false, true);
+      });
 
-    it('create Hybrid Disjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
-      recreateGraphMethod(true, true, false, true);
-    });
+      it('create Hybrid Disjoint SmartGraph, export properties, delete graph and re-create using fetched properties', () => {
+        recreateGraphMethod(true, true, false, true);
+      });
+    }
 
   });
 });
