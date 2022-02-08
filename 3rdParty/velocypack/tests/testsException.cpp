@@ -54,6 +54,10 @@ TEST(ExceptionTest, TestMessages) {
   ASSERT_STREQ("Cannot translate key",
                Exception::message(Exception::CannotTranslateKey));
   ASSERT_STREQ("Key not found", Exception::message(Exception::KeyNotFound));
+  ASSERT_STREQ("Array size does not match tuple size",
+               Exception::message(Exception::BadTupleSize));
+  ASSERT_STREQ("Too deep nesting in Array/Object",
+               Exception::message(Exception::TooDeepNesting));
   ASSERT_STREQ("Builder value not yet sealed",
                Exception::message(Exception::BuilderNotSealed));
   ASSERT_STREQ("Need open Object",
@@ -80,8 +84,6 @@ TEST(ExceptionTest, TestMessages) {
                Exception::message(Exception::ValidatorInvalidType));
   ASSERT_STREQ("Invalid length found in binary data",
                Exception::message(Exception::ValidatorInvalidLength));
-  ASSERT_STREQ("Array size does not match tuple size",
-               Exception::message(Exception::BadTupleSize));
 
   ASSERT_STREQ("Unknown error", Exception::message(Exception::UnknownError));
   ASSERT_STREQ("Unknown error",

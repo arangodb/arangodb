@@ -1935,6 +1935,66 @@ TEST(ValidatorTest, ArrayMoreItemsThanIndex) {
   ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
 }
 
+TEST(ValidatorTest, ArrayNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray();
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, CompactArrayNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray(true);
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, ArrayNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray();
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
+}
+
+TEST(ValidatorTest, CompactArrayNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray(true);
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
+}
+
 TEST(ValidatorTest, ObjectMoreItemsThanIndex) {
   std::string const value("\x0B\x08\x01\xBE\x41\x61\x31\x04", 8);
 
@@ -2406,6 +2466,74 @@ TEST(ValidatorTest, ObjectFourByteManyEntries) {
 
   Validator validator;
   ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, ObjectNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject();
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, CompactObjectNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject(true);
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, ObjectNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject(true);
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
+}
+
+TEST(ValidatorTest, CompactObjectNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject(true);
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
 }
 
 int main(int argc, char* argv[]) {

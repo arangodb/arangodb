@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.9)
 project(velocypack CXX C)
 
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "target C++ standard")
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "target C++ standard")
 message(STATUS "Require C++${CMAKE_CXX_STANDARD}")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
