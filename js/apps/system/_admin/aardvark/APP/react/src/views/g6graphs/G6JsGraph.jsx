@@ -794,8 +794,11 @@ const G6JsGraph = () => {
         onRequestClose={() => {
           setShowFetchFullGraphModal(false);
         }}
+        onFullGraphLoaded={(newGraphData) => setGraphData(newGraphData)}
+        graphName={graphName}
       >
         <strong>Fetch full graph</strong>
+        <p><span class="text-error">Caution:</span> Really load full graph? If no limit is set, your result set could be too big.</p>
       </FetchFullGraphModal>
       <AddNodeModal2
         shouldShow={showNodeToAddModal}
@@ -836,6 +839,7 @@ const G6JsGraph = () => {
             responseDuration={responseTimes.fetchDuration}
             onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
             onClickNode={(node) => lookUpNode(node)}
+            onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
       />    
       <AttributesInfo attributes={lookedUpData} /> 
     </div>

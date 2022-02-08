@@ -23,8 +23,7 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
-  //export const FetchFullGraphModal = ({ shouldShow, onUpdateNode, onRequestClose, node, nodeData, editorContent, children, nodeKey, nodeCollection }) => {
-  export const FetchFullGraphModal = ({ shouldShow, onRequestClose, children }) => {
+  export const FetchFullGraphModal = ({ shouldShow, onRequestClose, children, onFullGraphLoaded, graphName }) => {
 
     const [isModalVisible, setIsModalVisible] = useState(shouldShow);
 
@@ -41,7 +40,41 @@ const ModalBody = styled.div`
     };
 
     const fetchFullGraph = () => {
-      const url = 'http://localhost:8529/_db/_system/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&mode=all';
+      const ajaxData = {
+        "depth": "2",
+        "limit": "250",
+        "nodeColor": "#2ecc71",
+        "nodeColorAttribute": "",
+        "nodeColorByCollection": "true",
+        "edgeColor": "#cccccc",
+        "edgeColorAttribute": "",
+        "edgeColorByCollection": "false",
+        "nodeLabel": "_key",
+        "edgeLabel": "",
+        "nodeSize": "",
+        "nodeSizeByEdges": "true",
+        "edgeEditable": "true",
+        "nodeLabelByCollection": "false",
+        "edgeLabelByCollection": "false",
+        "nodeStart": "",
+        "barnesHutOptimize": true,
+        "mode": "all"
+      };
+      $.ajax({
+        type: 'GET',
+        url: arangoHelper.databaseUrl(`/_admin/aardvark/graph/${graphName}`),
+        contentType: 'application/json',
+        data: ajaxData,
+        success: function (data) {
+          console.log("Full graph loaded: ", data);
+          onRequestClose();
+          onFullGraphLoaded(data);
+        },
+        error: function (e) {
+          arangoHelper.arangoError('Graph', 'Could not load full graph.');
+        }
+      });
+      /*
       $.ajax({
         cache: false,
         type: 'GET',
@@ -57,6 +90,7 @@ const ModalBody = styled.div`
           console.log("Error loading full graph: ", data);
         }
       });
+      */
       //onRequestClose();
       
       //onUpdateNode(mergedGraphData);

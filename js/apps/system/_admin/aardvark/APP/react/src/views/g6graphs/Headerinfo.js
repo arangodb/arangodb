@@ -4,8 +4,9 @@ import GraphDataInfo from './GraphDataInfo';
 import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined } from '@ant-design/icons';
 import LayoutSelector from './LayoutSelector.js';
 import { ResponseInfo } from './ResponseInfo';
+import { data2 } from './data2';
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -51,7 +52,10 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
 
   const menuActionButtons = <>
     <Space>
-      <Button type="primary" icon={<SaveOutlined />}>
+      <Button
+        type="primary"
+        icon={<SaveOutlined />}
+        onClick={() => onChangeGraphData(data2)}>
         Save
       </Button>
       <Button>
@@ -69,7 +73,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
       extra={[
         <>
           <Tooltip placement="bottom" title={"Fetch full graph - use with caution"}>
-            <Button key="4"><DownloadOutlined /></Button>
+            <Button key="4" onClick={onLoadFullGraph()}><DownloadOutlined /></Button>
           </Tooltip>
           <Tooltip placement="bottom" title={"Download visible graph as screenshot"}>
             <Button key="3" onClick={() => {

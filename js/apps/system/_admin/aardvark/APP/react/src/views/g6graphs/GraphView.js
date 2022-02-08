@@ -505,6 +505,7 @@ export class GraphView extends React.Component {
           console.log("newGraphData in GraphView: ", newGraphData);
           this.props.onChangeGraphData(newGraphData);
         }}
+        onLoadFullGraph={() => this.props.onLoadFullGraph}
       />
       <Card
           title={this.props.graphName}
