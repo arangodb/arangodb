@@ -46,12 +46,9 @@ auto replicated_state::AbstractStateMachine<T>::getEntry(LogIndex)
 
 template<typename T>
 auto replicated_state::AbstractStateMachine<T>::insert(T const& v) -> LogIndex {
-  velocypack::UInt8Buffer payload;
-  {
-    velocypack::Builder builder(payload);
-    v.toVelocyPack(builder);
-  }
-  return log->getLeader()->insert(LogPayload(std::move(payload)));
+  velocypack::Builder builder;
+  v.toVelocyPack(builder);
+  return log->getLeader()->insert(LogPayload::createFromSlice(builder.slice()));
 }
 
 template<typename T>

@@ -33,38 +33,35 @@ using namespace arangodb::replication2;
 
 auto replication2::operator==(LogPayload const& left, LogPayload const& right)
     -> bool {
-  return arangodb::basics::VelocyPackHelper::equal(
-      velocypack::Slice(left.dummy.data()),
-      velocypack::Slice(right.dummy.data()), true);
+  return arangodb::basics::VelocyPackHelper::equal(left.slice(), right.slice(),
+                                                   true);
 }
 
-LogPayload::LogPayload(velocypack::UInt8Buffer dummy)
-    : dummy(std::move(dummy)) {}
+LogPayload::LogPayload(BufferType buffer)
+    : buffer(std::move(buffer)) {}
 
 auto LogPayload::createFromSlice(velocypack::Slice slice) -> LogPayload {
-  VPackBufferUInt8 buffer;
-  VPackBuilder builder(buffer);
-  builder.add(slice);
-  return LogPayload(std::move(buffer));
+  return LogPayload(BufferType{slice.start(), slice.byteSize()});
 }
 
 auto LogPayload::createFromString(std::string_view string) -> LogPayload {
-  VPackBufferUInt8 buffer;
-  VPackBuilder builder(buffer);
+  VPackBuilder builder;
   builder.add(VPackValue(string));
-  return LogPayload(std::move(buffer));
+  return LogPayload::createFromSlice(builder.slice());
 }
 
 auto LogPayload::copyBuffer() const -> velocypack::UInt8Buffer {
-  return dummy;
+  velocypack::UInt8Buffer result;
+  result.append(buffer.data(), buffer.size());
+  return result;
 }
 
 auto LogPayload::byteSize() const noexcept -> std::size_t {
-  return dummy.byteSize();
+  return buffer.size();
 }
 
 auto LogPayload::slice() const noexcept -> velocypack::Slice {
-  return VPackSlice(dummy.data());
+  return VPackSlice(buffer.data());
 }
 
 PersistingLogEntry::PersistingLogEntry(LogTerm logTerm, LogIndex logIndex,
