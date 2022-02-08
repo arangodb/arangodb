@@ -91,7 +91,7 @@ describe('_api/gharial', () => {
   };
 
   // @brief validates the graph format including all expected properties.
-  // Expected values relay on the environment.
+  // Expected values depends on the environment.
   const validateGraphFormat = (
     graph,
     validationProperties
