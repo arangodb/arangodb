@@ -6244,6 +6244,14 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
   builder->close();  // coordinates
   builder->close();  // object
 
+  // Now actually parse the result with S2:
+  geo::ShapeContainer container;
+  res = geo::geojson::parsePolygon(builder->slice(), container, false);
+  if (res.fail()) {
+    registerWarning(expressionContext, "GEO_POLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
+
   return AqlValue(builder->slice(), builder->size());
 }
 
@@ -6318,6 +6326,15 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 
   builder->close();
   builder->close();
+
+  // Now actually parse the result with S2:
+  geo::ShapeContainer container;
+  Result res =
+      geo::geojson::parseMultiPolygon(builder->slice(), container, false);
+  if (res.fail()) {
+    registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
 
   return AqlValue(builder->slice(), builder->size());
 }
