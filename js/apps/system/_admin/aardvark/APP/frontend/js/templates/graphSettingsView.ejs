@@ -121,8 +121,10 @@
 
                   <% if (val.type === 'edgeLabels') { %>
                     <select id="g_<%=key%>">
-                      <% _.each(edgeLabels[0], function(e, optKey) { %>
-                          <option value="<%=e%>"> <%= e.replace(/-/g, "") %> </option>
+                      <% _.each(val.edgeIds, function(e, optKey) { %>
+                          <% if(e) { %>
+                            <option value="<%=e.id%>"> <%=e.id%> </option>
+                          <% } %>
                       <% }); %>
                     </select>
                   <% } %>

@@ -149,10 +149,18 @@
         type: 'divider',
         name: 'Edges'
       },
+      // 'edgeLabel': {
+      //   type: 'edgeLabels',
+      //   name: 'Label',
+      //   desc: 'Default edge label.'
+      // },
       'edgeLabel': {
         type: 'edgeLabels',
         name: 'Label',
-        desc: 'Default edge label.'
+        desc: 'Set default edge label',
+        edgeIds: {
+          0: { id: "default" },
+        }
       },
       'edgeLabelByCollection': {
         type: 'select',
@@ -243,6 +251,29 @@
       this.userConfig = options.userConfig;
       this.saveCallback = options.saveCallback;
 
+      if (options.userConfig.attributes.code === 200) {
+
+        var populateLabel = function (extLabels, newLabels) {
+          for (let l = 0; l < newLabels.length; l++) {
+            console.log(newLabels[l]);
+            let match = false;
+            for (let n = 0; n < extLabels.length; n++) {
+              console.log(extLabels[n].value);
+              console.log(extLabels[n]);
+            }
+          }
+
+        }
+
+        var cb = function (data) {
+          console.log(data);
+          var extsEdges = $("#g_edgeLabel option");
+          populateLabel(extsEdges, data.edgeLabels);
+        }
+
+        this.getLabels(cb);
+      }
+      //debugger;
 
       if (options.noDefinedGraph) {
         this.noDefinedGraph = options.noDefinedGraph;
