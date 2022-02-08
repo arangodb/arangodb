@@ -35,17 +35,13 @@ const {
   waitFor,
   readReplicatedLogAgency,
   replicatedLogSetTarget,
-  replicatedLogDeleteTarget,
-  replicatedLogIsReady,
   dbservers, getParticipantsObjectForServers,
   nextUniqueLogId, allServersHealthy,
   registerAgencyTestBegin, registerAgencyTestEnd,
   replicatedLogLeaderEstablished,
-  replicatedLogUpdateTargetParticipants,
-  replicatedLogParticipantsFlag,
 } = helper;
 
-const database = "replication2_supervision_test_db";
+const database = "replication2_soft_write_concern_test_db";
 
 const waitForReplicatedLogAvailable = function (id) {
   while (true) {
@@ -69,60 +65,6 @@ const waitForReplicatedLogAvailable = function (id) {
 
     sleep(1);
   }
-};
-
-const replicatedLogLeaderElectionFailed = function (database, logId, term, servers) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-    if (current === undefined) {
-      return Error("current not yet defined");
-    }
-
-    if (current.supervision === undefined || current.supervision.election === undefined) {
-      return Error("supervision not yet updated");
-    }
-
-    let election = current.supervision.election;
-    if (election.term !== term) {
-      return Error("supervision report not yet available for current term; "
-          + `found = ${election.term}; expected = ${term}`);
-    }
-
-    if (servers !== undefined) {
-      // wait for all specified servers to have the proper error code
-      for (let x of Object.keys(servers)) {
-        if (election.details[x] === undefined) {
-          return Error(`server ${x} not in election result`);
-        }
-        let code = election.details[x].code;
-        if (code !== servers[x]) {
-          return Error(`server ${x} reported with code ${code}, expected ${servers[x]}`);
-        }
-      }
-    }
-
-    return true;
-  };
-};
-
-const replicatedLogSupervisionError = function (database, logId, errorCode) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-
-    if (current.supervision === undefined) {
-      return Error(`supervision not yet defined`);
-    }
-    if (current.supervision.error === undefined) {
-      return Error(`no error reported in supervision`);
-    }
-    if (current.supervision.error.code !== errorCode) {
-      return Error(`reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`);
-    }
-    if (current.supervision.error.code === errorCode) {
-      return true;
-    }
-    return false;
-  };
 };
 
 const replicatedLogSuite = function () {
@@ -205,16 +147,6 @@ const replicatedLogSuite = function () {
     return {logId, servers, leader, term, followers};
   };
 
-  const setReplicatedLogLeaderTarget = function (database, logId, leader) {
-    let {target} = readReplicatedLogAgency(database, logId);
-    if (leader !== null) {
-      target.leader = leader;
-    } else {
-      delete target.leader;
-    }
-    replicatedLogSetTarget(database, logId, target);
-  };
-
   return {
     setUpAll, tearDownAll,
     setUp: registerAgencyTestBegin,
@@ -224,34 +156,24 @@ const replicatedLogSuite = function () {
       registerAgencyTestEnd(test);
     },
 
-    testAlexLars: function () {
+    testParticipantFailedOnInsert: function () {
       const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
 
       let log = db._replicatedLog(logId);
-      let quorum = log.insert({foo: "bar"}); // index 2
+      let quorum = log.insert({foo: "bar"});
       assertEqual(quorum.result.quorum.quorum.length, 3);
 
-      console.log("Stoppped server************************************");
       // now stop one server
       stopServer(followers[0]);
 
-      quorum = log.insert({foo: "bar"}); // index 3
+      quorum = log.insert({foo: "bar"});
       assertEqual(quorum.result.quorum.quorum.length, 2);
-      console.log("____________________________________________-WTF_____________________________");
 
-      let x = db._replicatedLog(logId).status();
-      console.log(x);
-      console.log("Continued server************************************");
       continueServer(followers[0]);
-      x = db._replicatedLog(logId).status();
-      console.log(x);
 
-      console.log("After continue server************************************");
       waitFor(function () {
-        let quorum = log.insert({foo: "bar"}); // index 4
-        x = db._replicatedLog(logId).status();
-        console.log(x);
+        quorum = log.insert({foo: "bar"});
         if (quorum.result.quorum.quorum.length !== 3) {
           return Error(`quorum size not reached, found ${JSON.stringify(quorum.result)}`);
         }
