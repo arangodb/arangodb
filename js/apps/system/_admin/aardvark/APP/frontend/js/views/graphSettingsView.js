@@ -383,7 +383,7 @@
       }
     },
 
-    getLabels: function () {
+    getLabels: function (callBack) {
       var self = this;
       var data;
       // debugger
@@ -443,6 +443,12 @@
 
           self.nodeLabels = vertices;
           self.edgeLabels = edges;
+          const toReturn = { nodesLabels: vertices, edgeLabels: edges };
+
+          if (typeof callBack === "function") {
+            callBack(toReturn);
+          }
+
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not load full graph.');
