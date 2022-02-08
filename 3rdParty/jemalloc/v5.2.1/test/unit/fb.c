@@ -1,6 +1,6 @@
 #include "test/jemalloc_test.h"
 
-#include "jemalloc/internal/flat_bitmap.h"
+#include "jemalloc/internal/fb.h"
 #include "test/nbits.h"
 
 static void
@@ -473,8 +473,8 @@ static void
 expect_iter_results_at(fb_group_t *fb, size_t nbits, size_t pos,
     bool val, bool forward) {
 	bool iter_res;
-	size_t iter_begin;
-	size_t iter_len;
+	size_t iter_begin JEMALLOC_CC_SILENCE_INIT(0);
+	size_t iter_len JEMALLOC_CC_SILENCE_INIT(0);
 	if (val) {
 		if (forward) {
 			iter_res = fb_srange_iter(fb, nbits, pos,

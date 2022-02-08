@@ -6,6 +6,8 @@
 #include "jemalloc/internal/tsd.h"
 #include "jemalloc/internal/witness.h"
 
+extern int64_t opt_mutex_max_spin;
+
 typedef enum {
 	/* Can only acquire one mutex of a given witness rank at a time. */
 	malloc_mutex_rank_exclusive,
@@ -43,7 +45,7 @@ struct malloc_mutex_s {
 #else
 			pthread_mutex_t		lock;
 #endif
-			/* 
+			/*
 			 * Hint flag to avoid exclusive cache line contention
 			 * during spin waiting
 			 */
@@ -66,12 +68,6 @@ struct malloc_mutex_s {
 	malloc_mutex_lock_order_t	lock_order;
 #endif
 };
-
-/*
- * Based on benchmark results, a fixed spin with this amount of retries works
- * well for our critical sections.
- */
-#define MALLOC_MUTEX_MAX_SPIN 250
 
 #ifdef _WIN32
 #  if _WIN32_WINNT >= 0x0600

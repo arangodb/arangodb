@@ -43,7 +43,7 @@ test_combinations(szind_t ind, size_t sizes_array[N_PTRS],
 		int flags = flags_array[i];
 		void *p = mallocx(sz, flags);
 		assert_ptr_not_null(p, "malloc() failed");
-		assert(malloc_usable_size(p) == sz_index2size(ind));
+		assert(TEST_MALLOC_SIZE(p) == sz_index2size(ind));
 		ptrs[i] = p;
 		live_req_sum += sz;
 		live_count++;
