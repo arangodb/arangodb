@@ -2,6 +2,14 @@
 
 using namespace arangodb::graph;
 
+namespace arangodb::graph {
+auto operator<<(std::ostream& out, ClusterProviderStep const& step)
+    -> std::ostream& {
+  out << step._vertex.getID();
+  return out;
+}
+}  // namespace arangodb::graph
+
 ClusterProviderStep::ClusterProviderStep(const VertexType& v)
     : _vertex(v), _edge(), _fetched(false) {}
 
