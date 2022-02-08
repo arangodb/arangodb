@@ -106,14 +106,16 @@ TEST_BEGIN(test_oversize_threshold) {
 	/* Allocating and freeing half a megabyte should leave them dirty. */
 	void *ptr = mallocx(512 * 1024, MALLOCX_ARENA(arena));
 	dallocx(ptr, MALLOCX_TCACHE_NONE);
-	expect_zu_lt(max_purged, 512 * 1024, "Expected no 512k purge");
+	if (!is_background_thread_enabled()) {
+		expect_zu_lt(max_purged, 512 * 1024, "Expected no 512k purge");
+	}
 
 	/* Purge again to reset everything out. */
 	arena_mallctl("arena.%u.purge", arena, NULL, NULL, NULL, 0);
 	max_purged = 0;
 
 	/*
-	 * Allocating and freeing 2 megabytes should leave them dirty because of
+	 * Allocating and freeing 2 megabytes should have them purged because of
 	 * the oversize threshold.
 	 */
 	ptr = mallocx(2 * 1024 * 1024, MALLOCX_ARENA(arena));
