@@ -45,8 +45,8 @@ namespace graph {
 
 class PathResultInterface {
  public:
-  PathResultInterface() {}
-  virtual ~PathResultInterface() {}
+  PathResultInterface() = default;
+  virtual ~PathResultInterface() = default;
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
   virtual auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)
@@ -58,8 +58,9 @@ class PathResultInterface {
 class TraversalEnumerator {
  public:
   using VertexRef = arangodb::velocypack::HashedStringRef;
-  TraversalEnumerator(){};
-  virtual ~TraversalEnumerator() {}
+  TraversalEnumerator() = default;
+  ;
+  virtual ~TraversalEnumerator() = default;
 
   // NOTE: keepPathStore is only required for 3.8 compatibility and
   // can be removed in the version after 3.9
@@ -77,8 +78,8 @@ class TraversalEnumerator {
 
   virtual auto stealStats() -> aql::TraversalStats = 0;
 
-  virtual auto validatorUsesPrune() const -> bool = 0;
-  virtual auto validatorUsesPostFilter() const -> bool = 0;
+  [[nodiscard]] virtual auto validatorUsesPrune() const -> bool = 0;
+  [[nodiscard]] virtual auto validatorUsesPostFilter() const -> bool = 0;
   virtual auto setValidatorContext(aql::InputAqlItemRow& inputRow) -> void = 0;
   virtual auto unprepareValidatorContext() -> void = 0;
 };

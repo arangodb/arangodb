@@ -56,11 +56,11 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     Step(std::string_view vert, std::string_view pred, double weig,
          EdgeDocumentToken&& edge);
 
-    double weight() const { return _weight; }
+    [[nodiscard]] double weight() const { return _weight; }
 
     void setWeight(double w) { _weight = w; }
 
-    std::string_view getKey() const { return _vertex; }
+    [[nodiscard]] std::string_view getKey() const { return _vertex; }
   };
 
   //////////////////////////////////////////////////////////////////////////////

@@ -74,7 +74,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   OneSidedEnumerator(OneSidedEnumerator const& other) = delete;
   OneSidedEnumerator(OneSidedEnumerator&& other) noexcept = default;
 
-  ~OneSidedEnumerator();
+  ~OneSidedEnumerator() override;
 
   void clear(bool keepPathStore) override;
 
@@ -137,8 +137,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
    */
   auto stealStats() -> aql::TraversalStats override;
 
-  auto validatorUsesPrune() const -> bool override;
-  auto validatorUsesPostFilter() const -> bool override;
+  [[nodiscard]] auto validatorUsesPrune() const -> bool override;
+  [[nodiscard]] auto validatorUsesPostFilter() const -> bool override;
 
   auto setValidatorContext(aql::InputAqlItemRow& inputRow) -> void override;
 

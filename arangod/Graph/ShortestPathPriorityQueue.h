@@ -30,8 +30,7 @@
 #include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 
 template<typename Key, typename Value, typename Weight>
 class ShortestPathPriorityQueue {
@@ -99,8 +98,9 @@ class ShortestPathPriorityQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   bool insert(Key const& k, std::unique_ptr<Value>&& v) {
-    auto it = _lookup.emplace(k, static_cast<ssize_t>(_heap.size() + _popped));
-    if (!it.second) {
+    auto [it, success] =
+        _lookup.emplace(k, static_cast<ssize_t>(_heap.size() + _popped));
+    if (!success) {
       // value already exists in the lookup table
       return false;
     }
@@ -124,7 +124,7 @@ class ShortestPathPriorityQueue {
       }
       return true;
     } catch (...) {
-      _lookup.erase(it.first);
+      _lookup.erase(it);
       throw;
     }
   }
@@ -415,5 +415,4 @@ class ShortestPathPriorityQueue {
   std::vector<std::unique_ptr<Value>> _history;
 };
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph
