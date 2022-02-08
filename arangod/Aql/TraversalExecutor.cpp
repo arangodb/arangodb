@@ -265,7 +265,7 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:
         switch (uniqueEdges) {
-          case TraverserOptions::NONE:
+          case TraverserOptions::UniquenessLevel::NONE:
             using SingleServerDFSRefactoredNoneNone = graph::DFSEnumerator<
                 arangodb::graph::SingleServerProvider<
                     arangodb::graph::SingleServerProviderStep>,
@@ -280,8 +280,8 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
                 std::move(enumeratorOptions), std::move(pathValidatorOptions),
                 query.resourceMonitor());
             break;
-          case TraverserOptions::PATH:
-          case TraverserOptions::GLOBAL:
+          case TraverserOptions::UniquenessLevel::PATH:
+          case TraverserOptions::UniquenessLevel::GLOBAL:
             using SingleServerDFSRefactoredNonePath = graph::DFSEnumerator<
                 arangodb::graph::SingleServerProvider<
                     arangodb::graph::SingleServerProviderStep>,
@@ -334,7 +334,7 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:
         switch (uniqueEdges) {
-          case TraverserOptions::NONE:
+          case TraverserOptions::UniquenessLevel::NONE:
             using SingleServerBFSRefactoredNoneNone = graph::BFSEnumerator<
                 arangodb::graph::SingleServerProvider<
                     arangodb::graph::SingleServerProviderStep>,
@@ -349,8 +349,8 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
                 std::move(enumeratorOptions), std::move(pathValidatorOptions),
                 query.resourceMonitor());
             break;
-          case TraverserOptions::PATH:
-          case TraverserOptions::GLOBAL:
+          case TraverserOptions::UniquenessLevel::PATH:
+          case TraverserOptions::UniquenessLevel::GLOBAL:
             using SingleServerBFSRefactoredNonePath = graph::BFSEnumerator<
                 arangodb::graph::SingleServerProvider<
                     arangodb::graph::SingleServerProviderStep>,
@@ -426,7 +426,7 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:
         switch (uniqueEdges) {
-          case TraverserOptions::NONE:
+          case TraverserOptions::UniquenessLevel::NONE:
             using SingleServerWeightedRefactoredNoneNone =
                 graph::WeightedEnumeratorRefactored<
                     arangodb::graph::SingleServerProvider<
@@ -442,8 +442,8 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
                 std::move(enumeratorOptions), std::move(pathValidatorOptions),
                 query.resourceMonitor());
             break;
-          case TraverserOptions::PATH:
-          case TraverserOptions::GLOBAL:
+          case TraverserOptions::UniquenessLevel::PATH:
+          case TraverserOptions::UniquenessLevel::GLOBAL:
             using SingleServerWeightedRefactoredNonePath =
                 graph::WeightedEnumeratorRefactored<
                     arangodb::graph::SingleServerProvider<
