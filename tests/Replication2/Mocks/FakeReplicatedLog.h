@@ -22,8 +22,10 @@
 
 #pragma once
 #include <deque>
+#include <memory>
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
+#include "Replication2/ReplicatedLog/FailureOracle.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -152,7 +154,8 @@ struct TestReplicatedLog : replicated_log::ReplicatedLog {
   auto becomeLeader(
       ParticipantId const& id, LogTerm term,
       std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&,
-      std::size_t writeConcern, bool waitForSync = false)
+      std::size_t writeConcern, bool waitForSync = false,
+      std::shared_ptr<IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<replicated_log::LogLeader>;
 };
 }  // namespace arangodb::replication2::test
