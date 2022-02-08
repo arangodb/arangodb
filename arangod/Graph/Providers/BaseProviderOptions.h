@@ -52,15 +52,15 @@ struct IndexAccessor {
   IndexAccessor(IndexAccessor&&) = default;
   IndexAccessor& operator=(IndexAccessor const&) = delete;
 
-  aql::AstNode* getCondition() const;
-  aql::Expression* getExpression() const;
-  transaction::Methods::IndexHandle indexHandle() const;
-  std::optional<size_t> getMemberToUpdate() const;
-  size_t cursorId() const;
+  [[nodiscard]] aql::AstNode* getCondition() const;
+  [[nodiscard]] aql::Expression* getExpression() const;
+  [[nodiscard]] transaction::Methods::IndexHandle indexHandle() const;
+  [[nodiscard]] std::optional<size_t> getMemberToUpdate() const;
+  [[nodiscard]] size_t cursorId() const;
 
-  bool hasNonConstParts() const;
+  [[nodiscard]] bool hasNonConstParts() const;
 
-  aql::NonConstExpressionContainer const& nonConstPart() const;
+  [[nodiscard]] aql::NonConstExpressionContainer const& nonConstPart() const;
 
  private:
   transaction::Methods::IndexHandle _idx;
@@ -147,7 +147,7 @@ struct ClusterBaseProviderOptions {
 
   RefactoredClusterTraverserCache* getCache();
 
-  bool isBackward() const;
+  [[nodiscard]] bool isBackward() const;
 
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
       const;

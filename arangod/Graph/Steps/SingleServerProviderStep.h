@@ -22,6 +22,8 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <utility>
+
 #include "Transaction/Methods.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseStep.h"
@@ -29,8 +31,7 @@
 
 #pragma once
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 
 template<class StepType>
 class SingleServerProvider;
@@ -44,9 +45,9 @@ class SingleServerProviderStep
  public:
   class Vertex {
    public:
-    explicit Vertex(VertexType v) : _vertex(v) {}
+    explicit Vertex(VertexType v) : _vertex(std::move(v)) {}
 
-    VertexType const& getID() const;
+    [[nodiscard]] VertexType const& getID() const;
 
     bool operator<(Vertex const& other) const noexcept {
       return _vertex < other._vertex;
@@ -67,41 +68,41 @@ class SingleServerProviderStep
 
     void addToBuilder(SingleServerProvider<SingleServerProviderStep>& provider,
                       arangodb::velocypack::Builder& builder) const;
-    StepType const& getID() const;
-    bool isValid() const;
+    [[nodiscard]] StepType const& getID() const;
+    [[nodiscard]] bool isValid() const;
 
    private:
     EdgeDocumentToken _token;
   };
 
-  SingleServerProviderStep(VertexType v);
+  explicit SingleServerProviderStep(VertexType v);
   SingleServerProviderStep(VertexType v, EdgeDocumentToken edge, size_t prev);
   SingleServerProviderStep(VertexType v, EdgeDocumentToken edge, size_t prev,
                            size_t depth, double weight, size_t);
   SingleServerProviderStep(VertexType v, size_t depth, double weight = 0.0);
-  ~SingleServerProviderStep();
+  ~SingleServerProviderStep() override;
 
   bool operator<(SingleServerProviderStep const& other) const noexcept {
     return _vertex < other._vertex;
   }
 
-  Vertex const& getVertex() const { return _vertex; }
-  Edge const& getEdge() const { return _edge; }
+  [[nodiscard]] Vertex const& getVertex() const { return _vertex; }
+  [[nodiscard]] Edge const& getEdge() const { return _edge; }
 
-  std::string toString() const {
+  [[nodiscard]] std::string toString() const {
     return "<Step><Vertex>: " + _vertex.getID().toString() +
            ", <Edge>: " + std::to_string(_edge.getID().localDocumentId().id());
   }
-  bool isProcessable() const { return !isLooseEnd(); }
-  bool isLooseEnd() const { return false; }
+  [[nodiscard]] bool isProcessable() const { return !isLooseEnd(); }
+  [[nodiscard]] bool isLooseEnd() const override { return false; }
 
-  ::arangodb::graph::VertexType getVertexIdentifier() const {
+  [[nodiscard]] ::arangodb::graph::VertexType getVertexIdentifier() const {
     return _vertex.getID();
   }
 
-  StepType getEdgeIdentifier() const { return _edge.getID(); }
+  [[nodiscard]] StepType getEdgeIdentifier() const { return _edge.getID(); }
 
-  std::string getCollectionName() const {
+  [[nodiscard]] std::string getCollectionName() const {
     /*
      * Future optimization: When re-implementing the documentFastPathLocal
      * method to support string refs or either string views, we can improve this
@@ -123,5 +124,4 @@ class SingleServerProviderStep
   Vertex _vertex;
   Edge _edge;
 };
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph

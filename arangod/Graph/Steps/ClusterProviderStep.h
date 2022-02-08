@@ -29,6 +29,7 @@ class ClusterProviderStep
       return _vertex > other._vertex;
     }
 
+    // todo: this is never used, remove
     void setVertex(VertexType thisIsATest) { _vertex = std::move(thisIsATest); }
 
    private:
@@ -57,7 +58,7 @@ class ClusterProviderStep
   explicit ClusterProviderStep(const VertexType& v);
 
  public:
-  ~ClusterProviderStep();
+  ~ClusterProviderStep() override;
 
   bool operator<(ClusterProviderStep const& other) const noexcept {
     return _vertex < other._vertex;
@@ -70,7 +71,7 @@ class ClusterProviderStep
     return "<Step><Vertex>: " + _vertex.getID().toString();
   }
   [[nodiscard]] bool isProcessable() const { return !isLooseEnd(); }
-  [[nodiscard]] bool isLooseEnd() const { return !_fetched; }
+  [[nodiscard]] bool isLooseEnd() const override { return !_fetched; }
 
   [[nodiscard]] VertexType getVertexIdentifier() const {
     return _vertex.getID();

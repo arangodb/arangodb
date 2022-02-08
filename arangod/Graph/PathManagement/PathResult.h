@@ -52,7 +52,7 @@ class PathResult {
   auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
   auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
 
-  auto isEmpty() const -> bool;
+  [[nodiscard]] auto isEmpty() const -> bool;
 
  private:
   std::vector<typename Step::Vertex> _vertices;

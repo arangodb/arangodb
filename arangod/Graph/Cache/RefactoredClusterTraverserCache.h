@@ -46,7 +46,7 @@ namespace graph {
 
 class RefactoredClusterTraverserCache {
  public:
-  RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor);
+  explicit RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor);
 
   ~RefactoredClusterTraverserCache();
 
@@ -61,8 +61,9 @@ class RefactoredClusterTraverserCache {
 
   auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice)
       -> void;
-  auto isVertexCached(VertexType const& vertexKey) const -> bool;
-  auto getCachedVertex(VertexType const& vertex) const -> velocypack::Slice;
+  [[nodiscard]] auto isVertexCached(VertexType const& vertexKey) const -> bool;
+  [[nodiscard]] auto getCachedVertex(VertexType const& vertex) const
+      -> velocypack::Slice;
 
   /**
    * @brief
@@ -73,8 +74,9 @@ class RefactoredClusterTraverserCache {
    */
   auto persistEdgeData(velocypack::Slice edgeSlice)
       -> std::pair<velocypack::Slice, bool>;
-  auto isEdgeCached(EdgeType const& edge) const -> bool;
-  auto getCachedEdge(EdgeType const& edge) const -> velocypack::Slice;
+  [[nodiscard]] auto isEdgeCached(EdgeType const& edge) const -> bool;
+  [[nodiscard]] auto getCachedEdge(EdgeType const& edge) const
+      -> velocypack::Slice;
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;

@@ -72,7 +72,7 @@ class ClusterProvider {
                   ClusterBaseProviderOptions opts,
                   arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
-  ClusterProvider(ClusterProvider&&) = default;
+  ClusterProvider(ClusterProvider&&) noexcept = default;
   ~ClusterProvider();
 
   ClusterProvider& operator=(ClusterProvider const&) = delete;
@@ -107,7 +107,7 @@ class ClusterProvider {
   aql::TraversalStats stealStats();
 
   // TODO: This may need to be implemented.
-  void prepareContext(aql::InputAqlItemRow input){};
+  void prepareContext(const aql::InputAqlItemRow& input){};
   void unPrepareContext(){};
 
  private:

@@ -28,30 +28,29 @@
 
 #include <numeric>
 
-namespace arangodb {
-
-namespace graph {
+namespace arangodb::graph {
 
 template<class StepDetails>
 class BaseStep {
  public:
-  BaseStep(size_t prev = std::numeric_limits<size_t>::max(), size_t depth = 0,
-           double weight = 1.0)
+  explicit BaseStep(size_t prev = std::numeric_limits<size_t>::max(),
+                    size_t depth = 0, double weight = 1.0)
       : _previous{prev}, _depth{depth}, _weight(weight) {}
+  virtual ~BaseStep() = default;
 
-  size_t getPrevious() const { return _previous; }
+  [[nodiscard]] size_t getPrevious() const { return _previous; }
 
-  bool isFirst() const {
+  [[nodiscard]] bool isFirst() const {
     return _previous == std::numeric_limits<size_t>::max();
   }
 
-  bool isLooseEnd() const {
-    return static_cast<StepDetails*>(this)->isLooseEnd();
+  [[nodiscard]] virtual bool isLooseEnd() const {
+    return static_cast<StepDetails const* const>(this)->isLooseEnd();
   }
 
-  size_t getDepth() const { return _depth; }
+  [[nodiscard]] size_t getDepth() const { return _depth; }
 
-  double getWeight() const { return _weight; }
+  [[nodiscard]] double getWeight() const { return _weight; }
 
   [[nodiscard]] ResultT<std::pair<std::string, size_t>> extractCollectionName(
       arangodb::velocypack::HashedStringRef const& idHashed) const {
@@ -73,5 +72,4 @@ class BaseStep {
   size_t _depth;
   double _weight;
 };
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph
