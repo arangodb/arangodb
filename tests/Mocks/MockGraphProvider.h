@@ -151,7 +151,9 @@ class MockGraphProvider {
       }
 
       MockEdgeType getEdge() const { return _edge; }
-      arangodb::velocypack::HashedStringRef const& getID() const { return _idRef; }
+      arangodb::velocypack::HashedStringRef const& getID() const {
+        return _idRef;
+      }
 
       bool isValid() const {
         if (_edge._from.empty() && _edge._to.empty()) {
@@ -210,7 +212,9 @@ class MockGraphProvider {
     }
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
-    arangodb::velocypack::HashedStringRef getEdgeIdentifier() const { return _edge.getID(); }
+    arangodb::velocypack::HashedStringRef getEdgeIdentifier() const {
+      return _edge.getID();
+    }
 
     std::string getCollectionName() const {
       auto collectionNameResult = extractCollectionName(_vertex.getID());

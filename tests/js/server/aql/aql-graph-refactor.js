@@ -80,7 +80,8 @@ var createBaseGraph = function () {
 
 /*
  * This TestSuite is used for development. We might want to remove it after feature is done and existing tests
- * are adjusted.
+ * are adjusted. Means, as soon as we've also implemented the ClusterProvider in our GraphRefactor for BFS, DFS
+ * and WEIGHTED traversals.
  */
 function dfsSingleServerDevelopmentEdgeNameSuite() {
   const refactorDisabled = `OPTIONS {"refactor": false}`;
