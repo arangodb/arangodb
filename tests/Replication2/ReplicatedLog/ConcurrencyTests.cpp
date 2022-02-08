@@ -165,11 +165,9 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
         auto const& entry = snapshot[idx.value - 1];
         EXPECT_EQ(idx, entry.entry().logIndex());
         EXPECT_EQ(payload, entry.entry().logPayload())
-            << VPackSlice(payload->dummy.data()).toJson() << " "
-            << (entry.entry().logPayload()
-                    ? VPackSlice(entry.entry().logPayload()->dummy.data())
-                          .toJson()
-                    : "std::nullopt"s);
+            << payload->slice().toJson() << " "
+            << (entry.entry().logPayload() ? payload->slice().toJson()
+                                           : "std::nullopt"s);
       }
       if (i == 10 * batch) {
         // we should have done at least a few iterations before finishing

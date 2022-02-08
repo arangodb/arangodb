@@ -44,7 +44,9 @@ struct LogPayload {
 
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
   [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
+  [[nodiscard]] auto copyBuffer() const -> velocypack::UInt8Buffer;
 
+ private:
   // just a placeholder for now
   velocypack::UInt8Buffer dummy;
 };

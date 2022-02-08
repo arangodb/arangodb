@@ -55,6 +55,10 @@ auto LogPayload::createFromString(std::string_view string) -> LogPayload {
   return LogPayload(std::move(buffer));
 }
 
+auto LogPayload::copyBuffer() const -> velocypack::UInt8Buffer {
+  return dummy;
+}
+
 auto LogPayload::byteSize() const noexcept -> std::size_t {
   return dummy.byteSize();
 }
@@ -104,7 +108,7 @@ void PersistingLogEntry::entriesWithoutIndexToVelocyPack(
     velocypack::Builder& builder) const {
   builder.add("logTerm", velocypack::Value(_logTerm.value));
   if (_payload) {
-    builder.add("payload", velocypack::Slice(_payload->dummy.data()));
+    builder.add("payload", _payload->slice());
   }
 }
 
