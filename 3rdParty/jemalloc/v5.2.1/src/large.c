@@ -64,14 +64,15 @@ large_ralloc_no_move_shrink(tsdn_t *tsdn, edata_t *edata, size_t usize) {
 		return true;
 	}
 
-	bool generated_dirty;
+	bool deferred_work_generated = false;
 	bool err = pa_shrink(tsdn, &arena->pa_shard, edata, old_size,
-	    usize + sz_large_pad, sz_size2index(usize), &generated_dirty);
+	    usize + sz_large_pad, sz_size2index(usize),
+	    &deferred_work_generated);
 	if (err) {
 		return true;
 	}
-	if (generated_dirty) {
-		arena_handle_new_dirty_pages(tsdn, arena);
+	if (deferred_work_generated) {
+		arena_handle_deferred_work(tsdn, arena);
 	}
 	arena_extent_ralloc_large_shrink(tsdn, arena, edata, old_usize);
 
@@ -88,8 +89,15 @@ large_ralloc_no_move_expand(tsdn_t *tsdn, edata_t *edata, size_t usize,
 	size_t new_size = usize + sz_large_pad;
 
 	szind_t szind = sz_size2index(usize);
+
+	bool deferred_work_generated = false;
 	bool err = pa_expand(tsdn, &arena->pa_shard, edata, old_size, new_size,
-	    szind, zero);
+	    szind, zero, &deferred_work_generated);
+
+	if (deferred_work_generated) {
+		arena_handle_deferred_work(tsdn, arena);
+	}
+
 	if (err) {
 		return true;
 	}
@@ -241,10 +249,10 @@ large_dalloc_prep_impl(tsdn_t *tsdn, arena_t *arena, edata_t *edata,
 
 static void
 large_dalloc_finish_impl(tsdn_t *tsdn, arena_t *arena, edata_t *edata) {
-	bool generated_dirty;
-	pa_dalloc(tsdn, &arena->pa_shard, edata, &generated_dirty);
-	if (generated_dirty) {
-		arena_handle_new_dirty_pages(tsdn, arena);
+	bool deferred_work_generated = false;
+	pa_dalloc(tsdn, &arena->pa_shard, edata, &deferred_work_generated);
+	if (deferred_work_generated) {
+		arena_handle_deferred_work(tsdn, arena);
 	}
 }
 

@@ -1,6 +1,7 @@
 #include "test/jemalloc_test.h"
 
 #include "jemalloc/internal/hpa.h"
+#include "jemalloc/internal/nstime.h"
 
 #define SHARD_IND 111
 
@@ -13,17 +14,31 @@ struct test_data_s {
 	 * test_data_t and the hpa_shard_t;
 	 */
 	hpa_shard_t shard;
+	hpa_central_t central;
 	base_t *base;
 	edata_cache_t shard_edata_cache;
 
 	emap_t emap;
 };
 
+static hpa_shard_opts_t test_hpa_shard_opts_default = {
+	/* slab_max_alloc */
+	ALLOC_MAX,
+	/* hugification threshold */
+	HUGEPAGE,
+	/* dirty_mult */
+	FXP_INIT_PERCENT(25),
+	/* deferral_allowed */
+	false,
+	/* hugify_delay_ms */
+	10 * 1000,
+};
+
 static hpa_shard_t *
-create_test_data() {
+create_test_data(hpa_hooks_t *hooks, hpa_shard_opts_t *opts) {
 	bool err;
 	base_t *base = base_new(TSDN_NULL, /* ind */ SHARD_IND,
-	    &ehooks_default_extent_hooks);
+	    &ehooks_default_extent_hooks, /* metadata_use_hooks */ true);
 	assert_ptr_not_null(base, "");
 
 	test_data_t *test_data = malloc(sizeof(test_data_t));
@@ -37,12 +52,12 @@ create_test_data() {
 	err = emap_init(&test_data->emap, test_data->base, /* zeroed */ false);
 	assert_false(err, "");
 
-	hpa_shard_opts_t opts = HPA_SHARD_OPTS_DEFAULT;
-	opts.slab_max_alloc = ALLOC_MAX;
+	err = hpa_central_init(&test_data->central, test_data->base, hooks);
+	assert_false(err, "");
 
-	err = hpa_shard_init(&test_data->shard, &test_data->emap,
-	    test_data->base, &test_data->shard_edata_cache, SHARD_IND,
-	    &opts);
+	err = hpa_shard_init(&test_data->shard, &test_data->central,
+	    &test_data->emap, test_data->base, &test_data->shard_edata_cache,
+	    SHARD_IND, opts);
 	assert_false(err, "");
 
 	return (hpa_shard_t *)test_data;
@@ -58,15 +73,19 @@ destroy_test_data(hpa_shard_t *shard) {
 TEST_BEGIN(test_alloc_max) {
 	test_skip_if(!hpa_supported());
 
-	hpa_shard_t *shard = create_test_data();
+	hpa_shard_t *shard = create_test_data(&hpa_hooks_default,
+	    &test_hpa_shard_opts_default);
 	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
 
 	edata_t *edata;
 
 	/* Small max */
-	edata = pai_alloc(tsdn, &shard->pai, ALLOC_MAX, PAGE, false);
+	bool deferred_work_generated = false;
+	edata = pai_alloc(tsdn, &shard->pai, ALLOC_MAX, PAGE, false, false,
+	    false, &deferred_work_generated);
 	expect_ptr_not_null(edata, "Allocation of small max failed");
-	edata = pai_alloc(tsdn, &shard->pai, ALLOC_MAX + PAGE, PAGE, false);
+	edata = pai_alloc(tsdn, &shard->pai, ALLOC_MAX + PAGE, PAGE, false,
+	    false, false, &deferred_work_generated);
 	expect_ptr_null(edata, "Allocation of larger than small max succeeded");
 
 	destroy_test_data(shard);
@@ -134,7 +153,8 @@ node_remove(mem_tree_t *tree, edata_t *edata) {
 TEST_BEGIN(test_stress) {
 	test_skip_if(!hpa_supported());
 
-	hpa_shard_t *shard = create_test_data();
+	hpa_shard_t *shard = create_test_data(&hpa_hooks_default,
+	    &test_hpa_shard_opts_default);
 
 	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
 
@@ -149,6 +169,8 @@ TEST_BEGIN(test_stress) {
 
 	mem_tree_t tree;
 	mem_tree_new(&tree);
+
+	bool deferred_work_generated = false;
 
 	for (size_t i = 0; i < 100 * 1000; i++) {
 		size_t operation = prng_range_zu(&prng_state, 2);
@@ -167,7 +189,8 @@ TEST_BEGIN(test_stress) {
 			size_t npages = npages_min + prng_range_zu(&prng_state,
 			    npages_max - npages_min);
 			edata_t *edata = pai_alloc(tsdn, &shard->pai,
-			    npages * PAGE, PAGE, false);
+			    npages * PAGE, PAGE, false, false, false,
+			    &deferred_work_generated);
 			assert_ptr_not_null(edata,
 			    "Unexpected allocation failure");
 			live_edatas[nlive_edatas] = edata;
@@ -183,7 +206,8 @@ TEST_BEGIN(test_stress) {
 			live_edatas[victim] = live_edatas[nlive_edatas - 1];
 			nlive_edatas--;
 			node_remove(&tree, to_free);
-			pai_dalloc(tsdn, &shard->pai, to_free);
+			pai_dalloc(tsdn, &shard->pai, to_free,
+			    &deferred_work_generated);
 		}
 	}
 
@@ -202,7 +226,8 @@ TEST_BEGIN(test_stress) {
 	for (size_t i = 0; i < nlive_edatas; i++) {
 		edata_t *to_free = live_edatas[i];
 		node_remove(&tree, to_free);
-		pai_dalloc(tsdn, &shard->pai, to_free);
+		pai_dalloc(tsdn, &shard->pai, to_free,
+		    &deferred_work_generated);
 	}
 	hpa_shard_destroy(tsdn, shard);
 
@@ -224,8 +249,11 @@ expect_contiguous(edata_t **edatas, size_t nedatas) {
 TEST_BEGIN(test_alloc_dalloc_batch) {
 	test_skip_if(!hpa_supported());
 
-	hpa_shard_t *shard = create_test_data();
+	hpa_shard_t *shard = create_test_data(&hpa_hooks_default,
+	    &test_hpa_shard_opts_default);
 	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
+
+	bool deferred_work_generated = false;
 
 	enum {NALLOCS = 8};
 
@@ -236,13 +264,14 @@ TEST_BEGIN(test_alloc_dalloc_batch) {
 	 */
 	for (size_t i = 0; i < NALLOCS / 2; i++) {
 		allocs[i] = pai_alloc(tsdn, &shard->pai, PAGE, PAGE,
-		    /* zero */ false);
+		    /* zero */ false, /* guarded */ false,
+		    /* frequent_reuse */ false, &deferred_work_generated);
 		expect_ptr_not_null(allocs[i], "Unexpected alloc failure");
 	}
 	edata_list_active_t allocs_list;
 	edata_list_active_init(&allocs_list);
 	size_t nsuccess = pai_alloc_batch(tsdn, &shard->pai, PAGE, NALLOCS / 2,
-	    &allocs_list);
+	    &allocs_list, &deferred_work_generated);
 	expect_zu_eq(NALLOCS / 2, nsuccess, "Unexpected oom");
 	for (size_t i = NALLOCS / 2; i < NALLOCS; i++) {
 		allocs[i] = edata_list_active_first(&allocs_list);
@@ -262,21 +291,147 @@ TEST_BEGIN(test_alloc_dalloc_batch) {
 	for (size_t i = 0; i < NALLOCS / 2; i++) {
 		edata_list_active_append(&allocs_list, allocs[i]);
 	}
-	pai_dalloc_batch(tsdn, &shard->pai, &allocs_list);
+	pai_dalloc_batch(tsdn, &shard->pai, &allocs_list,
+	    &deferred_work_generated);
 	for (size_t i = NALLOCS / 2; i < NALLOCS; i++) {
-		pai_dalloc(tsdn, &shard->pai, allocs[i]);
+		pai_dalloc(tsdn, &shard->pai, allocs[i],
+		    &deferred_work_generated);
 	}
 
 	/* Reallocate (individually), and ensure reuse and contiguity. */
 	for (size_t i = 0; i < NALLOCS; i++) {
 		allocs[i] = pai_alloc(tsdn, &shard->pai, PAGE, PAGE,
-		    /* zero */ false);
+		    /* zero */ false, /* guarded */ false, /* frequent_reuse */
+		    false, &deferred_work_generated);
 		expect_ptr_not_null(allocs[i], "Unexpected alloc failure.");
 	}
 	void *new_base = edata_base_get(allocs[0]);
 	expect_ptr_eq(orig_base, new_base,
 	    "Failed to reuse the allocated memory.");
 	expect_contiguous(allocs, NALLOCS);
+
+	destroy_test_data(shard);
+}
+TEST_END
+
+static uintptr_t defer_bump_ptr = HUGEPAGE * 123;
+static void *
+defer_test_map(size_t size) {
+	void *result = (void *)defer_bump_ptr;
+	defer_bump_ptr += size;
+	return result;
+}
+
+static void
+defer_test_unmap(void *ptr, size_t size) {
+	(void)ptr;
+	(void)size;
+}
+
+static bool defer_purge_called = false;
+static void
+defer_test_purge(void *ptr, size_t size) {
+	(void)ptr;
+	(void)size;
+	defer_purge_called = true;
+}
+
+static bool defer_hugify_called = false;
+static void
+defer_test_hugify(void *ptr, size_t size) {
+	defer_hugify_called = true;
+}
+
+static bool defer_dehugify_called = false;
+static void
+defer_test_dehugify(void *ptr, size_t size) {
+	defer_dehugify_called = true;
+}
+
+static nstime_t defer_curtime;
+static void
+defer_test_curtime(nstime_t *r_time, bool first_reading) {
+	*r_time = defer_curtime;
+}
+
+static uint64_t
+defer_test_ms_since(nstime_t *past_time) {
+	return (nstime_ns(&defer_curtime) - nstime_ns(past_time)) / 1000 / 1000;
+}
+
+TEST_BEGIN(test_defer_time) {
+	test_skip_if(!hpa_supported());
+
+	hpa_hooks_t hooks;
+	hooks.map = &defer_test_map;
+	hooks.unmap = &defer_test_unmap;
+	hooks.purge = &defer_test_purge;
+	hooks.hugify = &defer_test_hugify;
+	hooks.dehugify = &defer_test_dehugify;
+	hooks.curtime = &defer_test_curtime;
+	hooks.ms_since = &defer_test_ms_since;
+
+	hpa_shard_opts_t opts = test_hpa_shard_opts_default;
+	opts.deferral_allowed = true;
+
+	hpa_shard_t *shard = create_test_data(&hooks, &opts);
+
+	bool deferred_work_generated = false;
+
+	nstime_init(&defer_curtime, 0);
+	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
+	edata_t *edatas[HUGEPAGE_PAGES];
+	for (int i = 0; i < (int)HUGEPAGE_PAGES; i++) {
+		edatas[i] = pai_alloc(tsdn, &shard->pai, PAGE, PAGE, false,
+		    false, false, &deferred_work_generated);
+		expect_ptr_not_null(edatas[i], "Unexpected null edata");
+	}
+	hpa_shard_do_deferred_work(tsdn, shard);
+	expect_false(defer_hugify_called, "Hugified too early");
+
+	/* Hugification delay is set to 10 seconds in options. */
+	nstime_init2(&defer_curtime, 11, 0);
+	hpa_shard_do_deferred_work(tsdn, shard);
+	expect_true(defer_hugify_called, "Failed to hugify");
+
+	defer_hugify_called = false;
+
+	/* Purge.  Recall that dirty_mult is .25. */
+	for (int i = 0; i < (int)HUGEPAGE_PAGES / 2; i++) {
+		pai_dalloc(tsdn, &shard->pai, edatas[i],
+		    &deferred_work_generated);
+	}
+
+	hpa_shard_do_deferred_work(tsdn, shard);
+
+	expect_false(defer_hugify_called, "Hugified too early");
+	expect_true(defer_dehugify_called, "Should have dehugified");
+	expect_true(defer_purge_called, "Should have purged");
+	defer_hugify_called = false;
+	defer_dehugify_called = false;
+	defer_purge_called = false;
+
+	/*
+	 * Refill the page.  We now meet the hugification threshold; we should
+	 * be marked for pending hugify.
+	 */
+	for (int i = 0; i < (int)HUGEPAGE_PAGES / 2; i++) {
+		edatas[i] = pai_alloc(tsdn, &shard->pai, PAGE, PAGE, false,
+		    false, false, &deferred_work_generated);
+		expect_ptr_not_null(edatas[i], "Unexpected null edata");
+	}
+	/*
+	 * We would be ineligible for hugification, had we not already met the
+	 * threshold before dipping below it.
+	 */
+	pai_dalloc(tsdn, &shard->pai, edatas[0],
+	    &deferred_work_generated);
+	/* Wait for the threshold again. */
+	nstime_init2(&defer_curtime, 22, 0);
+	hpa_shard_do_deferred_work(tsdn, shard);
+	expect_true(defer_hugify_called, "Hugified too early");
+	expect_false(defer_dehugify_called, "Unexpected dehugify");
+	expect_false(defer_purge_called, "Unexpected purge");
 
 	destroy_test_data(shard);
 }
@@ -299,5 +454,6 @@ main(void) {
 	return test_no_reentrancy(
 	    test_alloc_max,
 	    test_stress,
-	    test_alloc_dalloc_batch);
+	    test_alloc_dalloc_batch,
+	    test_defer_time);
 }

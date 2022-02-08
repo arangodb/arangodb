@@ -40,6 +40,7 @@ init_test_extent_hooks(extent_hooks_t *hooks) {
 typedef struct test_data_s test_data_t;
 struct test_data_s {
 	pa_shard_t shard;
+	pa_central_t central;
 	base_t *base;
 	emap_t emap;
 	pa_shard_stats_t stats;
@@ -52,7 +53,8 @@ test_data_t *init_test_data(ssize_t dirty_decay_ms, ssize_t muzzy_decay_ms) {
 	assert_ptr_not_null(test_data, "");
 	init_test_extent_hooks(&test_data->hooks);
 
-	base_t *base = base_new(TSDN_NULL, /* ind */ 1, &test_data->hooks);
+	base_t *base = base_new(TSDN_NULL, /* ind */ 1, &test_data->hooks,
+	    /* metadata_use_hooks */ true);
 	assert_ptr_not_null(base, "");
 
 	test_data->base = base;
@@ -63,10 +65,14 @@ test_data_t *init_test_data(ssize_t dirty_decay_ms, ssize_t muzzy_decay_ms) {
 	nstime_t time;
 	nstime_init(&time, 0);
 
-	const size_t oversize_threshold = 8 * 1024 * 1024;
-	err = pa_shard_init(TSDN_NULL, &test_data->shard, &test_data->emap,
-	    test_data->base, /* ind */ 1, &test_data->stats,
-	    &test_data->stats_mtx, &time, oversize_threshold, dirty_decay_ms,
+	err = pa_central_init(&test_data->central, base, opt_hpa,
+	    &hpa_hooks_default);
+	assert_false(err, "");
+
+	const size_t pa_oversize_threshold = 8 * 1024 * 1024;
+	err = pa_shard_init(TSDN_NULL, &test_data->shard, &test_data->central,
+	    &test_data->emap, test_data->base, /* ind */ 1, &test_data->stats,
+	    &test_data->stats_mtx, &time, pa_oversize_threshold, dirty_decay_ms,
 	    muzzy_decay_ms);
 	assert_false(err, "");
 
@@ -82,12 +88,13 @@ static void *
 do_alloc_free_purge(void *arg) {
 	test_data_t *test_data = (test_data_t *)arg;
 	for (int i = 0; i < 10 * 1000; i++) {
+		bool deferred_work_generated = false;
 		edata_t *edata = pa_alloc(TSDN_NULL, &test_data->shard, PAGE,
-		    PAGE, /* slab */ false, /* szind */ 0, /* zero */ false);
+		    PAGE, /* slab */ false, /* szind */ 0, /* zero */ false,
+		    /* guarded */ false, &deferred_work_generated);
 		assert_ptr_not_null(edata, "");
-		bool generated_dirty;
 		pa_dalloc(TSDN_NULL, &test_data->shard, edata,
-		    &generated_dirty);
+		    &deferred_work_generated);
 		malloc_mutex_lock(TSDN_NULL,
 		    &test_data->shard.pac.decay_dirty.mtx);
 		pac_decay_all(TSDN_NULL, &test_data->shard.pac,

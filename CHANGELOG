@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade bundled version of jemalloc to 5.3rc (upstream commit a4e8122).
+
 * Improve usefulness of `storedValues` together with late materialization.
 
 * Reintroduce shard synchronization cancellation check that was disabled

@@ -15,7 +15,7 @@ hpdata_age_comp(const hpdata_t *a, const hpdata_t *b) {
 	return (a_age > b_age) - (a_age < b_age);
 }
 
-ph_gen(, hpdata_age_heap_, hpdata_age_heap_t, hpdata_t, ph_link, hpdata_age_comp)
+ph_gen(, hpdata_age_heap, hpdata_t, age_link, hpdata_age_comp)
 
 void
 hpdata_init(hpdata_t *hpdata, void *addr, uint64_t age) {
@@ -166,33 +166,93 @@ hpdata_unreserve(hpdata_t *hpdata, void *addr, size_t sz) {
 size_t
 hpdata_purge_begin(hpdata_t *hpdata, hpdata_purge_state_t *purge_state) {
 	hpdata_assert_consistent(hpdata);
-	/* See the comment in reserve. */
+	/*
+	 * See the comment below; we might purge any inactive extent, so it's
+	 * unsafe for any other thread to turn any inactive extent active while
+	 * we're operating on it.
+	 */
+	assert(!hpdata_alloc_allowed_get(hpdata));
 
 	purge_state->npurged = 0;
 	purge_state->next_purge_search_begin = 0;
 
 	/*
-	 * Initialize to_purge with everything that's not active but that is
-	 * dirty.
+	 * Initialize to_purge.
 	 *
-	 * As an optimization, we could note that in practice we never allocate
-	 * out of a hugepage while purging within it, and so could try to
-	 * combine dirty extents separated by a non-dirty but non-active extent
-	 * to avoid purge calls.  This does nontrivially complicate metadata
-	 * tracking though, so let's hold off for now.
+	 * It's possible to end up in situations where two dirty extents are
+	 * separated by a retained extent:
+	 * - 1 page allocated.
+	 * - 1 page allocated.
+	 * - 1 pages allocated.
+	 *
+	 * If the middle page is freed and purged, and then the first and third
+	 * pages are freed, and then another purge pass happens, the hpdata
+	 * looks like this:
+	 * - 1 page dirty.
+	 * - 1 page retained.
+	 * - 1 page dirty.
+	 *
+	 * But it's safe to do a single 3-page purge.
+	 *
+	 * We do this by first computing the dirty pages, and then filling in
+	 * any gaps by extending each range in the dirty bitmap to extend until
+	 * the next active page.  This purges more pages, but the expensive part
+	 * of purging is the TLB shootdowns, rather than the kernel state
+	 * tracking; doing a little bit more of the latter is fine if it saves
+	 * us from doing some of the former.
 	 */
-	fb_bit_not(purge_state->to_purge, hpdata->active_pages, HUGEPAGE_PAGES);
-	fb_bit_and(purge_state->to_purge, purge_state->to_purge,
-	    hpdata->touched_pages, HUGEPAGE_PAGES);
 
-	/* We purge everything we can. */
-	size_t to_purge = hpdata->h_ntouched - hpdata->h_nactive;
-	assert(to_purge == fb_scount(
+	/*
+	 * The dirty pages are those that are touched but not active.  Note that
+	 * in a normal-ish case, HUGEPAGE_PAGES is something like 512 and the
+	 * fb_group_t is 64 bits, so this is 64 bytes, spread across 8
+	 * fb_group_ts.
+	 */
+	fb_group_t dirty_pages[FB_NGROUPS(HUGEPAGE_PAGES)];
+	fb_init(dirty_pages, HUGEPAGE_PAGES);
+	fb_bit_not(dirty_pages, hpdata->active_pages, HUGEPAGE_PAGES);
+	fb_bit_and(dirty_pages, dirty_pages, hpdata->touched_pages,
+	    HUGEPAGE_PAGES);
+
+	fb_init(purge_state->to_purge, HUGEPAGE_PAGES);
+	size_t next_bit = 0;
+	while (next_bit < HUGEPAGE_PAGES) {
+		size_t next_dirty = fb_ffs(dirty_pages, HUGEPAGE_PAGES,
+		    next_bit);
+		/* Recall that fb_ffs returns nbits if no set bit is found. */
+		if (next_dirty == HUGEPAGE_PAGES) {
+			break;
+		}
+		size_t next_active = fb_ffs(hpdata->active_pages,
+		    HUGEPAGE_PAGES, next_dirty);
+		/*
+		 * Don't purge past the end of the dirty extent, into retained
+		 * pages.  This helps the kernel a tiny bit, but honestly it's
+		 * mostly helpful for testing (where we tend to write test cases
+		 * that think in terms of the dirty ranges).
+		 */
+		ssize_t last_dirty = fb_fls(dirty_pages, HUGEPAGE_PAGES,
+		    next_active - 1);
+		assert(last_dirty >= 0);
+		assert((size_t)last_dirty >= next_dirty);
+		assert((size_t)last_dirty - next_dirty + 1 <= HUGEPAGE_PAGES);
+
+		fb_set_range(purge_state->to_purge, HUGEPAGE_PAGES, next_dirty,
+		    last_dirty - next_dirty + 1);
+		next_bit = next_active + 1;
+	}
+
+	/* We should purge, at least, everything dirty. */
+	size_t ndirty = hpdata->h_ntouched - hpdata->h_nactive;
+	purge_state->ndirty_to_purge = ndirty;
+	assert(ndirty <= fb_scount(
 	    purge_state->to_purge, HUGEPAGE_PAGES, 0, HUGEPAGE_PAGES));
+	assert(ndirty == fb_scount(dirty_pages, HUGEPAGE_PAGES, 0,
+	    HUGEPAGE_PAGES));
 
 	hpdata_assert_consistent(hpdata);
 
-	return to_purge;
+	return ndirty;
 }
 
 bool
@@ -203,6 +263,7 @@ hpdata_purge_next(hpdata_t *hpdata, hpdata_purge_state_t *purge_state,
 	 * hpdata without synchronization, and therefore have no right to expect
 	 * a consistent state.
 	 */
+	assert(!hpdata_alloc_allowed_get(hpdata));
 
 	if (purge_state->next_purge_search_begin == HUGEPAGE_PAGES) {
 		return false;
@@ -228,19 +289,21 @@ hpdata_purge_next(hpdata_t *hpdata, hpdata_purge_state_t *purge_state,
 
 void
 hpdata_purge_end(hpdata_t *hpdata, hpdata_purge_state_t *purge_state) {
+	assert(!hpdata_alloc_allowed_get(hpdata));
 	hpdata_assert_consistent(hpdata);
 	/* See the comment in reserve. */
 	assert(!hpdata->h_in_psset || hpdata->h_updating);
 
 	assert(purge_state->npurged == fb_scount(purge_state->to_purge,
 	    HUGEPAGE_PAGES, 0, HUGEPAGE_PAGES));
+	assert(purge_state->npurged >= purge_state->ndirty_to_purge);
 
 	fb_bit_not(purge_state->to_purge, purge_state->to_purge,
 	    HUGEPAGE_PAGES);
 	fb_bit_and(hpdata->touched_pages, hpdata->touched_pages,
 	    purge_state->to_purge, HUGEPAGE_PAGES);
-	assert(hpdata->h_ntouched >= purge_state->npurged);
-	hpdata->h_ntouched -= purge_state->npurged;
+	assert(hpdata->h_ntouched >= purge_state->ndirty_to_purge);
+	hpdata->h_ntouched -= purge_state->ndirty_to_purge;
 
 	hpdata_assert_consistent(hpdata);
 }
