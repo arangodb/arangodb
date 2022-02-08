@@ -28,7 +28,7 @@ ClusterProviderStep::~ClusterProviderStep() = default;
 
 VertexType const& ClusterProviderStep::Vertex::getID() const { return _vertex; }
 
-ClusterProviderStep::StepType const& ClusterProviderStep::Edge::getID() const {
+ClusterProviderStep::EdgeType const& ClusterProviderStep::Edge::getID() const {
   return _edge;
 }
 bool ClusterProviderStep::Edge::isValid() const { return !_edge.empty(); };

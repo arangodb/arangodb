@@ -424,9 +424,6 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
     TRI_ASSERT(other._baseVertexExpression == nullptr);
   }
 
-  // TODO [GraphRefactor]: this whole block might be removed again
-  // It seems that this code never gets called in SingleServer mode. Please
-  // clarify.
   if (other.refactor()) {
     // TODO: [GraphRefactor] Clean this up as soon as we get rid of all the old
     // code

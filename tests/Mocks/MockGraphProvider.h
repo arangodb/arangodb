@@ -73,12 +73,11 @@ class MockGraphProviderOptions {
   MockGraph const& _data;
   LooseEndBehaviour _looseEnds;
   bool _reverse;
-  ;
 };
 
 class MockGraphProvider {
   using VertexType = arangodb::velocypack::HashedStringRef;
-  using EdgeType = MockGraph::EdgeDef;
+  using MockEdgeType = MockGraph::EdgeDef;
 
  public:
   using Options = MockGraphProviderOptions;
@@ -87,7 +86,7 @@ class MockGraphProvider {
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
-    using StepType = arangodb::velocypack::HashedStringRef;
+    using EdgeType = arangodb::velocypack::HashedStringRef;
 
     class Vertex {
      public:
@@ -110,7 +109,7 @@ class MockGraphProvider {
 
     class Edge {
      public:
-      Edge(EdgeType e) : _edge(e) {
+      Edge(MockEdgeType e) : _edge(e) {
         _id = std::to_string(_edge._id);
         _idRef = arangodb::velocypack::HashedStringRef{
             _id.c_str(), static_cast<uint32_t>(_id.length())};
@@ -151,8 +150,8 @@ class MockGraphProvider {
                " edgeIdentifier: " + _id;
       }
 
-      EdgeType getEdge() const { return _edge; }
-      StepType const& getID() const { return _idRef; }
+      MockEdgeType getEdge() const { return _edge; }
+      arangodb::velocypack::HashedStringRef const& getID() const { return _idRef; }
 
       bool isValid() const {
         if (_edge._from.empty() && _edge._to.empty()) {
@@ -162,15 +161,15 @@ class MockGraphProvider {
       };
 
      private:
-      EdgeType _edge;
-      StepType _idRef;
+      MockEdgeType _edge;
+      EdgeType _idRef;
       std::string _id;
     };
 
     Step(VertexType v, bool isProcessable);
-    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
+    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable);
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
-    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable,
+    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
          size_t depth);
     ~Step() = default;
 
@@ -211,7 +210,7 @@ class MockGraphProvider {
     }
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
-    StepType getEdgeIdentifier() const { return _edge.getID(); }
+    arangodb::velocypack::HashedStringRef getEdgeIdentifier() const { return _edge.getID(); }
 
     std::string getCollectionName() const {
       auto collectionNameResult = extractCollectionName(_vertex.getID());

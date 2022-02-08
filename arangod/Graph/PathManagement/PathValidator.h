@@ -98,7 +98,7 @@ class PathValidator {
   Provider& _provider;
 
   // Only for applied vertex uniqueness
-  // TODO: Figure out if we can make this Member template dependend
+  // TODO: Figure out if we can make this Member template dependent
   //       e.g. std::enable_if<vertexUniqueness != NONE>
   // VertexUniqueness == GLOBAL || PATH => EdgeUniqueness = PATH
   // VertexUniqueness == NONE => EdgeUniqueness == ANY (from user or PATH)
@@ -106,9 +106,9 @@ class PathValidator {
                                   std::equal_to<VertexRef>>
       _uniqueVertices;
   ::arangodb::containers::HashSet<
-      typename PathStore::Step::StepType,
-      std::hash<typename PathStore::Step::StepType>,
-      std::equal_to<typename PathStore::Step::StepType>>
+      typename PathStore::Step::EdgeType,
+      std::hash<typename PathStore::Step::EdgeType>,
+      std::equal_to<typename PathStore::Step::EdgeType>>
       _uniqueEdges;
 
   PathValidatorOptions _options;

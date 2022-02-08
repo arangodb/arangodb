@@ -12,7 +12,7 @@ class ClusterProvider;
 class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
-  using StepType = EdgeType;
+  using EdgeType = EdgeType;
   friend ClusterProvider<ClusterProviderStep>;
 
   class Vertex {
@@ -42,7 +42,7 @@ class ClusterProviderStep
 
     void addToBuilder(ClusterProvider<ClusterProviderStep>& provider,
                       arangodb::velocypack::Builder& builder) const;
-    [[nodiscard]] StepType const& getID()
+    [[nodiscard]] EdgeType const& getID()
         const;  // TODO: Performance Test compare EdgeType
                 // <-> EdgeDocumentToken
     [[nodiscard]] bool isValid() const;
@@ -75,7 +75,7 @@ class ClusterProviderStep
   [[nodiscard]] VertexType getVertexIdentifier() const {
     return _vertex.getID();
   }
-  [[nodiscard]] StepType getEdgeIdentifier() const { return _edge.getID(); }
+  [[nodiscard]] EdgeType getEdgeIdentifier() const { return _edge.getID(); }
 
   [[nodiscard]] std::string getCollectionName() const {
     auto collectionNameResult = extractCollectionName(_vertex.getID());

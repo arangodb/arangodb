@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global AQL_EXedgeCollectionUTE, AQL_EXPLAIN, AQL_EXedgeCollectionUTEJSON */
+/* global AQL_EXECUTE, AQL_EXPLAIN */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief SpedgeCollection for the AQL FOR x IN GRAPH name statemedgeNamet
@@ -94,14 +94,14 @@ function dfsSingleServerDevelopmentEdgeNameSuite() {
       cleanup();
     },
 
+    /* Currently disabled, for testing only.
     testDFSTraversalOld: function () {
       const startVertex = vertices.A;
       let q = `
         FOR v,e,p IN 1..3 OUTBOUND "${startVertex}" GRAPH ${graphName}
         RETURN [v, e, p]
       `;
-      let result = db._query(q);
-      console.warn(result.toArray());
+      db._query(q);
     },
 
     testDFSTraversalNew: function () {
@@ -111,8 +111,7 @@ function dfsSingleServerDevelopmentEdgeNameSuite() {
         ${refactorEnabled}
         RETURN [v, e, p]
       `;
-      let result = db._query(q);
-      console.warn(result.toArray());
+7      db._query(q);
     },
 
     testBFSTraversalNewWithUniqueVerticesGlobal: function () {
@@ -123,9 +122,8 @@ function dfsSingleServerDevelopmentEdgeNameSuite() {
         ${refactorEnabled}
         RETURN [v, e, p]
       `;
-      let result = db._query(q);
-      console.warn(result.toArray());
-    },
+      db._query(q);
+    },*/
 
     testCompareDFSTraverals: function () {
       const startVertex = vertices.A;
@@ -144,10 +142,6 @@ function dfsSingleServerDevelopmentEdgeNameSuite() {
     },
 
     testDFSTraveralsNewWithPruneOnVertex: function () {
-      /*
-       * [GraphRefactor] TODO: Still needs to be implemented. Currently not working.
-       * Should only expose A,B,C
-       */
       const startVertex = vertices.A;
       let qOld = `
         FOR v,e,p IN 1..5 OUTBOUND "${startVertex}" GRAPH ${graphName}
@@ -162,21 +156,10 @@ function dfsSingleServerDevelopmentEdgeNameSuite() {
       `;
       let rOld = db._query(qOld);
       let rRefactor = db._query(qRefactor);
-      console.warn(rOld.getExtra().stats);
-      console.warn(rRefactor.getExtra().stats);
-      console.warn("OLD:");
-      console.warn(rOld.toArray());
-      console.warn("NEW:");
-      console.warn(rRefactor.toArray());
       assertTrue(_.isEqual(rOld.toArray(), rRefactor.toArray()));
-
-      //assertEqual(rOld.getExtra().stats.scannedIndex, rRefactor.getExtra().stats.scannedIndex);
     },
 
     testDFSTraveralsNewWithPruneOnEdge: function () {
-      /*
-       * [GraphRefactor] TODO: Still needs to be implemented. Currently not working.
-       */
       const startVertex = vertices.A;
       let qOld = `
         FOR v,e,p IN 1..5 OUTBOUND "${startVertex}" GRAPH ${graphName}
@@ -191,15 +174,7 @@ function dfsSingleServerDevelopmentEdgeNameSuite() {
       `;
       let rOld = db._query(qOld);
       let rRefactor = db._query(qRefactor);
-      console.warn(rOld.getExtra().stats);
-      console.warn(rRefactor.getExtra().stats);
-      console.warn("OLD:");
-      console.warn(rOld.toArray());
-      console.warn("NEW:");
-      console.warn(rRefactor.toArray());
       assertTrue(_.isEqual(rOld.toArray(), rRefactor.toArray()));
-
-      //assertEqual(rOld.getExtra().stats.scannedIndex, rRefactor.getExtra().stats.scannedIndex);
     },
 
     testDFSTraveralsNewWithFilterOnEdge: function () {
@@ -217,15 +192,8 @@ function dfsSingleServerDevelopmentEdgeNameSuite() {
       `;
       let rOld = db._query(qOld);
       let rRefactor = db._query(qRefactor);
-      console.warn(rOld.getExtra().stats);
-      console.warn(rRefactor.getExtra().stats);
-
       assertTrue(_.isEqual(rOld.toArray(), rRefactor.toArray()));
-      // [Graph Refactor] TODO: Check scannedIndex properties
-      //assertEqual(rOld.getExtra().stats.scannedIndex, rRefactor.getExtra().stats.scannedIndex);
-    },
-
-
+    }
   };
 }
 

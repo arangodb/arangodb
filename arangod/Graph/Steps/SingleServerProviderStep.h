@@ -32,14 +32,13 @@
 namespace arangodb {
 namespace graph {
 
-template<class StepType>
+template<class EdgeType>
 class SingleServerProvider;
 
 class SingleServerProviderStep
     : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
-  using StepType =
-      EdgeDocumentToken;  // TODO [GraphRefactor]: Rename that to EdgeType
+  using EdgeType = EdgeDocumentToken;
 
  public:
   class Vertex {
@@ -67,7 +66,7 @@ class SingleServerProviderStep
 
     void addToBuilder(SingleServerProvider<SingleServerProviderStep>& provider,
                       arangodb::velocypack::Builder& builder) const;
-    StepType const& getID() const;
+    EdgeType const& getID() const;
     bool isValid() const;
 
    private:
@@ -99,7 +98,7 @@ class SingleServerProviderStep
     return _vertex.getID();
   }
 
-  StepType getEdgeIdentifier() const { return _edge.getID(); }
+  EdgeType getEdgeIdentifier() const { return _edge.getID(); }
 
   std::string getCollectionName() const {
     /*
