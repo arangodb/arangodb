@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and
+  Agent's _waitForCV.
+
 * Limited module resolution in arangosh to the path from which arangosh is invoked.
 
 * Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
