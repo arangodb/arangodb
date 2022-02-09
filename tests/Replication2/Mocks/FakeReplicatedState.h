@@ -76,11 +76,11 @@ struct EmptyLeaderType : replicated_state::IReplicatedLeaderState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedLeaderState<S>::EntryIterator;
 
-  EmptyLeaderType(std::unique_ptr<test::TestCoreType> core)
+  explicit EmptyLeaderType(std::unique_ptr<test::TestCoreType> core)
       : _core(std::move(core)) {}
 
-  [[nodiscard]] auto
-  resign() && -> std::unique_ptr<test::TestCoreType> override;
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<test::TestCoreType> override;
 
   ~EmptyLeaderType() { TRI_ASSERT(_core == nullptr); }
 
