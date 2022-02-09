@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
@@ -432,12 +433,12 @@ class Index {
       aql::Variable const* reference, IndexIteratorOptions const& opts,
       ReadOwnWrites readOwnWrites, int mutableConditionIdx);
 
-  bool canUseConditionPart(arangodb::aql::AstNode const* access,
-                           arangodb::aql::AstNode const* other,
-                           arangodb::aql::AstNode const* op,
-                           arangodb::aql::Variable const* reference,
-                           std::unordered_set<std::string>& nonNullAttributes,
-                           bool) const;
+  bool canUseConditionPart(
+      arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
+      arangodb::aql::AstNode const* op,
+      arangodb::aql::Variable const* reference,
+      arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
+      bool) const;
 
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
