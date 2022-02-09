@@ -25,7 +25,7 @@
 
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Helpers/TraceEntry.h"
-#include "Graph/PathManagement/PathResult.h"
+#include "Graph/PathManagement/TwoSidedPathResult.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/TypeAliases.h"
 
@@ -73,7 +73,8 @@ class PathStoreTracer {
 
   template<class ProviderType>
   auto reverseBuildPath(Step const& vertex,
-                        PathResult<ProviderType, Step>& path) const -> void;
+                        TwoSidedPathResult<ProviderType, Step>& path) const
+      -> void;
 
   auto visitReversePath(Step const& step,
                         std::function<bool(Step const&)> const& visitor) const

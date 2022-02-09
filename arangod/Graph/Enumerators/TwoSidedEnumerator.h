@@ -29,7 +29,7 @@
 #include "Basics/ResourceUsage.h"
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
-#include "Graph/PathManagement/PathResult.h"
+#include "Graph/PathManagement/TwoSidedPathResult.h"
 #include "Transaction/Methods.h"
 
 #include <set>
@@ -51,7 +51,7 @@ class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
 
 template<class ProviderType, class Step>
-class PathResult;
+class TwoSidedPathResult;
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidatorType>
@@ -84,7 +84,7 @@ class TwoSidedEnumerator {
     auto testDepthZero(Ball& other, ResultList& results) -> void;
 
     auto buildPath(Step const& vertexInShell,
-                   PathResult<ProviderType, Step>& path) -> void;
+                   TwoSidedPathResult<ProviderType, Step>& path) -> void;
 
     auto matchResultsInShell(Step const& match, ResultList& results,
                              PathValidatorType const& otherSideValidator)
@@ -214,7 +214,7 @@ class TwoSidedEnumerator {
   ResultList _results{};
   bool _resultsFetched{false};
 
-  PathResult<ProviderType, Step> _resultPath;
+  TwoSidedPathResult<ProviderType, Step> _resultPath;
 };
 }  // namespace graph
 }  // namespace arangodb

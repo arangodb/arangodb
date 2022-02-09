@@ -31,7 +31,7 @@
 
 #include "Futures/Future.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
-#include "Graph/PathManagement/PathResult.h"
+#include "Graph/PathManagement/TwoSidedPathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
@@ -276,7 +276,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::buildPath(Step const& vertexInShell,
-                    PathResult<ProviderType, Step>& path) -> void {
+                    TwoSidedPathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
     _interior.buildPath(vertexInShell, path);
   } else {

@@ -256,7 +256,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
         currentPath->toVelocyPack(pathBuilder);
         evaluator->injectPath(pathBuilder.slice());
       } else {
-        PathResult<ProviderType, Step> currentPath{_provider, _provider};
+        TwoSidedPathResult<ProviderType, Step> currentPath{_provider,
+                                                           _provider};
         _store.buildPath(step, currentPath);
         currentPath.toVelocyPack(pathBuilder);
         evaluator->injectPath(pathBuilder.slice());

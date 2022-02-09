@@ -40,8 +40,8 @@
 using namespace ::arangodb::graph;
 using namespace ::arangodb::tests::graph;
 
-template class ::arangodb::graph::PathResult<MockGraphProvider,
-                                             MockGraphProvider::Step>;
+template class ::arangodb::graph::TwoSidedPathResult<MockGraphProvider,
+                                                     MockGraphProvider::Step>;
 
 template class ::arangodb::graph::SingleSidedPathResult<
     MockGraphProvider, PathStore<MockGraphProvider::Step>,

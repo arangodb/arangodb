@@ -113,7 +113,8 @@ auto PathStoreTracer<PathStoreImpl>::buildPath(Step const& vertex,
 template<class PathStoreImpl>
 template<class ProviderType>
 auto PathStoreTracer<PathStoreImpl>::reverseBuildPath(
-    Step const& vertex, PathResult<ProviderType, Step>& path) const -> void {
+    Step const& vertex, TwoSidedPathResult<ProviderType, Step>& path) const
+    -> void {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["reverseBuildPath"].addTiming(TRI_microtime() - start);
@@ -149,13 +150,14 @@ template class ::arangodb::graph::PathStoreTracer<
     PathStore<SingleServerProviderStep>>;
 
 // Tracing
-template void ::arangodb::graph::
-    PathStoreTracer<PathStore<SingleServerProviderStep>>::buildPath<PathResult<
+template void ::arangodb::graph::PathStoreTracer<
+    PathStore<SingleServerProviderStep>>::
+    buildPath<TwoSidedPathResult<
         ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
         ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>(
         ProviderTracer<
             SingleServerProvider<SingleServerProviderStep>>::Step const& vertex,
-        PathResult<
+        TwoSidedPathResult<
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::
                 Step>& path) const;
@@ -165,7 +167,7 @@ template void arangodb::graph::
         ProviderTracer<SingleServerProvider<SingleServerProviderStep>>>(
         ProviderTracer<
             SingleServerProvider<SingleServerProviderStep>>::Step const& vertex,
-        PathResult<
+        TwoSidedPathResult<
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::
                 Step>& path) const;
@@ -176,13 +178,13 @@ template class ::arangodb::graph::PathStoreTracer<
 
 template void ::arangodb::graph::
     PathStoreTracer<PathStore<enterprise::SmartGraphStep>>::buildPath<
-        PathResult<
+        TwoSidedPathResult<
             ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
             ProviderTracer<
                 SingleServerProvider<enterprise::SmartGraphStep>>::Step>>(
         ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::
             Step const& vertex,
-        PathResult<
+        TwoSidedPathResult<
             ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
             ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::
                 Step>& path) const;
@@ -192,7 +194,7 @@ template void arangodb::graph::
         ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>>(
         ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::
             Step const& vertex,
-        PathResult<
+        TwoSidedPathResult<
             ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
             ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::
                 Step>& path) const;
@@ -206,18 +208,21 @@ template class ::arangodb::graph::PathStoreTracer<
 // Tracing
 template void ::arangodb::graph::
     PathStoreTracer<PathStore<ClusterProviderStep>>::buildPath<
-        PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-                   ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>(
+        TwoSidedPathResult<
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>(
         ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const&
             vertex,
-        PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-                   ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
+        TwoSidedPathResult<
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
             path) const;
 
 template void arangodb::graph::PathStoreTracer<PathStore<ClusterProviderStep>>::
     reverseBuildPath<ProviderTracer<ClusterProvider<ClusterProviderStep>>>(
         ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const&
             vertex,
-        PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-                   ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
+        TwoSidedPathResult<
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
             path) const;

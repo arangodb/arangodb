@@ -39,11 +39,12 @@ class Builder;
 namespace graph {
 
 template<class ProviderType, class Step>
-class PathResult : public PathResultInterface {
+class TwoSidedPathResult : public PathResultInterface {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  PathResult(ProviderType& sourceProvider, ProviderType& targetProvider);
+  TwoSidedPathResult(ProviderType& sourceProvider,
+                     ProviderType& targetProvider);
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;

@@ -41,7 +41,7 @@ struct AqlValue;
 namespace graph {
 
 template<class ProviderType, class Step>
-class PathResult;
+class TwoSidedPathResult;
 
 class ValidationResult;
 
@@ -91,7 +91,8 @@ class PathStore {
 
   template<class ProviderType>
   auto reverseBuildPath(Step const& vertex,
-                        PathResult<ProviderType, Step>& path) const -> void;
+                        TwoSidedPathResult<ProviderType, Step>& path) const
+      -> void;
 
  private:
   /// @brief schreier vector to store the visited vertices
