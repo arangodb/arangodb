@@ -12,7 +12,7 @@ class ClusterProvider;
 class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
-  using EdgeType = EdgeType;
+  using EdgeType = arangodb::velocypack::HashedStringRef;
   friend ClusterProvider<ClusterProviderStep>;
 
   class Vertex {
@@ -28,8 +28,6 @@ class ClusterProviderStep
     bool operator>(Vertex const& other) const noexcept {
       return _vertex > other._vertex;
     }
-
-    void setVertex(VertexType thisIsATest) { _vertex = std::move(thisIsATest); }
 
    private:
     VertexType _vertex;
