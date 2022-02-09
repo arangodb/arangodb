@@ -82,7 +82,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
           auto const& [unusedV, addedVertex] =
               _uniqueVertices.emplace(step.getVertexIdentifier());
 
-
           // If this add fails, we need to exclude this path
           return addedVertex;
         });
