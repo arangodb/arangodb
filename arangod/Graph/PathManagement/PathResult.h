@@ -26,6 +26,7 @@
 
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 
 #include <numeric>
 
@@ -38,7 +39,7 @@ class Builder;
 namespace graph {
 
 template<class ProviderType, class Step>
-class PathResult {
+class PathResult : public PathResultInterface {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
@@ -48,21 +49,27 @@ class PathResult {
   auto prependVertex(typename Step::Vertex v) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
-  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
-  auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
-  auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
+  auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void override;
+  auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void override;
 
-  auto isEmpty() const -> bool;
+  [[nodiscard]] auto isEmpty() const -> bool;
 
  private:
-  std::vector<typename Step::Vertex> _vertices;
-  std::vector<typename Step::Edge> _edges;
-
-  // The number of vertices delivered by the source provider in the vector.
-  // We need to load this amount of vertices from source, all others from target
-  // For edges we need to load one edge less from here.
-  size_t _numVerticesFromSourceProvider;
-  size_t _numEdgesFromSourceProvider;
+  // vertices collected by extending the path from a middle vertex to the source
+  // The order of vertices in the vector is inverse to the order in the path
+  // (i.e., the source will be the last vertex in _sourceVertices).
+  std::vector<typename Step::Vertex> _sourceVertices;
+  // vertices collected by extending the path from the target
+  // The order of vertices in the vector is the order in the path
+  // (i.e., the target will be the last vertex in _sourceVertices).
+  std::vector<typename Step::Vertex> _targetVertices;
+  // edges collected by extending the path from the source
+  std::vector<typename Step::Edge> _sourceEdges;
+  // edges collected by extending the path from the target
+  std::vector<typename Step::Edge> _targetEdges;
 
   // Provider for the beginning of the path (source)
   ProviderType& _sourceProvider;

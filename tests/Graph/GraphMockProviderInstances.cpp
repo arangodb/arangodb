@@ -43,11 +43,11 @@ using namespace ::arangodb::tests::graph;
 template class ::arangodb::graph::PathResult<MockGraphProvider,
                                              MockGraphProvider::Step>;
 
-template class ::arangodb::graph::SingleProviderPathResult<
+template class ::arangodb::graph::SingleSidedPathResult<
     MockGraphProvider, PathStore<MockGraphProvider::Step>,
     MockGraphProvider::Step>;
 
-template class ::arangodb::graph::SingleProviderPathResult<
+template class ::arangodb::graph::SingleSidedPathResult<
     MockGraphProvider, PathStoreTracer<PathStore<MockGraphProvider::Step>>,
     MockGraphProvider::Step>;
 

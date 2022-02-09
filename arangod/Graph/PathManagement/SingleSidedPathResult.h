@@ -43,10 +43,10 @@ class Builder;
 namespace graph {
 
 template<class ProviderType, class PathStoreType, class Step>
-class SingleProviderPathResult : public PathResultInterface {
+class SingleSidedPathResult : public PathResultInterface {
  public:
-  SingleProviderPathResult(Step step, ProviderType& provider,
-                           PathStoreType& store);
+  SingleSidedPathResult(Step step, ProviderType& provider,
+                        PathStoreType& store);
   auto clear() -> void;
 
   // Writing the full path to VelocyPack

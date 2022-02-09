@@ -31,7 +31,7 @@
 #include "Aql/TraversalStats.h"
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
-#include "Graph/PathManagement/SingleProviderPathResult.h"
+#include "Graph/PathManagement/SingleSidedPathResult.h"
 #include "Transaction/Methods.h"
 
 #include <set>
@@ -59,7 +59,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   using Provider = typename Configuration::Provider;
   using Store = typename Configuration::Store;
 
-  using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
+  using ResultPathType = SingleSidedPathResult<Provider, Store, Step>;
 
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;

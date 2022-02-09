@@ -28,7 +28,7 @@
 #include "Logger/LogMacros.h"
 
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/SingleProviderPathResult.h"
+#include "Graph/PathManagement/SingleSidedPathResult.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"

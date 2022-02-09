@@ -44,76 +44,71 @@ using namespace arangodb::graph;
 template<class ProviderType, class Step>
 PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider,
                                            ProviderType& targetProvider)
-    : _numVerticesFromSourceProvider(0),
-      _numEdgesFromSourceProvider(0),
-      _sourceProvider(sourceProvider),
-      _targetProvider(targetProvider) {}
+    : _sourceProvider(sourceProvider), _targetProvider(targetProvider) {}
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::clear() -> void {
-  _numVerticesFromSourceProvider = 0;
-  _numEdgesFromSourceProvider = 0;
-  _vertices.clear();
-  _edges.clear();
+  _sourceVertices.clear();
+  _targetVertices.clear();
+  _sourceEdges.clear();
+  _targetEdges.clear();
 }
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v)
     -> void {
-  _vertices.push_back(std::move(v));
+  _targetVertices.push_back(std::move(v));
 }
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v)
     -> void {
-  _numVerticesFromSourceProvider++;
-  _vertices.insert(_vertices.begin(), std::move(v));
+  _sourceVertices.push_back(std::move(v));
 }
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
-  _edges.push_back(std::move(e));
+  _targetEdges.push_back(std::move(e));
 }
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
     -> void {
-  _numEdgesFromSourceProvider++;
-  _edges.insert(_edges.begin(), std::move(e));
+  _sourceEdges.push_back(std::move(e));
 }
-
-// NOTE:
-// Potential optimization: Instead of counting on each append
-// We can do a size call to the vector when switching the Provider.
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::toVelocyPack(
     arangodb::velocypack::Builder& builder) -> void {
-  TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
-    // Write first part of the Path
-    for (size_t i = 0; i < _numVerticesFromSourceProvider; i++) {
-      _sourceProvider.addVertexToBuilder(_vertices[i], builder);
+    // Write the source (first) part of the Path. The vertices have been written
+    // in the inverse order, so read now from the end.
+    for (auto rit = std::rbegin(_sourceVertices);
+         rit != std::rend(_sourceVertices); ++rit) {
+      _sourceProvider.addVertexToBuilder(*rit, builder);
     }
-    // Write second part of the Path
-    for (size_t i = _numVerticesFromSourceProvider; i < _vertices.size(); i++) {
-      _targetProvider.addVertexToBuilder(_vertices[i], builder);
+    // Write the target (second) part of the Path. The vertices have been
+    // written in the order as they appear on the path, so read them from the
+    // beginning.
+    for (auto const& v : _targetVertices) {
+      _targetProvider.addVertexToBuilder(v, builder);
     }
   }
 
   {
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
-    // Write first part of the Path
-    for (size_t i = 0; i < _numEdgesFromSourceProvider; i++) {
-      _sourceProvider.addEdgeToBuilder(_edges[i], builder);
+    // similar to the vertices
+    for (auto rit = std::rbegin(_sourceEdges); rit != std::rend(_sourceEdges);
+         ++rit) {
+      _sourceProvider.addEdgeToBuilder(*rit, builder);
     }
-    // Write second part of the Path
-    for (size_t i = _numEdgesFromSourceProvider; i < _edges.size(); i++) {
-      _targetProvider.addEdgeToBuilder(_edges[i], builder);
+    // similar to the vertices
+    for (auto const& e : _targetEdges) {
+      _targetProvider.addEdgeToBuilder(e, builder);
     }
   }
 }
@@ -121,18 +116,32 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::lastVertexToVelocyPack(
     arangodb::velocypack::Builder& builder) -> void {
-  _sourceProvider.addVertexToBuilder(_vertices.back(), builder);
+  TRI_ASSERT(!(_sourceEdges.empty() && _targetVertices.empty()));
+  if (ADB_UNLIKELY(_targetVertices.empty())) {
+    // source vertices are stored in the inverse order of the path order,
+    // so, take the first vertex
+    _sourceProvider.addVertexToBuilder(_sourceVertices.front(), builder);
+  } else {
+    _sourceProvider.addVertexToBuilder(_targetVertices.back(), builder);
+  }
 }
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::lastEdgeToVelocyPack(
     arangodb::velocypack::Builder& builder) -> void {
-  _sourceProvider.addEdgeToBuilder(_edges.back(), builder);
+  TRI_ASSERT(!(_sourceEdges.empty() && _targetEdges.empty()));
+  if (ADB_UNLIKELY(_targetEdges.empty())) {
+    // source edges are stored in the inverse order of the path order,
+    // so, take the first edge
+    _sourceProvider.addEdgeToBuilder(_sourceEdges.front(), builder);
+  } else {
+    _sourceProvider.addEdgeToBuilder(_targetEdges.back(), builder);
+  }
 }
 
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
-  return _vertices.empty();
+  return _sourceVertices.empty() && _targetVertices.empty();
 }
 
 /* SingleServerProvider Section */
