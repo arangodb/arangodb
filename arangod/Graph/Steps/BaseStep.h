@@ -23,14 +23,12 @@
 
 #pragma once
 
-#include "../../../3rdParty/velocypack/include/velocypack/HashedStringRef.h"
-#include "../../../lib/Basics/ResultT.h"
+#include "velocypack/HashedStringRef.h"
+#include "Basics/ResultT.h"
 
-#include "../../../../../../../usr/include/c++/10/numeric"
+#include <numeric>
 
-namespace arangodb {
-
-namespace graph {
+namespace arangodb::graph {
 
 template<class StepDetails>
 class BaseStep {
@@ -73,5 +71,4 @@ class BaseStep {
   size_t _depth;
   double _weight;
 };
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph
