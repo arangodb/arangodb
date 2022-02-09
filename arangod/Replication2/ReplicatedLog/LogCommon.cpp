@@ -57,7 +57,6 @@ auto LogIndex::saturatedDecrement(uint64_t delta) const noexcept -> LogIndex {
   return LogIndex{0};
 }
 
-
 LogTerm::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }

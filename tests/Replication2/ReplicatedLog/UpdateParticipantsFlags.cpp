@@ -717,7 +717,6 @@ TEST_F(UpdateParticipantsFlagsTest, check_update_participants_meta_entry) {
   EXPECT_EQ(idx, LogIndex{2});
   runAllAsyncAppendEntries();
 
-
   auto oldConfig =
       leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
   auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);

@@ -135,7 +135,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(entry->logIndex(), LogIndex{1});
     EXPECT_EQ(entry->logTerm(), LogTerm{1});
     ASSERT_NE(entry->logPayload(), nullptr);
-    EXPECT_EQ(*entry->logPayload(), LogPayload::createFromString("first entry"));
+    EXPECT_EQ(*entry->logPayload(),
+              LogPayload::createFromString("first entry"));
     // This is the leader entry inserted in becomeLeader
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());

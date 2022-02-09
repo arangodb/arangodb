@@ -477,7 +477,7 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
           while (actualIndex <= followerData._commitIndex) {
             auto memtry =
                 followerData._inMemoryLog.getEntryByIndex(actualIndex);
-            TRI_ASSERT(memtry.has_value()); // should always have a value
+            TRI_ASSERT(memtry.has_value());  // should always have a value
             if (!memtry.has_value()) {
               break;
             }
