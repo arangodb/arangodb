@@ -29,20 +29,22 @@ const request = require('@arangodb/request');
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
 
-const waitFor = function (checkFn, maxTries = 100) {
+const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
   let result = null;
   while (count < maxTries) {
     result = checkFn();
-    if (result === true) {
+    if (result === true || result === undefined) {
       return result;
     }
-    console.log(result);
     if (!(result instanceof Error)) {
       throw Error("expected error");
     }
     count += 1;
-    wait(0.5);
+    if (count % 10 === 0) {
+      console.log(result);
+    }
+    wait(0.5); // 240 * .5s = 2 minutes
   }
   throw result;
 };
@@ -411,6 +413,7 @@ exports.continueServerWaitOk = continueServerWaitOk;
 exports.stopServerWaitFailed = stopServerWaitFailed;
 exports.replicatedLogDeleteTarget = replicatedLogDeleteTarget;
 exports.getLocalStatus = getLocalStatus;
+exports.getServerRebootId = getServerRebootId;
 exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
 exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;

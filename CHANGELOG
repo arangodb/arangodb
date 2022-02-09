@@ -4,6 +4,20 @@ devel
 * Fix lock order in Agent::advanceCommitIndex for State's _logLock and
   Agent's _waitForCV.
 
+* Upgrade bundled version of jemalloc to 5.3rc (upstream commit a4e8122).
+
+* Improve usefulness of `storedValues` together with late materialization.
+
+* Reintroduce shard synchronization cancellation check that was disabled
+  before.
+
+* Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
+  skip over some subquery results. This did only show up if the subquery fills
+  exactly one internal batch before it is completed, so it is rather unlikely.
+
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
 * Limited module resolution in arangosh to the path from which arangosh is invoked.
 
 * Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is

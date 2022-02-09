@@ -354,7 +354,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice());
+    impl.remove(trx, docId);
   }
 
   res = trx.commit();

@@ -119,9 +119,11 @@ C_SRCS := $(srcroot)src/jemalloc.c \
 	$(srcroot)src/extent_dss.c \
 	$(srcroot)src/extent_mmap.c \
 	$(srcroot)src/fxp.c \
+	$(srcroot)src/san.c \
+	$(srcroot)src/san_bump.c \
 	$(srcroot)src/hook.c \
 	$(srcroot)src/hpa.c \
-	$(srcroot)src/hpa_central.c \
+	$(srcroot)src/hpa_hooks.c \
 	$(srcroot)src/hpdata.c \
 	$(srcroot)src/inspect.c \
 	$(srcroot)src/large.c \
@@ -175,7 +177,6 @@ else
 LJEMALLOC := $(objroot)lib/$(LIBJEMALLOC).$(IMPORTLIB)
 endif
 PC := $(objroot)jemalloc.pc
-MAN3 := $(objroot)doc/jemalloc$(install_suffix).3
 DOCS_XML := $(objroot)doc/jemalloc$(install_suffix).xml
 DOCS_HTML := $(DOCS_XML:$(objroot)%.xml=$(objroot)%.html)
 DOCS_MAN3 := $(DOCS_XML:$(objroot)%.xml=$(objroot)%.3)
@@ -215,13 +216,15 @@ TESTS_UNIT := \
 	$(srcroot)test/unit/edata_cache.c \
 	$(srcroot)test/unit/emitter.c \
 	$(srcroot)test/unit/extent_quantize.c \
-	${srcroot}test/unit/flat_bitmap.c \
+	${srcroot}test/unit/fb.c \
 	$(srcroot)test/unit/fork.c \
 	${srcroot}test/unit/fxp.c \
+	${srcroot}test/unit/san.c \
+	${srcroot}test/unit/san_bump.c \
 	$(srcroot)test/unit/hash.c \
 	$(srcroot)test/unit/hook.c \
 	$(srcroot)test/unit/hpa.c \
-	$(srcroot)test/unit/hpa_central.c \
+	$(srcroot)test/unit/hpa_background_thread.c \
 	$(srcroot)test/unit/hpdata.c \
 	$(srcroot)test/unit/huge.c \
 	$(srcroot)test/unit/inspect.c \
@@ -233,6 +236,7 @@ TESTS_UNIT := \
 	$(srcroot)test/unit/malloc_conf_2.c \
 	$(srcroot)test/unit/malloc_io.c \
 	$(srcroot)test/unit/math.c \
+	$(srcroot)test/unit/mpsc_queue.c \
 	$(srcroot)test/unit/mq.c \
 	$(srcroot)test/unit/mtx.c \
 	$(srcroot)test/unit/nstime.c \
@@ -246,6 +250,7 @@ TESTS_UNIT := \
 	$(srcroot)test/unit/prof_accum.c \
 	$(srcroot)test/unit/prof_active.c \
 	$(srcroot)test/unit/prof_gdump.c \
+	$(srcroot)test/unit/prof_hook.c \
 	$(srcroot)test/unit/prof_idump.c \
 	$(srcroot)test/unit/prof_log.c \
 	$(srcroot)test/unit/prof_mdump.c \
@@ -278,6 +283,7 @@ TESTS_UNIT := \
 	$(srcroot)test/unit/thread_event.c \
 	$(srcroot)test/unit/ticker.c \
 	$(srcroot)test/unit/tsd.c \
+	$(srcroot)test/unit/uaf.c \
 	$(srcroot)test/unit/witness.c \
 	$(srcroot)test/unit/zero.c \
 	$(srcroot)test/unit/zero_realloc_abort.c \
@@ -309,7 +315,9 @@ TESTS_INTEGRATION += \
 endif
 ifeq (@enable_cxx@, 1)
 CPP_SRCS := $(srcroot)src/jemalloc_cpp.cpp
-TESTS_INTEGRATION_CPP := $(srcroot)test/integration/cpp/basic.cpp
+TESTS_INTEGRATION_CPP := $(srcroot)test/integration/cpp/basic.cpp \
+	$(srcroot)test/integration/cpp/infallible_new_true.cpp \
+	$(srcroot)test/integration/cpp/infallible_new_false.cpp
 else
 CPP_SRCS :=
 TESTS_INTEGRATION_CPP :=
@@ -369,7 +377,7 @@ all: build_lib
 
 dist: build_doc
 
-$(objroot)doc/%.html : $(objroot)doc/%.xml $(srcroot)doc/stylesheet.xsl $(objroot)doc/html.xsl
+$(objroot)doc/%$(install_suffix).html : $(objroot)doc/%.xml $(srcroot)doc/stylesheet.xsl $(objroot)doc/html.xsl
 ifneq ($(XSLROOT),)
 	$(XSLTPROC) -o $@ $(objroot)doc/html.xsl $<
 else
@@ -379,9 +387,16 @@ endif
 	@echo "Missing xsltproc.  "$@" not (re)built."
 endif
 
-$(objroot)doc/%.3 : $(objroot)doc/%.xml $(srcroot)doc/stylesheet.xsl $(objroot)doc/manpages.xsl
+$(objroot)doc/%$(install_suffix).3 : $(objroot)doc/%.xml $(srcroot)doc/stylesheet.xsl $(objroot)doc/manpages.xsl
 ifneq ($(XSLROOT),)
 	$(XSLTPROC) -o $@ $(objroot)doc/manpages.xsl $<
+# The -o option (output filename) of xsltproc may not work (it uses the
+# <refname> in the .xml file).  Manually add the suffix if so.
+  ifneq ($(install_suffix),)
+	@if [ -f $(objroot)doc/jemalloc.3 ]; then \
+		mv $(objroot)doc/jemalloc.3 $(objroot)doc/jemalloc$(install_suffix).3 ; \
+	fi
+  endif
 else
 ifeq ($(wildcard $(DOCS_MAN3)),)
 	@echo "Missing xsltproc.  Doc not built." > $@
@@ -539,20 +554,18 @@ endif
 install_bin:
 	$(INSTALL) -d $(BINDIR)
 	@for b in $(BINS); do \
-	echo "$(INSTALL) -m 755 $$b $(BINDIR)"; \
-	$(INSTALL) -m 755 $$b $(BINDIR); \
+	$(INSTALL) -v -m 755 $$b $(BINDIR); \
 done
 
 install_include:
 	$(INSTALL) -d $(INCLUDEDIR)/jemalloc
 	@for h in $(C_HDRS); do \
-	echo "$(INSTALL) -m 644 $$h $(INCLUDEDIR)/jemalloc"; \
-	$(INSTALL) -m 644 $$h $(INCLUDEDIR)/jemalloc; \
+	$(INSTALL) -v -m 644 $$h $(INCLUDEDIR)/jemalloc; \
 done
 
 install_lib_shared: $(DSOS)
 	$(INSTALL) -d $(LIBDIR)
-	$(INSTALL) -m 755 $(objroot)lib/$(LIBJEMALLOC).$(SOREV) $(LIBDIR)
+	$(INSTALL) -v -m 755 $(objroot)lib/$(LIBJEMALLOC).$(SOREV) $(LIBDIR)
 ifneq ($(SOREV),$(SO))
 	ln -sf $(LIBJEMALLOC).$(SOREV) $(LIBDIR)/$(LIBJEMALLOC).$(SO)
 endif
@@ -560,15 +573,13 @@ endif
 install_lib_static: $(STATIC_LIBS)
 	$(INSTALL) -d $(LIBDIR)
 	@for l in $(STATIC_LIBS); do \
-	echo "$(INSTALL) -m 755 $$l $(LIBDIR)"; \
-	$(INSTALL) -m 755 $$l $(LIBDIR); \
+	$(INSTALL) -v -m 755 $$l $(LIBDIR); \
 done
 
 install_lib_pc: $(PC)
 	$(INSTALL) -d $(LIBDIR)/pkgconfig
 	@for l in $(PC); do \
-	echo "$(INSTALL) -m 644 $$l $(LIBDIR)/pkgconfig"; \
-	$(INSTALL) -m 644 $$l $(LIBDIR)/pkgconfig; \
+	$(INSTALL) -v -m 644 $$l $(LIBDIR)/pkgconfig; \
 done
 
 ifeq ($(enable_shared), 1)
@@ -579,26 +590,66 @@ install_lib: install_lib_static
 endif
 install_lib: install_lib_pc
 
-install_doc_html:
+install_doc_html: build_doc_html
 	$(INSTALL) -d $(DATADIR)/doc/jemalloc$(install_suffix)
 	@for d in $(DOCS_HTML); do \
-	echo "$(INSTALL) -m 644 $$d $(DATADIR)/doc/jemalloc$(install_suffix)"; \
-	$(INSTALL) -m 644 $$d $(DATADIR)/doc/jemalloc$(install_suffix); \
+	$(INSTALL) -v -m 644 $$d $(DATADIR)/doc/jemalloc$(install_suffix); \
 done
 
-install_doc_man:
+install_doc_man: build_doc_man
 	$(INSTALL) -d $(MANDIR)/man3
 	@for d in $(DOCS_MAN3); do \
-	echo "$(INSTALL) -m 644 $$d $(MANDIR)/man3"; \
-	$(INSTALL) -m 644 $$d $(MANDIR)/man3; \
+	$(INSTALL) -v -m 644 $$d $(MANDIR)/man3; \
 done
 
-install_doc: build_doc install_doc_html install_doc_man
+install_doc: install_doc_html install_doc_man
 
 install: install_bin install_include install_lib
 
 ifeq ($(enable_doc), 1)
 install: install_doc
+endif
+
+uninstall_bin:
+	$(RM) -v $(foreach b,$(notdir $(BINS)),$(BINDIR)/$(b))
+
+uninstall_include:
+	$(RM) -v $(foreach h,$(notdir $(C_HDRS)),$(INCLUDEDIR)/jemalloc/$(h))
+	rmdir -v $(INCLUDEDIR)/jemalloc
+
+uninstall_lib_shared:
+	$(RM) -v $(LIBDIR)/$(LIBJEMALLOC).$(SOREV)
+ifneq ($(SOREV),$(SO))
+	$(RM) -v $(LIBDIR)/$(LIBJEMALLOC).$(SO)
+endif
+
+uninstall_lib_static:
+	$(RM) -v $(foreach l,$(notdir $(STATIC_LIBS)),$(LIBDIR)/$(l))
+
+uninstall_lib_pc:
+	$(RM) -v $(foreach p,$(notdir $(PC)),$(LIBDIR)/pkgconfig/$(p))
+
+ifeq ($(enable_shared), 1)
+uninstall_lib: uninstall_lib_shared
+endif
+ifeq ($(enable_static), 1)
+uninstall_lib: uninstall_lib_static
+endif
+uninstall_lib: uninstall_lib_pc
+
+uninstall_doc_html:
+	$(RM) -v $(foreach d,$(notdir $(DOCS_HTML)),$(DATADIR)/doc/jemalloc$(install_suffix)/$(d))
+	rmdir -v $(DATADIR)/doc/jemalloc$(install_suffix)
+
+uninstall_doc_man:
+	$(RM) -v $(foreach d,$(notdir $(DOCS_MAN3)),$(MANDIR)/man3/$(d))
+
+uninstall_doc: uninstall_doc_html uninstall_doc_man
+
+uninstall: uninstall_bin uninstall_include uninstall_lib
+
+ifeq ($(enable_doc), 1)
+uninstall: uninstall_doc
 endif
 
 tests_unit: $(TESTS_UNIT:$(srcroot)%.c=$(objroot)%$(EXE))

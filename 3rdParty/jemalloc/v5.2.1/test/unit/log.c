@@ -4,7 +4,7 @@
 
 static void
 update_log_var_names(const char *names) {
-	strncpy_cond(log_var_names, names, config_log);
+	strncpy(log_var_names, names, sizeof(log_var_names));
 }
 
 static void

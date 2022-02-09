@@ -118,17 +118,10 @@ te_malloc_fastpath_ctx(tsd_t *tsd, uint64_t *allocated, uint64_t *threshold) {
 }
 
 JEMALLOC_ALWAYS_INLINE void
-te_free_fastpath_ctx(tsd_t *tsd, uint64_t *deallocated, uint64_t *threshold,
-    bool size_hint) {
-	if (!size_hint) {
-		*deallocated = tsd_thread_deallocated_get(tsd);
-		*threshold = tsd_thread_deallocated_next_event_fast_get(tsd);
-	} else {
-		/* Unsafe getters since this may happen before tsd_init. */
-		*deallocated = *tsd_thread_deallocatedp_get_unsafe(tsd);
-		*threshold =
-		    *tsd_thread_deallocated_next_event_fastp_get_unsafe(tsd);
-	}
+te_free_fastpath_ctx(tsd_t *tsd, uint64_t *deallocated, uint64_t *threshold) {
+	/* Unsafe getters since this may happen before tsd_init. */
+	*deallocated = *tsd_thread_deallocatedp_get_unsafe(tsd);
+	*threshold = *tsd_thread_deallocated_next_event_fastp_get_unsafe(tsd);
 	assert(*threshold <= TE_NEXT_EVENT_FAST_MAX);
 }
 

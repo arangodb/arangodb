@@ -44,13 +44,17 @@ struct FollowerStateManager
       std::shared_ptr<ReplicatedStateBase> parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
       std::unique_ptr<ReplicatedStateCore> core,
+      std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
   void run();
   auto getStatus() const -> StateStatus final;
-  auto getSnapshotStatus() const -> SnapshotStatus final;
 
   auto getFollowerState() -> std::shared_ptr<IReplicatedFollowerState<S>>;
+
+  auto resign() && noexcept
+      -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+                   std::unique_ptr<ReplicatedStateToken>> override;
 
  private:
   void awaitLeaderShip();
@@ -78,6 +82,8 @@ struct FollowerStateManager
   std::optional<LogRange> ingestionRange;
 
   std::unique_ptr<ReplicatedStateCore> core;
+  std::unique_ptr<ReplicatedStateToken> token;
+
   std::shared_ptr<Factory> const factory;
 
  private:
