@@ -24,12 +24,12 @@
 
 #include "ParticipantsCacheFeature.h"
 
-#include "Cluster/FailureOracle.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
 
 #include <memory>
@@ -37,15 +37,21 @@
 #include <shared_mutex>
 #include <unordered_map>
 // TODO remove LOG_DEVEL
+
 namespace arangodb::cluster {
+
+namespace {
+constexpr auto kSupervisionHealthPath = "Supervision/Health";
+constexpr auto kHealthyServerKey = "Status";
+constexpr auto HealthyServerValue = "GOOD";
+
+using FailureMap = std::unordered_map<std::string, bool>;
+}  // namespace
 
 class ParticipantsCache final
     : public IFailureOracle,
       public std::enable_shared_from_this<ParticipantsCache> {
  public:
-  static constexpr std::string_view kSupervisionHealthPath =
-      "Supervision/Health";
-
   ParticipantsCache() = default;
   ~ParticipantsCache() override = default;
 
@@ -66,14 +72,14 @@ class ParticipantsCache final
 
   void start(AgencyCallbackRegistry* agencyCallbackRegistry);
   void stop(AgencyCallbackRegistry* agencyCallbackRegistry);
-  void flush();
+  void reset(FailureMap newMap);
 
   template<typename Server>
   void createAgencyCallback(Server& server);
 
  private:
   mutable std::shared_mutex _mutex;
-  std::unordered_map<std::string, bool> _isFailed;
+  FailureMap _isFailed;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 };
 
@@ -95,16 +101,15 @@ void ParticipantsCache::stop(AgencyCallbackRegistry* agencyCallbackRegistry) {
   }
 }
 
-void ParticipantsCache::flush() {
+void ParticipantsCache::reset(FailureMap newMap) {
   std::unique_lock writeLock(_mutex);
-  _isFailed.clear();
-  /// get stuff from agency cache
+  _isFailed = std::move(newMap);
 }
 
 template<typename Server>
 void ParticipantsCache::createAgencyCallback(Server& server) {
   setAgencyCallback(std::make_shared<AgencyCallback>(
-      server, std::string(kSupervisionHealthPath),
+      server, kSupervisionHealthPath,
       [weak = weak_from_this()](VPackSlice const& result) {
         LOG_DEVEL << "ParticipantsCacheFeature agencyCallback called";
         auto self = weak.lock();
@@ -115,7 +120,8 @@ void ParticipantsCache::createAgencyCallback(Server& server) {
           std::unique_lock writeLock(self->_mutex);
           for (auto [key, value] : VPackObjectIterator(result)) {
             auto serverId = key.copyString();
-            auto isServerGood = value.get("Status").isEqualString("GOOD");
+            auto isServerGood =
+                value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
             self->_isFailed[serverId] = !isServerGood;
             LOG_DEVEL << "Setting " << serverId << " to "
                       << self->_isFailed[serverId];
@@ -172,7 +178,23 @@ void ParticipantsCacheFeature::stop() {
 
 void ParticipantsCacheFeature::flush() {
   LOG_DEVEL << "ParticipantsCacheFeature flushed";
-  _cache->flush();
+  AgencyCache& agencyCache =
+      server().getEnabledFeature<ClusterFeature>().agencyCache();
+  std::shared_ptr<VPackBuilder> builder;
+  std::tie(builder, std::ignore) = agencyCache.get(kSupervisionHealthPath);
+  if (auto result = builder->slice(); !result.isNone()) {
+    TRI_ASSERT(result.isObject())
+        << " expected object in agency at " << kSupervisionHealthPath
+        << " but got " << result.toString();
+    FailureMap newMap;
+    for (auto [key, value] : VPackObjectIterator(result)) {
+      auto serverId = key.copyString();
+      auto isServerGood =
+          value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
+      newMap[serverId] = !isServerGood;
+    }
+    _cache->reset(std::move(newMap));
+  }
 }
 
 auto ParticipantsCacheFeature::getFailureOracle()
