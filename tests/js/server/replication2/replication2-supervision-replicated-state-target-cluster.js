@@ -35,30 +35,6 @@ const spreds = require("@arangodb/testutils/replicated-state-predicates");
 
 const database = "replication2_supervision_test_db";
 
-const waitForReplicatedStateAvailable = function (id) {
-  while (true) {
-    try {
-      let status = db._replicatedState(id).status();
-      const leaderId = status.leaderId;
-      if (leaderId !== undefined && status.participants !== undefined &&
-          status.participants[leaderId].role === "leader") {
-        break;
-      }
-      console.info("replicated state not yet available");
-    } catch (err) {
-      const errors = [
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code
-      ];
-      if (errors.indexOf(err.errorNum) === -1) {
-        throw err;
-      }
-    }
-
-    sleep(1);
-  }
-};
-
 const updateReplicatedStateTarget = function(dbname, stateId, callback) {
   let {target: targetState} = sh.readReplicatedStateAgency(database, stateId);
 
