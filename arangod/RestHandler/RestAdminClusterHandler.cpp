@@ -2126,4 +2126,5 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
 
 RestStatus handleParticipantsCacheFlush() {
   // TODO
+  return RestStatus::DONE;
 }

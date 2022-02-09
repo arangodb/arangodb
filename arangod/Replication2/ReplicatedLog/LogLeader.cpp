@@ -51,6 +51,7 @@
 #include <utility>
 
 #include "Basics/ErrorCode.h"
+#include "Cluster/FailureOracle.h"
 #include "Futures/Promise-inl.h"
 #include "Futures/Promise.h"
 #include "Futures/Unit.h"
@@ -58,7 +59,6 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
-#include "Replication2/ReplicatedLog/FailureOracle.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
@@ -97,7 +97,7 @@ replicated_log::LogLeader::LogLeader(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     LogConfig config, ParticipantId id, LogTerm term, LogIndex firstIndex,
     InMemoryLog inMemoryLog,
-    std::shared_ptr<IFailureOracle const> failureOracle)
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
@@ -295,7 +295,7 @@ auto replicated_log::LogLeader::construct(
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    std::shared_ptr<IFailureOracle const> failureOracle)
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
@@ -321,7 +321,7 @@ auto replicated_log::LogLeader::construct(
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
         LogConfig config, ParticipantId id, LogTerm term,
         LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
-        std::shared_ptr<IFailureOracle const> failureOracle)
+        std::shared_ptr<cluster::IFailureOracle const> failureOracle)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(options), config, std::move(id), term,
                     firstIndexOfCurrentTerm, std::move(inMemoryLog),

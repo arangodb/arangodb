@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ParticipantsCacheFeature.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
@@ -34,7 +35,6 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/ParticipantsCacheFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
@@ -91,7 +91,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
   auto failureOracle = _feature.server()
-                           .getFeature<ParticipantsCacheFeature>()
+                           .getFeature<cluster::ParticipantsCacheFeature>()
                            .getFailureOracle();
   auto result = replication2::algorithms::updateReplicatedLog(
       ctx, serverId, rebootId, logId,

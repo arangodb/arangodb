@@ -25,7 +25,6 @@
 #include <memory>
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
-#include "Replication2/ReplicatedLog/FailureOracle.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -37,6 +36,9 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
 namespace arangodb::replication2::test {
 
 struct DelayedFollowerLog : replicated_log::AbstractFollower,
@@ -155,7 +157,7 @@ struct TestReplicatedLog : replicated_log::ReplicatedLog {
       ParticipantId const& id, LogTerm term,
       std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&,
       std::size_t writeConcern, bool waitForSync = false,
-      std::shared_ptr<IFailureOracle> failureOracle = nullptr)
+      std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<replicated_log::LogLeader>;
 };
 }  // namespace arangodb::replication2::test

@@ -24,35 +24,12 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include <string_view>
 
-#include <memory>
-#include <unordered_map>
-
-namespace arangodb::replication2 {
-
-struct IFailureOracle;
-class ParticipantsCache;
-
-class ParticipantsCacheFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept {
-    return "ParticipantsCache";
-  }
-
-  explicit ParticipantsCacheFeature(Server& server);
-
-  void prepare() override;
-  void start() override;
-  void stop() override;
-  void flush();
-
-  auto getFailureOracle() -> std::shared_ptr<IFailureOracle>;
-
- private:
-  void initHealthCache();
-
-  std::shared_ptr<ParticipantsCache> _cache;
+namespace arangodb::cluster {
+struct IFailureOracle {
+  [[nodiscard]] virtual auto isServerFailed(
+      std::string_view serverId) const noexcept -> bool = 0;
+  virtual ~IFailureOracle() = default;
 };
-
-}  // namespace arangodb::replication2
+}  // namespace arangodb::cluster

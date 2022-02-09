@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/FailureOracle.h"
+#include "Cluster/FailureOracle.h"
 
 #include <string>
 #include <unordered_map>
 
 namespace arangodb::replication2::test {
-struct FakeFailureOracle : arangodb::replication2::IFailureOracle {
+struct FakeFailureOracle : arangodb::cluster::IFailureOracle {
   auto isServerFailed(std::string_view serverId) const noexcept
       -> bool override;
 

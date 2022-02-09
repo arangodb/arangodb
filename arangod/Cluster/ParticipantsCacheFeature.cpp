@@ -24,7 +24,7 @@
 
 #include "ParticipantsCacheFeature.h"
 
-#include "Replication2/ReplicatedLog/FailureOracle.h"
+#include "Cluster/FailureOracle.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -37,7 +37,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 // TODO remove LOG_DEVEL
-namespace arangodb::replication2 {
+namespace arangodb::cluster {
 
 class ParticipantsCache final
     : public IFailureOracle,
@@ -188,4 +188,4 @@ void ParticipantsCacheFeature::initHealthCache() {
   _cache->createAgencyCallback(server());
 }
 
-}  // namespace arangodb::replication2
+}  // namespace arangodb::cluster

@@ -69,7 +69,7 @@ namespace arangodb::futures {
 template<typename T>
 class Try;
 }
-namespace arangodb::replication2 {
+namespace arangodb::cluster {
 struct IFailureOracle;
 }
 namespace arangodb::replication2::algorithms {
@@ -97,7 +97,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<IFailureOracle const> failureOracle)
+      std::shared_ptr<cluster::IFailureOracle const> failureOracle)
       -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false)
@@ -173,7 +173,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             LogConfig config, ParticipantId id, LogTerm term,
             LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
-            std::shared_ptr<IFailureOracle const> failureOracle);
+            std::shared_ptr<cluster::IFailureOracle const> failureOracle);
 
  private:
   struct GuardedLeaderData;
@@ -330,7 +330,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  std::shared_ptr<IFailureOracle const> const _failureOracle;
+  std::shared_ptr<cluster::IFailureOracle const> const _failureOracle;
   LogConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;

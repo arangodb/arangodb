@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Metrics/Counter.h"
+#include "Cluster/FailureOracle.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
@@ -71,7 +72,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     LogConfig config, ParticipantId id, LogTerm newTerm,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
-    std::shared_ptr<IFailureOracle const> failureOracle)
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);

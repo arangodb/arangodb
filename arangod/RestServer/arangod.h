@@ -48,6 +48,9 @@ class ApplicationServerT;
 namespace metrics {
 class MetricsFeature;
 }
+namespace cluster {
+class ParticipantsCacheFeature;
+}
 class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
@@ -140,15 +143,12 @@ namespace iresearch {
 class IResearchAnalyzerFeature;
 class IResearchFeature;
 }  // namespace iresearch
-namespace replication2 {
-class ParticipantsCacheFeature;
-namespace replicated_state {
+namespace replication2::replicated_state {
 struct ReplicatedStateAppFeature;
 namespace black_hole {
 struct BlackHoleStateMachineFeature;
 }
-}  // namespace replicated_state
-}  // namespace replication2
+}  // namespace replication2::replicated_state
 
 using namespace application_features;
 
@@ -197,7 +197,7 @@ using ArangodFeatures = TypeList<
     arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    replication2::ParticipantsCacheFeature>;
+    cluster::ParticipantsCacheFeature>;
 
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;

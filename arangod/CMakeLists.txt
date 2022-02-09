@@ -560,7 +560,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/LogStatus.cpp
   Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
   Replication2/ReplicatedLog/NetworkMessages.cpp
-  Replication2/ReplicatedLog/ParticipantsCacheFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLog.cpp
   Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
@@ -690,6 +689,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
+  Cluster/ParticipantsCacheFeature.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp

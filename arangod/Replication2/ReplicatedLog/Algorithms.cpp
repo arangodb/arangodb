@@ -28,6 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Cluster/FailureOracle.h"
 
 #include <algorithm>
 #include <type_traits>
@@ -127,7 +128,7 @@ auto keySetDifference = [](auto const& left, auto const& right) {
 auto algorithms::updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
     LogId logId, agency::LogPlanSpecification const* spec,
-    std::shared_ptr<IFailureOracle const> failureOracle) noexcept
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result> {
   auto result = basics::catchToResultT([&]() -> futures::Future<
                                                  arangodb::Result> {
