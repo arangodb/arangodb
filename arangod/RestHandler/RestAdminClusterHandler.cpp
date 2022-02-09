@@ -2123,3 +2123,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
           }));
 }
+
+RestStatus handleParticipantsCacheFlush() {
+  // TODO
+}

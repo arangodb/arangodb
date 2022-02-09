@@ -66,6 +66,7 @@ class ParticipantsCache final
 
   void start(AgencyCallbackRegistry* agencyCallbackRegistry);
   void stop(AgencyCallbackRegistry* agencyCallbackRegistry);
+  void flush();
 
   template<typename Server>
   void createAgencyCallback(Server& server);
@@ -92,6 +93,12 @@ void ParticipantsCache::stop(AgencyCallbackRegistry* agencyCallbackRegistry) {
            "for ParticipantsCache: "
         << ex.what();
   }
+}
+
+void ParticipantsCache::flush() {
+  std::unique_lock writeLock(_mutex);
+  _isFailed.clear();
+  /// get stuff from agency cache
 }
 
 template<typename Server>
@@ -161,6 +168,11 @@ void ParticipantsCacheFeature::stop() {
            "ParticipantsCacheFeature: "
         << ex.what();
   }
+}
+
+void ParticipantsCacheFeature::flush() {
+  LOG_DEVEL << "ParticipantsCacheFeature flushed";
+  _cache->flush();
 }
 
 auto ParticipantsCacheFeature::getFailureOracle()

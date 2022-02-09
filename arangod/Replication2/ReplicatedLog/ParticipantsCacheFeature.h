@@ -43,9 +43,9 @@ class ParticipantsCacheFeature final : public ArangodFeature {
   explicit ParticipantsCacheFeature(Server& server);
 
   void prepare() override;
-
   void start() override;
   void stop() override;
+  void flush();
 
   auto getFailureOracle() -> std::shared_ptr<IFailureOracle>;
 
