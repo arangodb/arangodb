@@ -66,6 +66,9 @@ struct LogMetaPayload {
                            FirstEntryOfTerm const&) noexcept -> bool = default;
   };
 
+  static auto withFirstEntryOfTerm(ParticipantId leader,
+                                   ParticipantsConfig config) -> LogMetaPayload;
+
   struct UpdateParticipantsConfig {
     ParticipantsConfig participants;
 
@@ -76,6 +79,9 @@ struct LogMetaPayload {
                            UpdateParticipantsConfig const&) noexcept
         -> bool = default;
   };
+
+  static auto withUpdateParticipantsConfig(ParticipantsConfig config)
+      -> LogMetaPayload;
 
   static auto fromVelocyPack(velocypack::Slice) -> LogMetaPayload;
   void toVelocyPack(velocypack::Builder&) const;
@@ -100,6 +106,8 @@ class PersistingLogEntry {
   [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
   [[nodiscard]] auto approxByteSize() const noexcept -> std::size_t;
   [[nodiscard]] auto hasPayload() const noexcept -> bool;
+  [[nodiscard]] auto hasMeta() const noexcept -> bool;
+  [[nodiscard]] auto meta() const noexcept -> LogMetaPayload const*;
 
   class OmitLogIndex {};
   constexpr static auto omitLogIndex = OmitLogIndex();

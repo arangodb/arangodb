@@ -151,6 +151,13 @@ PersistingLogEntry::PersistingLogEntry(LogIndex index,
 auto PersistingLogEntry::hasPayload() const noexcept -> bool {
   return std::holds_alternative<LogPayload>(_payload);
 }
+auto PersistingLogEntry::hasMeta() const noexcept -> bool {
+  return std::holds_alternative<LogMetaPayload>(_payload);
+}
+
+auto PersistingLogEntry::meta() const noexcept -> const LogMetaPayload* {
+  return std::get_if<LogMetaPayload>(&_payload);
+}
 
 InMemoryLogEntry::InMemoryLogEntry(PersistingLogEntry entry, bool waitForSync)
     : _waitForSync(waitForSync), _logEntry(std::move(entry)) {}
@@ -252,4 +259,17 @@ auto LogMetaPayload::FirstEntryOfTerm::fromVelocyPack(velocypack::Slice s)
   auto participants =
       ParticipantsConfig::fromVelocyPack(s.get(StaticStrings::Participants));
   return FirstEntryOfTerm{std::move(leader), std::move(participants)};
+}
+
+auto LogMetaPayload::withFirstEntryOfTerm(ParticipantId leader,
+                                          ParticipantsConfig config)
+    -> LogMetaPayload {
+  return LogMetaPayload{FirstEntryOfTerm{.leader = std::move(leader),
+                                         .participants = std::move(config)}};
+}
+
+auto LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig config)
+    -> LogMetaPayload {
+  return LogMetaPayload{
+      UpdateParticipantsConfig{.participants = std::move(config)}};
 }
