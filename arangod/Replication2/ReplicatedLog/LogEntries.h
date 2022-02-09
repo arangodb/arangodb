@@ -54,18 +54,52 @@ struct LogPayload {
 
 auto operator==(LogPayload const&, LogPayload const&) -> bool;
 
+struct LogMetaPayload {
+  struct FirstEntryOfTerm {
+    ParticipantId leader;
+    ParticipantsConfig participants;
+
+    static auto fromVelocyPack(velocypack::Slice) -> FirstEntryOfTerm;
+    void toVelocyPack(velocypack::Builder&) const;
+
+    friend auto operator==(FirstEntryOfTerm const&,
+                           FirstEntryOfTerm const&) noexcept -> bool = default;
+  };
+
+  struct UpdateParticipantsConfig {
+    ParticipantsConfig participants;
+
+    static auto fromVelocyPack(velocypack::Slice) -> UpdateParticipantsConfig;
+    void toVelocyPack(velocypack::Builder&) const;
+
+    friend auto operator==(UpdateParticipantsConfig const&,
+                           UpdateParticipantsConfig const&) noexcept
+        -> bool = default;
+  };
+
+  static auto fromVelocyPack(velocypack::Slice) -> LogMetaPayload;
+  void toVelocyPack(velocypack::Builder&) const;
+
+  std::variant<FirstEntryOfTerm, UpdateParticipantsConfig> info;
+
+  friend auto operator==(LogMetaPayload const&, LogMetaPayload const&) noexcept
+      -> bool = default;
+};
+
 class PersistingLogEntry {
  public:
-  PersistingLogEntry(LogTerm, LogIndex, std::optional<LogPayload>);
-  PersistingLogEntry(TermIndexPair, std::optional<LogPayload>);
-  PersistingLogEntry(LogIndex, velocypack::Slice persisted);
+  PersistingLogEntry(LogTerm term, LogIndex index, LogPayload payload)
+      : PersistingLogEntry(TermIndexPair{term, index}, std::move(payload)) {}
+  PersistingLogEntry(TermIndexPair, std::variant<LogMetaPayload, LogPayload>);
+  PersistingLogEntry(
+      LogIndex, velocypack::Slice persisted);  // RocksDB from disk constructor
 
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto logPayload() const noexcept
-      -> std::optional<LogPayload> const&;
+  [[nodiscard]] auto logPayload() const noexcept -> LogPayload const*;
   [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
   [[nodiscard]] auto approxByteSize() const noexcept -> std::size_t;
+  [[nodiscard]] auto hasPayload() const noexcept -> bool;
 
   class OmitLogIndex {};
   constexpr static auto omitLogIndex = OmitLogIndex();
@@ -79,15 +113,14 @@ class PersistingLogEntry {
  private:
   void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
 
-  LogTerm _logTerm{};
-  LogIndex _logIndex{};
+  TermIndexPair _termIndex;
   // TODO It seems impractical to not copy persisting log entries, so we should
   //      probably make this a shared_ptr (or immer::box).
-  std::optional<LogPayload> _payload;
+  std::variant<LogMetaPayload, LogPayload> _payload;
 
   // TODO this is a magic constant "measuring" the size of
   //      of the non-payload data in a PersistingLogEntry
-  static inline constexpr auto approxMetaDataSize = std::size_t{42};
+  static inline constexpr auto approxMetaDataSize = std::size_t{42 * 2};
 };
 
 // A log entry, enriched with non-persisted metadata, to be stored in an
