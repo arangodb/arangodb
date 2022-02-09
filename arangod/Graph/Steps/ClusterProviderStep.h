@@ -12,7 +12,7 @@ class ClusterProvider;
 class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
-  using EdgeType = EdgeType;
+  using EdgeType = ::arangodb::graph::EdgeType;
   friend ClusterProvider<ClusterProviderStep>;
 
   class Vertex {
