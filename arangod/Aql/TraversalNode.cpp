@@ -557,6 +557,62 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   size_t numEdgeColls = _edgeColls.size();
   bool onlyEdgeIndexes = false;
 
+  auto calculateMemberToUpdate = [&](std::string const& memberString,
+                                     std::optional<size_t>& memberToUpdate,
+                                     aql::AstNode* indexCondition) {
+    std::pair<arangodb::aql::Variable const*,
+              std::vector<basics::AttributeName>>
+        pathCmp;
+    for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
+      // We search through the nary-and and look for EQ - _from/_to
+      auto eq = indexCondition->getMemberUnchecked(x);
+      if (eq->type !=
+          arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+        // No equality. Skip
+        continue;
+      }
+      TRI_ASSERT(eq->numMembers() == 2);
+      // It is sufficient to only check member one.
+      // We build the condition this way.
+      auto mem = eq->getMemberUnchecked(0);
+      if (mem->isAttributeAccessForVariable(pathCmp, true)) {
+        if (pathCmp.first != _tmpObjVariable) {
+          continue;
+        }
+        if (pathCmp.second.size() == 1 &&
+            pathCmp.second[0].name == memberString) {
+          memberToUpdate = x;
+          break;
+        }
+        continue;
+      }
+    }
+  };
+
+  auto generateExpression =
+      [&](aql::AstNode* remainderCondition,
+          aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
+    ::arangodb::containers::HashSet<size_t> toRemove;
+    aql::Condition::collectOverlappingMembers(
+        _plan, options()->tmpVar(), remainderCondition, indexCondition,
+        toRemove, nullptr, false);
+    size_t n = remainderCondition->numMembers();
+
+    if (n != toRemove.size()) {
+      // Slow path need to explicitly remove nodes.
+      for (; n > 0; --n) {
+        // Now n is one more than the idx we actually check
+        if (toRemove.find(n - 1) != toRemove.end()) {
+          // This index has to be removed.
+          remainderCondition->removeMemberUnchecked(n - 1);
+        }
+      }
+      return std::make_unique<aql::Expression>(_plan->getAst(),
+                                               remainderCondition);
+    }
+    return nullptr;
+  };
+
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
     switch (dir) {
@@ -574,57 +630,13 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
         }
 
         std::optional<size_t> memberToUpdate{std::nullopt};
-        std::pair<arangodb::aql::Variable const*,
-                  std::vector<basics::AttributeName>>
-            pathCmp;
-        for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
-          // We search through the nary-and and look for EQ - _from/_to
-          auto eq = indexCondition->getMemberUnchecked(x);
-          if (eq->type !=
-              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-            // No equality. Skip
-            continue;
-          }
-          TRI_ASSERT(eq->numMembers() == 2);
-          // It is sufficient to only check member one.
-          // We build the condition this way.
-          auto mem = eq->getMemberUnchecked(0);
-          if (mem->isAttributeAccessForVariable(pathCmp, true)) {
-            if (pathCmp.first != _tmpObjVariable) {
-              continue;
-            }
-            if (pathCmp.second.size() == 1 &&
-                pathCmp.second[0].name == StaticStrings::ToString) {
-              memberToUpdate = x;
-              break;
-            }
-            continue;
-          }
-        }
+        calculateMemberToUpdate(StaticStrings::ToString, memberToUpdate,
+                                indexCondition);
 
         aql::AstNode* remainderCondition =
             conditionBuilder.getInboundCondition()->clone(ast);
-
-        ::arangodb::containers::HashSet<size_t> toRemove;
-        aql::Condition::collectOverlappingMembers(
-            _plan, options()->tmpVar(), remainderCondition, indexCondition,
-            toRemove, nullptr, false);
-        size_t n = remainderCondition->numMembers();
-
-        std::unique_ptr<aql::Expression> expression = nullptr;
-
-        if (n != toRemove.size()) {
-          // Slow path need to explicitly remove nodes.
-          for (; n > 0; --n) {
-            // Now n is one more than the idx we actually check
-            if (toRemove.find(n - 1) != toRemove.end()) {
-              // This index has to be removed.
-              remainderCondition->removeMemberUnchecked(n - 1);
-            }
-          }
-          expression = std::make_unique<aql::Expression>(_plan->getAst(),
-                                                         remainderCondition);
-        }
+        std::unique_ptr<aql::Expression> expression =
+            generateExpression(remainderCondition, indexCondition);
 
         auto container = aql::utils::extractNonConstPartsOfIndexCondition(
             ast, getRegisterPlan()->varInfo, false, false, indexCondition,
@@ -648,57 +660,13 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
         }
 
         std::optional<size_t> memberToUpdate{std::nullopt};
-        std::pair<arangodb::aql::Variable const*,
-                  std::vector<basics::AttributeName>>
-            pathCmp;
-        for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
-          // We search through the nary-and and look for EQ - _from/_to
-          auto eq = indexCondition->getMemberUnchecked(x);
-          if (eq->type !=
-              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-            // No equality. Skip
-            continue;
-          }
-          TRI_ASSERT(eq->numMembers() == 2);
-          // It is sufficient to only check member one.
-          // We build the condition this way.
-          auto mem = eq->getMemberUnchecked(0);
-          if (mem->isAttributeAccessForVariable(pathCmp, true)) {
-            if (pathCmp.first != _tmpObjVariable) {
-              continue;
-            }
-            if (pathCmp.second.size() == 1 &&
-                pathCmp.second[0].name == StaticStrings::FromString) {
-              memberToUpdate = x;
-              break;
-            }
-            continue;
-          }
-        }
+        calculateMemberToUpdate(StaticStrings::FromString, memberToUpdate,
+                                indexCondition);
 
         aql::AstNode* remainderCondition =
             conditionBuilder.getOutboundCondition()->clone(ast);
-
-        ::arangodb::containers::HashSet<size_t> toRemove;
-        aql::Condition::collectOverlappingMembers(
-            _plan, options()->tmpVar(), remainderCondition, indexCondition,
-            toRemove, nullptr, false);
-        size_t n = remainderCondition->numMembers();
-
-        std::unique_ptr<aql::Expression> expression = nullptr;
-
-        if (n != toRemove.size()) {
-          // Slow path need to explicitly remove nodes.
-          for (; n > 0; --n) {
-            // Now n is one more than the idx we actually check
-            if (toRemove.find(n - 1) != toRemove.end()) {
-              // This index has to be removed.
-              remainderCondition->removeMemberUnchecked(n - 1);
-            }
-          }
-          expression = std::make_unique<aql::Expression>(_plan->getAst(),
-                                                         remainderCondition);
-        }
+        std::unique_ptr<aql::Expression> expression =
+            generateExpression(remainderCondition, indexCondition);
 
         auto container = aql::utils::extractNonConstPartsOfIndexCondition(
             ast, getRegisterPlan()->varInfo, false, false, indexCondition,
