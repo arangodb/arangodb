@@ -73,8 +73,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
 
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
-    _uniqueVertices.clear();
-    _uniqueEdges.clear();
+    reset();
     // Reserving here is pointless, we will test paths that increase by at most
     // 1 entry.
 
@@ -104,7 +103,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
                 edgeUniqueness == EdgeUniquenessLevel::PATH) {
     if (step.getDepth() > 1) {
-      _uniqueEdges.clear();
+      reset();
 
       bool edgeSuccess = _store.visitReversePath(
           step, [&](typename PathStore::Step const& step) -> bool {
