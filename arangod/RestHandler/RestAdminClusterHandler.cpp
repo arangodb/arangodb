@@ -43,6 +43,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ParticipantsCacheFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -286,6 +287,8 @@ std::string const RestAdminClusterHandler::CancelJob = "cancelAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
+std::string const RestAdminClusterHandler::ParticipantsCacheFlush =
+    "participantsCacheFlush";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -359,6 +362,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalanceShards();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
+    } else if (command == ParticipantsCacheFlush) {
+      return handleParticipantsCacheFlush();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -2124,7 +2129,21 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
           }));
 }
 
-RestStatus handleParticipantsCacheFlush() {
-  // TODO
+RestStatus RestAdminClusterHandler::handleParticipantsCacheFlush() {
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+  if (!server().hasFeature<cluster::ParticipantsCacheFeature>()) {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                  "ParticipantsCacheFeature is unavailable");
+    return RestStatus::DONE;
+  }
+  auto& participantsCache =
+      server().getFeature<cluster::ParticipantsCacheFeature>();
+  participantsCache.flush();
+  generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
   return RestStatus::DONE;
 }

@@ -203,7 +203,6 @@ auto ParticipantsCacheFeature::getFailureOracle()
 }
 
 void ParticipantsCacheFeature::initHealthCache() {
-  static_assert(Server::contains<ClusterFeature>());
   TRI_ASSERT(_cache == nullptr);
 
   _cache = std::make_shared<ParticipantsCache>();
