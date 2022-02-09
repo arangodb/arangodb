@@ -366,10 +366,7 @@ template<class ProviderType, class PathStore,
          EdgeUniquenessLevel edgeUniqueness>
 bool PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::usesPrune() const {
-  if (_options.usesPrune()) {
-    return true;
-  }
-  return false;
+  return _options.usesPrune();
 }
 
 template<class ProviderType, class PathStore,
@@ -377,10 +374,7 @@ template<class ProviderType, class PathStore,
          EdgeUniquenessLevel edgeUniqueness>
 bool PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::usesPostFilter() const {
-  if (_options.usesPostFilter()) {
-    return true;
-  }
-  return false;
+  return _options.usesPostFilter();
 }
 
 template<class ProviderType, class PathStore,

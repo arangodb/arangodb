@@ -260,6 +260,8 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'writesIgnored',
     'scannedFull',
     'scannedIndex',
+    'cursorsCreated',
+    'cursorsRearmed',
     'filtered',
     'httpRequests',
     'peakMemoryUsage',
@@ -281,6 +283,8 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
   expect(stats.writesIgnored).to.be.a('number');
   expect(stats.scannedFull).to.be.a('number');
   expect(stats.scannedIndex).to.be.a('number');
+  expect(stats.cursorsCreated).to.be.a('number');
+  expect(stats.cursorsRearmed).to.be.a('number');
   expect(stats.filtered).to.be.a('number');
   expect(stats.httpRequests).to.be.a('number');
   expect(stats.peakMemoryUsage).to.be.a('number');
