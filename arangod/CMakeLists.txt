@@ -304,7 +304,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentExpressionContext.cpp
-  Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/ClusterQuery.cpp
@@ -342,6 +341,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
+  Aql/LateMaterializedExpressionContext.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
   Aql/LimitStats.cpp

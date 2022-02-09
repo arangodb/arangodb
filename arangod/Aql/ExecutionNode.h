@@ -660,9 +660,17 @@ class EnumerateCollectionNode : public ExecutionNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
+
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
   CostEstimate estimateCost() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;

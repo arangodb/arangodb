@@ -67,6 +67,7 @@ class IndexExecutorInfos {
       Collection const* collection, Variable const* outVariable,
       bool produceResult, Expression* filter,
       arangodb::aql::Projections projections,
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
       bool oneIndexCondition,
@@ -106,6 +107,9 @@ class IndexExecutorInfos {
 
   std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister()
       const noexcept;
+
+  std::vector<std::pair<VariableId, RegisterId>> const&
+  getFilterVarsToRegister() const noexcept;
 
   // setter
   void setHasMultipleExpansions(bool flag);
@@ -154,6 +158,8 @@ class IndexExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   arangodb::aql::Projections _projections;
+
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
 
   NonConstExpressionContainer _nonConstExpressions;
 
