@@ -927,10 +927,10 @@ void Agent::advanceCommitIndex() {
 
   term_t t = _constituent.term();
 
+  auto ci = _commitIndex.load(std::memory_order_relaxed);
+  auto slices = _state.slices(ci + 1, index);
   {
     WRITE_LOCKER(oLocker, _outputLock);
-    auto ci = _commitIndex.load(std::memory_order_relaxed);
-    auto slices = _state.slices(ci + 1, index);
 
     if (index > ci) {
       CONDITION_LOCKER(guard, _waitForCV);
