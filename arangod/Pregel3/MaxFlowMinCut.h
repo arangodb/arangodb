@@ -21,32 +21,34 @@
 /// @author Roman Rabinovich
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
+#include <vector>
 #include "Graph.h"
-#include "Basics/debugging.h"
+#include "Basics/ResultT.h"
 
 namespace arangodb::pregel3 {
 
-template<DerivedFromBaseGraphProperties A, DerivedFromBaseVertexProperties B,
-         DerivedFromBaseEdgeProperties C>
-void Graph<A, B, C>::makeUndirected() {
-  for (auto source = 0; source < numVertices(); ++source) {
-    for (auto const& target : vertexProperties.at(source).neighbors) {
-      if (!isEdge(target, source)) {
-      }
-    }
-  }
-}
+typedef std::vector<std::pair<size_t, size_t>> Flow;
+typedef std::vector<std::pair<size_t, size_t>> Cut;
 
-template<DerivedFromBaseGraphProperties G, DerivedFromBaseVertexProperties V,
-         DerivedFromBaseEdgeProperties E>
-void Graph<G, V, E>::addEdge(size_t source, size_t target, ssize_t idx,
-                             bool ensureSingle) {
-  if (idx == -1) {
-    idx = edgeProperties.size();
-    edgeProperties.emplace_back();
-  }
-  vertexProperties[source].neighbors.push_back(target);
-  // vertexProperties[source].outEdges
-}
+struct MaxFlowMinCutResult {
+  Flow flow;
+  Cut cut;
+};
+
+template<class GraphProps, class VertexProps, class EdgeProps>
+class MaxFlowMinCut {
+  /**
+   * If the input is correct, compute a maximum flow and the corresponding
+   * mincut. Otherwise return TRI_ERROR_BAD_PARAMETER.
+   * @param g
+   * @param sourceIdx
+   * @param targetIdx
+   * @return
+   */
+  ResultT<MaxFlowMinCutResult> run(BaseGraph* g, size_t sourceIdx,
+                                   size_t targetIdx);
+};
 
 }  // namespace arangodb::pregel3

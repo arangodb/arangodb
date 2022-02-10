@@ -21,32 +21,27 @@
 /// @author Roman Rabinovich
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graph.h"
-#include "Basics/debugging.h"
+#include "MaxFlowMinCut.h"
 
 namespace arangodb::pregel3 {
 
-template<DerivedFromBaseGraphProperties A, DerivedFromBaseVertexProperties B,
-         DerivedFromBaseEdgeProperties C>
-void Graph<A, B, C>::makeUndirected() {
-  for (auto source = 0; source < numVertices(); ++source) {
-    for (auto const& target : vertexProperties.at(source).neighbors) {
-      if (!isEdge(target, source)) {
-      }
-    }
+template<class GraphProps, class VertexProps, class EdgeProps>
+ResultT<MaxFlowMinCutResult> run(BaseGraph* g, size_t sourceIdx,
+                                 size_t targetIdx) {
+  if (sourceIdx >= g->numVertices()) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "Wrong sourceId: " + std::to_string(sourceIdx) +
+                      ", but the graph has only " +
+                      std::to_string(g->numVertices()) + " vertices.");
   }
-}
+  if (targetIdx >= g->numVertices()) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "Wrong targetId: " + std::to_string(targetIdx) +
+                      ", but the graph has only " +
+                      std::to_string(g->numVertices()) + " vertices.");
+  }
 
-template<DerivedFromBaseGraphProperties G, DerivedFromBaseVertexProperties V,
-         DerivedFromBaseEdgeProperties E>
-void Graph<G, V, E>::addEdge(size_t source, size_t target, ssize_t idx,
-                             bool ensureSingle) {
-  if (idx == -1) {
-    idx = edgeProperties.size();
-    edgeProperties.emplace_back();
-  }
-  vertexProperties[source].neighbors.push_back(target);
-  // vertexProperties[source].outEdges
+  return MaxFlowMinCutResult();
 }
 
 }  // namespace arangodb::pregel3

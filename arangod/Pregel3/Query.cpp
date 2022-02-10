@@ -70,8 +70,8 @@ void Query::loadGraph() {
   // adding an edge if we know that the graph has no multiple edges (but can
   // have self-loops). In this case, we don't check if a neighbor has already
   // been added.
-  [[maybe_unused]] auto addEdgeSingleEdges = [&](LocalDocumentId const& token,
-                                                 VPackSlice slice) -> bool {
+  [[maybe_unused]] auto addEdgeSingleEdge = [&](LocalDocumentId const& token,
+                                                VPackSlice slice) -> bool {
     // LOG_DEVEL << "Adding an edge" << slice.toJson();
     _graph->edgeProperties.emplace_back(BaseGraph::EdgeProps());
     // get _to and _from
@@ -88,8 +88,8 @@ void Query::loadGraph() {
 
   // adding an edge in the situation where another edge from the source to the
   // target may already exist in the graph
-  auto addEdgeMultEdges = [&](LocalDocumentId const& token,
-                              VPackSlice slice) -> bool {
+  auto addEdgeMultEdge = [&](LocalDocumentId const& token,
+                             VPackSlice slice) -> bool {
     // LOG_DEVEL << "Adding an edge" << slice.toJson();
 
     // emplace a new edge
@@ -178,7 +178,7 @@ void Query::loadGraph() {
           &trx, transaction::CountType::Normal);
       _graph->vertexProperties.reserve(_graph->vertexProperties.size() +
                                        sizeColl);
-      while (cursor->nextDocument(addEdgeMultEdges, Utils::standardBatchSize)) {
+      while (cursor->nextDocument(addEdgeMultEdge, Utils::standardBatchSize)) {
       }
     }
     // test

@@ -82,6 +82,27 @@ class Graph {
   Graph() = default;
   size_t numVertices() const { return vertexProperties.size(); }
 
+  /**
+   * Insert for the edge (a, b) which has the lowest index (in edgeProperties)
+   * among all edges (a, b) the edge (b, a) if the graph does not already
+   * have any edge (b, a). The inserted edge has the same properties as the edge
+   * (a, b).
+   */
+  void makeUndirected();
+
+  // todo: make this O(1)
+  bool isEdge(size_t source, size_t target) {
+    for (auto const& v : vertexProperties.at(source).neighbors) {
+      if (v == target) {
+        return true;
+      }
+      return false;
+    }
+  }
+
+  void addEdge(size_t source, size_t target, ssize_t idx = -1,
+               bool ensureSingle = false);
+
   std::vector<VertexProperties> vertexProperties;
   std::vector<EdgeProperties> edgeProperties;
   GraphProperties graphProperties;
