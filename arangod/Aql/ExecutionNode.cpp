@@ -1021,13 +1021,6 @@ void ExecutionNode::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
   // from each depth. this is a completely optional performance
   // optimization. turning it off should not affect correctness,
   // only performance.
-  // note: we are intentionally not performing this optimization
-  // in case the query still contains old style subqueries.
-  // in that case, the register planning optimization would be slightly
-  // more complex to perform. 99.99% of queries should not be affected
-  // by this optimization being turned off, because old-style subqueries
-  // are only around in case except someone intentionally turned off
-  // subquery optimizations.
   v->shrink(this);
 }
 
