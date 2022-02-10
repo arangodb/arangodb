@@ -1,7 +1,7 @@
-name: arangosearch_index_size
+name: arangodb_search_num_segments
 introducedIn: "3.10.0"
 help: |
-  Size of the index in bytes for current snapshot.
+  Number of segments for current snapshot.
 unit: number
 type: gauge
 category: ArangoSearch
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Size of the index in bytes for current snapshot.
+  Number of segments for current snapshot.

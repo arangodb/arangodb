@@ -47,6 +47,7 @@
 #include "Utils/ExecContext.h"
 
 #include "IResearchView.h"
+#include "Basics/DownCast.h"
 
 namespace arangodb::iresearch {
 namespace {
@@ -654,12 +655,8 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     key = this;
   }
   auto& state = *(trx.state());
-// TODO find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<ViewTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<ViewTrxState*>(state.cookie(key));
-#endif
+  // TODO find a better way to look up a ViewState
+  auto* ctx = basics::downCast<ViewTrxState>(state.cookie(key));
   std::shared_lock lock{_mutex};
   switch (mode) {
       // We want to check ==, but not >= because ctx also is reader

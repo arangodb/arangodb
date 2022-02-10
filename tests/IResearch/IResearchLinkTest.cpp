@@ -251,9 +251,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -328,9 +325,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -402,9 +396,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -433,9 +424,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -2205,7 +2193,6 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
 using LinkStats = arangodb::iresearch::IResearchLink::LinkStats;
 
 bool operator==(const LinkStats& lhs, const LinkStats& rhs) noexcept {
-  // ignore numBufferedDocs
   return lhs.numDocs == rhs.numDocs && lhs.numLiveDocs == rhs.numLiveDocs &&
          lhs.numSegments == rhs.numSegments && lhs.numFiles == rhs.numFiles &&
          lhs.indexSize == rhs.indexSize;
@@ -2289,13 +2276,13 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     EXPECT_NE(_link, nullptr);
     auto label = getLinkMetricLabel();
     EXPECT_TRUE(checkMetricExist("arangosearch_link_stats", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_commits", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_num_failed_commits", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_num_failed_cleanups", label));
     EXPECT_TRUE(
-        checkMetricExist("arangosearch_num_failed_consolidations", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_commit_time", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_cleanup_time", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_consolidation_time", label));
+        checkMetricExist("arangodb_search_num_failed_consolidations", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_commit_time", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_cleanup_time", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_consolidation_time", label));
   }
 
   void resetLink() {
@@ -2482,13 +2469,13 @@ TEST_F(IResearchLinkMetricsTest, RemoveMetrics) {
   auto label = getLinkMetricLabel();
   resetLink();
   EXPECT_FALSE(checkMetricExist("arangosearch_link_stats", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_commits", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_num_failed_commits", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_num_failed_cleanups", label));
   EXPECT_FALSE(
-      checkMetricExist("arangosearch_num_failed_consolidations", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_commit_time", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_cleanup_time", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_consolidation_time", label));
+      checkMetricExist("arangodb_search_num_failed_consolidations", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_commit_time", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_cleanup_time", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_consolidation_time", label));
 }
 
 TEST_F(IResearchLinkMetricsTest, CreateSameLink) {
@@ -2519,12 +2506,11 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
     std::string expectedStr;
     expectedStr.reserve(1024);
 
-    expectedStr += "arangosearch_num_buffered_docs{}0\n";
-    expectedStr += "arangosearch_num_docs{}3\n";
-    expectedStr += "arangosearch_num_live_docs{}3\n";
-    expectedStr += "arangosearch_num_segments{}3\n";
-    expectedStr += "arangosearch_num_files{}16\n";
-    expectedStr += "arangosearch_index_size{}2054\n";
+    expectedStr += "arangodb_search_num_docs{}3\n";
+    expectedStr += "arangodb_search_num_live_docs{}3\n";
+    expectedStr += "arangodb_search_num_segments{}3\n";
+    expectedStr += "arangodb_search_num_files{}16\n";
+    expectedStr += "arangodb_search_index_size{}2054\n";
 
     EXPECT_EQ(realStr, expectedStr);
     // get other stats
@@ -2584,12 +2570,11 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     std::string expectedStr;
     expectedStr.reserve(1024);
 
-    expectedStr += "arangosearch_num_buffered_docs{}0\n";
-    expectedStr += "arangosearch_num_docs{}3\n";
-    expectedStr += "arangosearch_num_live_docs{}3\n";
-    expectedStr += "arangosearch_num_segments{}2\n";
-    expectedStr += "arangosearch_num_files{}11\n";
-    expectedStr += "arangosearch_index_size{}1513\n";
+    expectedStr += "arangodb_search_num_docs{}3\n";
+    expectedStr += "arangodb_search_num_live_docs{}3\n";
+    expectedStr += "arangodb_search_num_segments{}2\n";
+    expectedStr += "arangodb_search_num_files{}11\n";
+    expectedStr += "arangodb_search_index_size{}1513\n";
 
     EXPECT_EQ(realStr, expectedStr);
   }
@@ -2613,22 +2598,19 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
                             R"(view="foo",collection="bar","shard"="s0001")");
     std::string expectedStr;
     expectedStr +=
-        "arangosearch_num_buffered_docs{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}0\n";
-    expectedStr +=
-        "arangosearch_num_docs{test,view=\"foo\","
+        "arangodb_search_num_docs{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}3\n";
     expectedStr +=
-        "arangosearch_num_live_docs{test,view=\"foo\","
+        "arangodb_search_num_live_docs{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}2\n";
     expectedStr +=
-        "arangosearch_num_segments{test,view=\"foo\","
+        "arangodb_search_num_segments{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}2\n";
     expectedStr +=
-        "arangosearch_num_files{test,view=\"foo\","
+        "arangodb_search_num_files{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}12\n";
     expectedStr +=
-        "arangosearch_index_size{test,view=\"foo\","
+        "arangodb_search_index_size{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}1561\n";
 
     EXPECT_EQ(realStr, expectedStr);
@@ -2651,33 +2633,27 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
 
     std::string expected;
 
-    expected +=
-        R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}0)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_docs{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_live_docs{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_segments{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_files{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}6)";
     expected += "\n";
 
-    expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_index_size{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}681)";
     expected += "\n";
@@ -2696,33 +2672,27 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
 
     std::string expected;
 
-    expected +=
-        R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="testVocbase"}0)";
-    expected += "\n";
-
-    expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_docs{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}3)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_live_docs{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}3)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_segments{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}2)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_files{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}11)";
     expected += "\n";
 
-    expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_index_size{view="h3039/42",collection=")";
     expected += collection;
     expected += R"(",shard="",db="testVocbase"}1513)";
     expected += "\n";
