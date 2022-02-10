@@ -353,8 +353,8 @@ struct ReplicatedLogMethodsCoordinator final
     network::RequestOptions opts;
     opts.database = vocbase.name();
     return network::sendRequest(pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Post, path, payload.dummy,
-                                opts)
+                                fuerte::RestVerb::Post, path,
+                                payload.copyBuffer(), opts)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());

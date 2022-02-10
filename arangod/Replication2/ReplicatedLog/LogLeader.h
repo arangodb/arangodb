@@ -298,7 +298,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         -> std::chrono::duration<double, std::milli>;
 
     auto insertInternal(
-        std::optional<LogPayload>, bool waitForSync,
+        std::variant<LogMetaPayload, LogPayload>, bool waitForSync,
         std::optional<InMemoryLogEntry::clock::time_point> insertTp)
         -> LogIndex;
 
