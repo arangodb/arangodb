@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Reintroduce shard synchronization cancellation check that was disabled before.
+
 * Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
