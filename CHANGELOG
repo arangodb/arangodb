@@ -1,6 +1,9 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of multiple
+  Coordinators.
+
 * Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries
   containing the keywords UPDATE or REPLACE together with the keyword WITH and
   the same key value would result in an error. For example:
@@ -12,12 +15,12 @@ v3.8.6 (XXXX-XX-XX)
   momentarily lost leadership, just when it was about to drop a follower to a
   shard.
 
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
 
 v3.8.5 (2022-01-20)
 -------------------
-
-* Fix potential access to dangling reference in cancellation of shard
-  synchronization.
 
 * Fixed issue #15501: Regression when using "exclusive" query option?
   This fixes a regression in AQL query execution when exclusive locks are used
