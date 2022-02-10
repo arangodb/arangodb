@@ -1,6 +1,10 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
+* In an attempt to make the performance of the RocksDB throttle much more
+  consistent and predictable the default compaction slow down trigger is lowered
+  to 128kB.
+
 * Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of multiple
   Coordinators.
 
