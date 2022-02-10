@@ -43,6 +43,11 @@ void Query::loadGraph() {
   Result res = trx.begin();
   CollectionNameResolver collectionNameResolver(_vocbase);
 
+  // for every vertex v, map a neighbor w (actually, its index in
+  // _graph.vertexProperties) to the index of w in the list
+  // _graph.vertexProperties.neighbors[v] of neighbors of v
+  std::vector<containers::FlatHashMap<size_t, size_t>> neighbors;
+
   auto addVertex = [&](LocalDocumentId const& token, VPackSlice slice) {
     // LOG_DEVEL << "Adding a vertex" << slice.toJson();
     // todo add dependence on _graphSpec (other graphs)
@@ -62,7 +67,11 @@ void Query::loadGraph() {
                   // happy which expects a callback function returning a bool
   };
 
-  auto addEdge = [&](LocalDocumentId const& token, VPackSlice slice) -> bool {
+  // adding an edge if we know that the graph has no multiple edges (but can
+  // have self-loops). In this case, we don't check if a neighbor has already
+  // been added.
+  [[maybe_unused]] auto addEdgeSingleEdges = [&](LocalDocumentId const& token,
+                                                 VPackSlice slice) -> bool {
     // LOG_DEVEL << "Adding an edge" << slice.toJson();
     _graph->edgeProperties.emplace_back(BaseGraph::EdgeProps());
     // get _to and _from
@@ -73,6 +82,61 @@ void Query::loadGraph() {
     _graph->vertexProperties[fromIdx].neighbors.push_back(toIdx);
     if (!_graph->graphProperties.isDirected) {
       _graph->vertexProperties[toIdx].neighbors.push_back(fromIdx);
+    }
+    return true;
+  };
+
+  // adding an edge in the situation where another edge from the source to the
+  // target may already exist in the graph
+  auto addEdgeMultEdges = [&](LocalDocumentId const& token,
+                              VPackSlice slice) -> bool {
+    // LOG_DEVEL << "Adding an edge" << slice.toJson();
+
+    // emplace a new edge
+    _graph->edgeProperties.emplace_back(
+        BaseGraph::EdgeProps(/*currently empty*/));
+    size_t const edgePos = _graph->edgeProperties.size();
+    // get _to and _from
+    std::string to = slice.get("_to").copyString();
+    std::string from = slice.get("_from").copyString();
+    size_t const toIdx = _graph->vertexIdToIdx.find(to)->second;
+    size_t const fromIdx = _graph->vertexIdToIdx.find(from)->second;
+
+    // toIdx may already been added as a neighbor of fromIdx
+    auto it = neighbors[fromIdx].find(toIdx);
+    if (it !=
+        neighbors[fromIdx].end()) {  // fromIdx doesn't have toIdx as a neighbor
+      _graph->vertexProperties[fromIdx].neighbors.push_back(toIdx);
+      size_t const posOfToIdx =
+          _graph->vertexProperties[fromIdx].neighbors.size();
+      // insert (currently, empty) edge properties of the current edge
+      // (fromIdx, toIdx) to the edges of fromIdx
+      _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].emplace_back(
+          edgePos);
+
+      if (!_graph->graphProperties.isDirected) {
+        // insert the index of the same edge as an edge from toIdx to fromIdx
+        _graph->vertexProperties[toIdx].neighbors.push_back(fromIdx);
+        size_t const posOfFromIdx =
+            _graph->vertexProperties[toIdx].neighbors.size();
+        _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].emplace_back(
+            edgePos);
+      }
+    } else {  // toIdx is already a neighbor of fromIdx
+      size_t const posOfToIdx = it->second;  // see comment on neighbors
+      // insert (currently, empty) edge properties of the current edge
+      // (fromIdx, toIdx) to the edges of fromIdx
+      _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].emplace_back(
+          edgePos);
+      if (!_graph->graphProperties.isDirected) {
+        _graph->vertexProperties[toIdx].outEdges[posOfToIdx].emplace_back(
+            edgePos);
+        // As we found toIdx in the set of neighbors of fromIdx,
+        // we can be sure that fromIdx is in the set of neighbors of toIdx.
+        size_t const posOfFromIdx = neighbors[toIdx].find(fromIdx)->second;
+        _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].emplace_back(
+            edgePos);
+      }
     }
     return true;
   };
@@ -101,6 +165,8 @@ void Query::loadGraph() {
       }
     }
 
+    neighbors.resize(_graph->numVertices());
+
     // add edges
     for (auto const& collName :
          std::get<GraphSpecification::GraphSpecificationByCollections>(
@@ -112,7 +178,7 @@ void Query::loadGraph() {
           &trx, transaction::CountType::Normal);
       _graph->vertexProperties.reserve(_graph->vertexProperties.size() +
                                        sizeColl);
-      while (cursor->nextDocument(addEdge, Utils::standardBatchSize)) {
+      while (cursor->nextDocument(addEdgeMultEdges, Utils::standardBatchSize)) {
       }
     }
     // test

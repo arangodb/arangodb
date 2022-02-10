@@ -47,7 +47,7 @@ class BaseVertexProperties {
   // For undirected graphs, the indexes of all incident edges.
   // The order of neighbors is the order of the corresponding edges.
   std::vector<std::vector<size_t>> outEdges;
-  //  bool active = true;
+  // identify the vertex in the graph
   arangodb::LocalDocumentId const& localDocumentId;
 };
 
@@ -80,6 +80,7 @@ class Graph {
   using EdgeProps = EdgeProperties;
 
   Graph() = default;
+  size_t numVertices() const { return vertexProperties.size(); }
 
   std::vector<VertexProperties> vertexProperties;
   std::vector<EdgeProperties> edgeProperties;
