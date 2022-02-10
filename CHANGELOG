@@ -1,13 +1,49 @@
-v3.9.0 (XXXX-XX-XX)
+v3.9.1 (XXXX-XX-XX)
 -------------------
 
 * Fixed issue #15501: Regression when using "exclusive" query option?
   This fixes a regression in AQL query execution when exclusive locks are used
-  for a query and the query also uses the DOCUMENT() AQL function. In this
-  case, when there were more concurrent requests to the underlying collection
-  than available scheduler threads for the low priority queue, the query
-  start successfully acquired the exclusive lock, but could not get its 
-  follow-up requests through and starve while holding the exclusive lock.
+  for a query and the query also uses the DOCUMENT() AQL function. In this case,
+  when there were more concurrent requests to the underlying collection than
+  available scheduler threads for the low priority queue, the query start
+  successfully acquired the exclusive lock, but could not get its follow-up
+  requests through and starve while holding the exclusive lock.
+
+* Disable optimizer rule "optimize-cluster-single-document-operations" when a
+  collection is accessed in exclusive mode, because the optimized query would
+  use a slightly different mode of locking then.
+
+
+v3.9.0 (2022-02-07)
+-------------------
+
+* Convert v3.9.0-rc.1 into v3.9.0 (GA).
+
+
+v3.9.0-rc.1 (2022-02-03)
+------------------------
+
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
+* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
+  determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
+  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
+  contained this bug
+
+* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
+  Smart Graph could led to wrong shard location calculation and therefore to
+  wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
+
+* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
+  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
+
+* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
+  a satellite vertex collection, valid disjoint path were not always followed, if one of the
+  satellites has a connection to two (or more) vertices that have different shardValues that
+  by chance are routed to the same shard.
+
+* Fix creation of satellite graphs with a `numberOfShards` value != 1.
 
 * Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
 
@@ -264,7 +300,7 @@ v3.9.0-alpha.1 (2021-11-30)
 
 * Increase default stack size on Windows from 1MB to 4MB. This should allow
   execution of larger queries without overflowing the stack.
-  
+
 * Make background calculation of SHA hashes for RocksDB .sst files less
   intrusive. The previous implementation frequently iterated over all files in
   the database directory to check if it needed to ad-hoc calculate the SHA
@@ -574,7 +610,7 @@ v3.9.0-alpha.1 (2021-11-30)
   previous versions of ArangoDB.
 
 * Prevent stealing of values from AQL const value registers. This fixes an issue
-  for queries that produce constant results (known at query compile time) when 
+  for queries that produce constant results (known at query compile time) when
   he queries are executed directly on a DB server in a cluster (which is not
   supported, but may happen for troubleshooting).
 
@@ -901,7 +937,7 @@ v3.9.0-alpha.1 (2021-11-30)
     deep `1 + (2 + (3 + 4))`.
     The expression recursion is limited to 500 levels.
   - a limit for the number of execution nodes in the initial query execution
-  plan. 
+  plan.
     The number of execution nodes is limited to 4,000.
 
 * Remove _msg/please-upgrade handler.
@@ -913,22 +949,22 @@ v3.9.0-alpha.1 (2021-11-30)
 * Fix locking of AQL queries write queries on DB servers.
 
 * APM-112: invalid use of OPTIONS in AQL queries will now raise a warning in the
-  query. 
+  query.
   The feature is useful to detect misspelled attribute names in OPTIONS, e.g.
 
-      INSERT ... INTO collection 
+      INSERT ... INTO collection
         OPTIONS { overwrightMode: 'ignore' } /* should be 'overwriteMode' */
 
   It is also useful to detect the usage of valid OPTIONS attribute names that
   are used for a wrong query part, e.g.
-  
+
       FOR doc IN collection
         FILTER doc.value == 1234
-        INSERT doc INTO other 
+        INSERT doc INTO other
           OPTIONS { indexHint: 'myIndex' } /* should be used above for FOR */
 
   In case a wrong option attribute is used, a warning with code 1575 will be
-  raised. 
+  raised.
   By default, warnings are reported but do not lead to the query being aborted.
   This can be toggled by the startup option `--query.fail-on-warnings` or the
   per-query runtime option `failOnWarnings`.
@@ -1013,7 +1049,7 @@ v3.9.0-alpha.1 (2021-11-30)
   not carried out for traversal PRUNE conditions, so the PRUNE conditions
   could still refer to obsolete variables, which would make the query fail with
   errors such as
-   
+
       Query: AQL: missing variable ... for node ... while planning registers
 
 * Fixed the error response if the HTTP version is not 1.0 or 1.1 and if
@@ -1107,7 +1143,7 @@ v3.9.0-alpha.1 (2021-11-30)
 
 * Fix BTS-374: thread race between ArangoSearch link unloading and storage
   engine WAL flushing.
- 
+
 * Fix thread race between ArangoSearch link unloading and storage engine
   WAL flushing.
 
@@ -1572,7 +1608,7 @@ v3.8.0-rc.1 (2021-05-26)
 
 * Fix BTS-442: a query with fullCount on a sharded collection hangs indefinitely
   when LIMIT is less then number of available documents.
-  
+
 * Removed unused documentation snippets (non-Rest DocuBlocks) as well as the
   documentation about the long deprecated features Simple Queries and
   JavaScript-based graph traversal. Also removed the descriptions of the JS API
@@ -1595,7 +1631,7 @@ v3.8.0-rc.1 (2021-05-26)
 
   This disables the optimizer rule `optimize-cluster-single-document-operations`
   for array inputs, e.g.
-  
+
       INSERT [...] INTO collection
       REMOVE [...] IN collection
 
@@ -1685,7 +1721,7 @@ v3.8.0-rc.1 (2021-05-26)
   Rolling back partial operations in case of a failure is very expensive because
   it requires rebuilding RocksDB write batches for the transaction from scratch.
   Rebuilding write batches takes time proportional to the number of operations
-  in the batch, and for larger batches the cost can be prohibitive. 
+  in the batch, and for larger batches the cost can be prohibitive.
   Now we are not rolling back write batches in some situations when this is not
   required, so that in many cases running into a conflict does not have that
   high overhead. There can still be issues when conflicts happen for index
@@ -1872,7 +1908,7 @@ v3.8.0-beta.1 (2021-04-20)
 
 * Remove CMake control variable `UNCONDITIONALLY_BUILD_LOG_MESSAGES`.
 
-* Fix undefined behavior in dynarray constructor when running into 
+* Fix undefined behavior in dynarray constructor when running into
   an out-of-memory exception during construction. In arangod, this can only
   happen during metrics objects construction at program start.
 
@@ -1933,7 +1969,7 @@ v3.8.0-alpha.1 (2021-03-29)
 * Fix connectionTime statistic. This statistic should provide the distribution
   of the connection lifetimes, but in previous versions the tracking was broken
   and no values were reported.
-  
+
 * When using connections to multiple endpoints and switching between them,
   arangosh can now reuse existing connections by referring to an internal
   connection cache. This helps for arangosh scripts that repeatedly connect to
@@ -1962,7 +1998,7 @@ v3.8.0-alpha.1 (2021-03-29)
     APIs. However, all existing permissions checks for the cluster API routes
     are still in effect with this setting, meaning that all operations may still
     require dedicated other permissions (as in 3.7).
-  
+
   The default value for the option is `jwt-compat`, which means this option will
   not cause any extra JWT checks compared to 3.7.
 
@@ -1995,9 +2031,9 @@ v3.8.0-alpha.1 (2021-03-29)
   so that a global memory limit is now effective by default.
 
   The default global memory limit value is calculated by a formula depending on
-  the amount of available RAM and will result in the following values for 
+  the amount of available RAM and will result in the following values for
   common RAM sizes:
-  
+
   RAM:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
   RAM:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
   RAM:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
@@ -2017,7 +2053,7 @@ v3.8.0-alpha.1 (2021-03-29)
   RAM: 274877906944 (262144MiB)  Limit: 248077311017 (236584MiB), %mem: 90.2
   RAM: 549755813888 (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
 
-* Increase default idle timeout in streaming transactions from 10 seconds to 
+* Increase default idle timeout in streaming transactions from 10 seconds to
   60 seconds, and make the timeout configurable via a startup parameter
   `--transaction.streaming-idle-timeout`.
 
@@ -2111,7 +2147,7 @@ v3.8.0-alpha.1 (2021-03-29)
   compaction was running in foreground and thus would block the deletion
   operations.
   Now, the compaction is running in background, so that the deletion operations
-  can return earlier. 
+  can return earlier.
   The maximum number of compaction jobs that are executed in background can be
   configured using the new startup parameter
   `--rocksdb.max-parallel-compactions`, which defaults to 2.
@@ -2143,10 +2179,10 @@ v3.8.0-alpha.1 (2021-03-29)
   combined estimated memory usage of all AQL queries (in bytes).
   If this option has a value of `0`, then no memory limit is in place.
   This is also the default value and the same behavior as in previous versions
-  of ArangoDB. 
+  of ArangoDB.
   Setting the option to a value greater than zero will mean that the total
   memory usage of all AQL queries will be limited approximately to the
-  configured value. 
+  configured value.
   The limit is enforced by each server in a cluster independently, i.e. it can
   be set separately for coordinators, DB servers etc. The memory usage of a
   query that runs on multiple servers in parallel is not summed up, but tracked
@@ -2173,7 +2209,7 @@ v3.8.0-alpha.1 (2021-03-29)
   is allowed to use more memory.
   The new option `--query.memory-limit-override` allows turning this behavior
   off, so that individual queries can only lower their maximum allowed memory
-  usage. 
+  usage.
 
 * Added metric `arangodb_aql_global_memory_usage` to expose the total amount of
   memory (in steps of 32 kb) that is currently in use by all AQL queries.
@@ -2213,7 +2249,7 @@ v3.8.0-alpha.1 (2021-03-29)
 
 * Add support for building with Zen 3 CPU when optimizing for the local
   architecture.
-  
+
 * The web UI's node overview now displays also agent information (cluster only).
 
 * The statistics view in the web UI does now provide more system specific
@@ -2295,7 +2331,7 @@ v3.8.0-alpha.1 (2021-03-29)
 
 * On Windows create a minidump in case of an unhandled SEH exception for
   post-mortem debugging.
-  
+
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
@@ -2343,7 +2379,7 @@ v3.8.0-alpha.1 (2021-03-29)
   MAKE_DISTRIBUTE_GRAPH_INPUT) and an additional calculation node with an
   according function call will be introduced if we need to prepare the input
   data for the distribute node.
-  
+
 * Added new REST APIs for retrieving the sharding distribution:
 
   - GET `/_api/database/shardDistribution` will return the number of
@@ -2371,7 +2407,7 @@ v3.8.0-alpha.1 (2021-03-29)
   size of I/O operations for index maintenance.
 
 * More improvements for logging:
-  
+
   - Added new REST API endpoint GET `/_admin/log/entries` to return log entries
     in a more intuitive format, putting each log entry with all its properties
     into an object. The API response is an array with all log message objects
@@ -3177,7 +3213,7 @@ v3.7.10 (2021-03-14)
   `TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION`
   to any read request. This fixes inadequate HTTP 404 responses from followers,
   e.g. during chaos tests.
-  
+
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
 * Updated arangosync to 1.2.3.
@@ -3311,7 +3347,7 @@ v3.7.9 (2021-03-01)
   FOR out IN 1 OUTBOUND "v/1:1" edges
     FOR u IN unrelated
     RETURN [out, u]
-  
+
   The "unrelated" collection was pulled into the DisjointSmartGraph, causing the
   AQL setup to create erroneous state.
   This is now fixed and the above query works.
@@ -3388,7 +3424,7 @@ v3.7.9 (2021-03-01)
     The default value is 128 MB, which is very high and should effectively mean
     downwards-compatiblity with previous arangod versions, which did not
     restrict the maximum size of log messages.
-  
+
   - `--audit.max-entry-length`: controls the maximum line length for individual
     audit log messages that are written into audit logs by arangod. Any audit
     log messages longer than the specified value will be truncated and the
@@ -4385,15 +4421,15 @@ v3.7.2 (2020-08-21)
 * Make UPSERT statement with collection bind parameter behave identical to its
   non-bind parameter counterpart.
 
-  For example, the query 
+  For example, the query
 
-      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"]
         UPSERT d INSERT d UPDATE d IN @@collection
 
   would fail with "unique constraint violation" when used with a collection bind
   parameter, but the equivalent query
 
-      FOR d IN ["key_1", "key_2", "key_3", "key_1"] 
+      FOR d IN ["key_1", "key_2", "key_3", "key_1"]
         UPSERT d INSERT d UPDATE d IN collectionName
 
   with a hard-coded collection name would succeed. This is now fixed so both
@@ -5427,7 +5463,7 @@ v3.7.0-alpha.2 (2020-03-20)
 
 * Allow to override the detected total amount of memory via an environment
   variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
- 
+
 * `splice-subqueries` optimization is not limited by any type of operation
   within the subquery any more. It can now be applied on every subquery and will
   be by default.
@@ -5638,11 +5674,11 @@ v3.7.0-alpha.1 (2020-02-19)
 * Fixed internal issue #4932: COLLECT WITH COUNT together with FILTER yields
   zero.
 
-  This bugfix fixes an issue when skipping over documents in an index scan 
+  This bugfix fixes an issue when skipping over documents in an index scan
   using a covering index and also at the same time using an early-pruning
   filter.
 
-  In this case wrong document data may have been injected into the filter 
+  In this case wrong document data may have been injected into the filter
   condition for filtering, with the filter wrongfully deciding which documents
   to filter out.
 
@@ -5673,7 +5709,7 @@ v3.7.0-alpha.1 (2020-02-19)
   allowing for inconsistency.
 
 * V8 version upgrade to 7.9.317; ICU version upgrade to 64.2.
-  - JSON parsing is roughly 60% faster than in V8 7.1; you should prefer 
+  - JSON parsing is roughly 60% faster than in V8 7.1; you should prefer
     JSON.parse(string) over deeply nested javascript variable declarations.
   - several new javascript language features
 
@@ -5889,8 +5925,8 @@ v3.6.0-rc.2 (2019-12-23)
   The WAL file size is increased later on in the startup sequence, so
   everything should be fine if the startup works.
 
-  This fixes a problem with the disk filling up quickly when the arangodb 
-  starter tries to start an instance 100 times in a row but instantaneously 
+  This fixes a problem with the disk filling up quickly when the arangodb
+  starter tries to start an instance 100 times in a row but instantaneously
   gets a failure back from it.
 
 * Fixed a permissions bug for /_admin/cluster/rebalanceShards.
@@ -5974,7 +6010,7 @@ v3.6.0-rc.1 (2019-12-10)
 
 * Added startup option `--query.optimizer-rules` to selectively enable or
   disable optimizer rules by default. The option can be specified multiple
-  times, and takes the same input as the query option of the same name. 
+  times, and takes the same input as the query option of the same name.
 
   For example, to turn off the rule _use-indexes-for-sort_, use
 
@@ -5988,7 +6024,7 @@ v3.6.0-rc.1 (2019-12-10)
   data-modification queries. So far, only REMOVE queries benefitted. Now the
   optimization can also be applied for REPLACE and UPDATE queries in case the
   query does not use LIMIT and there is no further cluster-internal
-  communication after the REMOVE, REPLACE or UPDATE node. 
+  communication after the REMOVE, REPLACE or UPDATE node.
 
 * Include ArangoSearch data in HotBackups.
 
@@ -6170,10 +6206,10 @@ v3.5.3 (2019-11-28)
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
 
-* Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered
   by index.
 
-* Make the timeouts for replication requests (for active failover and master-slave 
+* Make the timeouts for replication requests (for active failover and master-slave
   replication configurable via startup options:
 
       --replication.connect-timeout
