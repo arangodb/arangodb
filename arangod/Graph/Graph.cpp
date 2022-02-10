@@ -428,21 +428,9 @@ void Graph::toPersistence(VPackBuilder& builder,
 void Graph::toPersistenceWithDetails(VPackBuilder& builder,
                                      TRI_vocbase_t& vocbase) const {
   toPersistence(builder, true);
-
-  // calculate md5 checksum based on the graph itself
-  if (isSmart()) {
-    // additionally, check whether there are any collections created as
-    // satellite collections (Hybrid Smart Graph case).
-    auto satellites = vertexCollectionsUsedAsSatellites(vocbase);
-    builder.add(VPackValue(StaticStrings::GraphSatellites));
-
-    builder.openArray();
-    for (auto const& satCollection : satellites) {
-      builder.add(VPackValue(satCollection));
-    }
-    builder.close();
+  if (!isSmart()) {
+    builder.add(StaticStrings::GraphChecksum, VPackValue(calculateChecksum()));
   }
-  builder.add(StaticStrings::GraphChecksum, VPackValue(calculateChecksum()));
 }
 
 void Graph::enhanceEngineInfo(VPackBuilder&) const {}

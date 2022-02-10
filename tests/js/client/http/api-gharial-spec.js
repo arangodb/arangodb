@@ -43,6 +43,64 @@ const internal = require('internal');
 const isCluster = internal.isCluster();
 const wait = internal.wait;
 
+/*
+ * Testsuite based fixed variables
+ */
+const smartOptions = {
+  isSmart: true,
+  smartGraphAttribute: "Jansen>Sabitzer"
+};
+const smartDisjointOptions = {
+  isSmart: true,
+  isDisjoint: true,
+  smartGraphAttribute: "Jansen>Sabitzer"
+};
+const satelliteOptions = {
+  replicationFactor: "satellite"
+};
+
+/*
+ * Testsuite based helper methods
+ */
+
+const elemTransform = elem => [elem];
+const tailcombPush = (combs, elem) => tailcomb => combs.push([elem, ...tailcomb]);
+const k_combPush = combs => k_komb => combs.push(k_komb);
+
+function k_combinations(set, k) {
+  const setLen = set.length;
+  if (k > setLen || k <= 0) {
+    return [];
+  }
+  if (k === setLen) {
+    return [set];
+  }
+  if (k === 1) {
+    return _.map(set, elemTransform);
+  }
+  const combs = [];
+  for (let i = 0; i < setLen - k + 1; i++) {
+    _.each(k_combinations(set.slice(i + 1), k - 1), tailcombPush(combs, set[i]));
+  }
+  return combs;
+}
+
+function combinations(set) {
+  const combs = [];
+  for (let k = 1; k <= set.length; k++) {
+    _.each(k_combinations(set, k), k_combPush(combs));
+  }
+  return combs;
+}
+
+function checkIfDuplicateExists(arr) {
+  return new Set(arr).size !== arr.length;
+}
+
+/*
+ * Testsuites starting here
+ */
+
 describe('_api/gharial', () => {
   const url = '/_api/gharial';
   const generateSingleUrlWithDetails = (graphName) => {
@@ -1626,18 +1684,6 @@ describe('_api/gharial', () => {
       to: ['secondTo']
     }];
     const noOrphans = [];
-    const smartOptions = {
-      isSmart: true,
-      smartGraphAttribute: "Jansen>Sabitzer"
-    };
-    const smartDisjointOptions = {
-      isSmart: true,
-      isDisjoint: true,
-      smartGraphAttribute: "Jansen>Sabitzer"
-    };
-    const satelliteOptions = {
-      replicationFactor: "satellite"
-    };
 
     const generateSingleUrl = (graphName) => {
       return `${url}/${graphName}`;
@@ -1693,7 +1739,7 @@ describe('_api/gharial', () => {
         return graph.checksum;
       };
       const res = createGraphWithProperties(isSmart, isDisjoint, isSatellite, isHybrid);
-      
+
       let checksum = fetchChecksum();
       let jsGraph = gM._graph(graphName);
 
@@ -2100,7 +2146,7 @@ describe('_api/gharial', () => {
   /// graphs effect the checksums provided. This is to make sure we have
   /// a high confidence to detect all changes to a graph, and not accidentially
   /// create hash-collisions ourselfes.
-  describe.only('graph list checksum equality properties', () => {
+  describe('graph list checksum equality properties', () => {
 
     function* NumberOfShardsGenerator() {
       // Some random values for number of Shards
@@ -2259,5 +2305,31 @@ describe('_api/gharial', () => {
 
     });
 
+    if (isEnterprise) {
+      // 2x relations (mind. 4 vertex collections)
+      it('SmartGraph - test several EdgeDefinitions with different satellites', () => {
+        const vertices = ["Unittest_A", "Unittest_B", "Unittest_C", "Unittest_D"];
+        const orphans = [];
+        const relationA = gM._relation("Unittest_edgesA", [vertices[0]], [vertices[1]]);
+        const relationB = gM._relation("Unittest_edgesB", [vertices[2]], [vertices[3]]);
+
+        let allChecksumResults = [];
+
+        // generates matrix out of all combinations of satellites which to create
+        const allCombinations = [...combinations(vertices, 2)];
+        for (const satellites of allCombinations) {
+          let hybridSmartOptions = smartOptions;
+          hybridSmartOptions.satellites = satellites;
+          allChecksumResults.push(produceSingleGraphChecksum(graphName, [relationA, relationB], orphans, hybridSmartOptions));
+        }
+
+        let globalGraphChecksums = [];
+        for (const graphChecksumResult of allChecksumResults) {
+          globalGraphChecksums.push(graphChecksumResult.checksum);
+        }
+
+        expect(checkIfDuplicateExists(globalGraphChecksums)).to.be.true;
+      });
+    }
   });
 });
