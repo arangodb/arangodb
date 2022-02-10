@@ -229,6 +229,8 @@ class GraphNode : public ExecutionNode {
   void setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,
                                 std::vector<Collection*> const& vertexColls);
 
+  Collection const* getShardingPrototype() const;
+
  protected:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
