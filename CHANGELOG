@@ -1,6 +1,14 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a follower to a
+  shard.
+
+
+v3.8.5 (2022-01-20)
+-------------------
+
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
 
@@ -17,10 +25,6 @@ v3.8.6 (XXXX-XX-XX)
 * Disable optimizer rule "optimize-cluster-single-document-operations" when a
   collection is accessed in exclusive mode, because the optimized query would
   use a slightly different mode of locking then.
-
-
-v3.8.5 (2022-01-20)
--------------------
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 

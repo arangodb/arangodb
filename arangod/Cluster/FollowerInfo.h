@@ -99,7 +99,7 @@ class FollowerInfo {
     // This should also disable satellite tracking.
   }
 
-  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
+  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP, UNAVAILABLE };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -266,8 +266,9 @@ class FollowerInfo {
       LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
           << "Shard "
           << _docColl->name() << " is temporarily in read-only mode, since we could not update the failover candidates in the agency.";
+      return WriteState::UNAVAILABLE;
     }
-    return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
+    return WriteState::ALLOWED;
   }
 
   //////////////////////////////////////////////////////////////////////////////
