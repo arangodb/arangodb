@@ -164,7 +164,7 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
       : _core(std::move(core)) {}
 
   [[nodiscard]] auto resign() && noexcept
-      -> std::unique_ptr<test::TestCoreType>;
+      -> std::unique_ptr<test::TestCoreType> override;
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
   AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
