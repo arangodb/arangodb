@@ -40,6 +40,14 @@ auto BlackHoleLeaderState::write(std::string_view data) -> LogIndex {
   return getStream()->insert(entry);
 }
 
+BlackHoleLeaderState::BlackHoleLeaderState(std::unique_ptr<BlackHoleCore> core)
+    : _core(std::move(core)) {}
+
+auto BlackHoleLeaderState::resign() && noexcept
+    -> std::unique_ptr<BlackHoleCore> {
+  return std::move(_core);
+}
+
 auto BlackHoleFollowerState::acquireSnapshot(ParticipantId const& destination,
                                              LogIndex) noexcept
     -> futures::Future<Result> {
@@ -51,14 +59,22 @@ auto BlackHoleFollowerState::applyEntries(
   return {TRI_ERROR_NO_ERROR};
 }
 
-auto BlackHoleFactory::constructFollower()
-    -> std::shared_ptr<BlackHoleFollowerState> {
-  return std::make_shared<BlackHoleFollowerState>();
+BlackHoleFollowerState::BlackHoleFollowerState(
+    std::unique_ptr<BlackHoleCore> core)
+    : _core(std::move(core)) {}
+auto BlackHoleFollowerState::resign() && noexcept
+    -> std::unique_ptr<BlackHoleCore> {
+  return std::move(_core);
 }
 
-auto BlackHoleFactory::constructLeader()
+auto BlackHoleFactory::constructFollower(std::unique_ptr<BlackHoleCore> core)
+    -> std::shared_ptr<BlackHoleFollowerState> {
+  return std::make_shared<BlackHoleFollowerState>(std::move(core));
+}
+
+auto BlackHoleFactory::constructLeader(std::unique_ptr<BlackHoleCore> core)
     -> std::shared_ptr<BlackHoleLeaderState> {
-  return std::make_shared<BlackHoleLeaderState>();
+  return std::make_shared<BlackHoleLeaderState>(std::move(core));
 }
 
 auto replicated_state::EntryDeserializer<

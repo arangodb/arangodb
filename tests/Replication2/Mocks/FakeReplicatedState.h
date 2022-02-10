@@ -31,6 +31,9 @@
 namespace arangodb::replication2 {
 namespace test {
 
+struct MyCoreType;
+struct TestCoreType {};
+
 /**
  * Empty follower. Always immediately responds with success.
  * @tparam S state description
@@ -39,6 +42,12 @@ template<typename S>
 struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedFollowerState<S>::EntryIterator;
+
+  explicit EmptyFollowerType(std::unique_ptr<MyCoreType> core)
+      : _core(std::move(core)) {}
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<MyCoreType> override;
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
@@ -49,7 +58,14 @@ struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return futures::Future<Result>{std::in_place};
   }
+
+  std::unique_ptr<MyCoreType> _core;
 };
+
+template<typename S>
+auto EmptyFollowerType<S>::resign() && noexcept -> std::unique_ptr<MyCoreType> {
+  return std::move(_core);
+}
 
 /**
  * Empty leader. Always immediately responds with success.
@@ -60,12 +76,28 @@ struct EmptyLeaderType : replicated_state::IReplicatedLeaderState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedLeaderState<S>::EntryIterator;
 
+  explicit EmptyLeaderType(std::unique_ptr<test::TestCoreType> core)
+      : _core(std::move(core)) {}
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<test::TestCoreType> override;
+
+  ~EmptyLeaderType() { TRI_ASSERT(_core == nullptr); }
+
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override {
     return futures::Future<Result>(std::in_place);
   }
+
+  std::unique_ptr<test::TestCoreType> _core;
 };
+
+template<typename S>
+auto EmptyLeaderType<S>::resign() && noexcept
+    -> std::unique_ptr<test::TestCoreType> {
+  return std::move(_core);
+}
 
 template<typename Input, typename Result>
 struct AsyncOperationMarker {
@@ -128,6 +160,12 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedFollowerState<S>::EntryIterator;
 
+  explicit FakeFollowerType(std::unique_ptr<test::TestCoreType> core)
+      : _core(std::move(core)) {}
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<test::TestCoreType> override;
+
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
   AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
 
@@ -141,7 +179,15 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return acquire.trigger(std::make_pair(leader, localCommitIndex));
   }
+
+  std::unique_ptr<test::TestCoreType> _core;
 };
+
+template<typename S>
+auto FakeFollowerType<S>::resign() && noexcept
+    -> std::unique_ptr<test::TestCoreType> {
+  return std::move(_core);
+}
 
 /**
  * DefaultFactory simply makes the LeaderType or FollowerType shared.
@@ -171,13 +217,18 @@ struct DefaultFactory {
  */
 template<typename LeaderType, typename FollowerType>
 struct RecordingFactory {
-  auto constructLeader() -> std::shared_ptr<LeaderType> {
-    auto ptr = std::make_shared<LeaderType>();
+  static_assert(std::is_same_v<typename LeaderType::CoreType,
+                               typename FollowerType::CoreType>);
+  using CoreType = typename LeaderType::CoreType;
+  auto constructLeader(std::unique_ptr<CoreType> core)
+      -> std::shared_ptr<LeaderType> {
+    auto ptr = std::make_shared<LeaderType>(std::move(core));
     leaders.push_back(ptr);
     return ptr;
   }
-  auto constructFollower() -> std::shared_ptr<FollowerType> {
-    auto ptr = std::make_shared<FollowerType>();
+  auto constructFollower(std::unique_ptr<CoreType> core)
+      -> std::shared_ptr<FollowerType> {
+    auto ptr = std::make_shared<FollowerType>(std::move(core));
     followers.push_back(ptr);
     return ptr;
   }
