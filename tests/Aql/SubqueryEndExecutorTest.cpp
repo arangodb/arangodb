@@ -51,10 +51,10 @@ RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
                        regsToKeep);
 }
 
-} // namespace
+}  // namespace
 
 class SubqueryEndExecutorTest : public AqlExecutorTestCase<false> {
-public:
+ public:
   SubqueryEndExecutorInfos MakeExecutorInfos() {
     return SubqueryEndExecutorInfos{nullptr, monitor, 0, 0};
   }

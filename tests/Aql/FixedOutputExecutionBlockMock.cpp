@@ -55,12 +55,13 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const &blocks)
   }
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
 }
-} // namespace
+}  // namespace
 
 FixedOutputExecutionBlockMock::FixedOutputExecutionBlockMock(
     ExecutionEngine *engine, ExecutionNode const *node,
     std::deque<SharedAqlItemBlockPtr> &&data)
-    : ExecutionBlock(engine, node), _infos{::blocksToInfos(data)},
+    : ExecutionBlock(engine, node),
+      _infos{::blocksToInfos(data)},
       _blockData{std::move(data)},
       _executeEnterHook([](AqlCallStack const &) {}) {}
 
