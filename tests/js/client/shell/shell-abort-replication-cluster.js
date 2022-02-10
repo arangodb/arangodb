@@ -1,0 +1,134 @@
+/*jshint globalstrict:false, strict:false, maxlen : 4000 */
+/* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests for inventory
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+'use strict';
+const jsunity = require('jsunity');
+const db = require("@arangodb").db;
+const request = require("@arangodb/request");
+const _ = require("lodash");
+let { waitForShardsInSync } = require('@arangodb/test-helper');
+  
+const cn = "UnitTestsCollection";
+
+let getServers = function(role) {
+  const isRole = (d) => (_.toLower(d.role) === role);
+  const endpointToURL = (server) => {
+    let endpoint = server.endpoint;
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
+  };
+
+  return global.instanceInfo.arangods.filter(isRole)
+                              .map((server) => { 
+                                return { url: endpointToURL(server), id: server.id };
+                              });
+};
+
+let getDBServers = function() {
+  return getServers('dbserver');
+};
+
+let getCoordinators = function() {
+  return getServers('coordinator');
+};
+
+function abortReplicationSuite () {
+  'use strict';
+  const cn = "UnitTestsCollection";
+  
+  return {
+    setUp : function () {
+      let c = db._create(cn, { numberOfShards: 5, replicationFactor: 1 });
+      let docs = [];
+      // populate collection with 2M documents. must be a non-trivial amount
+      // because we want to run many fetchCollectionDump requests
+      for (let i = 0; i < 2 * 1000 * 1000; ++i) {
+        docs.push({ value1: i, value2: "test" + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+    testAbortReplication : function () {
+      let c = db._collection(cn);
+
+      const servers = getDBServers();
+      assertTrue(servers.length >= 2, servers);
+
+      try {
+        servers.forEach((server) => {
+          // set failure point on each DB server, which will trigger an error in replication
+          let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/Replication%3A%3AforceCheckCancellation", body: {} });
+          assertEqual(200, result.status);
+        });
+
+        // now increase replicationFactor from 1 to whatever number of DB servers we have
+        c.properties({ replicationFactor: servers.length });
+
+        // give servers some time to run into the problem
+        console.warn("waiting for servers to run into problems...");
+        require("internal").sleep(45);
+
+        // clear the failure points
+        servers.forEach((server) => {
+          console.warn("clearing failure points on " + server.url);
+          request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
+        });
+      
+        // wait for shards to get into sync - this really can take long on a slow CI
+        waitForShardsInSync(cn, 180);
+
+      } finally {
+        servers.forEach((server) => {
+          request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
+        });
+      }
+    },
+
+  };
+}
+
+let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
+if (res.body === "true") {
+  jsunity.run(abortReplicationSuite);
+}
+return jsunity.done();

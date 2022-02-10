@@ -1,19 +1,43 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
-* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if
-  DBServer is in upgrade mode in the same time.
+* Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
+  if DBServer is in upgrade mode in the same time.
+
+* Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
+  skip over some subquery results. This did only show up if the subquery fills
+  exactly one internal batch before it is completed, so it is rather unlikely.
+
+* Fix null pointer access when using WINDOW operation with a COUNT/LENGTH
+  aggregate function without any arguments.
+
+* Reintroduce shard synchronization cancellation check that was disabled in
+  3.8.5.
+
+* In an attempt to make the performance of the RocksDB throttle much more
+  consistent and predictable the default compaction slow down trigger is lowered
+  to 128kB.
+
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of multiple
+  Coordinators.
+
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example:
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.
 
 * Fixed a race detected with chaos tests, where a db server could have
   momentarily lost leadership, just when it was about to drop a follower to a
   shard.
 
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
 
 v3.8.5 (2022-01-20)
 -------------------
-
-* Fix potential access to dangling reference in cancellation of shard
-  synchronization.
 
 * Fixed issue #15501: Regression when using "exclusive" query option?
   This fixes a regression in AQL query execution when exclusive locks are used
