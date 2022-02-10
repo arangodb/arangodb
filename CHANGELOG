@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of multiple
+  Coordinators.
+
 * Fixed a race detected with chaos tests, where a db server could have
   momentarily lost leadership, just when it was about to drop a follower to a
   shard.
