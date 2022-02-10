@@ -1,8 +1,39 @@
-v3.9.0 (XXXX-XX-XX)
+v3.9.1 (XXXX-XX-XX)
 -------------------
 
-* Reintroduce shard synchronization cancellation check that was disabled
-  before.
+* Reintroduce shard synchronization cancellation check that was disabled before.
+
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery
+  if DBServer is in upgrade mode in the same time.
+
+* Fixed PRESUPP-445: Foxx queues: Some Jobs are never run in case of multiple
+  Coordinators.
+
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a follower to a
+  shard.
+
+* Fixed issue #15501: Regression when using "exclusive" query option?
+  This fixes a regression in AQL query execution when exclusive locks are used
+  for a query and the query also uses the DOCUMENT() AQL function. In this case,
+  when there were more concurrent requests to the underlying collection than
+  available scheduler threads for the low priority queue, the query start
+  successfully acquired the exclusive lock, but could not get its follow-up
+  requests through and starve while holding the exclusive lock.
+
+* Disable optimizer rule "optimize-cluster-single-document-operations" when a
+  collection is accessed in exclusive mode, because the optimized query would
+  use a slightly different mode of locking then.
+
+
+v3.9.0 (2022-02-07)
+-------------------
+
+* Convert v3.9.0-rc.1 into v3.9.0 (GA).
+
+
+v3.9.0-rc.1 (2022-02-03)
+------------------------
 
 * Fix potential access to dangling reference in cancellation of shard
   synchronization.
