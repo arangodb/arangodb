@@ -540,16 +540,19 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
-    std::optional<LogPayload> payload, bool waitForSync,
+    std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync,
     std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
   if (this->_didResign) {
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
   auto const index = this->_inMemoryLog.getNextIndex();
-  auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
+  auto const payloadSize = std::holds_alternative<LogPayload>(payload)
+                               ? std::get<LogPayload>(payload).byteSize()
+                               : 0;
   auto logEntry = InMemoryLogEntry(
-      PersistingLogEntry(_self._currentTerm, index, std::move(payload)),
+      PersistingLogEntry(TermIndexPair{_self._currentTerm, index},
+                         std::move(payload)),
       waitForSync);
   logEntry.setInsertTp(insertTp.has_value() ? *insertTp
                                             : InMemoryLogEntry::clock::now());
@@ -1041,7 +1044,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
             if (!memtry.has_value()) {
               break;
             }
-            if (memtry->entry().logPayload().has_value()) {
+            if (memtry->entry().hasPayload()) {
               break;
             }
             testIndex = testIndex + 1;
@@ -1168,7 +1171,7 @@ void replicated_log::LogLeader::establishLeadership(
     std::shared_ptr<ParticipantsConfig const> config) {
   LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
-      _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
+      _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
         auto const lastIndex = data._inMemoryLog.getLastTermIndexPair();
         TRI_ASSERT(lastIndex.term != data._self._currentTerm);
         // Immediately append an empty log entry in the new term. This is
@@ -1177,7 +1180,10 @@ void replicated_log::LogLeader::establishLeadership(
 
         // Also make sure that this entry is written with waitForSync = true to
         // ensure that entries of the previous term are synced as well.
-        auto firstIndex = data.insertInternal(std::nullopt, true, std::nullopt);
+        auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = data._self._id,
+                                                     .participants = *config};
+        auto firstIndex = data.insertInternal(LogMetaPayload{std::move(meta)},
+                                              true, std::nullopt);
         TRI_ASSERT(firstIndex == lastIndex.index + 1);
         return firstIndex;
       });
@@ -1299,7 +1305,10 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
     }
 #endif
 
-    auto const idx = data.insertInternal(std::nullopt, true, std::nullopt);
+    auto meta =
+        LogMetaPayload::UpdateParticipantsConfig{.participants = *config};
+    auto const idx = data.insertInternal(LogMetaPayload{std::move(meta)}, true,
+                                         std::nullopt);
     data.activeParticipantsConfig = config;
     data._follower.swap(followers);
 
