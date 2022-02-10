@@ -33,6 +33,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LeaderStateManager.h"
 #include "Replication2/ReplicatedState/FollowerStateManager.h"
+#include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
@@ -41,6 +42,7 @@
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedState/LeaderStateManager.tpp"
 #include "Replication2/ReplicatedState/FollowerStateManager.tpp"
+#include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -146,8 +148,15 @@ auto ReplicatedState<S>::GuardedData::rebuild(
     LOG_TOPIC("f5328", TRACE, Logger::REPLICATED_STATE)
         << "obtained follower participant";
     return runFollower(std::move(follower), std::move(core), std::move(token));
+  } else if (auto unconfiguredLogParticipant = std::dynamic_pointer_cast<
+                 replicated_log::LogUnconfiguredParticipant>(participant);
+             unconfiguredLogParticipant) {
+    LOG_TOPIC("ad84b", TRACE, Logger::REPLICATED_STATE)
+        << "obtained unconfigured participant";
+    return runUnconfigured(std::move(core), std::move(token));
   } else {
-    // unconfigured
+    LOG_TOPIC("33d5f", FATAL, Logger::REPLICATED_STATE)
+        << "Replicated log has an unhandled participant type.";
     std::abort();
   }
 } catch (basics::Exception const& ex) {
@@ -194,6 +203,23 @@ auto ReplicatedState<S>::GuardedData::runLeader(
 } catch (std::exception const& e) {
   LOG_TOPIC("016f3", DEBUG, Logger::REPLICATED_STATE)
       << "run leader caught exception: " << e.what();
+  throw;
+}
+
+template<typename S>
+auto ReplicatedState<S>::GuardedData::runUnconfigured(
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
+  LOG_TOPIC("5d7c6", DEBUG, Logger::REPLICATED_STATE)
+      << "create unconfigured state";
+  auto manager = std::make_shared<UnconfiguredStateManager<S>>(
+      std::move(core), std::move(token));
+  currentManager = manager;
+
+  return {};
+} catch (std::exception const& e) {
+  LOG_TOPIC("6f1eb", DEBUG, Logger::REPLICATED_STATE)
+      << "run unconfigured caught exception: " << e.what();
   throw;
 }
 

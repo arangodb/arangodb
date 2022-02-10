@@ -114,7 +114,7 @@ struct ReplicatedState final
 
   struct StateManagerBase {
     virtual ~StateManagerBase() = default;
-    virtual auto getStatus() const -> StateStatus = 0;
+    [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
     [[nodiscard]] virtual auto resign() && noexcept
         -> std::pair<std::unique_ptr<CoreType>,
                      std::unique_ptr<ReplicatedStateToken>> = 0;
@@ -142,6 +142,9 @@ struct ReplicatedState final
     auto runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
                      std::unique_ptr<CoreType>,
                      std::unique_ptr<ReplicatedStateToken> token)
+        -> DeferredAction;
+    auto runUnconfigured(std::unique_ptr<CoreType> core,
+                         std::unique_ptr<ReplicatedStateToken> token)
         -> DeferredAction;
 
     auto rebuild(std::unique_ptr<CoreType> core,

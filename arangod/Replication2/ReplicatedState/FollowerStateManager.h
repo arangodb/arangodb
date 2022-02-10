@@ -49,9 +49,10 @@ struct FollowerStateManager
       std::shared_ptr<Factory> factory) noexcept;
 
   void run();
-  auto getStatus() const -> StateStatus final;
+  [[nodiscard]] auto getStatus() const -> StateStatus final;
 
-  auto getFollowerState() -> std::shared_ptr<IReplicatedFollowerState<S>>;
+  [[nodiscard]] auto getFollowerState() const
+      -> std::shared_ptr<IReplicatedFollowerState<S>>;
 
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,

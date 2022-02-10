@@ -569,6 +569,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
   Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
+  Replication2/ReplicatedState/UnconfiguredStateManager.tpp Replication2/ReplicatedState/UnconfiguredStateManager.h
   Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp

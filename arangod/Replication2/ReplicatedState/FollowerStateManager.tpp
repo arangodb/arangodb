@@ -282,7 +282,7 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
 }
 
 template<typename S>
-auto FollowerStateManager<S>::getFollowerState()
+auto FollowerStateManager<S>::getFollowerState() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
   if (state == nullptr) {
     // TODO better error code

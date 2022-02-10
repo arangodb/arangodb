@@ -71,6 +71,28 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
   EXPECT_EQ(store["hello"], "world");
 }
 
+TEST_F(ReplicatedStateTest, simple_unconfigured_log_test) {
+  auto testLog = makeReplicatedLog(LogId{1});
+  auto log = std::dynamic_pointer_cast<ReplicatedLog>(testLog);
+  auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
+      feature->createReplicatedState("my-state", log));
+  ASSERT_NE(state, nullptr);
+
+  auto const stateGeneration = StateGeneration{1};
+  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration));
+
+  auto status = state->getStatus();
+
+  ASSERT_NE(status, std::nullopt);
+  ASSERT_TRUE(std::holds_alternative<replicated_state::UnconfiguredStatus>(
+      status->variant));
+  auto& unconfiguredStatus =
+      std::get<replicated_state::UnconfiguredStatus>(status->variant);
+  ASSERT_EQ(unconfiguredStatus, (replicated_state::UnconfiguredStatus{
+                                    .generation = stateGeneration,
+                                }));
+}
+
 TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
   auto log = makeReplicatedLog(LogId{1});
   auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");

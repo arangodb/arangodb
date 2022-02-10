@@ -99,7 +99,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
     EXPECT_EQ(value.first, "leader");
     EXPECT_EQ(value.second, LogIndex{0});
   }
-  ASSERT_ANY_THROW(manager->getFollowerState())
+  ASSERT_ANY_THROW(std::ignore = manager->getFollowerState())
       << "follower state not yet available";
 
   // notify the manager that the state transfer was successfully completed
@@ -111,7 +111,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
     EXPECT_EQ(status.managerState.state,
               FollowerInternalState::kNothingToApply);
   }
-  ASSERT_NO_THROW(manager->getFollowerState())
+  ASSERT_NO_THROW(std::ignore = manager->getFollowerState())
       << "follower state should be available";
   EXPECT_FALSE(state->apply.wasTriggered());
 
