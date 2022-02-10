@@ -510,7 +510,7 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
           bad = true;
         } else {
           loops.back()->Invert();
-          if (!loops.front()->Contains(loops.back().get())) {
+          if (!loops[outerLoop]->Contains(loops.back().get())) {
             bad = true;
           }
         }

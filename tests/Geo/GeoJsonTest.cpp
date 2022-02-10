@@ -2170,4 +2170,16 @@ TEST_F(ValidGeoJSONInputTest, sharing_vertices_multi) {
   VPackSlice polyS = velocypack::Slice(poly->data());
   ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false).ok());
 }
+
+TEST_F(ValidGeoJSONInputTest, proper_inclusion_testing_multi) {
+  auto poly = R"({
+    "type": "MultiPolygon",
+    "coordinates": [ 
+    [ [[40, 40], [20, 45], [45, 30], [40, 40]] ],
+    [ [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
+      [[30, 20], [20, 15], [20, 25], [30, 20]] ] ]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false).ok());
+}
 }  // namespace arangodb
