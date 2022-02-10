@@ -287,8 +287,7 @@ std::string const RestAdminClusterHandler::CancelJob = "cancelAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
-std::string const RestAdminClusterHandler::ParticipantsCacheFlush =
-    "participantsCacheFlush";
+std::string const RestAdminClusterHandler::FailureOracle = "failureOracle";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -362,11 +361,21 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalanceShards();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
-    } else if (command == ParticipantsCacheFlush) {
-      return handleParticipantsCacheFlush();
+    } else if (command == FailureOracle) {
+      return handleFailureOracle();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
+      return RestStatus::DONE;
+    }
+  } else if (len == 2) {
+    std::string const& command = suffixes.at(0);
+    if (command == FailureOracle) {
+      return handleFailureOracle();
+    } else {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    std::string("invalid command '") + command +
+                        "', expecting 'failureOracle'");
       return RestStatus::DONE;
     }
   }
@@ -2129,18 +2138,65 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
           }));
 }
 
+RestStatus RestAdminClusterHandler::handleFailureOracle() {
+  if (!server().hasFeature<cluster::ParticipantsCacheFeature>() ||
+      !server().isEnabled<cluster::ParticipantsCacheFeature>()) {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                  "ParticipantsCacheFeature is unavailable");
+    return RestStatus::DONE;
+  }
+
+  std::vector<std::string> const& suffixes = request()->decodedSuffixes();
+  if (suffixes.size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected /_admin/cluster/failureOracle/[verb]");
+    return RestStatus::DONE;
+  }
+
+  if (auto const& command = suffixes[1]; command == "status") {
+    handleParticipantsCacheStatus();
+  } else if (command == "flush") {
+    return handleParticipantsCacheFlush();
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "expecting one of the resources 'status', 'flush'");
+  }
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleParticipantsCacheStatus() {
+  if (request()->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  VPackBuilder response;
+  {
+    auto& participantsCache =
+        server().getFeature<cluster::ParticipantsCacheFeature>();
+    VPackObjectBuilder result(&response);
+    response.add(VPackValue("result"));
+    {
+      VPackObjectBuilder ob(&response);
+      auto status = participantsCache.status();
+      for (auto const& [pid, isFailed] : status) {
+        response.add(pid, VPackValue(isFailed));
+      }
+    }
+  }
+  generateOk(rest::ResponseCode::ACCEPTED, response.slice());
+  return RestStatus::DONE;
+}
+
 RestStatus RestAdminClusterHandler::handleParticipantsCacheFlush() {
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  if (!server().hasFeature<cluster::ParticipantsCacheFeature>()) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                  "ParticipantsCacheFeature is unavailable");
-    return RestStatus::DONE;
-  }
+
   auto& participantsCache =
       server().getFeature<cluster::ParticipantsCacheFeature>();
   participantsCache.flush();

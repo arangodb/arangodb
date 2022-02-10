@@ -33,7 +33,6 @@
 #include "Logger/LogMacros.h"
 
 #include <memory>
-#include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
 // TODO remove LOG_DEVEL
@@ -72,6 +71,7 @@ class ParticipantsCache final
 
   void start(AgencyCallbackRegistry* agencyCallbackRegistry);
   void stop(AgencyCallbackRegistry* agencyCallbackRegistry);
+  auto getIsFailed() -> FailureMap;
   void reset(FailureMap newMap);
 
   template<typename Server>
@@ -99,6 +99,15 @@ void ParticipantsCache::stop(AgencyCallbackRegistry* agencyCallbackRegistry) {
            "for ParticipantsCache: "
         << ex.what();
   }
+}
+
+auto ParticipantsCache::getIsFailed() -> FailureMap {
+  FailureMap status;
+  std::shared_lock readLock(_mutex);
+  for (auto const& [pid, value] : _isFailed) {
+    status[pid] = value;
+  }
+  return status;
 }
 
 void ParticipantsCache::reset(FailureMap newMap) {
@@ -176,6 +185,11 @@ void ParticipantsCacheFeature::stop() {
   }
 }
 
+auto ParticipantsCacheFeature::status()
+    -> std::unordered_map<std::string, bool> {
+  return _cache->getIsFailed();
+}
+
 void ParticipantsCacheFeature::flush() {
   LOG_DEVEL << "ParticipantsCacheFeature flushed";
   AgencyCache& agencyCache =
@@ -187,7 +201,7 @@ void ParticipantsCacheFeature::flush() {
         << " expected object in agency at " << kSupervisionHealthPath
         << " but got " << result.toString();
     FailureMap newMap;
-    for (auto [key, value] : VPackObjectIterator(result)) {
+    for (auto const& [key, value] : VPackObjectIterator(result)) {
       auto serverId = key.copyString();
       auto isServerGood =
           value.get(kHealthyServerKey).isEqualString(HealthyServerValue);

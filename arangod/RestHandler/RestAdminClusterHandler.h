@@ -63,7 +63,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const RemoveServer;
   static std::string const RebalanceShards;
   static std::string const ShardStatistics;
-  static std::string const ParticipantsCacheFlush;
+  static std::string const FailureOracle;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -96,7 +96,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRemoveServer();
   RestStatus handleRebalanceShards();
 
-  RestStatus handleParticipantsCacheFlush();
+  RestStatus handleFailureOracle();
 
  private:
   struct MoveShardContext {
@@ -128,6 +128,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleSingleServerJob(std::string const& job);
   RestStatus handleCreateSingleServerJob(std::string const& job,
                                          std::string const& server);
+
+  RestStatus handleParticipantsCacheStatus();
+  RestStatus handleParticipantsCacheFlush();
 
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;

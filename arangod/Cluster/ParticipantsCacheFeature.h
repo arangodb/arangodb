@@ -44,6 +44,8 @@ class ParticipantsCacheFeature final : public ArangodFeature {
   void prepare() override;
   void start() override;
   void stop() override;
+
+  auto status() -> std::unordered_map<std::string, bool>;
   void flush();
 
   auto getFailureOracle() -> std::shared_ptr<IFailureOracle>;
