@@ -2117,7 +2117,9 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
     EXPECT_NE(nullptr, link.get());
 
     // Data store should be initialized
-    ASSERT_EQ(link->snapshot().getDirectoryReader().docs_count(), 0);
+    ASSERT_EQ(
+      static_cast<irs::directory_reader const&>(
+        link->snapshot()).docs_count(), 0);
 
     // collection in view on destruct
     {
@@ -2165,7 +2167,9 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
     EXPECT_NE(nullptr, link.get());
 
     // Data store should be initialized
-    ASSERT_EQ(link->snapshot().getDirectoryReader().docs_count(), 0);
+    ASSERT_EQ(
+      static_cast<irs::directory_reader const&>(
+        link->snapshot()).docs_count(), 0);
 
     // no collection in view after
     {
