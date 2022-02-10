@@ -2115,11 +2115,17 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
 
 /// @brief can use non transactional range delete in write ahead log
 bool RocksDBCollection::canUseRangeDeleteInWal() const {
-  if (ServerState::instance()->isSingleServer()) {
+  if (_numIndexCreations.load(std::memory_order_acquire) != 0) {
     // disableWalFilePruning is used by createIndex
-    return _numIndexCreations.load(std::memory_order_acquire) == 0;
+    return false;
   }
-  return false;
+  if (ServerState::instance()->isSingleServer()) {
+    return true;
+  }
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  return engine.useRangeDeleteInWal();
 }
 
 }  // namespace arangodb
