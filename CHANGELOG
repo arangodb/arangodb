@@ -1,12 +1,23 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
-* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries
   containing the keywords UPDATE or REPLACE together with the keyword WITH and
-  the same key value would result in an error. For example: 
+  the same key value would result in an error. For example:
   `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
   because the same key used to update was provided in the object to update the
   document with.
+
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a follower to a
+  shard.
+
+
+v3.8.5 (2022-01-20)
+-------------------
+
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
 
 * Fixed issue #15501: Regression when using "exclusive" query option?
   This fixes a regression in AQL query execution when exclusive locks are used
@@ -21,10 +32,6 @@ v3.8.6 (XXXX-XX-XX)
 * Disable optimizer rule "optimize-cluster-single-document-operations" when a
   collection is accessed in exclusive mode, because the optimized query would
   use a slightly different mode of locking then.
-
-
-v3.8.5 (2022-01-20)
--------------------
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
