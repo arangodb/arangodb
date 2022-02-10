@@ -28,11 +28,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/QueryContext.h"
-#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
@@ -49,8 +46,7 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
     TRI_SanitizeObject(document, *builder);
     VPackSlice keyInBody = document.get(StaticStrings::KeyString);
 
-    if (keyInBody.isNone() || keyInBody.isNull() ||
-        (keyInBody.isString() && keyInBody.copyString() != key) ||
+    if (keyInBody.isNone() || keyInBody.isNull() || keyInBody.isString() ||
         ((revision.isSet()) && (RevisionId::fromSlice(document) != revision))) {
       // We need to rewrite the document with the given revision and key:
       builder->add(StaticStrings::KeyString, VPackValue(key));
