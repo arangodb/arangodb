@@ -1,6 +1,9 @@
 devel
 -----
 
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
 * Improved performance of inner joins with dynamic lookup conditions being
   injected from an outer loop, for indexes of type "persistent", "hash" and
   "skiplist". Performance improvements can be expected if the inner join is
