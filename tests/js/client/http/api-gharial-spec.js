@@ -2363,29 +2363,6 @@ describe('_api/gharial', () => {
           }
         }
       }
-
-
-      const baseChecksums = produceSingleGraphChecksum("Unittest_graph", relation);
-      // Assert that we at least have some checksums not null
-      expect(baseChecksums.checksum).to.not.equal(0);
-      for (const s of baseChecksums.edgeChecksums) {
-        expect(s).to.not.equal(0);
-      }
-      // Now scramble
-      for (const relations of ArrayScrambler(baseRelations)) {
-        const {
-          checksum,
-          edgeChecksums
-        } = produceSingleGraphChecksum("Unittest_graph", relations);
-        // The graph has some properties, total checksum needs to stay identical
-        expect(checksum).to.equal(baseChecksums.checksum);
-
-        // This actually is not a hard requirement, it would be enough if the elements
-        // in both lists are identical, but the order not important.
-        // for simplicity, we have ordered the relations
-        expect(edgeChecksums).to.eql(baseChecksums.edgeChecksums);
-      }
-
     });
 
     if (isEnterprise) {
