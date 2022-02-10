@@ -273,7 +273,7 @@ class FollowerInfo {
           << "Shard " << _docColl->name()
           << " is temporarily in read-only mode, since we could not update the "
              "failover candidates in the agency.";
-      return  WriteState::UNAVAILABLE;
+      return WriteState::UNAVAILABLE;
     }
     return WriteState::ALLOWED;
   }
