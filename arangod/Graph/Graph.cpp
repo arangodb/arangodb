@@ -36,12 +36,11 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
+#include "Graph/GraphManager.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
-#include "Ssl/SslInterface.h"
-#include "GraphManager.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -236,33 +235,23 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
 
 std::set<std::string> Graph::vertexCollectionsUsedAsSatellites(
     TRI_vocbase_t& vocbase) const {
-  std::set<std::string> list{};
+  if (isSmart()) {
+    std::set<std::string> list{};
 
-  std::shared_ptr<LogicalCollection> logicalCollection;
-  for (auto const& vertexCollection : vertexCollections()) {
-    logicalCollection =
-        graph::GraphManager::getCollectionByName(vocbase, vertexCollection);
-    if (logicalCollection != nullptr && logicalCollection->isSatellite()) {
-      list.emplace(vertexCollection);
+    std::shared_ptr<LogicalCollection> logicalCollection;
+    for (auto const& vertexCollection : vertexCollections()) {
+      logicalCollection =
+          graph::GraphManager::getCollectionByName(vocbase, vertexCollection);
+      if (logicalCollection != nullptr && logicalCollection->isSatellite()) {
+        list.emplace(vertexCollection);
+      }
     }
+
+    return list;
   }
 
-  return list;
-}
-
-std::string Graph::calculateMd5() const {
-  // Note: This implementation can be improved in the future.
-  // We can improve performance here, when we totally get rid of using
-  // the builder here.
-
-  // Creates VelocyPack graph representation
-  VPackBuilder md5Builder;
-  md5Builder.openObject();
-  generateMD5Representation(md5Builder);
-  md5Builder.close();
-
-  // Creates md5 checksum based on graph representation
-  return arangodb::rest::SslInterface::sslMD5(md5Builder.toString());
+  // non-smart case always empty
+  return {};
 }
 
 std::set<std::string> const& Graph::vertexCollections() const {
@@ -390,11 +379,8 @@ void Graph::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-void Graph::generateMD5Representation(VPackBuilder& builder) const {
-  toPersistence(builder, true);
-}
-
-void Graph::toPersistence(VPackBuilder& builder, bool md5Calculation) const {
+void Graph::toPersistence(VPackBuilder& builder,
+                          bool checksumCalculation) const {
   TRI_ASSERT(builder.isOpenObject());
 
   // The name
@@ -426,7 +412,7 @@ void Graph::toPersistence(VPackBuilder& builder, bool md5Calculation) const {
   builder.add(VPackValue(StaticStrings::GraphEdgeDefinitions));
   builder.openArray();
   for (auto const& it : edgeDefinitions()) {
-    it.second.addToBuilder(builder, md5Calculation);
+    it.second.addToBuilder(builder, checksumCalculation);
   }
   builder.close();  // EdgeDefinitions
 
@@ -456,7 +442,7 @@ void Graph::toPersistenceWithDetails(VPackBuilder& builder,
     }
     builder.close();
   }
-  builder.add(StaticStrings::GraphChecksum, VPackValue(calculateMd5()));
+  builder.add(StaticStrings::GraphChecksum, VPackValue(calculateChecksum()));
 }
 
 void Graph::enhanceEngineInfo(VPackBuilder&) const {}
@@ -614,7 +600,7 @@ bool EdgeDefinition::isVertexCollectionUsed(
 }
 
 void EdgeDefinition::addToBuilder(VPackBuilder& builder,
-                                  bool md5Calculation) const {
+                                  bool checksumCalculation) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add(StaticStrings::GraphEdgeDefinition, VPackValue(getName()));
 
@@ -631,19 +617,74 @@ void EdgeDefinition::addToBuilder(VPackBuilder& builder,
   }
   builder.close();  // to
 
-  if (md5Calculation) {
-    builder.add(StaticStrings::GraphChecksum, VPackValue(this->calculateMd5()));
+  if (checksumCalculation) {
+    builder.add(StaticStrings::GraphChecksum,
+                VPackValue(this->calculateChecksum()));
   }
 
   builder.close();  // obj
 }
 
-std::string EdgeDefinition::calculateMd5() const {
-  VPackBuilder md5Builder;
-  addToBuilder(md5Builder);
+size_t EdgeDefinition::calculateChecksum() const {
+  // We're expecting overflows here. It does not matter, as we only expect
+  // to have a valid size_t which has a high probability to differ between
+  // different EdgeDefinitions and to be equal on identical EdgeDefinitions.
+  size_t checksum = std::hash<std::string>{}(_edgeCollection);
+  for (auto const& f : _from) {
+    checksum += (std::hash<std::string>{}(f) xor 0xDEADBEEF);
+  }
+  for (auto const& t : _to) {
+    checksum += (std::hash<std::string>{}(t) xor 0xC001CAFE);
+  }
 
-  // Creates md5 checksum based on the VelocyPack EdgeDefinition
-  return arangodb::rest::SslInterface::sslMD5(md5Builder.toString());
+  return checksum;
+}
+
+size_t Graph::calculateChecksum() const {
+  // We're expecting overflows here. It does not matter, as we only expect
+  // to have a valid size_t which has a high probability to differ between
+  // different Graphs and to be equal on identical Graphs.
+  // Values we need to take care of:
+  // Collection definition based:
+  //  - edgeDefinitions, OrphanCollections
+  //
+  // Property definition based (numeric):
+  // - numberOfShards, replicationFactor, writeConcern
+  //
+  // Property definition based (boolean):
+  // - isSmart, isDisjoint, isSatellite
+  //
+  // Specialized graph classes need to implement this method as well.
+  const char separator{':'};
+
+  // Initialize checksum with the graphs name
+  size_t checksum{std::hash<std::string>{}(name())};
+
+  // EdgeDefinitions
+  for (auto const& eD : edgeDefinitions()) {
+    checksum += eD.second.calculateChecksum();
+  }
+
+  // Orphan Collections
+  for (auto const& oC : orphanCollections()) {
+    checksum += std::hash<std::string>{}(oC);
+  }
+
+  // Numeric attributes
+  std::string numString{};
+  for (auto const& num :
+       {numberOfShards(), replicationFactor(), writeConcern()}) {
+    numString += std::to_string(num) += separator;
+  }
+  checksum += (std::hash<std::string>{}(numString) xor 0xABAD1DEA);
+
+  std::string booleanString{};
+  for (auto const& boolean : {isSmart(), isDisjoint(), isSmart()}) {
+    booleanString += std::to_string(boolean) += separator;
+  }
+  checksum += (std::hash<std::string>{}(booleanString) xor 0xBADC0DED);
+
+  return checksum;
 }
 
 bool EdgeDefinition::hasFrom(std::string const& vertexCollection) const {
@@ -798,9 +839,9 @@ bool Graph::renameCollections(std::string const& oldName,
   return renamed;
 }
 
-void Graph::graphForClientOnlyHash(std::set<std::string>& checksums,
+void Graph::graphForClientOnlyHash(std::set<std::size_t>& checksums,
                                    TRI_vocbase_t& vocbase) const {
-  checksums.emplace(calculateMd5());
+  checksums.emplace(calculateChecksum());
 }
 
 void Graph::graphForClientWithDetails(VPackBuilder& builder,

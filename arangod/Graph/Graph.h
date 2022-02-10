@@ -72,10 +72,11 @@ class EdgeDefinition {
   /// @brief Adds the edge definition as a new object {collection, from, to}
   /// to the builder.
   void addToBuilder(velocypack::Builder& builder,
-                    bool md5Calculation = false) const;
+                    bool checksumCalculation = false) const;
 
   bool hasFrom(std::string const& vertexCollection) const;
   bool hasTo(std::string const& vertexCollection) const;
+  size_t calculateChecksum() const;
 
   /// @brief validate the structure of edgeDefinition, i.e.
   /// that it contains the correct attributes, and that they contain the correct
@@ -94,9 +95,6 @@ class EdgeDefinition {
   bool isToVertexCollectionUsed(std::string const& collectionName) const;
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
-
- private:
-  std::string calculateMd5() const;
 
  private:
   std::string _edgeCollection;
@@ -188,8 +186,6 @@ class Graph {
   std::set<std::string> vertexCollectionsUsedAsSatellites(
       TRI_vocbase_t& vocbase) const;
 
-  std::string calculateMd5() const;
-
  public:
   /// @brief get the cids of all vertexCollections
   std::set<std::string> const& vertexCollections() const;
@@ -238,14 +234,12 @@ class Graph {
    *
    * @param builder The builder the result should be written in. Expects an open
    * object.
-   * @param md5Calculation If disabled, we will not include individual
+   * @param checksumCalculation If disabled, we will not include individual
    * attributes like e.g. initial collection id (StaticStrings::GraphInitialCid)
    * which might differ when comparing two individual datacenters.
    */
   virtual void toPersistence(velocypack::Builder& builder,
-                             bool md5Calculation = false) const;
-
-  virtual void generateMD5Representation(velocypack::Builder& builder) const;
+                             bool checksumCalculation = false) const;
 
   /**
    * @brief Same as toPersistence but will add additional information which
@@ -282,7 +276,7 @@ class Graph {
   void graphForClientWithDetails(VPackBuilder& builder, TRI_vocbase_t& vocbase,
                                  bool addNestedGraphContainer = true) const;
 
-  void graphForClientOnlyHash(std::set<std::string>& checksums,
+  void graphForClientOnlyHash(std::set<std::size_t>& checksums,
                               TRI_vocbase_t& vocbase) const;
 
   /**
@@ -331,6 +325,8 @@ class Graph {
   Result addOrphanCollection(std::string&&);
 
   virtual auto addSatellites(VPackSlice const& satellites) -> Result;
+
+  virtual auto calculateChecksum() const -> size_t;
 
   std::ostream& operator<<(std::ostream& ostream);
 

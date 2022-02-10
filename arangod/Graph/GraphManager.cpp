@@ -58,7 +58,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
-#include "Ssl/SslInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -729,7 +728,8 @@ bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
 
 Result GraphManager::readGraphs(velocypack::Builder& builder, bool details,
                                 bool onlyHash) const {
-  std::string const queryStr{"FOR g IN _graphs RETURN {name: g._key}"};
+  std::string const queryStr{
+      "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
   return readGraphByQuery(builder, queryStr, details, onlyHash);
 }
 
@@ -798,41 +798,23 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
 
 Result GraphManager::writeGraphsChecksumsToBuilder(
     VPackBuilder& builder, VPackSlice const& graphsSlice) const {
-  std::set<std::string> checksums;
-  auto checksumBuilder = [](VPackBuilder& builder,
-                            std::string const& checksum) {
-    TRI_ASSERT(builder.isOpenObject());
-    if (checksum.length() > 0) {
-      builder.add(StaticStrings::GraphChecksum,
-                  VPackValue(arangodb::rest::SslInterface::sslMD5(checksum)));
-    } else {
-      builder.add(StaticStrings::GraphChecksum, VPackValue(checksum));
-    }
-  };
+  std::set<std::size_t> checksums;
 
   TRI_ASSERT(graphsSlice.isArray());
   for (VPackSlice graphSlice : VPackArrayIterator(graphsSlice)) {
-    auto res = lookupGraphByName(
-        graphSlice.get(StaticStrings::GraphName).copyString());
-    if (res.fail()) {
-      return res.result();
-    }
-    auto& graph = res.get();
+    std::unique_ptr<Graph> graph = {
+        Graph::fromPersistence(_vocbase, graphSlice)};
+    TRI_ASSERT(graph != nullptr);
     // collect each checksum per graph
     graph->graphForClientOnlyHash(checksums, _vocbase);
   }
 
-  if (checksums.empty()) {
-    checksumBuilder(builder, "");
-  } else {
-    // calculate "superHash" out of all graphs (if at least one has been found)
-    std::string superHash = std::accumulate(
-        checksums.begin(), checksums.end(), std::string(),
-        [](std::string const& a, std::string const& b) -> std::string {
-          return a + (a.length() > 0 ? "," : "") + b;
-        });
-    checksumBuilder(builder, superHash);
+  // calculate "superHash" out of all graphs (if at least one has been found)
+  size_t superHash{0};
+  for (auto const& checksum : checksums) {
+    superHash = superHash xor checksum;
   }
+  builder.add(StaticStrings::GraphChecksum, VPackValue(superHash));
 
   return {TRI_ERROR_NO_ERROR};
 }
@@ -843,12 +825,8 @@ Result GraphManager::writeGraphToBuilder(VPackBuilder& builder,
   TRI_ASSERT(builder.isOpenObject());
   TRI_ASSERT(graphSlice.isObject());
   TRI_ASSERT(graphSlice.get(StaticStrings::GraphName).isString());
-  auto res =
-      lookupGraphByName(graphSlice.get(StaticStrings::GraphName).copyString());
-  if (res.fail()) {
-    return res.result();
-  }
-  auto& graph = res.get();
+  std::unique_ptr<Graph> graph = {Graph::fromPersistence(_vocbase, graphSlice)};
+  TRI_ASSERT(graph != nullptr);
 
   bool includeNestedGraphContainer = false;
   if (details) {

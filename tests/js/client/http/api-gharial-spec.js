@@ -112,7 +112,7 @@ describe('_api/gharial', () => {
         collection: Joi.string().required(),
         from: Joi.array().items(Joi.string()).required(),
         to: Joi.array().items(Joi.string()).required(),
-        checksum: Joi.string().required()
+        checksum: Joi.number().unsafe().required()
       });
     } else {
       edgeDefinitionSchema = Joi.object({
@@ -137,7 +137,7 @@ describe('_api/gharial', () => {
       edgeDefinitions: Joi.array().items(edgeDefinitionSchema).required()
     };
     if (hasDetails) {
-      generalGraphSchema.checksum = Joi.string().required();
+      generalGraphSchema.checksum = Joi.number().unsafe().required();
     }
 
     if (isCluster || isSmart || isSatellite) {
@@ -1694,8 +1694,6 @@ describe('_api/gharial', () => {
       };
       const res = createGraphWithProperties(isSmart, isDisjoint, isSatellite, isHybrid);
 
-      console.warn(arango.GET(generateSingleUrlWithDetails(graphName)));
-
       let checksum = fetchChecksum();
       let jsGraph = gM._graph(graphName);
 
@@ -1943,8 +1941,8 @@ describe('_api/gharial', () => {
       expect(res.code).to.equal(200);
       expect(res.error).to.be.false;
       expect(res).to.have.keys("error", "code", "checksum");
-      expect(res.checksum).to.be.string;
-      expect(res.checksum.length).to.be.greaterThan(1);
+      expect(res.checksum).to.be.a('number');
+      expect(res.checksum).to.be.greaterThan(0);
     });
 
     it('graphs, should revoke checksum and details call (not allowed)', () => {
