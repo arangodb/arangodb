@@ -1410,8 +1410,7 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         primarily useful for disabling the automatic final heap dump (which
         also disables leak reporting, if enabled).  The default prefix is
         <filename>jeprof</filename>.  This prefix value can be overriden by
-        <link
-        linkend="prof.dump_prefix"><mallctl>prof.dump_prefix</mallctl></link>.
+        <link linkend="prof.prefix"><mallctl>prof.prefix</mallctl></link>.
         </para></listitem>
       </varlistentry>
 
@@ -1492,8 +1491,7 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         where <literal>&lt;prefix&gt;</literal> is controlled by the
         <link
         linkend="opt.prof_prefix"><mallctl>opt.prof_prefix</mallctl></link> and
-        <link
-        linkend="prof.dump_prefix"><mallctl>prof.dump_prefix</mallctl></link>
+        <link linkend="prof.prefix"><mallctl>prof.prefix</mallctl></link>
         options.  By default, interval-triggered profile dumping is disabled
         (encoded as -1).
         </para></listitem>
@@ -1527,8 +1525,7 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         <filename>&lt;prefix&gt;.&lt;pid&gt;.&lt;seq&gt;.f.heap</filename>,
         where <literal>&lt;prefix&gt;</literal> is controlled by the <link
         linkend="opt.prof_prefix"><mallctl>opt.prof_prefix</mallctl></link> and
-        <link
-        linkend="prof.dump_prefix"><mallctl>prof.dump_prefix</mallctl></link>
+        <link linkend="prof.prefix"><mallctl>prof.prefix</mallctl></link>
         options.  Note that <function>atexit()</function> may allocate
         memory during application initialization and then deadlock internally
         when jemalloc in turn calls <function>atexit()</function>, so
@@ -1550,8 +1547,29 @@ malloc_conf = "xmalloc:true";]]></programlisting>
         <manvolnum>3</manvolnum></citerefentry> function to report memory leaks
         detected by allocation sampling.  See the
         <link linkend="opt.prof"><mallctl>opt.prof</mallctl></link> option for
-        information on analyzing heap profile output.  This option is disabled
-        by default.</para></listitem>
+        information on analyzing heap profile output.  Works only when combined
+        with <link linkend="opt.prof_final"><mallctl>opt.prof_final</mallctl>
+        </link>, otherwise does nothing.  This option is disabled by default.
+        </para></listitem>
+      </varlistentry>
+
+      <varlistentry id="opt.prof_leak_error">
+        <term>
+          <mallctl>opt.prof_leak_error</mallctl>
+          (<type>bool</type>)
+          <literal>r-</literal>
+          [<option>--enable-prof</option>]
+        </term>
+        <listitem><para>Similar to <link linkend="opt.prof_leak"><mallctl>
+        opt.prof_leak</mallctl></link>, but makes the process exit with error
+        code 1 if a memory leak is detected.  This option supersedes
+        <link linkend="opt.prof_leak"><mallctl>opt.prof_leak</mallctl></link>,
+        meaning that if both are specified, this option takes precedence.  When
+        enabled, also enables <link linkend="opt.prof_leak"><mallctl>
+        opt.prof_leak</mallctl></link>.  Works only when combined with
+        <link linkend="opt.prof_final"><mallctl>opt.prof_final</mallctl></link>,
+        otherwise does nothing.  This option is disabled by default.
+        </para></listitem>
       </varlistentry>
 
       <varlistentry id="opt.zero_realloc">
@@ -2398,16 +2416,14 @@ struct extent_hooks_s {
         is specified, to a file according to the pattern
         <filename>&lt;prefix&gt;.&lt;pid&gt;.&lt;seq&gt;.m&lt;mseq&gt;.heap</filename>,
         where <literal>&lt;prefix&gt;</literal> is controlled by the
-        <link
-        linkend="opt.prof_prefix"><mallctl>opt.prof_prefix</mallctl></link> and
-        <link
-        linkend="prof.dump_prefix"><mallctl>prof.dump_prefix</mallctl></link>
+        <link linkend="opt.prof_prefix"><mallctl>opt.prof_prefix</mallctl></link>
+        and <link linkend="prof.prefix"><mallctl>prof.prefix</mallctl></link>
         options.</para></listitem>
       </varlistentry>
 
-      <varlistentry id="prof.dump_prefix">
+      <varlistentry id="prof.prefix">
         <term>
-          <mallctl>prof.dump_prefix</mallctl>
+          <mallctl>prof.prefix</mallctl>
           (<type>const char *</type>)
           <literal>-w</literal>
           [<option>--enable-prof</option>]
@@ -2433,8 +2449,7 @@ struct extent_hooks_s {
         <filename>&lt;prefix&gt;.&lt;pid&gt;.&lt;seq&gt;.u&lt;useq&gt;.heap</filename>,
         where <literal>&lt;prefix&gt;</literal> is controlled by the <link
         linkend="opt.prof_prefix"><mallctl>opt.prof_prefix</mallctl></link> and
-        <link
-        linkend="prof.dump_prefix"><mallctl>prof.dump_prefix</mallctl></link>
+        <link linkend="prof.prefix"><mallctl>prof.prefix</mallctl></link>
         options.</para></listitem>
       </varlistentry>
 

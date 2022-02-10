@@ -34,7 +34,9 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
-const char RocksDBKeyBounds::_stringSeparator = '\0';
+namespace {
+constexpr char kStringSeparator = '\0';
+}
 
 RocksDBKeyBounds RocksDBKeyBounds::Empty() {
   return RocksDBKeyBounds::PrimaryIndex(0);
@@ -269,13 +271,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t id,
       // format: id lower id upper
       //         start    end
       _internals.reserve(
-          sizeof(id) + (lower.size() + sizeof(_stringSeparator)) + sizeof(id) +
-          (upper.size() + sizeof(_stringSeparator)));
+          sizeof(id) + (lower.size() + sizeof(kStringSeparator)) + sizeof(id) +
+          (upper.size() + sizeof(kStringSeparator)));
 
       // id - lower
       uint64ToPersistent(_internals.buffer(), id);
       _internals.buffer().append(lower.data(), lower.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
 
       // set separator
       _internals.separate();
@@ -283,7 +285,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t id,
       // id - upper
       uint64ToPersistent(_internals.buffer(), id);
       _internals.buffer().append(upper.data(), upper.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
 
       break;
     }
@@ -370,7 +372,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       uint64ToPersistent(_internals.buffer(), first);
       if (type == RocksDBEntryType::EdgeIndexValue) {
         _internals.push_back('\0');
-        _internals.push_back(_stringSeparator);
+        _internals.push_back(kStringSeparator);
       }
 
       _internals.separate();
@@ -387,7 +389,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         uint64ToPersistent(_internals.buffer(), first);
         _internals.push_back(0xFFU);  // higher than any ascii char
         if (type == RocksDBEntryType::EdgeIndexValue) {
-          _internals.push_back(_stringSeparator);
+          _internals.push_back(kStringSeparator);
         }
       }
       break;
@@ -442,13 +444,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.reserve(2 * (sizeof(uint64_t) + second.size() + 2) + 1);
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
 
       _internals.separate();
 
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
-      _internals.push_back(_stringSeparator);
+      _internals.push_back(kStringSeparator);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       if (type == RocksDBEntryType::EdgeIndexValue) {
         _internals.push_back(0xFFU);  // high-byte for prefix extractor

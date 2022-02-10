@@ -13,8 +13,6 @@
  * at least the damage is compartmentalized to this file.
  */
 
-sc_data_t sc_data_global;
-
 static size_t
 reg_size_compute(int lg_base, int lg_delta, int ndelta) {
 	return (ZU(1) << lg_base) + (ZU(ndelta) << lg_delta);
@@ -64,9 +62,8 @@ size_class(
 	sc->lg_base = lg_base;
 	sc->lg_delta = lg_delta;
 	sc->ndelta = ndelta;
-	sc->psz = (reg_size_compute(lg_base, lg_delta, ndelta)
-	    % (ZU(1) << lg_page) == 0);
-	size_t size = (ZU(1) << lg_base) + (ZU(ndelta) << lg_delta);
+	size_t size = reg_size_compute(lg_base, lg_delta, ndelta);
+	sc->psz = (size % (ZU(1) << lg_page) == 0);
 	if (index == 0) {
 		assert(!sc->psz);
 	}

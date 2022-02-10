@@ -119,7 +119,7 @@ TEST_BEGIN(test_stats_arenas_summary) {
 	    "Unexepected mallctl() result");
 
 	if (config_stats) {
-		if (!background_thread_enabled() && !opt_hpa) {
+		if (!is_background_thread_enabled() && !opt_hpa) {
 			expect_u64_gt(dirty_npurge + muzzy_npurge, 0,
 			    "At least one purge should have occurred");
 		}
@@ -367,7 +367,7 @@ TEST_END
 static void
 test_tcache_bytes_for_usize(size_t usize) {
 	uint64_t epoch;
-	size_t tcache_bytes;
+	size_t tcache_bytes, tcache_stashed_bytes;
 	size_t sz = sizeof(tcache_bytes);
 
 	void *ptr = mallocx(usize, 0);
@@ -377,7 +377,11 @@ test_tcache_bytes_for_usize(size_t usize) {
 	assert_d_eq(mallctl(
 	    "stats.arenas." STRINGIFY(MALLCTL_ARENAS_ALL) ".tcache_bytes",
 	    &tcache_bytes, &sz, NULL, 0), 0, "Unexpected mallctl failure");
-	size_t tcache_bytes_before = tcache_bytes;
+	assert_d_eq(mallctl(
+	    "stats.arenas." STRINGIFY(MALLCTL_ARENAS_ALL)
+	    ".tcache_stashed_bytes", &tcache_stashed_bytes, &sz, NULL, 0), 0,
+	    "Unexpected mallctl failure");
+	size_t tcache_bytes_before = tcache_bytes + tcache_stashed_bytes;
 	dallocx(ptr, 0);
 
 	expect_d_eq(mallctl("epoch", NULL, NULL, (void *)&epoch, sizeof(epoch)),
@@ -385,7 +389,11 @@ test_tcache_bytes_for_usize(size_t usize) {
 	assert_d_eq(mallctl(
 	    "stats.arenas." STRINGIFY(MALLCTL_ARENAS_ALL) ".tcache_bytes",
 	    &tcache_bytes, &sz, NULL, 0), 0, "Unexpected mallctl failure");
-	size_t tcache_bytes_after = tcache_bytes;
+	assert_d_eq(mallctl(
+	    "stats.arenas." STRINGIFY(MALLCTL_ARENAS_ALL)
+	    ".tcache_stashed_bytes", &tcache_stashed_bytes, &sz, NULL, 0), 0,
+	    "Unexpected mallctl failure");
+	size_t tcache_bytes_after = tcache_bytes + tcache_stashed_bytes;
 	assert_zu_eq(tcache_bytes_after - tcache_bytes_before,
 	    usize, "Incorrectly attributed a free");
 }
