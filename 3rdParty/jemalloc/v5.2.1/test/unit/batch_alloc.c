@@ -1,7 +1,7 @@
 #include "test/jemalloc_test.h"
 
 #define BATCH_MAX ((1U << 16) + 1024)
-static void *ptrs[BATCH_MAX];
+static void *global_ptrs[BATCH_MAX];
 
 #define PAGE_ALIGNED(ptr) (((uintptr_t)ptr & PAGE_MASK) == 0)
 
@@ -122,13 +122,14 @@ test_wrapper(size_t size, size_t alignment, bool zero, unsigned arena_flag) {
 			}
 			size_t batch = base + (size_t)j;
 			assert(batch < BATCH_MAX);
-			size_t filled = batch_alloc_wrapper(ptrs, batch, size,
-			    flags);
+			size_t filled = batch_alloc_wrapper(global_ptrs, batch,
+			    size, flags);
 			assert_zu_eq(filled, batch, "");
-			verify_batch_basic(tsd, ptrs, batch, usize, zero);
-			verify_batch_locality(tsd, ptrs, batch, usize, arena,
-			    nregs);
-			release_batch(ptrs, batch, usize);
+			verify_batch_basic(tsd, global_ptrs, batch, usize,
+			    zero);
+			verify_batch_locality(tsd, global_ptrs, batch, usize,
+			    arena, nregs);
+			release_batch(global_ptrs, batch, usize);
 		}
 	}
 
@@ -163,16 +164,16 @@ TEST_BEGIN(test_batch_alloc_large) {
 	size_t size = SC_LARGE_MINCLASS;
 	for (size_t batch = 0; batch < 4; ++batch) {
 		assert(batch < BATCH_MAX);
-		size_t filled = batch_alloc(ptrs, batch, size, 0);
+		size_t filled = batch_alloc(global_ptrs, batch, size, 0);
 		assert_zu_eq(filled, batch, "");
-		release_batch(ptrs, batch, size);
+		release_batch(global_ptrs, batch, size);
 	}
 	size = tcache_maxclass + 1;
 	for (size_t batch = 0; batch < 4; ++batch) {
 		assert(batch < BATCH_MAX);
-		size_t filled = batch_alloc(ptrs, batch, size, 0);
+		size_t filled = batch_alloc(global_ptrs, batch, size, 0);
 		assert_zu_eq(filled, batch, "");
-		release_batch(ptrs, batch, size);
+		release_batch(global_ptrs, batch, size);
 	}
 }
 TEST_END

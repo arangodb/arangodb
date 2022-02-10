@@ -65,9 +65,9 @@ bool hasExpansion(
   return false;
 }
 
-bool canBeNull(arangodb::aql::AstNode const* op,
-               arangodb::aql::AstNode const* access,
-               std::unordered_set<std::string> const& nonNullAttributes) {
+bool canBeNull(
+    arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* access,
+    arangodb::containers::FlatHashSet<std::string> const& nonNullAttributes) {
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
 
@@ -107,9 +107,9 @@ bool canBeNull(arangodb::aql::AstNode const* op,
   return true;
 }
 
-void markAsNonNull(arangodb::aql::AstNode const* op,
-                   arangodb::aql::AstNode const* access,
-                   std::unordered_set<std::string>& nonNullAttributes) {
+void markAsNonNull(
+    arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* access,
+    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes) {
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
 
@@ -687,7 +687,7 @@ std::unique_ptr<IndexIterator> Index::iteratorForCondition(
 bool Index::canUseConditionPart(
     arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
     arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    std::unordered_set<std::string>& nonNullAttributes,
+    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution) const {
   if (_sparse) {
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {

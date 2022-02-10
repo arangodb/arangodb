@@ -205,6 +205,12 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   uint64_t objectId() const;
 
+  // clears the bounds' internals
+  void clear() noexcept { internals().clear(); }
+
+  // checks if the bounds' internals are empty
+  bool empty() const noexcept { return internals().empty(); }
+
  private:
   RocksDBKeyBounds();
   explicit RocksDBKeyBounds(RocksDBEntryType type);
@@ -290,6 +296,16 @@ class RocksDBKeyBounds {
                             _buffer.size() - _separatorPosition);
     }
 
+    void clear() noexcept {
+      _buffer.clear();
+      _separatorPosition = 0;
+    }
+
+    bool empty() const noexcept {
+      TRI_ASSERT((_separatorPosition == 0) == (_buffer.empty()));
+      return _buffer.empty();
+    }
+
    private:
     std::string _buffer;
     size_t _separatorPosition;
@@ -298,7 +314,6 @@ class RocksDBKeyBounds {
   BoundsBuffer& internals() { return _internals; }
   BoundsBuffer const& internals() const { return _internals; }
 
-  static const char _stringSeparator;
   RocksDBEntryType _type;
   BoundsBuffer _internals;
 };
