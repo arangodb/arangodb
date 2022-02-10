@@ -176,6 +176,13 @@ class HeartbeatThread : public Thread,
 
   void updateDBServers();
 
+  // handle changes of user version (Sync/UserVersion)
+  void handleUserVersionChange(arangodb::velocypack::Slice userVersion);
+
+  // handle changes of foxx queue version (Sync/FoxxQueueVersion)
+  void handleFoxxQueueVersionChange(
+      arangodb::velocypack::Slice foxxQueueVersion);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
