@@ -2150,30 +2150,50 @@ describe('_api/gharial', () => {
 
     function* NumberOfShardsGenerator() {
       // Some random values for number of Shards
-      const values = [3, 9, 27];
+      // We on purpose use 1,2 as they overlap with replicationFactor
+      const values = [1, 2, 3, 9];
       for (const v of values) {
         yield v;
       }
-    };
+    }
 
     function* ReplicationFactorGenerator() {
       // Some random values for replicationFactor
-      const values = [1, 2, 3];
+      const values = [1, 2];
       for (const v of values) {
         yield v;
       }
-    };
+      if (isEnterprise) {
+        yield "satellite";
+      }
+    }
 
-    function* MinReplicationFactorGenerator(replicationFactor) {
-      // Some random values for minReplicationFactor, it has
+    function* WriteConcernGenerator(replicationFactor) {
+      // Some random values for writeConcern, it has
       // to be less or equal to the replicationFactor
-      const values = [1, 2, 3];
+      if (replicationFactor === "satellite") {
+        return 1;
+      }
+      const values = [1, 2];
       for (const v of values) {
         if (v <= replicationFactor) {
           yield v;
         }
       }
-    };
+    }
+
+    function* GraphBaseTypeOptionsGenerator(replicationFactor) {
+      yield {};
+      if (isEnterprise && replicationFactor !== "satellite") {
+        for (const smartGraphAttribute of ["smart", "otherSmart"]) {
+          for (const isDisjoint of [true, false]) {
+            yield {isSmart: true, smartGraphAttribute, isDisjoint};
+          }
+        }
+
+      }
+
+    }
 
     const shuffle = (list) => {
       for (let i = 0; i < list.length; ++i) {
@@ -2283,6 +2303,69 @@ describe('_api/gharial', () => {
         gM._relation("Unittest_edges_C", "Unittest_C", "Unittest_A")
       ];
       const baseChecksums = produceSingleGraphChecksum("Unittest_graph", baseRelations);
+      // Assert that we at least have some checksums not null
+      expect(baseChecksums.checksum).to.not.equal(0);
+      for (const s of baseChecksums.edgeChecksums) {
+        expect(s).to.not.equal(0);
+      }
+      // Now scramble
+      for (const relations of ArrayScrambler(baseRelations)) {
+        const {
+          checksum,
+          edgeChecksums
+        } = produceSingleGraphChecksum("Unittest_graph", relations);
+        // The graph has some properties, total checksum needs to stay identical
+        expect(checksum).to.equal(baseChecksums.checksum);
+
+        // This actually is not a hard requirement, it would be enough if the elements
+        // in both lists are identical, but the order not important.
+        // for simplicity, we have ordered the relations
+        expect(edgeChecksums).to.eql(baseChecksums.edgeChecksums);
+      }
+
+    });
+
+    it('should create different Graph checksum if properties differ', () => {
+      const relation = [
+        gM._relation("Unittest_edges_A", "Unittest_A", "Unittest_B"),
+      ];
+      // Keep all checksums available.
+      // Also retain the options used in the specific places
+      // this is used to print miss matched combinations
+      // that eventually use the same checksum.
+      const resultingChecksums = new Map();
+      let baseEdgeChecksums = [0];
+
+      for (const numberOfShards of NumberOfShardsGenerator()) {
+        for (const replicationFactor of ReplicationFactorGenerator()) {
+          for (const writeConcern of WriteConcernGenerator(replicationFactor)) {
+            for (const baseOptions of GraphBaseTypeOptionsGenerator(replicationFactor)) {
+              const options = {...baseOptions, numberOfShards, replicationFactor, writeConcern};
+              const {
+                checksum,
+                edgeChecksums
+              } = produceSingleGraphChecksum("Unittest_graph", relation, [], options);
+              if (resultingChecksums.size === 0) {
+                // first run, retain edgeChecksums, they are not allowed to change
+                expect(checksum).to.not.equal(0);
+                for (const s of edgeChecksums) {
+                  expect(s).to.not.equal(0);
+                }
+                baseEdgeChecksums = edgeChecksums;
+              } else {
+                // No checksum is allowed to be shown twice
+                expect(resultingChecksums.has(checksum)).to.equal(false,
+                  `Checksum: ${checksum} generated twice, ${JSON.stringify(options)} and ${JSON.stringify(resultingChecksums.get(checksum))} `);
+                expect(edgeChecksums).to.eql(baseEdgeChecksums);
+              }
+              resultingChecksums.set(checksum, options);
+            }
+          }
+        }
+      }
+
+
+      const baseChecksums = produceSingleGraphChecksum("Unittest_graph", relation);
       // Assert that we at least have some checksums not null
       expect(baseChecksums.checksum).to.not.equal(0);
       for (const s of baseChecksums.edgeChecksums) {
