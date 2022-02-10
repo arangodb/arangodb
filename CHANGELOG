@@ -2,11 +2,15 @@ v3.8.6 (XXXX-XX-XX)
 -------------------
 
 * Fixed a race detected with chaos tests, where a db server could have
-  momentarily lost leadership, just when it was about to drop a
-  follower to a shard.
+  momentarily lost leadership, just when it was about to drop a follower to a
+  shard.
+
 
 v3.8.5 (2022-01-20)
 -------------------
+
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
 
 * Fixed issue #15501: Regression when using "exclusive" query option?
   This fixes a regression in AQL query execution when exclusive locks are used
