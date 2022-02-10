@@ -32,20 +32,11 @@ namespace arangodb::aql {
 
 class MultiAqlItemBlockInputRange {
  public:
-  explicit MultiAqlItemBlockInputRange(ExecutorState state,
+  explicit MultiAqlItemBlockInputRange(MainQueryState state,
                                        std::size_t skipped = 0,
                                        std::size_t nrInputRanges = 1);
 
-  MultiAqlItemBlockInputRange(ExecutorState, std::size_t skipped,
-                              arangodb::aql::SharedAqlItemBlockPtr const&,
-                              std::size_t startIndex);
-
-  MultiAqlItemBlockInputRange(ExecutorState, std::size_t skipped,
-                              arangodb::aql::SharedAqlItemBlockPtr&&,
-                              std::size_t startIndex) noexcept;
-
   ExecutorState upstreamState(size_t const dependency) const noexcept;
-  bool upstreamHasMore(size_t const dependency) const noexcept;
 
   bool hasValidRow() const noexcept;
 
@@ -79,7 +70,7 @@ class MultiAqlItemBlockInputRange {
   auto isDone() const -> bool;
   auto state() const -> ExecutorState;
 
-  auto resizeOnce(ExecutorState state, size_t skipped, size_t nrInputRanges)
+  auto resizeOnce(MainQueryState state, size_t skipped, size_t nrInputRanges)
       -> void;
 
   [[nodiscard]] auto getBlock(size_t dependency = 0) const noexcept
@@ -125,9 +116,9 @@ class MultiAqlItemBlockInputRange {
    * @brief The final State of all ranges. Combined
    *        Will be DONE only if all inputs are DONE
    *
-   * @return ExecutorState
+   * @return MainQueryState
    */
-  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+  [[nodiscard]] auto finalState() const noexcept -> MainQueryState;
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

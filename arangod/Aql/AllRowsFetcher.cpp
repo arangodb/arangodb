@@ -56,7 +56,7 @@ AllRowsFetcher::execute(AqlCallStack& stack) {
       TRI_ASSERT(block == nullptr);
       // On waiting we have nothing to return
       return {state, SkipResult{},
-              AqlItemBlockInputMatrix{ExecutorState::HASMORE}};
+              AqlItemBlockInputMatrix{MainQueryState::HASMORE}};
     }
     TRI_ASSERT(block != nullptr || state == ExecutionState::DONE);
 
@@ -70,12 +70,12 @@ AllRowsFetcher::execute(AqlCallStack& stack) {
     if (_aqlItemMatrix->stoppedOnShadowRow() || state == ExecutionState::DONE) {
       if (state == ExecutionState::HASMORE) {
         return {state, skipped,
-                AqlItemBlockInputMatrix{ExecutorState::HASMORE,
+                AqlItemBlockInputMatrix{MainQueryState::HASMORE,
                                         _aqlItemMatrix.get()}};
       }
       return {
           state, skipped,
-          AqlItemBlockInputMatrix{ExecutorState::DONE, _aqlItemMatrix.get()}};
+          AqlItemBlockInputMatrix{MainQueryState::DONE, _aqlItemMatrix.get()}};
     }
   }
 }

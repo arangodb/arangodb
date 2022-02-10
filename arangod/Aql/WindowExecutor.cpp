@@ -205,7 +205,7 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 [[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     // For every input row we produce a new row.
     auto estOnInput = input.countDataRows();
     return std::min(call.getLimit(), estOnInput);
@@ -442,7 +442,7 @@ WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 [[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     size_t remain = _currentIdx < _rows.size() ? _rows.size() - _currentIdx : 0;
     remain += input.countDataRows();
     return std::min(call.getLimit(), remain);
