@@ -1082,11 +1082,14 @@ Result IResearchLink::init(
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
-      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    
+    bool const clusterWideLink =
+        _collection.id() == _collection.planId() && _collection.isAStub();
+    auto const clusterIsEnabled =
+        vocbase.server().getFeature<ClusterFeature>().isEnabled();
 
-      // cluster-wide link
-      auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
+    if (clusterIsEnabled) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
       // upgrade step for old link definition without collection name
       // this could be received from  agency while shard of the collection was moved (or added)
@@ -1103,7 +1106,8 @@ Result IResearchLink::init(
             << this->id().id() << "'";
         }
         if (ADB_UNLIKELY(meta._collectionName.empty())) {
-          LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
+          LOG_TOPIC_IF("67da6", WARN, TOPIC, meta.willIndexIdAttribute())
+            << "Failed to init collection name for the link '"
             << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
         }
 
@@ -1114,24 +1118,41 @@ Result IResearchLink::init(
         }
   #endif
       }
+    }
 
-      if (!clusterWideLink) {
-        // prepare data-store which can then update options
-        // via the IResearchView::link(...) call
-        auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
-
-        if (!res.ok()) {
-          return res;
-        }
+    if (!clusterWideLink) {
+      if (meta._collectionName.empty() && !clusterIsEnabled &&
+          vocbase.server().getFeature<EngineSelectorFeature>().engine().inRecovery() &&
+          meta.willIndexIdAttribute()) {
+        LOG_TOPIC("f25ce", FATAL, TOPIC)
+            << "Upgrade conflicts with recovering ArangoSearch link '"
+            << this->id().id()
+            << "' Please rollback the updated arangodb binary and finish the "
+               "recovery "
+               "first.";
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "Upgrade conflicts with recovering ArangoSearch link."
+            " Please rollback the updated arangodb binary and finish the "
+            "recovery "
+            "first.");
       }
+      // prepare data-store which can then update options
+      // via the IResearchView::link(...) call
+      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
 
+      if (!res.ok()) {
+        return res;
+      }
+    }
+    if (clusterIsEnabled) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
       // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
       auto logicalView = ci.getView(vocbase.name(), viewId);
-
       // if there is no logicalView present yet then skip this step
       if (logicalView) {
         if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-          unload(); // unlock the data store directory
+          unload();  // unlock the data store directory
           return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "error finding view: '" + viewId + "' for link '" +
                       std::to_string(_id.id()) + "' : no such view"};
@@ -1140,26 +1161,27 @@ Result IResearchLink::init(
         auto* view = LogicalView::cast<IResearchView>(logicalView.get());
 
         if (!view) {
-          unload(); // unlock the data store directory
+          unload();  // unlock the data store directory
           return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "error finding view: '" + viewId + "' for link '" +
                       std::to_string(_id.id()) + "'"};
         }
 
-        viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
+        viewId = view->guid();  // ensue that this is a GUID (required by operator==(IResearchView))
 
-        if (clusterWideLink) { // cluster cluster-wide link
+        if (clusterWideLink) {  // cluster cluster-wide link
           auto shardIds = _collection.shardIds();
 
-          // go through all shard IDs of the collection and try to link any links
-          // missing links will be populated when they are created in the
+          // go through all shard IDs of the collection and try to link any
+          // links missing links will be populated when they are created in the
           // per-shard collection
           if (shardIds) {
             for (auto& entry : *shardIds) {
-              auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
+              auto collection = vocbase.lookupCollection(
+                  entry.first);  // per-shard collections are always in 'vocbase'
 
               if (!collection) {
-                continue; // missing collection should be created after Plan becomes Current
+                continue;  // missing collection should be created after Plan becomes Current
               }
 
               auto link = IResearchLinkHelper::find(*collection, *view);
@@ -1173,11 +1195,11 @@ Result IResearchLink::init(
               }
             }
           }
-        } else { // cluster per-shard link
+        } else {  // cluster per-shard link
           auto res = view->link(_asyncSelf);
 
           if (!res.ok()) {
-            unload(); // unlock the data store directory
+            unload();  // unlock the data store directory
 
             return res;
           }
