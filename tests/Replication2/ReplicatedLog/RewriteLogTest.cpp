@@ -134,20 +134,23 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{1});
     EXPECT_EQ(entry->logTerm(), LogTerm{1});
-    EXPECT_EQ(entry->logPayload(), LogPayload::createFromString("first entry"));
+    ASSERT_NE(entry->logPayload(), nullptr);
+    EXPECT_EQ(*entry->logPayload(),
+              LogPayload::createFromString("first entry"));
     // This is the leader entry inserted in becomeLeader
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{2});
     EXPECT_EQ(entry->logTerm(), LogTerm{3});
-    EXPECT_EQ(entry->logPayload(), std::nullopt)
-        << entry->logPayload().value().slice().toJson();
+    EXPECT_EQ(entry->logPayload(), nullptr)
+        << entry->logPayload()->slice().toJson();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{3});
     EXPECT_EQ(entry->logTerm(), LogTerm{3});
-    EXPECT_EQ(entry->logPayload(),
+    ASSERT_NE(entry->logPayload(), nullptr);
+    EXPECT_EQ(*entry->logPayload(),
               LogPayload::createFromString("new second entry"));
     entry = iter->next();
     EXPECT_FALSE(entry.has_value());
