@@ -1,6 +1,9 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if
+  DBServer is in upgrade mode in the same time.
+
 * Fixed a race detected with chaos tests, where a db server could have
   momentarily lost leadership, just when it was about to drop a follower to a
   shard.
