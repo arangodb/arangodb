@@ -42,9 +42,29 @@ const db = arangodb.db;
 const internal = require('internal');
 const isCluster = internal.isCluster();
 const wait = internal.wait;
-const url = '/_api/gharial';
 
 describe('_api/gharial', () => {
+  const url = '/_api/gharial';
+  const generateSingleUrlWithDetails = (graphName) => {
+    return `${url}/${graphName}?details=true`;
+  };
+
+  // basic validation methods
+  const validateBasicGraphsResponse = (res) => {
+    expect(res.code).to.equal(200);
+    expect(res.error).to.be.false;
+    expect(res).to.have.keys("error", "code", "graphs");
+    expect(res.graphs).to.be.an('array');
+  };
+
+  // basic validation methods
+  const validateBasicGraphResponse = (res) => {
+    expect(res.code).to.equal(200);
+    expect(res.error).to.be.false;
+    expect(res).to.have.keys("error", "code", "graph");
+    expect(res.graph).to.be.an('object');
+  };
+
   const graphName = 'UnitTestGraph';
   const graphName2 = 'UnitTestGraph2';
   const vColName = 'UnitTestVertices';
@@ -1619,28 +1639,8 @@ describe('_api/gharial', () => {
       replicationFactor: "satellite"
     };
 
-    // basic validation methods
-    const validateBasicGraphsResponse = (res) => {
-      expect(res.code).to.equal(200);
-      expect(res.error).to.be.false;
-      expect(res).to.have.keys("error", "code", "graphs");
-      expect(res.graphs).to.be.an('array');
-    };
-
-    // basic validation methods
-    const validateBasicGraphResponse = (res) => {
-      expect(res.code).to.equal(200);
-      expect(res.error).to.be.false;
-      expect(res).to.have.keys("error", "code", "graph");
-      expect(res.graph).to.be.an('object');
-    };
-
     const generateSingleUrl = (graphName) => {
       return `${url}/${graphName}`;
-    };
-
-    const generateSingleUrlWithDetails = (graphName) => {
-      return `${url}/${graphName}?details=true`;
     };
 
     const generateAllGraphsUrlWithDetails = () => {
@@ -1693,7 +1693,7 @@ describe('_api/gharial', () => {
         return graph.checksum;
       };
       const res = createGraphWithProperties(isSmart, isDisjoint, isSatellite, isHybrid);
-
+      
       let checksum = fetchChecksum();
       let jsGraph = gM._graph(graphName);
 
@@ -2093,6 +2093,171 @@ describe('_api/gharial', () => {
         recreateGraphMethod(true, true, false, true);
       });
     }
+
+  });
+
+  /// @brief this test suite tests how modifications on all
+  /// graphs effect the checksums provided. This is to make sure we have
+  /// a high confidence to detect all changes to a graph, and not accidentially
+  /// create hash-collisions ourselfes.
+  describe.only('graph list checksum equality properties', () => {
+
+    function* NumberOfShardsGenerator() {
+      // Some random values for number of Shards
+      const values = [3, 9, 27];
+      for (const v of values) {
+        yield v;
+      }
+    };
+
+    function* ReplicationFactorGenerator() {
+      // Some random values for replicationFactor
+      const values = [1, 2, 3];
+      for (const v of values) {
+        yield v;
+      }
+    };
+
+    function* MinReplicationFactorGenerator(replicationFactor) {
+      // Some random values for minReplicationFactor, it has
+      // to be less or equal to the replicationFactor
+      const values = [1, 2, 3];
+      for (const v of values) {
+        if (v <= replicationFactor) {
+          yield v;
+        }
+      }
+    };
+
+    const shuffle = (list) => {
+      for (let i = 0; i < list.length; ++i) {
+        // draw a random element from the not shuffled list
+        const pick = Math.floor(Math.random() * (i + 1));
+        // Swap the selected element at the end of shuffled list.
+        [list[i], list[pick]] = [list[pick], list[i]];
+      }
+    }
+
+    function* ArrayScrambler(list) {
+      if (list.length === 1) {
+        // Nothing to shuffle
+        return list;
+      }
+      if (list.length === 2) {
+        // Only two options
+        yield list;
+        return [list[1], list[0]];
+      }
+      // Pick 3 shuffles at random (may have duplicates, will have different shuffles every run
+      // We explicitly want the randomness here as the order is not allowed to ever matter!
+      for (let i = 0; i < 3; ++i) {
+        shuffle(list);
+        yield list;
+      }
+    }
+
+    // Temporarily creates the given graph,
+    // fetches the checksums, and then drops the graph again.
+    const produceSingleGraphChecksum = (name, relations, orphans = [], options = {
+      numberOfShards: 3,
+      replicationFactor: 1
+    }) => {
+      gM._create(name, relations, orphans, options);
+      const res = arango.GET(generateSingleUrlWithDetails(name));
+      validateBasicGraphResponse(res);
+      const {graph} = res;
+      const {checksum, edgeDefinitions} = graph;
+      const edgeChecksums = edgeDefinitions.map(e => e.checksum);
+      // We want to throw an error if this operation fails, all following test will have leftovers.
+      gM._drop(name, true);
+      return {checksum, edgeChecksums};
+    };
+
+    afterEach(() => {
+    });
+    beforeEach(() => {
+    });
+
+    it('should create same EdgeDefinition checksum if from and to collections are mixed in order', () => {
+      const baseFrom = ["Unittest_A", "Unittest_B", "Unittest_C"];
+      const baseTo = ["Unittest_B", "Unittest_D", "Unittest_E"];
+      const makeRelation = (from, to) => [gM._relation("Unittest_edges", from, to)];
+      const baseChecksums = produceSingleGraphChecksum("Unittest_graph", makeRelation(baseFrom, baseTo));
+      // Assert that we at least have some checksums not null
+      expect(baseChecksums.checksum).to.not.equal(0);
+      for (const s of baseChecksums.edgeChecksums) {
+        expect(s).to.not.equal(0);
+      }
+      // Now scramble
+      for (const from of ArrayScrambler(baseFrom)) {
+        for (const to of ArrayScrambler(baseTo)) {
+          const {
+            checksum,
+            edgeChecksums
+          } = produceSingleGraphChecksum("Unittest_graph", makeRelation(from, to));
+          // The graph has some properties, total checksum needs to stay identical
+          expect(checksum).to.equal(baseChecksums.checksum);
+          // The list of Checksums has to be identical,  we have only scrambled the content of from and to
+          // not the order of edge definitions.
+          expect(edgeChecksums).to.eql(baseChecksums.edgeChecksums);
+        }
+      }
+
+    });
+
+    it('should create same graph checksum if orphans are mixed in order', () => {
+      const baseOrphans = ["Unittest_A", "Unittest_B", "Unittest_C"];
+      const makeRelation = (from, to) => [gM._relation("Unittest_edges", from, to)];
+      const rels = makeRelation("Unittest_D", "Unittest_E");
+      const baseChecksums = produceSingleGraphChecksum("Unittest_graph", rels, baseOrphans);
+      // Assert that we at least have some checksums not null
+      expect(baseChecksums.checksum).to.not.equal(0);
+      for (const s of baseChecksums.edgeChecksums) {
+        expect(s).to.not.equal(0);
+      }
+      // Now scramble
+      for (const orphans of ArrayScrambler(baseOrphans)) {
+        const {
+          checksum,
+          edgeChecksums
+        } = produceSingleGraphChecksum("Unittest_graph", rels, orphans);
+        // The graph has some properties, total checksum needs to stay identical
+        expect(checksum).to.equal(baseChecksums.checksum);
+        // The list of Checksums has to be identical,  we have only scrambled the content of from and to
+        // not the order of edge definitions.
+        expect(edgeChecksums).to.eql(baseChecksums.edgeChecksums);
+      }
+
+    });
+
+    it('should create same Graph checksum if relations are mixed in order', () => {
+      const baseRelations = [
+        gM._relation("Unittest_edges_A", "Unittest_A", "Unittest_B"),
+        gM._relation("Unittest_edges_B", "Unittest_B", "Unittest_C"),
+        gM._relation("Unittest_edges_C", "Unittest_C", "Unittest_A")
+      ];
+      const baseChecksums = produceSingleGraphChecksum("Unittest_graph", baseRelations);
+      // Assert that we at least have some checksums not null
+      expect(baseChecksums.checksum).to.not.equal(0);
+      for (const s of baseChecksums.edgeChecksums) {
+        expect(s).to.not.equal(0);
+      }
+      // Now scramble
+      for (const relations of ArrayScrambler(baseRelations)) {
+        const {
+          checksum,
+          edgeChecksums
+        } = produceSingleGraphChecksum("Unittest_graph", relations);
+        // The graph has some properties, total checksum needs to stay identical
+        expect(checksum).to.equal(baseChecksums.checksum);
+
+        // This actually is not a hard requirement, it would be enough if the elements
+        // in both lists are identical, but the order not important.
+        // for simplicity, we have ordered the relations
+        expect(edgeChecksums).to.eql(baseChecksums.edgeChecksums);
+      }
+
+    });
 
   });
 });
