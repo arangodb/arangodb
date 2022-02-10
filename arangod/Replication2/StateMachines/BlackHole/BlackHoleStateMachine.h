@@ -37,12 +37,14 @@ struct BlackHoleFactory;
 struct BlackHoleLogEntry;
 struct BlackHoleLeaderState;
 struct BlackHoleFollowerState;
+struct BlackHoleCore;
 
 struct BlackHoleState {
   using LeaderType = BlackHoleLeaderState;
   using FollowerType = BlackHoleFollowerState;
   using EntryType = BlackHoleLogEntry;
   using FactoryType = BlackHoleFactory;
+  using CoreType = BlackHoleCore;
 };
 
 struct BlackHoleLogEntry {
@@ -51,25 +53,42 @@ struct BlackHoleLogEntry {
 
 struct BlackHoleLeaderState
     : replicated_state::IReplicatedLeaderState<BlackHoleState> {
+  explicit BlackHoleLeaderState(std::unique_ptr<BlackHoleCore> core);
   auto write(std::string_view) -> LogIndex;
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<BlackHoleCore> override;
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
+
+  std::unique_ptr<BlackHoleCore> _core;
 };
 
 struct BlackHoleFollowerState
     : replicated_state::IReplicatedFollowerState<BlackHoleState> {
+  explicit BlackHoleFollowerState(std::unique_ptr<BlackHoleCore> core);
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<BlackHoleCore> override;
+
  protected:
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
+
+  std::unique_ptr<BlackHoleCore> _core;
 };
 
+struct BlackHoleCore {};
+
 struct BlackHoleFactory {
-  auto constructFollower() -> std::shared_ptr<BlackHoleFollowerState>;
-  auto constructLeader() -> std::shared_ptr<BlackHoleLeaderState>;
+  auto constructFollower(std::unique_ptr<BlackHoleCore> core)
+      -> std::shared_ptr<BlackHoleFollowerState>;
+  auto constructLeader(std::unique_ptr<BlackHoleCore> core)
+      -> std::shared_ptr<BlackHoleLeaderState>;
 };
 
 }  // namespace black_hole

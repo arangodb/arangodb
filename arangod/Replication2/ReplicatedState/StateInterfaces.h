@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedStateCore.h"
+#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Streams/Streams.h"
@@ -54,6 +54,7 @@ struct IReplicatedFollowerStateBase {
 template<typename S>
 struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::ProducerStream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
 
@@ -72,6 +73,9 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
 
   auto getStream() const -> std::shared_ptr<Stream> const&;
 
+  [[nodiscard]] virtual auto resign() && noexcept
+      -> std::unique_ptr<CoreType> = 0;
+
   // TODO make private
   std::shared_ptr<Stream> _stream;
 };
@@ -79,6 +83,7 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
 template<typename S>
 struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::Stream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
 
@@ -112,6 +117,9 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
       -> futures::Future<Result> = 0;
 
   [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
+
+  [[nodiscard]] virtual auto resign() && noexcept
+      -> std::unique_ptr<CoreType> = 0;
 
   // TODO make private
   std::shared_ptr<Stream> _stream;

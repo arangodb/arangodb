@@ -1,8 +1,8 @@
-name: arangosearch_num_failed_commits
+name: arangodb_search_cleanup_time
 introducedIn: "3.10.0"
 help: |
-  Number of failed commits.
-unit: number
+  Average time of few last cleanups.
+unit: ms
 type: gauge
 category: ArangoSearch
 complexity: advanced
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Number of failed commits.
+  Average time of few last cleanups.
