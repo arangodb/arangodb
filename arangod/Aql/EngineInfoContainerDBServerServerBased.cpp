@@ -284,6 +284,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
+  TRI_ASSERT(serverToQueryId.empty());
+
   // This needs to be a set with a defined order, it is important, that we
   // contact the database servers only in this specific order to avoid
   // cluster-wide deadlock situations.
