@@ -3,6 +3,8 @@ v3.8.6 (XXXX-XX-XX)
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
 * Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
