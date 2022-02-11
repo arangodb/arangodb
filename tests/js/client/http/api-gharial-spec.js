@@ -2424,5 +2424,131 @@ describe('_api/gharial', () => {
         expect(checkIfDuplicateExists(globalGraphChecksums)).to.be.true;
       });
     }
+
+    it('global checksum must be zero in case we have no graphs', () => {
+      const res = arango.GET(`${url}`);
+      validateBasicGraphsResponse(res);
+      expect(res.graphs.length).to.be.equal(0);
+    });
+
+    it('global checksum must be zero in case we have no graphs', () => {
+      const res = arango.GET(`${url}?details=true`);
+      validateBasicGraphsResponse(res);
+      expect(res.graphs.length).to.be.equal(0);
+    });
+
+    it('global checksum must be zero in case we have no graphs', () => {
+      const res = arango.GET(`${url}?onlyHash=true`);
+      expect(res.code).to.equal(200);
+      expect(res.error).to.be.false;
+      expect(res).to.have.keys("error", "code", "checksum");
+      expect(res.checksum).to.be.a('number');
+      expect(res.checksum).to.be.equal(0);
+    });
+
+    it('global checksum must be equal no matter how graphs are being sorted', () => {
+      const noOrphans = [];
+      const relationA = gM._relation("Unittest_edgesA", ["Unittest_A"], ["Unittest_B"]);
+      const relationB = gM._relation("Unittest_edgesB", ["Unittest_C"], ["Unittest_D"]);
+      const relationC = gM._relation("Unittest_edgesC", ["Unittest_E"], ["Unittest_F"]);
+      const relationD = gM._relation("Unittest_edgesD", ["Unittest_G"], ["Unittest_H"]);
+      const relationE = gM._relation("Unittest_edgesE", ["Unittest_I"], ["Unittest_J"]);
+
+      let hybridSmartOptions = _.cloneDeep(smartOptions);
+      hybridSmartOptions.satellites = ["Unittest_G"];
+      Object.freeze(hybridSmartOptions);
+      const graphDefinitions = [
+        {
+          name: "Unittest_graphA",
+          opts: {},
+          relation: relationA
+        },
+        {
+          name: "Unittest_graphB",
+          opts: smartOptions,
+          relation: relationB
+        },
+        {
+          name: "Unittest_graphC",
+          opts: smartDisjointOptions,
+          relation: relationC
+        },
+        {
+          name: "Unittest_graphD",
+          opts: hybridSmartOptions,
+          relation: relationD
+        },
+        {
+          name: "Unittest_graphE",
+          opts: satelliteOptions,
+          relation: relationE
+        }
+      ];
+
+      let graphOperationsSequence = [];
+
+      const dropAllGraphs = () => {
+        for (const gD of graphDefinitions) {
+          gM._drop(gD.name, true);
+          graphOperationsSequence.push({
+            type: "remove", name: gD.name
+          })
+        }
+      }
+
+      let globalChecksums = [];
+      let detailedChecksums = {
+        Unittest_graphA: [],
+        Unittest_graphB: [],
+        Unittest_graphC: [],
+        Unittest_graphD: [],
+        Unittest_graphE: []
+      };
+
+      const gatherChecksums = () => {
+        const res = arango.GET(`${url}?details=true`);
+        validateBasicGraphsResponse(res);
+        expect(res.graphs.length).to.be.equal(5);
+
+        // gather all detailed checksums
+        for (const graph of res.graphs) {
+          detailedChecksums[graph.name].push(graph.checksum);
+        }
+
+        // also gather global checksum
+        const globalRes = arango.GET(`${url}?onlyHash=true`);
+        globalChecksums.push(globalRes.checksum);
+      };
+
+      for (const graphs of ArrayScrambler(graphDefinitions)) {
+        for (const gD of graphs) {
+          // Creation
+          gM._create(gD.name, [gD.relation], noOrphans, gD.opts);
+          graphOperationsSequence.push({
+            type: "create", name: gD.name, relation: [_.cloneDeep(gD.relation)], options: gD.opts
+          });
+        }
+        // Verification (Graphs have been created)
+        gatherChecksums();
+
+        // Cleanup
+        dropAllGraphs();
+      }
+
+      // Now verify all checksums, global first
+      expect(new Set(globalChecksums).size).to.equal(1,
+        `Found different global checksums in ${JSON.stringify(globalChecksums)}.
+        Full operation list to reconstruct: ${JSON.stringify(graphOperationsSequence)}`
+      ); // means no duplicates
+
+      // now verify per-graph checksums
+      for (const [graphName, checksums] of Object.entries(detailedChecksums)) {
+        expect(new Set(checksums).size).to.equal(1,
+          `Found different detailed checksums in ${JSON.stringify(checksums)} for Graph: "${graphName}".
+          Full operation list to reconstruct: ${JSON.stringify(graphOperationsSequence)}`
+        ); // means no duplicates
+      }
+    });
+
   });
 });
