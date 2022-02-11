@@ -32,7 +32,8 @@ TEST_BEGIN(test_base_hooks_default) {
 
 	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
 	base = base_new(tsdn, 0,
-	    (extent_hooks_t *)&ehooks_default_extent_hooks);
+	    (extent_hooks_t *)&ehooks_default_extent_hooks,
+	    /* metadata_use_hooks */ true);
 
 	if (config_stats) {
 		base_stats_get(tsdn, base, &allocated0, &resident, &mapped,
@@ -74,7 +75,7 @@ TEST_BEGIN(test_base_hooks_null) {
 	memcpy(&hooks, &hooks_null, sizeof(extent_hooks_t));
 
 	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
-	base = base_new(tsdn, 0, &hooks);
+	base = base_new(tsdn, 0, &hooks, /* metadata_use_hooks */ true);
 	expect_ptr_not_null(base, "Unexpected base_new() failure");
 
 	if (config_stats) {
@@ -120,7 +121,7 @@ TEST_BEGIN(test_base_hooks_not_null) {
 
 	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
 	did_alloc = false;
-	base = base_new(tsdn, 0, &hooks);
+	base = base_new(tsdn, 0, &hooks, /* metadata_use_hooks */ true);
 	expect_ptr_not_null(base, "Unexpected base_new() failure");
 	expect_true(did_alloc, "Expected alloc");
 
@@ -226,10 +227,39 @@ TEST_BEGIN(test_base_hooks_not_null) {
 }
 TEST_END
 
+TEST_BEGIN(test_base_ehooks_get_for_metadata_default_hook) {
+	extent_hooks_prep();
+	memcpy(&hooks, &hooks_not_null, sizeof(extent_hooks_t));
+	base_t *base;
+	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
+	base = base_new(tsdn, 0, &hooks, /* metadata_use_hooks */ false);
+	ehooks_t *ehooks = base_ehooks_get_for_metadata(base);
+	expect_true(ehooks_are_default(ehooks),
+		"Expected default extent hook functions pointer");
+	base_delete(tsdn, base);
+}
+TEST_END
+
+
+TEST_BEGIN(test_base_ehooks_get_for_metadata_custom_hook) {
+	extent_hooks_prep();
+	memcpy(&hooks, &hooks_not_null, sizeof(extent_hooks_t));
+	base_t *base;
+	tsdn_t *tsdn = tsd_tsdn(tsd_fetch());
+	base = base_new(tsdn, 0, &hooks, /* metadata_use_hooks */ true);
+	ehooks_t *ehooks = base_ehooks_get_for_metadata(base);
+	expect_ptr_eq(&hooks, ehooks_get_extent_hooks_ptr(ehooks),
+		"Expected user-specified extend hook functions pointer");
+	base_delete(tsdn, base);
+}
+TEST_END
+
 int
 main(void) {
 	return test(
 	    test_base_hooks_default,
 	    test_base_hooks_null,
-	    test_base_hooks_not_null);
+	    test_base_hooks_not_null,
+            test_base_ehooks_get_for_metadata_default_hook,
+            test_base_ehooks_get_for_metadata_custom_hook);
 }

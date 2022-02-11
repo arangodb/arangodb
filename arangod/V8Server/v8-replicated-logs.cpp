@@ -201,12 +201,11 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("insert(<payload>)");
   }
 
-  VPackBufferUInt8 payload;
-  VPackBuilder builder(payload);
+  VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   auto result = ReplicatedLogMethods::createInstance(vocbase)
-                    ->insert(id, LogPayload{payload})
+                    ->insert(id, LogPayload::createFromSlice(builder.slice()))
                     .get();
   VPackBuilder response;
   {

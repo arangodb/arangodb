@@ -21,17 +21,23 @@ extern size_t opt_lg_extent_max_active_fit;
 
 edata_t *ecache_alloc(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
     ecache_t *ecache, edata_t *expand_edata, size_t size, size_t alignment,
-    bool zero);
+    bool zero, bool guarded);
 edata_t *ecache_alloc_grow(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
     ecache_t *ecache, edata_t *expand_edata, size_t size, size_t alignment,
-    bool zero);
+    bool zero, bool guarded);
 void ecache_dalloc(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
     ecache_t *ecache, edata_t *edata);
 edata_t *ecache_evict(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
     ecache_t *ecache, size_t npages_min);
 
+void extent_gdump_add(tsdn_t *tsdn, const edata_t *edata);
+void extent_record(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks, ecache_t *ecache,
+    edata_t *edata);
 void extent_dalloc_gap(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
     edata_t *edata);
+edata_t *extent_alloc_wrapper(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
+    void *new_addr, size_t size, size_t alignment, bool zero, bool *commit,
+    bool growing_retained);
 void extent_dalloc_wrapper(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
     edata_t *edata);
 void extent_destroy_wrapper(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
@@ -45,9 +51,12 @@ bool extent_purge_lazy_wrapper(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
 bool extent_purge_forced_wrapper(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
     size_t offset, size_t length);
 edata_t *extent_split_wrapper(tsdn_t *tsdn, pac_t *pac,
-    ehooks_t *ehooks, edata_t *edata, size_t size_a, size_t size_b);
+    ehooks_t *ehooks, edata_t *edata, size_t size_a, size_t size_b,
+    bool holding_core_locks);
 bool extent_merge_wrapper(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks,
     edata_t *a, edata_t *b);
+bool extent_commit_zero(tsdn_t *tsdn, ehooks_t *ehooks, edata_t *edata,
+    bool commit, bool zero, bool growing_retained);
 size_t extent_sn_next(pac_t *pac);
 bool extent_boot(void);
 
@@ -83,7 +92,7 @@ extent_can_acquire_neighbor(edata_t *edata, rtree_contents_t contents,
 	bool neighbor_is_head = contents.metadata.is_head;
 	if (!extent_neighbor_head_state_mergeable(edata_is_head_get(edata),
 	    neighbor_is_head, forward)) {
-		return NULL;
+		return false;
 	}
 	extent_state_t neighbor_state = contents.metadata.state;
 	if (pai == EXTENT_PAI_PAC) {
@@ -120,6 +129,7 @@ extent_can_acquire_neighbor(edata_t *edata, rtree_contents_t contents,
 			return false;
 		}
 	}
+	assert(!edata_guarded_get(edata) && !edata_guarded_get(neighbor));
 
 	return true;
 }

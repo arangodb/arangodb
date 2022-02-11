@@ -221,7 +221,8 @@ large_dalloc_safety_checks(edata_t *edata, void *ptr, szind_t szind) {
 	 * The cost is low enough (as edata will be accessed anyway) to be
 	 * enabled all the time.
 	 */
-	if (unlikely(edata_state_get(edata) != extent_state_active)) {
+	if (unlikely(edata == NULL ||
+	    edata_state_get(edata) != extent_state_active)) {
 		safety_check_fail("Invalid deallocation detected: "
 		    "pages being freed (%p) not currently active, "
 		    "possibly caused by double free bugs.",

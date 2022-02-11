@@ -37,6 +37,7 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
+#include <atomic>
 #include <string_view>
 
 namespace arangodb {
@@ -184,9 +185,9 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
 
 class TransactionStateMock : public arangodb::TransactionState {
  public:
-  static size_t abortTransactionCount;
-  static size_t beginTransactionCount;
-  static size_t commitTransactionCount;
+  static std::atomic_size_t abortTransactionCount;
+  static std::atomic_size_t beginTransactionCount;
+  static std::atomic_size_t commitTransactionCount;
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options);
@@ -231,9 +232,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void changeCollection(TRI_vocbase_t& vocbase,
                                 arangodb::LogicalCollection const& collection,
                                 bool doSync) override;
-  virtual arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                                      arangodb::LogicalView const& view,
-                                      bool doSync) override;
+  arangodb::Result changeView(arangodb::LogicalView const& view,
+                              arangodb::velocypack::Slice update) override;
+
   virtual void createCollection(
       TRI_vocbase_t& vocbase,
       arangodb::LogicalCollection const& collection) override;

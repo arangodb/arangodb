@@ -91,7 +91,7 @@ class LogFollower final : public ILogFollower,
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
     [[nodiscard]] auto checkCompaction() -> Result;
-    auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLCI,
+    auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
         -> DeferredAction;
 
@@ -99,7 +99,7 @@ class LogFollower final : public ILogFollower,
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
     LogIndex _commitIndex{0};
-    LogIndex _largestCommonIndex;
+    LogIndex _lowestIndexToKeep;
     LogIndex _releaseIndex;
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;

@@ -3,15 +3,8 @@
 
 #include "jemalloc/internal/base.h"
 
-/*
- * Public for tests.  When we go to the fallback when the small cache is empty,
- * we grab up to 8 items (grabbing less only if the fallback is exhausted).
- * When we exceed 16, we flush.  This caps the maximum memory lost per cache to
- * 16 * sizeof(edata_t), a max of 2k on architectures where the edata_t is 128
- * bytes.
- */
-#define EDATA_CACHE_SMALL_MAX 16
-#define EDATA_CACHE_SMALL_FILL 8
+/* For tests only. */
+#define EDATA_CACHE_FAST_FILL 4
 
 /*
  * A cache of edata_t structures allocated via base_alloc_edata (as opposed to
@@ -40,18 +33,17 @@ void edata_cache_postfork_child(tsdn_t *tsdn, edata_cache_t *edata_cache);
  * synchronization and avoids first-fit strategies.
  */
 
-typedef struct edata_cache_small_s edata_cache_small_t;
-struct edata_cache_small_s {
+typedef struct edata_cache_fast_s edata_cache_fast_t;
+struct edata_cache_fast_s {
 	edata_list_inactive_t list;
-	size_t count;
 	edata_cache_t *fallback;
 	bool disabled;
 };
 
-void edata_cache_small_init(edata_cache_small_t *ecs, edata_cache_t *fallback);
-edata_t *edata_cache_small_get(tsdn_t *tsdn, edata_cache_small_t *ecs);
-void edata_cache_small_put(tsdn_t *tsdn, edata_cache_small_t *ecs,
+void edata_cache_fast_init(edata_cache_fast_t *ecs, edata_cache_t *fallback);
+edata_t *edata_cache_fast_get(tsdn_t *tsdn, edata_cache_fast_t *ecs);
+void edata_cache_fast_put(tsdn_t *tsdn, edata_cache_fast_t *ecs,
     edata_t *edata);
-void edata_cache_small_disable(tsdn_t *tsdn, edata_cache_small_t *ecs);
+void edata_cache_fast_disable(tsdn_t *tsdn, edata_cache_fast_t *ecs);
 
 #endif /* JEMALLOC_INTERNAL_EDATA_CACHE_H */
