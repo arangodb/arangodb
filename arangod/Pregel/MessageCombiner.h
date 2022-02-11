@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 namespace arangodb {
 namespace pregel {

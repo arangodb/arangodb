@@ -63,13 +63,18 @@ auto MyLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
   recoveryRan = true;
   return futures::Future<Result>{TRI_ERROR_NO_ERROR};
 }
-
-auto MyFactory::constructLeader() -> std::shared_ptr<MyLeaderState> {
-  return std::make_shared<MyLeaderState>();
+auto MyLeaderState::resign() && noexcept -> std::unique_ptr<MyCoreType> {
+  return std::move(_core);
 }
 
-auto MyFactory::constructFollower() -> std::shared_ptr<MyFollowerState> {
-  return std::make_shared<MyFollowerState>();
+auto MyFactory::constructLeader(std::unique_ptr<MyCoreType> core)
+    -> std::shared_ptr<MyLeaderState> {
+  return std::make_shared<MyLeaderState>(std::move(core));
+}
+
+auto MyFactory::constructFollower(std::unique_ptr<MyCoreType> core)
+    -> std::shared_ptr<MyFollowerState> {
+  return std::make_shared<MyFollowerState>(std::move(core));
 }
 
 auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
@@ -77,6 +82,10 @@ auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
   applyIterator(*ptr);
   getStream()->release(ptr->range().to.saturatedDecrement());
   return futures::Future<Result>{TRI_ERROR_NO_ERROR};
+}
+
+auto MyFollowerState::resign() && noexcept -> std::unique_ptr<MyCoreType> {
+  return std::move(_core);
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

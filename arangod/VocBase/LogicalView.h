@@ -48,57 +48,6 @@ class LogicalView : public LogicalDataSource {
   using ptr = std::shared_ptr<LogicalView>;
   using CollectionVisitor = std::function<bool(DataSourceId)>;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief casts a specified 'LogicalView' to a provided Target type
-  //////////////////////////////////////////////////////////////////////////////
-  template<typename Target, typename Source>
-  static typename meta::adjustConst<Source, Target>::reference cast(
-      Source& view) noexcept {
-    using target_type_t = typename meta::adjustConst<
-        Source, std::enable_if_t<
-                    std::is_base_of_v<LogicalView, Target> &&
-                        std::is_same_v<typename std::remove_const<Source>::type,
-                                       LogicalView>,
-                    Target>>;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // do not use dynamic_cast<typename target_type_t::reference>(view)
-    // to explicitly expose our intention to fail in 'noexcept' function
-    // in case of wrong type
-    auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
-    if (!impl) {
-      LOG_TOPIC("62e7f", ERR, Logger::VIEWS)
-          << "invalid convertion attempt from '" << typeid(Source).name() << "'"
-          << " to '" << typeid(typename target_type_t::value_type).name()
-          << "'";
-      TRI_ASSERT(false);
-    }
-    return *impl;
-#else
-    return static_cast<typename target_type_t::reference>(view);
-#endif
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief casts a specified 'LogicalView' to a provided Target type
-  //////////////////////////////////////////////////////////////////////////////
-  template<typename Target, typename Source>
-  static typename meta::adjustConst<Source, Target>::pointer cast(
-      Source* view) noexcept {
-    using target_type_t = typename meta::adjustConst<
-        Source, typename std::enable_if<
-                    std::is_base_of<LogicalView, Target>::value &&
-                        std::is_same<typename std::remove_const<Source>::type,
-                                     LogicalView>::value,
-                    Target>::type>::pointer;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return dynamic_cast<target_type_t>(view);
-#else
-    return static_cast<target_type_t>(view);
-#endif
-  }
-
   static constexpr Category category() noexcept { return Category::kView; }
 
   using LogicalDataSource::properties;

@@ -38,11 +38,12 @@ struct LeaderStateManager
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   explicit LeaderStateManager(
       std::shared_ptr<ReplicatedState<S>> const& parent,
       std::shared_ptr<replicated_log::ILogLeader> leader,
-      std::unique_ptr<ReplicatedStateCore> core,
+      std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
@@ -53,8 +54,8 @@ struct LeaderStateManager
 
   void run();
 
-  auto resign() && noexcept
-      -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+  [[nodiscard]] auto resign() && noexcept
+      -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<ReplicatedStateToken>> override;
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
@@ -67,10 +68,11 @@ struct LeaderStateManager
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> recoveryRange;
 
-  std::unique_ptr<ReplicatedStateCore> core;
+  std::unique_ptr<CoreType> core;
   std::unique_ptr<ReplicatedStateToken> token;
 
   std::shared_ptr<Factory> const factory;
+  bool _didResign = false;
 
  private:
   void updateInternalState(LeaderInternalState newState,
