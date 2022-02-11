@@ -33,19 +33,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 
 namespace arangodb {
-
-namespace replication2 {
-class LogId;
-struct LogIndex;
-struct LogTerm;
-struct LogPayload;
-}  // namespace replication2
 
 class RocksDBValue {
  public:

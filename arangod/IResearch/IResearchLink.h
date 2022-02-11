@@ -194,7 +194,8 @@ class IResearchLink : public IResearchDataStore {
 
  private:
   template<typename T>
-  Result getView(LogicalView* logical, T*& view);
+  Result toView(std::shared_ptr<LogicalView> const& logical,
+                std::shared_ptr<T>& view);
   Result initAndLink(InitCallback const& init, IResearchView* view);
 
   Result initSingleServer(InitCallback const& init);
