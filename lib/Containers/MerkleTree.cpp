@@ -1123,9 +1123,8 @@ MerkleTree<Hasher, BranchingBits>::MerkleTree(std::string_view buffer) {
 }
 
 template<typename Hasher, std::uint64_t const BranchingBits>
-MerkleTree<Hasher, BranchingBits>::MerkleTree(Data&& data) {
-  _data = std::move(data);
-}
+MerkleTree<Hasher, BranchingBits>::MerkleTree(Data&& data)
+    : _data{std::move(data)} {}
 
 template<typename Hasher, std::uint64_t const BranchingBits>
 MerkleTree<Hasher, BranchingBits>::MerkleTree(

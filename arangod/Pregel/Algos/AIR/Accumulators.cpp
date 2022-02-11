@@ -33,8 +33,8 @@ using namespace arangodb::pregel::algos::accumulators;
 
 CustomAccumulator<VPackSlice>::CustomAccumulator(
     AccumulatorOptions const& options, CustomAccumulatorDefinitions const& defs)
-    : Accumulator<VPackSlice>(options, defs) {
-  _definition = defs.at(options.customType.value());
+    : Accumulator<VPackSlice>(options, defs),
+      _definition{defs.at(options.customType.value())} {
   greenspun::InitMachine(_machine);
   SetupFunctions();
   if (options.parameters) {

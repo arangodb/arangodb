@@ -280,7 +280,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
       : irs::analysis::analyzer(irs::type<TypedAnalyzer>::get()) {
     VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
     if (slice.hasKey("type")) {
-      auto type = slice.get("type").stringRef();
+      auto type = slice.get("type").stringView();
       if (type == "number") {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
         _typedValue =
@@ -860,8 +860,7 @@ TEST_F(IResearchDocumentTest,
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(
-      linkMeta.init(server.server(), linkMetaJson->slice(), false, error));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -1468,8 +1467,8 @@ TEST_F(IResearchDocumentTest,
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -1883,8 +1882,8 @@ TEST_F(
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -2295,8 +2294,8 @@ TEST_F(IResearchDocumentTest,
   auto sysVocbase = sysDatabase.use();
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), error,
+                            sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(
@@ -2633,9 +2632,9 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
         ASSERT_TRUE(column);
 
         auto values = column->iterator(false);
-        ASSERT_TRUE(values);
+        ASSERT_NE(nullptr, values);
         auto* value = irs::get<irs::payload>(*values);
-        ASSERT_TRUE(value);
+        ASSERT_NE(nullptr, value);
 
         EXPECT_EQ(id, values->seek(id));
 
@@ -2817,9 +2816,9 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
         ASSERT_TRUE(column);
 
         auto values = column->iterator(false);
-        ASSERT_TRUE(values);
+        ASSERT_NE(nullptr, values);
         auto* value = irs::get<irs::payload>(*values);
-        ASSERT_TRUE(value);
+        ASSERT_NE(nullptr, value);
 
         EXPECT_EQ(id, values->seek(id));
 
@@ -2927,9 +2926,9 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           ASSERT_TRUE(column);
 
           auto values = column->iterator(false);
-          ASSERT_TRUE(values);
+          ASSERT_NE(nullptr, values);
           auto* value = irs::get<irs::payload>(*values);
-          ASSERT_TRUE(value);
+          ASSERT_NE(nullptr, value);
 
           EXPECT_EQ(id, values->seek(id));
 
@@ -3038,9 +3037,9 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           ASSERT_TRUE(column);
 
           auto values = column->iterator(false);
-          ASSERT_TRUE(values);
+          ASSERT_NE(nullptr, values);
           auto* value = irs::get<irs::payload>(*values);
-          ASSERT_TRUE(value);
+          ASSERT_NE(nullptr, value);
 
           EXPECT_EQ(id, values->seek(id));
 

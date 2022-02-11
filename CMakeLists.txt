@@ -92,7 +92,7 @@ set(ARANGODB_VERSION_MINOR "9")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "0")
+  set(ARANGODB_VERSION_PATCH "1")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -527,12 +527,12 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.spawn"
+    COMMAND ${PYTHON_EXECUTABLE} -c "from shutil import which"
     RESULT_VARIABLE EXIT_CODE
     OUTPUT_QUIET
     )
 if (NOT "${EXIT_CODE}" EQUAL "0")
-  message(FATAL_ERROR "python distutils package is required! ")
+  message(FATAL_ERROR "python shutil.which package is required! ")
 endif()
 
 # FIXME the build containers seem to have a

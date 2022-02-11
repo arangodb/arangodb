@@ -33,11 +33,11 @@
 namespace arangodb {
 namespace iresearch {
 
-arangodb::LogicalDataSource::Type const& dataSourceType();
-arangodb::LogTopic& logTopic();
+LogicalDataSource::Type const& dataSourceType();
+LogTopic& logTopic();
 
-ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
+[[maybe_unused]] static auto& DATA_SOURCE_TYPE = dataSourceType();
+[[maybe_unused]] extern LogTopic TOPIC;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines the implementation version of the iresearch view interface
@@ -77,77 +77,81 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 }
 
 struct StaticStrings {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the name of the field in the IResearch View definition denoting the
-  ///        corresponding link definitions
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::string const LinksField;
+  static constexpr velocypack::StringRef DataSourceType{"arangosearch"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
   ///        corresponding link definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const VersionField;
+  static constexpr velocypack::StringRef LinksField{"links"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        corresponding link definitions
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr velocypack::StringRef VersionField{"version"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the id of the field in the IResearch Link definition denoting the
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const ViewIdField;
+  static constexpr velocypack::StringRef ViewIdField{"view"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        referenced analyzer definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerDefinitionsField;
+  static constexpr velocypack::StringRef AnalyzerDefinitionsField{
+      "analyzerDefinitions"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer name
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerNameField;
+  static constexpr velocypack::StringRef AnalyzerNameField{"name"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer type
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerTypeField;
+  static constexpr velocypack::StringRef AnalyzerTypeField{"type"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer properties
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerPropertiesField;
+  static constexpr velocypack::StringRef AnalyzerPropertiesField{"properties"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer features
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerFeaturesField;
+  static constexpr velocypack::StringRef AnalyzerFeaturesField{"features"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        primary sort
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const PrimarySortField;
+  static constexpr velocypack::StringRef PrimarySortField{"primarySort"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        primary sort compression
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const PrimarySortCompressionField;
+  static constexpr velocypack::StringRef PrimarySortCompressionField{
+      "primarySortCompression"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        stored values
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const StoredValuesField;
+  static constexpr velocypack::StringRef StoredValuesField{"storedValues"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const CollectionNameField;
+  static constexpr velocypack::StringRef CollectionNameField{"collectionName"};
 };
 
 }  // namespace iresearch
