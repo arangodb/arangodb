@@ -133,7 +133,7 @@ TEST_F(SubqueryEndExecutorTest, count_shadow_rows_test) {
 
   dependency.setExecuteEnterHook(
       [&numCalls, mainQuerySoftLimit,
-       subQuerySoftLimit](AqlCallStack const &stack) {
+       subQuerySoftLimit](AqlCallStack const& stack) {
         auto mainQCall = stack.getCallAtDepth(2);
         auto subQCall = stack.getCallAtDepth(1);
         ASSERT_FALSE(mainQCall.needSkipMore());
