@@ -1295,6 +1295,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
   reportIn(id(), maxind);
 
   if (size() == 1) {
+    std::unique_lock<std::mutex> guard(
+        _protectAdvanceCommitIndexInSingleServerAgency);
     advanceCommitIndex();
   }
 
@@ -1490,6 +1492,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   reportIn(id(), maxind);
 
   if (size() == 1) {
+    std::unique_lock<std::mutex> guard(
+        _protectAdvanceCommitIndexInSingleServerAgency);
     advanceCommitIndex();
   }
 
