@@ -242,7 +242,7 @@ ExecutorState WindowExecutor::consumeInputRange(
       return state;
     }
   }
-  return inputRange.finalState();
+  return inputRange.upstreamState();
 }
 
 void WindowExecutor::trimBounds() {

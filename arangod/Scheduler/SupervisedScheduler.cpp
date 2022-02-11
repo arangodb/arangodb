@@ -291,6 +291,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
     return false;
   }
 
+  TRI_ASSERT(lane != RequestLane::UNDEFINED);
   auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
   TRI_ASSERT(queueNo < NumberOfQueues);
 

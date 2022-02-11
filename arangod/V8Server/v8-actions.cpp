@@ -1871,6 +1871,60 @@ static void JS_DebugClearFailAt(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_FoxxQueueVersion(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("foxxQueueVersion(<version>)");
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_GET_GLOBALS();
+
+    auto& feature = v8g->_server.getFeature<FoxxFeature>();
+
+    if (args.Length() == 1) {
+      // set version
+      uint64_t version = TRI_ObjectToUInt64(isolate, args[0], true);
+      version = feature.setQueueVersion(version);
+      TRI_V8_RETURN(TRI_V8UInt64String(isolate, version));
+    } else {
+      // get version
+      uint64_t version = feature.queueVersion();
+      TRI_V8_RETURN(TRI_V8UInt64String(isolate, version));
+    }
+  } else {
+    // single server response.
+    TRI_V8_RETURN_NULL();
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_FoxxQueueVersionBump(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("FOXX_QUEUE_VERSION_BUMP()");
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    // only necessary in coordinator
+    TRI_GET_GLOBALS();
+
+    auto& feature = v8g->_server.getFeature<FoxxFeature>();
+    feature.bumpQueueVersionIfRequired();
+  }
+  TRI_V8_RETURN_NULL();
+
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_ClusterApiJwtPolicy(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
@@ -2042,6 +2096,13 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_SHOULD_FAILAT"),
       JS_DebugShouldFailAt);
 #endif
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUE_VERSION"),
+      JS_FoxxQueueVersion);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUE_VERSION_BUMP"),
+      JS_FoxxQueueVersionBump);
 
   // poll interval for Foxx queues
   TRI_GET_GLOBALS();
