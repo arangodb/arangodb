@@ -787,7 +787,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
     }
   } else {
     /*
-     * Will create {"checksum": "<md5-of-graphs>"}
+     * Will create {"checksum": "<checksum-of-graphs>"}
      */
     writeGraphsChecksumsToBuilder(builder, graphsSlice);
   }
