@@ -49,7 +49,7 @@
 
 #ifdef VELOCYPACK_DEBUG
 #include <cassert>
-#define VELOCYPACK_ASSERT(x) assert(x)
+#define VELOCYPACK_ASSERT(x) assert((x))
 
 #else
 

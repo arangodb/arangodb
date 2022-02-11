@@ -50,8 +50,9 @@ class Validator {
   bool validate(uint8_t const* ptr, std::size_t length, bool isSubPart = false);
   
  private:
-  bool validatePart(uint8_t const* ptr, std::size_t length, bool isSubPart);
+  void validatePart(uint8_t const* ptr, std::size_t length, bool isSubPart);
 
+  void validateTagged(uint8_t const* ptr, std::size_t length);
   void validateArray(uint8_t const* ptr, std::size_t length);
   void validateCompactArray(uint8_t const* ptr, std::size_t length);
   void validateUnindexedArray(uint8_t const* ptr, std::size_t length);

@@ -58,6 +58,10 @@ then the following executables will be compiled:
     provided, the default format is VPack.
   * `--json`: generate JSON structures. If neither this option or `--vpack` is
     provided, the default format is VPack.
+  * `--evil`: edit the generated valid byte sequences with byte insertions, 
+    removals or overwrites. Can be used to simulate attacks with malicious 
+    inputs.
   * `--iterations`: number of iterations that will be run. Default is 1.
   * `--threads`: number of threads for parallelization. Default is 1.
-  * `--seed`: number that will be used as seed for random generation. 
+  * `--seed`: number that will be used as seed for random generation (to make
+    fuzzer runs repeatable if necessary). 

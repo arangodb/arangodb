@@ -69,16 +69,17 @@ Validator::Validator(Options const* options)
 bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart) {
   // reset internal state
   _level = 0;
-  return validatePart(ptr, length, isSubPart);
+  validatePart(ptr, length, isSubPart);
+  return true;
 }
 
-bool Validator::validatePart(uint8_t const* ptr, std::size_t length, bool isSubPart) {
+void Validator::validatePart(uint8_t const* ptr, std::size_t length, bool isSubPart) {
   if (length == 0) {
     throw Exception(Exception::ValidatorInvalidLength, "length 0 is invalid for any VelocyPack value");
   }
   
   uint8_t head = *ptr;
-
+    
   // type() only reads the first byte, which is safe
   ValueType const type = Slice(ptr).type();
 
@@ -156,27 +157,7 @@ bool Validator::validatePart(uint8_t const* ptr, std::size_t length, bool isSubP
       if (options->disallowTags) {
         throw Exception(Exception::BuilderTagsDisallowed);
       }
-      do {
-        if (head == 0xee) {
-          // 1 byte tag type
-          // the actual Slice (without tag) must be at least one byte long
-          validateBufferLength(1 + 1 + 1, length, true);
-          VELOCYPACK_ASSERT(length > 2);
-          ptr += 2;
-          length -= 2;
-        } else if (head == 0xef) {
-          // 8 bytes tag type
-          // the actual Slice (without tag) must be at least one byte long
-          validateBufferLength(1 + 8 + 1, length, true);
-          VELOCYPACK_ASSERT(length > 9);
-          ptr += 9;
-          length -= 9;
-        } else {
-          throw Exception(Exception::NotImplemented);
-        }
-        VELOCYPACK_ASSERT(length > 0);
-        head = *ptr;
-      } while (head == 0xee || head == 0xef);
+      validateTagged(ptr, length); 
       break;
     }
 
@@ -192,6 +173,9 @@ bool Validator::validatePart(uint8_t const* ptr, std::size_t length, bool isSubP
     }
 
     case ValueType::Custom: {
+      if (options->disallowCustom) {
+        throw Exception(Exception::BuilderCustomDisallowed);
+      }
       ValueLength byteSize = 0;
 
       if (head == 0xf0U) {
@@ -235,7 +219,35 @@ bool Validator::validatePart(uint8_t const* ptr, std::size_t length, bool isSubP
 
   // common validation that must happen for all types
   validateSliceLength(ptr, length, isSubPart);
-  return true;
+}
+
+void Validator::validateTagged(uint8_t const* ptr, std::size_t length) {
+  uint8_t head = *ptr;
+     
+  do {
+    // looping here to skip over nested tags.
+    if (head == 0xee) {
+      // 1 byte tag type
+      // the actual Slice (without tag) must be at least one byte long
+      validateBufferLength(1 + 1 + 1, length, true);
+      VELOCYPACK_ASSERT(length > 2);
+      ptr += 2;
+      length -= 2;
+    } else if (head == 0xef) {
+      // 8 bytes tag type
+      // the actual Slice (without tag) must be at least one byte long
+      validateBufferLength(1 + 8 + 1, length, true);
+      VELOCYPACK_ASSERT(length > 9);
+      ptr += 9;
+      length -= 9;
+    } else {
+      throw Exception(Exception::NotImplemented);
+    }
+    VELOCYPACK_ASSERT(length > 0);
+    head = *ptr;
+  } while (head == 0xee || head == 0xef);
+      
+  validatePart(ptr, length, true);
 }
 
 void Validator::validateArray(uint8_t const* ptr, std::size_t length) {
