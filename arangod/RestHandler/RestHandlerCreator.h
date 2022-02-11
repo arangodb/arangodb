@@ -32,6 +32,8 @@ namespace arangodb {
 namespace rest {
 class RestHandler;
 }
+class GeneralRequest;
+class GeneralResponse;
 
 template<typename H>
 class RestHandlerCreator : public H {

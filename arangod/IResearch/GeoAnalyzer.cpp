@@ -39,6 +39,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "VPackDeserializer/deserializer.h"
+#include "Basics/DownCast.h"
 
 namespace {
 
@@ -315,14 +316,7 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
     irs::token_stream const* ctx, VPackSlice slice,
     velocypack::Buffer<uint8_t>& buf) noexcept {
   TRI_ASSERT(ctx);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<GeoJSONAnalyzer const*>(ctx);
-  TRI_ASSERT(impl);
-#else
-  auto* impl = static_cast<GeoJSONAnalyzer const*>(ctx);
-#endif
-
+  auto const* impl = basics::downCast<GeoJSONAnalyzer>(ctx);
   if (Type::CENTROID == impl->shapeType()) {
     TRI_ASSERT(!impl->_shape.empty());
     S2LatLng const centroid(impl->_shape.centroid());
@@ -428,11 +422,8 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
                                               [[maybe_unused]] VPackSlice slice,
                                               VPackBuffer<uint8_t>& buf) {
   TRI_ASSERT(ctx);
-
+  auto const* impl = basics::downCast<GeoPointAnalyzer>(ctx);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<GeoPointAnalyzer const*>(ctx);
-  TRI_ASSERT(impl);
-
   {
     S2LatLng point;
     if (!impl->parsePoint(slice, point)) {
@@ -440,8 +431,6 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
     }
     TRI_ASSERT(point == impl->_point);
   }
-#else
-  auto* impl = static_cast<GeoPointAnalyzer const*>(ctx);
 #endif
 
   // reuse already parsed point
