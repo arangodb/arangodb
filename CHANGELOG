@@ -3,6 +3,12 @@ v3.9.1 (XXXX-XX-XX)
 
 * Shorten the license grace period to the documented 3 hours.
 
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
+* In an attempt to make the performance of the RocksDB throttle much more
+  consistent and predictable the default compaction slow down trigger is lowered
+  to 128kB.
+
 * Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
   skip over some subquery results. This did only show up if the subquery fills
   exactly one internal batch before it is completed, so it is rather unlikely.

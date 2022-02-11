@@ -1,7 +1,7 @@
 {
-  "name": "ansi-html",
-  "version": "0.0.7",
-  "description": "An elegant lib that converts the chalked (ANSI) text to HTML.",
+  "name": "ansi-html-community",
+  "version": "0.0.8",
+  "description": "An elegant lib that converts the chalked (ANSI) text to HTML. (Community)",
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha -R spec -t 5000"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Tjatse/ansi-html.git"
+    "url": "git://github.com/mahdyar/ansi-html-community.git"
   },
   "keywords": [
     "ansi",
@@ -19,11 +19,11 @@
     "chalk html"
   ],
   "author": {
-    "name": "Tjatse"
+    "name": "mahdyar"
   },
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/Tjatse/ansi-html/issues"
+    "url": "https://github.com/mahdyar/ansi-html-community/issues"
   },
   "engines": [
     "node >= 0.8.0"
@@ -37,7 +37,7 @@
     "lodash": "^2.4.2"
   },
   "readmeFilename": "README.md",
-  "homepage": "https://github.com/Tjatse/ansi-html",
+  "homepage": "https://github.com/mahdyar/ansi-html-community",
   "standard": {
     "ignore": [],
     "globals": [
