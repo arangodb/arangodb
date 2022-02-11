@@ -368,7 +368,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration, [this](std::string const& msg) -> void { setProgress(msg); }),
       _config{_state.applier, _batch, _state.connection, false, _state.leader, _progress, _state, vocbase},
-      _lastAbortionCheck(std::chrono::steady_clock::now()),
+      _lastCancellationCheck(std::chrono::steady_clock::now()),
       _isClusterRole(ServerState::instance()->isClusterRole()),
       _quickKeysNumDocsLimit(vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -541,19 +541,26 @@ bool DatabaseInitialSyncer::isAborted() const {
       return true;
     }
   }
-
-  if (_checkAbortion) {
+  
+  if (_checkCancellation) {
     // execute custom check for abortion only every few seconds, in case
     // it is expensive
+    constexpr auto checkFrequency = std::chrono::seconds(5);
+
     auto now = std::chrono::steady_clock::now();
-    if (now - _lastAbortionCheck >= std::chrono::seconds(5)) {
-      _lastAbortionCheck = now;
-      if (_checkAbortion()) {
+    TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+      // always force the cancellation check!
+      _lastCancellationCheck = now - checkFrequency;
+    }
+
+    if (now - _lastCancellationCheck >= checkFrequency) {
+      _lastCancellationCheck = now;
+      if (_checkCancellation()) {
         return true;
       }
     }
   }
-
+  
   return Syncer::isAborted();
 }
 
@@ -922,9 +929,19 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       // request to the scheduler, which can run it asynchronously
       sharedStatus->request([this, self, baseUrl,
                              sharedStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
+        TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+          // we intentionally sleep here for a while, so the next call gets executed
+          // after the scheduling thread has thrown its TRI_ERROR_INTERNAL exception
+          // for our failure point
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
         fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl,
                        batch + 1, fromTick, chunkSize);
       });
+      TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+        // forcefully abort replication once we have scheduled the job
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
     }
 
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),

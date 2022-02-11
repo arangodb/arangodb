@@ -233,7 +233,7 @@ ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRan
       return state;
     }
   }
-  return inputRange.finalState();
+  return inputRange.upstreamState();
 }
 
 void WindowExecutor::trimBounds() {

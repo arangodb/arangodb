@@ -701,6 +701,7 @@ void ClusterFeature::unprepare() {
 
 void ClusterFeature::stop() {
   if (!_enableCluster) {
+    shutdownHeartbeatThread();
     return;
   }
 
