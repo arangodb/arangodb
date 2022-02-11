@@ -55,6 +55,7 @@ class Exception : public virtual std::exception {
     NeedAttributeTranslator = 20,
     CannotTranslateKey = 21,
     KeyNotFound = 22, // not used anymore
+    TooDeepNesting = 24,
 
     BuilderNotSealed = 30,
     BuilderNeedOpenObject = 31,
@@ -128,6 +129,8 @@ class Exception : public virtual std::exception {
         return "Cannot translate key";
       case KeyNotFound:
         return "Key not found";
+      case TooDeepNesting:
+        return "Too deep nesting in Array/Object";
       case BuilderNotSealed:
         return "Builder value not yet sealed";
       case BuilderNeedOpenObject:
