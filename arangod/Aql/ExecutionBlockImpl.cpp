@@ -1138,8 +1138,6 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
   // The stack in used here contains all calls for within the subquery.
   // Hence any inbound subquery needs to be counted on its level
 
-  // NOTE MCHACKI: I think this call is also off by one and needs to be
-  // getDepth() - 1
   countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (state == ExecutorState::DONE) {
