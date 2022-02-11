@@ -1,6 +1,9 @@
 devel
 -----
 
+* Enabled new internal graph refactored code for depth-first, breadth-first and
+  weighted traversals by default.
+
 * Replaced internal JS dependency ansi-html with ansi-html-community.
 
 * Improved performance of inner joins with dynamic lookup conditions being

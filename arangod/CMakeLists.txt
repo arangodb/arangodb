@@ -190,6 +190,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/PathManagement/PathValidatorTracer.cpp
   Graph/PathManagement/PathValidatorOptions.cpp
   Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
@@ -197,6 +198,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Providers/SingleServerProvider.cpp
   Graph/Providers/BaseProviderOptions.cpp
   Graph/Providers/ProviderTracer.cpp
+  Graph/Steps/ClusterProviderStep.cpp
   Graph/Steps/SingleServerProviderStep.cpp
   Graph/Types/UniquenessLevel.cpp
   Graph/Types/ValidationResult.cpp
