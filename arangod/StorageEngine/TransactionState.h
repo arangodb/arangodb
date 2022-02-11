@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
+#include "Futures/Future.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -194,7 +195,7 @@ class TransactionState {
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual arangodb::Result commitTransaction(transaction::Methods* trx) = 0;
+  virtual futures::Future<arangodb::Result> commitTransaction(transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;

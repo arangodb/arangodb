@@ -28,6 +28,8 @@
 #include <limits>
 #include <numeric>
 
+#include "Futures/Utilities.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
@@ -41,7 +43,9 @@ using namespace arangodb;
 ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
-    : RocksDBTransactionState(vocbase, tid, options) {}
+    : RocksDBTransactionState(vocbase, tid, options) {
+  TRI_ASSERT(id().isLeaderTransactionId());
+}
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 
@@ -65,17 +69,50 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
 }
 
 /// @brief commit a transaction
-Result ReplicatedRocksDBTransactionState::doCommit() {
-  Result res;
-  for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-              .commitTransaction();
-    if (!res.ok()) {
-      break;
-    }
-  }
+futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   _hasActiveTrx = false;
-  return res;
+
+  if (isReadOnlyTransaction()) {
+    Result res;
+    for (auto& col : _collections) {
+      res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                .commitTransaction();
+      if (!res.ok()) {
+        break;
+      }
+    }
+    return res;
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    builder.add("operation", VPackValue("commit"));
+    builder.add("trx", VPackValue(id().id()));
+  }
+  auto payload = replication2::LogPayload::createFromSlice(builder.slice());
+  std::vector<futures::Future<Result>> commits;
+  allCollections([&](TransactionCollection& c) {
+    auto log = c.collection()->replicatedLog()->getLeader();
+    auto idx = log->insert(payload, false);
+    commits.emplace_back(
+        log->waitFor(idx).thenValue([&c](auto&& res) -> Result {
+          return static_cast<ReplicatedRocksDBTransactionCollection&>(c)
+              .commitTransaction();
+        }));
+    return true;
+  });
+
+  return futures::collectAll(commits).thenValue(
+      [](std::vector<futures::Try<Result>>&& results) -> Result {
+        for (auto& res : results) {
+          auto result = res.get();
+          if (result.fail()) {
+            return result;
+          }
+        }
+        return {};
+      });
 }
 
 /// @brief abort and rollback a transaction
@@ -90,6 +127,10 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   }
   _hasActiveTrx = false;
   return res;
+}
+
+std::lock_guard<std::mutex> ReplicatedRocksDBTransactionState::lockCommit() {
+  return std::lock_guard(_commitLock);
 }
 
 RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(

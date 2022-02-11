@@ -56,6 +56,10 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/Version.h"
+#include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -69,6 +73,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+#include "velocypack/Value.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
@@ -2466,6 +2471,37 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(followerList != nullptr);
   TRI_ASSERT(!followerList->empty());
 
+  if (vocbase().replicationVersion() == replication::Version::TWO) {
+    auto log = collection->replicatedLog()->getLeader();
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add("collection", VPackValue(collection->id().id()));
+      builder.add(VPackValue("operation"));
+      switch (operation) {
+        case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+          builder.add(VPackValue("insert"));
+          break;
+        case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+          builder.add(VPackValue("update"));
+          break;
+        case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+          builder.add(VPackValue("replace"));
+          break;
+        case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+          builder.add(VPackValue("remove"));
+          break;
+        default:
+          TRI_ASSERT(false);
+      }
+      builder.add("data", value);
+      builder.add("trx", VPackValue(this->state()->id().id()));
+    }
+    log->insert(replication2::LogPayload::createFromSlice(builder.slice()),
+                false);
+    return Result{};
+  }
+
   // path and requestType are different for insert/remove/modify.
 
   network::RequestOptions reqOpts;
@@ -2800,25 +2836,30 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
   }
 
   auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
+  if (_state->isRunningInCluster() &&
+      _state->vocbase().replicationVersion() != replication::Version::TWO) {
     // first commit transaction on subordinate servers
     f = ClusterTrxMethods::commitTransaction(*this, api);
   }
 
-  return std::move(f).thenValue([this](Result res) -> Result {
-    if (res.fail()) {  // do not commit locally
-      LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
-      return res;
-    }
+  return std::move(f)
+      .thenValue([this](Result res) -> futures::Future<Result> {
+        if (res.fail()) {  // do not commit locally
+          LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
+              << "failed to commit on subordinates: '" << res.errorMessage()
+              << "'";
+          return res;
+        }
 
-    res = _state->commitTransaction(this);
-    if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::COMMITTED);
-    }
+        return _state->commitTransaction(this);
+      })
+      .thenValue([this](Result res) {
+        if (res.ok()) {
+          applyStatusChangeCallbacks(*this, Status::COMMITTED);
+        }
 
-    return res;
-  });
+        return res;
+      });
 }
 
 Future<Result> Methods::abortInternal(MethodsApi api) {

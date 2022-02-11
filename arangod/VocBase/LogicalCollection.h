@@ -368,8 +368,7 @@ class LogicalCollection : public LogicalDataSource {
 
   replication2::LogId replicatedLogId() const;
 
-  std::shared_ptr<replication2::replicated_log::ILogLeader>
-  replicatedLogLeader();
+  std::shared_ptr<replication2::replicated_log::ReplicatedLog> replicatedLog();
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);

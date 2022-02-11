@@ -1492,7 +1492,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
     futures::Future<Result> commitResult = _trx->commitAsync();
-    TRI_ASSERT(commitResult.isReady());
     if (commitResult.get().fail()) {
       THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
     }
