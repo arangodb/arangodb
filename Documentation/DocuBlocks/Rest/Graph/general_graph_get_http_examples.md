@@ -14,6 +14,16 @@ Or returns a 404 if the graph does not exist.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
+@RESTQUERYPARAM{details,boolean,optional}
+If set to *true*, will return a more detailed view of the overall
+graph definition including checksums for each EdgeDefinition and
+each graph. In case a HybridSmartGraph is found, will also return
+a list of all SatelliteCollections which are being used.
+
+@RESTQUERYPARAM{onlyHash,boolean,optional}
+If set to *true*, will return a global calculated checksum based
+on all available graphs.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -68,4 +78,47 @@ A message created for this error.
 
   graph._drop("myGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraphDetails}
+var graph = require("@arangodb/general-graph");
+| if (graph._exists("myGraph")) {
+|    graph._drop("myGraph", true);
+}
+graph._create("myGraph", [{
+collection: "edges",
+from: [ "startVertices" ],
+to: [ "endVertices" ]
+}]);
+var url = "/_api/gharial/myGraph?details=true";
+
+var response = logCurlRequest('GET', url);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+
+graph._drop("myGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraphOnlyHash}
+var graph = require("@arangodb/general-graph");
+| if (graph._exists("myGraph")) {
+|    graph._drop("myGraph", true);
+}
+graph._create("myGraph", [{
+collection: "edges",
+from: [ "startVertices" ],
+to: [ "endVertices" ]
+}]);
+var url = "/_api/gharial/myGraph?onlyHash=true";
+
+var response = logCurlRequest('GET', url);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+
+graph._drop("myGraph", true);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
