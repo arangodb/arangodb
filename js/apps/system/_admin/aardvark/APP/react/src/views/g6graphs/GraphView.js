@@ -216,15 +216,32 @@ export class GraphView extends React.Component {
       },
       defaultNode: {
         type: 'circle', // 'bubble'
-        size: 30,
+        size: 40,
+        style: {
+          fill: '#dee072', // The filling color of nodes
+          stroke: '#576e3e', // The stroke color of nodes
+          lineWidth: 1, // The line width of the stroke of nodes
+          cursor: 'pointer',
+        },
         labelCfg: {
           position: 'center',
           style: {
-            fill: 'blue',
-            fontStyle: 'bold',
-            fontFamily: 'sans-serif',
+            fill: '#576e3e',
+            fontStyle: 'regular',
+            //fontFamily: 'sans-serif',
+            fontFamily: 'Roboto',
             fontSize: 12
           },
+        },
+      },
+      nodeStateStyles: {
+        hover: {
+          fill: '#edf042',
+          //fillOpacity: 0.1,
+          lineWidth: 1,
+          shadowColor: '#576e3e',
+          shadowBlur: 10,
+          cursor: 'pointer',
         },
       },
       defaultEdge: {
@@ -234,6 +251,14 @@ export class GraphView extends React.Component {
         },
         style: {
           stroke: '#e2e2e2',
+          cursor: 'pointer',
+        },
+      },
+      edgeStateStyles: {
+        hover: {
+          fillOpacity: 0.1,
+          lineWidth: 2,
+          cursor: 'pointer',
         },
       },
     });
@@ -243,7 +268,27 @@ export class GraphView extends React.Component {
 
     this.graph.on('click', (e) => {
       this.props.onClickNode(e);
-    })
+    });
+
+    this.graph.on('node:mouseenter', (evt) => {
+      const node = evt.item;
+      this.graph.setItemState(node, 'hover', true);
+    });
+
+    this.graph.on('node:mouseleave', (evt) => {
+      const node = evt.item;
+      this.graph.setItemState(node, 'hover', false);
+    });
+
+    this.graph.on('edge:mouseenter', (evt) => {
+      const edge = evt.item;
+      this.graph.setItemState(edge, 'hover', true);
+    });
+
+    this.graph.on('edge:mouseleave', (evt) => {
+      const edge = evt.item;
+      this.graph.setItemState(edge, 'hover', false);
+    });
 
     this.graph.on('aftercreateedge', (e) => {
       console.log("Newly added edge (e): ", e);
