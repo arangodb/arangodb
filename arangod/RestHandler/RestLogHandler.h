@@ -79,5 +79,7 @@ class RestLogHandler : public RestVocbaseBaseHandler {
                           replication2::LogId);
   RestStatus handleGetEntry(replication2::ReplicatedLogMethods const& methods,
                             replication2::LogId);
+
+  RestStatus handleTarget();
 };
 }  // namespace arangodb

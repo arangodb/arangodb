@@ -52,6 +52,14 @@ RestStatus RestLogHandler::execute() {
     return RestStatus::DONE;
   }
 
+  auto const& suffixes = _request->decodedSuffixes();
+  if (suffixes.size() >= 2) {
+    if (suffixes[1] == "target") {
+      return handleTarget();
+    }
+  }
+
+  // execute local methods
   auto methods = ReplicatedLogMethods::createInstance(_vocbase);
   return executeByMethod(*methods);
 }
@@ -74,7 +82,7 @@ RestStatus RestLogHandler::executeByMethod(
 
 RestStatus RestLogHandler::handlePostRequest(
     ReplicatedLogMethods const& methods) {
-  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -441,4 +449,141 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
                             TRI_ERROR_HTTP_NOT_FOUND, "log index not found");
             }
           }));
+}
+
+RestStatus RestLogHandler::handleTarget() {
+  auto const& suffixes = _request->suffixes();
+  TRI_ASSERT(suffixes.size() >= 2);
+  TRI_ASSERT(suffixes[1] == "target");
+
+  auto methods =
+      replication2::agency::methods::TargetMethods::construct(_vocbase);
+
+  LogId logId{basics::StringUtils::uint64(suffixes[0])};
+
+  auto const generateLogTargetResponse = [this](rest::ResponseCode code) {
+    return
+        [this, code](ResultT<replication2::agency::LogTarget> const& result) {
+          if (result.ok()) {
+            velocypack::Builder builder;
+            result->toVelocyPack(builder);
+            generateOk(code, builder.slice());
+          } else {
+            generateError(result.result());
+          }
+        };
+  };
+
+  if (suffixes.size() == 2) {
+    // simple target API
+    // PUT - creates the replicated log in target
+    // PATCH - does a velocypack merge with the given body and the old target
+    //  null means remove
+    // GET - load the current target
+    // DELETE - delete target entry (effectively deleting the replicated log)
+    if (_request->requestType() == rest::RequestType::GET) {
+      auto f = methods->getTarget(logId).thenValue(
+          generateLogTargetResponse(rest::ResponseCode::OK));
+
+      return waitForFuture(std::move(f));
+    }
+
+    bool parseSuccess = false;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {  // error message generated in parseVPackBody
+      return RestStatus::DONE;
+    }
+
+    switch (_request->requestType()) {
+      case RequestType::DELETE_REQ:
+        return waitForFuture(methods->deleteTarget(logId).thenValue(
+            [this](Result const& result) {
+              if (result.ok()) {
+                generateOk(rest::ResponseCode::OK,
+                           velocypack::Slice::noneSlice());
+              } else {
+                generateError(result);
+              }
+            }));
+      case RequestType::POST:
+      case RequestType::PUT:
+        return waitForFuture(
+            methods
+                ->putTarget(
+                    logId,
+                    replication2::agency::LogTarget::fromVelocyPack(body))
+                .thenValue(
+                    generateLogTargetResponse(rest::ResponseCode::ACCEPTED)));
+      case RequestType::PATCH:
+        return waitForFuture(methods->patchTarget(logId, body)
+                                 .thenValue(generateLogTargetResponse(
+                                     rest::ResponseCode::ACCEPTED)));
+      case RequestType::GET:  // handled above
+        TRI_ASSERT(false);
+        [[fallthrough]];
+      default:
+        generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    }
+
+  } else {
+    bool parseSuccess = false;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {  // error message generated in parseVPackBody
+      return RestStatus::DONE;
+    }
+
+    if (auto const& verb = suffixes[2]; verb == "leader") {
+      // First handle the get request. Simply return the leader or null if
+      // no leader is set.
+      if (_request->requestType() == rest::RequestType::GET) {
+        auto f = methods->getLeader(logId).thenValue([this](auto&& result) {
+          if (result.fail()) {
+            generateError(result.result());
+          } else {
+            velocypack::Builder builder;
+            auto const& leader = result.get();
+            if (leader.has_value()) {
+              builder.add(velocypack::Value(*leader));
+            } else {
+              builder.add(velocypack::Slice::nullSlice());
+            }
+            generateOk(rest::ResponseCode::OK, builder.slice());
+          }
+        });
+        return waitForFuture(std::move(f));
+      }
+
+      if (_request->requestType() != rest::RequestType::PUT) {
+        generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+        return RestStatus::DONE;
+      }
+
+      auto newLeader =
+          std::invoke([&]() -> ResultT<std::optional<ParticipantId>> {
+            if (body.isString()) {
+              return {body.copyString()};
+            } else if (body.isNull()) {
+              return {std::nullopt};
+            }
+            return Result{
+                TRI_ERROR_BAD_PARAMETER,
+                "invalid new leader: expected string or null as body"};
+          });
+      if (newLeader.fail()) {
+        generateError(newLeader.result());
+        return RestStatus::DONE;
+      } else {
+        return waitForFuture(methods->updateLeader(logId, *newLeader)
+                                 .thenValue(generateLogTargetResponse(
+                                     rest::ResponseCode::ACCEPTED)));
+      }
+
+    } else if (verb == "participants") {
+      // participants api
+    }
+  }
+
+  return RestStatus::DONE;
 }

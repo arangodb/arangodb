@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "Utils/DatabaseGuard.h"
 
 namespace arangodb {
 class Result;
@@ -98,40 +99,6 @@ auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
                   path->currentTerm()->term()->str(), prevTerm->value);
             })
       .end();
-}
-
-auto methods::updateParticipantsConfigTrx(
-    arangodb::agency::envelope envelope, DatabaseID const& database, LogId id,
-    ParticipantsConfig const& participantsConfig,
-    ParticipantsConfig const& prevConfig) -> arangodb::agency::envelope {
-  auto const logPath =
-      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
-
-  return envelope.write()
-      .emplace_object(logPath->participantsConfig()->str(),
-                      [&](VPackBuilder& builder) {
-                        participantsConfig.toVelocyPack(builder);
-                      })
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isNotEmpty(logPath->str())
-      .end();
-}
-
-auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
-                                      LogPlanTermSpecification const& spec,
-                                      std::optional<LogTerm> prevTerm)
-    -> futures::Future<ResultT<uint64_t>> {
-  VPackBufferUInt8 trx;
-  {
-    VPackBuilder builder(trx);
-    updateTermSpecificationTrx(
-        arangodb::agency::envelope::into_builder(builder), database, id, spec,
-        prevTerm)
-        .done();
-  }
-
-  return sendAgencyWriteTransaction(std::move(trx));
 }
 
 auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
@@ -235,4 +202,120 @@ auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
                                "Current/ReplicatedLogs/", vocbase.name(), "/",
                                id, "/supervision"));
   return LogCurrentSupervision{from_velocypack, builder.slice()};
+}
+
+namespace {
+struct TargetMethodsImpl : methods::TargetMethods,
+                           std::enable_shared_from_this<TargetMethodsImpl> {
+ public:
+  explicit TargetMethodsImpl(TRI_vocbase_t& vocbase) : vocbase(vocbase) {}
+
+  auto getTarget(LogId id) -> futures::Future<ResultT<LogTarget>> override;
+  auto patchTarget(LogId id, velocypack::Slice partial)
+      -> futures::Future<ResultT<LogTarget>> override;
+  auto putTarget(LogId id, LogTarget const& target)
+      -> futures::Future<ResultT<LogTarget>> override;
+  auto deleteTarget(LogId id) -> futures::Future<Result> override;
+  auto updateLeader(LogId id, std::optional<ParticipantId> const&)
+      -> futures::Future<ResultT<LogTarget>> override;
+  auto getLeader(LogId id)
+      -> futures::Future<ResultT<std::optional<ParticipantId>>> override;
+
+  DatabaseGuard vocbase;
+};
+
+auto checkTargetValid(LogTarget const& target) -> Result {
+  if (target.leader.has_value()) {
+    if (auto iter = target.participants.find(*target.leader);
+        iter == target.participants.end()) {
+      return Result{TRI_ERROR_BAD_PARAMETER, "Leader is not a participant"};
+    } else if (iter->second.excluded) {
+      return Result{TRI_ERROR_BAD_PARAMETER, "Leader is a excluded server"};
+    }
+  }
+
+  return {};
+}
+
+auto TargetMethodsImpl::getTarget(LogId id)
+    -> futures::Future<ResultT<LogTarget>> {
+  auto path =
+      paths::target()->replicatedLogs()->database(vocbase->name())->log(id);
+
+  AsyncAgencyComm ac;
+  return ac.getValues(path).thenValue(
+      [self = shared_from_this()](
+          AgencyReadResult&& result) -> ResultT<LogTarget> {
+        if (result.ok()) {
+          if (auto value = result.value(); !value.isNone()) {
+            return LogTarget::fromVelocyPack(value);
+          } else {
+            return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+          }
+        } else {
+          return {result.asResult()};
+        }
+      });
+}
+
+auto TargetMethodsImpl::putTarget(LogId id, LogTarget const& newTarget)
+    -> futures::Future<ResultT<LogTarget>> {
+  if (auto res = checkTargetValid(newTarget); res.fail()) {
+    return {res};
+  }
+
+  auto path =
+      paths::target()->replicatedLogs()->database(vocbase->name())->log(id);
+  velocypack::Builder builder;
+  newTarget.toVelocyPack(builder);
+
+  AsyncAgencyComm ac;
+  return ac.setValue(120s, path, builder.slice())
+      .thenValue(
+          [newTarget = newTarget](auto&& result) mutable -> ResultT<LogTarget> {
+            if (result.ok()) {
+              return {std::move(newTarget)};
+            } else {
+              return result.asResult();
+            }
+          });
+}
+
+auto TargetMethodsImpl::deleteTarget(LogId id) -> futures::Future<Result> {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+auto TargetMethodsImpl::updateLeader(
+    LogId id, std::optional<ParticipantId> const& newLeader)
+    -> futures::Future<ResultT<LogTarget>> {
+  return getTarget(id).thenValue(
+      [self = shared_from_this(), newLeader,
+       id](ResultT<LogTarget>&& result) -> futures::Future<ResultT<LogTarget>> {
+        if (result.fail()) {
+          return result;
+        } else {
+          // Obtain the current target and update the leader
+          auto newTarget = result.get();
+          newTarget.leader = newLeader;
+          // putTarget does some validations
+          return self->putTarget(id, newTarget);
+        }
+      });
+}
+
+auto TargetMethodsImpl::getLeader(LogId id)
+    -> futures::Future<ResultT<std::optional<ParticipantId>>> {
+  return getTarget(id).thenValue([](ResultT<LogTarget>&& result) {
+    return result.map([](LogTarget const& target) { return target.leader; });
+  });
+}
+
+futures::Future<ResultT<LogTarget>> TargetMethodsImpl::patchTarget(
+    LogId id, velocypack::Slice partial) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+}  // namespace
+
+auto methods::TargetMethods::construct(TRI_vocbase_t& vocbase)
+    -> std::shared_ptr<TargetMethods> {
+  return std::make_shared<TargetMethodsImpl>(vocbase);
 }

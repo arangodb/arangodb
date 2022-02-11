@@ -199,12 +199,14 @@ class ResultT {
 
   T& get() { return _val.value(); }
 
-  ResultT map(ResultT<T> (*fun)(T const& val)) const {
+  template<typename F, std::enable_if_t<std::is_invocable_v<F, T&>, int> = 0,
+           typename R = std::invoke_result_t<F, T&>,
+           std::enable_if_t<!std::is_void_v<R>, int> = 0>
+  auto map(F&& fn) -> ResultT<R> {
     if (ok()) {
-      return ResultT<T>::success(fun(get()));
+      return ResultT<R>::success(std::forward<F>(fn)(get()));
     }
-
-    return *this;
+    return ResultT<R>::error(result());
   }
 
   bool operator==(ResultT<T> const& other) const {

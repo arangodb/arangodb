@@ -55,6 +55,9 @@ class DatabaseGuard {
   /// @brief return the database pointer
   inline TRI_vocbase_t& database() const { return _vocbase; }
 
+  TRI_vocbase_t* operator->() noexcept { return &_vocbase; }
+  TRI_vocbase_t const* operator->() const noexcept { return &_vocbase; }
+
  private:
   /// @brief pointer to database
   TRI_vocbase_t& _vocbase;

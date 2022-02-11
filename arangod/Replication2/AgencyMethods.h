@@ -86,4 +86,24 @@ auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>>;
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
+
+struct TargetMethods {
+  virtual ~TargetMethods() = default;
+  virtual auto getTarget(LogId id) -> futures::Future<ResultT<LogTarget>> = 0;
+  virtual auto patchTarget(LogId id, velocypack::Slice partial)
+      -> futures::Future<ResultT<LogTarget>> = 0;
+
+  virtual auto putTarget(LogId id, LogTarget const&)
+      -> futures::Future<ResultT<LogTarget>> = 0;
+
+  virtual auto deleteTarget(LogId id) -> futures::Future<Result> = 0;
+  virtual auto updateLeader(LogId id, std::optional<ParticipantId> const&)
+      -> futures::Future<ResultT<LogTarget>> = 0;
+
+  virtual auto getLeader(LogId id)
+      -> futures::Future<ResultT<std::optional<ParticipantId>>> = 0;
+
+  static auto construct(TRI_vocbase_t&) -> std::shared_ptr<TargetMethods>;
+};
+
 }  // namespace arangodb::replication2::agency::methods
