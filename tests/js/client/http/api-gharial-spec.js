@@ -2425,19 +2425,13 @@ describe('_api/gharial', () => {
       });
     }
 
-    it('global checksum must be zero in case we have no graphs', () => {
-      const res = arango.GET(`${url}`);
-      validateBasicGraphsResponse(res);
-      expect(res.graphs.length).to.be.equal(0);
-    });
-
-    it('global checksum must be zero in case we have no graphs', () => {
+    it('global checksum must be zero in case we have no graphs (details)', () => {
       const res = arango.GET(`${url}?details=true`);
       validateBasicGraphsResponse(res);
       expect(res.graphs.length).to.be.equal(0);
     });
 
-    it('global checksum must be zero in case we have no graphs', () => {
+    it('global checksum must be zero in case we have no graphs (onlyHash)', () => {
       const res = arango.GET(`${url}?onlyHash=true`);
       expect(res.code).to.equal(200);
       expect(res.error).to.be.false;
