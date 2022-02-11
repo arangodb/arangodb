@@ -46,10 +46,10 @@ bool attributesMatch(arangodb::transaction::Methods::IndexHandle const& index,
   for (auto& nodeAttr : node.attrs) {
     nodeAttr.afData.field = nullptr;
     size_t indexFieldNum = 0;
-    for (auto const& field : index->fields()) {
+    for (auto const& field : index->coveredFields()) {
       TRI_ASSERT(nodeAttr.afData.postfix.empty());
-      if (latematerialized::isPrefix(field, nodeAttr.attr, false,
-                                     nodeAttr.afData.postfix)) {
+      if (latematerialized::isPrefix<false>(field, nodeAttr.attr, false,
+                                            nodeAttr.afData.postfix)) {
         nodeAttr.afData.fieldNumber = indexFieldNum;
         nodeAttr.afData.field = &field;
         break;

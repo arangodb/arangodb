@@ -32,6 +32,8 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/vocbase.h"
 
+#include <memory>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -123,14 +125,17 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   static std::string const INTERNAL_TRAVERSER_PATH;
 
  public:
-  RestVocbaseBaseHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
+  RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
   virtual void cancel() override {
     RestBaseHandler::cancel();
     _context.cancel();
   }
+
+  void prepareExecute(bool isContinue) override;
+
+  void shutdownExecute(bool isFinalized) noexcept override;
 
  protected:
   /// @brief returns the short id of the server which should handle this request
@@ -221,6 +226,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief the vocbase, managed by VocbaseContext
   TRI_vocbase_t& _vocbase;
+
+ private:
+  std::shared_ptr<LogContext::Values> _scopeVocbaseValues;
+  LogContext::EntryPtr _logContextVocbaseEntry;
 };
 
 }  // namespace arangodb

@@ -24,6 +24,7 @@
 #include "Basics/signals.h"
 #include "Basics/operating-system.h"
 
+#include <atomic>
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
@@ -214,7 +215,7 @@ char const* name(int signal) {
   }
 }
 
-bool isServer = true;
+std::atomic<bool> isServer = true;
 
 void maskAllSignalsServer() {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -230,7 +231,7 @@ void maskAllSignalsServer() {
 }
 
 void maskAllSignalsClient() {
-  isServer = false;
+  isServer.store(false);
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
@@ -245,7 +246,7 @@ void maskAllSignalsClient() {
 }
 
 void maskAllSignals() {
-  if (isServer) {
+  if (isServer.load()) {
     maskAllSignalsServer();
   } else {
     maskAllSignalsClient();

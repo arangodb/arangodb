@@ -44,7 +44,7 @@ using namespace arangodb;
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
-  application_features::ApplicationServer server{nullptr, nullptr};
+  ArangodServer server{nullptr, nullptr};
   server.addFeature<metrics::MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
@@ -64,7 +64,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
-  application_features::ApplicationServer server{nullptr, nullptr};
+  ArangodServer server{nullptr, nullptr};
   server.addFeature<metrics::MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);

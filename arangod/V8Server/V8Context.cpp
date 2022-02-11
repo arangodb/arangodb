@@ -28,6 +28,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/arangod.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 

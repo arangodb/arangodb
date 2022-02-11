@@ -59,12 +59,15 @@ add_library(arango_iresearch
   IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
+  IResearch/IResearchDataStore.cpp IResearch/IResearchDataStore.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
   IResearch/IResearchFilterOptimization.cpp IResearch/IResearchFilterOptimization.h
   IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
+  IResearch/IResearchInvertedIndex.h IResearch/IResearchInvertedIndex.cpp
+  IResearch/IResearchInvertedIndexMeta.h IResearch/IResearchInvertedIndexMeta.cpp
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
@@ -73,6 +76,8 @@ add_library(arango_iresearch
   IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
   IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
   IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
+  IResearch/IResearchRocksDBEncryption.cpp IResearch/IResearchRocksDBEncryption.h
+  IResearch/IResearchRocksDBInvertedIndex.cpp IResearch/IResearchRocksDBInvertedIndex.h
   IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h
@@ -110,13 +115,13 @@ target_link_libraries(arango_iresearch
   ${IRESEARCH_TARGET_DEPENDENCY}
   s2 # needed for some includes
   boost_locale # required by iResearch
+  boost_thread # required by IResearchView upgrade_mutex
 )
 
 add_dependencies(arango_iresearch
   ${IRESEARCH_TARGET_DEPENDENCY}
   v8_build # for ICU required by iResearch
 )
-
 
 ################################################################################
 ## arangod
@@ -429,6 +434,7 @@ set(LIB_ARANGO_AQL_SOURCES
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
+  Aql/StandaloneCalculation.cpp
   Replication/DatabaseReplicationApplier.cpp
   Utils/CollectionNameResolver.cpp
   Utils/CursorRepository.cpp
@@ -549,6 +555,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/InMemoryLog.cpp
   Replication2/ReplicatedLog/LogCommon.cpp
   Replication2/ReplicatedLog/LogCore.cpp
+  Replication2/ReplicatedLog/LogEntries.cpp
   Replication2/ReplicatedLog/LogFollower.cpp
   Replication2/ReplicatedLog/LogLeader.cpp
   Replication2/ReplicatedLog/LogStatus.cpp
@@ -557,16 +564,22 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLog.cpp
   Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
+  Replication2/ReplicatedLog/Supervision.cpp
+  Replication2/ReplicatedLog/SupervisionAction.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
   Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
-  Replication2/ReplicatedState/ReplicatedStateCore.cpp
+  Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/Supervision.cpp
-  Replication2/ReplicatedState/SupervisionVelocyPackHell.cpp
+  Replication2/ReplicatedState/SupervisionAction.cpp
+  Replication2/ReplicatedState/UpdateReplicatedState.cpp
+  Replication2/ReplicatedState/UpdateReplicatedState.h
+  Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
+  Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
@@ -692,6 +705,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
+  Cluster/UpdateReplicatedStateAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
@@ -767,6 +781,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/CpuUsageFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
@@ -780,12 +795,16 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
+  RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/PrivilegeFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
+  RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
@@ -817,6 +836,10 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/Status.cpp
 )
 
+if (MSVC)
+  list(APPEND LIB_ARANGOSERVER_SOURCES RestServer/WindowsServiceFeature.cpp)
+endif()
+
 set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
   RestHandler/RestCollectionHandler.cpp
   RestHandler/RestReplicationHandler.cpp
@@ -832,7 +855,7 @@ if (USE_MAINTAINER_MODE)
 endif()
 
 if (NOT MSVC)
-  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} 
+  set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES}
     GeneralServer/AcceptorUnixDomain.cpp
     RestServer/DaemonFeature.cpp
     RestServer/SupervisorFeature.cpp)
@@ -1018,6 +1041,7 @@ target_link_libraries(arango_indexes date_interface)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
+target_link_libraries(arango_iresearch arango_vocbase)
 
 target_link_libraries(arango_metrics arango)
 target_link_libraries(arango_metrics arango::validation)
@@ -1208,6 +1232,10 @@ foreach(TARGET
   if (USE_FAIL_ON_WARNINGS)
     if (MSVC)
       target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
+      endif()
     else ()
       target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
     endif ()

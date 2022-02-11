@@ -57,8 +57,7 @@ class AttributeAccessor {
 
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
   static AttributeAccessor* create(arangodb::aql::AttributeNamePath&& path,
-                                   Variable const* variable,
-                                   bool dataIsFromCollection);
+                                   Variable const* variable);
 
  protected:
   /// @brief the accessed variable

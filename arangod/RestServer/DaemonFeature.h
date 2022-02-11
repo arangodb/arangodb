@@ -27,18 +27,18 @@
 #include <string>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
 
-class DaemonFeature final : public application_features::ApplicationFeature {
+class DaemonFeature final : public ArangodFeature {
  public:
-  explicit DaemonFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Daemon"; }
+
+  explicit DaemonFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -29,6 +29,7 @@
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
@@ -110,6 +111,14 @@ struct ReplicatedStateFeature::InternalFactory : InternalFactoryBase,
   auto getStateFactory() -> std::shared_ptr<Factory> {
     return {shared_from_this(), static_cast<Factory*>(this)};
   }
+};
+
+struct ReplicatedStateAppFeature : ArangodFeature, ReplicatedStateFeature {
+  static constexpr std::string_view name() noexcept {
+    return "ReplicatedState";
+  }
+
+  explicit ReplicatedStateAppFeature(Server& server);
 };
 
 }  // namespace arangodb::replication2::replicated_state

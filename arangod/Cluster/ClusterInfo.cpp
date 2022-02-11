@@ -401,16 +401,12 @@ struct ClusterInfoScale {
   }
 };
 
-DECLARE_LEGACY_COUNTER(arangodb_load_current_accum_runtime_msec_total,
-                       "Accumulated runtime of Current loading [ms]");
 DECLARE_HISTOGRAM(arangodb_load_current_runtime, ClusterInfoScale,
                   "Current loading runtimes [ms]");
-DECLARE_LEGACY_COUNTER(arangodb_load_plan_accum_runtime_msec_total,
-                       "Accumulated runtime of Plan loading [ms]");
 DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
                   "Plan loading runtimes [ms]");
 
-ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _server(server),
@@ -426,12 +422,8 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
       _uniqid(),
       _lpTimer(_server.getFeature<metrics::MetricsFeature>().add(
           arangodb_load_plan_runtime{})),
-      _lpTotal(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_plan_accum_runtime_msec_total{})),
       _lcTimer(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_current_runtime{})),
-      _lcTotal(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_current_accum_runtime_msec_total{})) {
+          arangodb_load_current_runtime{})) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -1590,7 +1582,6 @@ void ClusterInfo::loadPlan() {
   }
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
-  _lpTotal += static_cast<uint64_t>(diff);
   _lpTimer.count(diff);
 }
 
@@ -1848,7 +1839,6 @@ void ClusterInfo::loadCurrent() {
   }
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
-  _lcTotal += static_cast<uint64_t>(diff);
   _lcTimer.count(diff);
 }
 
@@ -5978,6 +5968,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
+      {"Sync/FoxxQueueVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}});
 
   VPackSlice latestIdSlice = plan.get({"arango", "Sync", "LatestID"});
@@ -6303,9 +6294,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
-application_features::ApplicationServer& ClusterInfo::server() const {
-  return _server;
-}
+ArangodServer& ClusterInfo::server() const { return _server; }
 
 ClusterInfo::ServersKnown::ServersKnown(
     VPackSlice const serversKnownSlice,
@@ -6451,10 +6440,11 @@ CollectionWatcher::~CollectionWatcher() {
   }
 }
 
-ClusterInfo::SyncerThread::SyncerThread(
-    application_features::ApplicationServer& server, std::string const& section,
-    std::function<void()> const& f, AgencyCallbackRegistry* cregistry)
-    : arangodb::Thread(server, section + "Syncer"),
+ClusterInfo::SyncerThread::SyncerThread(Server& server,
+                                        std::string const& section,
+                                        std::function<void()> const& f,
+                                        AgencyCallbackRegistry* cregistry)
+    : arangodb::ServerThread<Server>(server, section + "Syncer"),
       _news(false),
       _section(section),
       _f(f),
@@ -6502,7 +6492,7 @@ void ClusterInfo::SyncerThread::run() {
         return notify(result);
       };
 
-  auto acb = std::make_shared<AgencyCallback>(_server, _section + "/Version",
+  auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
                                               update, true, false);
   Result res = _cr->registerCallback(std::move(acb));
   if (res.fail()) {
@@ -6767,6 +6757,26 @@ void ClusterInfo::triggerWaiting(
     }
     pit = mm.erase(pit);
   }
+}
+
+auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
+    DatabaseID const& database, replication2::LogId id) const
+    -> ResultT<
+        std::shared_ptr<replication2::agency::LogPlanSpecification const>> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto it2 = it->second->replicatedLogs.find(id);
+  if (it2 == std::end(it->second->replicatedLogs)) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+  }
+
+  TRI_ASSERT(it2->second != nullptr);
+  return it2->second;
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(

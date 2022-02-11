@@ -73,9 +73,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
-  ~RestReplicationHandler();
+  RestReplicationHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   static std::string const Revisions;

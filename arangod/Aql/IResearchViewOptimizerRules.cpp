@@ -21,9 +21,11 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 #include "IResearchViewOptimizerRules.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/ClusterNodes.h"
@@ -33,7 +35,6 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
-#include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
@@ -52,6 +53,7 @@
 
 #include <utils/misc.hpp>
 
+using namespace arangodb;
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -60,24 +62,20 @@ namespace {
 
 inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl =
-        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.primarySort();
   }
-
-  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(view);
   return viewImpl.primarySort();
 }
 
 inline IResearchViewStoredValues const& storedValues(
     arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl =
-        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.storedValues();
   }
-
-  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(view);
   return viewImpl.storedValues();
 }
 
@@ -351,132 +349,12 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 }
 
-struct ColumnVariant {
-  latematerialized::AstAndColumnFieldData* afData;
-  size_t fieldNum;
-  std::vector<arangodb::basics::AttributeName> const* field;
-  std::vector<std::string> postfix;
-
-  ColumnVariant(latematerialized::AstAndColumnFieldData* afData,
-                size_t fieldNum,
-                std::vector<arangodb::basics::AttributeName> const* field,
-                std::vector<std::string>&& postfix)
-      : afData(afData),
-        fieldNum(fieldNum),
-        field(field),
-        postfix(std::move(postfix)) {}
-};
-
-bool attributesMatch(
-    IResearchViewSort const& primarySort,
-    IResearchViewStoredValues const& storedValues,
-    latematerialized::NodeWithAttrsColumn& node,
-    std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
-    size_t columnsCount) {
-  TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
-  // check all node attributes to be in sort
-  std::vector<std::vector<ColumnVariant>> tmpUsedColumnsCounter(columnsCount);
-  std::vector<std::string> postfix;
-  for (auto& nodeAttr : node.attrs) {
-    auto found = false;
-    nodeAttr.afData.field = nullptr;
-    // try to find in the sort column
-    size_t fieldNum = 0;
-    TRI_ASSERT(!tmpUsedColumnsCounter.empty());
-    auto& tmpSlot = tmpUsedColumnsCounter.front();
-    for (auto const& field : primarySort.fields()) {
-      if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
-        tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field,
-                             std::move(postfix));
-        found = true;
-        break;
-      }
-      ++fieldNum;
-    }
-    // try to find in other columns
-    ptrdiff_t columnNum = 1;
-    for (auto const& column : storedValues.columns()) {
-      fieldNum = 0;
-      TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >=
-                 columnNum);
-      auto& tmpSlot = tmpUsedColumnsCounter[columnNum];
-      for (auto const& field : column.fields) {
-        if (latematerialized::isPrefix(field.second, nodeAttr.attr, false,
-                                       postfix)) {
-          tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field.second,
-                               std::move(postfix));
-          found = true;
-          break;
-        }
-        ++fieldNum;
-      }
-      ++columnNum;
-    }
-    // not found value in columns
-    if (!found) {
-      return false;
-    }
-  }
-  static_assert(std::is_move_constructible_v<ColumnVariant>,
-                "To efficiently move from temp variable we need working move "
-                "for ColumnVariant");
-  // store only on successful exit, otherwise pointers to afData will be
-  // invalidated as Node will be not stored!
-  size_t current = 0;
-  for (auto it = tmpUsedColumnsCounter.begin();
-       it != tmpUsedColumnsCounter.end(); ++it) {
-    std::move(it->begin(), it->end(),
-              irs::irstd::back_emplacer(usedColumnsCounter[current++]));
-  }
-  return true;
-}
-
-void setAttributesMaxMatchedColumns(
-    std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
-    size_t columnsCount) {
-  TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
-  std::vector<ptrdiff_t> idx(columnsCount);
-  std::iota(idx.begin(), idx.end(), 0);
-  // first is max size one
-  std::sort(idx.begin(), idx.end(),
-            [&usedColumnsCounter](auto const lhs, auto const rhs) {
-              auto const& lhs_val = usedColumnsCounter[lhs];
-              auto const& rhs_val = usedColumnsCounter[rhs];
-              auto const lSize = lhs_val.size();
-              auto const rSize = rhs_val.size();
-              // column contains more fields or
-              // columns sizes == 1 and postfix is less (less column size) or
-              // less column number (sort column priority)
-              return lSize > rSize ||
-                     (lSize == rSize &&
-                      ((lSize == 1 && lhs_val[0].postfix.size() <
-                                          rhs_val[0].postfix.size()) ||
-                       lhs < rhs));
-            });
-  // get values from columns which contain max number of appropriate values
-  for (auto i : idx) {
-    auto& it = usedColumnsCounter[i];
-    for (auto& f : it) {
-      TRI_ASSERT(f.afData);
-      if (f.afData->field == nullptr) {
-        f.afData->fieldNumber = f.fieldNum;
-        f.afData->field = f.field;
-        // if assertion below is violated consider adding proper i -> columnNum
-        // conversion for filling f.afData->columnNumber
-        static_assert((-1) == IResearchViewNode::SortColumnNumber,
-                      "Value is no more valid for such implementation");
-        f.afData->columnNumber = i - 1;
-        f.afData->postfix = std::move(f.postfix);
-      }
-    }
-  }
-}
-
 void keepReplacementViewVariables(
     arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
     arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
   std::vector<latematerialized::NodeWithAttrsColumn> nodesToChange;
-  std::vector<std::vector<ColumnVariant>> usedColumnsCounter;
+  std::vector<std::vector<latematerialized::ColumnVariant<false>>>
+      usedColumnsCounter;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode &&
                ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
@@ -510,7 +388,7 @@ void keepReplacementViewVariables(
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node)) {
         if (!node.attrs.empty()) {
-          if (attributesMatch(primarySort, storedValues, node,
+          if (attributesMatch(primarySort, storedValues, node.attrs,
                               usedColumnsCounter, columnsCount)) {
             nodesToChange.emplace_back(std::move(node));
           } else {

@@ -31,6 +31,7 @@
 #include <Futures/Future.h>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 
 namespace arangodb::replication2::replicated_log {
 struct PersistedLog;

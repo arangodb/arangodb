@@ -3,6 +3,7 @@
 
 #include "jemalloc/internal/bin.h"
 #include "jemalloc/internal/jemalloc_internal_types.h"
+#include "jemalloc/internal/san.h"
 #include "jemalloc/internal/sc.h"
 #include "jemalloc/internal/sz.h"
 #include "jemalloc/internal/util.h"
@@ -61,6 +62,8 @@ tcache_alloc_small(tsd_t *tsd, arena_t *arena, tcache_t *tcache,
 			return arena_malloc_hard(tsd_tsdn(tsd), arena, size,
 			    binind, zero);
 		}
+		tcache_bin_flush_stashed(tsd, tcache, bin, binind,
+		    /* is_small */ true);
 
 		ret = tcache_alloc_small_hard(tsd_tsdn(tsd), arena, tcache,
 		    bin, binind, &tcache_hard_success);
@@ -100,6 +103,8 @@ tcache_alloc_large(tsd_t *tsd, arena_t *arena, tcache_t *tcache, size_t size,
 		if (unlikely(arena == NULL)) {
 			return NULL;
 		}
+		tcache_bin_flush_stashed(tsd, tcache, bin, binind,
+		    /* is_small */ false);
 
 		ret = large_malloc(tsd_tsdn(tsd), arena, sz_s2u(size), zero);
 		if (ret == NULL) {
@@ -126,6 +131,21 @@ tcache_dalloc_small(tsd_t *tsd, tcache_t *tcache, void *ptr, szind_t binind,
 	assert(tcache_salloc(tsd_tsdn(tsd), ptr) <= SC_SMALL_MAXCLASS);
 
 	cache_bin_t *bin = &tcache->bins[binind];
+	/*
+	 * Not marking the branch unlikely because this is past free_fastpath()
+	 * (which handles the most common cases), i.e. at this point it's often
+	 * uncommon cases.
+	 */
+	if (cache_bin_nonfast_aligned(ptr)) {
+		/* Junk unconditionally, even if bin is full. */
+		san_junk_ptr(ptr, sz_index2size(binind));
+		if (cache_bin_stash(bin, ptr)) {
+			return;
+		}
+		assert(cache_bin_full(bin));
+		/* Bin full; fall through into the flush branch. */
+	}
+
 	if (unlikely(!cache_bin_dalloc_easy(bin, ptr))) {
 		if (unlikely(tcache_small_bin_disabled(binind, bin))) {
 			arena_dalloc_small(tsd_tsdn(tsd), ptr);

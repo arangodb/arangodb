@@ -88,8 +88,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <boost/core/demangle.hpp>
-
 #include <type_traits>
 
 /* SingleServerProvider Section */
@@ -195,7 +193,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _execState{ExecState::CHECKCALL},
-      _lastRange{ExecutorState::HASMORE},
+      _lastRange{MainQueryState::HASMORE},
       _upstreamRequest{},
       _clientRequest{},
       _stackBeforeWaiting{AqlCallList{AqlCall{}}},
@@ -324,7 +322,7 @@ ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
     _lastRange.reset();
     _rowFetcher.init();
   } else {
-    _lastRange = DataRange(ExecutorState::HASMORE);
+    _lastRange = DataRange(MainQueryState::HASMORE);
   }
 
   TRI_ASSERT(_skipped.nothingSkipped());
@@ -344,6 +342,19 @@ ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // }
 
   return ExecutionBlock::initializeCursor(input);
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
+  // some node types provide info about how many documents have been
+  // filtered. if so, use the info and add it to the node stats.
+  if constexpr (is_one_of_v<typename Executor::Stats, IndexStats,
+                            EnumerateCollectionStats, FilterStats,
+                            TraversalStats, MaterializeStats>) {
+    _execNodeStats.filtered += _blockStats.getFiltered();
+  }
+  ExecutionBlock::collectExecStats(stats);
+  stats += _blockStats;  // additional stats;
 }
 
 template<class Executor>
@@ -400,7 +411,13 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   } catch (basics::Exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    _firstFailure = {ex.code(), ex.what()};
+    std::string msg(ex.what());
+    msg.append(" [node #")
+        .append(std::to_string(getPlanNode()->id().id()))
+        .append(": ")
+        .append(getPlanNode()->getTypeString())
+        .append("]");
+    _firstFailure.reset(ex.code(), std::move(msg));
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
@@ -408,7 +425,13 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   } catch (std::exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
+    std::string msg(ex.what());
+    msg.append(" [node #")
+        .append(std::to_string(getPlanNode()->id().id()))
+        .append(": ")
+        .append(getPlanNode()->getTypeString())
+        .append("]");
+    _firstFailure.reset(TRI_ERROR_INTERNAL, std::move(msg));
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
@@ -416,6 +439,10 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
 }
+
+// Avoid duplicate symbols when linking: This file is directly included by
+// ExecutionBlockImplTestInstances.cpp
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
 // Without the namespaces it fails with
@@ -451,7 +478,7 @@ auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
   _state = InternalState::FETCH_DATA;
 
   // Reset state of execute
-  _lastRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
+  _lastRange = AqlItemBlockInputRange{MainQueryState::HASMORE};
   _hasUsedDataRangeBlock = false;
   _upstreamState = ExecutionState::HASMORE;
 
@@ -479,6 +506,24 @@ ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
 }
 
 }  // namespace arangodb::aql
+#else
+// Just predeclare the specializations for the tests.
+
+namespace arangodb::aql {
+template<>
+template<>
+auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
+    IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block, SkipResult skipped)
+    -> void;
+
+template<>
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+    InputAqlItemRow const& input);
+
+}  // namespace arangodb::aql
+
+#endif
 
 // TODO: We need to define the size of this block based on Input / Executor /
 // Subquery depth
@@ -525,10 +570,10 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
       // In production it is now very unlikely in the non-softlimit case
       // that the upstream is no block using less than batchSize many rows, but
       // returns HASMORE.
-      if (_lastRange.finalState() == ExecutorState::DONE ||
+      if (_lastRange.finalState() == MainQueryState::DONE ||
           call.hasSoftLimit()) {
         blockSize = _executor.expectedNumberOfRowsNew(_lastRange, call);
-        if (_lastRange.finalState() == ExecutorState::HASMORE) {
+        if (_lastRange.finalState() == MainQueryState::HASMORE) {
           // There might be more from above!
           blockSize = std::max(call.getLimit(), blockSize);
         }
@@ -994,6 +1039,9 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
+// Avoid duplicate symbols when linking: This file is directly included by
+// ExecutionBlockImplTestInstances.cpp
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 template<>
 auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
     AqlCallStack& stack) -> ExecState {
@@ -1107,6 +1155,17 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
     return ExecState::NEXTSUBQUERY;
   }
 }
+#else
+// Just predeclare the specializations for the tests.
+template<>
+auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
+    AqlCallStack& stack) -> ExecState;
+
+template<>
+auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
+    AqlCallStack& stack) -> ExecState;
+
+#endif
 
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
@@ -2108,6 +2167,9 @@ auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept
   return _lastRange.hasDataRow();
 }
 
+// Avoid duplicate symbols when linking: This file is directly included by
+// ExecutionBlockImplTestInstances.cpp
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
 template<>
 template<>
 RegisterId
@@ -2115,12 +2177,21 @@ ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
     getOutputRegisterId() const noexcept {
   return _executorInfos.getOutputRegister();
 }
+#else
+// Just predeclare the specializations for the tests.
+
+template<>
+template<>
+RegisterId
+ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
+    getOutputRegisterId() const noexcept;
+#endif
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::init() {
   TRI_ASSERT(!_initialized);
   if constexpr (isMultiDepExecutor<Executor>) {
-    _lastRange.resizeOnce(ExecutorState::HASMORE, 0, _dependencies.size());
+    _lastRange.resizeOnce(MainQueryState::HASMORE, 0, _dependencies.size());
     _rowFetcher.init();
   }
 }
@@ -2204,7 +2275,7 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range,
                                                         SkipResult skipped)
     -> void {
-  if (range.finalState() == ExecutorState::DONE) {
+  if (range.finalState() == MainQueryState::DONE) {
     _upstreamState = ExecutionState::DONE;
   } else {
     _upstreamState = ExecutionState::HASMORE;
@@ -2388,6 +2459,9 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
   }
 }
 
+// Avoid compiling everything again in the tests
+#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+
 template class ::arangodb::aql::ExecutionBlockImpl<
     CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
@@ -2555,3 +2629,5 @@ template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+
+#endif

@@ -29,8 +29,8 @@ namespace arangodb {
 
 class ClusterRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  ClusterRestCollectionHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
+  ClusterRestCollectionHandler(ArangodServer&, GeneralRequest*,
+                               GeneralResponse*);
 
  protected:
   Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,

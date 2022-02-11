@@ -26,7 +26,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Identifier.h"
 

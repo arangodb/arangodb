@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 // otherwise define conflict between 3rdParty\date\include\date\date.h and
 // 3rdParty\iresearch\core\shared.hpp
@@ -52,7 +53,6 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -84,11 +84,6 @@ using namespace std::chrono_literals;
 
 namespace arangodb {
 
-namespace basics {
-
-class VPackStringBufferAdapter;
-}  // namespace basics
-
 namespace aql {
 class Query;
 }  // namespace aql
@@ -98,10 +93,7 @@ class Query;
 namespace {
 
 using namespace arangodb;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         ArangoSearc AQL functions
-// -----------------------------------------------------------------------------
+using namespace arangodb::iresearch;
 
 aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const&,
                               containers::SmallVector<aql::AqlValue> const&) {
@@ -113,9 +105,9 @@ aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const&,
       " Please ensure function signature is correct.");
 }
 
-/// function body for ArangoSearch context functions ANALYZER/BOOST.
-/// Just returns its first argument as outside ArangoSearch context
-/// there is nothing to do with search stuff, but optimization could roll.
+// Function body for ArangoSearch context functions ANALYZER/BOOST.
+// Just returns its first argument as outside ArangoSearch context
+// there is nothing to do with search stuff, but optimization could roll.
 aql::AqlValue contextFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
                           containers::SmallVector<aql::AqlValue> const& args) {
   TRI_ASSERT(ctx);
@@ -125,16 +117,16 @@ aql::AqlValue contextFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
   return aql::AqlValue{materializer.slice(args[0], true)};
 }
 
-/// Register invalid argument warning
+// Register invalid argument warning
 inline aql::AqlValue errorAqlValue(aql::ExpressionContext* ctx,
                                    char const* afn) {
   aql::registerInvalidArgumentWarning(ctx, afn);
   return aql::AqlValue{aql::AqlValueHintNull{}};
 }
 
-/// Executes STARTS_WITH function with const parameters locally the same way
-/// it will be done in ArangoSearch at runtime
-/// This will allow optimize out STARTS_WITH call if all arguments are const
+// Executes STARTS_WITH function with const parameters locally the same way
+// it will be done in ArangoSearch at runtime
+// This will allow optimize out STARTS_WITH call if all arguments are const
 aql::AqlValue startsWithFunc(
     aql::ExpressionContext* ctx, aql::AstNode const&,
     containers::SmallVector<aql::AqlValue> const& args) {
@@ -154,8 +146,7 @@ aql::AqlValue startsWithFunc(
   auto& prefixes = args[1];
   if (prefixes.isArray()) {
     auto const size = static_cast<int64_t>(prefixes.length());
-    int64_t minMatchCount =
-        arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount;
+    int64_t minMatchCount = FilterConstants::DefaultStartsWithMinMatchCount;
     if (argc > 2) {
       auto& minMatchCountValue = args[2];
       if (!minMatchCountValue.isNumber()) {
@@ -235,8 +226,8 @@ aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const&,
 class IResearchLogTopic final : public LogTopic {
  public:
   explicit IResearchLogTopic(std::string const& name)
-      : LogTopic(name, DEFAULT_LEVEL) {
-    setIResearchLogLevel(DEFAULT_LEVEL);
+      : LogTopic(name, kDefaultLevel) {
+    setIResearchLogLevel(kDefaultLevel);
   }
 
   virtual void setLogLevel(LogLevel level) override {
@@ -245,7 +236,7 @@ class IResearchLogTopic final : public LogTopic {
   }
 
  private:
-  static LogLevel const DEFAULT_LEVEL = LogLevel::INFO;
+  static LogLevel const kDefaultLevel = LogLevel::INFO;
 
   typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
   typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
@@ -270,7 +261,7 @@ class IResearchLogTopic final : public LogTopic {
                            size_t message_len);
   static void setIResearchLogLevel(LogLevel level) {
     if (level == LogLevel::DEFAULT) {
-      level = DEFAULT_LEVEL;
+      level = kDefaultLevel;
     }
 
     auto irsLevel = static_cast<irs::logger::level_t>(
@@ -343,8 +334,7 @@ bool upgradeArangoSearchLinkCollectionName(
 #endif
       for (auto& index : indexes) {
         if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-          auto indexPtr =
-              dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+          auto indexPtr = dynamic_cast<IResearchLink*>(index.get());
           if (indexPtr) {
             LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
                 << "Checking collection name '" << clusterCollectionName
@@ -353,7 +343,7 @@ bool upgradeArangoSearchLinkCollectionName(
               LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
                   << "Setting collection name '" << clusterCollectionName
                   << "' for link " << indexPtr->id().id();
-              if (selector.engineName() == RocksDBEngine::EngineName) {
+              if (selector.engineName() == RocksDBEngine::kEngineName) {
                 auto& engine = selector.engine<RocksDBEngine>();
                 auto builder = collection->toVelocyPackIgnore(
                     {"path", "statusString"}, LogicalDataSource::Serialization::
@@ -403,17 +393,16 @@ bool upgradeSingleServerArangoSearchView0_1(
   }
 
   for (auto& view : vocbase.views()) {
-    if (!LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
+    if (!basics::downCast<IResearchView>(view.get())) {
       continue;  // not an IResearchView
     }
 
     velocypack::Builder builder;
 
     builder.openObject();
+    // get JSON with meta + 'version'
     Result res = view->properties(
-        builder,
-        LogicalDataSource::Serialization::Persistence);  // get JSON with meta +
-                                                         // 'version'
+        builder, LogicalDataSource::Serialization::Persistence);
     builder.close();
 
     if (!res.ok()) {
@@ -443,10 +432,9 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     builder.clear();
     builder.openObject();
-    res = view->properties(
-        builder,
-        LogicalDataSource::Serialization::Properties);  // get JSON with
-                                                        // end-user definition
+    // get JSON with end-user definition
+    res =
+        view->properties(builder, LogicalDataSource::Serialization::Properties);
     builder.close();
 
     if (!res.ok()) {
@@ -470,14 +458,11 @@ bool upgradeSingleServerArangoSearchView0_1(
     auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
 
     // original algorithm for computing data-store path
-    static const std::string subPath("databases");
-    static const std::string dbPath("database-");
-
     dataPath = irs::utf8_path(dbPathFeature.directory());
-    dataPath /= subPath;
-    dataPath /= dbPath;
+    dataPath /= "databases";
+    dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
-    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
     dataPath += "-";
     dataPath += std::to_string(view->id().id());
 
@@ -498,7 +483,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     // non-version 0 IResearchView implementations no longer drop from vocbase
     // on db-server, do it explicitly
     if (ServerState::instance()->isDBServer()) {
-      res = LogicalViewHelperStorageEngine::drop(*view);
+      res = storage_helper::drop(*view);
 
       if (!res.ok()) {
         LOG_TOPIC("bfb3d", WARN, arangodb::iresearch::TOPIC)
@@ -553,17 +538,27 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   auto flags = aql::Function::makeFlags(
       aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
       aql::Function::Flags::CanRunOnDBServerCluster,
+      aql::Function::Flags::CanRunOnDBServerOneShard,
+      aql::Function::Flags::CanUseInAnalyzer);
+
+  auto flagsNoAnalyzer = aql::Function::makeFlags(
+      aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
+      aql::Function::Flags::CanRunOnDBServerCluster,
       aql::Function::Flags::CanRunOnDBServerOneShard);
 
-  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
-  addFunction(functions, {"EXISTS", ".|.,.", flags, &dummyFilterFunc});
+  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ]).
+  // cannot be used in analyzers!
+  addFunction(functions,
+              {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFilterFunc});
 
   // (attribute, [ '[' ] prefix [, prefix, ... ']' ] [,
   // scoring-limit|min-match-count ] [, scoring-limit ])
   addFunction(functions, {"STARTS_WITH", ".,.|.,.", flags, &startsWithFunc});
 
   // (attribute, input [, offset, input... ] [, analyzer])
-  addFunction(functions, {"PHRASE", ".,.|.+", flags, &dummyFilterFunc});
+  // cannot be used in analyzers!
+  addFunction(functions,
+              {"PHRASE", ".,.|.+", flagsNoAnalyzer, &dummyFilterFunc});
 
   // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &minMatchFunc});
@@ -572,21 +567,23 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"BOOST", ".,.", flags, &contextFunc});
 
   // (filter expression, analyzer)
-  addFunction(functions, {"ANALYZER", ".,.", flags, &contextFunc});
+  // cannot be used in analyzers!
+  addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
 namespace {
 template<typename T>
 void registerSingleFactory(
     std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> const& m,
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
   IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
-  auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
   if (server.hasFeature<T>()) {
     auto& engine = server.getFeature<T>();
     auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
-    Result res = engineFactory.emplace(indexType, factory);
+    Result res = engineFactory.emplace(
+        std::string{arangodb::iresearch::StaticStrings::DataSourceType},
+        factory);
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
@@ -601,7 +598,7 @@ void registerSingleFactory(
 
 void registerIndexFactory(
     std::map<std::type_index, std::shared_ptr<IndexTypeFactory>>& m,
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   m.emplace(
       std::type_index(typeid(ClusterEngine)),
       arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
@@ -612,8 +609,8 @@ void registerIndexFactory(
 }
 
 void registerScorers(aql::AqlFunctionFeature& functions) {
-  irs::string_ref const args(".|+");  // positional arguments (attribute [,
-                                      // <scorer-specific properties>...]);
+  // positional arguments (attribute [<scorer-specific properties>...]);
+  irs::string_ref constexpr args(".|+");
 
   irs::scorers::visit(
       [&functions, &args](irs::string_ref const& name,
@@ -630,16 +627,15 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
         std::transform(upperName.begin(), upperName.end(), upperName.begin(),
                        ::toupper);
 
+        // scorers are not usable in analyzers
         arangodb::iresearch::addFunction(
-            functions, {
-                           std::move(upperName), args.c_str(),
-                           aql::Function::makeFlags(
-                               aql::Function::Flags::Deterministic,
-                               aql::Function::Flags::Cacheable,
-                               aql::Function::Flags::CanRunOnDBServerCluster,
-                               aql::Function::Flags::CanRunOnDBServerOneShard),
-                           &dummyScorerFunc  // function implementation
-                       });
+            functions, {std::move(upperName), args.c_str(),
+                        aql::Function::makeFlags(
+                            aql::Function::Flags::Deterministic,
+                            aql::Function::Flags::Cacheable,
+                            aql::Function::Flags::CanRunOnDBServerCluster,
+                            aql::Function::Flags::CanRunOnDBServerOneShard),
+                        &dummyScorerFunc});
 
         LOG_TOPIC("f42f9", TRACE, arangodb::iresearch::TOPIC)
             << "registered ArangoSearch scorer '" << upperName << "'";
@@ -648,10 +644,8 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
       });
 }
 
-void registerRecoveryHelper(application_features::ApplicationServer& server) {
-  auto helper =
-      std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>(
-          server);
+void registerRecoveryHelper(ArangodServer& server) {
+  auto helper = std::make_shared<IResearchRocksDBRecoveryHelper>(server);
   auto res = RocksDBEngine::registerRecoveryHelper(helper);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -659,7 +653,7 @@ void registerRecoveryHelper(application_features::ApplicationServer& server) {
   }
 }
 
-void registerUpgradeTasks(application_features::ApplicationServer& server) {
+void registerUpgradeTasks(ArangodServer& server) {
   if (!server.hasFeature<UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be
              // applied)
@@ -678,10 +672,9 @@ void registerUpgradeTasks(application_features::ApplicationServer& server) {
         methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
         | methods::Upgrade::Flags::CLUSTER_NONE           // local server
         | methods::Upgrade::Flags::CLUSTER_LOCAL;
-    task.databaseFlags =
-        methods::Upgrade::Flags::DATABASE_UPGRADE |
-        methods::Upgrade::Flags::DATABASE_ONLY_ONCE;  // seal the task after
-                                                      // execution
+    task.databaseFlags = methods::Upgrade::Flags::DATABASE_UPGRADE |
+                         // seal the task after execution
+                         methods::Upgrade::Flags::DATABASE_ONLY_ONCE;
     task.action = &upgradeSingleServerArangoSearchView0_1;
     upgrade.addTask(std::move(task));
   }
@@ -697,31 +690,28 @@ void registerUpgradeTasks(application_features::ApplicationServer& server) {
     // will just do nothing but flags don`t allow to distinguih cases)
     task.clusterFlags = methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL |
                         methods::Upgrade::Flags::CLUSTER_LOCAL;  // db-server
-    task.databaseFlags =
-        methods::Upgrade::Flags::DATABASE_EXISTING |
-        methods::Upgrade::Flags::DATABASE_ONLY_ONCE;  // seal the task after
-                                                      // execution
+    task.databaseFlags = methods::Upgrade::Flags::DATABASE_EXISTING |
+                         // seal the task after execution
+                         methods::Upgrade::Flags::DATABASE_ONLY_ONCE;
     task.action = &upgradeArangoSearchLinkCollectionName;
     upgrade.addTask(std::move(task));
   }
 }
 
-void registerViewFactory(application_features::ApplicationServer& server) {
-  auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto& viewTypes = server.getFeature<ViewTypesFeature>();
+void registerViewFactory(ArangodServer& server) {
+  static_assert(IResearchView::typeInfo() ==
+                IResearchViewCoordinator::typeInfo());
+  constexpr std::string_view kViewType{IResearchView::typeInfo().second};
 
   Result res;
 
   // DB server in custer or single-server
-  if (ServerState::instance()->isCoordinator()) {
-    res = viewTypes.emplace(
-        viewType, arangodb::iresearch::IResearchViewCoordinator::factory());
-  } else if (ServerState::instance()->isDBServer()) {
-    res = viewTypes.emplace(viewType,
-                            arangodb::iresearch::IResearchView::factory());
-  } else if (ServerState::instance()->isSingleServer()) {
-    res = viewTypes.emplace(viewType,
-                            arangodb::iresearch::IResearchView::factory());
+  if (auto& viewTypes = server.getFeature<ViewTypesFeature>();
+      ServerState::instance()->isCoordinator()) {
+    res = viewTypes.emplace(kViewType, IResearchViewCoordinator::factory());
+  } else if (ServerState::instance()->isDBServer() ||
+             ServerState::instance()->isSingleServer()) {
+    res = viewTypes.emplace(kViewType, IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FAILED,
@@ -739,17 +729,11 @@ void registerViewFactory(application_features::ApplicationServer& server) {
 
 Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
                                                  transaction::Methods& trx) {
-  if (arangodb::iresearch::DATA_SOURCE_TYPE != dataSource.type()) {
-    return {};  // not an IResearchView (noop)
+  if (LogicalView::category() != dataSource.category()) {
+    return {};  // not a view
   }
-
-// TODO FIXME find a better way to look up a LogicalView
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* view = dynamic_cast<LogicalView*>(&dataSource);
-#else
-  auto* view = static_cast<LogicalView*>(&dataSource);
-#endif
-
+  // TODO FIXME find a better way to look up a LogicalView
+  auto* view = basics::downCast<LogicalView>(&dataSource);
   if (!view) {
     LOG_TOPIC("f42f8", WARN, arangodb::iresearch::TOPIC)
         << "failure to get LogicalView while processing a TransactionState by "
@@ -759,10 +743,13 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
     return {TRI_ERROR_INTERNAL};
   }
 
-  // TODO FIXME find a better way to look up an IResearch View
-  auto& impl = LogicalView::cast<arangodb::iresearch::IResearchView>(*view);
+  if (ViewType::kSearch != view->type()) {
+    return {};  // not a search view
+  }
 
-  return Result(impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL);
+  // TODO FIXME find a better way to look up an IResearch View
+  auto& impl = basics::downCast<IResearchView>(*view);
+  return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
 }
 
 void registerTransactionDataSourceRegistrationCallback() {
@@ -772,7 +759,6 @@ void registerTransactionDataSourceRegistrationCallback() {
   }
 }
 
-std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
 std::string const THREADS_PARAM("--arangosearch.threads");
@@ -857,9 +843,8 @@ bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
-IResearchFeature::IResearchFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, IResearchFeature::name()),
+IResearchFeature::IResearchFeature(Server& server)
+    : ArangodFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
       _consolidationThreads(0),
@@ -879,7 +864,7 @@ void IResearchFeature::beginShutdown() { _running.store(false); }
 void IResearchFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   _running.store(false);
-  options->addSection("arangosearch", FEATURE_NAME + " feature");
+  options->addSection("arangosearch", std::string{name()}.append(" feature"));
   options
       ->addOption(THREADS_PARAM,
                   "the exact number of threads to use for asynchronous "
@@ -958,8 +943,6 @@ void IResearchFeature::validateOptions(
 
   _running.store(false);
 }
-
-/*static*/ std::string const& IResearchFeature::name() { return FEATURE_NAME; }
 
 void IResearchFeature::prepare() {
   TRI_ASSERT(isEnabled());
@@ -1152,7 +1135,3 @@ template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -41,9 +41,9 @@ namespace rocksdb {
 /// @brief recalculate counts on all DB servers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(
-    application_features::ApplicationServer& server, std::string const& dbname,
-    std::string const& collname) {
+Result recalculateCountsOnAllDBServers(ArangodServer& server,
+                                       std::string const& dbname,
+                                       std::string const& collname) {
   ClusterEngine& ce =
       (server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>());
   if (!ce.isRocksDB()) {

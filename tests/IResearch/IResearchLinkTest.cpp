@@ -217,7 +217,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -230,8 +230,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
     std::string error;
 
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_EQ(expectedMeta, actualMeta);
     auto slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
@@ -252,9 +251,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -295,7 +291,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -308,8 +304,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
     std::string error;
 
-    EXPECT_TRUE(
-        actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error));
     EXPECT_EQ(expectedMeta, actualMeta);
     auto slice = builder->slice();
     EXPECT_TRUE(slice.hasKey("view"));
@@ -330,9 +325,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -373,7 +365,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_EQ(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK,
               link->type());
-    EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE.name(), link->typeName());
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::DataSourceType,
+              link->typeName());
     EXPECT_FALSE(link->unique());
 
     {
@@ -383,9 +376,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      EXPECT_TRUE(
-          (actualMeta.init(server.server(), builder->slice(), false, error) &&
-           expectedMeta == actualMeta));
+      EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), error) &&
+                  expectedMeta == actualMeta);
       auto slice = builder->slice();
       EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
                   logicalView->guid() == slice.get("view").copyString());
@@ -404,9 +396,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -435,9 +424,6 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
-      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
-      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
-      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -1066,8 +1052,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE(
-        (l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -2208,7 +2193,6 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
 using LinkStats = arangodb::iresearch::IResearchLink::LinkStats;
 
 bool operator==(const LinkStats& lhs, const LinkStats& rhs) noexcept {
-  // ignore numBufferedDocs
   return lhs.numDocs == rhs.numDocs && lhs.numLiveDocs == rhs.numLiveDocs &&
          lhs.numSegments == rhs.numSegments && lhs.numFiles == rhs.numFiles &&
          lhs.indexSize == rhs.indexSize;
@@ -2292,13 +2276,13 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     EXPECT_NE(_link, nullptr);
     auto label = getLinkMetricLabel();
     EXPECT_TRUE(checkMetricExist("arangosearch_link_stats", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_commits", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_num_failed_commits", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_num_failed_cleanups", label));
     EXPECT_TRUE(
-        checkMetricExist("arangosearch_num_failed_consolidations", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_commit_time", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_cleanup_time", label));
-    EXPECT_TRUE(checkMetricExist("arangosearch_consolidation_time", label));
+        checkMetricExist("arangodb_search_num_failed_consolidations", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_commit_time", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_cleanup_time", label));
+    EXPECT_TRUE(checkMetricExist("arangodb_search_consolidation_time", label));
   }
 
   void resetLink() {
@@ -2332,7 +2316,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(
             key);
     if (metric != nullptr) {
-      metric->toPrometheus(result, "", "");
+      metric->toPrometheus(result, false, "");
     }
   }
 
@@ -2366,9 +2350,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(
-          l->remove(trx, arangodb::LocalDocumentId(begin), _docs[0]->slice())
-              .ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());
@@ -2467,17 +2449,19 @@ TEST_F(IResearchLinkMetricsTest, CleanupWhenEmptyCommit) {
   setLink();
   auto dataPath = _dirPath / "abracadabra.txt";
   bool exist{false};
-  irs::file_utils::exists(exist, dataPath.c_str());
-  EXPECT_FALSE(exist);
+  ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
+  ASSERT_FALSE(exist);
   {  // It's necessary to close dataFile, otherwise test doesn't work on Windows
     std::ofstream dataFile{dataPath.c_str()};
     dataFile << "boom";
   }
-  irs::file_utils::exists(exist, dataPath.c_str());
-  EXPECT_TRUE(exist);
-  std::this_thread::sleep_for(10ms);
-  irs::file_utils::exists(exist, dataPath.c_str());
-  EXPECT_FALSE(exist);
+  ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
+  int tryCount{1000};
+  while (exist && (--tryCount) > 0) {
+    std::this_thread::sleep_for(10ms);
+    ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
+  }
+  ASSERT_FALSE(exist);
 }
 
 TEST_F(IResearchLinkMetricsTest, RemoveMetrics) {
@@ -2485,13 +2469,13 @@ TEST_F(IResearchLinkMetricsTest, RemoveMetrics) {
   auto label = getLinkMetricLabel();
   resetLink();
   EXPECT_FALSE(checkMetricExist("arangosearch_link_stats", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_commits", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_num_failed_commits", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_num_failed_cleanups", label));
   EXPECT_FALSE(
-      checkMetricExist("arangosearch_num_failed_consolidations", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_commit_time", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_cleanup_time", label));
-  EXPECT_FALSE(checkMetricExist("arangosearch_consolidation_time", label));
+      checkMetricExist("arangodb_search_num_failed_consolidations", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_commit_time", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_cleanup_time", label));
+  EXPECT_FALSE(checkMetricExist("arangodb_search_consolidation_time", label));
 }
 
 TEST_F(IResearchLinkMetricsTest, CreateSameLink) {
@@ -2518,16 +2502,15 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
   {
     LinkStats actualStat = l->stats();
     std::string realStr;
-    l->stats().toPrometheus(realStr, "", "");
+    l->stats().toPrometheus(realStr, false, "", "");
     std::string expectedStr;
     expectedStr.reserve(1024);
 
-    expectedStr += "arangosearch_num_buffered_docs{}0\n";
-    expectedStr += "arangosearch_num_docs{}3\n";
-    expectedStr += "arangosearch_num_live_docs{}3\n";
-    expectedStr += "arangosearch_num_segments{}3\n";
-    expectedStr += "arangosearch_num_files{}16\n";
-    expectedStr += "arangosearch_index_size{}2054\n";
+    expectedStr += "arangodb_search_num_docs{}3\n";
+    expectedStr += "arangodb_search_num_live_docs{}3\n";
+    expectedStr += "arangodb_search_num_segments{}3\n";
+    expectedStr += "arangodb_search_num_files{}16\n";
+    expectedStr += "arangodb_search_index_size{}2054\n";
 
     EXPECT_EQ(realStr, expectedStr);
     // get other stats
@@ -2583,16 +2566,15 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     std::string realStr;
-    l->stats().toPrometheus(realStr, "", "");
+    l->stats().toPrometheus(realStr, false, "", "");
     std::string expectedStr;
     expectedStr.reserve(1024);
 
-    expectedStr += "arangosearch_num_buffered_docs{}0\n";
-    expectedStr += "arangosearch_num_docs{}3\n";
-    expectedStr += "arangosearch_num_live_docs{}3\n";
-    expectedStr += "arangosearch_num_segments{}2\n";
-    expectedStr += "arangosearch_num_files{}11\n";
-    expectedStr += "arangosearch_index_size{}1513\n";
+    expectedStr += "arangodb_search_num_docs{}3\n";
+    expectedStr += "arangodb_search_num_live_docs{}3\n";
+    expectedStr += "arangodb_search_num_segments{}2\n";
+    expectedStr += "arangodb_search_num_files{}11\n";
+    expectedStr += "arangodb_search_index_size{}1513\n";
 
     EXPECT_EQ(realStr, expectedStr);
   }
@@ -2612,26 +2594,23 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     std::string realStr;
-    l->stats().toPrometheus(realStr, "test",
+    l->stats().toPrometheus(realStr, false, "test",
                             R"(view="foo",collection="bar","shard"="s0001")");
     std::string expectedStr;
     expectedStr +=
-        "arangosearch_num_buffered_docs{test,view=\"foo\","
-        "collection=\"bar\",\"shard\"=\"s0001\"}0\n";
-    expectedStr +=
-        "arangosearch_num_docs{test,view=\"foo\","
+        "arangodb_search_num_docs{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}3\n";
     expectedStr +=
-        "arangosearch_num_live_docs{test,view=\"foo\","
+        "arangodb_search_num_live_docs{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}2\n";
     expectedStr +=
-        "arangosearch_num_segments{test,view=\"foo\","
+        "arangodb_search_num_segments{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}2\n";
     expectedStr +=
-        "arangosearch_num_files{test,view=\"foo\","
+        "arangodb_search_num_files{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}12\n";
     expectedStr +=
-        "arangosearch_index_size{test,view=\"foo\","
+        "arangodb_search_index_size{test,view=\"foo\","
         "collection=\"bar\",\"shard\"=\"s0001\"}1561\n";
 
     EXPECT_EQ(realStr, expectedStr);
@@ -2654,35 +2633,29 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
 
     std::string expected;
 
-    expected +=
-        R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}0)";
+    expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_live_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}1)";
+    expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_segments{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}1)";
+    expected += R"(",shard="",db="testVocbase"}1)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_files{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}1)";
+    expected += R"(",shard="",db="testVocbase"}6)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_index_size{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}6)";
-    expected += "\n";
-
-    expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="2"}681)";
+    expected += R"(",shard="",db="testVocbase"}681)";
     expected += "\n";
 
     std::string actual;
@@ -2699,35 +2672,29 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
 
     std::string expected;
 
-    expected +=
-        R"(arangosearch_num_buffered_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}0)";
+    expected += R"(",shard="",db="testVocbase"}3)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_live_docs{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}3)";
+    expected += R"(",shard="",db="testVocbase"}3)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_live_docs{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_segments{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}3)";
+    expected += R"(",shard="",db="testVocbase"}2)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_segments{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_num_files{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}2)";
+    expected += R"(",shard="",db="testVocbase"}11)";
     expected += "\n";
 
-    expected += R"(arangosearch_num_files{view="h3039/42",collection=")";
+    expected += R"(arangodb_search_index_size{view="h3039/42",collection=")";
     expected += collection;
-    expected += R"(",shard="",db="2"}11)";
-    expected += "\n";
-
-    expected += R"(arangosearch_index_size{view="h3039/42",collection=")";
-    expected += collection;
-    expected += R"(",shard="",db="2"}1513)";
+    expected += R"(",shard="",db="testVocbase"}1513)";
     expected += "\n";
 
     std::string actual;
@@ -2740,5 +2707,320 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     EXPECT_EQ(numFailed, (decltype(numFailed){0, 0, 0}));
     auto avgTime = l->avgTime();
     EXPECT_GE(avgTime, (decltype(avgTime){0, 0, 0}));
+  }
+}
+
+class IResearchLinkInRecoveryDBServerOnUpgradeTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
+                                            arangodb::LogLevel::FATAL> {
+ protected:
+  static constexpr size_t kEncBlockSize{13};
+  arangodb::tests::mocks::MockDBServer server;
+  std::string testFilesystemPath;
+
+  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false, true) {
+    arangodb::tests::init();
+
+    // ensure ArangoSearch start 1 maintenance for each group
+    auto opts = server.server().options();
+    auto& ars = server.getFeature<arangodb::iresearch::IResearchFeature>();
+    ars.collectOptions(opts);
+    auto* commitThreads = opts->get<arangodb::options::UInt32Parameter>(
+        "--arangosearch.commit-threads");
+    opts->processingResult().touch("arangosearch.commit-threads");
+    EXPECT_NE(nullptr, commitThreads);
+    *commitThreads->ptr = 1;
+    auto* consolidationThreads = opts->get<arangodb::options::UInt32Parameter>(
+        "--arangosearch.consolidation-threads");
+    opts->processingResult().touch("arangosearch.consolidation-threads");
+    EXPECT_NE(nullptr, consolidationThreads);
+    *consolidationThreads->ptr = 1;
+    ars.validateOptions(opts);
+    server.getFeature<arangodb::ClusterFeature>().disable();
+    server.startFeatures();
+    EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
+              ars.limits(arangodb::iresearch::ThreadGroup::_0));
+    EXPECT_EQ((std::pair<size_t, size_t>{1, 1}),
+              ars.limits(arangodb::iresearch::ThreadGroup::_1));
+
+    TransactionStateMock::abortTransactionCount = 0;
+    TransactionStateMock::beginTransactionCount = 0;
+    TransactionStateMock::commitTransactionCount = 0;
+
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(
+        dbPathFeature);  // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature.directory();
+
+    long systemError;
+    std::string systemErrorStr;
+    TRI_CreateDirectory(testFilesystemPath.c_str(), systemError,
+                        systemErrorStr);
+    // simulate running recovery
+    StorageEngineMock::recoveryStateResult =
+        arangodb::RecoveryState::IN_PROGRESS;
+  }
+
+  ~IResearchLinkInRecoveryDBServerOnUpgradeTest() override {
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+    TRI_RemoveDirectory(testFilesystemPath.c_str());
+  }
+};
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_includeAll) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":true})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    EXPECT_THROW(
+        StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
+                                         *logicalCollection, linkJson->slice()),
+        arangodb::basics::Exception);
+
+    // collection in view on destruct
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_explicit) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":false, "fields":{"_id":{}}})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    EXPECT_THROW(
+        StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
+                                         *logicalCollection, linkJson->slice()),
+        arangodb::basics::Exception);
+
+    // collection in view on destruct
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_explicit2) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":false, "fields":{"value":{}, "_id":{}}})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    EXPECT_THROW(
+        StorageEngineMock::buildLinkMock(arangodb::IndexId{1},
+                                         *logicalCollection, linkJson->slice()),
+        arangodb::basics::Exception);
+
+    // collection in view on destruct
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
+       test_init_in_recovery_no_name_no_id) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "includeAllFields":false, "fields":{"value":{}}})");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    auto link = StorageEngineMock::buildLinkMock(
+        arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
+
+    // Data store should contain at least segments file
+    ASSERT_GT(link->stats().numFiles, 0);
+
+    // collection in view on destruct
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+  }
+}
+
+TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testCollection", "id": 100 })");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "type": "arangosearch", "view": "42", "collectionName":"testCollection" })");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+
+    // no collections in view before
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    auto link = StorageEngineMock::buildLinkMock(
+        arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
+    EXPECT_NE(nullptr, link.get());
+
+    // Data store should contain at least segments file
+    ASSERT_GT(link->stats().numFiles, 0);
+
+    // no collection in view after
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+
+      EXPECT_TRUE((actual.empty()));
+    }
+
+    link.reset();
+
+    // collection in view on destruct
+    {
+      std::set<arangodb::DataSourceId> actual;
+
+      EXPECT_TRUE((logicalView->visitCollections(
+          [&actual](arangodb::DataSourceId cid) -> bool {
+            actual.emplace(cid);
+            return true;
+          })));
+      EXPECT_TRUE((actual.empty()));
+    }
   }
 }

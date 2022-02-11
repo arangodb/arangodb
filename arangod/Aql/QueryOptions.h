@@ -84,16 +84,25 @@ struct QueryOptions {
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   TraversalProfileLevel traversalProfile;
+  // make explain return all generated query executed plans
   bool allPlans;
+  // add more detail to query execution plans
   bool verbosePlans;
+  // add even more detail (internals) to query execution plans
+  bool explainInternals;
   bool stream;
+  // do not return query results
   bool silent;
+  // make the query fail if a warning is produced
   bool failOnWarning;
+  // whether or not the query result is allowed to be stored in the
+  // query results cache
   bool cache;
+  // whether or not the fullCount should be returned
   bool fullCount;
   bool count;
-  bool verboseErrors;
-  bool skipAudit;  // skips audit logging - used only internally
+  // skips audit logging - used only internally
+  bool skipAudit;
   ExplainRegisterPlan explainRegisters;
 
   /// @brief shard key attribute value used to push a query down

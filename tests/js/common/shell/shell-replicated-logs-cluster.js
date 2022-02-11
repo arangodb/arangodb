@@ -25,9 +25,11 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const _ = require('lodash');
 const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
+const database = "replication2_test_db";
 
 const getLeaderStatus = function(id) {
   let status = db._replicatedLog(id).status();
@@ -40,11 +42,11 @@ const getLeaderStatus = function(id) {
     console.info(`participants status not available for replicated log ${id}`);
     return null;
   }
-  if (status.participants[leaderId].role !== "leader") {
+  if (status.participants[leaderId].response.role !== "leader") {
     console.info(`leader not available for replicated log ${id}`);
     return null;
   }
-  return status.participants[leaderId];
+  return status.participants[leaderId].response;
 };
 
 const waitForLeader = function (id) {
@@ -55,7 +57,8 @@ const waitForLeader = function (id) {
         break;
       }
     } catch (err) {
-      if (err.errorNum !== ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code) {
+      if (err.errorNum !== ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code &&
+          err.errorNum !== ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code) {
         throw err;
       }
     }
@@ -64,11 +67,32 @@ const waitForLeader = function (id) {
   }
 };
 
+const {setUpAll, tearDownAll} = (function () {
+  let previousDatabase, databaseExisted = true;
+  return {
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database);
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (!databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
+  };
+}());
+
 function ReplicatedLogsSuite () {
   'use strict';
 
   const logId = 12;
-  const targetConfig = {
+  const config = {
     replicationFactor: 3,
     writeConcern: 2,
     softWriteConcern: 2,
@@ -76,11 +100,14 @@ function ReplicatedLogsSuite () {
   };
 
   return {
+    setUpAll, tearDownAll,
     setUp : function () {},
     tearDown : function () {},
 
     testCreateAndDropReplicatedLog : function() {
-      const log = db._createReplicatedLog({id: logId, targetConfig: targetConfig});
+      const logSpec = {id: logId, config: config};
+      const log = db._createReplicatedLog(logSpec);
+
       assertEqual(log.id(), logId);
       waitForLeader(logId);
       assertEqual(db._replicatedLog(logId).id(), logId);
@@ -99,7 +126,7 @@ function ReplicatedLogsWriteSuite () {
   'use strict';
 
   const logId = 12;
-  const targetConfig = {
+  const config = {
     replicationFactor: 3,
     writeConcern: 2,
     softWriteConcern: 2,
@@ -107,8 +134,11 @@ function ReplicatedLogsWriteSuite () {
   };
 
   return {
+    setUpAll, tearDownAll,
     setUp : function () {
-      db._createReplicatedLog({id: logId, targetConfig: targetConfig});
+      const logSpec = {id: logId, config: config};
+      const log = db._createReplicatedLog(logSpec);
+      
       waitForLeader(logId);
     },
     tearDown : function () {
@@ -119,7 +149,6 @@ function ReplicatedLogsWriteSuite () {
       let log = db._replicatedLog(logId);
       let leaderStatus = getLeaderStatus(logId);
       assertEqual(leaderStatus.local.commitIndex, 1);
-      assertTrue(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
       let status = log.status();
       assertEqual(status, globalStatus);

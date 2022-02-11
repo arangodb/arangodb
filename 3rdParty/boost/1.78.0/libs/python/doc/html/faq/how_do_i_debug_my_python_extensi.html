@@ -1,0 +1,151 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>How do I debug my Python extensions?</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../faq.html" title="Chapter 5. Frequently Asked Questions (FAQs)">
+<link rel="prev" href="fatal_error_c1204_compiler_limit.html" title="fatal error C1204:Compiler limit:internal structure overflow">
+<link rel="next" href="why_doesn_t_my_operator_work.html" title="Why doesn't my *= operator work?">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fatal_error_c1204_compiler_limit.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="why_doesn_t_my_operator_work.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="faq.how_do_i_debug_my_python_extensi"></a><a class="link" href="how_do_i_debug_my_python_extensi.html" title="How do I debug my Python extensions?">How do I debug
+      my Python extensions?</a>
+</h3></div></div></div>
+<p>
+        Greg Burley gives the following answer for Unix GCC users:
+      </p>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          Once you have created a boost python extension for your c++ library or
+          class, you may need to debug the code. Afterall this is one of the reasons
+          for wrapping the library in python. An expected side-effect or benefit
+          of using BPL is that debugging should be isolated to the c++ library that
+          is under test, given that python code is minimal and boost::python either
+          works or it doesn't. (ie. While errors can occur when the wrapping method
+          is invalid, most errors are caught by the compiler ;-).
+        </p>
+<p>
+          The basic steps required to initiate a gdb session to debug a c++ library
+          via python are shown here. Note, however that you should start the gdb
+          session in the directory that contains your BPL my_ext.so module.
+        </p>
+<pre class="programlisting"><span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="identifier">target</span> <span class="identifier">exec</span> <span class="identifier">python</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="identifier">run</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">from</span> <span class="identifier">my_ext</span> <span class="identifier">import</span> <span class="special">*</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="special">[</span><span class="identifier">C</span><span class="special">-</span><span class="identifier">c</span><span class="special">]</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="keyword">break</span> <span class="identifier">MyClass</span><span class="special">::</span><span class="identifier">MyBuggyFunction</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="identifier">cont</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">pyobj</span> <span class="special">=</span> <span class="identifier">MyClass</span><span class="special">()</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">pyobj</span><span class="special">.</span><span class="identifier">MyBuggyFunction</span><span class="special">()</span>
+<span class="identifier">Breakpoint</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">MyClass</span><span class="special">::</span><span class="identifier">MyBuggyFunction</span> <span class="special">...</span>
+<span class="identifier">Current</span> <span class="identifier">language</span><span class="special">:</span>  <span class="keyword">auto</span><span class="special">;</span> <span class="identifier">currently</span> <span class="identifier">c</span><span class="special">++</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="keyword">do</span> <span class="identifier">debugging</span> <span class="identifier">stuff</span>
+</pre>
+</blockquote></div>
+<p>
+        Greg's approach works even better using Emacs' "gdb" command, since
+        it will show you each line of source as you step through it.
+      </p>
+<p>
+        On <span class="bold"><strong>Windows</strong></span>, my favorite debugging solution
+        is the debugger that comes with Microsoft Visual C++ 7. This debugger seems
+        to work with code generated by all versions of Microsoft and Metrowerks toolsets;
+        it's rock solid and "just works" without requiring any special
+        tricks from the user.
+      </p>
+<p>
+        Raoul Gough has provided the following for gdb on Windows:
+      </p>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          gdb support for Windows DLLs has improved lately, so it is now possible
+          to debug Python extensions using a few tricks. Firstly, you will need an
+          up-to-date gdb with support for minimal symbol extraction from a DLL. Any
+          gdb from version 6 onwards, or Cygwin gdb-20030214-1 and onwards should
+          do. A suitable release will have a section in the gdb.info file under Configuration
+          - Native - Cygwin Native - Non-debug DLL symbols. Refer to that info section
+          for more details of the procedures outlined here.
+        </p>
+<p>
+          Secondly, it seems necessary to set a breakpoint in the Python interpreter,
+          rather than using ^C to break execution. A good place to set this breakpoint
+          is PyOS_Readline, which will stop execution immediately before reading
+          each interactive Python command. You have to let Python start once under
+          the debugger, so that it loads its own DLL, before you can set the breakpoint:
+        </p>
+<pre class="programlisting"><span class="error">$</span> <span class="identifier">gdb</span> <span class="identifier">python</span>
+<span class="identifier">GNU</span> <span class="identifier">gdb</span> <span class="number">2003</span><span class="special">-</span><span class="number">09</span><span class="special">-</span><span class="number">02</span><span class="special">-</span><span class="identifier">cvs</span> <span class="special">(</span><span class="identifier">cygwin</span><span class="special">-</span><span class="identifier">special</span><span class="special">)</span>
+<span class="special">[...]</span>
+
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="identifier">run</span>
+<span class="identifier">Starting</span> <span class="identifier">program</span><span class="special">:</span> <span class="special">/</span><span class="identifier">cygdrive</span><span class="special">/</span><span class="identifier">c</span><span class="special">/</span><span class="identifier">Python22</span><span class="special">/</span><span class="identifier">python</span><span class="special">.</span><span class="identifier">exe</span>
+<span class="identifier">Python</span> <span class="number">2.2</span><span class="special">.</span><span class="number">2</span> <span class="special">(#</span><span class="number">37</span><span class="special">,</span> <span class="identifier">Oct</span> <span class="number">14</span> <span class="number">2002</span><span class="special">,</span> <span class="number">17</span><span class="special">:</span><span class="number">02</span><span class="special">:</span><span class="number">34</span><span class="special">)</span> <span class="special">[</span><span class="identifier">MSC</span> <span class="number">32</span> <span class="identifier">bit</span> <span class="special">(</span><span class="identifier">Intel</span><span class="special">)]</span> <span class="identifier">on</span> <span class="identifier">win32</span>
+<span class="identifier">Type</span> <span class="string">"help"</span><span class="special">,</span> <span class="string">"copyright"</span><span class="special">,</span> <span class="string">"credits"</span> <span class="keyword">or</span> <span class="string">"license"</span> <span class="keyword">for</span> <span class="identifier">more</span> <span class="identifier">information</span><span class="special">.</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="special">^</span><span class="identifier">Z</span>
+
+
+<span class="identifier">Program</span> <span class="identifier">exited</span> <span class="identifier">normally</span><span class="special">.</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="keyword">break</span> <span class="special">*&amp;</span><span class="identifier">PyOS_Readline</span>
+<span class="identifier">Breakpoint</span> <span class="number">1</span> <span class="identifier">at</span> <span class="number">0x1e04eff0</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="identifier">run</span>
+<span class="identifier">Starting</span> <span class="identifier">program</span><span class="special">:</span> <span class="special">/</span><span class="identifier">cygdrive</span><span class="special">/</span><span class="identifier">c</span><span class="special">/</span><span class="identifier">Python22</span><span class="special">/</span><span class="identifier">python</span><span class="special">.</span><span class="identifier">exe</span>
+<span class="identifier">Python</span> <span class="number">2.2</span><span class="special">.</span><span class="number">2</span> <span class="special">(#</span><span class="number">37</span><span class="special">,</span> <span class="identifier">Oct</span> <span class="number">14</span> <span class="number">2002</span><span class="special">,</span> <span class="number">17</span><span class="special">:</span><span class="number">02</span><span class="special">:</span><span class="number">34</span><span class="special">)</span> <span class="special">[</span><span class="identifier">MSC</span> <span class="number">32</span> <span class="identifier">bit</span> <span class="special">(</span><span class="identifier">Intel</span><span class="special">)]</span> <span class="identifier">on</span> <span class="identifier">win32</span>
+<span class="identifier">Type</span> <span class="string">"help"</span><span class="special">,</span> <span class="string">"copyright"</span><span class="special">,</span> <span class="string">"credits"</span> <span class="keyword">or</span> <span class="string">"license"</span> <span class="keyword">for</span> <span class="identifier">more</span> <span class="identifier">information</span><span class="special">.</span>
+
+<span class="identifier">Breakpoint</span> <span class="number">1</span><span class="special">,</span> <span class="number">0x1e04eff0</span> <span class="identifier">in</span> <span class="identifier">python22</span><span class="special">!</span><span class="identifier">PyOS_Readline</span> <span class="special">()</span>
+   <span class="identifier">from</span> <span class="special">/</span><span class="identifier">cygdrive</span><span class="special">/</span><span class="identifier">c</span><span class="special">/</span><span class="identifier">WINNT</span><span class="special">/</span><span class="identifier">system32</span><span class="special">/</span><span class="identifier">python22</span><span class="special">.</span><span class="identifier">dll</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="identifier">cont</span>
+<span class="identifier">Continuing</span><span class="special">.</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">from</span> <span class="identifier">my_ext</span> <span class="identifier">import</span> <span class="special">*</span>
+
+<span class="identifier">Breakpoint</span> <span class="number">1</span><span class="special">,</span> <span class="number">0x1e04eff0</span> <span class="identifier">in</span> <span class="identifier">python22</span><span class="special">!</span><span class="identifier">PyOS_Readline</span> <span class="special">()</span>
+   <span class="identifier">from</span> <span class="special">/</span><span class="identifier">cygdrive</span><span class="special">/</span><span class="identifier">c</span><span class="special">/</span><span class="identifier">WINNT</span><span class="special">/</span><span class="identifier">system32</span><span class="special">/</span><span class="identifier">python22</span><span class="special">.</span><span class="identifier">dll</span>
+<span class="special">(</span><span class="identifier">gdb</span><span class="special">)</span> <span class="special">#</span> <span class="identifier">my_ext</span> <span class="identifier">now</span> <span class="identifier">loaded</span> <span class="special">(</span><span class="identifier">with</span> <span class="identifier">any</span> <span class="identifier">debugging</span> <span class="identifier">symbols</span> <span class="identifier">it</span> <span class="identifier">contains</span><span class="special">)</span>
+</pre>
+</blockquote></div>
+<h3>
+<a name="faq.how_do_i_debug_my_python_extensi.h0"></a>
+        <span class="phrase"><a name="faq.how_do_i_debug_my_python_extensi.debugging_extensions_through_boo"></a></span><a class="link" href="how_do_i_debug_my_python_extensi.html#faq.how_do_i_debug_my_python_extensi.debugging_extensions_through_boo">Debugging
+        extensions through Boost.Build</a>
+      </h3>
+<p>
+        If you are launching your extension module tests with <a href="http://www.boost.org/build" target="_top">Boost.Build</a>
+        using the <code class="computeroutput"><span class="identifier">boost</span><span class="special">-</span><span class="identifier">python</span><span class="special">-</span><span class="identifier">runtest</span></code> rule, you can ask it to launch
+        your debugger for you by adding "--debugger=<span class="emphasis"><em>debugger</em></span>"
+        to your bjam command-line:
+      </p>
+<pre class="programlisting"><span class="identifier">bjam</span> <span class="special">-</span><span class="identifier">sTOOLS</span><span class="special">=</span><span class="identifier">vc7</span><span class="special">.</span><span class="number">1</span> <span class="string">"--debugger=devenv /debugexe"</span> <span class="identifier">test</span>
+<span class="identifier">bjam</span> <span class="special">-</span><span class="identifier">sTOOLS</span><span class="special">=</span><span class="identifier">gcc</span> <span class="special">-</span><span class="identifier">sPYTHON_LAUNCH</span><span class="special">=</span><span class="identifier">gdb</span> <span class="identifier">test</span>
+</pre>
+<p>
+        It can also be extremely useful to add the <code class="computeroutput"><span class="special">-</span><span class="identifier">d</span><span class="special">+</span><span class="number">2</span></code>
+        option when you run your test, because Boost.Build will then show you the
+        exact commands it uses to invoke it. This will invariably involve setting
+        up PYTHONPATH and other important environment variables such as LD_LIBRARY_PATH
+        which may be needed by your debugger in order to get things to work right.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2015 David
+      Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fatal_error_c1204_compiler_limit.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="why_doesn_t_my_operator_work.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

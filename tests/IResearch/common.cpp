@@ -558,8 +558,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
   return query;
 }
 
-uint64_t getCurrentPlanVersion(
-    arangodb::application_features::ApplicationServer& server) {
+uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
   auto const result = arangodb::AgencyComm(server).getValues("Plan");
   auto const planVersionSlice = result.slice()[0].get<std::string>(
       {arangodb::AgencyCommHelper::path(), "Plan", "Version"});
@@ -622,7 +621,18 @@ std::string mangleString(std::string name, std::string_view suffix) {
 
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleField(
-      name, arangodb::iresearch::FieldMeta::Analyzer());
+      name, true,
+      arangodb::iresearch::FieldMeta::Analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()});
+
+  return name;
+}
+
+std::string mangleInvertedIndexStringIdentity(std::string name) {
+  arangodb::iresearch::kludge::mangleField(
+      name, false,
+      arangodb::iresearch::FieldMeta::Analyzer{
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()});
 
   return name;
 }
@@ -1035,9 +1045,51 @@ void assertFilterParseFail(
   ASSERT_TRUE(parseResult.result.fail());
 }
 
-arangodb::CreateDatabaseInfo createInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+VPackBuilder getInvertedIndexPropertiesSlice(
+    arangodb::IndexId iid, std::vector<std::string> const& fields,
+    std::vector<std::vector<std::string>> const* storedFields,
+    std::vector<std::pair<std::string, bool>> const* sortedFields) {
+  VPackBuilder vpack;
+  {
+    VPackObjectBuilder obj(&vpack);
+    vpack.add(arangodb::StaticStrings::IndexId, VPackValue(iid.id()));
+    vpack.add(arangodb::StaticStrings::IndexType, VPackValue("inverted"));
+
+    // FIXME: maybe this should be set by index internally ?
+    vpack.add(arangodb::StaticStrings::IndexUnique, VPackValue(false));
+    vpack.add(arangodb::StaticStrings::IndexSparse, VPackValue(true));
+
+    {
+      VPackArrayBuilder arrayFields(&vpack,
+                                    arangodb::StaticStrings::IndexFields);
+      for (auto const& f : fields) {
+        vpack.add(VPackValue(f));
+      }
+    }
+    if (storedFields && !storedFields->empty()) {
+      VPackArrayBuilder arrayFields(&vpack, "storedValues");
+      for (auto const& f : *storedFields) {
+        VPackArrayBuilder arrayFields(&vpack);
+        for (auto const& s : f) {
+          vpack.add(VPackValue(s));
+        }
+      }
+    }
+
+    if (sortedFields && !sortedFields->empty()) {
+      VPackArrayBuilder arraySort(&vpack, "primarySort");
+      for (auto const& f : *sortedFields) {
+        VPackObjectBuilder field(&vpack);
+        vpack.add("field", VPackValue(f.first));
+        vpack.add("direction", VPackValue(f.second ? "asc" : "desc"));
+      }
+    }
+  }
+  return vpack;
+}
+
+arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
+                                        std::string const& name, uint64_t id) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
@@ -1046,24 +1098,19 @@ arangodb::CreateDatabaseInfo createInfo(
   return info;
 }
 
-arangodb::CreateDatabaseInfo systemDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo systemDBInfo(arangodb::ArangodServer& server,
+                                          std::string const& name,
+                                          uint64_t id) {
   return createInfo(server, name, id);
 }
 
-arangodb::CreateDatabaseInfo testDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo testDBInfo(arangodb::ArangodServer& server,
+                                        std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
 }
 
-arangodb::CreateDatabaseInfo unknownDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id) {
+arangodb::CreateDatabaseInfo unknownDBInfo(arangodb::ArangodServer& server,
+                                           std::string const& name,
+                                           uint64_t id) {
   return createInfo(server, name, id);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

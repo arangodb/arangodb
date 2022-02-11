@@ -24,10 +24,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVPackIndex.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -90,13 +93,14 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
                                   transaction::Methods* trx,
                                   arangodb::RocksDBVPackIndex const* index,
-                                  VPackSlice const& indexValues,
+                                  VPackSlice indexValues,
                                   ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cmp(index->comparator()),
         _key(trx),
         _done(false) {
+    TRI_ASSERT(index->unique());
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VPackIndex));
@@ -106,6 +110,45 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
  public:
   char const* typeName() const override {
     return "rocksdb-unique-index-iterator";
+  }
+
+  /// @brief index does support rearming
+  bool canRearm() const override { return true; }
+
+  /// @brief rearm the index iterator
+  bool rearmImpl(arangodb::aql::AstNode const* node,
+                 arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
+    TRI_ASSERT(node != nullptr);
+    TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+    transaction::BuilderLeaser searchValues(_trx);
+    bool needNormalize = false;
+    // note that we can ignore normalization here, because if needNormalize
+    // is true, then the iteratorForCondition call would have built a
+    // MultiIndexIterator and no VPackUniqueIndexIterator. MultiIndexIterator
+    // does not support rearming, so whenever we are called, we can be
+    // sure that needNormalize is false
+    RocksDBVPackIndexSearchValueFormat format =
+        RocksDBVPackIndexSearchValueFormat::kValuesOnly;
+    _index->buildSearchValues(node, variable, *searchValues, format,
+                              needNormalize);
+    TRI_ASSERT(!needNormalize);
+    // note: we only support the simplified format when building index search
+    // values! format must not have changed!
+    TRI_ASSERT(format == RocksDBVPackIndexSearchValueFormat::kValuesOnly);
+
+    VPackSlice searchSlice = searchValues->slice();
+    TRI_ASSERT(searchSlice.length() == 1);
+    searchSlice = searchSlice.at(0);
+
+    TRI_ASSERT(searchSlice.length() > 0);
+    _key->constructUniqueVPackIndexValue(_index->objectId(), searchSlice);
+
+    // resets _done
+    resetImpl();
+    TRI_ASSERT(!_done);
+    return true;
   }
 
   /// @brief Get the next limit many element in the index
@@ -133,7 +176,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     return false;
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -150,8 +193,15 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
                                    canReadOwnWrites());
 
     if (s.ok()) {
-      cb(LocalDocumentId(RocksDBValue::documentId(ps)),
-         RocksDBKey::indexedVPack(_key.ref()));
+      if (_index->hasStoredValues()) {
+        auto data = SliceCoveringDataWithStoredValues(
+            RocksDBKey::indexedVPack(_key.ref()),
+            RocksDBValue::uniqueIndexStoredValues(ps));
+        cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
+      } else {
+        auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
+        cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
+      }
     }
 
     // there is at most one element, so we are done now
@@ -165,7 +215,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     _done = false;
   }
 
-  /// @brief we provide a method to provide the index attribute values
+  /// we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override {
     return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
@@ -179,7 +229,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 };
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
-template<bool reverse>
+template<bool unique, bool reverse>
 class RocksDBVPackIndexIterator final : public IndexIterator {
  private:
   friend class RocksDBVPackIndex;
@@ -189,12 +239,14 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             arangodb::RocksDBVPackIndex const* index,
                             RocksDBKeyBounds&& bounds,
-                            ReadOwnWrites readOwnWrites)
+                            ReadOwnWrites readOwnWrites,
+                            RocksDBVPackIndexSearchValueFormat format)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
+        _format(format),
         _mustSeek(true),
         _mustCheckBounds(
             RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
@@ -207,8 +259,76 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
  public:
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
-  /// @brief index does not support rearming
-  bool canRearm() const override { return false; }
+  /// @brief index does support rearming
+  bool canRearm() const override { return true; }
+
+  /// @brief rearm the index iterator
+  bool rearmImpl(arangodb::aql::AstNode const* node,
+                 arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
+    TRI_ASSERT(node != nullptr);
+    TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+    transaction::BuilderLeaser searchValues(_trx);
+    bool needNormalize = false;
+    // note that we can ignore normalization here, because if needNormalize
+    // is true, then the iteratorForCondition call would have built a
+    // MultiIndexIterator and no VPackIndexIterator. MultiIndexIterator
+    // does not support rearming, so whenever we are called, we can be
+    // sure that needNormalize is false
+    RocksDBVPackIndexSearchValueFormat format = _format;
+    _index->buildSearchValues(node, variable, *searchValues, format,
+                              needNormalize);
+    TRI_ASSERT(!needNormalize);
+    // note: we support two formats when building index search values:
+    // - a generic format that supports < > <= >= and ==
+    // - a simplified format that only supports ==
+    // in the generic format, the contents of searchValues will be an array of
+    // objects, containing the comparison operators as keys and the lookup
+    // values as values. in the simplified format, searchValues will be an array
+    // of just the lookup values.
+    // format must not have changed!
+    TRI_ASSERT(_format == format);
+
+    VPackSlice searchSlice = searchValues->slice();
+    TRI_ASSERT(searchSlice.length() == 1);
+    searchSlice = searchSlice.at(0);
+
+    VPackValueLength const l = searchSlice.length();
+    // if l == 0, then we have an iterator over the entire collection.
+    // no need to adjust the bounds. only need to reseek to the start
+    if (l > 0) {
+      // check if we only have equality lookups
+      transaction::BuilderLeaser leftSearch(_trx);
+
+      VPackSlice lastNonEq;
+      leftSearch->openArray();
+      for (VPackSlice it : VPackArrayIterator(searchSlice)) {
+        if (_format ==
+            RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues) {
+          TRI_ASSERT(it.isObject());
+          VPackSlice eq = it.get(StaticStrings::IndexEq);
+          if (eq.isNone()) {
+            lastNonEq = it;
+            break;
+          }
+          leftSearch->add(eq);
+        } else {
+          TRI_ASSERT(_format ==
+                     RocksDBVPackIndexSearchValueFormat::kValuesOnly);
+          leftSearch->add(it);
+        }
+      }
+      _bounds = _index->buildIndexRangeBounds(_trx, searchSlice, *leftSearch,
+                                              lastNonEq);
+      _rangeBound = reverse ? _bounds.start() : _bounds.end();
+    }
+
+    // sets _mustSeek
+    resetImpl();
+    TRI_ASSERT(_mustSeek);
+    return true;
+  }
 
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
@@ -230,8 +350,11 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     do {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
-      cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
-                         : RocksDBKey::indexDocumentId(_iterator->key()));
+      if constexpr (unique) {
+        cb(RocksDBValue::documentId(_iterator->value()));
+      } else {
+        cb(RocksDBKey::indexDocumentId(_iterator->key()));
+      }
 
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
@@ -246,7 +369,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     } while (true);
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);
@@ -263,13 +386,33 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(limit > 0);
 
     do {
-      rocksdb::Slice const& key = _iterator->key();
+      rocksdb::Slice key = _iterator->key();
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
-      LocalDocumentId const documentId(
-          _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                          : RocksDBKey::indexDocumentId(key));
-      cb(documentId, RocksDBKey::indexedVPack(key));
+      if constexpr (unique) {
+        LocalDocumentId const documentId(
+            RocksDBValue::documentId(_iterator->value()));
+        if (_index->hasStoredValues()) {
+          auto data = SliceCoveringDataWithStoredValues(
+              RocksDBKey::indexedVPack(key),
+              RocksDBValue::uniqueIndexStoredValues(_iterator->value()));
+          cb(documentId, data);
+        } else {
+          auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
+          cb(documentId, data);
+        }
+      } else {
+        LocalDocumentId const documentId(RocksDBKey::indexDocumentId(key));
+        if (_index->hasStoredValues()) {
+          auto data = SliceCoveringDataWithStoredValues(
+              RocksDBKey::indexedVPack(key),
+              RocksDBValue::indexStoredValues(_iterator->value()));
+          cb(documentId, data);
+        } else {
+          auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
+          cb(documentId, data);
+        }
+      }
 
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
@@ -388,9 +531,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   arangodb::RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  RocksDBKeyBounds const _bounds;
+  RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
+  RocksDBVPackIndexSearchValueFormat _format;
   bool _mustSeek;
   bool const _mustCheckBounds;
 };
@@ -407,7 +551,7 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 /// @brief create the index
 RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
                                      arangodb::LogicalCollection& collection,
-                                     arangodb::velocypack::Slice const& info)
+                                     arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, collection, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::VPackIndex),
@@ -416,7 +560,11 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
           info, "deduplicate", true)),
       _allowPartialIndex(true),
       _estimates(true),
-      _estimator(nullptr) {
+      _estimator(nullptr),
+      _storedValues(Index::parseFields(
+          info.get(arangodb::StaticStrings::IndexStoredValues),
+          /*allowEmpty*/ true, /*allowExpansion*/ false)),
+      _coveredFields(Index::mergeFields(fields(), _storedValues)) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::VPackIndex));
 
@@ -441,11 +589,19 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
   TRI_ASSERT(!_fields.empty());
   TRI_ASSERT(iid.isSet());
 
-  fillPaths(_paths, _expanding);
+  fillPaths(_fields, _paths, &_expanding);
+  fillPaths(_storedValues, _storedValuesPaths, nullptr);
+  TRI_ASSERT(_fields.size() == _paths.size());
+  TRI_ASSERT(_storedValues.size() == _storedValuesPaths.size());
 }
 
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() = default;
+
+std::vector<std::vector<arangodb::basics::AttributeName>> const&
+RocksDBVPackIndex::coveredFields() const {
+  return _coveredFields;
+}
 
 bool RocksDBVPackIndex::hasSelectivityEstimate() const {
   return _unique || _estimates;
@@ -471,6 +627,22 @@ void RocksDBVPackIndex::toVelocyPack(
     VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
+
+  // serialize storedValues, if they exist
+  if (!_storedValues.empty()) {
+    builder.add(arangodb::velocypack::Value(
+        arangodb::StaticStrings::IndexStoredValues));
+    builder.openArray();
+
+    for (auto const& field : _storedValues) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
+  }
+
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
   builder.close();
@@ -480,8 +652,7 @@ void RocksDBVPackIndex::toVelocyPack(
 /// Should result in an elements vector filled with the new index entries
 /// uses the _unique field to determine the kind of key structure
 ErrorCode RocksDBVPackIndex::fillElement(
-    VPackBuilder& leased, LocalDocumentId const& documentId,
-    VPackSlice const& doc,
+    VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice doc,
     ::arangodb::containers::SmallVector<RocksDBKey>& elements,
     ::arangodb::containers::SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
@@ -563,7 +734,7 @@ ErrorCode RocksDBVPackIndex::fillElement(
 
 void RocksDBVPackIndex::addIndexValue(
     VPackBuilder& leased, LocalDocumentId const& documentId,
-    VPackSlice const& document,
+    VPackSlice document,
     ::arangodb::containers::SmallVector<RocksDBKey>& elements,
     ::arangodb::containers::SmallVector<uint64_t>& hashes,
     ::arangodb::containers::SmallVector<VPackSlice>& sliceStack) {
@@ -716,11 +887,14 @@ void RocksDBVPackIndex::buildIndexValues(
 }
 
 /// @brief helper function to transform AttributeNames into strings.
-void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
-                                  std::vector<int>& expanding) {
+void RocksDBVPackIndex::fillPaths(
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& source,
+    std::vector<std::vector<std::string>>& paths, std::vector<int>* expanding) {
   paths.clear();
-  expanding.clear();
-  for (std::vector<arangodb::basics::AttributeName> const& list : _fields) {
+  if (expanding != nullptr) {
+    expanding->clear();
+  }
+  for (std::vector<arangodb::basics::AttributeName> const& list : source) {
     paths.emplace_back();
     std::vector<std::string>& interior(paths.back());
     int expands = -1;
@@ -732,7 +906,9 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
       }
       ++count;
     }
-    expanding.emplace_back(expands);
+    if (expanding != nullptr) {
+      expanding->emplace_back(expands);
+    }
   }
 }
 
@@ -780,7 +956,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
     {
       // rethrow all types of exceptions from here...
       transaction::BuilderLeaser leased(&trx);
-      auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+      auto r = fillElement(*leased, documentId, doc, elements, hashes);
 
       if (r != TRI_ERROR_NO_ERROR) {
         return addErrorMsg(res, r);
@@ -851,9 +1027,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options,
                                  bool performChecks) {
-  IndexOperationMode mode = options.indexOperationMode;
   Result res;
-  rocksdb::Status s;
   ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type
       elementsArena;
   ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
@@ -864,7 +1038,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+    auto r = fillElement(*leased, documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -873,12 +1047,28 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
 
   // now we are going to construct the value to insert into rocksdb
   if (_unique) {
-    // unique indexes have a different key structure
+    // build index value (storedValues array will be stored in value if
+    // storedValues are used)
     RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId);
+    if (!_storedValuesPaths.empty()) {
+      transaction::BuilderLeaser leased(&trx);
+      leased->openArray(true);
+      for (auto const& it : _storedValuesPaths) {
+        VPackSlice s = doc.get(it);
+        if (s.isNone()) {
+          s = VPackSlice::nullSlice();
+        }
+        leased->add(s);
+      }
+      leased->close();
+      value = RocksDBValue::UniqueVPackIndexValue(documentId, leased->slice());
+    }
 
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
 
+    rocksdb::Status s;
+    // unique indexes have a different key structure
     for (RocksDBKey const& key : elements) {
       if (performChecks) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
@@ -904,6 +1094,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
         auto readResult = _collection.getPhysical()->read(
             &trx, docId,
             [&](LocalDocumentId const&, VPackSlice doc) {
+              IndexOperationMode mode = options.indexOperationMode;
               VPackSlice key =
                   transaction::helpers::extractKeyFromDocument(doc);
               if (mode == IndexOperationMode::internal) {
@@ -929,14 +1120,33 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     }
 
   } else {
+    // non-unique index
+
     // AQL queries never read from the same collection, after writing into it
     IndexingDisabler guard(
         mthds,
         trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) &&
             options.canDisableIndexing);
 
+    // build index value (storedValues array will be stored in value if
+    // storedValues are used)
     RocksDBValue value = RocksDBValue::VPackIndexValue();
-    for (RocksDBKey& key : elements) {
+    if (!_storedValuesPaths.empty()) {
+      transaction::BuilderLeaser leased(&trx);
+      leased->openArray(true);
+      for (auto const& it : _storedValuesPaths) {
+        VPackSlice s = doc.get(it);
+        if (s.isNone()) {
+          s = VPackSlice::nullSlice();
+        }
+        leased->add(s);
+      }
+      leased->close();
+      value = RocksDBValue::VPackIndexValue(leased->slice());
+    }
+
+    rocksdb::Status s;
+    for (RocksDBKey const& key : elements) {
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
       if (!s.ok()) {
@@ -1054,8 +1264,7 @@ Result RocksDBVPackIndex::update(
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    auto r =
-        fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
+    auto r = fillElement(*leased, newDocumentId, newDoc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -1100,7 +1309,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+    auto r = fillElement(*leased, documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -1154,70 +1363,106 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
   return res;
 }
 
-/// @brief attempts to locate an entry in the index
-/// Warning: who ever calls this function is responsible for destroying
-/// the RocksDBVPackIndexIterator* results
-std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(
-    transaction::Methods* trx, VPackSlice const searchValues, bool reverse,
-    ReadOwnWrites readOwnWrites) const {
+// build an index iterator from a VelocyPack range description
+std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
+    transaction::Methods* trx, VPackSlice searchValues, bool reverse,
+    ReadOwnWrites readOwnWrites,
+    RocksDBVPackIndexSearchValueFormat format) const {
   TRI_ASSERT(searchValues.isArray());
-  TRI_ASSERT(searchValues.length() <= _fields.size());
+  TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
 
-  if (ADB_UNLIKELY(searchValues.length() == 0)) {
-    // full range search
-    RocksDBKeyBounds bounds =
+  VPackArrayIterator it(searchValues);
+
+  if (it.size() == 0) {
+    // full range scan over the entire index
+    return buildIteratorFromBounds(
+        trx, reverse, readOwnWrites,
         _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), reverse)
-                : RocksDBKeyBounds::VPackIndex(objectId(), reverse);
-
-    if (reverse) {
-      // reverse version
-      return std::make_unique<RocksDBVPackIndexIterator<true>>(
-          &_collection, trx, this, std::move(bounds), readOwnWrites);
-    }
-    // forward version
-    return std::make_unique<RocksDBVPackIndexIterator<false>>(
-        &_collection, trx, this, std::move(bounds), readOwnWrites);
+                : RocksDBKeyBounds::VPackIndex(objectId(), reverse),
+        RocksDBVPackIndexSearchValueFormat::kValuesOnly);
   }
 
-  VPackBuilder leftSearch;
+  // check if we only have equality lookups
+  transaction::BuilderLeaser leftSearch(trx);
 
   VPackSlice lastNonEq;
-  leftSearch.openArray();
-  for (VPackSlice it : VPackArrayIterator(searchValues)) {
-    TRI_ASSERT(it.isObject());
-    VPackSlice eq = it.get(StaticStrings::IndexEq);
+  leftSearch->openArray();
+  for (VPackSlice searchValue : it) {
+    TRI_ASSERT(searchValue.isObject());
+    VPackSlice eq = searchValue.get(StaticStrings::IndexEq);
     if (eq.isNone()) {
-      lastNonEq = it;
+      lastNonEq = searchValue;
       break;
     }
-    leftSearch.add(eq);
+    leftSearch->add(eq);
   }
 
-  if (lastNonEq.isNone() && _unique &&
+  if (_unique && lastNonEq.isNone() &&
       searchValues.length() == _fields.size()) {
-    leftSearch.close();
+    // unique index and we only have equality lookups
+    leftSearch->close();
 
     return std::make_unique<RocksDBVPackUniqueIndexIterator>(
-        &_collection, trx, this, leftSearch.slice(), readOwnWrites);
+        &_collection, trx, this, leftSearch->slice(), readOwnWrites);
   }
+
+  // generic case: we have a non-unique index or have non-equality lookups
+  TRI_ASSERT(leftSearch->isOpenArray());
+
+  return buildIteratorFromBounds(
+      trx, reverse, readOwnWrites,
+      buildIndexRangeBounds(trx, searchValues, *leftSearch, lastNonEq), format);
+}
+
+std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
+    transaction::Methods* trx, bool reverse, ReadOwnWrites readOwnWrites,
+    RocksDBKeyBounds&& bounds,
+    RocksDBVPackIndexSearchValueFormat format) const {
+  TRI_ASSERT(!bounds.empty());
+  TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
+
+  if (unique()) {
+    // unique index
+    if (reverse) {
+      // reverse version
+      return std::make_unique<RocksDBVPackIndexIterator<true, true>>(
+          &_collection, trx, this, std::move(bounds), readOwnWrites, format);
+    }
+    // forward version
+    return std::make_unique<RocksDBVPackIndexIterator<true, false>>(
+        &_collection, trx, this, std::move(bounds), readOwnWrites, format);
+  }
+
+  // non-unique index
+  if (reverse) {
+    // reverse version
+    return std::make_unique<RocksDBVPackIndexIterator<false, true>>(
+        &_collection, trx, this, std::move(bounds), readOwnWrites, format);
+  }
+  // forward version
+  return std::make_unique<RocksDBVPackIndexIterator<false, false>>(
+      &_collection, trx, this, std::move(bounds), readOwnWrites, format);
+}
+
+// build bounds for an index range
+RocksDBKeyBounds RocksDBVPackIndex::buildIndexRangeBounds(
+    transaction::Methods* trx, VPackSlice searchValues,
+    VPackBuilder& leftSearch, VPackSlice lastNonEq) const {
+  TRI_ASSERT(searchValues.isArray());
+  TRI_ASSERT(searchValues.length() <= _fields.size());
+  TRI_ASSERT(leftSearch.isOpenArray());
+
+  VPackBuilder rightSearch;
 
   VPackSlice leftBorder;
   VPackSlice rightBorder;
 
-  VPackBuilder rightSearch;
-
   if (lastNonEq.isNone()) {
-    // We only have equality!
+    // We only have equality lookups!
     rightSearch = leftSearch;
 
     leftSearch.add(VPackSlice::minKeySlice());
-    leftSearch.close();
-
     rightSearch.add(VPackSlice::maxKeySlice());
-    rightSearch.close();
-
-    leftBorder = leftSearch.slice();
-    rightBorder = rightSearch.slice();
   } else {
     // Copy rightSearch = leftSearch for right border
     rightSearch = leftSearch;
@@ -1228,23 +1473,14 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(
       TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexGt));
       leftSearch.add(lastLeft);
       leftSearch.add(VPackSlice::minKeySlice());
-      leftSearch.close();
-      VPackSlice search = leftSearch.slice();
-      leftBorder = search;
     } else {
       lastLeft = lastNonEq.get(StaticStrings::IndexGt);
       if (!lastLeft.isNone()) {
         leftSearch.add(lastLeft);
         leftSearch.add(VPackSlice::maxKeySlice());
-        leftSearch.close();
-        VPackSlice search = leftSearch.slice();
-        leftBorder = search;
       } else {
         // No lower bound set default to (null <= x)
         leftSearch.add(VPackSlice::minKeySlice());
-        leftSearch.close();
-        VPackSlice search = leftSearch.slice();
-        leftBorder = search;
       }
     }
 
@@ -1254,40 +1490,28 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(
       TRI_ASSERT(!lastNonEq.hasKey(StaticStrings::IndexLt));
       rightSearch.add(lastRight);
       rightSearch.add(VPackSlice::maxKeySlice());
-      rightSearch.close();
-      VPackSlice search = rightSearch.slice();
-      rightBorder = search;
     } else {
       lastRight = lastNonEq.get(StaticStrings::IndexLt);
       if (!lastRight.isNone()) {
         rightSearch.add(lastRight);
         rightSearch.add(VPackSlice::minKeySlice());
-        rightSearch.close();
-        VPackSlice search = rightSearch.slice();
-        rightBorder = search;
       } else {
         // No upper bound set default to (x <= INFINITY)
         rightSearch.add(VPackSlice::maxKeySlice());
-        rightSearch.close();
-        VPackSlice search = rightSearch.slice();
-        rightBorder = search;
       }
     }
   }
 
-  RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueVPackIndex(
-                                          objectId(), leftBorder, rightBorder)
-                                    : RocksDBKeyBounds::VPackIndex(
-                                          objectId(), leftBorder, rightBorder);
+  leftSearch.close();
+  leftBorder = leftSearch.slice();
 
-  if (reverse) {
-    // reverse version
-    return std::make_unique<RocksDBVPackIndexIterator<true>>(
-        &_collection, trx, this, std::move(bounds), readOwnWrites);
-  }
-  // forward version
-  return std::make_unique<RocksDBVPackIndexIterator<false>>(
-      &_collection, trx, this, std::move(bounds), readOwnWrites);
+  rightSearch.close();
+  rightBorder = rightSearch.slice();
+
+  return _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), leftBorder,
+                                                      rightBorder)
+                 : RocksDBKeyBounds::VPackIndex(objectId(), leftBorder,
+                                                rightBorder);
 }
 
 Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
@@ -1316,12 +1540,50 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
-  VPackBuilder searchValues;
-  searchValues.openArray();
+  transaction::BuilderLeaser searchValues(trx);
   bool needNormalize = false;
+  RocksDBVPackIndexSearchValueFormat format =
+      RocksDBVPackIndexSearchValueFormat::kDetect;
+  buildSearchValues(node, reference, *searchValues, format, needNormalize);
+  // format must have been set to something valid now.
+  TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
+
+  if (needNormalize) {
+    transaction::BuilderLeaser expandedSearchValues(trx);
+    expandInSearchValues(searchValues->slice(), *expandedSearchValues);
+    VPackSlice expandedSlice = expandedSearchValues->slice();
+
+    VPackArrayIterator values(expandedSlice);
+    std::vector<std::unique_ptr<IndexIterator>> iterators;
+    iterators.reserve(values.size());
+    for (VPackSlice val : values) {
+      iterators.emplace_back(
+          buildIterator(trx, val, !opts.ascending, readOwnWrites, format));
+    }
+
+    if (!opts.ascending) {
+      std::reverse(iterators.begin(), iterators.end());
+    }
+
+    return std::make_unique<MultiIndexIterator>(&_collection, trx, this,
+                                                std::move(iterators));
+  }
+
+  VPackSlice searchSlice = searchValues->slice();
+  TRI_ASSERT(searchSlice.length() == 1);
+  searchSlice = searchSlice.at(0);
+  return buildIterator(trx, searchSlice, !opts.ascending, readOwnWrites,
+                       format);
+}
+
+void RocksDBVPackIndex::buildSearchValues(
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, VPackBuilder& searchValues,
+    RocksDBVPackIndexSearchValueFormat& format, bool& needNormalize) const {
+  searchValues.openArray();
   if (node == nullptr) {
     // We only use this index for sort. Empty searchValue
     VPackArrayBuilder guard(&searchValues);
@@ -1339,27 +1601,29 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     // Create the search values for the lookup
     VPackArrayBuilder guard(&searchValues);
 
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>
+    arangodb::containers::FlatHashMap<
+        size_t, std::vector<arangodb::aql::AstNode const*>>
         found;
-    std::unordered_set<std::string> nonNullAttributes;
+    arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
     [[maybe_unused]] size_t unused = 0;
     SortedIndexAttributeMatcher::matchAttributes(
         this, node, reference, found, unused, nonNullAttributes, true);
+
+    // this will be reused for multiple invocations of getValueAccess
+    std::pair<arangodb::aql::Variable const*,
+              std::vector<arangodb::basics::AttributeName>>
+        paramPair;
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().
     //
     // Handle the first attributes. They can only be == or IN and only
     // one node per attribute
-
     auto getValueAccess = [&](arangodb::aql::AstNode const* comp,
                               arangodb::aql::AstNode const*& access,
                               arangodb::aql::AstNode const*& value) -> bool {
       access = comp->getMember(0);
       value = comp->getMember(1);
-      std::pair<arangodb::aql::Variable const*,
-                std::vector<arangodb::basics::AttributeName>>
-          paramPair;
       if (!(access->isAttributeAccessForVariable(paramPair) &&
             paramPair.first == reference)) {
         access = comp->getMember(1);
@@ -1386,15 +1650,23 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
         break;
       }
 
-      auto comp = it->second[0];
+      auto const& comp = it->second[0];
       TRI_ASSERT(comp->numMembers() == 2);
       arangodb::aql::AstNode const* access = nullptr;
       arangodb::aql::AstNode const* value = nullptr;
       getValueAccess(comp, access, value);
       // We found an access for this field
 
+      if (format == RocksDBVPackIndexSearchValueFormat::kValuesOnly) {
+        TRI_ASSERT(comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+        value->toVelocyPackValue(searchValues);
+        continue;
+      }
+
+      TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kValuesOnly);
+
       if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        searchValues.openObject();
+        searchValues.openObject(true);
         searchValues.add(VPackValue(StaticStrings::IndexEq));
         TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -1406,8 +1678,11 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+        // complex condition. adjust format!
+        format = RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues;
+
+        searchValues.openObject(true);
         if (isAttributeExpanded(usedFields)) {
-          searchValues.openObject();
           searchValues.add(VPackValue(StaticStrings::IndexEq));
           TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -1420,7 +1695,6 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
           }
         } else {
           needNormalize = true;
-          searchValues.openObject();
           searchValues.add(VPackValue(StaticStrings::IndexIn));
         }
       } else {
@@ -1437,16 +1711,21 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
       auto it = found.find(usedFields);
 
       if (it != found.end()) {
-        auto rangeConditions = it->second;
+        auto const& rangeConditions = it->second;
         TRI_ASSERT(rangeConditions.size() <= 2);
 
-        VPackObjectBuilder searchElement(&searchValues);
+        VPackObjectBuilder searchElement(&searchValues, true);
 
-        for (auto& comp : rangeConditions) {
+        for (auto const& comp : rangeConditions) {
           TRI_ASSERT(comp->numMembers() == 2);
           arangodb::aql::AstNode const* access = nullptr;
           arangodb::aql::AstNode const* value = nullptr;
           bool isReverseOrder = getValueAccess(comp, access, value);
+
+          TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kValuesOnly);
+
+          // complex condition. adjust format!
+          format = RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues;
 
           // Add the key
           switch (comp->type) {
@@ -1481,8 +1760,9 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
             default:
               // unsupported right now. Should have been rejected by
               // supportsFilterCondition
-              TRI_ASSERT(false);
-              return std::make_unique<EmptyIndexIterator>(&_collection, trx);
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_INTERNAL,
+                  "unsupported state in RocksDBVPackIndex::buildSearchValues");
           }
 
           // If the value does not have a vpack representation the index cannot
@@ -1505,28 +1785,11 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  if (needNormalize) {
-    transaction::BuilderLeaser expandedSearchValues(trx);
-    expandInSearchValues(searchValues.slice(), *(expandedSearchValues.get()));
-    VPackSlice expandedSlice = expandedSearchValues->slice();
-    std::vector<std::unique_ptr<IndexIterator>> iterators;
-
-    for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
-      iterators.push_back(lookup(trx, val, !opts.ascending, readOwnWrites));
-    }
-
-    if (!opts.ascending) {
-      std::reverse(iterators.begin(), iterators.end());
-    }
-
-    return std::make_unique<MultiIndexIterator>(&_collection, trx, this,
-                                                std::move(iterators));
+  if (format == RocksDBVPackIndexSearchValueFormat::kDetect) {
+    // if we haven't seen any complex condition, we can go with the
+    // simple (values only) format!
+    format = RocksDBVPackIndexSearchValueFormat::kValuesOnly;
   }
-
-  VPackSlice searchSlice = searchValues.slice();
-  TRI_ASSERT(searchSlice.length() == 1);
-  searchSlice = searchSlice.at(0);
-  return lookup(trx, searchSlice, !opts.ascending, readOwnWrites);
 }
 
 void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
