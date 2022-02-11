@@ -43,6 +43,7 @@ struct Variable;
 
 namespace iresearch {
 
+class IResearchViewNode;
 struct QueryContext;
 
 }  // namespace iresearch
@@ -118,7 +119,7 @@ class ScorerReplacer {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extracts replacement results for a given variable
   ////////////////////////////////////////////////////////////////////////////////
-  void extract(aql::Variable const& var, std::vector<Scorer>& scorers);
+  void extract(IResearchViewNode const& viewNode, std::vector<Scorer>& scorers);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @returns true if no scorers were replaced
