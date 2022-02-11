@@ -1169,6 +1169,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
         // document
         res =
             collection->update(this, value, docResult, options, prevDocResult);
+        if (prevDocResult.revisionId() == docResult.revisionId()) {
+          excludeFromReplication = true;
+        }
       } else if (options.overwriteMode ==
                  OperationOptions::OverwriteMode::Replace) {
         // in case of unique constraint violation: replace existing document
@@ -1462,9 +1465,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   ManagedDocumentResult result;
 
   // lambda //////////////
-  auto workForOneDocument =
-      [this, &operation, &options, &collection, &resultBuilder, &cid, &previous,
-       &result](VPackSlice const newVal, bool isBabies) -> Result {
+  auto workForOneDocument = [this, &operation, &options, &collection,
+                             &resultBuilder, &cid, &previous,
+                             &result](VPackSlice const newVal, bool isBabies,
+                                      bool& excludeFromReplication) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1508,6 +1512,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
                             options.returnNew ? &result : nullptr);
     }
 
+    if (result.revisionId() == previous.revisionId()) {
+      excludeFromReplication = true;
+    }
+
     return res;  // must be ok!
   };             // workForOneDocument
   ///////////////////////
@@ -1515,21 +1523,28 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   Result res;
   std::unordered_map<ErrorCode, size_t> errorCounter;
 
+  std::unordered_set<size_t> excludePositions;
   if (newValue.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     VPackArrayIterator it(newValue);
     while (it.valid()) {
-      res = workForOneDocument(it.value(), true);
+      bool excludeFromReplication = false;
+      res = workForOneDocument(it.value(), true, excludeFromReplication);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
+      } else if (excludeFromReplication) {
+        excludePositions.insert(it.index());
       }
       it.next();
     }
-
     // it is ok to clobber res here!
     res.reset();
   } else {
-    res = workForOneDocument(newValue, false);
+    bool excludeFromReplication = false;
+    res = workForOneDocument(newValue, false, excludeFromReplication);
+    if (res.ok() && excludeFromReplication) {
+      excludePositions.insert(0);
+    }
   }
 
   TRI_ASSERT(!newValue.isArray() || options.silent ||

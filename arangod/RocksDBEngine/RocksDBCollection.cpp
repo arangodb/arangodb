@@ -1224,6 +1224,16 @@ Result RocksDBCollection::performUpdateOrReplace(
     }
   }
 
+  if (newSlice.length() <= 1) {  // TODO move above ?!
+    // shortcut. no need to do anything
+    resultMdr.setManaged(oldDoc.begin());
+    TRI_ASSERT(!resultMdr.empty());
+
+    trackWaitForSync(trx, options);
+    return res;
+  }
+
+
   // merge old and new values
   RevisionId revisionId;
   bool const isEdgeCollection =
