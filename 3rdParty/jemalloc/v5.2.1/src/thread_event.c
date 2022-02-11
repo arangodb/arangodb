@@ -221,7 +221,13 @@ te_recompute_fast_threshold(tsd_t *tsd) {
 static void
 te_adjust_thresholds_helper(tsd_t *tsd, te_ctx_t *ctx,
     uint64_t wait) {
+	/*
+	 * The next threshold based on future events can only be adjusted after
+	 * progressing the last_event counter (which is set to current).
+	 */
+	assert(te_ctx_current_bytes_get(ctx) == te_ctx_last_event_get(ctx));
 	assert(wait <= TE_MAX_START_WAIT);
+
 	uint64_t next_event = te_ctx_last_event_get(ctx) + (wait <=
 	    TE_MAX_INTERVAL ? wait : TE_MAX_INTERVAL);
 	te_ctx_next_event_set(tsd, ctx, next_event);
@@ -298,6 +304,19 @@ te_event_trigger(tsd_t *tsd, te_ctx_t *ctx) {
 
 static void
 te_init(tsd_t *tsd, bool is_alloc) {
+	te_ctx_t ctx;
+	te_ctx_get(tsd, &ctx, is_alloc);
+	/*
+	 * Reset the last event to current, which starts the events from a clean
+	 * state.  This is necessary when re-init the tsd event counters.
+	 *
+	 * The event counters maintain a relationship with the current bytes:
+	 * last_event <= current < next_event.  When a reinit happens (e.g.
+	 * reincarnated tsd), the last event needs progressing because all
+	 * events start fresh from the current bytes.
+	 */
+	te_ctx_last_event_set(&ctx, te_ctx_current_bytes_get(&ctx));
+
 	uint64_t wait = TE_MAX_START_WAIT;
 #define E(event, condition, alloc_event)				\
 	if (is_alloc == alloc_event && condition) {			\
@@ -311,8 +330,6 @@ te_init(tsd_t *tsd, bool is_alloc) {
 
 	ITERATE_OVER_ALL_EVENTS
 #undef E
-	te_ctx_t ctx;
-	te_ctx_get(tsd, &ctx, is_alloc);
 	te_adjust_thresholds_helper(tsd, &ctx, wait);
 }
 

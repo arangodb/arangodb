@@ -2,19 +2,18 @@
 #include "jemalloc/internal/jemalloc_internal_includes.h"
 
 #include "jemalloc/internal/pac.h"
+#include "jemalloc/internal/san.h"
 
 static edata_t *pac_alloc_impl(tsdn_t *tsdn, pai_t *self, size_t size,
-    size_t alignment, bool zero);
+    size_t alignment, bool zero, bool guarded, bool frequent_reuse,
+    bool *deferred_work_generated);
 static bool pac_expand_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata,
-    size_t old_size, size_t new_size, bool zero);
+    size_t old_size, size_t new_size, bool zero, bool *deferred_work_generated);
 static bool pac_shrink_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata,
-    size_t old_size, size_t new_size);
-static void pac_dalloc_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata);
-
-static ehooks_t *
-pac_ehooks_get(pac_t *pac) {
-	return base_ehooks_get(pac->base);
-}
+    size_t old_size, size_t new_size, bool *deferred_work_generated);
+static void pac_dalloc_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata,
+    bool *deferred_work_generated);
+static uint64_t pac_time_until_deferred_work(tsdn_t *tsdn, pai_t *self);
 
 static inline void
 pac_decay_data_get(pac_t *pac, extent_state_t state,
@@ -37,9 +36,9 @@ pac_decay_data_get(pac_t *pac, extent_state_t state,
 
 bool
 pac_init(tsdn_t *tsdn, pac_t *pac, base_t *base, emap_t *emap,
-    edata_cache_t *edata_cache, nstime_t *cur_time, size_t oversize_threshold,
-    ssize_t dirty_decay_ms, ssize_t muzzy_decay_ms, pac_stats_t *pac_stats,
-    malloc_mutex_t *stats_mtx) {
+    edata_cache_t *edata_cache, nstime_t *cur_time,
+    size_t pac_oversize_threshold, ssize_t dirty_decay_ms,
+    ssize_t muzzy_decay_ms, pac_stats_t *pac_stats, malloc_mutex_t *stats_mtx) {
 	unsigned ind = base_ind_get(base);
 	/*
 	 * Delay coalescing for dirty extents despite the disruptive effect on
@@ -74,12 +73,15 @@ pac_init(tsdn_t *tsdn, pac_t *pac, base_t *base, emap_t *emap,
 	    WITNESS_RANK_EXTENT_GROW, malloc_mutex_rank_exclusive)) {
 		return true;
 	}
-	atomic_store_zu(&pac->oversize_threshold, oversize_threshold,
+	atomic_store_zu(&pac->oversize_threshold, pac_oversize_threshold,
 	    ATOMIC_RELAXED);
 	if (decay_init(&pac->decay_dirty, cur_time, dirty_decay_ms)) {
 		return true;
 	}
 	if (decay_init(&pac->decay_muzzy, cur_time, muzzy_decay_ms)) {
+		return true;
+	}
+	if (san_bump_alloc_init(&pac->sba)) {
 		return true;
 	}
 
@@ -96,6 +98,7 @@ pac_init(tsdn_t *tsdn, pac_t *pac, base_t *base, emap_t *emap,
 	pac->pai.shrink = &pac_shrink_impl;
 	pac->pai.dalloc = &pac_dalloc_impl;
 	pac->pai.dalloc_batch = &pai_dalloc_batch_default;
+	pac->pai.time_until_deferred_work = &pac_time_until_deferred_work;
 
 	return false;
 }
@@ -106,32 +109,87 @@ pac_may_have_muzzy(pac_t *pac) {
 }
 
 static edata_t *
-pac_alloc_impl(tsdn_t *tsdn, pai_t *self, size_t size, size_t alignment,
-    bool zero) {
-	pac_t *pac = (pac_t *)self;
+pac_alloc_real(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks, size_t size,
+    size_t alignment, bool zero, bool guarded) {
+	assert(!guarded || alignment <= PAGE);
 
-	ehooks_t *ehooks = pac_ehooks_get(pac);
 	edata_t *edata = ecache_alloc(tsdn, pac, ehooks, &pac->ecache_dirty,
-	    NULL, size, alignment, zero);
+	    NULL, size, alignment, zero, guarded);
 
 	if (edata == NULL && pac_may_have_muzzy(pac)) {
 		edata = ecache_alloc(tsdn, pac, ehooks, &pac->ecache_muzzy,
-		    NULL, size, alignment, zero);
+		    NULL, size, alignment, zero, guarded);
 	}
 	if (edata == NULL) {
 		edata = ecache_alloc_grow(tsdn, pac, ehooks,
-		    &pac->ecache_retained, NULL, size, alignment, zero);
+		    &pac->ecache_retained, NULL, size, alignment, zero,
+		    guarded);
 		if (config_stats && edata != NULL) {
 			atomic_fetch_add_zu(&pac->stats->pac_mapped, size,
 			    ATOMIC_RELAXED);
 		}
 	}
+
+	return edata;
+}
+
+static edata_t *
+pac_alloc_new_guarded(tsdn_t *tsdn, pac_t *pac, ehooks_t *ehooks, size_t size,
+    size_t alignment, bool zero, bool frequent_reuse) {
+	assert(alignment <= PAGE);
+
+	edata_t *edata;
+	if (san_bump_enabled() && frequent_reuse) {
+		edata = san_bump_alloc(tsdn, &pac->sba, pac, ehooks, size,
+		    zero);
+	} else {
+		size_t size_with_guards = san_two_side_guarded_sz(size);
+		/* Alloc a non-guarded extent first.*/
+		edata = pac_alloc_real(tsdn, pac, ehooks, size_with_guards,
+		    /* alignment */ PAGE, zero, /* guarded */ false);
+		if (edata != NULL) {
+			/* Add guards around it. */
+			assert(edata_size_get(edata) == size_with_guards);
+			san_guard_pages_two_sided(tsdn, ehooks, edata,
+			    pac->emap, true);
+		}
+	}
+	assert(edata == NULL || (edata_guarded_get(edata) &&
+	    edata_size_get(edata) == size));
+
+	return edata;
+}
+
+static edata_t *
+pac_alloc_impl(tsdn_t *tsdn, pai_t *self, size_t size, size_t alignment,
+    bool zero, bool guarded, bool frequent_reuse,
+    bool *deferred_work_generated) {
+	pac_t *pac = (pac_t *)self;
+	ehooks_t *ehooks = pac_ehooks_get(pac);
+
+	edata_t *edata = NULL;
+	/*
+	 * The condition is an optimization - not frequently reused guarded
+	 * allocations are never put in the ecache.  pac_alloc_real also
+	 * doesn't grow retained for guarded allocations.  So pac_alloc_real
+	 * for such allocations would always return NULL.
+	 * */
+	if (!guarded || frequent_reuse) {
+		edata =	pac_alloc_real(tsdn, pac, ehooks, size, alignment,
+		    zero, guarded);
+	}
+	if (edata == NULL && guarded) {
+		/* No cached guarded extents; creating a new one. */
+		edata = pac_alloc_new_guarded(tsdn, pac, ehooks, size,
+		    alignment, zero, frequent_reuse);
+	}
+
 	return edata;
 }
 
 static bool
 pac_expand_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata, size_t old_size,
-    size_t new_size, bool zero) {
+    size_t new_size, bool zero, bool *deferred_work_generated) {
 	pac_t *pac = (pac_t *)self;
 	ehooks_t *ehooks = pac_ehooks_get(pac);
 
@@ -142,15 +200,15 @@ pac_expand_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata, size_t old_size,
 		return true;
 	}
 	edata_t *trail = ecache_alloc(tsdn, pac, ehooks, &pac->ecache_dirty,
-	    edata, expand_amount, PAGE, zero);
+	    edata, expand_amount, PAGE, zero, /* guarded*/ false);
 	if (trail == NULL) {
 		trail = ecache_alloc(tsdn, pac, ehooks, &pac->ecache_muzzy,
-		    edata, expand_amount, PAGE, zero);
+		    edata, expand_amount, PAGE, zero, /* guarded*/ false);
 	}
 	if (trail == NULL) {
 		trail = ecache_alloc_grow(tsdn, pac, ehooks,
-		    &pac->ecache_retained, edata, expand_amount, PAGE,
-		    zero);
+		    &pac->ecache_retained, edata, expand_amount, PAGE, zero,
+		    /* guarded */ false);
 		mapped_add = expand_amount;
 	}
 	if (trail == NULL) {
@@ -169,31 +227,90 @@ pac_expand_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata, size_t old_size,
 
 static bool
 pac_shrink_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata, size_t old_size,
-    size_t new_size) {
+    size_t new_size, bool *deferred_work_generated) {
 	pac_t *pac = (pac_t *)self;
-
 	ehooks_t *ehooks = pac_ehooks_get(pac);
-	size_t shrink_amount = old_size - new_size;
 
+	size_t shrink_amount = old_size - new_size;
 
 	if (ehooks_split_will_fail(ehooks)) {
 		return true;
 	}
 
 	edata_t *trail = extent_split_wrapper(tsdn, pac, ehooks, edata,
-	    new_size, shrink_amount);
+	    new_size, shrink_amount, /* holding_core_locks */ false);
 	if (trail == NULL) {
 		return true;
 	}
 	ecache_dalloc(tsdn, pac, ehooks, &pac->ecache_dirty, trail);
+	*deferred_work_generated = true;
 	return false;
 }
 
 static void
-pac_dalloc_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata) {
+pac_dalloc_impl(tsdn_t *tsdn, pai_t *self, edata_t *edata,
+    bool *deferred_work_generated) {
 	pac_t *pac = (pac_t *)self;
 	ehooks_t *ehooks = pac_ehooks_get(pac);
+
+	if (edata_guarded_get(edata)) {
+		/*
+		 * Because cached guarded extents do exact fit only, large
+		 * guarded extents are restored on dalloc eagerly (otherwise
+		 * they will not be reused efficiently).  Slab sizes have a
+		 * limited number of size classes, and tend to cycle faster.
+		 *
+		 * In the case where coalesce is restrained (VirtualFree on
+		 * Windows), guarded extents are also not cached -- otherwise
+		 * during arena destroy / reset, the retained extents would not
+		 * be whole regions (i.e. they are split between regular and
+		 * guarded).
+		 */
+		if (!edata_slab_get(edata) || !maps_coalesce) {
+			assert(edata_size_get(edata) >= SC_LARGE_MINCLASS ||
+			    !maps_coalesce);
+			san_unguard_pages_two_sided(tsdn, ehooks, edata,
+			    pac->emap);
+		}
+	}
+
 	ecache_dalloc(tsdn, pac, ehooks, &pac->ecache_dirty, edata);
+	/* Purging of deallocated pages is deferred */
+	*deferred_work_generated = true;
+}
+
+static inline uint64_t
+pac_ns_until_purge(tsdn_t *tsdn, decay_t *decay, size_t npages) {
+	if (malloc_mutex_trylock(tsdn, &decay->mtx)) {
+		/* Use minimal interval if decay is contended. */
+		return BACKGROUND_THREAD_DEFERRED_MIN;
+	}
+	uint64_t result = decay_ns_until_purge(decay, npages,
+	    ARENA_DEFERRED_PURGE_NPAGES_THRESHOLD);
+
+	malloc_mutex_unlock(tsdn, &decay->mtx);
+	return result;
+}
+
+static uint64_t
+pac_time_until_deferred_work(tsdn_t *tsdn, pai_t *self) {
+	uint64_t time;
+	pac_t *pac = (pac_t *)self;
+
+	time = pac_ns_until_purge(tsdn,
+	    &pac->decay_dirty,
+	    ecache_npages_get(&pac->ecache_dirty));
+	if (time == BACKGROUND_THREAD_DEFERRED_MIN) {
+		return time;
+	}
+
+	uint64_t muzzy = pac_ns_until_purge(tsdn,
+	    &pac->decay_muzzy,
+	    ecache_npages_get(&pac->ecache_muzzy));
+	if (muzzy < time) {
+		time = muzzy;
+	}
+	return time;
 }
 
 bool

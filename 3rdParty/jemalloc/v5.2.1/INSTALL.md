@@ -12,6 +12,10 @@ that might work is:
     make
     make install
 
+You can uninstall the installed build artifacts like this:
+
+    make uninstall
+
 Notes:
  - "autoconf" needs to be installed
  - Documentation is built by the default target only when xsltproc is

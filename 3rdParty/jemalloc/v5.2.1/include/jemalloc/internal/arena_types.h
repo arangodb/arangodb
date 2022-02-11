@@ -41,4 +41,18 @@ typedef enum {
  */
 #define OVERSIZE_THRESHOLD_DEFAULT (8 << 20)
 
+struct arena_config_s {
+	/* extent hooks to be used for the arena */
+	extent_hooks_t *extent_hooks;
+
+	/*
+	 * Use extent hooks for metadata (base) allocations when true.
+	 */
+	bool metadata_use_hooks;
+};
+
+typedef struct arena_config_s arena_config_t;
+
+extern const arena_config_t arena_config_default;
+
 #endif /* JEMALLOC_INTERNAL_ARENA_TYPES_H */

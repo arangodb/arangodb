@@ -31,8 +31,6 @@ const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const database = "replication2_test_db";
 
-let { getServersByType } = require('@arangodb/test-helper');
-
 const getLeaderStatus = function(id) {
   let status = db._replicatedLog(id).status();
   const leaderId = status.leaderId;
@@ -44,11 +42,11 @@ const getLeaderStatus = function(id) {
     console.info(`participants status not available for replicated log ${id}`);
     return null;
   }
-  if (status.participants[leaderId].role !== "leader") {
+  if (status.participants[leaderId].response.role !== "leader") {
     console.info(`leader not available for replicated log ${id}`);
     return null;
   }
-  return status.participants[leaderId];
+  return status.participants[leaderId].response;
 };
 
 const waitForLeader = function (id) {

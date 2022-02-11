@@ -243,7 +243,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
           return index->id() == _outNonMaterializedIndVars.first;
         });
     TRI_ASSERT(indIt != _indexes.cend());
-    auto const& fields = (*indIt)->fields();
+    auto const& coveredFields = (*indIt)->coveredFields();
     VPackArrayBuilder arrayScope(&builder, "indexValuesVars");
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
@@ -252,9 +252,9 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("name",
                   VPackValue(fieldVar.first->name));  // for explainer.js
       std::string fieldName;
-      TRI_ASSERT(fieldVar.second < fields.size());
-      basics::TRI_AttributeNamesToString(fields[fieldVar.second], fieldName,
-                                         true);
+      TRI_ASSERT(fieldVar.second < coveredFields.size());
+      basics::TRI_AttributeNamesToString(coveredFields[fieldVar.second],
+                                         fieldName, true);
       builder.add("field", VPackValue(fieldName));  // for explainer.js
     }
   }

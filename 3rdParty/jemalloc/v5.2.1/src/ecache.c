@@ -1,6 +1,8 @@
 #include "jemalloc/internal/jemalloc_preamble.h"
 #include "jemalloc/internal/jemalloc_internal_includes.h"
 
+#include "jemalloc/internal/san.h"
+
 bool
 ecache_init(tsdn_t *tsdn, ecache_t *ecache, extent_state_t state, unsigned ind,
     bool delay_coalesce) {
@@ -12,6 +14,8 @@ ecache_init(tsdn_t *tsdn, ecache_t *ecache, extent_state_t state, unsigned ind,
 	ecache->ind = ind;
 	ecache->delay_coalesce = delay_coalesce;
 	eset_init(&ecache->eset, state);
+	eset_init(&ecache->guarded_eset, state);
+
 	return false;
 }
 

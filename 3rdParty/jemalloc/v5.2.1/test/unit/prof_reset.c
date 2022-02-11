@@ -21,26 +21,25 @@ set_prof_active(bool active) {
 
 static size_t
 get_lg_prof_sample(void) {
-	size_t lg_prof_sample;
+	size_t ret;
 	size_t sz = sizeof(size_t);
 
-	expect_d_eq(mallctl("prof.lg_sample", (void *)&lg_prof_sample, &sz,
-	    NULL, 0), 0,
+	expect_d_eq(mallctl("prof.lg_sample", (void *)&ret, &sz, NULL, 0), 0,
 	    "Unexpected mallctl failure while reading profiling sample rate");
-	return lg_prof_sample;
+	return ret;
 }
 
 static void
-do_prof_reset(size_t lg_prof_sample) {
+do_prof_reset(size_t lg_prof_sample_input) {
 	expect_d_eq(mallctl("prof.reset", NULL, NULL,
-	    (void *)&lg_prof_sample, sizeof(size_t)), 0,
+	    (void *)&lg_prof_sample_input, sizeof(size_t)), 0,
 	    "Unexpected mallctl failure while resetting profile data");
-	expect_zu_eq(lg_prof_sample, get_lg_prof_sample(),
+	expect_zu_eq(lg_prof_sample_input, get_lg_prof_sample(),
 	    "Expected profile sample rate change");
 }
 
 TEST_BEGIN(test_prof_reset_basic) {
-	size_t lg_prof_sample_orig, lg_prof_sample, lg_prof_sample_next;
+	size_t lg_prof_sample_orig, lg_prof_sample_cur, lg_prof_sample_next;
 	size_t sz;
 	unsigned i;
 
@@ -52,8 +51,8 @@ TEST_BEGIN(test_prof_reset_basic) {
 	    "Unexpected mallctl failure while reading profiling sample rate");
 	expect_zu_eq(lg_prof_sample_orig, 0,
 	    "Unexpected profiling sample rate");
-	lg_prof_sample = get_lg_prof_sample();
-	expect_zu_eq(lg_prof_sample_orig, lg_prof_sample,
+	lg_prof_sample_cur = get_lg_prof_sample();
+	expect_zu_eq(lg_prof_sample_orig, lg_prof_sample_cur,
 	    "Unexpected disagreement between \"opt.lg_prof_sample\" and "
 	    "\"prof.lg_sample\"");
 
@@ -61,8 +60,8 @@ TEST_BEGIN(test_prof_reset_basic) {
 	for (i = 0; i < 2; i++) {
 		expect_d_eq(mallctl("prof.reset", NULL, NULL, NULL, 0), 0,
 		    "Unexpected mallctl failure while resetting profile data");
-		lg_prof_sample = get_lg_prof_sample();
-		expect_zu_eq(lg_prof_sample_orig, lg_prof_sample,
+		lg_prof_sample_cur = get_lg_prof_sample();
+		expect_zu_eq(lg_prof_sample_orig, lg_prof_sample_cur,
 		    "Unexpected profile sample rate change");
 	}
 
@@ -70,15 +69,15 @@ TEST_BEGIN(test_prof_reset_basic) {
 	lg_prof_sample_next = 1;
 	for (i = 0; i < 2; i++) {
 		do_prof_reset(lg_prof_sample_next);
-		lg_prof_sample = get_lg_prof_sample();
-		expect_zu_eq(lg_prof_sample, lg_prof_sample_next,
+		lg_prof_sample_cur = get_lg_prof_sample();
+		expect_zu_eq(lg_prof_sample_cur, lg_prof_sample_next,
 		    "Expected profile sample rate change");
 		lg_prof_sample_next = lg_prof_sample_orig;
 	}
 
 	/* Make sure the test code restored prof.lg_sample. */
-	lg_prof_sample = get_lg_prof_sample();
-	expect_zu_eq(lg_prof_sample_orig, lg_prof_sample,
+	lg_prof_sample_cur = get_lg_prof_sample();
+	expect_zu_eq(lg_prof_sample_orig, lg_prof_sample_cur,
 	    "Unexpected disagreement between \"opt.lg_prof_sample\" and "
 	    "\"prof.lg_sample\"");
 }

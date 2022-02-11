@@ -585,7 +585,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlItemBlockInputRange inputRange(
-      arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
+      arangodb::aql::MainQueryState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
       mergeExecutor.skipRowsRange(inputRange, skipAllCall);
   ASSERT_EQ(15, skipAllCall.getSkipCount());
@@ -665,7 +665,7 @@ TEST_F(IResearchViewCountApproximateTest,
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlCall skipAllCall{0U, 0U, 0U, true};
   arangodb::aql::AqlItemBlockInputRange inputRange(
-      arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
+      arangodb::aql::MainQueryState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
       mergeExecutor.skipRowsRange(inputRange, skipAllCall);
   ASSERT_EQ(0, skipAllCall.getSkipCount());
@@ -747,7 +747,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::aql::ExecutorState state = arangodb::aql::ExecutorState::HASMORE;
   inputBlock->setValue(0, 0, arangodb::aql::AqlValue("dummy"));
   arangodb::aql::AqlItemBlockInputRange inputRange(
-      arangodb::aql::ExecutorState::DONE, 0, inputBlock, 0);
+      arangodb::aql::MainQueryState::DONE, 0, inputBlock, 0);
   std::tie(state, stats, skippedLocal, call) =
       mergeExecutor.skipRowsRange(inputRange, skipAllCall);
   ASSERT_EQ(15, skipAllCall.getSkipCount());
