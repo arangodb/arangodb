@@ -557,6 +557,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/InMemoryLog.cpp
   Replication2/ReplicatedLog/LogCommon.cpp
   Replication2/ReplicatedLog/LogCore.cpp
+  Replication2/ReplicatedLog/LogEntries.cpp
   Replication2/ReplicatedLog/LogFollower.cpp
   Replication2/ReplicatedLog/LogLeader.cpp
   Replication2/ReplicatedLog/LogStatus.cpp
@@ -571,19 +572,20 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
   Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
-  Replication2/ReplicatedState/ReplicatedStateCore.cpp
+  Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/Supervision.cpp
   Replication2/ReplicatedState/SupervisionAction.cpp
+  Replication2/ReplicatedState/UpdateReplicatedState.cpp
+  Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.h)
+)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp

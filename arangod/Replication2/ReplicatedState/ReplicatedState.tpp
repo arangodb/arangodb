@@ -121,15 +121,15 @@ void ReplicatedState<S>::forceRebuild() {
 
 template<typename S>
 void ReplicatedState<S>::start(std::unique_ptr<ReplicatedStateToken> token) {
-  auto core = std::make_unique<ReplicatedStateCore>();
+  auto core = std::make_unique<CoreType>();
   std::ignore =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
 }
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::rebuild(
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction try {
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
   LOG_TOPIC("edaef", TRACE, Logger::REPLICATED_STATE)
       << "replicated state rebuilding - query participant";
   auto participant = _self.log->getParticipant();
@@ -163,8 +163,8 @@ auto ReplicatedState<S>::GuardedData::rebuild(
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runFollower(
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction try {
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
   auto manager = std::make_shared<FollowerStateManager<S>>(
@@ -182,8 +182,8 @@ auto ReplicatedState<S>::GuardedData::runFollower(
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runLeader(
     std::shared_ptr<replicated_log::ILogLeader> logLeader,
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction try {
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
   auto manager = std::make_shared<LeaderStateManager<S>>(
       _self.shared_from_this(), logLeader, std::move(core), std::move(token),
