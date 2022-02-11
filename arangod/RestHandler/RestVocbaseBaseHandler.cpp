@@ -625,15 +625,25 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         TRI_ERROR_TRANSACTION_NOT_FOUND,
         std::string("transaction ") + std::to_string(tid.id()) + " not found");
   }
+
   std::unique_ptr<transaction::Methods> trx;
   if (ServerState::instance()->isDBServer() &&
       !opOptions.isSynchronousReplicationFrom.empty()) {
+    // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
     trx = std::make_unique<transaction::Methods>(std::move(ctx), collectionName,
                                                  type);
   } else {
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
+    if (isSideUser) {
+      // this is a call from the DOCUMENT() AQL function into an existing AQL
+      // query. locks are already acquired by the AQL transaction.
+      if (type != AccessMode::Type::READ) {
+        basics::abortOrThrow(TRI_ERROR_INTERNAL,
+                             "invalid access mode for request", ADB_HERE);
+      }
+    }
   }
   return trx;
 }

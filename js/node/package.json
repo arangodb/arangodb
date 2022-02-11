@@ -3,7 +3,7 @@
     "@xmldom/xmldom": "^0.8.0",
     "accepts": "1.3.7",
     "ansi_up": "5.0.1",
-    "ansi-html": "0.0.7",
+    "ansi-html-community": "^0.0.8",
     "aqb": "2.1.0",
     "babel-code-frame": "6.26.0",
     "chai": "3.5.0",
