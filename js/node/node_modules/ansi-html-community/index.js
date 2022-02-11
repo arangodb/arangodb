@@ -59,7 +59,7 @@ function ansiHTML (text) {
   // Cache opened sequence.
   var ansiCodes = []
   // Replace with markup.
-  var ret = text.replace(/\033\[(\d+)*m/g, function (match, seq) {
+  var ret = text.replace(/\033\[(\d+)m/g, function (match, seq) {
     var ot = _openTags[seq]
     if (ot) {
       // If current sequence has been opened, close it.
