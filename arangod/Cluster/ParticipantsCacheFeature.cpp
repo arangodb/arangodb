@@ -30,8 +30,10 @@
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FailureOracle.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Logger/LogMacros.h"
 
+#include <chrono>
 #include <memory>
 #include <shared_mutex>
 #include <unordered_map>
@@ -144,6 +146,7 @@ void ParticipantsCache::createAgencyCallback(Server& server) {
 ParticipantsCacheFeature::ParticipantsCacheFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
+  startsAfter<SchedulerFeature>();
   startsAfter<ClusterFeature>();
 }
 
@@ -167,6 +170,8 @@ void ParticipantsCacheFeature::start() {
 
   initHealthCache();
   _cache->start(agencyCallbackRegistry);
+
+  scheduleFlush();
   LOG_TOPIC("42af3", DEBUG, Logger::REPLICATION2)
       << "ParticipantsCacheFeature is ready";
 }
@@ -182,6 +187,9 @@ void ParticipantsCacheFeature::stop() {
         << "caught unexpected exception while unregistering agency callback in "
            "ParticipantsCacheFeature: "
         << ex.what();
+  }
+  if (_flushJob) {
+    _flushJob->cancel();
   }
 }
 
@@ -213,7 +221,7 @@ void ParticipantsCacheFeature::flush() {
 
 auto ParticipantsCacheFeature::getFailureOracle()
     -> std::shared_ptr<IFailureOracle> {
-  return std::dynamic_pointer_cast<IFailureOracle>(_cache);
+  return std::static_pointer_cast<IFailureOracle>(_cache);
 }
 
 void ParticipantsCacheFeature::initHealthCache() {
@@ -221,6 +229,23 @@ void ParticipantsCacheFeature::initHealthCache() {
 
   _cache = std::make_shared<ParticipantsCache>();
   _cache->createAgencyCallback(server());
+}
+
+void ParticipantsCacheFeature::scheduleFlush() {
+  using namespace std::chrono_literals;
+
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  if (!scheduler) {
+    return;
+  }
+
+  _flushJob = scheduler->queueDelayed(RequestLane::AGENCY_CLUSTER, 50s,
+                                      [this](bool canceled) {
+                                        if (!canceled) {
+                                          this->flush();
+                                          this->scheduleFlush();
+                                        }
+                                      });
 }
 
 }  // namespace arangodb::cluster

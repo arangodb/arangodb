@@ -25,6 +25,7 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include "Scheduler/Scheduler.h"
 
 #include <memory>
 #include <unordered_map>
@@ -33,7 +34,9 @@ namespace arangodb::cluster {
 struct IFailureOracle;
 class ParticipantsCache;
 
-class ParticipantsCacheFeature final : public ArangodFeature {
+class ParticipantsCacheFeature final
+    : public ArangodFeature,
+      public std::enable_shared_from_this<ParticipantsCacheFeature> {
  public:
   static constexpr std::string_view name() noexcept {
     return "ParticipantsCache";
@@ -52,7 +55,9 @@ class ParticipantsCacheFeature final : public ArangodFeature {
 
  private:
   void initHealthCache();
+  void scheduleFlush();
 
   std::shared_ptr<ParticipantsCache> _cache;
+  Scheduler::WorkHandle _flushJob;
 };
 }  // namespace arangodb::cluster

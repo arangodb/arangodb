@@ -2176,8 +2176,6 @@ RestStatus RestAdminClusterHandler::handleParticipantsCacheStatus() {
   {
     auto& participantsCache =
         server().getFeature<cluster::ParticipantsCacheFeature>();
-    VPackObjectBuilder result(&response);
-    response.add(VPackValue("result"));
     {
       VPackObjectBuilder ob(&response);
       auto status = participantsCache.status();
@@ -2186,7 +2184,7 @@ RestStatus RestAdminClusterHandler::handleParticipantsCacheStatus() {
       }
     }
   }
-  generateOk(rest::ResponseCode::ACCEPTED, response.slice());
+  generateOk(rest::ResponseCode::OK, response.slice());
   return RestStatus::DONE;
 }
 
@@ -2199,6 +2197,62 @@ RestStatus RestAdminClusterHandler::handleParticipantsCacheFlush() {
 
   auto& participantsCache =
       server().getFeature<cluster::ParticipantsCacheFeature>();
+
+  if (auto global{_request->parsedValue("global", true)};
+      ServerState::instance()->isCoordinator() && global) {
+    auto* pool = server().getFeature<NetworkFeature>().pool();
+
+    // Locally flush the cache for this coordinator
+    auto status = participantsCache.status();
+    auto id = ServerState::instance()->getId();
+    status.erase(id);
+    participantsCache.flush();
+
+    // Send flush requests to all participants
+    auto fut = std::invoke([status = std::move(status), id = std::move(id),
+                            pool = pool]() mutable {
+      std::vector<futures::Future<fuerte::StatusCode>> flushDbs;
+      for (auto const& [pid, isFailed] : status) {
+        auto path = basics::StringUtils::joinT("/", "_admin/cluster",
+                                               "failureOracle", "flush");
+        network::RequestOptions opts;
+        opts.timeout = std::chrono::seconds{5};
+        opts.parameters["global"] = "false";
+        flushDbs.emplace_back(
+            network::sendRequest(pool, "server:" + pid, fuerte::RestVerb::Post,
+                                 std::move(path), {}, opts)
+                .then([](futures::Try<network::Response>&& tryResult) {
+                  auto result = basics::catchToResultT(
+                      [&] { return std::move(tryResult.get()); });
+                  return result.ok() ? result->statusCode()
+                                     : fuerte::StatusUndefined;
+                }));
+      }
+      return futures::collectAll(std::move(flushDbs))
+          .thenValue([status = std::move(status),
+                      id = std::move(id)](auto&& statusCodes) {
+            VPackBuilder response;
+            {
+              VPackObjectBuilder participantsFlushStatus(&response);
+              std::size_t idx = 0;
+              for (auto const& [pid, isFailed] : status) {
+                auto& result = statusCodes.at(idx++);
+                response.add(pid, VPackValue(std::move(result.get())));
+              }
+              response.add(id, VPackValue(fuerte::StatusAccepted));
+            }
+            return std::move(response);
+          });
+    });
+
+    return waitForFuture(std::move(fut).thenValue(
+        [self = std::static_pointer_cast<RestAdminClusterHandler>(
+             shared_from_this())](auto builder) mutable {
+          self->generateOk(rest::ResponseCode::ACCEPTED,
+                           std::move(builder.slice()));
+          return RestStatus::DONE;
+        }));
+  }
   participantsCache.flush();
   generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
   return RestStatus::DONE;
