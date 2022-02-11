@@ -1,6 +1,19 @@
 devel
 -----
 
+* Extension of API GET `_api/gharial`. This API now accepts two new query
+  parameters.
+
+  The first one is "details":
+  If set to true, will return a more detailed view of the overall
+  graph definition including checksums for each EdgeDefinition and
+  each graph. In case a HybridSmartGraph is found, will also return
+  a list of all SatelliteCollections which are being used.
+
+  The second one is "onlyHash":
+  If set to true, will return a global calculated checksum based
+  on all available graphs.
+
 * Replaced internal JS dependency ansi-html with ansi-html-community.
 
 * Improved performance of inner joins with dynamic lookup conditions being
