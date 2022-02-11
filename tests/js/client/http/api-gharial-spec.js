@@ -2202,7 +2202,7 @@ describe('_api/gharial', () => {
         // Swap the selected element at the end of shuffled list.
         [list[i], list[pick]] = [list[pick], list[i]];
       }
-    }
+    };
 
     function* ArrayScrambler(list) {
       if (list.length === 1) {
@@ -2486,9 +2486,9 @@ describe('_api/gharial', () => {
           gM._drop(gD.name, true);
           graphOperationsSequence.push({
             type: "remove", name: gD.name
-          })
+          });
         }
-      }
+      };
 
       let globalChecksums = [];
       let detailedChecksums = {
