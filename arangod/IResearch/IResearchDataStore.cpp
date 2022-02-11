@@ -29,6 +29,7 @@
 #include "Basics/DownCast.h"
 
 #include "Metrics/Gauge.h"
+#include "Metrics/Guard.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -526,7 +527,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _cleanupTimeNum{0},
       _avgCleanupTimeMs{nullptr},
       _consolidationTimeNum{0},
-      _avgConsolidationTimeMs{nullptr} {
+      _avgConsolidationTimeMs{nullptr},
+      _metricStats{nullptr} {
   auto* key = this;
 
   // initialize transaction callback
@@ -778,7 +780,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
     _dataStore._reader = reader;
 
     // update stats
-    updateStats(statsUnsafe());
+    updateStatsUnsafe();
 
     // update last committed tick
     impl.tick(_lastCommittedTick);
@@ -881,7 +883,7 @@ Result IResearchDataStore::shutdownDataStore() {
 
   try {
     if (_dataStore) {
-      removeStats();
+      removeMetrics();
       _dataStore.resetDataStore();
     }
   } catch (basics::Exception const& e) {
@@ -1140,7 +1142,8 @@ Result IResearchDataStore::initDataStore(
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
   // register metrics before starting any background threads
-  insertStats();
+  insertMetrics();
+  updateStatsUnsafe();
 
   // ...........................................................................
   // set up in-recovery insertion hooks
@@ -1526,7 +1529,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     // update reader
     _dataStore._reader = reader;
 
-    updateStats(statsUnsafe());
+    updateStatsUnsafe();
 
     auto subscription = std::atomic_load(&_flushSubscription);
 
@@ -1556,45 +1559,46 @@ bool IResearchDataStore::hasSelectivityEstimate() {
   return false;
 }
 
-IResearchDataStore::Stats IResearchDataStore::statsSynced() const {
+IResearchDataStore::Stats IResearchDataStore::stats() const {
   auto linkLock = _asyncSelf->lock();
   if (!linkLock) {
     return {};
   }
-  return statsUnsafe();
+  if (_metricStats) {
+    return _metricStats->load();
+  }
+  return updateStatsUnsafe();
 }
 
-IResearchDataStore::Stats IResearchDataStore::statsUnsafe() const {
-  Stats stats;
-  if (!_dataStore) {
-    return {};
-  }
+IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
+  TRI_ASSERT(_dataStore);
   // copy of 'reader' is important to hold reference to the current snapshot
   auto reader = _dataStore._reader;
   if (!reader) {
     return {};
   }
-
+  Stats stats;
   stats.numSegments = reader->size();
   stats.numDocs = reader->docs_count();
   stats.numLiveDocs = reader->live_docs_count();
   stats.numFiles = 1;  // +1 for segments file
-
   auto visitor = [&stats](std::string const& /*name*/,
                           irs::segment_meta const& segment) noexcept {
     stats.indexSize += segment.size;
     stats.numFiles += segment.files.size();
     return true;
   };
-
   reader->meta().meta.visit_segments(visitor);
+  if (_metricStats) {
+    _metricStats->store(stats);
+  }
   return stats;
 }
 
 void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
-  auto const stats = this->statsSynced();
+  auto const stats = this->stats();
 
   builder.add("numDocs", VPackValue(stats.numDocs));
   builder.add("numLiveDocs", VPackValue(stats.numLiveDocs));
