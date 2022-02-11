@@ -296,6 +296,7 @@ bool DepthFirstEnumerator::next() {
         }
 
         if (!validDisjointPath()) {
+          _enumeratedPath.popVertex();
           return;
         }
 
