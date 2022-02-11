@@ -2151,7 +2151,7 @@ describe('_api/gharial', () => {
     function* NumberOfShardsGenerator() {
       // Some random values for number of Shards
       // We on purpose use 1,2 as they overlap with replicationFactor
-      const values = [1, 2, 3, 9];
+      const values = isCluster ? [1, 2, 3, 9] : [1];
       for (const v of values) {
         yield v;
       }
@@ -2159,7 +2159,7 @@ describe('_api/gharial', () => {
 
     function* ReplicationFactorGenerator() {
       // Some random values for replicationFactor
-      const values = [1, 2];
+      const values = isCluster ? [1, 2, 3, 7] : [1];
       for (const v of values) {
         yield v;
       }
