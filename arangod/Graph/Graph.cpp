@@ -650,12 +650,12 @@ size_t Graph::calculateChecksum() const {
 
   // EdgeDefinitions
   for (auto const& eD : edgeDefinitions()) {
-    checksum += eD.second.calculateChecksum();
+    checksum += eD.second.calculateChecksum() xor 0xBAADF00D;
   }
 
   // Orphan Collections
   for (auto const& oC : orphanCollections()) {
-    checksum += std::hash<std::string>{}(oC);
+    checksum += std::hash<std::string>{}(oC) xor 0xBAADFEED;
   }
 
   // Numeric attributes
