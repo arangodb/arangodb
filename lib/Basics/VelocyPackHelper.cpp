@@ -192,7 +192,7 @@ void VelocyPackHelper::initialize() {
   LOG_TOPIC("bbce8", TRACE, arangodb::Logger::FIXME) << "initializing vpack";
 
   // initialize attribute translator
-  ::translator.reset(new VPackAttributeTranslator);
+  ::translator = std::make_unique<VPackAttributeTranslator>();
 
   // these attribute names will be translated into short integer values
   ::translator->add(StaticStrings::KeyString, KeyAttribute - AttributeBase);
@@ -208,7 +208,7 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.unsupportedTypeBehavior =
       VPackOptions::ConvertUnsupportedType;
 
-  ::customTypeHandler.reset(new DefaultCustomTypeHandler);
+  ::customTypeHandler = std::make_unique<DefaultCustomTypeHandler>();
 
   VPackOptions::Defaults.customTypeHandler = ::customTypeHandler.get();
 
@@ -222,6 +222,9 @@ void VelocyPackHelper::initialize() {
   // disallow tagged values and BCDs. they are not used in ArangoDB as of now
   VPackOptions::Defaults.disallowTags = true;
   VPackOptions::Defaults.disallowBCD = true;
+
+  // allow at most 80 levels of nested arrays/objects
+  VPackOptions::Defaults.nestingLimit = 80;
 
   // set up options for validating incoming end-user requests
   strictRequestValidationOptions = VPackOptions::Defaults;
