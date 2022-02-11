@@ -56,9 +56,7 @@
 
 #include <memory>
 #include <vector>
-#include <set>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
@@ -183,7 +181,7 @@ class ExecutionNode {
 
  public:
   /// @brief constructor using an id
-  ExecutionNode(ExecutionPlan* plan, size_t id) { TRI_ASSERT(false); }
+  ExecutionNode(ExecutionPlan* plan, size_t id) = delete;
   ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   /// @brief constructor using a VPackSlice
@@ -192,7 +190,6 @@ class ExecutionNode {
   /// @brief destructor, free dependencies
   virtual ~ExecutionNode() = default;
 
- public:
   /// @brief factory from JSON
   static ExecutionNode* fromVPackFactory(
       ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
