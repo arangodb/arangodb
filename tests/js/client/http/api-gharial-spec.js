@@ -2365,6 +2365,19 @@ describe('_api/gharial', () => {
       }
     });
 
+    it('should create different Graph checksum if name differs', () => {
+      const relation = [
+        gM._relation("Unittest_edges_A", "Unittest_A", "Unittest_B"),
+      ];
+      const first = produceSingleGraphChecksum("Unittest_graph", relation);
+      const second = produceSingleGraphChecksum("Unittest_graph_2", relation);
+
+      // The global checksum has to be different
+      expect(second.checksum).to.not.equal(first.checksum);
+      // The edge checksums have to be identical, as we are using the same relation
+      expect(second.edgeChecksums).to.eql(first.edgeChecksums);
+    });
+
     if (isEnterprise) {
       // 2x relations (mind. 4 vertex collections)
       it('SmartGraph - test several EdgeDefinitions with different satellites', () => {
