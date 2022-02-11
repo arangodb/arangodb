@@ -1,4 +1,4 @@
-v3.7.17 (XXXX-XX-XX)
+v3.7.17 (2022-01-25)
 --------------------
 
 * Harden validator for binary VelocyPack against additional types of malicious
