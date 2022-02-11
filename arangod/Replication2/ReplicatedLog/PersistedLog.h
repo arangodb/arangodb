@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"

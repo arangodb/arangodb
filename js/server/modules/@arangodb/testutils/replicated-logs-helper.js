@@ -29,7 +29,7 @@ const request = require('@arangodb/request');
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
 
-const waitFor = function (checkFn, maxTries = 100) {
+const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -37,12 +37,14 @@ const waitFor = function (checkFn, maxTries = 100) {
     if (result === true || result === undefined) {
       return result;
     }
-    console.log(result);
     if (!(result instanceof Error)) {
       throw Error("expected error");
     }
     count += 1;
-    wait(0.5);
+    if (count % 10 === 0) {
+      console.log(result);
+    }
+    wait(0.5); // 240 * .5s = 2 minutes
   }
   throw result;
 };
@@ -387,6 +389,37 @@ const replicatedLogParticipantsFlag = function (database, logId, flags, generati
   };
 };
 
+const getReplicatedLogLeaderPlan = function (database, logId) {
+  let {plan} = readReplicatedLogAgency(database, logId);
+  if (!plan.currentTerm) {
+    throw Error("no current term in plan");
+  }
+  if (!plan.currentTerm.leader) {
+    throw Error("current term has no leader");
+  }
+  const leader = plan.currentTerm.leader.serverId;
+  const term = plan.currentTerm.term;
+  return {leader, term};
+};
+
+
+const createReplicatedLog = function (database, targetConfig) {
+  const logId = nextUniqueLogId();
+  const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+  });
+
+  waitFor(replicatedLogLeaderEstablished(database, logId, undefined, servers));
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
+};
+
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.createParticipantsConfig = createParticipantsConfig;
@@ -415,3 +448,5 @@ exports.getServerRebootId = getServerRebootId;
 exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
 exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
+exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
+exports.createReplicatedLog = createReplicatedLog;

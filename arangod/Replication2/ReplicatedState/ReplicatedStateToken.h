@@ -26,10 +26,6 @@
 
 namespace arangodb::replication2::replicated_state {
 
-struct ReplicatedStateCore {
-  // handle async stuff here
-};
-
 /**
  * The ReplicatedStateToken contains the snapshot information and is bound
  * to a single generation.

@@ -21,11 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-
 #include <index/column_info.hpp>
-#include <store/mmap_directory.hpp>
-#include <utils/encryption.hpp>
-#include <utils/file_utils.hpp>
 #include <utils/singleton.hpp>
 
 #include "IResearchDocument.h"
@@ -34,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/DownCast.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #ifdef USE_ENTERPRISE
@@ -65,24 +62,24 @@ using namespace std::literals;
 namespace arangodb::iresearch {
 namespace {
 
-DECLARE_GAUGE(arangosearch_num_buffered_docs, uint64_t,
-              "Number of buffered documents");
-DECLARE_GAUGE(arangosearch_num_docs, uint64_t, "Number of documents");
-DECLARE_GAUGE(arangosearch_num_live_docs, uint64_t, "Number of live documents");
-DECLARE_GAUGE(arangosearch_num_segments, uint64_t, "Number of segments");
-DECLARE_GAUGE(arangosearch_num_files, uint64_t, "Number of files");
-DECLARE_GAUGE(arangosearch_index_size, uint64_t, "Size of the index in bytes");
-DECLARE_GAUGE(arangosearch_num_failed_commits, uint64_t,
+DECLARE_GAUGE(arangodb_search_num_docs, uint64_t, "Number of documents");
+DECLARE_GAUGE(arangodb_search_num_live_docs, uint64_t,
+              "Number of live documents");
+DECLARE_GAUGE(arangodb_search_num_segments, uint64_t, "Number of segments");
+DECLARE_GAUGE(arangodb_search_num_files, uint64_t, "Number of files");
+DECLARE_GAUGE(arangodb_search_index_size, uint64_t,
+              "Size of the index in bytes");
+DECLARE_GAUGE(arangodb_search_num_failed_commits, uint64_t,
               "Number of failed commits");
-DECLARE_GAUGE(arangosearch_num_failed_cleanups, uint64_t,
+DECLARE_GAUGE(arangodb_search_num_failed_cleanups, uint64_t,
               "Number of failed cleanups");
-DECLARE_GAUGE(arangosearch_num_failed_consolidations, uint64_t,
+DECLARE_GAUGE(arangodb_search_num_failed_consolidations, uint64_t,
               "Number of failed consolidations");
-DECLARE_GAUGE(arangosearch_commit_time, uint64_t,
+DECLARE_GAUGE(arangodb_search_commit_time, uint64_t,
               "Average time of few last commits");
-DECLARE_GAUGE(arangosearch_cleanup_time, uint64_t,
+DECLARE_GAUGE(arangodb_search_cleanup_time, uint64_t,
               "Average time of few last cleanups");
-DECLARE_GAUGE(arangosearch_consolidation_time, uint64_t,
+DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
               "Average time of few last consolidations");
 
 // Ensures that all referenced analyzer features are consistent.
@@ -185,7 +182,8 @@ Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
 }  // namespace
 
 template<typename T>
-Result IResearchLink::getView(LogicalView* logical, T*& view) {
+Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
+                             std::shared_ptr<T>& view) {
   if (!logical) {
     return {};
   }
@@ -194,15 +192,9 @@ Result IResearchLink::getView(LogicalView* logical, T*& view) {
             "error finding view: '" + _viewGuid + "' for link '" +
                 std::to_string(_id.id()) + "' : no such view"};
   }
-  view = LogicalView::cast<T>(logical);
-  if (!view) {  // TODO(MBkkt) Should be assert?
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            "error finding view: '" + _viewGuid + "' for link '" +
-                std::to_string(_id.id()) + "'"};
-  }
+  view = basics::downCast<T>(logical);
   // TODO(MBkkt) Now its workaround for unit tests that expected this behavior
-  _viewGuid = view->guid();
-  // TRI_ASSERT(_viewGuid == view->guid());
+  _viewGuid = view->guid();  // TRI_ASSERT(_viewGuid == view->guid());
   return {};
 }
 
@@ -218,20 +210,19 @@ Result IResearchLink::initAndLink(InitCallback const& init,
 }
 
 Result IResearchLink::initSingleServer(InitCallback const& init) {
-  auto logical = _collection.vocbase().lookupView(_viewGuid);
-  IResearchView* view = nullptr;
-  if (auto r = getView(logical.get(), view); !r.ok()) {
+  std::shared_ptr<IResearchView> view;
+  auto r = toView(_collection.vocbase().lookupView(_viewGuid), view);
+  if (!r.ok()) {
     return r;
   }
-  return initAndLink(init, view);
+  return initAndLink(init, view.get());
 }
 
 Result IResearchLink::initCoordinator(InitCallback const& init) {
   auto& vocbase = _collection.vocbase();
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-  auto logical = ci.getView(vocbase.name(), _viewGuid);
-  IResearchViewCoordinator* view = nullptr;
-  if (auto r = getView(logical.get(), view); !view) {
+  std::shared_ptr<IResearchViewCoordinator> view;
+  if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !view) {
     return r;
   }
   return view->link(*this);
@@ -242,13 +233,11 @@ Result IResearchLink::initDBServer(InitCallback const& init) {
   auto& server = vocbase.server();
   bool const clusterEnabled = server.getFeature<ClusterFeature>().isEnabled();
   bool wide = _collection.id() == _collection.planId() && _collection.isAStub();
-  std::shared_ptr<LogicalView> logical;
-  IResearchView* view = nullptr;
+  std::shared_ptr<IResearchView> view;
   if (clusterEnabled) {
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     initCollectionName(_collection, wide ? nullptr : &ci, _meta, id().id());
-    logical = ci.getView(vocbase.name(), _viewGuid);
-    if (auto r = getView(logical.get(), view); !r.ok()) {
+    if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !r.ok()) {
       return r;
     }
   } else {
@@ -257,7 +246,7 @@ Result IResearchLink::initDBServer(InitCallback const& init) {
         << "' maybe due to disabled cluster features.";
   }
   if (wide) {
-    return linkWideCluster(_collection, view);
+    return linkWideCluster(_collection, view.get());
   }
   if (_meta._collectionName.empty() && !clusterEnabled &&
       server.getFeature<EngineSelectorFeature>().engine().inRecovery() &&
@@ -272,7 +261,7 @@ Result IResearchLink::initDBServer(InitCallback const& init) {
         " Please rollback the updated arangodb binary and"
         " finish the recovery first.");
   }
-  return initAndLink(init, view);
+  return initAndLink(init, view.get());
 }
 
 IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
@@ -287,7 +276,7 @@ IResearchLink::~IResearchLink() {
 
   if (!res.ok()) {
     LOG_TOPIC("2b41f", ERR, TOPIC)
-        << "failed to unload arangosearch link in link destructor: "
+        << "failed to unload arangodb_search link in link destructor: "
         << res.errorNumber() << " " << res.errorMessage();
   }
 }
@@ -308,8 +297,8 @@ Result IResearchLink::drop() {
   // without the link this avoids deadlocks with ClusterInfo::loadPlan() during
   // lookup in ClusterInfo
   if (ServerState::instance()->isSingleServer()) {
-    auto logicalView = collection().vocbase().lookupView(_viewGuid);
-    auto* view = LogicalView::cast<IResearchView>(logicalView.get());
+    auto view = basics::downCast<IResearchView>(
+        collection().vocbase().lookupView(_viewGuid));
 
     // may occur if the link was already unlinked from the view via another
     // instance this behavior was seen
@@ -328,9 +317,8 @@ Result IResearchLink::drop() {
           << "unable to find arangosearch view '" << _viewGuid
           << "' while dropping arangosearch link '" << _id.id() << "'";
     } else {
-      view->unlink(
-          collection()
-              .id());  // unlink before reset() to release lock in view (if any)
+      // unlink before reset() to release lock in view (if any)
+      view->unlink(collection().id());
     }
   }
 
@@ -547,15 +535,16 @@ void IResearchLink::insertStats() {
   builder.setName(arangosearch_link_stats_name);
   _linkStats = &metric.add(std::move(builder));
   _numFailedCommits =
-      &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
+      &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
-      &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
+      &metric.add(getMetric<arangodb_search_num_failed_cleanups>(*this));
   _numFailedConsolidations =
-      &metric.add(getMetric<arangosearch_num_failed_consolidations>(*this));
-  _avgCommitTimeMs = &metric.add(getMetric<arangosearch_commit_time>(*this));
-  _avgCleanupTimeMs = &metric.add(getMetric<arangosearch_cleanup_time>(*this));
+      &metric.add(getMetric<arangodb_search_num_failed_consolidations>(*this));
+  _avgCommitTimeMs = &metric.add(getMetric<arangodb_search_commit_time>(*this));
+  _avgCleanupTimeMs =
+      &metric.add(getMetric<arangodb_search_cleanup_time>(*this));
   _avgConsolidationTimeMs =
-      &metric.add(getMetric<arangosearch_consolidation_time>(*this));
+      &metric.add(getMetric<arangodb_search_consolidation_time>(*this));
 }
 
 void IResearchLink::removeStats() {
@@ -569,28 +558,28 @@ void IResearchLink::removeStats() {
   }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
-    metricFeature.remove(getMetric<arangosearch_num_failed_commits>(*this));
+    metricFeature.remove(getMetric<arangodb_search_num_failed_commits>(*this));
   }
   if (_numFailedCleanups) {
     _numFailedCleanups = nullptr;
-    metricFeature.remove(getMetric<arangosearch_num_failed_cleanups>(*this));
+    metricFeature.remove(getMetric<arangodb_search_num_failed_cleanups>(*this));
   }
   if (_numFailedConsolidations) {
     _numFailedConsolidations = nullptr;
     metricFeature.remove(
-        getMetric<arangosearch_num_failed_consolidations>(*this));
+        getMetric<arangodb_search_num_failed_consolidations>(*this));
   }
   if (_avgCommitTimeMs) {
     _avgCommitTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangosearch_commit_time>(*this));
+    metricFeature.remove(getMetric<arangodb_search_commit_time>(*this));
   }
   if (_avgCleanupTimeMs) {
     _avgCleanupTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangosearch_cleanup_time>(*this));
+    metricFeature.remove(getMetric<arangodb_search_cleanup_time>(*this));
   }
   if (_avgConsolidationTimeMs) {
     _avgConsolidationTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangosearch_consolidation_time>(*this));
+    metricFeature.remove(getMetric<arangodb_search_consolidation_time>(*this));
   }
 }
 
@@ -621,15 +610,13 @@ void IResearchLink::LinkStats::toPrometheus(std::string& result, bool first,
     writeAnnotation();
     result.append(std::to_string(value)) += '\n';
   };
-  writeMetric(arangosearch_num_buffered_docs::kName,
-              "Number of buffered documents", numBufferedDocs);
-  writeMetric(arangosearch_num_docs::kName, "Number of documents", numDocs);
-  writeMetric(arangosearch_num_live_docs::kName, "Number of live documents",
+  writeMetric(arangodb_search_num_docs::kName, "Number of documents", numDocs);
+  writeMetric(arangodb_search_num_live_docs::kName, "Number of live documents",
               numLiveDocs);
-  writeMetric(arangosearch_num_segments::kName, "Number of segments",
+  writeMetric(arangodb_search_num_segments::kName, "Number of segments",
               numSegments);
-  writeMetric(arangosearch_num_files::kName, "Number of files", numFiles);
-  writeMetric(arangosearch_index_size::kName, "Size of the index in bytes",
+  writeMetric(arangodb_search_num_files::kName, "Number of files", numFiles);
+  writeMetric(arangodb_search_index_size::kName, "Size of the index in bytes",
               indexSize);
 }
 

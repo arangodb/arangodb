@@ -184,7 +184,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto toBeResolved = std::make_unique<WaitForQueue>();
   if (req.entries.empty()) {
     auto action = self->checkCommitIndex(
-        req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+        req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
     auto result = AppendEntriesResult::withOk(self->_follower._currentTerm,
                                               req.messageId);
     self.unlock();  // unlock here, action will be executed via destructor
@@ -249,7 +249,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
 
     auto action = self->checkCommitIndex(
-        req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+        req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
 
     static_assert(noexcept(AppendEntriesResult::withOk(
         self->_follower._currentTerm, req.messageId)));
@@ -275,7 +275,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
-    LogIndex newCommitIndex, LogIndex newLCI,
+    LogIndex newCommitIndex, LogIndex newLITK,
     std::unique_ptr<WaitForQueue> outQueue) noexcept -> DeferredAction {
   TRI_ASSERT(outQueue != nullptr) << "expect outQueue to be preallocated";
 
@@ -318,14 +318,11 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
     }
   };
 
-  // This assertion is no longer true, as followers can now be added.
-  // TRI_ASSERT(newLCI >= _largestCommonIndex)
-  //     << "req.lci = " << newLCI << ", this.lci = " << _largestCommonIndex;
-  if (_largestCommonIndex < newLCI) {
+  if (_lowestIndexToKeep < newLITK) {
     LOG_CTX("fc467", TRACE, _follower._loggerContext)
-        << "largest common index went from " << _largestCommonIndex << " to "
-        << newLCI << ".";
-    _largestCommonIndex = newLCI;
+        << "largest common index went from " << _lowestIndexToKeep << " to "
+        << newLITK << ".";
+    _lowestIndexToKeep = newLITK;
     // TODO do we want to call checkCompaction here?
     std::ignore = checkCompaction();
   }
@@ -358,7 +355,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.local = followerData.getLocalStatistics();
     status.leader = _leaderId;
     status.term = _currentTerm;
-    status.largestCommonIndex = followerData._largestCommonIndex;
+    status.lowestIndexToKeep = followerData._lowestIndexToKeep;
     return LogStatus{std::move(status)};
   });
 }
@@ -477,10 +474,11 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
           while (actualIndex <= followerData._commitIndex) {
             auto memtry =
                 followerData._inMemoryLog.getEntryByIndex(actualIndex);
+            TRI_ASSERT(memtry.has_value());  // should always have a value
             if (!memtry.has_value()) {
               break;
             }
-            if (memtry->entry().logPayload().has_value()) {
+            if (memtry->entry().hasPayload()) {
               break;
             }
             actualIndex = actualIndex + 1;
@@ -578,7 +576,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
 }
 
 auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
-  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
+  auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
   if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {

@@ -47,12 +47,12 @@ struct FollowerSnapshotTest
     using FollowerType = test::FakeFollowerType<State>;
     using EntryType = test::DefaultEntryType;
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
+    using CoreType = test::TestCoreType;
   };
 
   std::shared_ptr<State::FactoryType> factory =
       std::make_shared<State::FactoryType>();
-  std::unique_ptr<ReplicatedStateCore> core =
-      std::make_unique<ReplicatedStateCore>();
+  std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
 };
 
 TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {

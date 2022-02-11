@@ -62,6 +62,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "Basics/DownCast.h"
 
 namespace arangodb::transaction {
 class Context;
@@ -294,14 +295,8 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
       continue;  // index was already populated when it was created
     }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    IResearchRocksDBLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
-#else
-    IResearchRocksDBLink& impl = static_cast<IResearchRocksDBLink&>(*link);
-#endif
-
-    impl.insert(trx, nullptr, docId, doc, {}, false);
+    basics::downCast<IResearchRocksDBLink>(*link).insert(trx, nullptr, docId,
+                                                         doc, {}, false);
   }
 
   res = trx.commit();
@@ -348,12 +343,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
   }
 
   for (std::shared_ptr<arangodb::Index> const& link : links) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
-#else
-    IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
-#endif
-
+    IResearchLink& impl = basics::downCast<IResearchRocksDBLink>(*link);
     impl.remove(trx, docId);
   }
 
@@ -386,7 +376,7 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
 
       if (coll != nullptr) {
         auto const links = lookupLinks(*coll);
-        for (auto link : links) {
+        for (auto const& link : links) {
           link->afterTruncate(tick, nullptr);
         }
       }
