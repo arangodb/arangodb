@@ -201,7 +201,7 @@ function optimizerRuleTestSuite () {
         let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         // all filters should be removed here, and moved into the respective FOR loops
-        assertEqual(0, result.plan.rules.filter((node) => node.type === 'FilterNode').length);
+        assertEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length);
       });
     },
     
@@ -218,9 +218,41 @@ function optimizerRuleTestSuite () {
         let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+        assertNotEqual(0, result.plan.nodes.filter((node) => node.type === 'IndexNode').length, query);
         // all filters should be removed here, and moved into the respective FOR loops
-        assertEqual(0, result.plan.rules.filter((node) => node.type === 'FilterNode').length);
-        assertEqual(0, result.plan.rules.filter((node) => node.type === 'EnumerateCollectionNode').length);
+        assertEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length, query);
+        assertEqual(0, result.plan.nodes.filter((node) => node.type === 'EnumerateCollectionNode').length, query);
+      });
+    },
+    
+    testFiltersNoEarlyPruning : function () {
+      let queries = [
+        // cannot pull FILTER into FOR loop, because "inner" is not available in FOR loop yet
+        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.abc == inner RETURN doc1`,
+        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.xyz == inner RETURN doc1`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+        assertEqual(1, result.plan.nodes.filter((node) => node.type === 'EnumerateCollectionNode').length, query);
+        assertNotEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length, query);
+      });
+    },
+    
+    testFiltersWithIndexNoEarlyPruning : function () {
+      let queries = [
+        // cannot pull FILTER into FOR loop, because "inner" is not available in FOR loop yet
+        `FOR doc1 IN ${cn} FILTER doc1.value1 == 35 FOR inner IN 1..10 FILTER doc1.abc == inner RETURN doc1`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } });
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+        assertEqual(1, result.plan.nodes.filter((node) => node.type === 'IndexNode').length, query);
+        assertNotEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length, query);
       });
     },
 
