@@ -184,6 +184,7 @@ export class GraphView extends React.Component {
           'drag-canvas',
           'zoom-canvas',
           'drag-node',
+          'activate-relations',
           {
             type: 'tooltip', // Tooltip
             formatText(model) {
