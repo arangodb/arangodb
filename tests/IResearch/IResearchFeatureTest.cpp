@@ -1897,6 +1897,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice());
+  // logicalView0->guid();
   ASSERT_NE(logicalView0, nullptr);
   bool created = false;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);

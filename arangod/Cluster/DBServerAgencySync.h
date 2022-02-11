@@ -35,6 +35,9 @@ namespace replication2 {
 namespace replicated_log {
 struct QuickLogStatus;
 }
+namespace replicated_state {
+struct StateStatus;
+}
 class LogId;
 }  // namespace replication2
 
@@ -71,6 +74,10 @@ class DBServerAgencySync {
       std::string, std::unordered_map<
                        arangodb::replication2::LogId,
                        arangodb::replication2::replicated_log::QuickLogStatus>>;
+  using LocalStatesMap = std::unordered_map<
+      std::string, std::unordered_map<
+                       arangodb::replication2::LogId,
+                       arangodb::replication2::replicated_state::StateStatus>>;
 
   /**
    * @brief Get copy of current local state
@@ -80,7 +87,7 @@ class DBServerAgencySync {
       std::unordered_set<std::string> const& dirty,
       std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
-      LocalLogsMap& replLogs);
+      LocalLogsMap& replLogs, LocalStatesMap& replStates);
 
  private:
   DBServerAgencySyncResult execute();

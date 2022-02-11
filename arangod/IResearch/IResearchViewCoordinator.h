@@ -103,8 +103,8 @@ class IResearchViewCoordinator final : public LogicalView {
   }
 
  protected:
-  Result appendVelocyPackImpl(VPackBuilder& builder,
-                              Serialization context) const final;
+  Result appendVPackImpl(VPackBuilder& build, Serialization ctx,
+                         bool safe) const final;
 
   Result dropImpl() final;
 

@@ -44,7 +44,7 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex) {
   size_t postFilterConditions = 0;
-  std::unordered_set<std::string> nonNullAttributes;
+  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
   _found.clear();
 
   Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
@@ -103,7 +103,7 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  std::unordered_set<std::string> nonNullAttributes;
+  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
   _found.clear();
 
   // must edit in place, no access to AST
@@ -205,7 +205,8 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     arangodb::Index const* index, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
     arangodb::aql::Variable const* reference,
-    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
+    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
+    bool isExecution) {
   // op can be  ==, IN, >, <, !=, even though we do not support all of these
   // operators however, canUseConditionPart will help us fill the
   // "nonNullAttributes" set even for the not-supported operators, and we want

@@ -1,5 +1,5 @@
-#ifndef JEMALLOC_INTERNAL_ARENA_STRUCTS_B_H
-#define JEMALLOC_INTERNAL_ARENA_STRUCTS_B_H
+#ifndef JEMALLOC_INTERNAL_ARENA_STRUCTS_H
+#define JEMALLOC_INTERNAL_ARENA_STRUCTS_H
 
 #include "jemalloc/internal/arena_stats.h"
 #include "jemalloc/internal/atomic.h"
@@ -98,4 +98,4 @@ struct arena_s {
 	bin_t			bins[0];
 };
 
-#endif /* JEMALLOC_INTERNAL_ARENA_STRUCTS_B_H */
+#endif /* JEMALLOC_INTERNAL_ARENA_STRUCTS_H */

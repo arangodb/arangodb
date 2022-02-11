@@ -358,8 +358,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.1-dev, commit 12cd13cd418512d9e7596921ccdb62e25a103f87
-* Date: 2021-03-30 15:20:30 -0700
+* Version: 5.2.1-dev, commit a4e81221cceeb887708d53015d3d1f1f9642980a
+* Date: 2022-12-31 12:28:15 -0800
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -980,12 +980,12 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### ansi-html
+#### ansi-html-community
 
-Name: ansi-html
-Version: 0.0.7
-Project Home: https://github.com/Tjatse/ansi-html
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi-html/LICENSE
+Name: ansi-html-community
+Version: 0.0.8
+Project Home: https://github.com/mahdyar/ansi-html-community
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi-html-community/LICENSE
 License Name: Apache License 2.0
 License Id: Apache-2.0
 

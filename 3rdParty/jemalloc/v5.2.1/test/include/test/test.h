@@ -581,5 +581,3 @@ test_status_t	p_test_no_malloc_init(test_t *t, ...);
 void	p_test_init(const char *name);
 void	p_test_fini(void);
 void	p_test_fail(const char *prefix, const char *message);
-
-void strncpy_cond(void *dst, const char *src, bool cond);

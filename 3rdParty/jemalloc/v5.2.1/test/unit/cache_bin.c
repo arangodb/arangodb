@@ -82,27 +82,30 @@ do_batch_alloc_test(cache_bin_t *bin, cache_bin_info_t *info, void **ptrs,
 	free(out);
 }
 
+static void
+test_bin_init(cache_bin_t *bin, cache_bin_info_t *info) {
+	size_t size;
+	size_t alignment;
+	cache_bin_info_compute_alloc(info, 1, &size, &alignment);
+	void *mem = mallocx(size, MALLOCX_ALIGN(alignment));
+	assert_ptr_not_null(mem, "Unexpected mallocx failure");
+
+	size_t cur_offset = 0;
+	cache_bin_preincrement(info, 1, mem, &cur_offset);
+	cache_bin_init(bin, info, mem, &cur_offset);
+	cache_bin_postincrement(info, 1, mem, &cur_offset);
+	assert_zu_eq(cur_offset, size, "Should use all requested memory");
+}
+
 TEST_BEGIN(test_cache_bin) {
 	const int ncached_max = 100;
 	bool success;
 	void *ptr;
 
-	cache_bin_t bin;
 	cache_bin_info_t info;
 	cache_bin_info_init(&info, ncached_max);
-
-	size_t size;
-	size_t alignment;
-	cache_bin_info_compute_alloc(&info, 1, &size, &alignment);
-	void *mem = mallocx(size, MALLOCX_ALIGN(alignment));
-	assert_ptr_not_null(mem, "Unexpected mallocx failure");
-
-	size_t cur_offset = 0;
-	cache_bin_preincrement(&info, 1, mem, &cur_offset);
-	cache_bin_init(&bin, &info, mem, &cur_offset);
-	cache_bin_postincrement(&info, 1, mem, &cur_offset);
-
-	assert_zu_eq(cur_offset, size, "Should use all requested memory");
+	cache_bin_t bin;
+	test_bin_init(&bin, &info);
 
 	/* Initialize to empty; should then have 0 elements. */
 	expect_d_eq(ncached_max, cache_bin_info_ncached_max(&info), "");
@@ -258,7 +261,124 @@ TEST_BEGIN(test_cache_bin) {
 }
 TEST_END
 
+static void
+do_flush_stashed_test(cache_bin_t *bin, cache_bin_info_t *info, void **ptrs,
+    cache_bin_sz_t nfill, cache_bin_sz_t nstash) {
+	expect_true(cache_bin_ncached_get_local(bin, info) == 0,
+	    "Bin not empty");
+	expect_true(cache_bin_nstashed_get_local(bin, info) == 0,
+	    "Bin not empty");
+	expect_true(nfill + nstash <= info->ncached_max, "Exceeded max");
+
+	bool ret;
+	/* Fill */
+	for (cache_bin_sz_t i = 0; i < nfill; i++) {
+		ret = cache_bin_dalloc_easy(bin, &ptrs[i]);
+		expect_true(ret, "Unexpected fill failure");
+	}
+	expect_true(cache_bin_ncached_get_local(bin, info) == nfill,
+	    "Wrong cached count");
+
+	/* Stash */
+	for (cache_bin_sz_t i = 0; i < nstash; i++) {
+		ret = cache_bin_stash(bin, &ptrs[i + nfill]);
+		expect_true(ret, "Unexpected stash failure");
+	}
+	expect_true(cache_bin_nstashed_get_local(bin, info) == nstash,
+	    "Wrong stashed count");
+
+	if (nfill + nstash == info->ncached_max) {
+		ret = cache_bin_dalloc_easy(bin, &ptrs[0]);
+		expect_false(ret, "Should not dalloc into a full bin");
+		ret = cache_bin_stash(bin, &ptrs[0]);
+		expect_false(ret, "Should not stash into a full bin");
+	}
+
+	/* Alloc filled ones */
+	for (cache_bin_sz_t i = 0; i < nfill; i++) {
+		void *ptr = cache_bin_alloc(bin, &ret);
+		expect_true(ret, "Unexpected alloc failure");
+		/* Verify it's not from the stashed range. */
+		expect_true((uintptr_t)ptr < (uintptr_t)&ptrs[nfill],
+		    "Should not alloc stashed ptrs");
+	}
+	expect_true(cache_bin_ncached_get_local(bin, info) == 0,
+	    "Wrong cached count");
+	expect_true(cache_bin_nstashed_get_local(bin, info) == nstash,
+	    "Wrong stashed count");
+
+	cache_bin_alloc(bin, &ret);
+	expect_false(ret, "Should not alloc stashed");
+
+	/* Clear stashed ones */
+	cache_bin_finish_flush_stashed(bin, info);
+	expect_true(cache_bin_ncached_get_local(bin, info) == 0,
+	    "Wrong cached count");
+	expect_true(cache_bin_nstashed_get_local(bin, info) == 0,
+	    "Wrong stashed count");
+
+	cache_bin_alloc(bin, &ret);
+	expect_false(ret, "Should not alloc from empty bin");
+}
+
+TEST_BEGIN(test_cache_bin_stash) {
+	const int ncached_max = 100;
+
+	cache_bin_t bin;
+	cache_bin_info_t info;
+	cache_bin_info_init(&info, ncached_max);
+	test_bin_init(&bin, &info);
+
+	/*
+	 * The content of this array is not accessed; instead the interior
+	 * addresses are used to insert / stash into the bins as test pointers.
+	 */
+	void **ptrs = mallocx(sizeof(void *) * (ncached_max + 1), 0);
+	assert_ptr_not_null(ptrs, "Unexpected mallocx failure");
+	bool ret;
+	for (cache_bin_sz_t i = 0; i < ncached_max; i++) {
+		expect_true(cache_bin_ncached_get_local(&bin, &info) ==
+		    (i / 2 + i % 2), "Wrong ncached value");
+		expect_true(cache_bin_nstashed_get_local(&bin, &info) == i / 2,
+		    "Wrong nstashed value");
+		if (i % 2 == 0) {
+			cache_bin_dalloc_easy(&bin, &ptrs[i]);
+		} else {
+			ret = cache_bin_stash(&bin, &ptrs[i]);
+			expect_true(ret, "Should be able to stash into a "
+			    "non-full cache bin");
+		}
+	}
+	ret = cache_bin_dalloc_easy(&bin, &ptrs[0]);
+	expect_false(ret, "Should not dalloc into a full cache bin");
+	ret = cache_bin_stash(&bin, &ptrs[0]);
+	expect_false(ret, "Should not stash into a full cache bin");
+	for (cache_bin_sz_t i = 0; i < ncached_max; i++) {
+		void *ptr = cache_bin_alloc(&bin, &ret);
+		if (i < ncached_max / 2) {
+			expect_true(ret, "Should be able to alloc");
+			uintptr_t diff = ((uintptr_t)ptr - (uintptr_t)&ptrs[0])
+			    / sizeof(void *);
+			expect_true(diff % 2 == 0, "Should be able to alloc");
+		} else {
+			expect_false(ret, "Should not alloc stashed");
+			expect_true(cache_bin_nstashed_get_local(&bin, &info) ==
+			    ncached_max / 2, "Wrong nstashed value");
+		}
+	}
+
+	test_bin_init(&bin, &info);
+	do_flush_stashed_test(&bin, &info, ptrs, ncached_max, 0);
+	do_flush_stashed_test(&bin, &info, ptrs, 0, ncached_max);
+	do_flush_stashed_test(&bin, &info, ptrs, ncached_max / 2, ncached_max / 2);
+	do_flush_stashed_test(&bin, &info, ptrs, ncached_max / 4, ncached_max / 2);
+	do_flush_stashed_test(&bin, &info, ptrs, ncached_max / 2, ncached_max / 4);
+	do_flush_stashed_test(&bin, &info, ptrs, ncached_max / 4, ncached_max / 4);
+}
+TEST_END
+
 int
 main(void) {
-	return test(test_cache_bin);
+	return test(test_cache_bin,
+		test_cache_bin_stash);
 }
