@@ -18,33 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Gauge.h"
+#include <absl/container/node_hash_map.h>
 
-namespace arangodb::metrics {
+namespace arangodb::containers {
 
-template<typename Derived, typename T>
-class GaugeBuilder : public GenericBuilder<Derived> {
- public:
-  using MetricT = Gauge<T>;
+template<class K, class V,
+         class Hash = iresearch_absl::container_internal::hash_default_hash<K>,
+         class Eq = iresearch_absl::container_internal::hash_default_eq<K>,
+         class Allocator = std::allocator<std::pair<const K, V>>>
+using NodeHashMap = iresearch_absl::node_hash_map<K, V, Hash, Eq, Allocator>;
 
-  [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
-  [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
-                                     this->_labels);
-  }
-};
-
-}  // namespace arangodb::metrics
-
-#define DECLARE_GAUGE(x, type, help)                    \
-  struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() {                                               \
-      _name = #x;                                       \
-      _help = help;                                     \
-    }                                                   \
-  }
+}  // namespace arangodb::containers

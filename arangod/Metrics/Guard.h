@@ -18,33 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Gauge.h"
+#include <mutex>
 
 namespace arangodb::metrics {
 
-template<typename Derived, typename T>
-class GaugeBuilder : public GenericBuilder<Derived> {
+template<typename T>
+class Guard {
  public:
-  using MetricT = Gauge<T>;
+  using Data = T;
 
-  [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
-  [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
-                                     this->_labels);
+  T load() const {
+    std::unique_lock lock{_m};
+    return _data;
   }
+
+  void store(T&& data) {
+    std::unique_lock lock{_m};
+    _data = std::move(data);
+  }
+  void store(T const& data) {
+    std::unique_lock lock{_m};
+    _data = data;
+  }
+
+ private:
+  mutable std::mutex _m;
+  T _data;
 };
 
 }  // namespace arangodb::metrics
-
-#define DECLARE_GAUGE(x, type, help)                    \
-  struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() {                                               \
-      _name = #x;                                       \
-      _help = help;                                     \
-    }                                                   \
-  }
