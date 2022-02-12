@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Shorten the license grace period to the documented 3 hours.
+
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
 * Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
