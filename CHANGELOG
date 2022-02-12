@@ -3,6 +3,13 @@ v3.9.1 (XXXX-XX-XX)
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example: 
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.
+
 * Replaced internal JS dependency ansi-html with ansi-html-community.
 
 * In an attempt to make the performance of the RocksDB throttle much more
