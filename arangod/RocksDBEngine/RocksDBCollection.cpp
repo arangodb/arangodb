@@ -1224,7 +1224,7 @@ Result RocksDBCollection::performUpdateOrReplace(
     }
   }
 
-  if (newSlice.length() <= 1) {  // TODO move above ?!
+  if (newSlice.length() <= 1 && isUpdate) {  // TODO move above ?!
     // shortcut. no need to do anything
     resultMdr.setManaged(oldDoc.begin());
     TRI_ASSERT(!resultMdr.empty());

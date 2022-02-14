@@ -128,17 +128,18 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpsertUpdateEmpty: function () {
-      let actual = {};
-      for (let i = 0; i < 1000; ++i) {
-        actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn3} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+      for (let i = 0; i < 5; ++i) {
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn3} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const res = actual.json[0];
+        if (i > 0) {
+          assertEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+        }
+        assertEqual(1001, c3.count());
+        assertEqual(4, Object.keys(res.new).length);
+        assertEqual(res.new.name, "test1500");
       }
-      const res = actual.json[0];
-      assertEqual(1001, c3.count());
-      assertEqual(res.old._rev, res.new._rev);
-      assertEqual(4, Object.keys(res.old).length);
-      assertEqual(4, Object.keys(res.new).length);
-      assertEqual(res.old.name, "test1500");
-      assertEqual(res.new.name, "test1500");
     },
 
   };

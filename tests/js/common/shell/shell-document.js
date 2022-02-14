@@ -718,6 +718,8 @@ function CollectionDocumentSuite () {
         fail();
       }
       catch (err0) {
+        print("catch");
+        print("error code ", err0);
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err0.errorNum);
       }
 
@@ -734,6 +736,8 @@ function CollectionDocumentSuite () {
         fail();
       }
       catch (err1) {
+        print("catch 2");
+        print("error code ", err1);
         assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err1.errorNum);
       }
 

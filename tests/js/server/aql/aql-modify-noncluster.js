@@ -575,17 +575,18 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpsertUpdateEmpty2: function () {
-      let actual = {};
-      for (let i = 0; i < 1000; ++i) {
-        actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn3} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+      for (let i = 0; i < 5; ++i) {
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn3} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const res = actual.json[0];
+        if (i > 0) {
+          assertEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+        }
+        assertEqual(1001, c3.count());
+        assertEqual(4, Object.keys(res.new).length);
+        assertEqual(res.new.name, "test1500");
       }
-      const res = actual.json[0];
-      assertEqual(1001, c3.count());
-      assertEqual(res.old._rev, res.new._rev);
-      assertEqual(4, Object.keys(res.old).length);
-      assertEqual(4, Object.keys(res.new).length);
-      assertEqual(res.old.name, "test1500");
-      assertEqual(res.new.name, "test1500");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2218,8 +2219,10 @@ function ahuacatlUpdateSuite () {
   var errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlUpdate1";
   const cn2 = "UnitTestsAhuacatlUpdate2";
+  const cn3 = "UnitTestsAhuacatlUpdate3";
   let c1;
   let c2;
+  let c3;
 
   return {
 
@@ -2231,8 +2234,10 @@ function ahuacatlUpdateSuite () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
+      c3 = db._create(cn3);
 
 
       for (i = 0; i < 100; ++i) {
@@ -2241,6 +2246,11 @@ function ahuacatlUpdateSuite () {
       for (i = 0; i < 50; ++i) {
         c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
+      }
+      c3.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2250,8 +2260,10 @@ function ahuacatlUpdateSuite () {
     tearDown : function () {
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
       c1 = null;
       c2 = null;
+      c3 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2356,6 +2368,30 @@ function ahuacatlUpdateSuite () {
         assertEqual(i, doc.value1);
         assertEqual("test" + i, doc.value2);
       }
+    },
+
+ ///////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateEmpty2: function () {
+        const actual = AQL_EXECUTE(`FOR doc IN ${cn3} UPDATE {} IN ${cn3} RETURN {old: OLD, new: NEW}`);
+        const res = actual.json[0];
+        print("OI");
+        print(actual);
+        print(res);
+        /*
+        if (i > 0) {
+          assertEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+        }
+        assertEqual(1001, c3.count());
+        assertEqual(res.old._rev, res.new._rev);
+        assertEqual(4, Object.keys(res.new).length);
+        assertEqual(res.new.name, "test1500");
+
+         */
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3470,10 +3506,10 @@ false
         assertEqual("test" + i, doc.old._key);
         assertEqual("test" + i, doc["new"]._key);
         assertEqual(i, doc.old.value1);
-        assertTrue(doc["new"].hasOwnProperty("value1"));
+        assertFalse(doc["new"].hasOwnProperty("value1"));
         assertEqual("test" + i, doc.old.value2);
-        assertTrue(doc["new"].hasOwnProperty("value2"));
-        assertEqual(doc.old._rev, doc["new"]._rev);
+        assertFalse(doc["new"].hasOwnProperty("value2"));
+        assertNotEqual(doc.old._rev, doc["new"]._rev);
       }
     },
 
