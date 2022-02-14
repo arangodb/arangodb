@@ -1,5 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -26,13 +24,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/application-exit.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FailureOracle.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Logger/LogMacros.h"
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <shared_mutex>
@@ -53,8 +54,7 @@ class FailureOracleImpl final
     : public IFailureOracle,
       public std::enable_shared_from_this<FailureOracleImpl> {
  public:
-  FailureOracleImpl() = default;
-  ~FailureOracleImpl() override = default;
+  explicit FailureOracleImpl(ClusterFeature&);
 
   auto isServerFailed(std::string_view const serverId) const noexcept
       -> bool override {
@@ -66,15 +66,12 @@ class FailureOracleImpl final
     return true;
   }
 
-  void setAgencyCallback(std::shared_ptr<AgencyCallback> callback) {
-    TRI_ASSERT(_agencyCallback == nullptr);
-    _agencyCallback = std::move(callback);
-  }
-
-  void start(AgencyCallbackRegistry* agencyCallbackRegistry);
-  void stop(AgencyCallbackRegistry* agencyCallbackRegistry);
-  auto getIsFailed() -> FailureMap;
-  void reset(FailureMap newMap);
+  void start();
+  void stop();
+  auto getStatus() -> FailureMap;
+  void reload(VPackSlice const& result);
+  void flush();
+  void scheduleFlush() noexcept;
 
   template<typename Server>
   void createAgencyCallback(Server& server);
@@ -83,27 +80,50 @@ class FailureOracleImpl final
   mutable std::shared_mutex _mutex;
   FailureMap _isFailed;
   std::shared_ptr<AgencyCallback> _agencyCallback;
+  Scheduler::WorkHandle _flushJob;
+  ClusterFeature& _clusterFeature;
+  std::atomic_bool _is_running;
 };
 
-void FailureOracleImpl::start(AgencyCallbackRegistry* agencyCallbackRegistry) {
+FailureOracleImpl::FailureOracleImpl(ClusterFeature& _clusterFeature)
+    : _clusterFeature{_clusterFeature} {};
+
+void FailureOracleImpl::start() {
+  _is_running.store(true);
+
+  auto agencyCallbackRegistry = _clusterFeature.agencyCallbackRegistry();
+  if (!agencyCallbackRegistry) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Expected non-null AgencyCallbackRegistry "
+                                   "while starting FailureOracle.");
+  }
   Result res = agencyCallbackRegistry->registerCallback(_agencyCallback, true);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  scheduleFlush();
 }
 
-void FailureOracleImpl::stop(AgencyCallbackRegistry* agencyCallbackRegistry) {
+void FailureOracleImpl::stop() {
+  _is_running.store(false);
+
   try {
-    agencyCallbackRegistry->unregisterCallback(_agencyCallback);
+    auto agencyCallbackRegistry = _clusterFeature.agencyCallbackRegistry();
+    if (agencyCallbackRegistry) {
+      agencyCallbackRegistry->unregisterCallback(_agencyCallback);
+    }
   } catch (std::exception const& ex) {
     LOG_TOPIC("42bf2", WARN, Logger::REPLICATION2)
         << "Caught unexpected exception while unregistering agency callback "
            "for FailureOracleImpl: "
         << ex.what();
   }
+
+  _flushJob->cancel();
 }
 
-auto FailureOracleImpl::getIsFailed() -> FailureMap {
+auto FailureOracleImpl::getStatus() -> FailureMap {
   FailureMap status;
   std::shared_lock readLock(_mutex);
   for (auto const& [pid, value] : _isFailed) {
@@ -112,14 +132,63 @@ auto FailureOracleImpl::getIsFailed() -> FailureMap {
   return status;
 }
 
-void FailureOracleImpl::reset(FailureMap newMap) {
+void FailureOracleImpl::reload(const VPackSlice& result) {
+  FailureMap isFailed;
+  for (auto [key, value] : VPackObjectIterator(result)) {
+    auto serverId = key.copyString();
+    auto isServerGood =
+        value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
+    isFailed[serverId] = !isServerGood;
+    LOG_DEVEL << "Setting " << serverId << " to " << isFailed[serverId];
+  }
   std::unique_lock writeLock(_mutex);
-  _isFailed = std::move(newMap);
+  _isFailed = std::move(isFailed);
+}
+
+void FailureOracleImpl::flush() {
+  if (!_is_running.load()) {
+    return;
+  }
+  std::shared_ptr<VPackBuilder> builder;
+  AgencyCache& agencyCache = _clusterFeature.agencyCache();
+  std::tie(builder, std::ignore) = agencyCache.get(kSupervisionHealthPath);
+  if (auto result = builder->slice(); !result.isNone()) {
+    TRI_ASSERT(result.isObject())
+        << " expected object in agency at " << kSupervisionHealthPath
+        << " but got " << result.toString();
+    reload(result);
+  }
+}
+
+void FailureOracleImpl::scheduleFlush() noexcept {
+  using namespace std::chrono_literals;
+
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  if (!scheduler) {
+    return;
+  }
+
+  _flushJob = scheduler->queueDelayed(
+      RequestLane::AGENCY_CLUSTER, 50s,
+      [weak = weak_from_this()](bool canceled) {
+        auto self = weak.lock();
+        if (self && !canceled && self->_is_running.load()) {
+          try {
+            self->flush();
+          } catch (std::exception& ex) {
+            LOG_TOPIC("42bf3", WARN, Logger::REPLICATION2)
+                << "Exception while flushing the failure oracle " << ex.what();
+            FATAL_ERROR_EXIT();
+          }
+          self->scheduleFlush();
+        }
+      });
 }
 
 template<typename Server>
 void FailureOracleImpl::createAgencyCallback(Server& server) {
-  setAgencyCallback(std::make_shared<AgencyCallback>(
+  TRI_ASSERT(_agencyCallback == nullptr);
+  _agencyCallback = std::make_shared<AgencyCallback>(
       server, kSupervisionHealthPath,
       [weak = weak_from_this()](VPackSlice const& result) {
         LOG_DEVEL << "FailureOracleFeature agencyCallback called";
@@ -128,19 +197,11 @@ void FailureOracleImpl::createAgencyCallback(Server& server) {
           TRI_ASSERT(result.isObject())
               << " expected object in agency at " << kSupervisionHealthPath
               << " but got " << result.toString();
-          std::unique_lock writeLock(self->_mutex);
-          for (auto [key, value] : VPackObjectIterator(result)) {
-            auto serverId = key.copyString();
-            auto isServerGood =
-                value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
-            self->_isFailed[serverId] = !isServerGood;
-            LOG_DEVEL << "Setting " << serverId << " to "
-                      << self->_isFailed[serverId];
-          }
+          self->reload(result);
         }
         return true;
       },
-      true, true));
+      true, true);
 }
 
 FailureOracleFeature::FailureOracleFeature(Server& server)
@@ -160,91 +221,34 @@ void FailureOracleFeature::prepare() {
 
 void FailureOracleFeature::start() {
   LOG_DEVEL << "FailureOracleFeature started";
-  auto agencyCallbackRegistry =
-      server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
-  if (agencyCallbackRegistry == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Expected non-null AgencyCallbackRegistry "
-                                   "when starting FailureOracleFeature.");
-  }
 
-  initHealthCache();
-  _cache->start(agencyCallbackRegistry);
+  TRI_ASSERT(_cache == nullptr);
+  _cache = std::make_shared<FailureOracleImpl>(
+      server().getEnabledFeature<ClusterFeature>());
+  _cache->createAgencyCallback(server());
+  _cache->start();
 
-  scheduleFlush();
   LOG_TOPIC("42af3", DEBUG, Logger::REPLICATION2)
       << "FailureOracleFeature is ready";
 }
 
 void FailureOracleFeature::stop() {
   LOG_DEVEL << "FailureOracleFeature stopped";
-  try {
-    auto agencyCallbackRegistry =
-        server().getEnabledFeature<ClusterFeature>().agencyCallbackRegistry();
-    _cache->stop(agencyCallbackRegistry);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("42af2", WARN, Logger::REPLICATION2)
-        << "caught unexpected exception while unregistering agency callback in "
-           "FailureOracleFeature: "
-        << ex.what();
-  }
-  if (_flushJob) {
-    _flushJob->cancel();
-  }
+  _cache->stop();
 }
 
 auto FailureOracleFeature::status() -> std::unordered_map<std::string, bool> {
-  return _cache->getIsFailed();
+  return _cache->getStatus();
 }
 
 void FailureOracleFeature::flush() {
   LOG_DEVEL << "FailureOracleFeature flushed";
-  AgencyCache& agencyCache =
-      server().getEnabledFeature<ClusterFeature>().agencyCache();
-  std::shared_ptr<VPackBuilder> builder;
-  std::tie(builder, std::ignore) = agencyCache.get(kSupervisionHealthPath);
-  if (auto result = builder->slice(); !result.isNone()) {
-    TRI_ASSERT(result.isObject())
-        << " expected object in agency at " << kSupervisionHealthPath
-        << " but got " << result.toString();
-    FailureMap newMap;
-    for (auto const& [key, value] : VPackObjectIterator(result)) {
-      auto serverId = key.copyString();
-      auto isServerGood =
-          value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
-      newMap[serverId] = !isServerGood;
-    }
-    _cache->reset(std::move(newMap));
-  }
+  _cache->flush();
 }
 
 auto FailureOracleFeature::getFailureOracle()
     -> std::shared_ptr<IFailureOracle> {
   return std::static_pointer_cast<IFailureOracle>(_cache);
-}
-
-void FailureOracleFeature::initHealthCache() {
-  TRI_ASSERT(_cache == nullptr);
-
-  _cache = std::make_shared<FailureOracleImpl>();
-  _cache->createAgencyCallback(server());
-}
-
-void FailureOracleFeature::scheduleFlush() {
-  using namespace std::chrono_literals;
-
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  if (!scheduler) {
-    return;
-  }
-
-  _flushJob = scheduler->queueDelayed(RequestLane::AGENCY_CLUSTER, 50s,
-                                      [this](bool canceled) {
-                                        if (!canceled) {
-                                          this->flush();
-                                          this->scheduleFlush();
-                                        }
-                                      });
 }
 
 }  // namespace arangodb::cluster

@@ -25,7 +25,6 @@
 #pragma once
 
 #include "RestServer/arangod.h"
-#include "Scheduler/Scheduler.h"
 
 #include <memory>
 #include <unordered_map>
@@ -36,9 +35,7 @@ class FailureOracleImpl;
 
 class FailureOracleFeature final : public ArangodFeature {
  public:
-  static constexpr std::string_view name() noexcept {
-    return "FailureOracleImpl";
-  }
+  static constexpr std::string_view name() noexcept { return "FailureOracle"; }
 
   explicit FailureOracleFeature(Server& server);
 
@@ -52,10 +49,6 @@ class FailureOracleFeature final : public ArangodFeature {
   auto getFailureOracle() -> std::shared_ptr<IFailureOracle>;
 
  private:
-  void initHealthCache();
-  void scheduleFlush();
-
   std::shared_ptr<FailureOracleImpl> _cache;
-  Scheduler::WorkHandle _flushJob;
 };
 }  // namespace arangodb::cluster
