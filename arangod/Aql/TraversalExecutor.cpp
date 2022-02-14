@@ -61,14 +61,6 @@ std::unique_ptr<Derived, Del> static_unique_ptr_cast(
 }
 }  // namespace
 
-namespace {
-auto toHashedStringRef(std::string const& id)
-    -> arangodb::velocypack::HashedStringRef {
-  return arangodb::velocypack::HashedStringRef(
-      id.data(), static_cast<uint32_t>(id.length()));
-}
-}  // namespace
-
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::unique_ptr<traverser::Traverser>&& traverser,
     std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
