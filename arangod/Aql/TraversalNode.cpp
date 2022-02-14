@@ -907,8 +907,89 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       /*
        * Default Cluster Traverser
        */
-      traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
-          opts, engines(), engine.getQuery().vocbase().name());
+      if (opts->refactor()) {
+        LOG_DEVEL << "Using refactored cluster engine.";
+
+        std::pair<std::vector<IndexAccessor>,
+                  std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+            usedIndexes{};
+        usedIndexes.first = buildUsedIndexes();
+        usedIndexes.second = buildUsedDepthBasedIndexes();
+
+        std::vector<Variable const*> vars{};
+        std::vector<RegisterId> regs{};
+
+        for (auto [var, reg] : filterConditionVariables) {
+          vars.emplace_back(var);
+          regs.emplace_back(reg);
+        }
+
+        //      arangodb::graph::SingleServerBaseProviderOptions
+        //      baseProviderOptions{
+        //          opts->tmpVar(), std::move(usedIndexes),
+        //          opts->getExpressionCtx(), filterConditionVariables,
+        //          opts->collectionToShard()};
+
+        arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
+                                                           opts->maxDepth};
+        PathValidatorOptions validatorOptions{opts->_tmpVar,
+                                              opts->getExpressionCtx()};
+
+        // Prune Section
+        if (pruneExpression() != nullptr) {
+          std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
+          checkPruneAvailability(true, pruneEvaluator);
+          validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
+        }
+
+        if (postFilterExpression() != nullptr) {
+          std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
+          checkPostFilterAvailability(true, postFilterEvaluator);
+          validatorOptions.setPostFilterEvaluator(
+              std::move(postFilterEvaluator));
+        }
+
+        // Vertex Expressions Section
+        // I. Set the list of allowed collections
+        validatorOptions.addAllowedVertexCollections(opts->vertexCollections);
+
+        // II. Global prune expression
+        if (opts->_baseVertexExpression != nullptr) {
+          auto baseVertexExpression =
+              opts->_baseVertexExpression->clone(_plan->getAst());
+          validatorOptions.setAllVerticesExpression(
+              std::move(baseVertexExpression));
+        }
+
+        // III. Depth-based prune expressions
+        for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
+          auto depth = vertexExpressionPerDepth.first;
+          auto expression =
+              vertexExpressionPerDepth.second->clone(_plan->getAst());
+          validatorOptions.setVertexExpression(depth, std::move(expression));
+        }
+
+        auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
+                                                      // SingleServer,
+                                                      // Cluster...
+            nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
+            std::move(filterConditionVariables), plan()->getAst(),
+            opts->uniqueVertices, opts->uniqueEdges, opts->mode,
+            opts->refactor(), opts->defaultWeight, opts->weightAttribute,
+            opts->trx(), opts->query(), std::move(validatorOptions),
+            //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+            //                                 opts->maxDepth});
+            std::move(options), opts, std::move(usedIndexes), engines());
+
+        return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+
+      } else {
+        LOG_DEVEL << "Using non-refactored cluster engine.";
+
+        traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
+            opts, engines(), engine.getQuery().vocbase().name());
+      }
 #ifdef USE_ENTERPRISE
     }
 #endif
