@@ -840,6 +840,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       std::string sourceString;
       TRI_ASSERT(_inputRow.isInitialized());
 
+      _traversalEnumerator.unprepareValidatorContext();
       _traversalEnumerator.setValidatorContext(_inputRow);
 
       if (_infos.usesFixedSource()) {
