@@ -8,6 +8,13 @@ devel
   pruning is possible with arbitrary variables that are accessible by the
   FOR loop.
 
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
+* Enabled new internal graph refactored code for depth-first, breadth-first and
+  weighted traversals by default.
+
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
 * Improved performance of inner joins with dynamic lookup conditions being
   injected from an outer loop, for indexes of type "persistent", "hash" and
   "skiplist". Performance improvements can be expected if the inner join is

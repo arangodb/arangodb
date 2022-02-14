@@ -27,13 +27,15 @@
 #include "Containers/HashSet.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
+#include "Graph/EdgeDocumentToken.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace aql {
 class PruneExpressionEvaluator;
-}
+class InputAqlItemRow;
+}  // namespace aql
 namespace graph {
 
 class ValidationResult;
@@ -51,43 +53,65 @@ class ValidationResult;
  *     (e.g. p.vertices[*].name ALL == "HANS")
  */
 template<class Provider, class PathStore,
-         VertexUniquenessLevel vertexUniqueness>
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
+  using Step = typename Provider::Step;
 
  public:
-  PathValidator(Provider& provider, PathStore const& store,
+  using ProviderImpl = Provider;
+  using PathStoreImpl = PathStore;
+
+  PathValidator(Provider& provider, PathStore& store,
                 PathValidatorOptions opts);
   ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
-                    PathValidator<Provider, PathStore, vertexUniqueness> const&
-                        otherValidator) -> ValidationResult;
-
-  void setPruneEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
-
-  void setPostFilterEvaluator(
-      std::unique_ptr<aql::PruneExpressionEvaluator> eval);
+                    PathValidator<Provider, PathStore, vertexUniqueness,
+                                  edgeUniqueness> const& otherValidator)
+      -> ValidationResult;
 
   void reset();
 
+  // Prune section
+  bool usesPrune() const;
+  void setPruneContext(aql::InputAqlItemRow& inputRow);
+
+  // Post filter section
+  bool usesPostFilter() const;
+  void setPostFilterContext(aql::InputAqlItemRow& inputRow);
+
+  /**
+   * @brief In case prune or postFilter has been enabled, we need to unprepare
+   * the context of the inputRow. See explanation in TraversalExecutor.cpp L200
+   */
+  void unpreparePruneContext();
+  void unpreparePostFilterContext();
+
  private:
-  PathStore const& _store;
+  // TODO [GraphRefactor]: const of _store has been removed as it is now
+  // necessary to build a PathResult in place. Please double check if we find a
+  // better and more elegant solution.
+  PathStore& _store;
   Provider& _provider;
 
   // Only for applied vertex uniqueness
-  // TODO: Figure out if we can make this Member template dependend
+  // TODO: Figure out if we can make this Member template dependent
   //       e.g. std::enable_if<vertexUniqueness != NONE>
+  // VertexUniqueness == GLOBAL || PATH => EdgeUniqueness = PATH
+  // VertexUniqueness == NONE => EdgeUniqueness == ANY (from user or PATH)
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                   std::equal_to<VertexRef>>
       _uniqueVertices;
+  ::arangodb::containers::HashSet<
+      typename PathStore::Step::EdgeType,
+      std::hash<typename PathStore::Step::EdgeType>,
+      std::equal_to<typename PathStore::Step::EdgeType>>
+      _uniqueEdges;
 
   PathValidatorOptions _options;
-
-  std::unique_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
-
-  std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
