@@ -18,6 +18,32 @@ devel
   - Use a faster algorithm for pure `GEO_CONTAINS` and `GEO_INTERSECTS`
     queries.
 
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example: 
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.  
+
+* The multi-dimensional index type `zkd` now supports an optional index hint for
+  tweaking performance by prefetching documents:
+	
+	```
+	FOR app IN appointments OPTIONS { lookahead: 32 }
+    FILTER @to <= app.to
+    FILTER app.from <= @from
+    RETURN app
+	```
+	
+	Specifiying a lookahead value greater than zero makes the index fetch more documents
+	that are no longer in the search box, before seeking to the next lookup position.
+	Because the seek operation is computationally expensive, probing more documents
+	before seeking may reduce the number of seeks, if matching documents are found.
+	Please keep in mind that it might also affect performance negatively if documents
+	are fetched unnecessarily.
+
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
 * Enabled new internal graph refactored code for depth-first, breadth-first and
   weighted traversals by default.
 

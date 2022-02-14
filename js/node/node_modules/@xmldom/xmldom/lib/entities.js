@@ -1,4 +1,28 @@
-exports.entityMap = {
+var freeze = require('./conventions').freeze;
+
+/**
+ * The entities that are predefined in every XML document.
+ *
+ * @see https://www.w3.org/TR/2006/REC-xml11-20060816/#sec-predefined-ent W3C XML 1.1
+ * @see https://www.w3.org/TR/2008/REC-xml-20081126/#sec-predefined-ent W3C XML 1.0
+ * @see https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references#Predefined_entities_in_XML Wikipedia
+ */
+exports.XML_ENTITIES = freeze({amp:'&', apos:"'", gt:'>', lt:'<', quot:'"'})
+
+/**
+ * A map of currently 241 entities that are detected in an HTML document.
+ * They contain all entries from `XML_ENTITIES`.
+ *
+ * @see XML_ENTITIES
+ * @see DOMParser.parseFromString
+ * @see DOMImplementation.prototype.createHTMLDocument
+ * @see https://html.spec.whatwg.org/#named-character-references WHATWG HTML(5) Spec
+ * @see https://www.w3.org/TR/xml-entity-names/ W3C XML Entity Names
+ * @see https://www.w3.org/TR/html4/sgml/entities.html W3C HTML4/SGML
+ * @see https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references#Character_entity_references_in_HTML Wikipedia (HTML)
+ * @see https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references#Entities_representing_special_characters_in_XHTML Wikpedia (XHTML)
+ */
+exports.HTML_ENTITIES = freeze({
        lt: '<',
        gt: '>',
        amp: '&',
@@ -240,4 +264,10 @@ exports.entityMap = {
        clubs: "♣",
        hearts: "♥",
        diams: "♦"
-};
+});
+
+/**
+ * @deprecated use `HTML_ENTITIES` instead
+ * @see HTML_ENTITIES
+ */
+exports.entityMap = exports.HTML_ENTITIES
