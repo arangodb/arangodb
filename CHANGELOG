@@ -1,6 +1,13 @@
 devel
 -----
 
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example: 
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.  
+
 * The multi-dimensional index type `zkd` now supports an optional index hint for
   tweaking performance by prefetching documents:
 	
