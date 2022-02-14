@@ -40,7 +40,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-#define useOptimize 1
+#define useOptimize 0
 
 namespace {
 
@@ -650,32 +650,230 @@ TEST_F(DistributeQueryRuleTest, distributed_collect) {
                              });
 }
 
-TEST_F(DistributeQueryRuleTest, distributed_collect_then_sort) {
-  // We first have a collect
-  // Then sort on partial output of collect, to make sure the
-  // collect could not deliver the ordering in the first place
-  // and we require the sort node to exist
+TEST_F(DistributeQueryRuleTest, distributed_distinct_collect) {
   auto queryString = R"aql(
+    LET sub = (
     FOR x IN collection
-      COLLECT val = x.value, val2 = x.value2
-      SORT val2
-      RETURN val)aql";
+      RETURN DISTINCT x.value
+    )
+    RETURN sub)aql";
   auto plan = optimizeQuery(queryString);
 
   assertNodesMatch(
-      *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-              "CalculationNode", "CollectNode", "RemoteNode", "GatherNode",
-              "CollectNode", "SortNode", "ReturnNode"});
+      *plan, {"SingletonNode", "SubqueryStartNode", "ScatterNode", "RemoteNode",
+              "EnumerateCollectionNode", "CalculationNode", "CollectNode",
+              "RemoteNode", "GatherNode", "CollectNode", "SubqueryEndNode",
+              "ReturnNode"});
+  bool hasSeenCoordinator = false;
+  VarSet coordinatorIn;
+  std::vector<Variable const*> coordinatorOut;
 
+  matchNodesOfType<CollectNode>(
+      plan.get(), ExecutionNode::NodeType::COLLECT,
+      [&](CollectNode const* collect) {
+        if (!hasSeenCoordinator) {
+          // We visit bottom to top, so first we see
+          // the coordinator one.
+          hasSeenCoordinator = true;
+          collect->getVariablesUsedHere(coordinatorIn);
+          coordinatorOut = collect->getVariablesSetHere();
+          // We can only have One output variable for this query (val)
+          ASSERT_EQ(coordinatorOut.size(), 1);
+        } else {
+          for (auto const v : collect->getVariablesSetHere()) {
+            // The coordinator needs to collect on all DBServers out Variables
+            EXPECT_NE(coordinatorIn.find(v), coordinatorIn.end())
+                << "Did not collect on variable: " << v->name;
+          }
+        }
+        EXPECT_TRUE(collect->isDistinctCommand());
+        EXPECT_TRUE(collect->isSpecialized());
+        EXPECT_EQ(collect->aggregationMethod(),
+                  CollectOptions::CollectMethod::DISTINCT);
+      });
+  matchNodesOfType<GatherNode>(
+      plan.get(), ExecutionNode::NodeType::GATHER,
+      [](GatherNode const* gather) {
+        EXPECT_EQ(gather->sortMode(), GatherNode::SortMode::MinElement);
+        EXPECT_EQ(gather->parallelism(), GatherNode::Parallelism::Serial);
+        auto sortBy = gather->elements();
+        //  Gather is not sorting
+        ASSERT_EQ(sortBy.size(), 0);
+      });
+}
+
+TEST_F(DistributeQueryRuleTest, limit_before_collect) {
+  auto queryString = R"aql(
+    FOR x IN collection
+      LIMIT 10
+      COLLECT val = x.value
+      RETURN val)aql";
+  auto plan = optimizeQuery(queryString);
+
+  LOG_DEVEL << nodeNames(*plan);
+  assertNodesMatch(
+      *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+              "RemoteNode", "GatherNode", "LimitNode", "CollectNode",
+              "SortNode", "ReturnNode"});
+  VarSet coordinatorIn;
+  std::vector<Variable const*> coordinatorOut;
+
+  // TODO assert collectOptions
+  matchNodesOfType<CollectNode>(
+      plan.get(), ExecutionNode::NodeType::COLLECT,
+      [&](CollectNode const* collect) {
+        coordinatorOut = collect->getVariablesSetHere();
+        // We can only have One output variable for this query (val)
+        ASSERT_EQ(coordinatorOut.size(), 1);
+
+        EXPECT_FALSE(collect->isDistinctCommand());
+        EXPECT_TRUE(collect->isSpecialized());
+        EXPECT_EQ(collect->aggregationMethod(),
+                  CollectOptions::CollectMethod::HASH);
+      });
   matchNodesOfType<GatherNode>(
       plan.get(), ExecutionNode::NodeType::GATHER,
       [](GatherNode const* gather) {
         EXPECT_EQ(gather->sortMode(), GatherNode::SortMode::MinElement);
         EXPECT_EQ(gather->parallelism(), GatherNode::Parallelism::Parallel);
         auto sortBy = gather->elements();
-        // We do not sort, the sorting is applied after
-        // Coordinator sort
-        EXPECT_TRUE(sortBy.empty());
+        //  Gather is not sorting
+        ASSERT_EQ(sortBy.size(), 0);
+      });
+  matchNodesOfType<SortNode>(plan.get(), ExecutionNode::NodeType::SORT,
+                             [&coordinatorOut](SortNode const* sort) {
+                               auto sortBy = sort->elements();
+                               ASSERT_EQ(sortBy.size(), 1);
+                               auto sortElement = sortBy.at(0);
+                               EXPECT_EQ(sortElement.var, coordinatorOut.at(0));
+                               EXPECT_TRUE(sortElement.ascending);
+                               // No attribute path given
+                               EXPECT_TRUE(sortElement.attributePath.empty());
+                             });
+}
+
+TEST_F(DistributeQueryRuleTest, calculate_before_collect) {
+  auto queryString = R"aql(
+    FOR x IN collection
+      COLLECT value = x.value
+      LET val = value + 1
+      COLLECT t = val
+      RETURN t)aql";
+  auto plan = optimizeQuery(queryString);
+
+  LOG_DEVEL << nodeNames(*plan);
+  assertNodesMatch(
+      *plan,
+      {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+       "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode",
+       "CalculationNode", "CollectNode", "SortNode", "ReturnNode"});
+  size_t collectCounter = 0;
+  VarSet coordinatorIn;
+  std::vector<Variable const*> coordinatorOutUpper;
+  std::vector<Variable const*> coordinatorOutLower;
+
+  matchNodesOfType<CollectNode>(
+      plan.get(), ExecutionNode::NodeType::COLLECT,
+      [&](CollectNode const* collect) {
+        // We visit bottom to top,
+        switch (collectCounter) {
+          case 0:
+
+            coordinatorOutLower = collect->getVariablesSetHere();
+            // We can only have One output variable for this query (val)
+            ASSERT_EQ(coordinatorOutLower.size(), 1);
+            break;
+          case 1:
+            collect->getVariablesUsedHere(coordinatorIn);
+
+            coordinatorOutUpper = collect->getVariablesSetHere();
+            // We can only have One output variable for this query (val)
+            ASSERT_EQ(coordinatorOutUpper.size(), 1);
+            break;
+          case 2:
+            for (auto const v : collect->getVariablesSetHere()) {
+              // The coordinator needs to collect on all DBServers out Variables
+              EXPECT_NE(coordinatorIn.find(v), coordinatorIn.end())
+                  << "Did not collect on variable: " << v->name;
+            }
+            break;
+          default:
+            ASSERT_TRUE(false) << "We have visited more Collects than expected";
+            break;
+        }
+        collectCounter++;
+        // All Collects share the following options;
+
+        EXPECT_FALSE(collect->isDistinctCommand());
+        EXPECT_TRUE(collect->isSpecialized());
+        EXPECT_EQ(collect->aggregationMethod(),
+                  CollectOptions::CollectMethod::HASH);
+      });
+  ASSERT_EQ(collectCounter, 3) << "We have not seen enough collect nodes";
+  matchNodesOfType<GatherNode>(
+      plan.get(), ExecutionNode::NodeType::GATHER,
+      [](GatherNode const* gather) {
+        EXPECT_EQ(gather->sortMode(), GatherNode::SortMode::MinElement);
+        EXPECT_EQ(gather->parallelism(), GatherNode::Parallelism::Parallel);
+        auto sortBy = gather->elements();
+        //  Gather is not sorting
+        ASSERT_EQ(sortBy.size(), 0);
+      });
+  bool isUpperSort = false;
+  matchNodesOfType<SortNode>(
+      plan.get(), ExecutionNode::NodeType::SORT,
+      [&coordinatorOutUpper, &coordinatorOutLower,
+       &isUpperSort](SortNode const* sort) {
+        auto sortBy = sort->elements();
+        ASSERT_EQ(sortBy.size(), 1);
+        auto sortElement = sortBy.at(0);
+        if (!isUpperSort) {
+          isUpperSort = true;
+          EXPECT_EQ(sortElement.var, coordinatorOutLower.at(0));
+        } else {
+          EXPECT_EQ(sortElement.var, coordinatorOutUpper.at(0));
+        }
+        EXPECT_TRUE(sortElement.ascending);
+        // No attribute path given
+        EXPECT_TRUE(sortElement.attributePath.empty());
+      });
+}
+
+TEST_F(DistributeQueryRuleTest, collect_in_second_snippet) {
+  // We first have a collect
+  // Then sort on partial output of collect, to make sure the
+  // collect could not deliver the ordering in the first place
+  // and we require the sort node to exist
+  auto queryString = R"aql(
+    FOR y in collection
+    FOR x IN collection
+      COLLECT val = x.value + y.value
+      RETURN val)aql";
+  auto plan = optimizeQuery(queryString);
+
+  assertNodesMatch(
+      *plan,
+      {"SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode",
+       "ScatterNode", "RemoteNode", "EnumerateCollectionNode",
+       "CalculationNode", "CollectNode", "RemoteNode", "GatherNode",
+       "CollectNode", "SortNode", "ReturnNode"});
+
+  bool visitedGather = false;
+  matchNodesOfType<GatherNode>(
+      plan.get(), ExecutionNode::NodeType::GATHER,
+      [&visitedGather](GatherNode const* gather) {
+        if (!visitedGather) {
+          // We only need the first GATHER,
+          // the other is for the first collection, which we
+          // do not care for in this test.
+          visitedGather = true;
+          EXPECT_EQ(gather->sortMode(), GatherNode::SortMode::MinElement);
+          EXPECT_EQ(gather->parallelism(), GatherNode::Parallelism::Undefined);
+          auto sortBy = gather->elements();
+          // We do not sort, the sorting is applied after
+          // Coordinator sort
+          EXPECT_TRUE(sortBy.empty());
+        }
       });
   bool hasSeenCoordinator = false;
   VarSet coordinatorIn;
@@ -690,7 +888,7 @@ TEST_F(DistributeQueryRuleTest, distributed_collect_then_sort) {
           collect->getVariablesUsedHere(coordinatorIn);
           coordinatorOut = collect->getVariablesSetHere();
           // We can only have One output variable for this query (val)
-          ASSERT_EQ(coordinatorOut.size(), 2);
+          ASSERT_EQ(coordinatorOut.size(), 1);
         } else {
           for (auto const v : collect->getVariablesSetHere()) {
             // The coordinator needs to collect on all DBServers out Variables
@@ -709,7 +907,7 @@ TEST_F(DistributeQueryRuleTest, distributed_collect_then_sort) {
                                auto sortBy = sort->elements();
                                ASSERT_EQ(sortBy.size(), 1);
                                auto sortElement = sortBy.at(0);
-                               EXPECT_EQ(sortElement.var, coordinatorOut.at(1));
+                               EXPECT_EQ(sortElement.var, coordinatorOut.at(0));
                                EXPECT_TRUE(sortElement.ascending);
                                // No attribute path given
                                EXPECT_TRUE(sortElement.attributePath.empty());
