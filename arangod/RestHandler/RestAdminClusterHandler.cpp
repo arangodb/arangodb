@@ -43,7 +43,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/ParticipantsCacheFeature.h"
+#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -2137,11 +2137,11 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
 }
 
 RestStatus RestAdminClusterHandler::handleFailureOracle() {
-  if (!server().hasFeature<cluster::ParticipantsCacheFeature>() ||
-      !server().isEnabled<cluster::ParticipantsCacheFeature>()) {
+  if (!server().hasFeature<cluster::FailureOracleFeature>() ||
+      !server().isEnabled<cluster::FailureOracleFeature>()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                   TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                  "ParticipantsCacheFeature is unavailable");
+                  "FailureOracleFeature is unavailable");
     return RestStatus::DONE;
   }
 
@@ -2173,7 +2173,7 @@ RestStatus RestAdminClusterHandler::handleParticipantsCacheStatus() {
   VPackBuilder response;
   {
     auto& participantsCache =
-        server().getFeature<cluster::ParticipantsCacheFeature>();
+        server().getFeature<cluster::FailureOracleFeature>();
     {
       VPackObjectBuilder ob(&response);
       auto status = participantsCache.status();
@@ -2194,7 +2194,7 @@ RestStatus RestAdminClusterHandler::handleParticipantsCacheFlush() {
   }
 
   auto& participantsCache =
-      server().getFeature<cluster::ParticipantsCacheFeature>();
+      server().getFeature<cluster::FailureOracleFeature>();
 
   if (auto global{_request->parsedValue("global", true)};
       ServerState::instance()->isCoordinator() && global) {

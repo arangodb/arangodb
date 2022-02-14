@@ -32,15 +32,15 @@
 
 namespace arangodb::cluster {
 struct IFailureOracle;
-class ParticipantsCache;
+class FailureOracleImpl;
 
-class ParticipantsCacheFeature final : public ArangodFeature {
+class FailureOracleFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept {
-    return "ParticipantsCache";
+    return "FailureOracleImpl";
   }
 
-  explicit ParticipantsCacheFeature(Server& server);
+  explicit FailureOracleFeature(Server& server);
 
   void prepare() override;
   void start() override;
@@ -55,7 +55,7 @@ class ParticipantsCacheFeature final : public ArangodFeature {
   void initHealthCache();
   void scheduleFlush();
 
-  std::shared_ptr<ParticipantsCache> _cache;
+  std::shared_ptr<FailureOracleImpl> _cache;
   Scheduler::WorkHandle _flushJob;
 };
 }  // namespace arangodb::cluster

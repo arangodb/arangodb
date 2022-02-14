@@ -49,7 +49,7 @@ namespace metrics {
 class MetricsFeature;
 }
 namespace cluster {
-class ParticipantsCacheFeature;
+class FailureOracleFeature;
 }
 class AqlFeature;
 class AgencyFeature;
@@ -197,7 +197,7 @@ using ArangodFeatures = TypeList<
     arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    cluster::ParticipantsCacheFeature>;
+    cluster::FailureOracleFeature>;
 
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
