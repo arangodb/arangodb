@@ -22,25 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Metrics/Batch.h"
-#include "Metrics/Builder.h"
+#include <absl/container/node_hash_set.h>
 
-namespace arangodb::metrics {
+namespace arangodb::containers {
 
-template<typename T>
-class BatchBuilder : public GenericBuilder<BatchBuilder<T>> {
- public:
-  using MetricT = Batch<T>;
+template<class T,
+         class Hash = iresearch_absl::container_internal::hash_default_hash<T>,
+         class Eq = iresearch_absl::container_internal::hash_default_eq<T>,
+         class Allocator = std::allocator<T>>
+using NodeHashSet = iresearch_absl::node_hash_set<T, Hash, Eq, Allocator>;
 
-  [[nodiscard]] std::string_view type() const noexcept final {
-    return "untyped";
-  }
-  [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
-                                     this->_labels);
-  }
-
-  void setName(std::string_view name) noexcept { this->_name = name; }
-};
-
-}  // namespace arangodb::metrics
+}  // namespace arangodb::containers
