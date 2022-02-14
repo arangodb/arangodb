@@ -96,7 +96,7 @@ class ClusterProvider {
                                 std::vector<Step*>& result) -> void;
 
   // fetch edges and store in cache
-  auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
+  auto fetchEdgesFromEngines(Step* step) -> Result;
 
   void destroyEngines();
 

@@ -263,14 +263,18 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 
 template<class StepImpl>
 Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
-    VertexType const& vertex) {
+    Step* step) {
+  TRI_ASSERT(step != nullptr);
+
   auto const* engines = _opts.engines();
-  // TODO Assert that the vertex is not in _vertexConnections after no-loose-end
+  // TODO Assert that the step is not in _vertexConnections after no-loose-end
   // handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
   leased->add("backward", VPackValue(_opts.isBackward()));
-  leased->add("keys", VPackValue(vertex.toString()));
+  // TODO: Differentiate between algorithms -> traversals vs ksp.
+  leased->add("depth", VPackValue(step->getDepth()));
+  leased->add("keys", VPackValue(step->getVertex().getID().toString()));
   leased->close();
 
   auto* pool =
@@ -344,7 +348,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
           edge.get(StaticStrings::IdString));
 
       auto edgeToEmplace = std::make_pair(
-          edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
+          edgeIdRef, VertexType{getEdgeDestination(edge, step->getVertex().getID())});
 
       connectedEdges.emplace_back(edgeToEmplace);
     }
@@ -362,7 +366,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
   ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
 
   auto [it, inserted] =
-      _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+      _vertexConnectedEdges.emplace(step->getVertex().getID(), std::move(connectedEdges));
   if (inserted) {
     guard.steal();
   }
@@ -383,7 +387,7 @@ auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
 
     for (auto const& step : result) {
       if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
-        auto res = fetchEdgesFromEngines(step->getVertex().getID());
+        auto res = fetchEdgesFromEngines(step);
         // TODO: check stats (also take a look of vertex stats)
         // add http stats
         _stats.addHttpRequests(_opts.engines()->size());
