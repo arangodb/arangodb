@@ -173,9 +173,6 @@ void Validator::validatePart(uint8_t const* ptr, std::size_t length, bool isSubP
     }
 
     case ValueType::Custom: {
-      if (options->disallowCustom) {
-        throw Exception(Exception::BuilderCustomDisallowed);
-      }
       ValueLength byteSize = 0;
 
       if (head == 0xf0U) {
