@@ -303,7 +303,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{
+  arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
       &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
@@ -515,7 +515,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{
+  arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
       &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};

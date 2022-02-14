@@ -71,7 +71,7 @@ aql::NonConstExpressionContainer const& IndexAccessor::nonConstPart() const {
   return _nonConstContainer.value();
 }
 
-BaseProviderOptions::BaseProviderOptions(
+SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     aql::Variable const* tmpVar,
     std::pair<std::vector<IndexAccessor>,
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
@@ -88,36 +88,38 @@ BaseProviderOptions::BaseProviderOptions(
       _weightCallback(std::nullopt),
       _filterConditionVariables(filterConditionVariables) {}
 
-aql::Variable const* BaseProviderOptions::tmpVar() const {
+aql::Variable const* SingleServerBaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
 }
 
 // first is global index information, second is depth-based index information.
 std::pair<std::vector<IndexAccessor>,
           std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&
-BaseProviderOptions::indexInformations() {
+SingleServerBaseProviderOptions::indexInformations() {
   return _indexInformation;
 }
 
 std::unordered_map<std::string, std::vector<std::string>> const&
-BaseProviderOptions::collectionToShardMap() const {
+SingleServerBaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
 }
 
-aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
+aql::FixedVarExpressionContext&
+SingleServerBaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
-bool BaseProviderOptions::hasWeightMethod() const {
+bool SingleServerBaseProviderOptions::hasWeightMethod() const {
   return _weightCallback.has_value();
 }
 
-void BaseProviderOptions::setWeightEdgeCallback(WeightCallback callback) {
+void SingleServerBaseProviderOptions::setWeightEdgeCallback(
+    WeightCallback callback) {
   _weightCallback = std::move(callback);
 }
 
-double BaseProviderOptions::weightEdge(double prefixWeight,
-                                       arangodb::velocypack::Slice edge) const {
+double SingleServerBaseProviderOptions::weightEdge(
+    double prefixWeight, arangodb::velocypack::Slice edge) const {
   if (!hasWeightMethod()) {
     // We do not have a weight. Hardcode.
     return prefixWeight + 1;
@@ -125,13 +127,14 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
   return _weightCallback.value()(prefixWeight, edge);
 }
 
-void BaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
+void SingleServerBaseProviderOptions::prepareContext(
+    aql::InputAqlItemRow input) {
   for (auto const& [var, reg] : _filterConditionVariables) {
     _expressionContext.setVariableValue(var, input.getValue(reg));
   }
 }
 
-void BaseProviderOptions::unPrepareContext() {
+void SingleServerBaseProviderOptions::unPrepareContext() {
   _expressionContext.clearVariableValues();
 }
 

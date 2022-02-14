@@ -1,3 +1,5 @@
+#pragma once
+
 #include <utility>
 
 #include "Graph/Providers/BaseStep.h"
@@ -12,7 +14,7 @@ class ClusterProvider;
 class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
-  using EdgeType = arangodb::velocypack::HashedStringRef;
+  using EdgeType = ::arangodb::graph::EdgeType;
   friend ClusterProvider<ClusterProviderStep>;
 
   class Vertex {

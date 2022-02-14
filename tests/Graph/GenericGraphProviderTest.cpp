@@ -127,7 +127,7 @@ class GraphProviderTest : public ::testing::Test {
       std::vector<Variable const*> vars;
       std::vector<RegisterId const*> regs;
 
-      BaseProviderOptions opts(
+      SingleServerBaseProviderOptions opts(
           tmpVar,
           std::make_pair(
               std::move(usedIndexes),

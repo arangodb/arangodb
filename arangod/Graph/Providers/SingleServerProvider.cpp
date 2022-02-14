@@ -67,7 +67,8 @@ void SingleServerProvider<Step>::addEdgeIDToBuilder(
 
 template<class Step>
 SingleServerProvider<Step>::SingleServerProvider(
-    arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+    arangodb::aql::QueryContext& queryContext,
+    SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
