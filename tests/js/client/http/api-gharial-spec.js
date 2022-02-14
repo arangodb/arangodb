@@ -2159,7 +2159,8 @@ describe('_api/gharial', () => {
 
     function* ReplicationFactorGenerator() {
       // Some random values for replicationFactor
-      const values = isCluster ? [1, 2, 3, 7] : [1];
+      // Max value of 3 allowed (CI restriction)
+      const values = isCluster ? [1, 2, 3] : [1];
       for (const v of values) {
         yield v;
       }
