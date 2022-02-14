@@ -1,6 +1,9 @@
 devel
 -----
 
+* The multi-dimensional index type `zkd` now supports an optional index hint for
+  tweaking performance by prefetching documents.
+
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
 * Enabled new internal graph refactored code for depth-first, breadth-first and
