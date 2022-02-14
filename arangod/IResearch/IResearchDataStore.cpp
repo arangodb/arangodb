@@ -20,14 +20,16 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "IResearchDataStore.h"
 #include "IResearchDocument.h"
 #include "IResearchFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/DownCast.h"
 
 #include "Metrics/Gauge.h"
+#include "Metrics/Guard.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -57,7 +59,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
       : _tick{tick} {}
 
   /// @brief earliest tick that can be released
-  TRI_voc_tick_t tick() const noexcept final {
+  [[nodiscard]] TRI_voc_tick_t tick() const noexcept final {
     return _tick.load(std::memory_order_acquire);
   }
 
@@ -153,9 +155,8 @@ auto getIndexFeatures() {
 template<typename FieldIteratorType, typename MetaType>
 Result insertDocument(irs::index_writer::documents_context& ctx,
                       transaction::Methods const& trx, FieldIteratorType& body,
-                      velocypack::Slice const& document,
-                      LocalDocumentId const& documentId, MetaType const& meta,
-                      IndexId id) {
+                      velocypack::Slice document, LocalDocumentId documentId,
+                      MetaType const& meta, IndexId id) {
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
@@ -320,9 +321,7 @@ void CommitTask::operator()() {
     return;
   }
 
-  IResearchDataStore::CommitResult code =
-      IResearchDataStore::CommitResult::UNDEFINED;
-
+  auto code = IResearchDataStore::CommitResult::UNDEFINED;
   auto reschedule = scopeGuard([&code, link = linkLock.get(), this]() noexcept {
     try {
       finalize(*link, code);
@@ -513,8 +512,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     : _engine(nullptr),
       _asyncFeature(
           &collection.vocbase().server().getFeature<IResearchFeature>()),
-      _asyncSelf(std::make_shared<AsyncLinkHandle>(
-          nullptr)),  // mark as data store not initialized
+      // mark as data store not initialized
+      _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _collection(collection),
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
@@ -528,7 +527,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _cleanupTimeNum{0},
       _avgCleanupTimeMs{nullptr},
       _consolidationTimeNum{0},
-      _avgConsolidationTimeMs{nullptr} {
+      _avgConsolidationTimeMs{nullptr},
+      _metricStats{nullptr} {
   auto* key = this;
 
   // initialize transaction callback
@@ -545,13 +545,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     auto prev = state->cookie(key, nullptr);  // get existing cookie
 
     if (prev) {
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& ctx = dynamic_cast<IResearchTrxState&>(*prev);
-#else
-      auto& ctx = static_cast<IResearchTrxState&>(*prev);
-#endif
-
+      // TODO FIXME find a better way to look up a ViewState
+      auto& ctx = basics::downCast<IResearchTrxState>(*prev);
       if (transaction::Status::COMMITTED != status) {  // rollback
         ctx.reset();
       } else {
@@ -726,8 +721,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
   try {
     auto const lastTickBeforeCommit = _engine->currentTick();
 
-    auto commitLock = irs::make_unique_lock(_commitMutex, std::try_to_lock);
-
+    std::unique_lock commitLock{_commitMutex, std::try_to_lock};
     if (!commitLock.owns_lock()) {
       if (!wait) {
         LOG_TOPIC("37bcc", TRACE, iresearch::TOPIC)
@@ -786,7 +780,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
     _dataStore._reader = reader;
 
     // update stats
-    updateStats(statsUnsafe());
+    updateStatsUnsafe();
 
     // update last committed tick
     impl.tick(_lastCommittedTick);
@@ -889,7 +883,7 @@ Result IResearchDataStore::shutdownDataStore() {
 
   try {
     if (_dataStore) {
-      removeStats();
+      removeMetrics();
       _dataStore.resetDataStore();
     }
   } catch (basics::Exception const& e) {
@@ -1050,14 +1044,13 @@ Result IResearchDataStore::initDataStore(
   }
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
-    _lastCommittedTick =
-        std::max(_lastCommittedTick, TRI_voc_tick_t(tick));  // update last tick
-    tick = irs::numeric_utils::hton64(
-        uint64_t(_lastCommittedTick));  // convert to BE
-
+    // call from commit under lock _commitMutex (_dataStore._writer->commit())
+    // update last tick
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t(tick));
+    // convert to BE
+    tick = irs::numeric_utils::hton64(uint64_t(_lastCommittedTick));
     out.append(reinterpret_cast<irs::byte_type const*>(&tick),
                sizeof(uint64_t));
-
     return true;
   };
 
@@ -1149,8 +1142,8 @@ Result IResearchDataStore::initDataStore(
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
   // register metrics before starting any background threads
-  // FIXME: commented out. As IResearchLink has yet not all data
-  // insertStats();
+  insertMetrics();
+  updateStatsUnsafe();
 
   // ...........................................................................
   // set up in-recovery insertion hooks
@@ -1268,8 +1261,7 @@ void IResearchDataStore::properties(LinkLock linkLock,
 }
 
 Result IResearchDataStore::remove(transaction::Methods& trx,
-                                  LocalDocumentId const& documentId,
-                                  velocypack::Slice const /*doc*/) {
+                                  LocalDocumentId documentId) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1287,14 +1279,8 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   }
 
   auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+  // TODO FIXME find a better way to look up a ViewState
+  auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
     auto linkLock = _asyncSelf->lock();
@@ -1360,9 +1346,8 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
 }
 template<typename FieldIteratorType, typename MetaType>
 Result IResearchDataStore::insert(transaction::Methods& trx,
-                                  LocalDocumentId const& documentId,
-                                  velocypack::Slice const doc,
-                                  MetaType const& meta) {
+                                  LocalDocumentId documentId,
+                                  velocypack::Slice doc, MetaType const& meta) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1425,14 +1410,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return insertImpl(ctx);
   }
   auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+  // TODO FIXME find a better way to look up a ViewState
+  auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
     auto linkLock = _asyncSelf->lock();
@@ -1508,14 +1487,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     auto* key = this;
 
     auto& state = *(trx->state());
-
     // TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-    auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+    auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
     if (ctx) {
       // throw away all pending operations as clear will overwrite them all
       ctx->reset();
@@ -1525,7 +1498,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     }
   }
 
-  std::lock_guard guard{_commitMutex};
+  std::lock_guard commitLock{_commitMutex};
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
 
@@ -1556,7 +1529,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     // update reader
     _dataStore._reader = reader;
 
-    updateStats(statsUnsafe());
+    updateStatsUnsafe();
 
     auto subscription = std::atomic_load(&_flushSubscription);
 
@@ -1586,49 +1559,47 @@ bool IResearchDataStore::hasSelectivityEstimate() {
   return false;
 }
 
-IResearchDataStore::Stats IResearchDataStore::statsSynced() const {
+IResearchDataStore::Stats IResearchDataStore::stats() const {
   auto linkLock = _asyncSelf->lock();
   if (!linkLock) {
     return {};
   }
-  return statsUnsafe();
+  if (_metricStats) {
+    return _metricStats->load();
+  }
+  return updateStatsUnsafe();
 }
 
-IResearchDataStore::Stats IResearchDataStore::statsUnsafe() const {
-  Stats stats;
-  if (!_dataStore) {
-    return {};
-  }
-  stats.numBufferedDocs = _dataStore._writer->buffered_docs();
-
+IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
+  TRI_ASSERT(_dataStore);
   // copy of 'reader' is important to hold reference to the current snapshot
   auto reader = _dataStore._reader;
   if (!reader) {
     return {};
   }
-
+  Stats stats;
   stats.numSegments = reader->size();
   stats.numDocs = reader->docs_count();
   stats.numLiveDocs = reader->live_docs_count();
   stats.numFiles = 1;  // +1 for segments file
-
   auto visitor = [&stats](std::string const& /*name*/,
                           irs::segment_meta const& segment) noexcept {
     stats.indexSize += segment.size;
     stats.numFiles += segment.files.size();
     return true;
   };
-
   reader->meta().meta.visit_segments(visitor);
+  if (_metricStats) {
+    _metricStats->store(stats);
+  }
   return stats;
 }
 
 void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
-  auto const stats = this->statsSynced();
+  auto const stats = this->stats();
 
-  builder.add("numBufferedDocs", VPackValue(stats.numBufferedDocs));
   builder.add("numDocs", VPackValue(stats.numDocs));
   builder.add("numLiveDocs", VPackValue(stats.numLiveDocs));
   builder.add("numSegments", VPackValue(stats.numSegments));
@@ -1682,12 +1653,12 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
 }
 
 template Result IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
-    transaction::Methods& trx, LocalDocumentId const& documentId,
-    velocypack::Slice const doc, IResearchLinkMeta const& meta);
+    transaction::Methods& trx, LocalDocumentId documentId,
+    velocypack::Slice doc, IResearchLinkMeta const& meta);
 
 template Result IResearchDataStore::insert<InvertedIndexFieldIterator,
                                            IResearchInvertedIndexMeta>(
-    transaction::Methods& trx, LocalDocumentId const& documentId,
-    velocypack::Slice const doc, IResearchInvertedIndexMeta const& meta);
+    transaction::Methods& trx, LocalDocumentId documentId,
+    velocypack::Slice doc, IResearchInvertedIndexMeta const& meta);
 
 }  // namespace arangodb::iresearch

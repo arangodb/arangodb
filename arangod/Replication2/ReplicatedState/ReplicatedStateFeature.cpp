@@ -20,13 +20,14 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "ReplicatedStateFeature.h"
 
-#include "Basics/Exceptions.h"
-
-#include "Logger/LogMacros.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
+#include "Basics/Exceptions.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -37,6 +38,8 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
   auto name_str =
       std::string{name};  // TODO C++20 transparent hashing not yet available
   if (auto iter = factories.find(name_str); iter != std::end(factories)) {
+    LOG_TOPIC("24af7", TRACE, Logger::REPLICATED_STATE)
+        << "Creating replicated state of type `" << name << "`.";
     return iter->second->createReplicatedState(std::move(log));
   }
   THROW_ARANGO_EXCEPTION(
@@ -53,5 +56,5 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
 }
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "ReplicatedState") {}
+    Server& server)
+    : ArangodFeature{server, *this} {}

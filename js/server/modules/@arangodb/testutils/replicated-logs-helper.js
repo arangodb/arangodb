@@ -29,20 +29,22 @@ const request = require('@arangodb/request');
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
 
-const waitFor = function (checkFn, maxTries = 100) {
+const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
   let result = null;
   while (count < maxTries) {
     result = checkFn();
-    if (result === true) {
+    if (result === true || result === undefined) {
       return result;
     }
-    console.log(result);
     if (!(result instanceof Error)) {
       throw Error("expected error");
     }
     count += 1;
-    wait(0.5);
+    if (count % 10 === 0) {
+      console.log(result);
+    }
+    wait(0.5); // 240 * .5s = 2 minutes
   }
   throw result;
 };
@@ -111,6 +113,11 @@ const replicatedLogSetPlanParticipantsConfig = function (database, logId, partic
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const replicatedLogSetTargetParticipantsConfig = function (database, logId, participantsConfig) {
+  global.ArangoAgency.set(`Target/ReplicatedLogs/${database}/${logId}/participants`, participantsConfig);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
+};
+
 const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database, logId, participants) {
   const oldValue = readAgencyValueAt(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`);
   const newValue = oldValue || {generation: 0, participants: {}};
@@ -126,6 +133,19 @@ const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database
   return gen;
 };
 
+const replicatedLogUpdateTargetParticipants = function (database, logId, participants) {
+  const oldValue = readAgencyValueAt(`Target/ReplicatedLogs/${database}/${logId}/participants`);
+  const newValue = oldValue || {};
+  for (const [p, v] of Object.entries(participants)) {
+    if (v === null) {
+      delete newValue[p];
+    } else {
+      newValue[p] = v;
+    }
+  }
+  replicatedLogSetTargetParticipantsConfig(database, logId, newValue);
+};
+
 const replicatedLogSetPlanTerm = function (database, logId, term) {
   global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
   global.ArangoAgency.increaseVersion(`Plan/Version`);
@@ -137,9 +157,19 @@ const replicatedLogSetPlan = function (database, logId, spec) {
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const replicatedLogSetTarget = function (database, logId, spec) {
+  global.ArangoAgency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
+};
+
 const replicatedLogDeletePlan = function (database, logId) {
   global.ArangoAgency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
   global.ArangoAgency.increaseVersion(`Plan/Version`);
+};
+
+const replicatedLogDeleteTarget = function (database, logId) {
+  global.ArangoAgency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogIsReady = function (database, logId, term, participants, leader) {
@@ -155,7 +185,7 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
       }
       if (current.localStatus[srv].term < term) {
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
-          `found = ${current.localStatus[srv].term}, expected = ${term}.`);
+            `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
     }
 
@@ -169,7 +199,38 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
       if (current.leader.term < term) {
         return Error(`Leader has not yet confirmed the term; found = ${current.leader.term}, expected = ${term}`);
       }
+      if (!current.leader.leadershipEstablished) {
+        return Error("Leader has not yet established its leadership");
+      }
     }
+    return true;
+  };
+};
+
+const replicatedLogLeaderEstablished = function (database, logId, term, participants) {
+  return function () {
+    let {current} = readReplicatedLogAgency(database, logId);
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+
+    for (const srv of participants) {
+      if (!current.localStatus || !current.localStatus[srv]) {
+        return Error(`Participant ${srv} has not yet reported to current.`);
+      }
+      if (term !== undefined && current.localStatus[srv].term < term) {
+        return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
+            `found = ${current.localStatus[srv].term}, expected = ${term}.`);
+      }
+    }
+
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.leadershipEstablished) {
+      return Error("Leader has not yet established its leadership");
+    }
+
     return true;
   };
 };
@@ -178,7 +239,7 @@ const getServerProcessID = function (serverId) {
   let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
   // Now look for instanceInfo:
   let pos = _.findIndex(global.instanceInfo.arangods,
-    x => x.endpoint === endpoint);
+      x => x.endpoint === endpoint);
   return global.instanceInfo.arangods[pos].pid;
 };
 
@@ -242,53 +303,121 @@ const registerAgencyTestEnd = function (testName) {
   global.ArangoAgency.set(`Testing/${testName}/End`, (new Date()).toISOString());
 };
 
-const getServerUrl = function(serverId) {
-    let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+const getServerUrl = function (serverId) {
+  let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
+  return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 };
 
 const checkRequestResult = function (requestResult) {
-    if (requestResult === undefined) {
-        throw new ArangoError({
-            'error': true,
-            'code': 500,
-            'errorNum': arangodb.ERROR_INTERNAL,
-            'errorMessage': 'Unknown error. Request result is empty'
-        });
+  if (requestResult === undefined) {
+    throw new ArangoError({
+      'error': true,
+      'code': 500,
+      'errorNum': arangodb.ERROR_INTERNAL,
+      'errorMessage': 'Unknown error. Request result is empty'
+    });
+  }
+
+  if (requestResult.hasOwnProperty('error')) {
+    if (requestResult.error) {
+      if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
+        throw new TypeError(requestResult.errorMessage);
+      }
+
+      const error = new ArangoError(requestResult);
+      error.message = requestResult.message;
+      throw error;
     }
 
-    if (requestResult.hasOwnProperty('error')) {
-        if (requestResult.error) {
-            if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
-                throw new TypeError(requestResult.errorMessage);
-            }
+    // remove the property from the original object
+    delete requestResult.error;
+  }
 
-            const error = new ArangoError(requestResult);
-            error.message = requestResult.message;
-            throw error;
-        }
+  if (requestResult.json.error) {
+    throw new ArangoError({
+      'error': true,
+      'code': requestResult.json.code,
+      'errorNum': arangodb.ERROR_INTERNAL,
+      'errorMessage': 'Error during request'
+    });
+  }
 
-        // remove the property from the original object
-        delete requestResult.error;
-    }
-
-    if (requestResult.json.error) {
-        throw new ArangoError({
-            'error': true,
-            'code': requestResult.json.code,
-            'errorNum': arangodb.ERROR_INTERNAL,
-            'errorMessage': 'Error during request'
-        });
-    }
-
-    return requestResult;
+  return requestResult;
 };
 
-const getLocalStatus = function(database, logId, serverId) {
-    let url = getServerUrl(serverId);
-    const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
-    checkRequestResult(res);
-    return res.json.result;
+const getLocalStatus = function (database, logId, serverId) {
+  let url = getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
+  checkRequestResult(res);
+  return res.json.result;
+};
+
+
+const replicatedLogParticipantsFlag = function (database, logId, flags, generation = undefined) {
+  return function () {
+    let {current} = readReplicatedLogAgency(database, logId);
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.committedParticipantsConfig) {
+      return Error("Leader has not yet committed any participants config");
+    }
+    if (generation !== undefined) {
+      if (current.leader.committedParticipantsConfig.generation < generation) {
+        return Error("Leader has not yet acked new generation; "
+            + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
+      }
+    }
+
+    const participants = current.leader.committedParticipantsConfig.participants;
+    for (const [p, v] of Object.entries(flags)) {
+      if (v === null) {
+        if (participants[p] !== undefined) {
+          return Error(`Entry for server ${p} still present in participants flags`);
+        }
+      } else {
+        if (!_.isEqual(v, participants[p])) {
+          return Error(`Flags for participant ${p} are not as expected: ${JSON.stringify(v)} vs. ${JSON.stringify(participants[p])}`);
+        }
+      }
+    }
+
+    return true;
+  };
+};
+
+const getReplicatedLogLeaderPlan = function (database, logId) {
+  let {plan} = readReplicatedLogAgency(database, logId);
+  if (!plan.currentTerm) {
+    throw Error("no current term in plan");
+  }
+  if (!plan.currentTerm.leader) {
+    throw Error("current term has no leader");
+  }
+  const leader = plan.currentTerm.leader.serverId;
+  const term = plan.currentTerm.term;
+  return {leader, term};
+};
+
+
+const createReplicatedLog = function (database, targetConfig) {
+  const logId = nextUniqueLogId();
+  const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+  });
+
+  waitFor(replicatedLogLeaderEstablished(database, logId, undefined, servers));
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
 };
 
 exports.waitFor = waitFor;
@@ -308,7 +437,16 @@ exports.continueServer = continueServer;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
+exports.replicatedLogSetTarget = replicatedLogSetTarget;
+exports.getParticipantsObjectForServers = getParticipantsObjectForServers;
 exports.allServersHealthy = allServersHealthy;
 exports.continueServerWaitOk = continueServerWaitOk;
 exports.stopServerWaitFailed = stopServerWaitFailed;
+exports.replicatedLogDeleteTarget = replicatedLogDeleteTarget;
 exports.getLocalStatus = getLocalStatus;
+exports.getServerRebootId = getServerRebootId;
+exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
+exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
+exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
+exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
+exports.createReplicatedLog = createReplicatedLog;

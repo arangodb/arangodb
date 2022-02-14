@@ -29,6 +29,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
@@ -448,11 +449,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     auto& state = *(_trx->state());
 
     // TODO FIXME find a better way to look up a State
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* ctx = dynamic_cast<IResearchSnapshotState*>(state.cookie(_index));
-#else
-    auto* ctx = static_cast<IResearchSnapshotState*>(state.cookie(_index));
-#endif
+    auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(_index));
     if (!ctx) {
       auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();
@@ -910,10 +907,10 @@ IResearchInvertedIndex::IResearchInvertedIndex(
 //  - forPersistence ::<analyzer> from system and <analyzer> for local and
 //  definitions are stored.
 //  - For user -> database-name qualified names. No definitions are stored.
-void IResearchInvertedIndex::toVelocyPack(
-    application_features::ApplicationServer& server,
-    TRI_vocbase_t const* defaultVocbase, velocypack::Builder& builder,
-    bool forPersistence) const {
+void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
+                                          TRI_vocbase_t const* defaultVocbase,
+                                          velocypack::Builder& builder,
+                                          bool forPersistence) const {
   if (!_dataStore._meta.json(builder, nullptr, nullptr)) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,

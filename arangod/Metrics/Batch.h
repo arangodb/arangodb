@@ -22,45 +22,47 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Basics/debugging.h"
+#include "Containers/NodeHashMap.h"
+#include "Metrics/IBatch.h"
 #include "Metrics/Metric.h"
 
-#include <mutex>
+#include <vector>
 
 namespace arangodb::metrics {
 
 template<typename T>
-class Batch final : public Metric {
+class Batch final : public IBatch {
  public:
-  Batch(T&& metric, std::string_view name, std::string_view help,
-        std::string_view labels)
-      : Metric{name, help, labels}, _metric{std::move(metric)} {}
+  void toPrometheus(std::string& result, std::string_view globals) const final {
+    TRI_ASSERT(!_metrics.empty());
+    std::vector<typename T::Data> metrics;
+    metrics.reserve(_metrics.size());
+    for (auto& [_, metric] : _metrics) {
+      metrics.push_back(metric.load());  // synchronization here
+    }
+    // note: Serialization works only for counter, gauge, untyped metrics
+    // It doesn't work for histogram, but its possible, just
+    // remove addMark call and make kToString more powerful
+    for (size_t i = 0; i != T::kSize; ++i) {
+      Metric::addInfo(result, T::kName[i], T::kHelp[i], T::kType[i]);
+      for (size_t j = 0; auto& [labels, _] : _metrics) {
+        Metric::addMark(result, T::kName[i], globals, labels);
+        result.append(T::kToString[i](metrics[j++])) += '\n';
+      }
+    }
+  }
 
-  [[nodiscard]] std::string_view type() const noexcept final {
-    return "untyped";
+  T& add(std::string_view labels) {
+    return _metrics[labels];  // for breakpoint
   }
-  void toPrometheus(std::string& result, std::string_view globals,
-                    std::string_view) const final {
-    load().toPrometheus(result, globals, labels());
-  }
-  void toPrometheusBegin(std::string& result,
-                         std::string_view name) const final {
-    std::lock_guard guard{_m};
-    _metric.needName();
-  }
-
-  void store(T&& metric) {
-    std::lock_guard guard{_m};
-    _metric = std::move(metric);
+  size_t remove(std::string_view labels) final {
+    auto const size = _metrics.size();
+    return size - _metrics.erase(labels);
   }
 
  private:
-  T load() const {
-    std::lock_guard guard{_m};
-    return _metric;
-  }
-
-  mutable std::mutex _m;
-  T _metric;
+  containers::NodeHashMap<std::string, T> _metrics;
 };
 
 }  // namespace arangodb::metrics

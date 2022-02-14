@@ -132,8 +132,7 @@ static void JS_CreateReplicatedLog(
   auto spec = std::invoke([&] {
     VPackBuilder builder;
     TRI_V8ToVPack(isolate, builder, args[0], false, false);
-    return agency::LogPlanSpecification(agency::from_velocypack,
-                                        builder.slice());
+    return agency::LogTarget(agency::from_velocypack, builder.slice());
   });
 
   auto res = ReplicatedLogMethods::createInstance(vocbase)
@@ -202,12 +201,11 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("insert(<payload>)");
   }
 
-  VPackBufferUInt8 payload;
-  VPackBuilder builder(payload);
+  VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   auto result = ReplicatedLogMethods::createInstance(vocbase)
-                    ->insert(id, LogPayload{payload})
+                    ->insert(id, LogPayload::createFromSlice(builder.slice()))
                     .get();
   VPackBuilder response;
   {

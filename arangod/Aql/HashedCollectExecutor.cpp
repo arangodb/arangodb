@@ -373,7 +373,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (!_isInitialized) {
-    if (input.finalState() == ExecutorState::DONE) {
+    if (input.finalState() == MainQueryState::DONE) {
       // Worst case assumption:
       // For every input row we have a new group.
       // We will never produce more then asked for

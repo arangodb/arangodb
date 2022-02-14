@@ -23,6 +23,7 @@
 
 #include <cstdint>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
@@ -34,9 +35,9 @@
 
 using namespace arangodb;
 
-CacheRebalancerThread::CacheRebalancerThread(
-    application_features::ApplicationServer& server, cache::Manager* manager,
-    std::uint64_t interval)
+CacheRebalancerThread::CacheRebalancerThread(ArangodServer& server,
+                                             cache::Manager* manager,
+                                             std::uint64_t interval)
     : Thread(server, "CacheRebalancerThread"),
       _manager(manager),
       _rebalancer(_manager),

@@ -44,6 +44,7 @@ emap_try_acquire_edata_neighbor_impl(tsdn_t *tsdn, emap_t *emap, edata_t *edata,
     bool expanding) {
 	witness_assert_positive_depth_to_rank(tsdn_witness_tsdp_get(tsdn),
 	    WITNESS_RANK_CORE);
+	assert(!edata_guarded_get(edata));
 	assert(!expanding || forward);
 	assert(!edata_state_in_transition(expected_state));
 	assert(expected_state == extent_state_dirty ||

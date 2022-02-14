@@ -30,8 +30,7 @@ namespace arangodb {
 
 class ClusterRestWalHandler : public RestBaseHandler {
  public:
-  ClusterRestWalHandler(application_features::ApplicationServer&,
-                        GeneralRequest*, GeneralResponse*);
+  ClusterRestWalHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RequestLane lane() const override final {

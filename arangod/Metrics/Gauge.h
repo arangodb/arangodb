@@ -38,24 +38,9 @@ class Gauge final : public Metric {
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
 
-  void toPrometheus(std::string& result, std::string_view globalLabels,
-                    std::string_view alternativeName) const final {
-    result.append(alternativeName.empty() ? name() : alternativeName);
-    result.push_back('{');
-    bool haveGlobals = !globalLabels.empty();
-    if (haveGlobals) {
-      result.append(globalLabels);
-    }
-    if (!labels().empty()) {
-      if (haveGlobals) {
-        result.push_back(',');
-      }
-      result.append(labels());
-    }
-    result.push_back('}');
-    result.push_back(' ');
-    result.append(std::to_string(load()));
-    result.push_back('\n');
+  void toPrometheus(std::string& result, std::string_view globals) const final {
+    Metric::addMark(result, name(), globals, labels());
+    result.append(std::to_string(load())) += '\n';
   }
 
   [[nodiscard]] T load(

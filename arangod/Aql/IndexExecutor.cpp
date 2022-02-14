@@ -333,10 +333,26 @@ bool IndexExecutorInfos::hasNonConstParts() const {
   return !_nonConstExpressions._expressions.empty();
 }
 
+void IndexExecutor::CursorStats::incrCreated() noexcept { ++created; }
+void IndexExecutor::CursorStats::incrRearmed() noexcept { ++rearmed; }
+
+size_t IndexExecutor::CursorStats::getAndResetCreated() noexcept {
+  size_t value = created;
+  created = 0;
+  return value;
+}
+
+size_t IndexExecutor::CursorStats::getAndResetRearmed() noexcept {
+  size_t value = rearmed;
+  rearmed = 0;
+  return value;
+}
+
 IndexExecutor::CursorReader::CursorReader(
     transaction::Methods& trx, IndexExecutorInfos const& infos,
     AstNode const* condition, transaction::Methods::IndexHandle const& index,
-    DocumentProducingFunctionContext& context, bool checkUniqueness)
+    DocumentProducingFunctionContext& context, CursorStats& cursorStats,
+    bool checkUniqueness)
     : _trx(trx),
       _infos(infos),
       _condition(condition),
@@ -346,6 +362,7 @@ IndexExecutor::CursorReader::CursorReader(
           infos.canReadOwnWrites(),
           transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
+      _cursorStats(cursorStats),
       _type(
           infos.getCount()             ? Type::Count
           : infos.isLateMaterialized() ? Type::LateMaterialized
@@ -356,6 +373,9 @@ IndexExecutor::CursorReader::CursorReader(
               ? Type::Covering
               : Type::Document),
       _checkUniqueness(checkUniqueness) {
+  // for the initial cursor created in the initializer list
+  _cursorStats.incrCreated();
+
   switch (_type) {
     case Type::NoResult: {
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
@@ -501,6 +521,8 @@ bool IndexExecutor::CursorReader::isCovering() const {
 }
 
 void IndexExecutor::CursorReader::reset() {
+  TRI_ASSERT(_cursor != nullptr);
+
   if (_condition == nullptr || !_infos.hasNonConstParts()) {
     // Const case
     _cursor->reset();
@@ -508,6 +530,7 @@ void IndexExecutor::CursorReader::reset() {
   }
 
   if (_cursor->canRearm()) {
+    _cursorStats.incrRearmed();
     bool didRearm = _cursor->rearm(_condition, _infos.getOutVariable(),
                                    _infos.getOptions());
     if (!didRearm) {
@@ -518,6 +541,7 @@ void IndexExecutor::CursorReader::reset() {
     }
   } else {
     // We need to build a fresh search and cannot go the rearm shortcut
+    _cursorStats.incrCreated();
     _cursor = _trx.indexScanForCondition(
         _index, _condition, _infos.getOutVariable(), _infos.getOptions(),
         _infos.canReadOwnWrites(),
@@ -535,6 +559,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
           infos.getProjections(), false,
           infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),
+      _ast(_infos.query()),
       _currentIndex(_infos.getIndexes().size()),
       _skipped(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());
@@ -601,12 +626,20 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
 
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
-  auto ast = _infos.getAst();
   auto* condition = const_cast<AstNode*>(_infos.getCondition());
   // modify the existing node in place
   TEMPORARILY_UNLOCK_NODE(condition);
 
-  auto& query = _infos.query();
+  if (_expressionContext == nullptr) {
+    _expressionContext = std::make_unique<ExecutorExpressionContext>(
+        _trx, _infos.query(),
+        _documentProducingFunctionContext.aqlFunctionsInternalCache(), input,
+        _infos.getVarsToRegister());
+  } else {
+    _expressionContext->adjustInputRow(input);
+  }
+
+  _ast.clearMost();
 
   for (size_t posInExpressions = 0;
        posInExpressions < _infos.getNonConstExpressions().size();
@@ -615,18 +648,13 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
         _infos.getNonConstExpressions()[posInExpressions].get();
     auto exp = toReplace->expression.get();
 
-    auto& regex = _documentProducingFunctionContext.aqlFunctionsInternalCache();
-
-    ExecutorExpressionContext ctx(_trx, query, regex, input,
-                                  _infos.getVarsToRegister());
-
     bool mustDestroy;
-    AqlValue a = exp->execute(&ctx, mustDestroy);
+    AqlValue a = exp->execute(_expressionContext.get(), mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&_trx.vpackOptions());
     VPackSlice slice = materializer.slice(a, false);
-    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
+    AstNode* evaluatedNode = _ast.nodeFromVPack(slice, true);
 
     AstNode* tmp = condition;
     for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
@@ -676,16 +704,17 @@ bool IndexExecutor::advanceCursor() {
           conditionNode = _infos.getCondition()->getMember(infoIndex);
         }
       }
-      _cursors.emplace_back(
-          _trx, _infos, conditionNode, _infos.getIndexes()[infoIndex],
-          _documentProducingFunctionContext, needsUniquenessCheck());
+      _cursors.emplace_back(_trx, _infos, conditionNode,
+                            _infos.getIndexes()[infoIndex],
+                            _documentProducingFunctionContext, _cursorStats,
+                            needsUniquenessCheck());
     } else {
       // Next index exists, need a reset.
       getCursor().reset();
     }
     // We have a cursor now.
     TRI_ASSERT(_currentIndex < _cursors.size());
-    // Check if this cursor has more (some might now already)
+    // Check if this cursor has more (some might know already)
     if (getCursor().hasMore()) {
       // The current cursor has data.
       _documentProducingFunctionContext.setAllowCoveringIndexOptimization(
@@ -798,6 +827,14 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       bool more = getCursor().readIndex(output);
       TRI_ASSERT(more == getCursor().hasMore());
 
+      if (!more && _currentIndex + 1 >= _cursors.size() && output.isFull()) {
+        // optimization for the case that the cursor cannot produce more data,
+        // we are at the last cursor and we have filled up the output block
+        // completely.
+        inputRange.advanceDataRow();
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      }
+
       INTERNAL_LOG_IDX
           << "IndexExecutor::produceRows::innerLoop output.numRowsWritten() == "
           << output.numRowsWritten();
@@ -813,13 +850,13 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _documentProducingFunctionContext.getAndResetNumScanned());
     stats.incrFiltered(
         _documentProducingFunctionContext.getAndResetNumFiltered());
+    stats.incrCursorsCreated(_cursorStats.getAndResetCreated());
+    stats.incrCursorsRearmed(_cursorStats.getAndResetRearmed());
   }
-
-  AqlCall upstreamCall;
 
   INTERNAL_LOG_IDX << "IndexExecutor::produceRows reporting state "
                    << returnState();
-  return {returnState(), stats, upstreamCall};
+  return {returnState(), stats, AqlCall{}};
 }
 
 auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
@@ -899,7 +936,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
   INTERNAL_LOG_IDX << "IndexExecutor::skipRowsRange returning " << returnState()
                    << " " << skipped << " " << upstreamCall;
-  return {returnState(), stats, skipped, upstreamCall};
+  return {returnState(), stats, skipped, std::move(upstreamCall)};
 }
 
 auto IndexExecutor::returnState() const noexcept -> ExecutorState {

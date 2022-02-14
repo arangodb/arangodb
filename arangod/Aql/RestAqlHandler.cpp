@@ -65,8 +65,7 @@ constexpr std::string_view writeKey("write");
 constexpr std::string_view exclusiveKey("exclusive");
 }  // namespace
 
-RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* request,
+RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
                                GeneralResponse* response, QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(qr),

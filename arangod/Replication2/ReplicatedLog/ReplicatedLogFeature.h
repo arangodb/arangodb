@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "RestServer/arangod.h"
 
 #include <cstdint>
 
@@ -33,11 +33,11 @@ struct ReplicatedLogMetrics;
 }
 
 namespace arangodb {
-class ReplicatedLogFeature final
-    : public application_features::ApplicationFeature {
+class ReplicatedLogFeature final : public ArangodFeature {
  public:
-  explicit ReplicatedLogFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ReplicatedLog"; }
+
+  explicit ReplicatedLogFeature(Server& server);
   ~ReplicatedLogFeature() override;
 
   auto metrics() const noexcept -> std::shared_ptr<
