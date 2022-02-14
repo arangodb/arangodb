@@ -279,29 +279,34 @@ template void PathStore<
 
 /* ClusterProvider Section */
 
-template class PathStore<ClusterProvider::Step>;
-template void PathStore<ClusterProvider::Step>::buildPath<
-    PathResult<ClusterProvider, ClusterProvider::Step>>(
-    ClusterProvider::Step const& vertex,
-    PathResult<ClusterProvider, ClusterProvider::Step>& path) const;
+template class PathStore<ClusterProviderStep>;
+template void PathStore<ClusterProviderStep>::buildPath<
+    PathResult<ClusterProvider<ClusterProviderStep>, ClusterProviderStep>>(
+    ClusterProviderStep const& vertex,
+    PathResult<ClusterProvider<ClusterProviderStep>, ClusterProviderStep>& path)
+    const;
 
-template void
-PathStore<ClusterProvider::Step>::reverseBuildPath<ClusterProvider>(
-    ClusterProvider::Step const& vertex,
-    PathResult<ClusterProvider, ClusterProvider::Step>& path) const;
+template void PathStore<ClusterProviderStep>::reverseBuildPath<
+    ClusterProvider<ClusterProviderStep>>(
+    ClusterProviderStep const& vertex,
+    PathResult<ClusterProvider<ClusterProviderStep>, ClusterProviderStep>& path)
+    const;
 
 // Tracing
-template void PathStore<ClusterProvider::Step>::buildPath<PathResult<
-    ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>>(
-    ProviderTracer<ClusterProvider>::Step const& vertex,
-    PathResult<ProviderTracer<ClusterProvider>,
-               ProviderTracer<ClusterProvider>::Step>& path) const;
+template void PathStore<ClusterProviderStep>::buildPath<
+    PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+               ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>(
+    ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const& vertex,
+    PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+               ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
+        path) const;
 
-template void PathStore<ClusterProvider::Step>::reverseBuildPath<
-    ProviderTracer<ClusterProvider>>(
-    ProviderTracer<ClusterProvider>::Step const& vertex,
-    PathResult<ProviderTracer<ClusterProvider>,
-               ProviderTracer<ClusterProvider>::Step>& path) const;
+template void PathStore<ClusterProviderStep>::reverseBuildPath<
+    ProviderTracer<ClusterProvider<ClusterProviderStep>>>(
+    ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const& vertex,
+    PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+               ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
+        path) const;
 
 }  // namespace graph
 }  // namespace arangodb

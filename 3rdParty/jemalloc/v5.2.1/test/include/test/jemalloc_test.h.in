@@ -128,9 +128,15 @@ static const bool config_debug =
 #include "test/test.h"
 #include "test/timer.h"
 #include "test/thd.h"
+#include "test/bgthd.h"
 #define MEXP 19937
 #include "test/SFMT.h"
 
+#ifndef JEMALLOC_HAVE_MALLOC_SIZE
+#define TEST_MALLOC_SIZE malloc_usable_size
+#else
+#define TEST_MALLOC_SIZE malloc_size
+#endif
 /******************************************************************************/
 /*
  * Define always-enabled assertion macros, so that test assertions execute even

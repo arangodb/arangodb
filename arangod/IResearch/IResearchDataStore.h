@@ -237,21 +237,25 @@ class IResearchDataStore {
   Result properties(IResearchViewMeta const& meta);
   static void properties(LinkLock linkLock, IResearchViewMeta const& meta);
 
- protected:
-  friend struct CommitTask;
-  friend struct ConsolidationTask;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
   //////////////////////////////////////////////////////////////////////////////
   struct Stats {
-    uint64_t numBufferedDocs{};
     uint64_t numDocs{};
     uint64_t numLiveDocs{};
     uint64_t numSegments{};
     uint64_t numFiles{};
     uint64_t indexSize{};
   };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get index stats for current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  Stats stats() const;
+
+ protected:
+  friend struct CommitTask;
+  friend struct ConsolidationTask;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief detailed commit result
@@ -393,27 +397,21 @@ class IResearchDataStore {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  protected:
-  Stats statsSynced() const;
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get index stats for current snapshot
+  /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
-  Stats statsUnsafe() const;
+  Stats updateStatsUnsafe() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief insert statistic to MetricsFeature
+  /// @brief insert metrics to MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  virtual void insertStats() {}
+  virtual void insertMetrics() {}
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief remove statistic from MetricsFeature
+  /// @brief remove metrics from MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  virtual void removeStats() {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update store statistics in MetricsFeature
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void updateStats(Stats const&) {}
+  virtual void removeMetrics() {}
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
@@ -461,6 +459,8 @@ class IResearchDataStore {
 
   std::atomic_uint64_t _consolidationTimeNum;
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs;
+
+  metrics::Guard<Stats>* _metricStats;
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

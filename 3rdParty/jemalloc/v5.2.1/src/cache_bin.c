@@ -2,6 +2,8 @@
 #include "jemalloc/internal/jemalloc_internal_includes.h"
 
 #include "jemalloc/internal/bit_util.h"
+#include "jemalloc/internal/cache_bin.h"
+#include "jemalloc/internal/safety_check.h"
 
 void
 cache_bin_info_init(cache_bin_info_t *info,

@@ -200,15 +200,17 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                           << ", last acked commit index = "
                           << follower->lastAckedCommitIndex
                           << ", current commit index = " << self._commitIndex
-                          << ", last acked lci = " << follower->lastAckedLCI
-                          << ", current lci = " << self._largestCommonIndex;
+                          << ", last acked litk = "
+                          << follower->lastAckedLowestIndexToKeep
+                          << ", current litk = " << self._lowestIndexToKeep;
                       // We can only get here if there is some new information
                       // for this follower
-                      TRI_ASSERT(
-                          follower->lastAckedEntry.index !=
-                              lastAvailableIndex.index ||
-                          self._commitIndex != follower->lastAckedCommitIndex ||
-                          self._largestCommonIndex != follower->lastAckedLCI);
+                      TRI_ASSERT(follower->lastAckedEntry.index !=
+                                     lastAvailableIndex.index ||
+                                 self._commitIndex !=
+                                     follower->lastAckedCommitIndex ||
+                                 self._lowestIndexToKeep !=
+                                     follower->lastAckedLowestIndexToKeep);
 
                       return self.createAppendEntriesRequest(
                           *follower, lastAvailableIndex);
@@ -229,7 +231,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 .thenFinal([weakParentLog = it->_parentLog,
                             followerWeak = it->_follower, lastIndex = lastIndex,
                             currentCommitIndex = request.leaderCommit,
-                            currentLCI = request.largestCommonIndex,
+                            currentLITK = request.lowestIndexToKeep,
                             currentTerm = logLeader->_currentTerm,
                             messageId = messageId, startTime,
                             logMetrics =
@@ -257,7 +259,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                           if (!guarded->_didResign) {
                             return guarded->handleAppendEntriesResponse(
                                 *follower, lastIndex, currentCommitIndex,
-                                currentLCI, currentTerm, std::move(res),
+                                currentLITK, currentTerm, std::move(res),
                                 endTime - startTime, messageId);
                           } else {
                             LOG_CTX("da116", DEBUG, follower->logContext)
@@ -458,7 +460,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
     status.term = term;
-    status.largestCommonIndex = leaderData._largestCommonIndex;
+    status.lowestIndexToKeep = leaderData._lowestIndexToKeep;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
@@ -544,16 +546,19 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
-    std::optional<LogPayload> payload, bool waitForSync,
+    std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync,
     std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
   if (this->_didResign) {
     throw ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
   auto const index = this->_inMemoryLog.getNextIndex();
-  auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
+  auto const payloadSize = std::holds_alternative<LogPayload>(payload)
+                               ? std::get<LogPayload>(payload).byteSize()
+                               : 0;
   auto logEntry = InMemoryLogEntry(
-      PersistingLogEntry(_self._currentTerm, index, std::move(payload)),
+      PersistingLogEntry(TermIndexPair{_self._currentTerm, index},
+                         std::move(payload)),
       waitForSync);
   logEntry.setInsertTp(insertTp.has_value() ? *insertTp
                                             : InMemoryLogEntry::clock::now());
@@ -667,11 +672,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
       << ", current index = " << lastAvailableIndex
       << ", last acked commit index = " << follower->lastAckedCommitIndex
       << ", current commit index = " << _commitIndex
-      << ", last acked lci = " << follower->lastAckedLCI
-      << ", current lci = " << _largestCommonIndex;
+      << ", last acked lci = " << follower->lastAckedLowestIndexToKeep
+      << ", current lci = " << _lowestIndexToKeep;
   if (follower->lastAckedEntry.index == lastAvailableIndex.index &&
       _commitIndex == follower->lastAckedCommitIndex &&
-      _largestCommonIndex == follower->lastAckedLCI) {
+      _lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
     LOG_CTX("74b71", TRACE, follower->logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }
@@ -712,7 +717,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
 
   AppendEntriesRequest req;
   req.leaderCommit = _commitIndex;
-  req.largestCommonIndex = _largestCommonIndex;
+  req.lowestIndexToKeep = _lowestIndexToKeep;
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._id;
   req.waitForSync = _self._config.waitForSync;
@@ -757,19 +762,23 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       << " entries , prevLogEntry.term = " << req.prevLogEntry.term
       << ", prevLogEntry.index = " << req.prevLogEntry.index
       << ", leaderCommit = " << req.leaderCommit
-      << ", lci = " << req.largestCommonIndex << ", msg-id = " << req.messageId;
+      << ", lci = " << req.lowestIndexToKeep << ", msg-id = " << req.messageId;
 
   return std::make_pair(std::move(req), lastIndex);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     FollowerInfo& follower, TermIndexPair lastIndex,
-    LogIndex currentCommitIndex, LogIndex currentLCI, LogTerm currentTerm,
+    LogIndex currentCommitIndex, LogIndex currentLITK, LogTerm currentTerm,
     futures::Try<AppendEntriesResult>&& res,
     std::chrono::steady_clock::duration latency, MessageId messageId)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>,
                  ResolvedPromiseSet> {
-  TRI_ASSERT(currentTerm == _self._currentTerm);
+  if (currentTerm != _self._currentTerm) {
+    LOG_CTX("7ab2e", WARN, follower.logContext)
+        << "received append entries response with wrong term: " << currentTerm;
+    return {};
+  }
 
   ResolvedPromiseSet toBeResolved;
 
@@ -797,7 +806,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.numErrorsSinceLastAnswer = 0;
         follower.lastAckedEntry = lastIndex;
         follower.lastAckedCommitIndex = currentCommitIndex;
-        follower.lastAckedLCI = currentLCI;
+        follower.lastAckedLowestIndexToKeep = currentLITK;
       } else {
         TRI_ASSERT(response.reason.error !=
                    AppendEntriesErrorReason::ErrorType::kNone);
@@ -910,15 +919,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     -> ResolvedPromiseSet {
-  auto [newLargestCommonIndex, indexes] = collectFollowerIndexes();
+  auto [largestCommonIndex, indexes] = collectFollowerIndexes();
 
-  if (newLargestCommonIndex != _largestCommonIndex) {
-    // This assertion is no longer true, as followers can now be added.
-    // TRI_ASSERT(newLargestCommonIndex > _largestCommonIndex);
+  if (largestCommonIndex > _lowestIndexToKeep) {
     LOG_CTX("851bb", TRACE, _self._logContext)
-        << "largest common index went from " << _largestCommonIndex << " to "
-        << newLargestCommonIndex;
-    _largestCommonIndex = newLargestCommonIndex;
+        << "largest common index went from " << _lowestIndexToKeep << " to "
+        << largestCommonIndex;
+    _lowestIndexToKeep = largestCommonIndex;
   }
 
   auto [newCommitIndex, commitFailReason, quorum] =
@@ -968,7 +975,7 @@ auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
-  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
+  auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d6", TRACE, _self._logContext)
       << "compaction index calculated as " << compactionStop;
   if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
@@ -1046,7 +1053,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
             if (!memtry.has_value()) {
               break;
             }
-            if (memtry->entry().logPayload().has_value()) {
+            if (memtry->entry().hasPayload()) {
               break;
             }
             testIndex = testIndex + 1;
@@ -1173,7 +1180,7 @@ void replicated_log::LogLeader::establishLeadership(
     std::shared_ptr<ParticipantsConfig const> config) {
   LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
-      _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
+      _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
         auto const lastIndex = data._inMemoryLog.getLastTermIndexPair();
         TRI_ASSERT(lastIndex.term != data._self._currentTerm);
         // Immediately append an empty log entry in the new term. This is
@@ -1182,7 +1189,10 @@ void replicated_log::LogLeader::establishLeadership(
 
         // Also make sure that this entry is written with waitForSync = true to
         // ensure that entries of the previous term are synced as well.
-        auto firstIndex = data.insertInternal(std::nullopt, true, std::nullopt);
+        auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = data._self._id,
+                                                     .participants = *config};
+        auto firstIndex = data.insertInternal(LogMetaPayload{std::move(meta)},
+                                              true, std::nullopt);
         TRI_ASSERT(firstIndex == lastIndex.index + 1);
         return firstIndex;
       });
@@ -1304,7 +1314,10 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
     }
 #endif
 
-    auto const idx = data.insertInternal(std::nullopt, true, std::nullopt);
+    auto meta =
+        LogMetaPayload::UpdateParticipantsConfig{.participants = *config};
+    auto const idx = data.insertInternal(LogMetaPayload{std::move(meta)}, true,
+                                         std::nullopt);
     data.activeParticipantsConfig = config;
     data._follower.swap(followers);
 

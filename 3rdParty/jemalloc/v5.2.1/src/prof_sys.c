@@ -20,7 +20,7 @@
  */
 #undef _Unwind_Backtrace
 #include <unwind.h>
-#define _Unwind_Backtrace JEMALLOC_HOOK(_Unwind_Backtrace, test_hooks_libc_hook)
+#define _Unwind_Backtrace JEMALLOC_TEST_HOOK(_Unwind_Backtrace, test_hooks_libc_hook)
 #endif
 
 /******************************************************************************/
@@ -34,7 +34,7 @@ static uint64_t prof_dump_iseq;
 static uint64_t prof_dump_mseq;
 static uint64_t prof_dump_useq;
 
-static char *prof_dump_prefix = NULL;
+static char *prof_prefix = NULL;
 
 /* The fallback allocator profiling functionality will use. */
 base_t *prof_base;
@@ -49,18 +49,19 @@ bt_init(prof_bt_t *bt, void **vec) {
 
 #ifdef JEMALLOC_PROF_LIBUNWIND
 static void
-prof_backtrace_impl(prof_bt_t *bt) {
+prof_backtrace_impl(void **vec, unsigned *len, unsigned max_len) {
 	int nframes;
 
 	cassert(config_prof);
-	assert(bt->len == 0);
-	assert(bt->vec != NULL);
+	assert(*len == 0);
+	assert(vec != NULL);
+	assert(max_len == PROF_BT_MAX);
 
-	nframes = unw_backtrace(bt->vec, PROF_BT_MAX);
+	nframes = unw_backtrace(vec, PROF_BT_MAX);
 	if (nframes <= 0) {
 		return;
 	}
-	bt->len = nframes;
+	*len = nframes;
 }
 #elif (defined(JEMALLOC_PROF_LIBGCC))
 static _Unwind_Reason_Code
@@ -81,9 +82,9 @@ prof_unwind_callback(struct _Unwind_Context *context, void *arg) {
 	if (ip == NULL) {
 		return _URC_END_OF_STACK;
 	}
-	data->bt->vec[data->bt->len] = ip;
-	data->bt->len++;
-	if (data->bt->len == data->max) {
+	data->vec[*data->len] = ip;
+	(*data->len)++;
+	if (*data->len == data->max) {
 		return _URC_END_OF_STACK;
 	}
 
@@ -91,18 +92,20 @@ prof_unwind_callback(struct _Unwind_Context *context, void *arg) {
 }
 
 static void
-prof_backtrace_impl(prof_bt_t *bt) {
-	prof_unwind_data_t data = {bt, PROF_BT_MAX};
+prof_backtrace_impl(void **vec, unsigned *len, unsigned max_len) {
+	prof_unwind_data_t data = {vec, len, max_len};
 
 	cassert(config_prof);
+	assert(vec != NULL);
+	assert(max_len == PROF_BT_MAX);
 
 	_Unwind_Backtrace(prof_unwind_callback, &data);
 }
 #elif (defined(JEMALLOC_PROF_GCC))
 static void
-prof_backtrace_impl(prof_bt_t *bt) {
+prof_backtrace_impl(void **vec, unsigned *len, unsigned max_len) {
 #define BT_FRAME(i)							\
-	if ((i) < PROF_BT_MAX) {					\
+	if ((i) < max_len) {						\
 		void *p;						\
 		if (__builtin_frame_address(i) == 0) {			\
 			return;						\
@@ -111,13 +114,15 @@ prof_backtrace_impl(prof_bt_t *bt) {
 		if (p == NULL) {					\
 			return;						\
 		}							\
-		bt->vec[(i)] = p;					\
-		bt->len = (i) + 1;					\
+		vec[(i)] = p;						\
+		*len = (i) + 1;						\
 	} else {							\
 		return;							\
 	}
 
 	cassert(config_prof);
+	assert(vec != NULL);
+	assert(max_len == PROF_BT_MAX);
 
 	BT_FRAME(0)
 	BT_FRAME(1)
@@ -263,24 +268,31 @@ prof_backtrace_impl(prof_bt_t *bt) {
 }
 #else
 static void
-prof_backtrace_impl(prof_bt_t *bt) {
+prof_backtrace_impl(void **vec, unsigned *len, unsigned max_len) {
 	cassert(config_prof);
 	not_reached();
 }
 #endif
 
-
-void (* JET_MUTABLE prof_backtrace_hook)(prof_bt_t *bt) = &prof_backtrace_impl;
-
 void
 prof_backtrace(tsd_t *tsd, prof_bt_t *bt) {
 	cassert(config_prof);
+	prof_backtrace_hook_t prof_backtrace_hook = prof_backtrace_hook_get();
+	assert(prof_backtrace_hook != NULL);
+
 	pre_reentrancy(tsd, NULL);
-	prof_backtrace_hook(bt);
+	prof_backtrace_hook(bt->vec, &bt->len, PROF_BT_MAX);
 	post_reentrancy(tsd);
 }
 
-void prof_unwind_init() {
+void
+prof_hooks_init() {
+	prof_backtrace_hook_set(&prof_backtrace_impl);
+	prof_dump_hook_set(NULL);
+}
+
+void
+prof_unwind_init() {
 #ifdef JEMALLOC_PROF_LIBGCC
 	/*
 	 * Cause the backtracing machinery to allocate its internal
@@ -502,6 +514,10 @@ prof_dump(tsd_t *tsd, bool propagate_err, const char *filename,
 	buf_writer_terminate(tsd_tsdn(tsd), &buf_writer);
 	prof_dump_close(&arg);
 
+	prof_dump_hook_t dump_hook = prof_dump_hook_get();
+	if (dump_hook != NULL) {
+		dump_hook(filename);
+	}
 	malloc_mutex_unlock(tsd_tsdn(tsd), &prof_dump_mtx);
 	post_reentrancy(tsd);
 
@@ -524,16 +540,16 @@ prof_strncpy(char *UNUSED dest, const char *UNUSED src, size_t UNUSED size) {
 }
 
 static const char *
-prof_dump_prefix_get(tsdn_t* tsdn) {
+prof_prefix_get(tsdn_t* tsdn) {
 	malloc_mutex_assert_owner(tsdn, &prof_dump_filename_mtx);
 
-	return prof_dump_prefix == NULL ? opt_prof_prefix : prof_dump_prefix;
+	return prof_prefix == NULL ? opt_prof_prefix : prof_prefix;
 }
 
 static bool
-prof_dump_prefix_is_empty(tsdn_t *tsdn) {
+prof_prefix_is_empty(tsdn_t *tsdn) {
 	malloc_mutex_lock(tsdn, &prof_dump_filename_mtx);
-	bool ret = (prof_dump_prefix_get(tsdn)[0] == '\0');
+	bool ret = (prof_prefix_get(tsdn)[0] == '\0');
 	malloc_mutex_unlock(tsdn, &prof_dump_filename_mtx);
 	return ret;
 }
@@ -545,18 +561,18 @@ prof_dump_filename(tsd_t *tsd, char *filename, char v, uint64_t vseq) {
 	cassert(config_prof);
 
 	assert(tsd_reentrancy_level_get(tsd) == 0);
-	const char *prof_prefix = prof_dump_prefix_get(tsd_tsdn(tsd));
+	const char *prefix = prof_prefix_get(tsd_tsdn(tsd));
 
 	if (vseq != VSEQ_INVALID) {
 	        /* "<prefix>.<pid>.<seq>.v<vseq>.heap" */
 		malloc_snprintf(filename, DUMP_FILENAME_BUFSIZE,
-		    "%s.%d.%"FMTu64".%c%"FMTu64".heap",
-		    prof_prefix, prof_getpid(), prof_dump_seq, v, vseq);
+		    "%s.%d.%"FMTu64".%c%"FMTu64".heap", prefix, prof_getpid(),
+		    prof_dump_seq, v, vseq);
 	} else {
 	        /* "<prefix>.<pid>.<seq>.<v>.heap" */
 		malloc_snprintf(filename, DUMP_FILENAME_BUFSIZE,
-		    "%s.%d.%"FMTu64".%c.heap",
-		    prof_prefix, prof_getpid(), prof_dump_seq, v);
+		    "%s.%d.%"FMTu64".%c.heap", prefix, prof_getpid(),
+		    prof_dump_seq, v);
 	}
 	prof_dump_seq++;
 }
@@ -565,8 +581,7 @@ void
 prof_get_default_filename(tsdn_t *tsdn, char *filename, uint64_t ind) {
 	malloc_mutex_lock(tsdn, &prof_dump_filename_mtx);
 	malloc_snprintf(filename, PROF_DUMP_FILENAME_LEN,
-	    "%s.%d.%"FMTu64".json", prof_dump_prefix_get(tsdn), prof_getpid(),
-	    ind);
+	    "%s.%d.%"FMTu64".json", prof_prefix_get(tsdn), prof_getpid(), ind);
 	malloc_mutex_unlock(tsdn, &prof_dump_filename_mtx);
 }
 
@@ -574,7 +589,7 @@ void
 prof_fdump_impl(tsd_t *tsd) {
 	char filename[DUMP_FILENAME_BUFSIZE];
 
-	assert(!prof_dump_prefix_is_empty(tsd_tsdn(tsd)));
+	assert(!prof_prefix_is_empty(tsd_tsdn(tsd)));
 	malloc_mutex_lock(tsd_tsdn(tsd), &prof_dump_filename_mtx);
 	prof_dump_filename(tsd, filename, 'f', VSEQ_INVALID);
 	malloc_mutex_unlock(tsd_tsdn(tsd), &prof_dump_filename_mtx);
@@ -582,11 +597,11 @@ prof_fdump_impl(tsd_t *tsd) {
 }
 
 bool
-prof_dump_prefix_set(tsdn_t *tsdn, const char *prefix) {
+prof_prefix_set(tsdn_t *tsdn, const char *prefix) {
 	cassert(config_prof);
 	ctl_mtx_assert_held(tsdn);
 	malloc_mutex_lock(tsdn, &prof_dump_filename_mtx);
-	if (prof_dump_prefix == NULL) {
+	if (prof_prefix == NULL) {
 		malloc_mutex_unlock(tsdn, &prof_dump_filename_mtx);
 		/* Everything is still guarded by ctl_mtx. */
 		char *buffer = base_alloc(tsdn, prof_base,
@@ -595,12 +610,12 @@ prof_dump_prefix_set(tsdn_t *tsdn, const char *prefix) {
 			return true;
 		}
 		malloc_mutex_lock(tsdn, &prof_dump_filename_mtx);
-		prof_dump_prefix = buffer;
+		prof_prefix = buffer;
 	}
-	assert(prof_dump_prefix != NULL);
+	assert(prof_prefix != NULL);
 
-	prof_strncpy(prof_dump_prefix, prefix, PROF_DUMP_FILENAME_LEN - 1);
-	prof_dump_prefix[PROF_DUMP_FILENAME_LEN - 1] = '\0';
+	prof_strncpy(prof_prefix, prefix, PROF_DUMP_FILENAME_LEN - 1);
+	prof_prefix[PROF_DUMP_FILENAME_LEN - 1] = '\0';
 	malloc_mutex_unlock(tsdn, &prof_dump_filename_mtx);
 
 	return false;
@@ -609,7 +624,7 @@ prof_dump_prefix_set(tsdn_t *tsdn, const char *prefix) {
 void
 prof_idump_impl(tsd_t *tsd) {
 	malloc_mutex_lock(tsd_tsdn(tsd), &prof_dump_filename_mtx);
-	if (prof_dump_prefix_get(tsd_tsdn(tsd))[0] == '\0') {
+	if (prof_prefix_get(tsd_tsdn(tsd))[0] == '\0') {
 		malloc_mutex_unlock(tsd_tsdn(tsd), &prof_dump_filename_mtx);
 		return;
 	}
@@ -626,7 +641,7 @@ prof_mdump_impl(tsd_t *tsd, const char *filename) {
 	if (filename == NULL) {
 		/* No filename specified, so automatically generate one. */
 		malloc_mutex_lock(tsd_tsdn(tsd), &prof_dump_filename_mtx);
-		if (prof_dump_prefix_get(tsd_tsdn(tsd))[0] == '\0') {
+		if (prof_prefix_get(tsd_tsdn(tsd))[0] == '\0') {
 			malloc_mutex_unlock(tsd_tsdn(tsd), &prof_dump_filename_mtx);
 			return true;
 		}
@@ -642,7 +657,7 @@ void
 prof_gdump_impl(tsd_t *tsd) {
 	tsdn_t *tsdn = tsd_tsdn(tsd);
 	malloc_mutex_lock(tsdn, &prof_dump_filename_mtx);
-	if (prof_dump_prefix_get(tsdn)[0] == '\0') {
+	if (prof_prefix_get(tsdn)[0] == '\0') {
 		malloc_mutex_unlock(tsdn, &prof_dump_filename_mtx);
 		return;
 	}

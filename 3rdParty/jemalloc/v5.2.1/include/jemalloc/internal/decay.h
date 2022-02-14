@@ -3,6 +3,8 @@
 
 #include "jemalloc/internal/smoothstep.h"
 
+#define DECAY_UNBOUNDED_TIME_TO_PURGE ((uint64_t)-1)
+
 /*
  * The decay_t computes the number of pages we should purge at any given time.
  * Page allocators inform a decay object when pages enter a decay-able state
@@ -116,6 +118,25 @@ decay_epoch_duration_ns(const decay_t *decay) {
 	return nstime_ns(&decay->interval);
 }
 
+static inline bool
+decay_immediately(const decay_t *decay) {
+	ssize_t decay_ms = decay_ms_read(decay);
+	return decay_ms == 0;
+}
+
+static inline bool
+decay_disabled(const decay_t *decay) {
+	ssize_t decay_ms = decay_ms_read(decay);
+	return decay_ms < 0;
+}
+
+/* Returns true if decay is enabled and done gradually. */
+static inline bool
+decay_gradually(const decay_t *decay) {
+	ssize_t decay_ms = decay_ms_read(decay);
+	return decay_ms > 0;
+}
+
 /*
  * Returns true if the passed in decay time setting is valid.
  * < -1 : invalid
@@ -142,8 +163,24 @@ bool decay_init(decay_t *decay, nstime_t *cur_time, ssize_t decay_ms);
  */
 void decay_reinit(decay_t *decay, nstime_t *cur_time, ssize_t decay_ms);
 
+/*
+ * Compute how many of 'npages_new' pages we would need to purge in 'time'.
+ */
+uint64_t decay_npages_purge_in(decay_t *decay, nstime_t *time,
+    size_t npages_new);
+
 /* Returns true if the epoch advanced and there are pages to purge. */
 bool decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
     size_t current_npages);
+
+/*
+ * Calculates wait time until a number of pages in the interval
+ * [0.5 * npages_threshold .. 1.5 * npages_threshold] should be purged.
+ *
+ * Returns number of nanoseconds or DECAY_UNBOUNDED_TIME_TO_PURGE in case of
+ * indefinite wait.
+ */
+uint64_t decay_ns_until_purge(decay_t *decay, size_t npages_current,
+    uint64_t npages_threshold);
 
 #endif /* JEMALLOC_INTERNAL_DECAY_H */

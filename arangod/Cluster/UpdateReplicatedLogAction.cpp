@@ -124,4 +124,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 arangodb::maintenance::UpdateReplicatedLogAction::UpdateReplicatedLogAction(
     arangodb::MaintenanceFeature& mf,
     arangodb::maintenance::ActionDescription const& desc)
-    : ActionBase(mf, desc) {}
+    : ActionBase(mf, desc) {
+  _labels.emplace(FAST_TRACK);
+}
