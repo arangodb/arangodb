@@ -58,7 +58,9 @@ function ahuacatlModifySuite () {
   var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlModify1";
   var cn2 = "UnitTestsAhuacatlModify2";
-  var c1, c2;
+  const cn3 = "UnitTestsAhuacatlModify3";
+
+  var c1, c2, c3;
 
   return {
 
@@ -69,11 +71,19 @@ function ahuacatlModifySuite () {
     setUp : function () {
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
       c1 = db._create(cn1, {numberOfShards:5});
       c2 = db._create(cn2, {numberOfShards:5});
+      c3 = db._create(cn3, {numberOfShards:5});
+
 
       c1.save({ _key: "foo", a: 1 });
       c2.save({ _key: "foo", b: 1 });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
+      }
+      c3.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,8 +93,10 @@ function ahuacatlModifySuite () {
     tearDown : function () {
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
       c1 = null;
       c2 = null;
+      c3 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +122,25 @@ function ahuacatlModifySuite () {
     testInvalidOptions : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS 'foo'", { "@cn": cn1 });
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert update empty
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdateEmpty: function () {
+      let actual = {};
+      for (let i = 0; i < 1000; ++i) {
+        actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn3} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+      }
+      const res = actual.json[0];
+      assertEqual(1001, c3.count());
+      assertEqual(res.old._rev, res.new._rev);
+      assertEqual(4, Object.keys(res.old).length);
+      assertEqual(4, Object.keys(res.new).length);
+      assertEqual(res.old.name, "test1500");
+      assertEqual(res.new.name, "test1500");
+    },
+
   };
 }
 
@@ -1370,6 +1401,7 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.value2);
       }
     },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test update and return
