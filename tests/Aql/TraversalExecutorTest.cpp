@@ -349,7 +349,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -374,7 +374,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(),
@@ -409,7 +409,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(),
@@ -445,7 +445,7 @@ TEST_F(TraversalExecutorTestInputStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   myGraph.addEdge("1", "2", "1->2");
   myGraph.addEdge("2", "3", "2->3");
@@ -558,7 +558,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex,
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -577,7 +577,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream) {
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -604,7 +604,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(),
@@ -643,7 +643,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex,
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   AqlCall call;
 
@@ -683,7 +683,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_edges_connected) {
   auto inputBlock = buildBlock<1>(
       itemBlockManager,
       MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{MainQueryState::DONE, 0, inputBlock, 0};
 
   AqlCall call;
 

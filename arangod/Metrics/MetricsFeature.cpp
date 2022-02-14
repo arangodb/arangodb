@@ -114,19 +114,23 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   // QueryRegistryFeature
   auto& q = server().getFeature<QueryRegistryFeature>();
   q.updateMetrics();
-  initGlobalLabels();
   {
-    std::shared_lock lock{_mutex};
+    auto lock = initGlobalLabels();
     std::string_view last;
     std::string_view curr;
     for (auto const& i : _registry) {
       TRI_ASSERT(i.second);
       curr = i.second->name();
-      bool const first = last != curr;
-      if (first) {
+      if (last != curr) {
         last = curr;
+        Metric::addInfo(result, curr, i.second->help(), i.second->type());
       }
-      i.second->toPrometheus(result, first, _globals);
+      i.second->toPrometheus(result, _globals);
+    }
+    for (auto const& [_, batch] : _batch) {
+      TRI_ASSERT(batch);
+      // TODO(MBkkt) merge vector::reserve's between IBatch::toPrometheus
+      batch->toPrometheus(result, _globals);
     }
   }
   auto& sf = server().getFeature<StatisticsFeature>();
@@ -144,16 +148,18 @@ ServerStatistics& MetricsFeature::serverStatistics() noexcept {
   return *_serverStatistics;
 }
 
-void MetricsFeature::initGlobalLabels() const {
+std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
+  std::shared_lock sharedLock{_mutex};
   auto instance = ServerState::instance();
-  if (!instance) {
-    return;
+  if (!instance || (hasShortname && hasRole)) {
+    return sharedLock;
   }
-  std::lock_guard lock{_mutex};
+  sharedLock.unlock();
+  std::unique_lock uniqueLock{_mutex};
   if (!hasShortname) {
-    // Very early after a server start it is possible that the short name isn't
-    // yet known. This check here is to prevent that the label is permanently
-    // empty if metrics are requested too early.
+    // Very early after a server start it is possible that the short name
+    // isn't yet known. This check here is to prevent that the label is
+    // permanently empty if metrics are requested too early.
     if (auto shortname = instance->getShortName(); !shortname.empty()) {
       auto label = "shortname=\"" + shortname + "\"";
       _globals = label + (_globals.empty() ? "" : "," + _globals);
@@ -166,6 +172,35 @@ void MetricsFeature::initGlobalLabels() const {
       _globals += (_globals.empty() ? "" : ",") + label;
       hasRole = true;
     }
+  }
+  uniqueLock.unlock();
+  sharedLock.lock();
+  return sharedLock;
+}
+
+std::pair<std::shared_lock<std::shared_mutex>, metrics::IBatch*>
+MetricsFeature::getBatch(std::string_view name) const {
+  std::shared_lock lock{_mutex};
+  metrics::IBatch* batch = nullptr;
+  if (auto it = _batch.find(name); it != _batch.end()) {
+    batch = it->second.get();
+  } else {
+    lock.unlock();
+    lock.release();
+  }
+  return {std::move(lock), batch};
+}
+
+void MetricsFeature::batchRemove(std::string_view name,
+                                 std::string_view labels) {
+  std::unique_lock lock{_mutex};
+  auto it = _batch.find(name);
+  if (it == _batch.end()) {
+    return;
+  }
+  TRI_ASSERT(it->second);
+  if (it->second->remove(labels) == 0) {
+    _batch.erase(name);
   }
 }
 

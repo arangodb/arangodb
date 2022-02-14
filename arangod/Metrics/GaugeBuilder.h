@@ -41,11 +41,10 @@ class GaugeBuilder : public GenericBuilder<Derived> {
 
 }  // namespace arangodb::metrics
 
-#define DECLARE_GAUGE(x, type, help)                               \
-  struct x : arangodb::metrics::GaugeBuilder<x, type> {            \
-    [[maybe_unused]] static constexpr std::string_view kName = #x; \
-    x() {                                                          \
-      _name = #x;                                                  \
-      _help = help;                                                \
-    }                                                              \
+#define DECLARE_GAUGE(x, type, help)                    \
+  struct x : arangodb::metrics::GaugeBuilder<x, type> { \
+    x() {                                               \
+      _name = #x;                                       \
+      _help = help;                                     \
+    }                                                   \
   }

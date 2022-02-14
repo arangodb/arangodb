@@ -31,8 +31,6 @@ class ClusterProviderStep
       return _vertex > other._vertex;
     }
 
-    void setVertex(VertexType thisIsATest) { _vertex = std::move(thisIsATest); }
-
    private:
     VertexType _vertex;
   };
