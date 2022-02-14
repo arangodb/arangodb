@@ -208,10 +208,10 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  // put back all looseEnds we we're able to cache
+  // put back all looseEnds. We were able to cache
   for (auto& lE : looseEnds) {
     if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
-      // if we end up here, we we're not able to cache the requested vertex
+      // if we end up here. We were not able to cache the requested vertex
       // (e.g. it does not exist)
       _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                          lE->getVertexIdentifier().toString());
@@ -262,8 +262,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 }
 
 template<class StepImpl>
-Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
-    Step* step) {
+Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   TRI_ASSERT(step != nullptr);
 
   auto const* engines = _opts.engines();
@@ -348,7 +347,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
           edge.get(StaticStrings::IdString));
 
       auto edgeToEmplace = std::make_pair(
-          edgeIdRef, VertexType{getEdgeDestination(edge, step->getVertex().getID())});
+          edgeIdRef,
+          VertexType{getEdgeDestination(edge, step->getVertex().getID())});
 
       connectedEdges.emplace_back(edgeToEmplace);
     }
@@ -365,8 +365,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
       (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
   ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
 
-  auto [it, inserted] =
-      _vertexConnectedEdges.emplace(step->getVertex().getID(), std::move(connectedEdges));
+  auto [it, inserted] = _vertexConnectedEdges.emplace(
+      step->getVertex().getID(), std::move(connectedEdges));
   if (inserted) {
     guard.steal();
   }
@@ -421,7 +421,11 @@ auto ClusterProvider<StepImpl>::expand(
   if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
     for (auto const& relation : relations->second) {
       bool const fetched = _vertexConnectedEdges.contains(relation.second);
-      callback(Step{relation.second, relation.first, previous, fetched});
+      // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
+      // need a mechanism here as well to distinguish between (non)required
+      // parameters.
+      callback(Step{relation.second, relation.first, previous, fetched,
+                    step.getDepth() + 1});
     }
   } else {
     throw std::out_of_range{"ClusterProvider::_vertexConnectedEdges"};

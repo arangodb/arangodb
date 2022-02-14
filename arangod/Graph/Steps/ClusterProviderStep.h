@@ -54,6 +54,11 @@ class ClusterProviderStep
  private:
   ClusterProviderStep(const VertexType& v, const EdgeType& edge, size_t prev);
   ClusterProviderStep(VertexType v, EdgeType edge, size_t prev, bool fetched);
+  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev, bool fetched,
+                      size_t depth);
+  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev, bool fetched,
+                      size_t depth, double weight);
+
   explicit ClusterProviderStep(const VertexType& v);
 
  public:

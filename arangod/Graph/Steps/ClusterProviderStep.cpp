@@ -24,6 +24,22 @@ ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
       _edge(std::move(edge)),
       _fetched(fetched) {}
 
+ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
+                                         size_t prev, bool fetched,
+                                         size_t depth)
+    : BaseStep(prev, depth),
+      _vertex(std::move(v)),
+      _edge(std::move(edge)),
+      _fetched(fetched) {}
+
+ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
+                                         size_t prev, bool fetched,
+                                         size_t depth, double weight)
+    : BaseStep(prev, depth, weight),
+      _vertex(std::move(v)),
+      _edge(std::move(edge)),
+      _fetched(fetched) {}
+
 ClusterProviderStep::~ClusterProviderStep() = default;
 
 VertexType const& ClusterProviderStep::Vertex::getID() const { return _vertex; }
