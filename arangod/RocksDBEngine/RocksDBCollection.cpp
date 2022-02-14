@@ -1233,7 +1233,6 @@ Result RocksDBCollection::performUpdateOrReplace(
     return res;
   }
 
-
   // merge old and new values
   RevisionId revisionId;
   bool const isEdgeCollection =
