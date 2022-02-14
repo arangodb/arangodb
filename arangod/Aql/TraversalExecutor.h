@@ -74,9 +74,14 @@ class TraversalExecutorInfos {
       traverser::TraverserOptions::Order order, bool refactor,
       double defaultWeight, std::string const& weightAttribute,
       transaction::Methods* trx, arangodb::aql::QueryContext& query,
-      arangodb::graph::BaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
-      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions);
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+      traverser::TraverserOptions* opts,
+      std::pair<
+          std::vector<graph::IndexAccessor>,
+          std::unordered_map<uint64_t, std::vector<graph::IndexAccessor>>>&&
+          usedIndexes,
+      std::unordered_map<ServerID, aql::EngineId> const* engines);
   // TODO [GraphRefactor]: Tidy-up input parameter "mess" after refactor is
   // done.
   // TODO [GraphRefactor]: Thinking about a new class / struct for passing /
@@ -124,13 +129,23 @@ class TraversalExecutorInfos {
             arangodb::graph::EdgeUniquenessLevel>
   convertUniquenessLevels() const;
 
-  auto parseTraversalEnumerator(
+  auto parseTraversalEnumeratorSingleServer(
       traverser::TraverserOptions::Order order,
       traverser::TraverserOptions::UniquenessLevel uniqueVertices,
       traverser::TraverserOptions::UniquenessLevel uniqueEdges,
       double defaultWeight, std::string const& weightAttribute,
       arangodb::aql::QueryContext& query,
-      arangodb::graph::BaseProviderOptions&& baseProviderOptions,
+      arangodb::graph::SingleServerBaseProviderOptions&& baseProviderOptions,
+      arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void;
+
+  auto parseTraversalEnumeratorCluster(
+      traverser::TraverserOptions::Order order,
+      traverser::TraverserOptions::UniquenessLevel uniqueVertices,
+      traverser::TraverserOptions::UniquenessLevel uniqueEdges,
+      double defaultWeight, std::string const& weightAttribute,
+      arangodb::aql::QueryContext& query,
+      arangodb::graph::ClusterBaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void;
 

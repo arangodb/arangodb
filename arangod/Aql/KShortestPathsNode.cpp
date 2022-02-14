@@ -393,11 +393,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       // TODO [GraphRefactor]: Clean this up (de-dupllicate with
       // SmartGraphEngine)
-      BaseProviderOptions forwardProviderOptions(
+      SingleServerBaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
           opts->collectionToShard());
 
-      BaseProviderOptions backwardProviderOptions(
+      SingleServerBaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
           opts->getExpressionCtx(), {}, opts->collectionToShard());
 
@@ -406,21 +406,21 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         return _makeExecutionBlockImpl<
             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>,
             SingleServerProvider<SingleServerProviderStep>,
-            BaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                 std::move(backwardProviderOptions),
-                                 enumeratorOptions, validatorOptions,
-                                 outputRegister, engine, sourceInput,
-                                 targetInput, registerInfos);
+            SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            registerInfos);
       } else {
         return _makeExecutionBlockImpl<
             TracedKPathEnumerator<
                 SingleServerProvider<SingleServerProviderStep>>,
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-            BaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                 std::move(backwardProviderOptions),
-                                 enumeratorOptions, validatorOptions,
-                                 outputRegister, engine, sourceInput,
-                                 targetInput, registerInfos);
+            SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            registerInfos);
       }
     } else {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(

@@ -72,12 +72,12 @@ struct IndexAccessor {
   std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
 };
 
-struct BaseProviderOptions {
+struct SingleServerBaseProviderOptions {
   using WeightCallback = std::function<double(
       double originalWeight, arangodb::velocypack::Slice edge)>;
 
  public:
-  BaseProviderOptions(
+  SingleServerBaseProviderOptions(
       aql::Variable const* tmpVar,
       std::pair<std::vector<IndexAccessor>,
                 std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
@@ -88,8 +88,9 @@ struct BaseProviderOptions {
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap);
 
-  BaseProviderOptions(BaseProviderOptions const&) = delete;
-  BaseProviderOptions(BaseProviderOptions&&) = default;
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
+      delete;
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
   std::pair<std::vector<IndexAccessor>,
