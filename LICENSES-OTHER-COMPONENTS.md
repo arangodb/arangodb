@@ -980,12 +980,12 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### ansi-html
+#### ansi-html-community
 
-Name: ansi-html
-Version: 0.0.7
-Project Home: https://github.com/Tjatse/ansi-html
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi-html/LICENSE
+Name: ansi-html-community
+Version: 0.0.8
+Project Home: https://github.com/mahdyar/ansi-html-community
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi-html-community/LICENSE
 License Name: Apache License 2.0
 License Id: Apache-2.0
 
@@ -2465,11 +2465,11 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### xmldom
+#### @xmldom/xmldom
 
-Name: xmldom
-Version: 0.6.0
-Project Home: http://www.xidea.org
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
+Name: @xmldom/xmldom
+Version: 0.8.0
+Project Home: https://github.com/xmldom/xmldom
+License: httpsx://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
 License Name: MIT (dual license)
 License Id: MIT
