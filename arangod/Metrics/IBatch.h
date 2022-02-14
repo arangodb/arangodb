@@ -18,33 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Gauge.h"
+#include <string>
+#include <string_view>
 
 namespace arangodb::metrics {
 
-template<typename Derived, typename T>
-class GaugeBuilder : public GenericBuilder<Derived> {
+class IBatch {
  public:
-  using MetricT = Gauge<T>;
+  virtual void toPrometheus(std::string& result,
+                            std::string_view globals) const = 0;
 
-  [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
-  [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
-                                     this->_labels);
-  }
+  virtual size_t remove(std::string_view labels) = 0;
+
+  virtual ~IBatch();
 };
 
 }  // namespace arangodb::metrics
-
-#define DECLARE_GAUGE(x, type, help)                    \
-  struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() {                                               \
-      _name = #x;                                       \
-      _help = help;                                     \
-    }                                                   \
-  }

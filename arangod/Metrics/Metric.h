@@ -31,6 +31,11 @@ namespace arangodb::metrics {
 
 class Metric {
  public:
+  static void addInfo(std::string& result, std::string_view name,
+                      std::string_view help, std::string_view type);
+  static void addMark(std::string& result, std::string_view name,
+                      std::string_view globals, std::string_view labels);
+
   Metric(std::string_view name, std::string_view help,
          std::string_view labels) noexcept;
 
@@ -38,22 +43,16 @@ class Metric {
   [[nodiscard]] std::string_view name() const noexcept;
   [[nodiscard]] std::string_view labels() const noexcept;
 
-  virtual std::string_view type() const noexcept = 0;
+  [[nodiscard]] virtual std::string_view type() const noexcept = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// \param result toPrometheus handler response
-  /// \param first is the first call toPrometheus for a metric with that name,
-  ///              so you should write type and help string
   /// \param globals labels that all metrics have
   //////////////////////////////////////////////////////////////////////////////
-  virtual void toPrometheus(std::string& result, bool first,
+  virtual void toPrometheus(std::string& result,
                             std::string_view globals) const = 0;
 
   virtual ~Metric();
-
- protected:
-  void addHelpType(std::string& result) const;
-  void addName(std::string& result, std::string_view globals) const;
 
  private:
   std::string_view _name;
