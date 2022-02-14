@@ -143,6 +143,7 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
 template<SocketType T>
 int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
     me->_request->setHeaderV2(std::move(me->_lastHeaderField),
                               std::move(me->_lastHeaderValue));
