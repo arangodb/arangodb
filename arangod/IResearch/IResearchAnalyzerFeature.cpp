@@ -2503,7 +2503,7 @@ void IResearchAnalyzerFeature::prepare() {
   ::iresearch::analysis::pipeline_token_stream::init();
   ::iresearch::analysis::segmentation_token_stream::init();
 #ifdef USE_ENTERPRISE
-  initAnalyzersWithModel();
+  initAnalyzersEE();
 #endif
 
   // load all static analyzers
