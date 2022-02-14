@@ -37,6 +37,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <utility>
 #include <vector>
 
 using namespace arangodb;
@@ -71,42 +72,10 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
 }
 }  // namespace
 
-namespace arangodb {
-namespace graph {
-auto operator<<(std::ostream& out, ClusterProvider::Step const& step)
-    -> std::ostream& {
-  out << step._vertex.getID();
-  return out;
-}
-}  // namespace graph
-}  // namespace arangodb
-
-ClusterProvider::Step::Step(VertexType v)
-    : _vertex(v), _edge(), _fetched(false) {}
-
-ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev)
-    : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(false) {}
-
-ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev,
-                            bool fetched)
-    : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(fetched) {}
-
-ClusterProvider::Step::~Step() = default;
-
-VertexType const& ClusterProvider::Step::Vertex::getID() const {
-  return _vertex;
-}
-
-EdgeType const& ClusterProvider::Step::Edge::getID() const { return _edge; }
-bool ClusterProvider::Step::Edge::isValid() const { return !_edge.empty(); };
-
-bool ClusterProvider::Step::isResponsible(transaction::Methods* trx) const {
-  return true;
-}
-
-ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
-                                 ClusterBaseProviderOptions opts,
-                                 arangodb::ResourceMonitor& resourceMonitor)
+template<class StepImpl>
+ClusterProvider<StepImpl>::ClusterProvider(
+    arangodb::aql::QueryContext& queryContext, ClusterBaseProviderOptions opts,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _query(&queryContext),
@@ -114,9 +83,13 @@ ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
       _opts(std::move(opts)),
       _stats{} {}
 
-ClusterProvider::~ClusterProvider() { clear(); }
+template<class StepImpl>
+ClusterProvider<StepImpl>::~ClusterProvider() {
+  clear();
+}
 
-void ClusterProvider::clear() {
+template<class StepImpl>
+void ClusterProvider<StepImpl>::clear() {
   for (auto const& entry : _vertexConnectedEdges) {
     _resourceMonitor->decreaseMemoryUsage(
         costPerVertexOrEdgeType +
@@ -125,16 +98,19 @@ void ClusterProvider::clear() {
   _vertexConnectedEdges.clear();
 }
 
-auto ClusterProvider::startVertex(VertexType vertex, size_t depth,
-                                  double weight) -> Step {
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
+                                            size_t depth, double weight)
+    -> Step {
   LOG_TOPIC("da308", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  return Step(_opts.getCache()->persistString(vertex));
+  return Step{_opts.getCache()->persistString(vertex)};
 }
 
-void ClusterProvider::fetchVerticesFromEngines(
+template<class StepImpl>
+void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
     std::vector<Step*> const& looseEnds, std::vector<Step*>& result) {
   auto const* engines = _opts.engines();
   // slow path, sharding not deducable from _id
@@ -152,7 +128,8 @@ void ClusterProvider::fetchVerticesFromEngines(
   leased->close();  // 'keys' Array
   leased->close();  // base object
 
-  auto* pool = trx()->vocbase().server().getFeature<NetworkFeature>().pool();
+  auto* pool =
+      trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
   reqOpts.database = trx()->vocbase().name();
@@ -206,7 +183,7 @@ void ClusterProvider::fetchVerticesFromEngines(
       if (!_opts.getCache()->isVertexCached(vertexKey)) {
         // Will be protected by the datalake.
         // We flag to retain the payload.
-        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value);
+        _opts.getCache()->cacheVertex(vertexKey, pair.value);
         needToRetainPayload = true;
       }
     }
@@ -238,19 +215,21 @@ void ClusterProvider::fetchVerticesFromEngines(
       // (e.g. it does not exist)
       _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                          lE->getVertexIdentifier().toString());
-      _opts.getCache()->cacheVertex(std::move(lE->getVertexIdentifier()),
+      _opts.getCache()->cacheVertex(lE->getVertexIdentifier(),
                                     VPackSlice::nullSlice());
     }
-    result.emplace_back(std::move(lE));
+    result.emplace_back(lE);
   }
 }
 
-void ClusterProvider::destroyEngines() {
+template<class StepImpl>
+void ClusterProvider<StepImpl>::destroyEngines() {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }
 
-  auto* pool = trx()->vocbase().server().getFeature<NetworkFeature>().pool();
+  auto* pool =
+      trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
   // We have to clean up the engines in Coordinator Case.
   if (pool == nullptr) {
     return;
@@ -282,7 +261,9 @@ void ClusterProvider::destroyEngines() {
   }
 }
 
-Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
+template<class StepImpl>
+Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
+    VertexType const& vertex) {
   auto const* engines = _opts.engines();
   // TODO Assert that the vertex is not in _vertexConnections after no-loose-end
   // handling todo is done.
@@ -292,7 +273,8 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   leased->add("keys", VPackValue(vertex.toString()));
   leased->close();
 
-  auto* pool = trx()->vocbase().server().getFeature<NetworkFeature>().pool();
+  auto* pool =
+      trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
   reqOpts.database = trx()->vocbase().name();
@@ -388,12 +370,13 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   return TRI_ERROR_NO_ERROR;
 }
 
-auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
   std::vector<Step*> result{};
 
-  if (looseEnds.size() > 0) {
+  if (!looseEnds.empty()) {
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
     _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
@@ -420,9 +403,10 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
   return futures::makeFuture(std::move(result));
 }
 
-auto ClusterProvider::expand(Step const& step, size_t previous,
-                             std::function<void(Step)> const& callback)
-    -> void {
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::expand(
+    Step const& step, size_t previous,
+    std::function<void(Step)> const& callback) -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
@@ -440,29 +424,39 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   }
 }
 
-void ClusterProvider::addVertexToBuilder(
-    Step::Vertex const& vertex, arangodb::velocypack::Builder& builder) {
+template<class StepImpl>
+void ClusterProvider<StepImpl>::addVertexToBuilder(
+    typename Step::Vertex const& vertex,
+    arangodb::velocypack::Builder& builder) {
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   builder.add(_opts.getCache()->getCachedVertex(vertex.getID()));
 };
 
-auto ClusterProvider::addEdgeToBuilder(Step::Edge const& edge,
-                                       arangodb::velocypack::Builder& builder)
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::addEdgeToBuilder(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
     -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
 }
 
-void ClusterProvider::prepareIndexExpressions(aql::Ast* ast) {
+template<class StepImpl>
+void ClusterProvider<StepImpl>::prepareIndexExpressions(aql::Ast* ast) {
   // Nothing to do here. The variables are send over in a different way.
   // We do not make use of special indexes here anyways.
 }
 
-arangodb::transaction::Methods* ClusterProvider::trx() { return _trx.get(); }
+template<class StepImpl>
+arangodb::transaction::Methods* ClusterProvider<StepImpl>::trx() {
+  return _trx.get();
+}
 
-arangodb::aql::TraversalStats ClusterProvider::stealStats() {
+template<class StepImpl>
+arangodb::aql::TraversalStats ClusterProvider<StepImpl>::stealStats() {
   auto t = _stats;
   // Placement new of stats, do not reallocate space.
   _stats.~TraversalStats();
   new (&_stats) aql::TraversalStats{};
   return t;
 }
+
+template class graph::ClusterProvider<ClusterProviderStep>;

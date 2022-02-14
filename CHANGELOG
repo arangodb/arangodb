@@ -8,6 +8,30 @@ devel
   pruning is possible with arbitrary variables that are accessible by the
   FOR loop.
 
+* The multi-dimensional index type `zkd` now supports an optional index hint for
+  tweaking performance by prefetching documents:
+	
+	```
+	FOR app IN appointments OPTIONS { lookahead: 32 }
+    FILTER @to <= app.to
+    FILTER app.from <= @from
+    RETURN app
+	```
+	
+	Specifiying a lookahead value greater than zero makes the index fetch more documents
+	that are no longer in the search box, before seeking to the next lookup position.
+	Because the seek operation is computationally expensive, probing more documents
+	before seeking may reduce the number of seeks, if matching documents are found.
+	Please keep in mind that it might also affect performance negatively if documents
+	are fetched unnecessarily.
+
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
+* Enabled new internal graph refactored code for depth-first, breadth-first and
+  weighted traversals by default.
+
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
 * Improved performance of inner joins with dynamic lookup conditions being
   injected from an outer loop, for indexes of type "persistent", "hash" and
   "skiplist". Performance improvements can be expected if the inner join is
