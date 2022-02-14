@@ -361,8 +361,6 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalanceShards();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
-    } else if (command == FailureOracle) {
-      return handleFailureOracle();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -2147,7 +2145,7 @@ RestStatus RestAdminClusterHandler::handleFailureOracle() {
     return RestStatus::DONE;
   }
 
-  std::vector<std::string> const& suffixes = request()->decodedSuffixes();
+  std::vector<std::string> const& suffixes = request()->suffixes();
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected /_admin/cluster/failureOracle/[verb]");

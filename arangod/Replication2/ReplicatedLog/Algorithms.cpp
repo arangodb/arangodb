@@ -293,7 +293,7 @@ auto algorithms::calculateCommitIndex(
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
     auto const& who = std::min_element(
         std::begin(eligible), std::end(eligible), [](auto& left, auto& right) {
-          return left.lastAckedEntry.index < right.lastAckedEntry.index;
+          return left.lastIndex() < right.lastIndex();
         });
     return {currentCommitIndex,
             CommitFailReason::withQuorumSizeNotReached(who->id),
@@ -316,8 +316,8 @@ auto algorithms::calculateCommitIndex(
                 CommitFailReason::withForcedParticipantNotInQuorum(pt.id),
                 {}};
       }
-      if (pt.lastAckedEntry.index < minForcedCommitIndex) {
-        minForcedCommitIndex = pt.lastAckedEntry.index;
+      if (pt.lastIndex() < minForcedCommitIndex) {
+        minForcedCommitIndex = pt.lastIndex();
         minForcedParticipantId = pt.id;
       }
     }
@@ -336,8 +336,7 @@ auto algorithms::calculateCommitIndex(
 
     std::nth_element(std::begin(eligible), nth, std::end(eligible),
                      [](auto& left, auto& right) {
-                       return left.lastAckedEntry.index >
-                              right.lastAckedEntry.index;
+                       return left.lastIndex() > right.lastIndex();
                      });
     auto const minNonExcludedCommitIndex = nth->lastIndex();
 

@@ -34,9 +34,7 @@ namespace arangodb::cluster {
 struct IFailureOracle;
 class ParticipantsCache;
 
-class ParticipantsCacheFeature final
-    : public ArangodFeature,
-      public std::enable_shared_from_this<ParticipantsCacheFeature> {
+class ParticipantsCacheFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "ParticipantsCache";
