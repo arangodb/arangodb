@@ -323,7 +323,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  AqlItemBlockInputRange>) {
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0,
+      AqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
                                                 leftoverBlock, 0};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
@@ -332,15 +332,16 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                  AqlItemBlockInputMatrix>) {
       _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
       _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::DONE,
+      AqlItemBlockInputMatrix fakedInternalRange{MainQueryState::DONE,
                                                  _aqlItemBlockMatrix.get()};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  MultiAqlItemBlockInputRange>) {
-      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, 1};
-      AqlItemBlockInputRange tmpInternalRange{ExecutorState::DONE, 0,
+      MultiAqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
+                                                     1};
+      AqlItemBlockInputRange tmpInternalRange{MainQueryState::DONE, 0,
                                               leftoverBlock, 0};
       fakedInternalRange.setDependency(0, tmpInternalRange);
       testee.testInjectInputRange(std::move(fakedInternalRange),
@@ -392,7 +393,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     auto prod = leftoverProducer(skip.subqueryDepth());
     {
       // Create the fake internal state for leftoverProducer
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0,
+      AqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
                                                 dependencyLeftover, 0};
       // We want to copy Skip here, we need it twice
       prod.testInjectInputRange(std::move(fakedInternalRange), skip);
@@ -403,7 +404,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
 
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  AqlItemBlockInputRange>) {
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0,
+      AqlItemBlockInputRange fakedInternalRange{MainQueryState::HASMORE, 0,
                                                 leftoverBlock, 0};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
@@ -412,16 +413,16 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                  AqlItemBlockInputMatrix>) {
       _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
       _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::HASMORE,
+      AqlItemBlockInputMatrix fakedInternalRange{MainQueryState::HASMORE,
                                                  _aqlItemBlockMatrix.get()};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  MultiAqlItemBlockInputRange>) {
-      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0,
+      MultiAqlItemBlockInputRange fakedInternalRange{MainQueryState::HASMORE, 0,
                                                      1};
-      AqlItemBlockInputRange tmpInternalRange{ExecutorState::HASMORE, 0,
+      AqlItemBlockInputRange tmpInternalRange{MainQueryState::HASMORE, 0,
                                               leftoverBlock, 0};
       fakedInternalRange.setDependency(0, tmpInternalRange);
       testee.testInjectInputRange(std::move(fakedInternalRange),

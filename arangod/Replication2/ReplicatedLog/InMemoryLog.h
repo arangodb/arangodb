@@ -25,6 +25,7 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
 #include <velocypack/Builder.h>

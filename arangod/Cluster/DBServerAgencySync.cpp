@@ -49,6 +49,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -71,7 +72,8 @@ void DBServerAgencySync::work() {
 
 Result DBServerAgencySync::getLocalCollections(
     std::unordered_set<std::string> const& dirty,
-    AgencyCache::databases_t& databases, LocalLogsMap& replLogs) {
+    AgencyCache::databases_t& databases, LocalLogsMap& replLogs,
+    LocalStatesMap& replStates) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -106,6 +108,17 @@ Result DBServerAgencySync::getLocalCollections(
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";
+        return Result(
+            TRI_ERROR_INTERNAL,
+            "Failed to emplace new entry in local replicated logs cache");
+      }
+    }
+    {
+      auto [it, created] =
+          replStates.try_emplace(dbname, vocbase.getReplicatedStateStatus());
+      if (!created) {
+        LOG_TOPIC("5d5c8", WARN, Logger::MAINTENANCE)
+            << "Failed to emplace new entry in local replicated state cache";
         return Result(
             TRI_ERROR_INTERNAL,
             "Failed to emplace new entry in local replicated logs cache");
@@ -235,9 +248,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
+  LocalStatesMap localStates;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
       << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(dirty, local, localLogs);
+  Result glc = getLocalCollections(dirty, local, localLogs, localStates);
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE)
       << "After getLocalCollections for phaseOne";
@@ -257,13 +271,16 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
+    AgencyCache::databases_t current =
+        clusterInfo.getCurrent(currentIndex, dirty);
+
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
 
-    tmp = arangodb::maintenance::phaseOne(plan, planIndex, dirty, moreDirt,
-                                          local, serverId, mfeature, rb,
-                                          currentShardLocks, localLogs);
+    tmp = arangodb::maintenance::phaseOne(
+        plan, planIndex, current, currentIndex, dirty, moreDirt, local,
+        serverId, mfeature, rb, currentShardLocks, localLogs, localStates);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
@@ -278,9 +295,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
              "0.1s...";
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-
-    AgencyCache::databases_t current =
-        clusterInfo.getCurrent(currentIndex, dirty);
 
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current;
@@ -298,7 +312,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     local.clear();
     localLogs.clear();
-    glc = getLocalCollections(dirty, local, localLogs);
+    localStates.clear();
+    glc = getLocalCollections(dirty, local, localLogs, localStates);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
@@ -321,7 +336,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
     tmp = arangodb::maintenance::phaseTwo(
         plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
-        currentShardLocks, localLogs, failedServers);
+        currentShardLocks, localLogs, localStates, failedServers);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";

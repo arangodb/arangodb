@@ -1,4 +1,7 @@
 #include "test/jemalloc_test.h"
+#include "test/san.h"
+
+const char *malloc_conf = TEST_SAN_UAF_ALIGN_DISABLE;
 
 enum {
 	alloc_option_start = 0,
@@ -151,6 +154,8 @@ test_tcache_max_impl(void) {
 TEST_BEGIN(test_tcache_max) {
 	test_skip_if(!config_stats);
 	test_skip_if(!opt_tcache);
+	test_skip_if(opt_prof);
+	test_skip_if(san_uaf_detection_enabled());
 
 	for (alloc_option = alloc_option_start;
 	     alloc_option < alloc_option_end;

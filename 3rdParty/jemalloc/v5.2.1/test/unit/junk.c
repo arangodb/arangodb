@@ -30,7 +30,7 @@ do_allocs(size_t size, bool zero, size_t lg_align) {
 		if (opt_junk_alloc && !zero) {				\
 			expect_ptr_eq(ptr, last_junked_ptr, "");	\
 			expect_zu_eq(last_junked_usize,			\
-			    malloc_usable_size(ptr), "");		\
+			    TEST_MALLOC_SIZE(ptr), "");			\
 		}							\
 	} while (0)
 	if (!zero && lg_align == 0) {

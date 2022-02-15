@@ -458,10 +458,8 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       Ast::traverseAndModify(
           astRoot, [this, field, ast](AstNode* node) -> AstNode* {
             if (node->type == NODE_TYPE_PARAMETER) {
-          // should be only our parameter name. see validation method!
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+              // should be only our parameter name. see validation method!
               TRI_ASSERT(node->getStringView() == CALCULATION_PARAMETER_NAME);
-#endif
               // FIXME: move to computed value once here could be not only
               // strings
               auto newNode = ast->createNodeValueMutableString(field.c_str(),

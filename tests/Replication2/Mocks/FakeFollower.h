@@ -66,11 +66,10 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
     using streamSpec =
         typename replicated_state::ReplicatedStateStreamSpec<State>;
-    velocypack::UInt8Buffer buffer;
-    velocypack::Builder builder(buffer);
+    velocypack::Builder builder;
     using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;
     streams::MultiplexedValues::toVelocyPack<descriptor>(t, builder);
-    return addEntry(LogPayload(std::move(buffer)));
+    return addEntry(LogPayload::createFromSlice(builder.slice()));
   }
 
  private:

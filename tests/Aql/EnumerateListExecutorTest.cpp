@@ -88,7 +88,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
                                        {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
+  AqlItemBlockInputRange input{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear());
@@ -127,7 +127,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
                                        {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
 
-  AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
+  AqlItemBlockInputRange input{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear());
