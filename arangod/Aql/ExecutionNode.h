@@ -181,7 +181,6 @@ class ExecutionNode {
 
  public:
   /// @brief constructor using an id
-  ExecutionNode(ExecutionPlan* plan, size_t id) = delete;
   ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   /// @brief constructor using a VPackSlice
