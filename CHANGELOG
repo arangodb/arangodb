@@ -1,6 +1,9 @@
 devel
 -----
 
+* As we are now in constant stall regime, stall onset and warnings are
+  demoted to DEBUG.
+
 * Allow early pruning (moving a FILTER condition into an IndexNode or
   EnumerateCollectionNode) in more cases than before. Previously, early
   pruning was only possible if the FILTER condition referred to exactly one
