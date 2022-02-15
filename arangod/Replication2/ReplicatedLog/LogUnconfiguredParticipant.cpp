@@ -43,14 +43,14 @@ auto LogUnconfiguredParticipant::getQuickStatus() const -> QuickLogStatus {
 LogUnconfiguredParticipant::LogUnconfiguredParticipant(
     std::unique_ptr<LogCore> logCore,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics)
-    : _logCore(std::move(logCore)), _logMetrics(std::move(logMetrics)) {
+    : _guardedData(std::move(logCore)), _logMetrics(std::move(logMetrics)) {
   _logMetrics->replicatedLogInactiveNumber->fetch_add(1);
 }
 
 auto LogUnconfiguredParticipant::resign() && -> std::tuple<
     std::unique_ptr<LogCore>, DeferredAction> {
-  auto nop = DeferredAction{};
-  return std::make_tuple(std::move(_logCore), std::move(nop));
+  return _guardedData.doUnderLock(
+      [](auto& data) { return std::move(data).resign(); });
 }
 
 auto LogUnconfiguredParticipant::waitFor(LogIndex)
@@ -74,4 +74,28 @@ auto LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
 
 auto LogUnconfiguredParticipant::getCommitIndex() const noexcept -> LogIndex {
   return LogIndex{0};  // index 0 is always committed.
+}
+
+LogUnconfiguredParticipant::GuardedData::GuardedData(
+    std::unique_ptr<arangodb::replication2::replicated_log::LogCore> logCore)
+    : _logCore(std::move(logCore)) {}
+
+auto LogUnconfiguredParticipant::waitForResign()
+    -> futures::Future<futures::Unit> {
+  return _guardedData.doUnderLock(
+      [](auto& self) { return self.waitForResign(); });
+}
+
+auto LogUnconfiguredParticipant::GuardedData::resign() && -> std::tuple<
+    std::unique_ptr<arangodb::replication2::replicated_log::LogCore>,
+    arangodb::DeferredAction> {
+  auto queue = std::move(_waitForResignQueue);
+  auto defer = DeferredAction{
+      [queue = std::move(queue)]() mutable noexcept { queue.resolveAll(); }};
+  return std::make_tuple(std::move(_logCore), std::move(defer));
+}
+
+auto LogUnconfiguredParticipant::GuardedData::waitForResign()
+    -> futures::Future<futures::Unit> {
+  return _waitForResignQueue.addWaitFor();
 }

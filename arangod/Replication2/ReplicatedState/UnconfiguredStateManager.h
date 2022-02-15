@@ -29,6 +29,10 @@
 
 #include <memory>
 
+namespace arangodb::replication2::replicated_log {
+struct LogUnconfiguredParticipant;
+}
+
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>

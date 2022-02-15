@@ -146,6 +146,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   auto waitForLeadership() -> WaitForFuture override;
 
+  auto waitForResign() -> futures::Future<futures::Unit> override;
+
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;

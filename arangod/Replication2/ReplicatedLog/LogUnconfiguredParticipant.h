@@ -24,6 +24,9 @@
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/WaitForBag.h"
+
+#include <Basics/Guarded.h>
 
 namespace arangodb::replication2::replicated_log {
 
@@ -54,14 +57,31 @@ struct LogUnconfiguredParticipant final
       -> arangodb::Result override;
   [[nodiscard]] auto waitForIterator(arangodb::replication2::LogIndex index)
       -> WaitForIteratorFuture override;
+  auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getCommitIndex() const noexcept
       -> arangodb::replication2::LogIndex override;
 
  private:
-  std::unique_ptr<arangodb::replication2::replicated_log::LogCore> _logCore;
   std::shared_ptr<
       arangodb::replication2::replicated_log::ReplicatedLogMetrics> const
       _logMetrics;
+
+  struct GuardedData {
+    explicit GuardedData(
+        std::unique_ptr<arangodb::replication2::replicated_log::LogCore>
+            logCore);
+
+    auto resign() && -> std::tuple<
+        std::unique_ptr<arangodb::replication2::replicated_log::LogCore>,
+        arangodb::DeferredAction>;
+
+    auto waitForResign() -> futures::Future<futures::Unit>;
+
+    std::unique_ptr<arangodb::replication2::replicated_log::LogCore> _logCore;
+    WaitForBag _waitForResignQueue;
+  };
+
+  arangodb::Guarded<GuardedData> _guardedData;
 };
 
 }  // namespace arangodb::replication2::replicated_log

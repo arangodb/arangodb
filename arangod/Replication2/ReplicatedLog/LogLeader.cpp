@@ -1368,6 +1368,13 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
   });
 }
 
+auto replicated_log::LogLeader::waitForResign()
+    -> futures::Future<futures::Unit> {
+  // TODO implement
+  TRI_ASSERT(false);
+  std::abort();
+}
+
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
     -> Result {
   auto res = _guardedLogCore.doUnderLock([&](auto& core) {

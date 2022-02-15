@@ -67,6 +67,7 @@ class LogFollower final : public ILogFollower,
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture override;
+  auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
   [[nodiscard]] auto getLogIterator(LogIndex firstIndex) const

@@ -568,6 +568,12 @@ auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
   return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
+auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
+  // TODO implement
+  TRI_ASSERT(false);
+  std::abort();
+}
+
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
     const noexcept -> LogStatistics {
   auto result = LogStatistics{};
