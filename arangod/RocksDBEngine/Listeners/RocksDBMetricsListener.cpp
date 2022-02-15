@@ -64,14 +64,15 @@ void RocksDBMetricsListener::OnStallConditionsChanged(
         << info.cf_name << "' to let background writes catch up";
   } else {
     TRI_ASSERT(info.condition.cur == rocksdb::WriteStallCondition::kNormal);
-    if ()
-      LOG_TOPIC("9123e",
-                (info.condition.prev == rocksdb::WriteStallCondition::kStopped)
-                    ? INFO
-                    : DEBUG,
-                Logger::ENGINES)
-          << "rocksdb is resuming normal writes for column family '"
-          << info.cf_name << "'";
+    if (info.condition.prev == rocksdb::WriteStallCondition::kStopped) {
+      LOG_TOPIC("9123e", INFO, Logger::ENGINES)
+        << "rocksdb is resuming normal writes from stop for column family '"
+        << info.cf_name << "'";
+    } else {
+      LOG_TOPIC("9123f", INFO, Logger::ENGINES)
+        << "rocksdb is resuming normal writes from stall for column family '"
+        << info.cf_name << "'";
+    }
   }
 }
 
