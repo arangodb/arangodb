@@ -2231,7 +2231,7 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
               }
               response.add(id, VPackValue(fuerte::StatusAccepted));
             }
-            return std::move(response);
+            return response;
           });
     });
 

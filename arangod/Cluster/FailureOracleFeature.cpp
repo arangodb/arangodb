@@ -32,13 +32,11 @@
 #include "Cluster/FailureOracle.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Logger/LogMacros.h"
 
 #include <atomic>
 #include <chrono>
 #include <memory>
 #include <shared_mutex>
-// TODO remove LOG_DEVEL
 
 namespace arangodb::cluster {
 
@@ -135,7 +133,6 @@ void FailureOracleImpl::reload(const VPackSlice& result) {
     auto isServerGood =
         value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
     isFailed[serverId] = !isServerGood;
-    LOG_DEVEL << "Setting " << serverId << " to " << isFailed[serverId];
   }
   std::unique_lock writeLock(_mutex);
   _isFailed = std::move(isFailed);
@@ -188,7 +185,6 @@ void FailureOracleImpl::createAgencyCallback(Server& server) {
   _agencyCallback = std::make_shared<AgencyCallback>(
       server, kSupervisionHealthPath,
       [weak = weak_from_this()](VPackSlice const& result) {
-        LOG_DEVEL << "FailureOracleFeature agencyCallback called";
         auto self = weak.lock();
         if (self && !result.isNone()) {
           TRI_ASSERT(result.isObject())
@@ -217,8 +213,6 @@ void FailureOracleFeature::prepare() {
 }
 
 void FailureOracleFeature::start() {
-  LOG_DEVEL << "FailureOracleFeature started";
-
   TRI_ASSERT(_cache == nullptr);
   _cache = std::make_shared<FailureOracleImpl>(
       server().getEnabledFeature<ClusterFeature>());
@@ -229,17 +223,11 @@ void FailureOracleFeature::start() {
       << "FailureOracleFeature is ready";
 }
 
-void FailureOracleFeature::stop() {
-  LOG_DEVEL << "FailureOracleFeature stopped";
-  _cache->stop();
-}
+void FailureOracleFeature::stop() { _cache->stop(); }
 
 auto FailureOracleFeature::status() -> Status { return _cache->getStatus(); }
 
-void FailureOracleFeature::flush() {
-  LOG_DEVEL << "FailureOracleFeature flushed";
-  _cache->flush();
-}
+void FailureOracleFeature::flush() { _cache->flush(); }
 
 auto FailureOracleFeature::getFailureOracle()
     -> std::shared_ptr<IFailureOracle> {
