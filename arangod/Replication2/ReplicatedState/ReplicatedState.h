@@ -44,6 +44,7 @@ struct ReplicatedLog;
 struct ILogFollower;
 struct ILogLeader;
 struct ILogParticipant;
+struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
