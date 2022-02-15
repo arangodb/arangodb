@@ -158,9 +158,7 @@
         type: 'edgeLabels',
         name: 'Label',
         desc: 'Set default edge label',
-        edgeIds: {
-          0: { id: "default" },
-        }
+        edgeIds: { id: "_key" }
       },
       'edgeLabelByCollection': {
         type: 'select',
@@ -254,19 +252,27 @@
       if (options.userConfig.attributes.code === 200) {
 
         var populateLabel = function (extLabels, newLabels) {
-          for (let l = 0; l < newLabels.length; l++) {
-            console.log(newLabels[l]);
+          // console.log(extLabels);
+          for (let l = 0; l < newLabels[0].length; l++) {
+            console.log(newLabels[0][l]);
             let match = false;
             for (let n = 0; n < extLabels.length; n++) {
-              console.log(extLabels[n].value);
-              console.log(extLabels[n]);
+              if (extLabels[n].value !== newLabels[0][l]) {
+                console.log(extLabels[n].value)
+                match = true;
+                break;
+              }
+            }
+            if (!match) {
+              //debugger;
+              extLabels.append($("<option />").val(newLabels[0][l]).text(newLabels[0][l]));
             }
           }
+          debugger;
 
         }
 
         var cb = function (data) {
-          console.log(data);
           var extsEdges = $("#g_edgeLabel option");
           populateLabel(extsEdges, data.edgeLabels);
         }
