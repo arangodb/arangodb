@@ -2995,7 +2995,7 @@ function complexFilteringSuite() {
       assertEqual(stats.scannedFull, 0);
       // 1 Primary (A)
       // 0 Edge
-      assertEqual(stats.scannedIndex, 1);
+      assertEqual(stats.scannedIndex, isCluster ? 2 : 1);
       // 1 Filter (A)
       assertEqual(stats.filtered, 1);
     },
@@ -4191,7 +4191,7 @@ function optimizeQuantifierSuite() {
 
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 1);
+      assertEqual(stats.scannedIndex, isCluster ? 2 : 1);
       assertEqual(stats.filtered, 1);
     },
 
@@ -4295,7 +4295,8 @@ function optimizeQuantifierSuite() {
 
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, 1);
+
+      assertEqual(stats.scannedIndex,  isCluster ? 2 : 1);
       assertEqual(stats.filtered, 1);
     },
 

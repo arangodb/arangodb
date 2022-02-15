@@ -277,14 +277,12 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   // ksp.
   /* Needed for TRAVERSALS only - Begin */
   leased->add("depth", VPackValue(step->getDepth()));
-  leased->add(VPackValue("variables"));
   if (_opts.expressionContext() != nullptr) {
-    {
-      leased->openArray();
-      _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
-                                                       *(leased.get()));
-      leased->close();
-    }
+    leased->add(VPackValue("variables"));
+    leased->openArray();
+    _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
+                                                     *(leased.get()));
+    leased->close();
   }
   /* Needed for TRAVERSALS only - End */
 
