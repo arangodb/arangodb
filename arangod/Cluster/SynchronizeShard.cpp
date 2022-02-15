@@ -585,11 +585,12 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     // this saves an HTTP roundtrip to the leader when initializing the WAL tailing.
     return tailingSyncer->inheritFromInitialSyncer(syncer);
   });
+ 
+  auto& agencyCache = job.feature().server().getFeature<ClusterFeature>().agencyCache();
   
-  /*
-  syncer->setAbortionCheckCallback([&]() -> bool {
+  syncer->setCancellationCheckCallback([=, &agencyCache]() -> bool {
+
     // Will return true if the SynchronizeShard job should be aborted.
-    auto& agencyCache = job.feature().server().getFeature<ClusterFeature>().agencyCache();
     std::string path = "Plan/Collections/" + database + "/" +
           std::to_string(col->planId().id()) + "/shards/" + col->name();
     VPackBuilder builder;
@@ -597,15 +598,13 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
     if (!builder.isEmpty()) {
       VPackSlice plan = builder.slice();
-      if (plan.isArray()) {
-        if (plan.length() >= 2) {
-          if (plan[0].isString() && plan[0].isEqualString(leaderId)) {
-            std::string myself = arangodb::ServerState::instance()->getId();
-            for (size_t i = 1; i < plan.length(); ++i) {
-              if (plan[i].isString() && plan[i].isEqualString(myself)) {
-                // do not abort the synchronization
-                return false;
-              }
+      if (plan.isArray() && plan.length() >= 2) {
+        if (plan[0].isString() && plan[0].isEqualString(leaderId)) {
+          std::string myself = arangodb::ServerState::instance()->getId();
+          for (size_t i = 1; i < plan.length(); ++i) {
+            if (plan[i].isString() && plan[i].isEqualString(myself)) {
+              // do not abort the synchronization
+              return false;
             }
           }
         }

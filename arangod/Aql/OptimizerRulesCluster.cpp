@@ -226,6 +226,11 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
         if (mod->collection() != indexNode->collection()) {
           continue;
         }
+
+        if (mod->getOptions().exclusive) {
+          // exclusive lock used. this is not supported by the SingleRemoteOperationNode
+          continue;
+        }
         
         auto parentType = parentModification->getType();
         Variable const* update = nullptr;
@@ -267,12 +272,12 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
         plan->unlinkNode(indexNode);
         modified = true;
       } else if (::parentIsReturnOrConstCalc(node)) {
-        ExecutionNode* singleOperationNode = plan->registerNode(
-            new SingleRemoteOperationNode(plan, plan->nextId(), EN::INDEX, true,
-                                          key, indexNode->collection(),
-                                          ModificationOptions{}, nullptr /*in*/,
-                                          indexNode->outVariable() /*out*/,
-                                          nullptr /*old*/, nullptr /*new*/));
+        ExecutionNode* singleOperationNode =
+            plan->createNode<SingleRemoteOperationNode>(
+                plan, plan->nextId(), EN::INDEX, true, key,
+                indexNode->collection(), ModificationOptions{}, nullptr /*in*/,
+                indexNode->outVariable() /*out*/, nullptr /*old*/,
+                nullptr /*new*/);
         ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
       }
@@ -301,6 +306,11 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
     }
 
     if (!::parentIsReturnOrConstCalc(node)) {
+      continue;
+    }
+        
+    if (mod->getOptions().exclusive) {
+      // exclusive lock used. this is not supported by the SingleRemoteOperationNode
       continue;
     }
 
@@ -399,16 +409,20 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
       continue;
     }
 
-    ExecutionNode* singleOperationNode = plan->registerNode(
-        new SingleRemoteOperationNode(plan, plan->nextId(), depType, false, key,
-                                      mod->collection(), mod->getOptions(), update /*in*/,
-                                      nullptr, mod->getOutVariableOld(),
-                                      mod->getOutVariableNew()));
+    ExecutionNode* singleOperationNode =
+        plan->createNode<SingleRemoteOperationNode>(
+            plan, plan->nextId(), depType, false, key, mod->collection(),
+            mod->getOptions(), update /*in*/, nullptr, mod->getOutVariableOld(),
+            mod->getOutVariableNew());
 
     ::replaceNode(plan, mod, singleOperationNode);
 
     if (calc) {
-      plan->unlinkNode(calc);
+      plan->clearVarUsageComputed();
+      plan->findVarUsage();
+      if (!calc->isVarUsedLater(calc->outVariable())) {
+        plan->unlinkNode(calc);
+      }
     }
     modified = true;
   }  // for node : nodes

@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for single operation nodes in cluster
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,16 +26,11 @@
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
-var assertQueryError = helper.assertQueryError;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
 
 function optimizerClusterSingleDocumentTestSuite () {
   var ruleName = "optimize-cluster-single-document-operations";
@@ -113,6 +106,8 @@ function optimizerClusterSingleDocumentTestSuite () {
       let doFullTest = set[3]; // Do advanced checking
       let setupFunction = set[4]; // this resets the setup
       let errorCode = set[5]; // expected error code
+      let returnKey = set[6];
+      let returnValue = set[7];
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set);
 
       var result = AQL_EXPLAIN(queryString, {}, thisRuleEnabled); // explain - only
@@ -126,6 +121,9 @@ function optimizerClusterSingleDocumentTestSuite () {
         try {
           r1 = AQL_EXECUTE(queryString, {}, thisRuleDisabled);
           assertEqual(0, errorCode, "we have no error in the original, but the tests expects an exception: " + queryInfo);
+          if (typeof returnKey !== 'undefined') {
+            assertEqual(r1["json"][0][returnKey], returnValue);
+          }
         } catch (y) {
           assertTrue(errorCode.hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + JSON.stringify(y) + queryInfo);
           assertEqual(y.errorNum, errorCode.code, "match other error code - got: " + JSON.stringify(y) + queryInfo);
@@ -136,6 +134,9 @@ function optimizerClusterSingleDocumentTestSuite () {
         try {
           r2 = AQL_EXECUTE(queryString, {}, thisRuleEnabled);
           assertEqual(0, errorCode, "we have no error in our plan, but the tests expects an exception" + queryInfo);
+          if (typeof returnKey !== 'undefined') {
+            assertEqual(r1["json"][0][returnKey], returnValue);
+          }
         } catch (x) {
           assertTrue(errorCode.hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
           assertEqual(x.errorNum, errorCode.code, "match our error code" + JSON.stringify(x) + queryInfo);
@@ -348,9 +349,20 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],        
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, s, 0],
+        [ "UPDATE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
+        [ "UPDATE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
+        [ "UPDATE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 12, 1, true, setupC1, 0],
+        [ "UPDATE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        [ "UPDATE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        [ "UPDATE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, s, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 8, 1, true, setupC1, 0, "name", "test1"],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 10, 5, true, setupC1, 0, "name", "test1"],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 10, 5, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '${notHereDoc}' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0, "name", "test1"],
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN { NEW: NEW, a: a }`, 6, 4, true, s, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 6, 4, true, s, 0],
@@ -370,6 +382,9 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
       ];
 
       var expectedNodes = [
@@ -377,7 +392,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
         [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ]
+        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "UpdateNode", "RemoteNode", "GatherNode", "ReturnNode" ]
 
       ];
 
@@ -403,9 +419,21 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],   
         [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
+        [ "REPLACE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
+        [ "REPLACE {_key: '1'} WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0],
+        [ "REPLACE {_key: '1'} WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 13, 1, true, setupC1, 0],
+        [ "REPLACE '1' WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
+        [ "REPLACE '1' WITH {_key: '2'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        [ "REPLACE '1' WITH {_key: '1'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 8, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 8, 1, true, setupC1, 0, "name", "test1"],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0, "name", "test1"],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 11, 5, true, setupC1, 0],
 
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0],
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0, "name", "test1"],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '-1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0 ],
         
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
@@ -426,15 +454,19 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "patch-update-statements", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
       ];
-      
+
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
         [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ]
-  ];
+        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode", "ReturnNode" ],
+      ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
@@ -498,6 +530,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "INSERT [] INTO @@cn1 RETURN NEW",
         "INSERT [ {} ] INTO @@cn1 RETURN NEW",
         "INSERT [{ foo: 2 }] INTO @@cn1 RETURN NEW",
+        "INSERT {} INTO @@cn1 OPTIONS { exclusive: true }",
 
         "UPDATE [] IN @@cn1",
         "UPDATE [ {} ] IN @@cn1",
@@ -505,6 +538,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "UPDATE [] IN @@cn1 RETURN OLD",
         "UPDATE [ {} ] IN @@cn1 RETURN OLD",
         "UPDATE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        "UPDATE 'foo' WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: true }",
         
         "REPLACE [] IN @@cn1",
         "REPLACE [ {} ] IN @@cn1",
@@ -512,6 +546,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REPLACE [] IN @@cn1 RETURN OLD",
         "REPLACE [ {} ] IN @@cn1 RETURN OLD",
         "REPLACE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        "REPLACE { _key: 'abc' } WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: true }",
 
         "REMOVE [] IN @@cn1",
         "REMOVE [ {} ] IN @@cn1",
@@ -519,6 +554,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REMOVE [] IN @@cn1 RETURN OLD",
         "REMOVE [ {} ] IN @@cn1 RETURN OLD",
         "REMOVE [{ foo: 4 }] IN @@cn1 RETURN OLD",
+        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: true }",
       ];
 
       queries.forEach(function(query) {
@@ -534,12 +570,17 @@ function optimizerClusterSingleDocumentTestSuite () {
         "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE one WITH { two: 1 } IN @@cn1",
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN @@cn1",
         "INSERT {} INTO @@cn1",
+        "INSERT {} INTO @@cn1 OPTIONS { exclusive: false }",
         "INSERT { _key: 'abc' } INTO @@cn1",
         "INSERT { two: 1 } INTO @@cn1",
         "UPDATE 'foo' WITH { two: 1 } INTO @@cn1",
+        "UPDATE 'foo' WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: false }",
         "UPDATE { _key: 'abc' } WITH { two: 1 } INTO @@cn1",
+        "REPLACE { _key: 'abc' } WITH { two: 1 } INTO @@cn1",
+        "REPLACE { _key: 'abc' } WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: false }",
         "REMOVE 'abc' INTO @@cn1",
         "REMOVE { _key: 'abc' } INTO @@cn1",
+        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: false }",
       ];
 
       queries.forEach(function(query) {
@@ -550,6 +591,6 @@ function optimizerClusterSingleDocumentTestSuite () {
 
   };
 }
-jsunity.run(optimizerClusterSingleDocumentTestSuite);
 
+jsunity.run(optimizerClusterSingleDocumentTestSuite);
 return jsunity.done();
