@@ -146,6 +146,13 @@ struct ClusterBaseProviderOptions {
       std::unordered_map<ServerID, aql::EngineId> const* engines,
       bool backward);
 
+  ClusterBaseProviderOptions(
+      std::shared_ptr<RefactoredClusterTraverserCache> cache,
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      aql::FixedVarExpressionContext* expressionContext,
+      std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+          filterConditionVariables);
+
   RefactoredClusterTraverserCache* getCache();
 
   bool isBackward() const;
@@ -153,12 +160,26 @@ struct ClusterBaseProviderOptions {
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
       const;
 
+  // [GraphRefactor] Note: Both used in SingleServer and Cluster variant.
+  // If more overlaps reoccur, we might want to implement a base class.
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+  aql::FixedVarExpressionContext* expressionContext();
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
   bool _backward;
+
+  // [GraphRefactor] Note: All vars below used in SingleServer && Cluster case
+  aql::FixedVarExpressionContext* _expressionContext;
+
+  // TODO: Currently this will be a copy. As soon as we remove the old
+  // non-refactored code, we will do a move instead of a copy operation.
+  std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+      _filterConditionVariables;
 };
 
 }  // namespace graph

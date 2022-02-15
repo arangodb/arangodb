@@ -107,8 +107,8 @@ class ClusterProvider {
   aql::TraversalStats stealStats();
 
   // TODO: This may need to be implemented.
-  void prepareContext(aql::InputAqlItemRow input){};
-  void unPrepareContext(){};
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()

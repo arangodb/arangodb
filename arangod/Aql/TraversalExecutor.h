@@ -174,6 +174,9 @@ class TraversalExecutorInfos {
       _registerMapping;
   std::string _fixedSource;
   RegisterId _inputRegister;
+
+  // TODO [GraphRefactor]: Remove copy of _filterConditionVariables as soon
+  // as we remove the old non-refactored code.
   std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
   Ast* _ast;
   traverser::TraverserOptions::UniquenessLevel _uniqueVertices;

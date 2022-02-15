@@ -880,6 +880,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   // Optimized condition
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
   filterConditionVariables.reserve(_conditionVariables.size());
+
   for (auto const& it : _conditionVariables) {
     if (it != _tmpObjVariable) {
       auto idIt = varInfo.find(it->id);
@@ -923,12 +924,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           vars.emplace_back(var);
           regs.emplace_back(reg);
         }
-
-        //      arangodb::graph::SingleServerBaseProviderOptions
-        //      baseProviderOptions{
-        //          opts->tmpVar(), std::move(usedIndexes),
-        //          opts->getExpressionCtx(), filterConditionVariables,
-        //          opts->collectionToShard()};
 
         arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
                                                            opts->maxDepth};

@@ -141,7 +141,25 @@ void SingleServerBaseProviderOptions::unPrepareContext() {
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
     std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
-    : _cache(std::move(cache)), _engines(engines), _backward(backward) {
+    : _cache(std::move(cache)),
+      _engines(engines),
+      _backward(backward),
+      _expressionContext(nullptr) {
+  TRI_ASSERT(_cache != nullptr);
+  TRI_ASSERT(_engines != nullptr);
+}
+
+ClusterBaseProviderOptions::ClusterBaseProviderOptions(
+    std::shared_ptr<RefactoredClusterTraverserCache> cache,
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+    aql::FixedVarExpressionContext* expressionContext,
+    std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+        filterConditionVariables)
+    : _cache(std::move(cache)),
+      _engines(engines),
+      _backward(backward),
+      _expressionContext(expressionContext),
+      _filterConditionVariables(filterConditionVariables) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -157,4 +175,27 @@ std::unordered_map<ServerID, aql::EngineId> const*
 ClusterBaseProviderOptions::engines() const {
   TRI_ASSERT(_engines != nullptr);
   return _engines;
+}
+
+void ClusterBaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
+  // [GraphRefactor] Note: Currently, only used in Traversal, but not
+  // KShortestPath
+  if (_expressionContext != nullptr) {
+    for (auto const& [var, reg] : _filterConditionVariables) {
+      _expressionContext->setVariableValue(var, input.getValue(reg));
+    }
+  }
+}
+
+void ClusterBaseProviderOptions::unPrepareContext() {
+  // [GraphRefactor] Note: Currently, only used in Traversal, but not
+  // KShortestPath
+  if (_expressionContext != nullptr) {
+    _expressionContext->clearVariableValues();
+  }
+}
+
+aql::FixedVarExpressionContext*
+ClusterBaseProviderOptions::expressionContext() {
+  return _expressionContext;
 }
