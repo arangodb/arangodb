@@ -335,7 +335,12 @@ auto replicated_log::LogLeader::construct(
   // if this assertion triggers there is an entry present in the log
   // that has the current term. Did create a different leader with the same term
   // in your test?
-  TRI_ASSERT(lastIndex.term != term);
+  if (lastIndex.term >= term) {
+    LOG_CTX("8ed2f", FATAL, logContext)
+        << "Failed to construct log leader. Current term is " << term
+        << " but spearhead is already at " << lastIndex.term;
+    FATAL_ERROR_EXIT();  // This must never happen in production
+  }
 
   // Note that although we add an entry to establish our leadership
   // we do still want to use the unchanged lastIndex to initialize
