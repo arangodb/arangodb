@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Optimize further RocksDB throttle to allow for no change on any
+  given calculation cycle.
+
 * Shorten the license grace period to the documented 3 hours.
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
