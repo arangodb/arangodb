@@ -333,7 +333,7 @@ auto replicated_log::LogLeader::construct(
     LOG_CTX("8ed2f", FATAL, logContext)
         << "Failed to construct log leader. Current term is " << term
         << " but spearhead is already at " << lastIndex.term;
-    FATAL_ERROR_EXIT(); // This must never happen in production
+    FATAL_ERROR_EXIT();  // This must never happen in production
   }
 
   // Note that although we add an entry to establish our leadership
