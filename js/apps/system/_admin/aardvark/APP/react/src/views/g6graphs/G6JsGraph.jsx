@@ -661,18 +661,18 @@ const G6JsGraph = () => {
     drawnGraph.downloadImage();
   }
 
-  const lookUpNode = (node) => {
-    const nodeId = node.item._cfg.id
-    const slashPos = nodeId.indexOf("/");
-    const nodeDataObject = {
+  const lookUpDocument = (document) => {
+    const documentId = document.item._cfg.id
+    const slashPos = documentId.indexOf("/");
+    const documentDataObject = {
       "keys": [
-        nodeId.substring(slashPos + 1)
+        documentId.substring(slashPos + 1)
       ],
-      "collection": nodeId.substring(0, slashPos)
+      "collection": documentId.substring(0, slashPos)
     };
       arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
         method: "PUT",
-        body: JSON.stringify(nodeDataObject),
+        body: JSON.stringify(documentDataObject),
       })
       .then(response => response.json())
       .then(data => {
@@ -838,7 +838,7 @@ const G6JsGraph = () => {
             graphName={graphName}
             responseDuration={responseTimes.fetchDuration}
             onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
-            onClickNode={(node) => lookUpNode(node)}
+            onClickDocument={(document) => lookUpDocument(document)}
             onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
       />    
       <AttributesInfo attributes={lookedUpData} /> 

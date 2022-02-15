@@ -267,8 +267,12 @@ export class GraphView extends React.Component {
     this.graph.data(this.props.data);
     this.graph.render();
 
-    this.graph.on('click', (e) => {
-      this.props.onClickNode(e);
+    this.graph.on('node:click', (e) => {
+      this.props.onClickDocument(e);
+    });
+
+    this.graph.on('edge:click', (e) => {
+      this.props.onClickDocument(e);
     });
 
     this.graph.on('node:mouseenter', (evt) => {
