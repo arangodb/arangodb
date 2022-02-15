@@ -521,6 +521,12 @@ export class GraphView extends React.Component {
     this.graph.downloadImage();
   }
 
+  highlightDocument = (document) => {
+    if(document) {
+      this.graph.focusItem(document, true);
+    }
+  }
+
   /*
   <button onClick={this.changeLayout}>Change layout</button>
   <button onClick={this.updateNodeModel}>Update "frenchCity/Paris"</button>
@@ -538,6 +544,14 @@ export class GraphView extends React.Component {
 
   render() {
     return <>
+      <button onClick={() => {
+        const node = this.graph.findById('frenchCity/Paris');
+        console.log("Found node: ", node);
+
+        this.graph.moveTo(node.get('model').x, node.get('model').y, true, {
+          duration: 100,
+        });
+      }}>Find node Paris</button>
       <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
       <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
       <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
@@ -556,6 +570,7 @@ export class GraphView extends React.Component {
           this.props.onChangeGraphData(newGraphData);
         }}
         onLoadFullGraph={() => this.props.onLoadFullGraph}
+        onDocumentSelect={(document) => this.highlightDocument(document)}
       />
       <Card
           title={this.props.graphName}

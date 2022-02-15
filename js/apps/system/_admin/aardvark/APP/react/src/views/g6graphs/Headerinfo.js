@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Switch, Input, Space, Tag, Card, Select, PageHeader, Tabs, Button, Statistic, Descriptions, Tooltip } from 'antd';
 import GraphDataInfo from './GraphDataInfo';
-import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
 import LayoutSelector from './LayoutSelector.js';
 import { ResponseInfo } from './ResponseInfo';
 import { data2 } from './data2';
+import { NodeList } from './components/node-list/node-list.component';
+import { EdgeList } from './components/edge-list/edge-list.component';
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -325,6 +327,27 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
               </Option>
               <Option value="Yiminghe">yiminghe</Option>
             </Select>
+          </TabPane>
+          <TabPane
+            tab={
+              <span>
+                <SearchOutlined />
+                Search
+              </span>
+            }
+            key="4"
+          >
+            <NodeList
+              nodes={graphData.nodes}
+              graphData={graphData}
+              onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
+              onNodeSelect={(node) => onDocumentSelect(node)}
+            />
+            <EdgeList
+              edges={graphData.edges}
+              graphData={graphData}
+              onEdgeSelect={(edge) => onDocumentSelect(edge)}
+              />
           </TabPane>
         </Tabs>
       }
