@@ -5,6 +5,8 @@ v3.9.1 (XXXX-XX-XX)
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
 * Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
   containing the keywords UPDATE or REPLACE together with the keyword WITH and
   the same key value would result in an error. For example: 
