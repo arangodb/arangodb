@@ -1,3 +1,10 @@
+v3.8.6 (XXXX-XX-XX)
+-------------------
+
+* Optimize further RocksDB throttle to allow for no change on any
+  given calculation cycle.
+
+
 v3.8.5.1 (2022-02-03)
 ---------------------
 

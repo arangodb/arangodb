@@ -383,14 +383,14 @@ void RocksDBThrottle::RecalculateThrottle() {
       int64_t temp_rate = _throttleBps.load(std::memory_order_relaxed);
 
       if (temp_rate < new_throttle) {
-        temp_rate += (new_throttle - temp_rate) / _scalingFactor + 1;
+        temp_rate += (new_throttle - temp_rate) / _scalingFactor;
       } else {
-        temp_rate -= (temp_rate - new_throttle) / _scalingFactor + 1;
+        temp_rate -= (temp_rate - new_throttle) / _scalingFactor;
       }
 
       // +2 can make this go negative
       if (temp_rate < 0) {
-        temp_rate = 0;  // throttle must always have an effect
+        temp_rate = 0;
       }
 
       LOG_TOPIC("46d4a", DEBUG, arangodb::Logger::ENGINES)
