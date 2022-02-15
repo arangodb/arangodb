@@ -1838,7 +1838,9 @@ function complexInternaSuite() {
       vc.save({_key: '1'});
       vc2.save({_key: '1'});
       ec.save(vn + '/1', vn2 + '/1', {});
-      var query = `WITH ${vn2}
+
+      //TODO [GraphRefactor]: Check why this worked earlier.
+      var query = `WITH ${vn}, ${vn2}
       FOR x IN OUTBOUND @startId @@eCol
       RETURN x`;
       var bindVars = {
