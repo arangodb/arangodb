@@ -1,6 +1,10 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
 * Shorten the license grace period to the documented 3 hours.
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
