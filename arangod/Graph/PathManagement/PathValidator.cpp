@@ -63,9 +63,6 @@ template<class ProviderType, class PathStore,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     validatePath(typename PathStore::Step const& step) -> ValidationResult {
-  auto ctx = _options.getExpressionContext();
-  // Reset variables
-  ctx.clearVariableValues();
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
@@ -336,9 +333,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   TRI_ASSERT(value.isObject() || value.isNull());
   auto tmpVar = _options.getTempVar();
   bool mustDestroy = false;
-  auto ctx = _options.getExpressionContext();
+  // node: for expression evaluation, the same expression context
+  // instance is used repeatedly.
+  auto& ctx = _options.getExpressionContext();
   ctx.setVariableValue(tmpVar,
                        aql::AqlValue{aql::AqlValueHintSliceNoCopy{value}});
+  // make sure we clean up after ourselves
   ScopeGuard defer([&]() noexcept { ctx.clearVariableValue(tmpVar); });
   aql::AqlValue res = expression->execute(&ctx, mustDestroy);
   aql::AqlValueGuard guard{res, mustDestroy};
