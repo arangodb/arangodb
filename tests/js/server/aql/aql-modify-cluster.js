@@ -1205,7 +1205,8 @@ function ahuacatlUpdateSuite () {
   var cn2 = "UnitTestsAhuacatlUpdate2";
   var cn3 = "UnitTestsAhuacatlUpdate3";
   var cn4 = "UnitTestsAhuacatlUpdate4";
-  var c1, c2, c3, c4;
+  var cn5 = "UnitTestsAhuacatlUpdate5";
+  var c1, c2, c3, c4, c5;
 
   return {
 
@@ -1219,10 +1220,12 @@ function ahuacatlUpdateSuite () {
       db._drop(cn2);
       db._drop(cn3);
       db._drop(cn4);
+      db._drop(cn5);
       c1 = db._create(cn1, {numberOfShards: 5});
       c2 = db._create(cn2, {numberOfShards: 5});
       c3 = db._create(cn3, {numberOfShards: 1});
       c4 = db._create(cn4, {numberOfShards: 1});
+      c5 = db._create(cn5, {numberOfShards: 5});
 
       let docs = [];
       for (i = 0; i < 100; ++i) {
@@ -1244,6 +1247,11 @@ function ahuacatlUpdateSuite () {
         docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
       c4.insert(docs);
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
+      }
+      c5.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1255,10 +1263,12 @@ function ahuacatlUpdateSuite () {
       db._drop(cn2);
       db._drop(cn3);
       db._drop(cn4);
+      db._drop(cn5);
       c1 = null;
       c2 = null;
       c3 = null;
       c4 = null;
+      c5 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1403,6 +1413,18 @@ function ahuacatlUpdateSuite () {
       }
     },
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with empty object
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateEmpty3: function () {
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn5} UPDATE doc WITH {} IN ${cn5} RETURN {old: OLD, new: NEW}`);
+      const res = actual.json;
+      for (let i = 0; i < res.length; ++i) {
+        assertEqual(res[i].old._rev, res[i].new._rev);
+        assertEqual(res[i].old.name, res[i].new.name);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test update and return

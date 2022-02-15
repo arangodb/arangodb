@@ -2370,30 +2370,6 @@ function ahuacatlUpdateSuite () {
       }
     },
 
- ///////////////////////////////////////////////////////////////////////////////
-/// @brief test upsert with no search document
-////////////////////////////////////////////////////////////////////////////////
-
-    testUpdateEmpty2: function () {
-        const actual = AQL_EXECUTE(`FOR doc IN ${cn3} UPDATE {} IN ${cn3} RETURN {old: OLD, new: NEW}`);
-        const res = actual.json[0];
-        print("OI");
-        print(actual);
-        print(res);
-        /*
-        if (i > 0) {
-          assertEqual(res.old._rev, res.new._rev);
-          assertEqual(res.old.name, "test1500");
-          assertEqual(4, Object.keys(res.old).length);
-        }
-        assertEqual(1001, c3.count());
-        assertEqual(res.old._rev, res.new._rev);
-        assertEqual(4, Object.keys(res.new).length);
-        assertEqual(res.new.name, "test1500");
-
-         */
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
@@ -2450,6 +2426,20 @@ function ahuacatlUpdateSuite () {
         assertTrue(keyArray.hasOwnProperty(doc._key));
         assertEqual("test" + i, keyArray[doc._key].value2);
       }
+    },
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief test update with empty object
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateEmpty3: function () {
+        const actual = AQL_EXECUTE(`FOR doc IN ${cn3} UPDATE doc WITH {} IN ${cn3} RETURN {old: OLD, new: NEW}`);
+        const res = actual.json;
+        for (let i = 0; i < res.length; ++i) {
+          assertEqual(res[i].old._rev, res[i].new._rev);
+          assertEqual(res[i].old.name, "test"+i);
+          assertEqual(res[i].new.name, "test"+i);
+        }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
