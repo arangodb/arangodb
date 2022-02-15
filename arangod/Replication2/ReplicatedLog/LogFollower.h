@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/Guarded.h>
@@ -104,6 +105,7 @@ class LogFollower final : public ILogFollower,
     LogIndex _releaseIndex;
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;
+    WaitForBag _waitForResignQueue;
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   LoggerContext const _loggerContext;
