@@ -45,8 +45,14 @@ struct UnconfiguredStateManager
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
-  UnconfiguredStateManager(std::unique_ptr<CoreType> core,
-                           std::unique_ptr<ReplicatedStateToken> token);
+  UnconfiguredStateManager(
+      std::shared_ptr<ReplicatedState<S>> const& parent,
+      std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+          unconfiguredParticipant,
+      std::unique_ptr<CoreType> core,
+      std::unique_ptr<ReplicatedStateToken> token);
+
+  void run();
 
   [[nodiscard]] auto getStatus() const -> StateStatus override;
 
@@ -55,6 +61,9 @@ struct UnconfiguredStateManager
                    std::unique_ptr<ReplicatedStateToken>> override;
 
  private:
+  std::weak_ptr<ReplicatedState<S>> _parent;
+  std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+      _unconfiguredParticipant;
   std::unique_ptr<CoreType> _core;
   std::unique_ptr<ReplicatedStateToken> _token;
 };

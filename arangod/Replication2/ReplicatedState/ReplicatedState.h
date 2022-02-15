@@ -144,9 +144,11 @@ struct ReplicatedState final
                      std::unique_ptr<CoreType>,
                      std::unique_ptr<ReplicatedStateToken> token)
         -> DeferredAction;
-    auto runUnconfigured(std::unique_ptr<CoreType> core,
-                         std::unique_ptr<ReplicatedStateToken> token)
-        -> DeferredAction;
+    auto runUnconfigured(
+        std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+            unconfiguredParticipant,
+        std::unique_ptr<CoreType> core,
+        std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
 
     auto rebuild(std::unique_ptr<CoreType> core,
                  std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;

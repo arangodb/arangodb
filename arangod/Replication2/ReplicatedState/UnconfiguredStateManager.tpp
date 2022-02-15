@@ -30,8 +30,41 @@ namespace arangodb::replication2::replicated_state {
 
 template<typename S>
 UnconfiguredStateManager<S>::UnconfiguredStateManager(
+    std::shared_ptr<ReplicatedState<S>> const& parent,
+    std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+        unconfiguredParticipant,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    : _core(std::move(core)), _token(std::move(token)) {}
+    : _parent(parent),
+      _unconfiguredParticipant(std::move(unconfiguredParticipant)),
+      _core(std::move(core)),
+      _token(std::move(token)) {}
+
+template<typename S>
+void UnconfiguredStateManager<S>::run() {
+  // We need to drop the lock before calling `thenFinal`, because it might
+  // immediately be executed and try to acquire the lock again.
+  // Thus execute it in the DeferredAction.
+
+  _unconfiguredParticipant->waitForResign().thenFinal(
+      [weak = _parent](futures::Try<futures::Unit>&& result) {
+        TRI_ASSERT(result.valid());
+        if (result.hasValue()) {
+          if (auto self = weak.lock(); self != nullptr) {
+            self->forceRebuild();
+          }
+        } else if (result.hasException()) {
+          // This can be a FutureException(ErrorCode::BrokenPromise), or
+          // TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE.
+          // In either case, the ReplicatedLog itself is dropped or destroyed
+          // (not just the LogParticipant instance of the current term).
+          LOG_TOPIC("4ffab", TRACE, Logger::REPLICATED_STATE)
+              << "Replicated log participant is gone. Replicated state will go "
+                 "soon as well.";
+        } else {
+          TRI_ASSERT(false);
+        }
+      });
+}
 
 template<typename S>
 auto UnconfiguredStateManager<S>::getStatus() const -> StateStatus {

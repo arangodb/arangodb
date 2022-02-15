@@ -160,7 +160,8 @@ auto ReplicatedState<S>::GuardedData::rebuild(
              unconfiguredLogParticipant) {
     LOG_TOPIC("ad84b", TRACE, Logger::REPLICATED_STATE)
         << "obtained unconfigured participant";
-    return runUnconfigured(std::move(core), std::move(token));
+    return runUnconfigured(std::move(unconfiguredLogParticipant),
+                           std::move(core), std::move(token));
   } else {
     LOG_TOPIC("33d5f", FATAL, Logger::REPLICATED_STATE)
         << "Replicated log has an unhandled participant type.";
@@ -184,8 +185,8 @@ auto ReplicatedState<S>::GuardedData::runFollower(
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
   auto manager = std::make_shared<FollowerStateManager<S>>(
-      _self.shared_from_this(), logFollower, std::move(core), std::move(token),
-      _self.factory);
+      _self.shared_from_this(), std::move(logFollower), std::move(core),
+      std::move(token), _self.factory);
   currentManager = manager;
 
   return DeferredAction{[manager]() noexcept { manager->run(); }};
@@ -202,8 +203,8 @@ auto ReplicatedState<S>::GuardedData::runLeader(
     -> DeferredAction try {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
   auto manager = std::make_shared<LeaderStateManager<S>>(
-      _self.shared_from_this(), logLeader, std::move(core), std::move(token),
-      _self.factory);
+      _self.shared_from_this(), std::move(logLeader), std::move(core),
+      std::move(token), _self.factory);
   currentManager = manager;
 
   return DeferredAction{[manager]() noexcept { manager->run(); }};
@@ -215,15 +216,18 @@ auto ReplicatedState<S>::GuardedData::runLeader(
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runUnconfigured(
+    std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+        unconfiguredParticipant,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
     -> DeferredAction try {
   LOG_TOPIC("5d7c6", DEBUG, Logger::REPLICATED_STATE)
       << "create unconfigured state";
   auto manager = std::make_shared<UnconfiguredStateManager<S>>(
+      _self.shared_from_this(), std::move(unconfiguredParticipant),
       std::move(core), std::move(token));
   currentManager = manager;
 
-  return {};
+  return DeferredAction{[manager]() noexcept { manager->run(); }};
 } catch (std::exception const& e) {
   LOG_TOPIC("6f1eb", DEBUG, Logger::REPLICATED_STATE)
       << "run unconfigured caught exception: " << e.what();

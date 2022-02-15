@@ -49,6 +49,7 @@ struct FollowerStateManager
       std::shared_ptr<Factory> factory) noexcept;
 
   void run();
+
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
   [[nodiscard]] auto getFollowerState() const
