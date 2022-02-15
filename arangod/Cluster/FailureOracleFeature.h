@@ -26,6 +26,7 @@
 
 #include "RestServer/arangod.h"
 
+#include <chrono>
 #include <memory>
 #include <unordered_map>
 
@@ -35,15 +36,24 @@ class FailureOracleImpl;
 
 class FailureOracleFeature final : public ArangodFeature {
  public:
+  using FailureMap = std::unordered_map<std::string, bool>;
+
   static constexpr std::string_view name() noexcept { return "FailureOracle"; }
 
   explicit FailureOracleFeature(Server& server);
+
+  struct Status {
+    FailureMap isFailed;
+    std::chrono::system_clock::time_point lastUpdated;
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+  };
 
   void prepare() override;
   void start() override;
   void stop() override;
 
-  auto status() -> std::unordered_map<std::string, bool>;
+  auto status() -> Status;
   void flush();
 
   auto getFailureOracle() -> std::shared_ptr<IFailureOracle>;

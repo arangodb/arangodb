@@ -129,8 +129,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleCreateSingleServerJob(std::string const& job,
                                          std::string const& server);
 
-  RestStatus handleParticipantsCacheStatus();
-  RestStatus handleParticipantsCacheFlush();
+  RestStatus handleFailureOracleStatus();
+  RestStatus handleFailureOracleFlush();
 
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;

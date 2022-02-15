@@ -22,6 +22,7 @@
 
 #include "FailureOracleFeature.h"
 
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/application-exit.h"
@@ -37,7 +38,6 @@
 #include <chrono>
 #include <memory>
 #include <shared_mutex>
-#include <unordered_map>
 // TODO remove LOG_DEVEL
 
 namespace arangodb::cluster {
@@ -46,8 +46,6 @@ namespace {
 constexpr auto kSupervisionHealthPath = "Supervision/Health";
 constexpr auto kHealthyServerKey = "Status";
 constexpr auto HealthyServerValue = "GOOD";
-
-using FailureMap = std::unordered_map<std::string, bool>;
 }  // namespace
 
 class FailureOracleImpl final
@@ -68,7 +66,7 @@ class FailureOracleImpl final
 
   void start();
   void stop();
-  auto getStatus() -> FailureMap;
+  auto getStatus() -> FailureOracleFeature::Status;
   void reload(VPackSlice const& result);
   void flush();
   void scheduleFlush() noexcept;
@@ -78,11 +76,12 @@ class FailureOracleImpl final
 
  private:
   mutable std::shared_mutex _mutex;
-  FailureMap _isFailed;
+  FailureOracleFeature::FailureMap _isFailed;
   std::shared_ptr<AgencyCallback> _agencyCallback;
   Scheduler::WorkHandle _flushJob;
   ClusterFeature& _clusterFeature;
   std::atomic_bool _is_running;
+  std::chrono::system_clock::time_point _lastUpdated;
 };
 
 FailureOracleImpl::FailureOracleImpl(ClusterFeature& _clusterFeature)
@@ -123,17 +122,14 @@ void FailureOracleImpl::stop() {
   _flushJob->cancel();
 }
 
-auto FailureOracleImpl::getStatus() -> FailureMap {
-  FailureMap status;
+auto FailureOracleImpl::getStatus() -> FailureOracleFeature::Status {
   std::shared_lock readLock(_mutex);
-  for (auto const& [pid, value] : _isFailed) {
-    status[pid] = value;
-  }
-  return status;
+  return FailureOracleFeature::Status{.isFailed = _isFailed,
+                                      .lastUpdated = _lastUpdated};
 }
 
 void FailureOracleImpl::reload(const VPackSlice& result) {
-  FailureMap isFailed;
+  FailureOracleFeature::FailureMap isFailed;
   for (auto [key, value] : VPackObjectIterator(result)) {
     auto serverId = key.copyString();
     auto isServerGood =
@@ -143,6 +139,7 @@ void FailureOracleImpl::reload(const VPackSlice& result) {
   }
   std::unique_lock writeLock(_mutex);
   _isFailed = std::move(isFailed);
+  _lastUpdated = std::chrono::system_clock::now();
 }
 
 void FailureOracleImpl::flush() {
@@ -237,9 +234,7 @@ void FailureOracleFeature::stop() {
   _cache->stop();
 }
 
-auto FailureOracleFeature::status() -> std::unordered_map<std::string, bool> {
-  return _cache->getStatus();
-}
+auto FailureOracleFeature::status() -> Status { return _cache->getStatus(); }
 
 void FailureOracleFeature::flush() {
   LOG_DEVEL << "FailureOracleFeature flushed";
@@ -249,6 +244,18 @@ void FailureOracleFeature::flush() {
 auto FailureOracleFeature::getFailureOracle()
     -> std::shared_ptr<IFailureOracle> {
   return std::static_pointer_cast<IFailureOracle>(_cache);
+}
+
+void FailureOracleFeature::Status::toVelocyPack(
+    velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("time", VPackValue(timepointToString(lastUpdated)));
+  {
+    VPackObjectBuilder ob2(&builder, "isFailed");
+    for (auto const& [pid, status] : isFailed) {
+      builder.add(pid, VPackValue(status));
+    }
+  }
 }
 
 }  // namespace arangodb::cluster

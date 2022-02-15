@@ -2153,9 +2153,9 @@ RestStatus RestAdminClusterHandler::handleFailureOracle() {
   }
 
   if (auto const& command = suffixes[1]; command == "status") {
-    handleParticipantsCacheStatus();
+    handleFailureOracleStatus();
   } else if (command == "flush") {
-    return handleParticipantsCacheFlush();
+    return handleFailureOracleFlush();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expecting one of the resources 'status', 'flush'");
@@ -2163,54 +2163,46 @@ RestStatus RestAdminClusterHandler::handleFailureOracle() {
   return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleParticipantsCacheStatus() {
+RestStatus RestAdminClusterHandler::handleFailureOracleStatus() {
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
+  auto& failureOracle = server().getFeature<cluster::FailureOracleFeature>();
+  auto status = failureOracle.status();
   VPackBuilder response;
-  {
-    auto& participantsCache =
-        server().getFeature<cluster::FailureOracleFeature>();
-    {
-      VPackObjectBuilder ob(&response);
-      auto status = participantsCache.status();
-      for (auto const& [pid, isFailed] : status) {
-        response.add(pid, VPackValue(isFailed));
-      }
-    }
-  }
+  status.toVelocyPack(response);
   generateOk(rest::ResponseCode::OK, response.slice());
   return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleParticipantsCacheFlush() {
+RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
-  auto& participantsCache =
-      server().getFeature<cluster::FailureOracleFeature>();
+  auto& failureOracle = server().getFeature<cluster::FailureOracleFeature>();
 
   if (auto global{_request->parsedValue("global", true)};
       ServerState::instance()->isCoordinator() && global) {
     auto* pool = server().getFeature<NetworkFeature>().pool();
 
     // Locally flush the cache for this coordinator
-    auto status = participantsCache.status();
+    auto status = failureOracle.status();
+    auto isFailed = std::move(status.isFailed);
     auto id = ServerState::instance()->getId();
-    status.erase(id);
-    participantsCache.flush();
+    isFailed.erase(id);
+    failureOracle.flush();
 
-    // Send flush requests to all participants
-    auto fut = std::invoke([status = std::move(status), id = std::move(id),
+    // Send flush requests to all servers
+    auto fut = std::invoke([isFailed = std::move(isFailed), id = std::move(id),
                             pool = pool]() mutable {
       std::vector<futures::Future<fuerte::StatusCode>> flushDbs;
-      for (auto const& [pid, isFailed] : status) {
+      for (auto const& [pid, pf] : isFailed) {
         auto path = basics::StringUtils::joinT("/", "_admin/cluster",
                                                "failureOracle", "flush");
         network::RequestOptions opts;
@@ -2227,13 +2219,13 @@ RestStatus RestAdminClusterHandler::handleParticipantsCacheFlush() {
                 }));
       }
       return futures::collectAll(std::move(flushDbs))
-          .thenValue([status = std::move(status),
+          .thenValue([status = std::move(isFailed),
                       id = std::move(id)](auto&& statusCodes) {
             VPackBuilder response;
             {
               VPackObjectBuilder participantsFlushStatus(&response);
               std::size_t idx = 0;
-              for (auto const& [pid, isFailed] : status) {
+              for (auto const& [pid, pf] : status) {
                 auto& result = statusCodes.at(idx++);
                 response.add(pid, VPackValue(std::move(result.get())));
               }
@@ -2251,7 +2243,7 @@ RestStatus RestAdminClusterHandler::handleParticipantsCacheFlush() {
           return RestStatus::DONE;
         }));
   }
-  participantsCache.flush();
+  failureOracle.flush();
   generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
   return RestStatus::DONE;
 }
