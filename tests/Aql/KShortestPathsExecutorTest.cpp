@@ -273,7 +273,7 @@ class KShortestPathsExecutorTest : public ::testing::Test {
         finder(static_cast<FakeKShortestPathsFinder&>(executorInfos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager,
                                  std::move(parameters._inputMatrix))),
-        input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
+        input(AqlItemBlockInputRange(MainQueryState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, executorInfos),

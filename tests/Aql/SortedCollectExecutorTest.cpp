@@ -109,8 +109,8 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
 
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(1, registerInfos.numberOfOutputRegisters());
@@ -198,8 +198,8 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
       buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(2, registerInfos.numberOfOutputRegisters());
@@ -248,8 +248,8 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
       buildBlock<1>(itemBlockManager, {{1}, {2}, {3}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
       inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
@@ -302,8 +302,8 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_3) {
       buildBlock<1>(itemBlockManager, {{1}, {1}, {2}, {2}, {3}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
       inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
@@ -355,8 +355,8 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
       buildBlock<1>(itemBlockManager, {{1}, {1}, {2}, {2}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
       inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
@@ -434,8 +434,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
       buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
       inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
@@ -537,8 +537,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
       buildBlock<1>(itemBlockManager, {{"\"a\""}, {"\"aa\""}, {"\"aaa\""}});
   AqlCall clientCall;
 
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock = itemBlockManager.requestBlock(
       inputBlock->numRows(), registerInfos.numberOfOutputRegisters());
@@ -649,8 +649,8 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {2}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -689,8 +689,8 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {2}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -755,9 +755,9 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {1}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, 0, inputBlock, 0);
-  AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::HASMORE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRangeDone(MainQueryState::DONE);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -803,12 +803,13 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {1}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::HASMORE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr inputBlock2 = buildBlock<1>(itemBlockManager, {{2}});
-  AqlItemBlockInputRange inputRange2(ExecutorState::HASMORE, 0, inputBlock2, 0);
-  AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
+  AqlItemBlockInputRange inputRange2(MainQueryState::HASMORE, 0, inputBlock2,
+                                     0);
+  AqlItemBlockInputRange emptyInputRangeDone(MainQueryState::DONE);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 
@@ -891,8 +892,8 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {1}, {2}});
-  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
+  AqlItemBlockInputRange emptyInputRange(MainQueryState::HASMORE);
+  AqlItemBlockInputRange inputRange(MainQueryState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, executorInfos);
 

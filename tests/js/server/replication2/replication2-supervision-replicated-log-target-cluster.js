@@ -53,7 +53,7 @@ const waitForReplicatedLogAvailable = function (id) {
       let status = db._replicatedLog(id).status();
       const leaderId = status.leaderId;
       if (leaderId !== undefined && status.participants !== undefined &&
-          status.participants[leaderId].role === "leader") {
+          status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
         break;
       }
       console.info("replicated log not yet available");
@@ -175,49 +175,8 @@ const replicatedLogSuite = function () {
     };
   }());
 
-  const createReplicatedLog = function (database) {
-    const logId = nextUniqueLogId();
-    const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
-    const leader = servers[0];
-    const term = 1;
-    const followers = _.difference(servers, [leader]);
-    replicatedLogSetTarget(database, logId, {
-      id: logId,
-      config: targetConfig,
-      leader,
-      participants: getParticipantsObjectForServers(servers),
-    });
-    return {logId, servers, leader, term, followers};
-  };
-
-  const getReplicatedLogLeaderPlan = function (database, logId) {
-    let {plan} = readReplicatedLogAgency(database, logId);
-    if (!plan.currentTerm) {
-      throw Error("no current term in plan");
-    }
-    if (!plan.currentTerm.leader) {
-      throw Error("current term has no leader");
-    }
-    const leader = plan.currentTerm.leader.serverId;
-    const term = plan.currentTerm.term;
-    return {leader, term};
-  };
-
   const createReplicatedLogAndWaitForLeader = function (database) {
-    const logId = nextUniqueLogId();
-    const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
-    replicatedLogSetTarget(database, logId, {
-      id: logId,
-      config: targetConfig,
-      participants: getParticipantsObjectForServers(servers),
-      supervision: {maxActionsTraceLength: 20},
-    });
-
-    waitFor(replicatedLogLeaderEstablished(database, logId, undefined, servers));
-
-    const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
-    const followers = _.difference(servers, [leader]);
-    return {logId, servers, leader, term, followers};
+    return helper.createReplicatedLog(database, targetConfig);
   };
 
   const setReplicatedLogLeaderTarget = function (database, logId, leader) {
@@ -585,7 +544,12 @@ const replicatedLogSuite = function () {
           return Error('Designated leader does not report as leader');
         }
 
-        if (!_.isEqual(globalStatus.participants[leader], localStatus)) {
+        const leaderData = globalStatus.participants[leader];
+        if (leaderData.connection.errorCode !== 0) {
+          return Error(`Connection to leader failed: ${leaderData.connection.errorCode} ${leaderData.connection.errorMessage}`);
+        }
+
+        if (!_.isEqual(leaderData.response, localStatus)) {
           return Error("Copy of local status does not yet match actual local status, " +
               `found = ${JSON.stringify(globalStatus.participants[leader])}; expected = ${JSON.stringify(localStatus)}`);
         }
@@ -610,7 +574,12 @@ const replicatedLogSuite = function () {
         const {current} = readReplicatedLogAgency(database, logId);
         const election = current.supervision.election;
 
-        if (!_.isEqual(election, globalStatus.supervision.election)) {
+        const supervisionData = globalStatus.supervision;
+        if (supervisionData.connection.errorCode !== 0) {
+          return Error(`Connection to supervision failed: ${supervisionData.connection.errorCode} ${supervisionData.connection.errorMessage}`);
+        }
+
+        if (!_.isEqual(election, supervisionData.response.election)) {
           return Error('Coordinator not reporting latest state from supervision' +
               `found = ${globalStatus.supervision.election}; expected = ${election}`);
         }

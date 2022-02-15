@@ -53,7 +53,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
-  size_t memory() const override { return statsSynced().indexSize; }
+  size_t memory() const override { return stats().indexSize; }
 
   bool isHidden() const override { return false; }
 
@@ -127,8 +127,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice doc) override {
-    return IResearchDataStore::remove(trx, documentId, doc);
+                LocalDocumentId const& documentId, VPackSlice) override {
+    return IResearchDataStore::remove(trx, documentId);
   }
 };
 
