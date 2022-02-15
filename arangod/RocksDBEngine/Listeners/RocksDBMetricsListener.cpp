@@ -68,7 +68,7 @@ void RocksDBMetricsListener::OnStallConditionsChanged(
           << "rocksdb is resuming normal writes from stop for column family '"
           << info.cf_name << "'";
     } else {
-      LOG_TOPIC("9123f", INFO, Logger::ENGINES)
+      LOG_TOPIC("9123f", DEBUG, Logger::ENGINES)
           << "rocksdb is resuming normal writes from stall for column family '"
           << info.cf_name << "'";
     }
