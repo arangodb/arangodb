@@ -380,6 +380,10 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/LogStatusTest.cpp
 )
 
+set(ARANGODB_AQL_TEST_SOURCES
+  Aql/DistributeQueryRuleTest.cpp
+)
+
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -399,6 +403,7 @@ add_executable(
   ../cmake/activeCodePage.manifest
   ${ARANGODB_TESTS_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
+  ${ARANGODB_AQL_TEST_SOURCES}
   main.cpp
 )
 
@@ -411,6 +416,18 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     ${ARANGODB_TESTS_COMMON_SOURCES}
     ${ARANGODB_REPLICATION2_TEST_SOURCES}
     main.cpp
+  )
+endif()
+
+set(USE_SEPARATE_AQL_TESTS_BINARY FALSE CACHE BOOL
+        "Write a separate binary 'arangodbtests_aql', containing only the AQL tests.")
+
+if (USE_SEPARATE_AQL_TESTS_BINARY)
+  add_executable(
+          arangodbtests_aql
+          ${ARANGODB_TESTS_COMMON_SOURCES}
+          ${ARANGODB_AQL_TEST_SOURCES}
+          main.cpp
   )
 endif()
 
@@ -444,6 +461,18 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   )
 endif()
 
+
+if (USE_SEPARATE_AQL_TESTS_BINARY)
+  target_link_libraries(arangodbtests_aql
+          gtest
+          arango_agency
+          arango_v8server
+          arangoserver
+          arango_aql
+          arango_iresearch
+          )
+endif()
+
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
 endif ()
@@ -465,16 +494,32 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_link_libraries(arangodbtests_replication2 arango)
 endif()
 
+if (USE_SEPARATE_AQL_TESTS_BINARY)
+  target_include_directories(arangodbtests_aql PRIVATE
+          ${PROJECT_SOURCE_DIR}/arangod
+          ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
+          )
+  target_link_libraries(arangodbtests_aql arango)
+endif()
+
 if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
+    if (USE_SEPARATE_AQL_TESTS_BINARY)
+    target_compile_options(arangodbtests_aql PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   endif()
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
     # There's a warning about /MP being unused if compiling only a single file
     target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
     if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
       target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    endif()
+    if (USE_SEPARATE_AQL_TESTS_BINARY)
+      target_compile_options(arangodbtests_aql PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     endif()
   endif()
 endif()
@@ -484,6 +529,9 @@ if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
   if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     target_compile_options(arangodbtests_replication2 PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  endif()
+    if (USE_SEPARATE_AQL_TESTS_BINARY)
+    target_compile_options(arangodbtests_aql PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
   endif()
 endif()
 
@@ -501,6 +549,12 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
   )
+endif()
+
+if (USE_SEPARATE_AQL_TESTS_BINARY)
+  target_include_directories(arangodbtests_aql SYSTEM PRIVATE
+          ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+          )
 endif()
 
 if (USE_JEMALLOC)
