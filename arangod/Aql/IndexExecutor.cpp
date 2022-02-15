@@ -333,10 +333,26 @@ bool IndexExecutorInfos::hasNonConstParts() const {
   return !_nonConstExpressions._expressions.empty();
 }
 
+void IndexExecutor::CursorStats::incrCreated() noexcept { ++created; }
+void IndexExecutor::CursorStats::incrRearmed() noexcept { ++rearmed; }
+
+size_t IndexExecutor::CursorStats::getAndResetCreated() noexcept {
+  size_t value = created;
+  created = 0;
+  return value;
+}
+
+size_t IndexExecutor::CursorStats::getAndResetRearmed() noexcept {
+  size_t value = rearmed;
+  rearmed = 0;
+  return value;
+}
+
 IndexExecutor::CursorReader::CursorReader(
     transaction::Methods& trx, IndexExecutorInfos const& infos,
     AstNode const* condition, transaction::Methods::IndexHandle const& index,
-    DocumentProducingFunctionContext& context, bool checkUniqueness)
+    DocumentProducingFunctionContext& context, CursorStats& cursorStats,
+    bool checkUniqueness)
     : _trx(trx),
       _infos(infos),
       _condition(condition),
@@ -346,6 +362,7 @@ IndexExecutor::CursorReader::CursorReader(
           infos.canReadOwnWrites(),
           transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
+      _cursorStats(cursorStats),
       _type(
           infos.getCount()             ? Type::Count
           : infos.isLateMaterialized() ? Type::LateMaterialized
@@ -356,6 +373,9 @@ IndexExecutor::CursorReader::CursorReader(
               ? Type::Covering
               : Type::Document),
       _checkUniqueness(checkUniqueness) {
+  // for the initial cursor created in the initializer list
+  _cursorStats.incrCreated();
+
   switch (_type) {
     case Type::NoResult: {
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
@@ -501,6 +521,8 @@ bool IndexExecutor::CursorReader::isCovering() const {
 }
 
 void IndexExecutor::CursorReader::reset() {
+  TRI_ASSERT(_cursor != nullptr);
+
   if (_condition == nullptr || !_infos.hasNonConstParts()) {
     // Const case
     _cursor->reset();
@@ -508,6 +530,7 @@ void IndexExecutor::CursorReader::reset() {
   }
 
   if (_cursor->canRearm()) {
+    _cursorStats.incrRearmed();
     bool didRearm = _cursor->rearm(_condition, _infos.getOutVariable(),
                                    _infos.getOptions());
     if (!didRearm) {
@@ -518,6 +541,7 @@ void IndexExecutor::CursorReader::reset() {
     }
   } else {
     // We need to build a fresh search and cannot go the rearm shortcut
+    _cursorStats.incrCreated();
     _cursor = _trx.indexScanForCondition(
         _index, _condition, _infos.getOutVariable(), _infos.getOptions(),
         _infos.canReadOwnWrites(),
@@ -680,9 +704,10 @@ bool IndexExecutor::advanceCursor() {
           conditionNode = _infos.getCondition()->getMember(infoIndex);
         }
       }
-      _cursors.emplace_back(
-          _trx, _infos, conditionNode, _infos.getIndexes()[infoIndex],
-          _documentProducingFunctionContext, needsUniquenessCheck());
+      _cursors.emplace_back(_trx, _infos, conditionNode,
+                            _infos.getIndexes()[infoIndex],
+                            _documentProducingFunctionContext, _cursorStats,
+                            needsUniquenessCheck());
     } else {
       // Next index exists, need a reset.
       getCursor().reset();
@@ -825,6 +850,8 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _documentProducingFunctionContext.getAndResetNumScanned());
     stats.incrFiltered(
         _documentProducingFunctionContext.getAndResetNumFiltered());
+    stats.incrCursorsCreated(_cursorStats.getAndResetCreated());
+    stats.incrCursorsRearmed(_cursorStats.getAndResetRearmed());
   }
 
   INTERNAL_LOG_IDX << "IndexExecutor::produceRows reporting state "

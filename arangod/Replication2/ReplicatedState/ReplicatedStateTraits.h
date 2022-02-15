@@ -36,6 +36,7 @@ struct ReplicatedStateTraits {
   using LeaderType = typename S::LeaderType;
   using FollowerType = typename S::FollowerType;
   using EntryType = typename S::EntryType;
+  using CoreType = typename S::CoreType;
   using Deserializer = EntryDeserializer<EntryType>;
   using Serializer = EntrySerializer<EntryType>;
 };

@@ -947,7 +947,7 @@ stats_arena_hpa_shard_print(emitter_t *emitter, unsigned i, uint64_t uptime) {
 	emitter_table_row(emitter, &header_row);
 	emitter_json_array_kv_begin(emitter, "nonfull_slabs");
 	bool in_gap = false;
-	for (pszind_t j = 0; j < PSSET_NPSIZES; j++) {
+	for (pszind_t j = 0; j < PSSET_NPSIZES && j < SC_NPSIZES; j++) {
 		stats_arenas_mib[5] = j;
 
 		CTL_LEAF(stats_arenas_mib, 6, "npageslabs_huge",
@@ -1055,7 +1055,7 @@ stats_arena_print(emitter_t *emitter, unsigned i, bool bins, bool large,
 	size_t large_allocated;
 	uint64_t large_nmalloc, large_ndalloc, large_nrequests, large_nfills,
 	    large_nflushes;
-	size_t tcache_bytes, abandoned_vm;
+	size_t tcache_bytes, tcache_stashed_bytes, abandoned_vm;
 	uint64_t uptime;
 
 	CTL_GET("arenas.page", &page, size_t);
@@ -1344,6 +1344,7 @@ stats_arena_print(emitter_t *emitter, unsigned i, bool bins, bool large,
 	GET_AND_EMIT_MEM_STAT(internal)
 	GET_AND_EMIT_MEM_STAT(metadata_thp)
 	GET_AND_EMIT_MEM_STAT(tcache_bytes)
+	GET_AND_EMIT_MEM_STAT(tcache_stashed_bytes)
 	GET_AND_EMIT_MEM_STAT(resident)
 	GET_AND_EMIT_MEM_STAT(abandoned_vm)
 	GET_AND_EMIT_MEM_STAT(extent_avail)
@@ -1376,7 +1377,7 @@ stats_general_print(emitter_t *emitter) {
 	uint64_t u64v;
 	int64_t i64v;
 	ssize_t ssv, ssv2;
-	size_t sv, bsz, usz, u32sz, i64sz, ssz, sssz, cpsz;
+	size_t sv, bsz, usz, u32sz, u64sz, i64sz, ssz, sssz, cpsz;
 
 	bsz = sizeof(bool);
 	usz = sizeof(unsigned);
@@ -1385,6 +1386,7 @@ stats_general_print(emitter_t *emitter) {
 	cpsz = sizeof(const char *);
 	u32sz = sizeof(uint32_t);
 	i64sz = sizeof(int64_t);
+	u64sz = sizeof(uint64_t);
 
 	CTL_GET("version", &cpv, const char *);
 	emitter_kv(emitter, "version", "Version", emitter_type_string, &cpv);
@@ -1442,6 +1444,8 @@ stats_general_print(emitter_t *emitter) {
 
 #define OPT_WRITE_INT64(name)						\
 	OPT_WRITE(name, i64v, i64sz, emitter_type_int64)
+#define OPT_WRITE_UINT64(name)						\
+	OPT_WRITE(name, u64v, u64sz, emitter_type_uint64)
 
 #define OPT_WRITE_SIZE_T(name)						\
 	OPT_WRITE(name, sv, ssz, emitter_type_size)
@@ -1468,7 +1472,8 @@ stats_general_print(emitter_t *emitter) {
 	OPT_WRITE_BOOL("hpa")
 	OPT_WRITE_SIZE_T("hpa_slab_max_alloc")
 	OPT_WRITE_SIZE_T("hpa_hugification_threshold")
-	OPT_WRITE_SIZE_T("hpa_dehugification_threshold")
+	OPT_WRITE_UINT64("hpa_hugify_delay_ms")
+	OPT_WRITE_UINT64("hpa_min_purge_interval_ms")
 	if (je_mallctl("opt.hpa_dirty_mult", (void *)&u32v, &u32sz, NULL, 0)
 	    == 0) {
 		/*
@@ -1476,8 +1481,9 @@ stats_general_print(emitter_t *emitter) {
 		 * representation.
 		 */
 		if (u32v == (uint32_t)-1) {
+			const char *neg1 = "-1";
 			emitter_kv(emitter, "hpa_dirty_mult",
-			    "opt.hpa_dirty_mult", emitter_type_string, "-1");
+			    "opt.hpa_dirty_mult", emitter_type_string, &neg1);
 		} else {
 			char buf[FXP_BUF_SIZE];
 			fxp_print(u32v, buf);
@@ -1492,6 +1498,7 @@ stats_general_print(emitter_t *emitter) {
 	OPT_WRITE_SIZE_T("hpa_sec_bytes_after_flush")
 	OPT_WRITE_SIZE_T("hpa_sec_batch_fill_extra")
 	OPT_WRITE_CHAR_P("metadata_thp")
+	OPT_WRITE_INT64("mutex_max_spin")
 	OPT_WRITE_BOOL_MUTABLE("background_thread", "background_thread")
 	OPT_WRITE_SSIZE_T_MUTABLE("dirty_decay_ms", "arenas.dirty_decay_ms")
 	OPT_WRITE_SSIZE_T_MUTABLE("muzzy_decay_ms", "arenas.muzzy_decay_ms")
@@ -1500,6 +1507,7 @@ stats_general_print(emitter_t *emitter) {
 	OPT_WRITE_BOOL("zero")
 	OPT_WRITE_BOOL("utrace")
 	OPT_WRITE_BOOL("xmalloc")
+	OPT_WRITE_BOOL("experimental_infallible_new")
 	OPT_WRITE_BOOL("tcache")
 	OPT_WRITE_SIZE_T("tcache_max")
 	OPT_WRITE_UNSIGNED("tcache_nslots_small_min")
@@ -1522,6 +1530,7 @@ stats_general_print(emitter_t *emitter) {
 	OPT_WRITE_BOOL("prof_gdump")
 	OPT_WRITE_BOOL("prof_final")
 	OPT_WRITE_BOOL("prof_leak")
+	OPT_WRITE_BOOL("prof_leak_error")
 	OPT_WRITE_BOOL("stats_print")
 	OPT_WRITE_CHAR_P("stats_print_opts")
 	OPT_WRITE_BOOL("stats_print")
@@ -1599,15 +1608,15 @@ stats_general_print(emitter_t *emitter) {
 		    "Maximum thread-cached size class", emitter_type_size, &sv);
 	}
 
-	unsigned nbins;
-	CTL_GET("arenas.nbins", &nbins, unsigned);
+	unsigned arenas_nbins;
+	CTL_GET("arenas.nbins", &arenas_nbins, unsigned);
 	emitter_kv(emitter, "nbins", "Number of bin size classes",
-	    emitter_type_unsigned, &nbins);
+	    emitter_type_unsigned, &arenas_nbins);
 
-	unsigned nhbins;
-	CTL_GET("arenas.nhbins", &nhbins, unsigned);
+	unsigned arenas_nhbins;
+	CTL_GET("arenas.nhbins", &arenas_nhbins, unsigned);
 	emitter_kv(emitter, "nhbins", "Number of thread-cache bin size classes",
-	    emitter_type_unsigned, &nhbins);
+	    emitter_type_unsigned, &arenas_nhbins);
 
 	/*
 	 * We do enough mallctls in a loop that we actually want to omit them
@@ -1617,7 +1626,7 @@ stats_general_print(emitter_t *emitter) {
 		emitter_json_array_kv_begin(emitter, "bin");
 		size_t arenas_bin_mib[CTL_MAX_DEPTH];
 		CTL_LEAF_PREPARE(arenas_bin_mib, 0, "arenas.bin");
-		for (unsigned i = 0; i < nbins; i++) {
+		for (unsigned i = 0; i < arenas_nbins; i++) {
 			arenas_bin_mib[2] = i;
 			emitter_json_object_begin(emitter);
 

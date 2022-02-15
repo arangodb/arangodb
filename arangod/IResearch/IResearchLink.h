@@ -35,12 +35,53 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "Indexes/Index.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/Guard.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb::iresearch {
+
+struct MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
+  static constexpr size_t kSize = 5;
+  static constexpr std::array<std::string_view, kSize> kName = {
+      "arangodb_search_num_docs",       //
+      "arangodb_search_num_live_docs",  //
+      "arangodb_search_num_segments",   //
+      "arangodb_search_num_files",      //
+      "arangodb_search_index_size",     //
+  };
+  using DataToString = std::string (*)(Data const&);
+  static constexpr std::array<DataToString, kSize> kToString = {
+      [](IResearchDataStore::Stats const& stats) {
+        return std::to_string(stats.numDocs);
+      },
+      [](IResearchDataStore::Stats const& stats) {
+        return std::to_string(stats.numLiveDocs);
+      },
+      [](IResearchDataStore::Stats const& stats) {
+        return std::to_string(stats.numSegments);
+      },
+      [](IResearchDataStore::Stats const& stats) {
+        return std::to_string(stats.numFiles);
+      },
+      [](IResearchDataStore::Stats const& stats) {
+        return std::to_string(stats.indexSize);
+      },
+  };
+  // TODO(MBkkt) Remove these arrays when we make generation maps from docs
+  static constexpr std::array<std::string_view, kSize> kHelp = {
+      "Number of documents",         //
+      "Number of live documents",    //
+      "Number of segments",          //
+      "Number of files",             //
+      "Size of the index in bytes",  //
+  };
+  static constexpr std::array<std::string_view, kSize> kType = {
+      "gauge", "gauge", "gauge", "gauge", "gauge",
+  };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
@@ -53,7 +94,7 @@ class IResearchLink : public IResearchDataStore {
   IResearchLink& operator=(IResearchLink const&) = delete;
   IResearchLink& operator=(IResearchLink&&) = delete;
 
-  virtual ~IResearchLink();
+  ~IResearchLink() override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this IResearch Link reference the supplied view
@@ -133,8 +174,7 @@ class IResearchLink : public IResearchDataStore {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice definition,
-              InitCallback const& initCallback = {});
+  Result init(velocypack::Slice definition, InitCallback const& init = {});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return arangosearch internal format identifier
@@ -147,8 +187,8 @@ class IResearchLink : public IResearchDataStore {
   IResearchViewStoredValues const& storedValues() const noexcept;
 
   /// @brief sets the _collectionName in Link meta. Used in cluster only to
-  /// store linked collection name (as shard name differs from the cluster-wide
-  /// collection name)
+  /// store linked collection name (as shard name differs from the
+  /// cluster-wide collection name)
   /// @param name collection to set. Should match existing value of the
   /// _collectionName if it is not empty.
   /// @return true if name not existed in link before and was actually set by
@@ -159,26 +199,13 @@ class IResearchLink : public IResearchDataStore {
   /// params
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx, LocalDocumentId const documentId,
-                velocypack::Slice const doc);
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc);
 
   std::string const& getViewId() const noexcept;
   std::string const& getDbName() const;
   std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
-
-  // TODO: Generalize for Link/Index
-  struct LinkStats : Stats {
-    LinkStats() = default;
-    explicit LinkStats(Stats const& storeStats) : Stats(storeStats) {}
-    void toPrometheus(std::string& result, bool first, std::string_view globals,
-                      std::string_view labels) const;
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get index stats for current snapshot
-  ////////////////////////////////////////////////////////////////////////////////
-  LinkStats stats() const;
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
@@ -187,17 +214,24 @@ class IResearchLink : public IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLink(IndexId iid, LogicalCollection& collection);
 
-  void updateStats(Stats const& stats) override;
+  void insertMetrics() final;
+  void removeMetrics() final;
 
-  void insertStats() override;
-  void removeStats() override;
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
  private:
-  metrics::Batch<LinkStats>* _linkStats;
-  IResearchLinkMeta const _meta;
+  template<typename T>
+  Result toView(std::shared_ptr<LogicalView> const& logical,
+                std::shared_ptr<T>& view);
+  Result initAndLink(InitCallback const& init, IResearchView* view);
+
+  Result initSingleServer(InitCallback const& init);
+  Result initCoordinator(InitCallback const& init);
+  Result initDBServer(InitCallback const& init);
+
+  IResearchLinkMeta _meta;
   // the identifier of the desired view (read-only, set via init())
-  std::string const _viewGuid;
+  std::string _viewGuid;
 };
 
 }  // namespace arangodb::iresearch

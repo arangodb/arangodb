@@ -201,6 +201,33 @@ TEST_BEGIN(test_nstime_divide) {
 }
 TEST_END
 
+void
+test_nstime_since_once(nstime_t *t) {
+	nstime_t old_t;
+	nstime_copy(&old_t, t);
+
+	uint64_t ns_since = nstime_ns_since(t);
+	nstime_update(t);
+
+	nstime_t new_t;
+	nstime_copy(&new_t, t);
+	nstime_subtract(&new_t, &old_t);
+
+	expect_u64_ge(nstime_ns(&new_t), ns_since,
+	    "Incorrect time since result");
+}
+
+TEST_BEGIN(test_nstime_ns_since) {
+	nstime_t t;
+
+	nstime_init_update(&t);
+	for (uint64_t i = 0; i < 10000; i++) {
+		/* Keeps updating t and verifies ns_since is valid. */
+		test_nstime_since_once(&t);
+	}
+}
+TEST_END
+
 TEST_BEGIN(test_nstime_monotonic) {
 	nstime_monotonic();
 }
@@ -220,5 +247,6 @@ main(void) {
 	    test_nstime_imultiply,
 	    test_nstime_idivide,
 	    test_nstime_divide,
+	    test_nstime_ns_since,
 	    test_nstime_monotonic);
 }

@@ -12,7 +12,7 @@ prof_active_assert() {
 	 * If opt_prof is off, then prof_active must always be off, regardless
 	 * of whether prof_active_mtx is in effect or not.
 	 */
-	assert(opt_prof || !prof_active);
+	assert(opt_prof || !prof_active_state);
 }
 
 JEMALLOC_ALWAYS_INLINE bool
@@ -24,7 +24,7 @@ prof_active_get_unlocked(void) {
 	 * prof_active in the fast path, so there are no guarantees regarding
 	 * how long it will take for all threads to notice state changes.
 	 */
-	return prof_active;
+	return prof_active_state;
 }
 
 JEMALLOC_ALWAYS_INLINE bool
