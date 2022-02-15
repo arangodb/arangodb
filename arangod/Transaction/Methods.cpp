@@ -1512,10 +1512,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
                             result.revisionId(), previous.revisionId(),
                             options.returnOld ? &previous : nullptr,
                             options.returnNew ? &result : nullptr);
-    }
-
-    if (result.revisionId() == previous.revisionId()) {
-      excludeFromReplication = true;
+      if (result.revisionId() == previous.revisionId() &&
+          operation != TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+        excludeFromReplication = true;
+      }
     }
 
     return res;  // must be ok!
@@ -1567,7 +1567,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
       // Now replicate the good operations on all followers:
       return replicateOperations(collection, followers, options, newValue,
-                                 operation, resDocs, {})
+                                 operation, resDocs, std::move(excludePositions))
           .thenValue([options, errs = std::move(errorCounter),
                       resDocs](Result&& res) mutable {
             if (!res.ok()) {
