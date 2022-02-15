@@ -589,7 +589,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   auto& agencyCache = job.feature().server().getFeature<ClusterFeature>().agencyCache();
   
   syncer->setCancellationCheckCallback([=, &agencyCache]() -> bool {
-
     // Will return true if the SynchronizeShard job should be aborted.
     std::string path = "Plan/Collections/" + database + "/" +
           std::to_string(col->planId().id()) + "/shards/" + col->name();
@@ -617,7 +616,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         << " because we are not planned as a follower anymore";
     return true;
   });
-  */
 
   SyncerId syncerId{syncer->syncerId()};
 
