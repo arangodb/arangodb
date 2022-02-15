@@ -436,9 +436,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
     // Rewire the error, to be consistent with potentially next caller.
-    LOG_DEVEL << "role: "
-              << ServerState::instance()->roleToString(
-                     ServerState::instance()->getRole());
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
 }

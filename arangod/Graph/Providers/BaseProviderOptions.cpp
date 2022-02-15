@@ -160,9 +160,6 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
       _backward(backward),
       _expressionContext(expressionContext),
       _filterConditionVariables(filterConditionVariables) {
-  // LOG_DEVEL << "Address of ClusterBaseProviderOptions 1: " << this;
-  // LOG_DEVEL << "Constructor of ClusterBaseProviderOptions, size: " <<
-  // _filterConditionVariables.size();
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -183,10 +180,7 @@ ClusterBaseProviderOptions::engines() const {
 void ClusterBaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
   // [GraphRefactor] Note: Currently, only used in Traversal, but not
   // KShortestPath
-  // LOG_DEVEL << "Address of ClusterBaseProviderOptions 2: " << this;
   if (_expressionContext != nullptr) {
-    // LOG_DEVEL << "_filterConditionVariables SIZE: " <<
-    // _filterConditionVariables.size();
     for (auto const& [var, reg] : _filterConditionVariables) {
       _expressionContext->setVariableValue(var, input.getValue(reg));
     }

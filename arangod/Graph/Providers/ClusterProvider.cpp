@@ -281,10 +281,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   if (_opts.expressionContext() != nullptr) {
     {
       leased->openArray();
-      // LOG_DEVEL << "before serialize";
       _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
                                                        *(leased.get()));
-      // LOG_DEVEL << "after serialize";
       leased->close();
     }
   }
@@ -292,8 +290,6 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
   leased->close();
-
-  // LOG_DEVEL << "Payload to DBS: " << leased->toJson();
 
   auto* pool =
       trx()->vocbase().server().template getFeature<NetworkFeature>().pool();

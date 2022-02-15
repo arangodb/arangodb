@@ -269,11 +269,6 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
           if (edge.isNull()) {
             return;
           }
-          LOG_DEVEL << "Before crash:";
-          LOG_DEVEL << edge.toJson();
-          LOG_DEVEL << vertex.stringView();
-          LOG_DEVEL << depth;
-          LOG_DEVEL << cursorId;
           if (_opts->evaluateEdgeExpression(edge, vertex.stringView(), depth,
                                             cursorId)) {
             builder.add(edge);
