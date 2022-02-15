@@ -56,7 +56,7 @@ class FailureOracleImpl final
       -> bool override {
     std::shared_lock readLock(_mutex);
     if (auto status = _isFailed.find(std::string(serverId));
-        status != std::end(_isFailed)) [[likely]] {
+        status != std::end(_isFailed)) {
       return status->second;
     }
     return true;
