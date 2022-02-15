@@ -1,6 +1,9 @@
 devel
 -----
 
+* Optimize further RocksDB throttle to allow for no change on any
+  given calculation cycle.
+
 * Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
   containing the keywords UPDATE or REPLACE together with the keyword WITH and
   the same key value would result in an error. For example: 
