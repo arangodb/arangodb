@@ -33,8 +33,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
-namespace arangodb {
-namespace geo_index {
+namespace arangodb::geo_index {
 
 CoveringUtils::CoveringUtils(geo::QueryParams&& qp) noexcept
     : _params(std::move(qp)),
@@ -73,7 +72,7 @@ void CoveringUtils::reportFound(LocalDocumentId lid, S2Point const& center) {
   if (!_params.pointsOnly) {
     auto result = _seenDocs.insert(lid.id());
     if (!result.second) {
-      _rejection++;
+      ++_rejection;
       return;  // ignore repeated documents
     }
   }
@@ -82,13 +81,12 @@ void CoveringUtils::reportFound(LocalDocumentId lid, S2Point const& center) {
   if (isFilterContains()) {
     TRI_ASSERT(!_params.filterShape.empty());
     if (!_params.filterShape.contains(center)) {
-      _rejection++;
+      ++_rejection;
       return;
     }
   }
-  _found++;
+  ++_found;
   _buffer.emplace_back(lid);
 }
 
-}  // namespace geo_index
-}  // namespace arangodb
+}  // namespace arangodb::geo_index

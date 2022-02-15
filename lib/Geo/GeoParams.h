@@ -168,8 +168,8 @@ struct QueryParams {
         " origin: " + std::to_string(origin.lng().degrees()) + " , " +
         std::to_string(origin.lat().degrees()) +
         " pointsOnly: " + t(pointsOnly) + " limit: " + std::to_string(limit) +
-        " filterType: " + std::to_string((int)filterType) +
-        " filterShape: " + std::to_string((int)filterShape.type());
+        " filterType: " + std::to_string(static_cast<int>(filterType)) +
+        " filterShape: " + std::to_string(static_cast<int>(filterShape.type()));
     return res;
   }
 };

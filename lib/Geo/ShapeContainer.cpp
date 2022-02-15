@@ -244,8 +244,8 @@ bool ShapeContainer::mayIntersect(S2CellId cell) const noexcept {
 
 static bool isExcessiveLngLat(S1Angle lngsmall, S1Angle lngbig,
                               S1Angle latsmall, S1Angle latbig) {
-  return fabs(lngbig.radians() - lngsmall.radians()) +
-             fabs(latbig.radians() - latsmall.radians()) >=
+  return std::fabs(lngbig.radians() - lngsmall.radians()) +
+             std::fabs(latbig.radians() - latsmall.radians()) >=
          M_PI;
 }
 

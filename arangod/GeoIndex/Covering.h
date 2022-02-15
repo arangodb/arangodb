@@ -28,15 +28,14 @@
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
 
-#include <queue>
+#include <deque>
 #include <vector>
 
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
-namespace arangodb {
-namespace geo_index {
+namespace arangodb::geo_index {
 
 /// @brief Helper class to build a simple covering query iterator.
 /// Will return findings not sorted by anything, will filter according
@@ -50,26 +49,24 @@ class CoveringUtils {
   ~CoveringUtils();
 
  public:
-  inline geo::FilterType filterType() const { return _params.filterType; }
+  geo::FilterType filterType() const { return _params.filterType; }
 
-  inline geo::ShapeContainer const& filterShape() const {
-    return _params.filterShape;
-  }
+  geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const { return _buffer.empty() && _allIntervalsCovered; }
 
   /// @brief has buffered results
-  inline bool hasNext() const { return !_buffer.empty(); }
+  bool hasNext() const { return !_buffer.empty(); }
 
-  inline size_t bufferSize() const { return _buffer.size(); }
+  size_t bufferSize() const { return _buffer.size(); }
 
   LocalDocumentId const& getNext() const {
     TRI_ASSERT(hasNext());
     return _buffer.front();
   }
 
-  inline void next() {
+  void next() {
     TRI_ASSERT(hasNext());
     _buffer.pop_front();
   }
@@ -90,15 +87,15 @@ class CoveringUtils {
   size_t _rejection = 0;
 
  private:
-  inline bool isFilterNone() const noexcept {
+  bool isFilterNone() const noexcept {
     return _params.filterType == geo::FilterType::NONE;
   }
 
-  inline bool isFilterContains() const noexcept {
+  bool isFilterContains() const noexcept {
     return _params.filterType == geo::FilterType::CONTAINS;
   }
 
-  inline bool isFilterIntersects() const noexcept {
+  bool isFilterIntersects() const noexcept {
     return _params.filterType == geo::FilterType::INTERSECTS;
   }
 
@@ -120,5 +117,4 @@ class CoveringUtils {
   S2RegionCoverer _coverer;
 };
 
-}  // namespace geo_index
-}  // namespace arangodb
+}  // namespace arangodb::geo_index

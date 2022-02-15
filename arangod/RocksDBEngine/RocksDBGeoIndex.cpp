@@ -461,7 +461,7 @@ class RDBCoveringIterator final : public IndexIterator {
 
       while (limit > 0 && _covering.hasNext()) {
         if (std::forward<F>(cb)(_covering.getNext())) {
-          limit--;
+          --limit;
         }
         _covering.next();
       }

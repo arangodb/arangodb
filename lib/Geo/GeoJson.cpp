@@ -381,8 +381,8 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region,
       if (legacy) {
         bad = true;
       } else {
-        loops.back()->Invert();
-        if (!loops.front()->Contains(loops.back().get())) {
+        loop->Invert();
+        if (!loops.front()->Contains(loop)) {
           bad = true;
         }
       }
@@ -497,8 +497,8 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
       // then we can invert it silently and if it is then contained
       // in the first, we have proper nesting and leave the rest to
       // InitNested. This is, why we proceed like this:
+      S2Loop* loop = loops.back().get();
       if (legacy) {
-        S2Loop* loop = loops.back().get();
         loop->Normalize();
       }
 
@@ -509,8 +509,8 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
         if (legacy) {
           bad = true;
         } else {
-          loops.back()->Invert();
-          if (!loops[outerLoop]->Contains(loops.back().get())) {
+          loop->Invert();
+          if (!loops[outerLoop]->Contains(loop)) {
             bad = true;
           }
         }
