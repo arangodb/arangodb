@@ -344,17 +344,6 @@ struct arangodb::VocBaseLogManager {
         return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
       }
 
-      // TODO remove this once we have an unconfigured replicated state
-      // For now, we do not create a replicated state on top of a unconfigured
-      // replicated log. Otherwise we would trigger an assertion later on.
-      // Hence for now, we disallow that, the maintenance will retry anyways.
-      auto const& log = logIter->second;
-      if (dynamic_cast<
-              replication2::replicated_log::LogUnconfiguredParticipant*>(
-              log->getParticipant().get()) != nullptr) {
-        return {TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE};
-      }
-
       auto state = feature.createReplicatedState(type, logIter->second);
       states.emplace(id, state);
       return state;
