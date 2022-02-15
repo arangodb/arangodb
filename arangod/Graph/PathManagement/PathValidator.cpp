@@ -246,7 +246,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       // initialize PathResultInterface. II. I don't want to distinguish between
       // different ProviderTypes here if possible (best case).
       if (std::is_same_v<ProviderType,
-                         SingleServerProvider<SingleServerProviderStep>>) {
+                         SingleServerProvider<SingleServerProviderStep>> ||
+          std::is_same_v<ProviderType, ClusterProvider<ClusterProviderStep>>) {
         using ResultPathType =
             SingleProviderPathResult<ProviderType, PathStore, Step>;
         std::unique_ptr<PathResultInterface> currentPath =
