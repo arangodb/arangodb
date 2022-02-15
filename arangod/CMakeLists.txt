@@ -190,6 +190,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/PathManagement/PathStore.cpp
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
+  Graph/PathManagement/PathValidatorTracer.cpp
   Graph/PathManagement/PathValidatorOptions.cpp
   Graph/Options/OneSidedEnumeratorOptions.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
@@ -197,6 +198,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Providers/SingleServerProvider.cpp
   Graph/Providers/BaseProviderOptions.cpp
   Graph/Providers/ProviderTracer.cpp
+  Graph/Steps/ClusterProviderStep.cpp
   Graph/Steps/SingleServerProviderStep.cpp
   Graph/Types/UniquenessLevel.cpp
   Graph/Types/ValidationResult.cpp
@@ -304,7 +306,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentExpressionContext.cpp
-  Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/ClusterQuery.cpp
@@ -342,6 +343,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
+  Aql/LateMaterializedExpressionContext.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
   Aql/LimitStats.cpp
@@ -555,6 +557,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/InMemoryLog.cpp
   Replication2/ReplicatedLog/LogCommon.cpp
   Replication2/ReplicatedLog/LogCore.cpp
+  Replication2/ReplicatedLog/LogEntries.cpp
   Replication2/ReplicatedLog/LogFollower.cpp
   Replication2/ReplicatedLog/LogLeader.cpp
   Replication2/ReplicatedLog/LogStatus.cpp
@@ -578,13 +581,14 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/Supervision.cpp
   Replication2/ReplicatedState/SupervisionAction.cpp
+  Replication2/ReplicatedState/UpdateReplicatedState.cpp
+  Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.h)
+)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp

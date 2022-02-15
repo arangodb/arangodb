@@ -244,7 +244,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _refactor(false) {}
+      _refactor(arangodb::ServerState::instance()->isSingleServer()) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -480,7 +480,8 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   }
 
   TRI_ASSERT(value.isObject() || value.isNull());
-  _expressionCtx.setVariable(_tmpVar, value);
+  _expressionCtx.setVariableValue(_tmpVar,
+                                  AqlValue(AqlValueHintSliceNoCopy(value)));
   ScopeGuard defer(
       [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
   bool mustDestroy = false;
@@ -488,7 +489,6 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
-  _expressionCtx.clearVariable(_tmpVar);
   if (!result) {
     cache()->increaseFilterCounter();
   }

@@ -191,7 +191,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::shared_ptr<AbstractFollower> _impl;
     TermIndexPair lastAckedEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex lastAckedCommitIndex = LogIndex{0};
-    LogIndex lastAckedLCI = LogIndex{0};
+    LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
@@ -269,7 +269,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto handleAppendEntriesResponse(
         FollowerInfo& follower, TermIndexPair lastIndex,
-        LogIndex currentCommitIndex, LogIndex currentLCI, LogTerm currentTerm,
+        LogIndex currentCommitIndex, LogIndex currentLITK, LogTerm currentTerm,
         futures::Try<AppendEntriesResult>&& res,
         std::chrono::steady_clock::duration latency, MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>,
@@ -301,7 +301,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         -> std::chrono::duration<double, std::milli>;
 
     auto insertInternal(
-        std::optional<LogPayload>, bool waitForSync,
+        std::variant<LogMetaPayload, LogPayload>, bool waitForSync,
         std::optional<InMemoryLogEntry::clock::time_point> insertTp)
         -> LogIndex;
 
@@ -313,7 +313,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
-    LogIndex _largestCommonIndex{0};
+    LogIndex _lowestIndexToKeep{0};
     LogIndex _releaseIndex{0};
     bool _didResign{false};
     bool _leadershipEstablished{false};

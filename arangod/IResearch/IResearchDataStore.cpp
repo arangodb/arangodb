@@ -26,8 +26,10 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/DownCast.h"
 
 #include "Metrics/Gauge.h"
+#include "Metrics/Guard.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -525,7 +527,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _cleanupTimeNum{0},
       _avgCleanupTimeMs{nullptr},
       _consolidationTimeNum{0},
-      _avgConsolidationTimeMs{nullptr} {
+      _avgConsolidationTimeMs{nullptr},
+      _metricStats{nullptr} {
   auto* key = this;
 
   // initialize transaction callback
@@ -542,13 +545,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     auto prev = state->cookie(key, nullptr);  // get existing cookie
 
     if (prev) {
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& ctx = dynamic_cast<IResearchTrxState&>(*prev);
-#else
-      auto& ctx = static_cast<IResearchTrxState&>(*prev);
-#endif
-
+      // TODO FIXME find a better way to look up a ViewState
+      auto& ctx = basics::downCast<IResearchTrxState>(*prev);
       if (transaction::Status::COMMITTED != status) {  // rollback
         ctx.reset();
       } else {
@@ -782,7 +780,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
     _dataStore._reader = reader;
 
     // update stats
-    updateStats(statsUnsafe());
+    updateStatsUnsafe();
 
     // update last committed tick
     impl.tick(_lastCommittedTick);
@@ -885,7 +883,7 @@ Result IResearchDataStore::shutdownDataStore() {
 
   try {
     if (_dataStore) {
-      removeStats();
+      removeMetrics();
       _dataStore.resetDataStore();
     }
   } catch (basics::Exception const& e) {
@@ -1144,7 +1142,8 @@ Result IResearchDataStore::initDataStore(
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
   // register metrics before starting any background threads
-  insertStats();
+  insertMetrics();
+  updateStatsUnsafe();
 
   // ...........................................................................
   // set up in-recovery insertion hooks
@@ -1280,14 +1279,8 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   }
 
   auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+  // TODO FIXME find a better way to look up a ViewState
+  auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
     auto linkLock = _asyncSelf->lock();
@@ -1417,14 +1410,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return insertImpl(ctx);
   }
   auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+  // TODO FIXME find a better way to look up a ViewState
+  auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
   if (!ctx) {
     // '_dataStore' can be asynchronously modified
     auto linkLock = _asyncSelf->lock();
@@ -1500,14 +1487,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     auto* key = this;
 
     auto& state = *(trx->state());
-
     // TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* ctx = dynamic_cast<IResearchTrxState*>(state.cookie(key));
-#else
-    auto* ctx = static_cast<IResearchTrxState*>(state.cookie(key));
-#endif
-
+    auto* ctx = basics::downCast<IResearchTrxState>(state.cookie(key));
     if (ctx) {
       // throw away all pending operations as clear will overwrite them all
       ctx->reset();
@@ -1548,7 +1529,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     // update reader
     _dataStore._reader = reader;
 
-    updateStats(statsUnsafe());
+    updateStatsUnsafe();
 
     auto subscription = std::atomic_load(&_flushSubscription);
 
@@ -1578,49 +1559,47 @@ bool IResearchDataStore::hasSelectivityEstimate() {
   return false;
 }
 
-IResearchDataStore::Stats IResearchDataStore::statsSynced() const {
+IResearchDataStore::Stats IResearchDataStore::stats() const {
   auto linkLock = _asyncSelf->lock();
   if (!linkLock) {
     return {};
   }
-  return statsUnsafe();
+  if (_metricStats) {
+    return _metricStats->load();
+  }
+  return updateStatsUnsafe();
 }
 
-IResearchDataStore::Stats IResearchDataStore::statsUnsafe() const {
-  Stats stats;
-  if (!_dataStore) {
-    return {};
-  }
-  stats.numBufferedDocs = _dataStore._writer->buffered_docs();
-
+IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
+  TRI_ASSERT(_dataStore);
   // copy of 'reader' is important to hold reference to the current snapshot
   auto reader = _dataStore._reader;
   if (!reader) {
     return {};
   }
-
+  Stats stats;
   stats.numSegments = reader->size();
   stats.numDocs = reader->docs_count();
   stats.numLiveDocs = reader->live_docs_count();
   stats.numFiles = 1;  // +1 for segments file
-
   auto visitor = [&stats](std::string const& /*name*/,
                           irs::segment_meta const& segment) noexcept {
     stats.indexSize += segment.size;
     stats.numFiles += segment.files.size();
     return true;
   };
-
   reader->meta().meta.visit_segments(visitor);
+  if (_metricStats) {
+    _metricStats->store(stats);
+  }
   return stats;
 }
 
 void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
-  auto const stats = this->statsSynced();
+  auto const stats = this->stats();
 
-  builder.add("numBufferedDocs", VPackValue(stats.numBufferedDocs));
   builder.add("numDocs", VPackValue(stats.numDocs));
   builder.add("numLiveDocs", VPackValue(stats.numLiveDocs));
   builder.add("numSegments", VPackValue(stats.numSegments));

@@ -45,14 +45,15 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Follower instance of a replicated log.
  */
-class LogFollower final : public ILogFollower,
-                          public std::enable_shared_from_this<LogFollower> {
+class LogFollower : public ILogFollower,
+                    public std::enable_shared_from_this<LogFollower> {
  public:
   ~LogFollower() override;
-  LogFollower(LoggerContext const&,
-              std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-              ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-              std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
+  static auto construct(LoggerContext const&,
+                        std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+                        ParticipantId id, std::unique_ptr<LogCore> logCore,
+                        LogTerm term, std::optional<ParticipantId> leaderId)
+      -> std::shared_ptr<LogFollower>;
 
   // follower only
   [[nodiscard]] auto appendEntries(AppendEntriesRequest)
@@ -83,6 +84,11 @@ class LogFollower final : public ILogFollower,
   auto waitForLeaderAcked() -> WaitForFuture override;
 
  private:
+  LogFollower(LoggerContext const&,
+              std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+              ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+              std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
+
   struct GuardedFollowerData {
     GuardedFollowerData() = delete;
     GuardedFollowerData(LogFollower const& self,
@@ -93,7 +99,7 @@ class LogFollower final : public ILogFollower,
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
     [[nodiscard]] auto checkCompaction() -> Result;
-    auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLCI,
+    auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
         -> DeferredAction;
 
@@ -101,7 +107,7 @@ class LogFollower final : public ILogFollower,
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
     LogIndex _commitIndex{0};
-    LogIndex _largestCommonIndex;
+    LogIndex _lowestIndexToKeep;
     LogIndex _releaseIndex;
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;

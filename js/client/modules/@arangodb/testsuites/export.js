@@ -33,7 +33,7 @@ const optionsDocumentation = [];
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const xmldom = require('xmldom');
+const xmldom = require('@xmldom/xmldom');
 const zlib = require('zlib');
 
 const CYAN = require('internal').COLORS.COLOR_CYAN;

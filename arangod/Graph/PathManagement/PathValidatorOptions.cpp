@@ -32,13 +32,55 @@ using namespace arangodb::graph;
 PathValidatorOptions::PathValidatorOptions(
     aql::Variable const* tmpVar,
     arangodb::aql::FixedVarExpressionContext& expressionContext)
-    : _tmpVar(tmpVar), _expressionCtx(expressionContext) {}
+    : _allowedVertexCollections{},
+      _tmpVar(tmpVar),
+      _expressionCtx(expressionContext) {}
 
 void PathValidatorOptions::setAllVerticesExpression(
     std::unique_ptr<aql::Expression> expression) {
   // All edge expression should not be set before
   TRI_ASSERT(_allVerticesExpression == nullptr);
   _allVerticesExpression = std::move(expression);
+}
+
+void PathValidatorOptions::setPruneEvaluator(
+    std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
+  _pruneEvaluator = std::move(expression);
+}
+
+void PathValidatorOptions::setPostFilterEvaluator(
+    std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
+  _postFilterEvaluator = std::move(expression);
+}
+
+std::shared_ptr<aql::PruneExpressionEvaluator>&
+PathValidatorOptions::getPruneEvaluator() {
+  return _pruneEvaluator;
+}
+
+std::shared_ptr<aql::PruneExpressionEvaluator>&
+PathValidatorOptions::getPostFilterEvaluator() {
+  return _postFilterEvaluator;
+}
+
+bool PathValidatorOptions::usesPrune() const {
+  return _pruneEvaluator != nullptr;
+}
+
+bool PathValidatorOptions::usesPostFilter() const {
+  return _postFilterEvaluator != nullptr;
+}
+
+void PathValidatorOptions::setPruneContext(
+    arangodb::aql::InputAqlItemRow& inputRow) {
+  TRI_ASSERT(_pruneEvaluator != nullptr);
+  _pruneEvaluator->prepareContext(inputRow);
+}
+
+void PathValidatorOptions::setPostFilterContext(
+    arangodb::aql::InputAqlItemRow& inputRow) {
+  TRI_ASSERT(_postFilterEvaluator != nullptr);
+  _postFilterEvaluator->prepareContext(inputRow);
 }
 
 void PathValidatorOptions::setVertexExpression(
@@ -51,11 +93,26 @@ void PathValidatorOptions::setVertexExpression(
 
 aql::Expression* PathValidatorOptions::getVertexExpression(
     uint64_t depth) const {
-  auto const& it = _vertexExpressionOnDepth.find(depth);
-  if (it != _vertexExpressionOnDepth.end()) {
-    return it->second.get();
+  if (!_vertexExpressionOnDepth.empty()) {
+    auto const& it = _vertexExpressionOnDepth.find(depth);
+    if (it != _vertexExpressionOnDepth.end()) {
+      return it->second.get();
+    }
   }
+
   return _allVerticesExpression.get();
+}
+
+void PathValidatorOptions::unpreparePruneContext() {
+  if (_pruneEvaluator != nullptr) {
+    _pruneEvaluator->unPrepareContext();
+  }
+}
+
+void PathValidatorOptions::unpreparePostFilterContext() {
+  if (_postFilterEvaluator != nullptr) {
+    _postFilterEvaluator->unPrepareContext();
+  }
 }
 
 void PathValidatorOptions::addAllowedVertexCollection(

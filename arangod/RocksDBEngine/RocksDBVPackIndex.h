@@ -235,9 +235,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief whether or not array indexes will de-duplicate their input values
   bool _deduplicate;
 
-  /// @brief whether or not partial indexing is allowed
-  bool _allowPartialIndex;
-
   /// @brief whether or not we want to have estimates
   bool _estimates;
 
