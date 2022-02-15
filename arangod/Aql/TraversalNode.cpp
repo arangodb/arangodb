@@ -881,7 +881,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
   filterConditionVariables.reserve(_conditionVariables.size());
 
-  //LOG_DEVEL << "SIZE OF _conditionVariables: " << _conditionVariables.size();
+  // LOG_DEVEL << "SIZE OF _conditionVariables: " << _conditionVariables.size();
   for (auto const& it : _conditionVariables) {
     if (it != _tmpObjVariable) {
       auto idIt = varInfo.find(it->id);
@@ -891,7 +891,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       inputRegisters.emplace(idIt->second.registerId);
     }
   }
-  //LOG_DEVEL << "SIZE OF filterConditionVariables: " << filterConditionVariables.size();
+  // LOG_DEVEL << "SIZE OF filterConditionVariables: " <<
+  // filterConditionVariables.size();
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                            std::move(outputRegisters));
@@ -922,7 +923,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         std::vector<Variable const*> vars{};
         std::vector<RegisterId> regs{};
 
-        LOG_DEVEL << "FilterCondition after using refactor: " << filterConditionVariables.size();
+        LOG_DEVEL << "FilterCondition after using refactor: "
+                  << filterConditionVariables.size();
         for (auto [var, reg] : filterConditionVariables) {
           vars.emplace_back(var);
           regs.emplace_back(reg);
@@ -973,7 +975,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           validatorOptions.setVertexExpression(depth, std::move(expression));
         }
 
-        //LOG_DEVEL << "BEFORE MOVE INTO INFOS, SIZE: " << filterConditionVariables.size();
+        // LOG_DEVEL << "BEFORE MOVE INTO INFOS, SIZE: " <<
+        // filterConditionVariables.size();
         auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
                                                       // SingleServer,
                                                       // Cluster...

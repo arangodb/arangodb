@@ -101,7 +101,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   if (!refactor) {
     TRI_ASSERT(_traverser != nullptr);
   }
-  //LOG_DEVEL << "Constructor OF TraversalExecutorInfos size: "
+  // LOG_DEVEL << "Constructor OF TraversalExecutorInfos size: "
   //          << _filterConditionVariables.size();
 
   // _fixedSource XOR _inputRegister
@@ -530,7 +530,8 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
   // TODO [GraphRefactor]: Temporary try to minimize copy-paste-tank, but
   // failed. auto [vertexUnique, edgeUnique] = convertUniquenessLevels();
 
-  //LOG_DEVEL << "parseTraversalEnumeratorCluster, size: " << baseProviderOptions._filterConditionVariables.size();
+  // LOG_DEVEL << "parseTraversalEnumeratorCluster, size: " <<
+  // baseProviderOptions._filterConditionVariables.size();
 
   if (order == TraverserOptions::Order::DFS) {
     switch (uniqueVertices) {
