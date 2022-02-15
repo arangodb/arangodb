@@ -1,6 +1,8 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
 * Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
