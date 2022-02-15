@@ -80,12 +80,6 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     return stats().indexSize;
   }
 
-  arangodb::Result remove(transaction::Methods& trx,
-                          arangodb::LocalDocumentId const& documentId,
-                          VPackSlice const doc) {
-    return IResearchLink::remove(trx, documentId, doc);
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size

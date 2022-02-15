@@ -26,14 +26,14 @@ TEST_BEGIN(test_idump) {
 	bool active;
 	void *p;
 
-	const char *dump_prefix = TEST_PREFIX;
+	const char *test_prefix = TEST_PREFIX;
 
 	test_skip_if(!config_prof);
 
 	active = true;
 
-	expect_d_eq(mallctl("prof.dump_prefix", NULL, NULL,
-	    (void *)&dump_prefix, sizeof(dump_prefix)), 0,
+	expect_d_eq(mallctl("prof.prefix", NULL, NULL, (void *)&test_prefix,
+	    sizeof(test_prefix)), 0,
 	    "Unexpected mallctl failure while overwriting dump prefix");
 
 	expect_d_eq(mallctl("prof.active", NULL, NULL, (void *)&active,

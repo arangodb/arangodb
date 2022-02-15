@@ -176,6 +176,15 @@ struct TraverserOptions : public graph::BaseOptions {
 
   double estimateCost(size_t& nrItems) const override;
 
+  std::unique_ptr<aql::PruneExpressionEvaluator> createPruneEvaluator(
+      std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+      size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx,
+      aql::Expression* expr);
+
+  std::unique_ptr<aql::PruneExpressionEvaluator> createPostFilterEvaluator(
+      std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+      size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr);
+
   void activatePrune(std::vector<aql::Variable const*> vars,
                      std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
                      size_t edgeVarIdx, size_t pathVarIdx,

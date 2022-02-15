@@ -4,12 +4,14 @@
 #include "jemalloc/internal/sec.h"
 
 static edata_t *sec_alloc(tsdn_t *tsdn, pai_t *self, size_t size,
-    size_t alignment, bool zero);
+    size_t alignment, bool zero, bool guarded, bool frequent_reuse,
+    bool *deferred_work_generated);
 static bool sec_expand(tsdn_t *tsdn, pai_t *self, edata_t *edata,
-    size_t old_size, size_t new_size, bool zero);
+    size_t old_size, size_t new_size, bool zero, bool *deferred_work_generated);
 static bool sec_shrink(tsdn_t *tsdn, pai_t *self, edata_t *edata,
-    size_t old_size, size_t new_size);
-static void sec_dalloc(tsdn_t *tsdn, pai_t *self, edata_t *edata);
+    size_t old_size, size_t new_size, bool *deferred_work_generated);
+static void sec_dalloc(tsdn_t *tsdn, pai_t *self, edata_t *edata,
+    bool *deferred_work_generated);
 
 static void
 sec_bin_init(sec_bin_t *bin) {
@@ -19,35 +21,55 @@ sec_bin_init(sec_bin_t *bin) {
 }
 
 bool
-sec_init(sec_t *sec, pai_t *fallback, const sec_opts_t *opts) {
-	size_t nshards_clipped = opts->nshards;
-	if (nshards_clipped > SEC_NSHARDS_MAX) {
-		nshards_clipped = SEC_NSHARDS_MAX;
+sec_init(tsdn_t *tsdn, sec_t *sec, base_t *base, pai_t *fallback,
+    const sec_opts_t *opts) {
+	size_t max_alloc = opts->max_alloc & PAGE_MASK;
+	pszind_t npsizes = sz_psz2ind(max_alloc);
+	if (sz_pind2sz(npsizes) > opts->max_alloc) {
+		npsizes--;
 	}
-	for (size_t i = 0; i < nshards_clipped; i++) {
-		sec_shard_t *shard = &sec->shards[i];
+	size_t sz_shards = opts->nshards * sizeof(sec_shard_t);
+	size_t sz_bins = opts->nshards * (size_t)npsizes * sizeof(sec_bin_t);
+	size_t sz_alloc = sz_shards + sz_bins;
+	void *dynalloc = base_alloc(tsdn, base, sz_alloc, CACHELINE);
+	if (dynalloc == NULL) {
+		return true;
+	}
+	sec_shard_t *shard_cur = (sec_shard_t *)dynalloc;
+	sec->shards = shard_cur;
+	sec_bin_t *bin_cur = (sec_bin_t *)&shard_cur[opts->nshards];
+	/* Just for asserts, below. */
+	sec_bin_t *bin_start = bin_cur;
+
+	for (size_t i = 0; i < opts->nshards; i++) {
+		sec_shard_t *shard = shard_cur;
+		shard_cur++;
 		bool err = malloc_mutex_init(&shard->mtx, "sec_shard",
 		    WITNESS_RANK_SEC_SHARD, malloc_mutex_rank_exclusive);
 		if (err) {
 			return true;
 		}
 		shard->enabled = true;
-		for (pszind_t j = 0; j < SEC_NPSIZES; j++) {
+		shard->bins = bin_cur;
+		for (pszind_t j = 0; j < npsizes; j++) {
 			sec_bin_init(&shard->bins[j]);
+			bin_cur++;
 		}
 		shard->bytes_cur = 0;
 		shard->to_flush_next = 0;
 	}
+	/*
+	 * Should have exactly matched the bin_start to the first unused byte
+	 * after the shards.
+	 */
+	assert((void *)shard_cur == (void *)bin_start);
+	/* And the last bin to use up the last bytes of the allocation. */
+	assert((char *)bin_cur == ((char *)dynalloc + sz_alloc));
 	sec->fallback = fallback;
 
-	size_t max_alloc_clipped = opts->max_alloc;
-	if (max_alloc_clipped > sz_pind2sz(SEC_NPSIZES - 1)) {
-		max_alloc_clipped = sz_pind2sz(SEC_NPSIZES - 1);
-	}
 
 	sec->opts = *opts;
-	sec->opts.nshards = nshards_clipped;
-	sec->opts.max_alloc = max_alloc_clipped;
+	sec->npsizes = npsizes;
 
 	/*
 	 * Initialize these last so that an improper use of an SEC whose
@@ -106,7 +128,7 @@ sec_flush_some_and_unlock(tsdn_t *tsdn, sec_t *sec, sec_shard_t *shard) {
 
 		/* Update our victim-picking state. */
 		shard->to_flush_next++;
-		if (shard->to_flush_next == SEC_NPSIZES) {
+		if (shard->to_flush_next == sec->npsizes) {
 			shard->to_flush_next = 0;
 		}
 
@@ -127,7 +149,9 @@ sec_flush_some_and_unlock(tsdn_t *tsdn, sec_t *sec, sec_shard_t *shard) {
 	}
 
 	malloc_mutex_unlock(tsdn, &shard->mtx);
-	pai_dalloc_batch(tsdn, sec->fallback, &to_flush);
+	bool deferred_work_generated = false;
+	pai_dalloc_batch(tsdn, sec->fallback, &to_flush,
+	    &deferred_work_generated);
 }
 
 static edata_t *
@@ -155,8 +179,9 @@ sec_batch_fill_and_alloc(tsdn_t *tsdn, sec_t *sec, sec_shard_t *shard,
 
 	edata_list_active_t result;
 	edata_list_active_init(&result);
+	bool deferred_work_generated = false;
 	size_t nalloc = pai_alloc_batch(tsdn, sec->fallback, size,
-	    1 + sec->opts.batch_fill_extra, &result);
+	    1 + sec->opts.batch_fill_extra, &result, &deferred_work_generated);
 
 	edata_t *ret = edata_list_active_first(&result);
 	if (ret != NULL) {
@@ -193,14 +218,18 @@ sec_batch_fill_and_alloc(tsdn_t *tsdn, sec_t *sec, sec_shard_t *shard,
 }
 
 static edata_t *
-sec_alloc(tsdn_t *tsdn, pai_t *self, size_t size, size_t alignment, bool zero) {
+sec_alloc(tsdn_t *tsdn, pai_t *self, size_t size, size_t alignment, bool zero,
+    bool guarded, bool frequent_reuse, bool *deferred_work_generated) {
 	assert((size & PAGE_MASK) == 0);
+	assert(!guarded);
 
 	sec_t *sec = (sec_t *)self;
 
 	if (zero || alignment > PAGE || sec->opts.nshards == 0
 	    || size > sec->opts.max_alloc) {
-		return pai_alloc(tsdn, sec->fallback, size, alignment, zero);
+		return pai_alloc(tsdn, sec->fallback, size, alignment, zero,
+		    /* guarded */ false, frequent_reuse,
+		    deferred_work_generated);
 	}
 	pszind_t pszind = sz_psz2ind(size);
 	sec_shard_t *shard = sec_shard_pick(tsdn, sec);
@@ -223,7 +252,8 @@ sec_alloc(tsdn_t *tsdn, pai_t *self, size_t size, size_t alignment, bool zero) {
 			    size);
 		} else {
 			edata = pai_alloc(tsdn, sec->fallback, size, alignment,
-			    zero);
+			    zero, /* guarded */ false, frequent_reuse,
+			    deferred_work_generated);
 		}
 	}
 	return edata;
@@ -231,16 +261,18 @@ sec_alloc(tsdn_t *tsdn, pai_t *self, size_t size, size_t alignment, bool zero) {
 
 static bool
 sec_expand(tsdn_t *tsdn, pai_t *self, edata_t *edata, size_t old_size,
-    size_t new_size, bool zero) {
+    size_t new_size, bool zero, bool *deferred_work_generated) {
 	sec_t *sec = (sec_t *)self;
-	return pai_expand(tsdn, sec->fallback, edata, old_size, new_size, zero);
+	return pai_expand(tsdn, sec->fallback, edata, old_size, new_size, zero,
+	    deferred_work_generated);
 }
 
 static bool
 sec_shrink(tsdn_t *tsdn, pai_t *self, edata_t *edata, size_t old_size,
-    size_t new_size) {
+    size_t new_size, bool *deferred_work_generated) {
 	sec_t *sec = (sec_t *)self;
-	return pai_shrink(tsdn, sec->fallback, edata, old_size, new_size);
+	return pai_shrink(tsdn, sec->fallback, edata, old_size, new_size,
+	    deferred_work_generated);
 }
 
 static void
@@ -249,7 +281,7 @@ sec_flush_all_locked(tsdn_t *tsdn, sec_t *sec, sec_shard_t *shard) {
 	shard->bytes_cur = 0;
 	edata_list_active_t to_flush;
 	edata_list_active_init(&to_flush);
-	for (pszind_t i = 0; i < SEC_NPSIZES; i++) {
+	for (pszind_t i = 0; i < sec->npsizes; i++) {
 		sec_bin_t *bin = &shard->bins[i];
 		bin->bytes_cur = 0;
 		edata_list_active_concat(&to_flush, &bin->freelist);
@@ -261,7 +293,9 @@ sec_flush_all_locked(tsdn_t *tsdn, sec_t *sec, sec_shard_t *shard) {
 	 * we're disabling the HPA or resetting the arena, both of which are
 	 * rare pathways.
 	 */
-	pai_dalloc_batch(tsdn, sec->fallback, &to_flush);
+	bool deferred_work_generated = false;
+	pai_dalloc_batch(tsdn, sec->fallback, &to_flush,
+	    &deferred_work_generated);
 }
 
 static void
@@ -297,11 +331,13 @@ sec_shard_dalloc_and_unlock(tsdn_t *tsdn, sec_t *sec, sec_shard_t *shard,
 }
 
 static void
-sec_dalloc(tsdn_t *tsdn, pai_t *self, edata_t *edata) {
+sec_dalloc(tsdn_t *tsdn, pai_t *self, edata_t *edata,
+    bool *deferred_work_generated) {
 	sec_t *sec = (sec_t *)self;
 	if (sec->opts.nshards == 0
 	    || edata_size_get(edata) > sec->opts.max_alloc) {
-		pai_dalloc(tsdn, sec->fallback, edata);
+		pai_dalloc(tsdn, sec->fallback, edata,
+		    deferred_work_generated);
 		return;
 	}
 	sec_shard_t *shard = sec_shard_pick(tsdn, sec);
@@ -310,7 +346,8 @@ sec_dalloc(tsdn_t *tsdn, pai_t *self, edata_t *edata) {
 		sec_shard_dalloc_and_unlock(tsdn, sec, shard, edata);
 	} else {
 		malloc_mutex_unlock(tsdn, &shard->mtx);
-		pai_dalloc(tsdn, sec->fallback, edata);
+		pai_dalloc(tsdn, sec->fallback, edata,
+		    deferred_work_generated);
 	}
 }
 

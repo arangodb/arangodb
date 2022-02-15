@@ -127,7 +127,11 @@ inline ExecutionStats& operator+=(
 
 class IndexStats {
  public:
-  IndexStats() noexcept : _scannedIndex(0), _filtered(0) {}
+  IndexStats() noexcept
+      : _scannedIndex(0),
+        _filtered(0),
+        _cursorsCreated(0),
+        _cursorsRearmed(0) {}
 
   void incrScanned() noexcept { _scannedIndex++; }
   void incrScanned(size_t value) noexcept { _scannedIndex += value; }
@@ -135,23 +139,34 @@ class IndexStats {
   void incrFiltered() noexcept { _filtered++; }
   void incrFiltered(size_t value) noexcept { _filtered += value; }
 
+  void incrCursorsCreated(size_t value) noexcept { _cursorsCreated += value; }
+  void incrCursorsRearmed(size_t value) noexcept { _cursorsRearmed += value; }
+
   std::size_t getScanned() const noexcept { return _scannedIndex; }
   std::size_t getFiltered() const noexcept { return _filtered; }
+  std::size_t getCursorsCreated() const noexcept { return _cursorsCreated; }
+  std::size_t getCursorsRearmed() const noexcept { return _cursorsRearmed; }
 
   void operator+=(IndexStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
+    _cursorsCreated += stats._cursorsCreated;
+    _cursorsRearmed += stats._cursorsRearmed;
   }
 
  private:
   std::size_t _scannedIndex;
   std::size_t _filtered;
+  std::size_t _cursorsCreated;
+  std::size_t _cursorsRearmed;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   IndexStats const& indexStats) noexcept {
   executionStats.scannedIndex += indexStats.getScanned();
   executionStats.filtered += indexStats.getFiltered();
+  executionStats.cursorsCreated += indexStats.getCursorsCreated();
+  executionStats.cursorsRearmed += indexStats.getCursorsRearmed();
   return executionStats;
 }
 

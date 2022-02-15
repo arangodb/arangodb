@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 #include "gtest/gtest.h"
 
@@ -2705,7 +2706,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   auto logicalView = vocbase.createView(createJson->slice());
   ASSERT_FALSE(!logicalView);
   auto& viewImpl =
-      arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(
+      arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
           *logicalView);
   EXPECT_FALSE(viewImpl.primarySort().empty());
 
@@ -3173,29 +3174,29 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     // start transaction (put snapshot into)
     EXPECT_TRUE(
         nullptr ==
-        arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(
+        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
             *logicalView)
             .snapshot(trx,
                       arangodb::iresearch::IResearchView::SnapshotMode::Find));
     auto* snapshot =
-        arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(
+        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
             *logicalView)
             .snapshot(
                 trx,
                 arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     EXPECT_TRUE(
         snapshot ==
-        arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(
+        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
             *logicalView)
             .snapshot(trx,
                       arangodb::iresearch::IResearchView::SnapshotMode::Find));
     EXPECT_TRUE(snapshot ==
-                arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(
+                arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
                     *logicalView)
                     .snapshot(trx, arangodb::iresearch::IResearchView::
                                        SnapshotMode::FindOrCreate));
     EXPECT_TRUE(snapshot ==
-                arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(
+                arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
                     *logicalView)
                     .snapshot(trx, arangodb::iresearch::IResearchView::
                                        SnapshotMode::SyncAndReplace));
