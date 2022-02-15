@@ -85,7 +85,10 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
-      _filterConditionVariables(std::move(filterConditionVariables)),
+      _filterConditionVariables(
+          filterConditionVariables),  // TODO [GraphRefactor]:
+                                      // Remove the _ as soon as we
+                                      // can get rid of the old code
       _ast(ast),
       _uniqueVertices(vertexUniqueness),
       _uniqueEdges(edgeUniqueness),
@@ -98,6 +101,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   if (!refactor) {
     TRI_ASSERT(_traverser != nullptr);
   }
+  //LOG_DEVEL << "Constructor OF TraversalExecutorInfos size: "
+  //          << _filterConditionVariables.size();
 
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
@@ -116,8 +121,9 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     if (ServerState::instance()->isCoordinator()) {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(
           opts->query().resourceMonitor());
-      ClusterBaseProviderOptions clusterBaseProviderOptions(cache, engines,
-                                                            false);
+      ClusterBaseProviderOptions clusterBaseProviderOptions(
+          cache, engines, false, &opts->getExpressionCtx(),
+          std::move(filterConditionVariables));
       parseTraversalEnumeratorCluster(
           getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
           _weightAttribute, query, std::move(clusterBaseProviderOptions),
@@ -125,7 +131,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     } else {
       arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          filterConditionVariables, opts->collectionToShard()};
+          std::move(filterConditionVariables), opts->collectionToShard()};
       parseTraversalEnumeratorSingleServer(
           getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
           _weightAttribute, query, std::move(baseProviderOptions),
@@ -523,6 +529,8 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void {
   // TODO [GraphRefactor]: Temporary try to minimize copy-paste-tank, but
   // failed. auto [vertexUnique, edgeUnique] = convertUniquenessLevels();
+
+  //LOG_DEVEL << "parseTraversalEnumeratorCluster, size: " << baseProviderOptions._filterConditionVariables.size();
 
   if (order == TraverserOptions::Order::DFS) {
     switch (uniqueVertices) {

@@ -270,11 +270,30 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   // handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
-  leased->add("backward", VPackValue(_opts.isBackward()));
-  // TODO: Differentiate between algorithms -> traversals vs ksp.
+  leased->add("backward",
+              VPackValue(_opts.isBackward()));  // [GraphRefactor] ksp only?
+
+  // [GraphRefactor] TODO: Differentiate between algorithms -> traversal vs.
+  // ksp.
+  /* Needed for TRAVERSALS only - Begin */
   leased->add("depth", VPackValue(step->getDepth()));
+  leased->add(VPackValue("variables"));
+  if (_opts.expressionContext() != nullptr) {
+    {
+      leased->openArray();
+      //LOG_DEVEL << "before serialize";
+      _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
+                                                       *(leased.get()));
+      //LOG_DEVEL << "after serialize";
+      leased->close();
+    }
+  }
+  /* Needed for TRAVERSALS only - End */
+
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
   leased->close();
+
+  //LOG_DEVEL << "Payload to DBS: " << leased->toJson();
 
   auto* pool =
       trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
@@ -465,6 +484,16 @@ arangodb::aql::TraversalStats ClusterProvider<StepImpl>::stealStats() {
   _stats.~TraversalStats();
   new (&_stats) aql::TraversalStats{};
   return t;
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::prepareContext(aql::InputAqlItemRow input) {
+  _opts.prepareContext(std::move(input));
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::unPrepareContext() {
+  _opts.unPrepareContext();
 }
 
 template class graph::ClusterProvider<ClusterProviderStep>;

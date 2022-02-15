@@ -25,6 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 
@@ -44,7 +45,9 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
       [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
         // now check our own temporary variables
         auto it = _vars.find(variable);
+
         if (it == _vars.end()) {
+          LOG_DEVEL << "Variable is : " << variable;
           TRI_ASSERT(false);
           return AqlValue(AqlValueHintNull());
         }
@@ -73,6 +76,7 @@ void FixedVarExpressionContext::clearVariableValue(
 void FixedVarExpressionContext::serializeAllVariables(
     velocypack::Options const& opts, velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
+  LOG_DEVEL << "Length of vars: " << _vars.size();
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);

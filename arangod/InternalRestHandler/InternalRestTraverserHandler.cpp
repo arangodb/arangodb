@@ -198,6 +198,7 @@ void InternalRestTraverserHandler::queryEngine() {
         TRI_ASSERT(eng != nullptr);
 
         VPackSlice variables = body.get("variables");
+        LOG_DEVEL << "variables:" << variables.toJson();
         eng->injectVariables(variables);
 
         eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);

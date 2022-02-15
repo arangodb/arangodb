@@ -254,6 +254,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
           }
 #endif
           _opts->cache()->increaseCounter();
+          // Used in cluster variant here and crashes
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
           return true;
         });
