@@ -1,6 +1,11 @@
 devel
 -----
 
+* Added back the optimization for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated), handling them 
+  in a special way without performing any writes, also excluding such special 
+  cases of operation from replication to followers.
+
 * Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
   containing the keywords UPDATE or REPLACE together with the keyword WITH and
   the same key value would result in an error. For example: 
