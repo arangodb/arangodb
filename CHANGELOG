@@ -1,6 +1,9 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
+* As we are now in constant stall regime, stall onset and warnings are
+  demoted to DEBUG.
+
 * Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
