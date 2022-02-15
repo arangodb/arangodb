@@ -389,8 +389,6 @@ void RocksDBThrottle::RecalculateThrottle() {
     }
 
     // change the throttle slowly
-    //  (+1 & +2 keep throttle moving toward goal when difference new and
-    //   old is less than _scalingFactor)
     if (!_firstThrottle) {
       int64_t temp_rate = _throttleBps.load(std::memory_order_relaxed);
 
