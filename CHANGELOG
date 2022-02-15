@@ -1,6 +1,10 @@
 devel
 -----
 
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
 * Fixed a race detected with chaos tests, where a db server could have
   momentarily lost leadership, just when it was about to drop a
   follower to that shard.
