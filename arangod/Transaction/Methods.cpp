@@ -1170,7 +1170,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
         // document
         res =
             collection->update(this, value, docResult, options, prevDocResult);
-        if (prevDocResult.revisionId() == docResult.revisionId()) {
+        if (res.ok() && prevDocResult.revisionId() == docResult.revisionId()) {
           excludeFromReplication = true;
         }
       } else if (options.overwriteMode ==
