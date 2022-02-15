@@ -40,7 +40,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-#define useOptimize 0
+#define useOptimize 1
 
 namespace {
 

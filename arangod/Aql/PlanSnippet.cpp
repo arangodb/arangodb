@@ -378,9 +378,13 @@ ExecutionNodeId PlanSnippet::DistributionInput::targetId() const {
 PlanSnippet::GatherOutput::GatherOutput() : _collect{nullptr}, _elements{} {}
 
 ExecutionNode* PlanSnippet::GatherOutput::createGatherNode(
-    ExecutionPlan* plan) const {
+    ExecutionPlan* plan, bool isUpperMostSnippet) const {
+  // We can only parallelize the Gather, if we can guarantee to not return back
+  // to the coordinator This is the case if out top-most node, is the Singleton
+  auto parallelism = isUpperMostSnippet ? GatherNode::Parallelism::Parallel
+                                        : GatherNode::Parallelism::Serial;
   auto gatherNode = plan->createNode<GatherNode>(
-      plan, plan->nextId(), getGatherSortMode(), getGatherParallelism());
+      plan, plan->nextId(), getGatherSortMode(), parallelism);
   // TODO: Performance note, we copy the elements once here, we could MOVE
   // them in and adapt gatherNode to accept a move instead of a const&
   gatherNode->elements(_elements);
@@ -598,12 +602,6 @@ void PlanSnippet::GatherOutput::memorizeCollect(CollectNode* collect) {
 GatherNode::SortMode PlanSnippet::GatherOutput::getGatherSortMode() const {
   // TODO: Implement me, is somehow based on collection / number of shards.
   return GatherNode::SortMode::MinElement;
-}
-
-GatherNode::Parallelism PlanSnippet::GatherOutput::getGatherParallelism()
-    const {
-  // TODO: Implement me, is based on Collection.
-  return GatherNode::Parallelism::Parallel;
 }
 
 bool PlanSnippet::DistributionInput::createKeys() const { return _createKeys; }
@@ -1092,7 +1090,11 @@ void PlanSnippet::addCollectBelow() {
 
 void PlanSnippet::addGatherBelow() {
   auto* plan = _topMost->plan();
-  auto gatherNode = _gatherOutput.createGatherNode(plan);
+  // Figure out if we are the top-most snippet. Add this position this is only
+  // possible for the main Query, so this is samewhat safe for now.
+  // I would prefer to test for something easier.
+  bool isTopMostSnippet = _topMost->getType() == ExecutionNode::SINGLETON;
+  auto gatherNode = _gatherOutput.createGatherNode(plan, isTopMostSnippet);
   TRI_ASSERT(gatherNode);
   plan->insertAfter(_last, gatherNode);
   // We have inserted a remote just before

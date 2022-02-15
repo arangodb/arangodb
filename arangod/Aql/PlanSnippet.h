@@ -61,7 +61,8 @@ class PlanSnippet {
    public:
     GatherOutput();
 
-    ExecutionNode* createGatherNode(ExecutionPlan*) const;
+    ExecutionNode* createGatherNode(ExecutionPlan* plan,
+                                    bool isUpperMostSnippet) const;
 
     bool tryAndIncludeSortNode(SortNode const* sort);
 
@@ -71,7 +72,6 @@ class PlanSnippet {
 
    private:
     GatherNode::SortMode getGatherSortMode() const;
-    GatherNode::Parallelism getGatherParallelism() const;
 
     void adjustSortElements(
         ExecutionPlan* plan,
