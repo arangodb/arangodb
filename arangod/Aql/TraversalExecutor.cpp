@@ -119,6 +119,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     if (ServerState::instance()->isCoordinator()) {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(
           opts->query().resourceMonitor());
+
+      TRI_ASSERT(engines != nullptr);
       ClusterBaseProviderOptions clusterBaseProviderOptions(
           cache, engines, false, &opts->getExpressionCtx(),
           std::move(filterConditionVariables));
@@ -127,6 +129,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
           _weightAttribute, query, std::move(clusterBaseProviderOptions),
           std::move(pathValidatorOptions), std::move(enumeratorOptions));
     } else {
+      TRI_ASSERT(engines == nullptr);
       arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
           std::move(filterConditionVariables), opts->collectionToShard()};

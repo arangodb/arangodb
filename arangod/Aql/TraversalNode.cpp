@@ -1067,7 +1067,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->query(), std::move(validatorOptions),
           //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
           //                                 opts->maxDepth});
-          std::move(options), opts, std::move(usedIndexes), engines());
+          std::move(options), opts, std::move(usedIndexes), nullptr);
 
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
