@@ -90,7 +90,7 @@ class ClusterProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
-  VPackSlice readEdge(EdgeType const& edgeID) const;
+  VPackSlice readEdge(EdgeType const& edgeID);
 
   // fetch vertices and store in cache
   auto fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,

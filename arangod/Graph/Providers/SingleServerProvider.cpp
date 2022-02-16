@@ -160,6 +160,7 @@ auto SingleServerProvider<Step>::expand(
 
         callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
                       _opts.weightEdge(step.getWeight(), edge), cursorID});
+        // TODO [GraphRefactor]: Why is cursorID set, but never used?
       });
 }
 

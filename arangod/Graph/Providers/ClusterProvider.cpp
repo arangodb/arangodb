@@ -464,7 +464,7 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
 }
 
 template<class StepImpl>
-auto ClusterProvider<StepImpl>::readEdge(EdgeType const& edgeID) const -> VPackSlice {
+auto ClusterProvider<StepImpl>::readEdge(EdgeType const& edgeID) -> VPackSlice {
   return _opts.getCache()->getCachedEdge(edgeID);
 }
 

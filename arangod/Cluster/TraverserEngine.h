@@ -127,7 +127,8 @@ class BaseTraverserEngine : public BaseEngine {
 
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
-  std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>> _depthSpecificCursors;
+  std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
+      _depthSpecificCursors;
   std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
 };
