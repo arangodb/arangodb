@@ -571,7 +571,7 @@ function ahuacatlModifySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test upsert with no search document
+/// @brief test upsert update with empty object
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpsertUpdateEmpty2: function () {
@@ -2239,7 +2239,6 @@ function ahuacatlUpdateSuite () {
       c2 = db._create(cn2);
       c3 = db._create(cn3);
 
-
       for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
@@ -2433,13 +2432,13 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateEmpty3: function () {
-        const actual = AQL_EXECUTE(`FOR doc IN ${cn3} UPDATE doc WITH {} IN ${cn3} RETURN {old: OLD, new: NEW}`);
-        const res = actual.json;
-        for (let i = 0; i < res.length; ++i) {
-          assertEqual(res[i].old._rev, res[i].new._rev);
-          assertEqual(res[i].old.name, "test"+i);
-          assertEqual(res[i].new.name, "test"+i);
-        }
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn3} UPDATE doc WITH {} IN ${cn3} RETURN {old: OLD, new: NEW}`);
+      const res = actual.json;
+      assertEqual(res.length, 1000);
+      for (let i = 0; i < res.length; ++i) {
+        assertEqual(res[i].old._rev, res[i].new._rev);
+        assertEqual(res[i].old.name, res[i].new.name);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3480,6 +3479,23 @@ false
       }
     },
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief test replace with empty object
+/// replaces all documents with empty object, hence, the old documents would
+/// have the "name" key, as the new documents wouldn't
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceEmpty: function () {
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn3} REPLACE doc WITH {} IN ${cn3} RETURN {old: OLD, new: NEW}`);
+      const res = actual.json;
+      assertEqual(res.length, 1000);
+      for (let i = 0; i < res.length; ++i) {
+        assertNotEqual(res[i].old._rev, res[i].new._rev);
+        assertFalse(res[i].new.hasOwnProperty("name"));
+        assertTrue(res[i].old.hasOwnProperty("name"));
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test upsert
 ////////////////////////////////////////////////////////////////////////////////
@@ -3548,6 +3564,34 @@ false
         assertEqual(i, doc["new"].value3);
         assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev should have changed
       }
+    },
+
+/////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert replace with empty replace object
+/// in 5 iterations, starting with size 1000:
+/// i = 0, document with name "test1500" doesn't exist, so inserts it size = 1001
+/// i = 1, document exists so replaces it with empty document  size = 1001
+/// i = 2, document with name "test1500" doesn't exist, so inserts it size = 1002
+/// i = 3, document exists so replaces it with empty document  size = 1002
+/// i = 4, document with name "test1500" doesn't exist, so inserts it size = 1003
+/////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReplaceEmpty: function () {
+      for (let i = 0; i < 5; ++i) {
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} REPLACE {} IN ${cn3} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const res = actual.json[0];
+        if (i % 2 !== 0) {
+          assertNotEqual(res.old._rev, res.new._rev);
+          assertEqual(res.old.name, "test1500");
+          assertEqual(4, Object.keys(res.old).length);
+          assertEqual(3, Object.keys(res.new).length);
+          assertFalse(res.new.hasOwnProperty("name"));
+          assertTrue(res.old.hasOwnProperty("name"));
+        } else {
+          assertEqual(4, Object.keys(res.new).length);
+        }
+      }
+      assertEqual(1003, c3.count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

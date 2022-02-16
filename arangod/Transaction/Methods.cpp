@@ -27,7 +27,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ScopeGuard.h"
-#include "Logger/LogContextKeys.h"
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -57,9 +56,7 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -1077,6 +1074,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
+  size_t numExclusions = 0;
+
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
     excludeFromReplication = false;
@@ -1162,6 +1161,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
         // we have not written anything, so exclude this document from
         // replication!
         excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        numExclusions++;
+#endif
+
         return res;
       }
 
@@ -1172,6 +1176,10 @@ Future<OperationResult> transaction::Methods::insertLocal(
             collection->update(this, value, docResult, options, prevDocResult);
         if (res.ok() && prevDocResult.revisionId() == docResult.revisionId()) {
           excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          numExclusions++;
+#endif
         }
       } else if (options.overwriteMode ==
                  OperationOptions::OverwriteMode::Replace) {
@@ -1270,6 +1278,10 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(numExclusions == excludePositions.size());
+#endif
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok()) {
@@ -1466,9 +1478,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
 
+  size_t numExclusions = 0;
+
   // lambda //////////////
-  auto workForOneDocument = [this, &operation, &options, &collection,
-                             &resultBuilder, &cid, &previous,
+  auto workForOneDocument = [this, &numExclusions, &operation, &options,
+                             &collection, &resultBuilder, &cid, &previous,
                              &result](VPackSlice const newVal, bool isBabies,
                                       bool& excludeFromReplication) -> Result {
     Result res;
@@ -1515,6 +1529,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       if (result.revisionId() == previous.revisionId() &&
           operation != TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
         excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        numExclusions++;
+#endif
       }
     }
 
@@ -1552,6 +1570,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   TRI_ASSERT(!newValue.isArray() || options.silent ||
              resultBuilder.slice().length() == newValue.length());
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(numExclusions == excludePositions.size());
+#endif
+
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
     if (replicationType == ReplicationType::LEADER && !followers->empty()) {
@@ -1567,7 +1589,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
       // Now replicate the good operations on all followers:
       return replicateOperations(collection, followers, options, newValue,
-                                 operation, resDocs, std::move(excludePositions))
+                                 operation, resDocs,
+                                 std::move(excludePositions))
           .thenValue([options, errs = std::move(errorCounter),
                       resDocs](Result&& res) mutable {
             if (!res.ok()) {
