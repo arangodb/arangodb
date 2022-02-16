@@ -5,6 +5,8 @@ v3.8.6 (XXXX-XX-XX)
 
 * Replaced internal JS dependency ansi-html with ansi-html-community.
 
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
 * Optimize further RocksDB throttle to allow for no change on any given
   calculation cycle.
 
