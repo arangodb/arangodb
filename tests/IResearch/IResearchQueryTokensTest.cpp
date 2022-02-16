@@ -46,7 +46,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return "TestDelimAnalyzer";
   }
 
-  static ptr make(irs::string_ref const& args) {
+  static ptr make(irs::string_ref args) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return nullptr;
@@ -64,7 +64,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  static bool normalize(irs::string_ref const& args, std::string& out) {
+  static bool normalize(irs::string_ref args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -87,7 +87,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestDelimAnalyzer(irs::string_ref const& delim)
+  TestDelimAnalyzer(irs::string_ref delim)
       : irs::analysis::analyzer(irs::type<TestDelimAnalyzer>::get()),
         _delim(irs::ref_cast<irs::byte_type>(delim)) {}
 
@@ -124,7 +124,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool reset(irs::string_ref const& data) override {
+  virtual bool reset(irs::string_ref data) override {
     _data = irs::ref_cast<irs::byte_type>(data);
     return true;
   }
