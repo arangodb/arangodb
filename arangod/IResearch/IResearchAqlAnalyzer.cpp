@@ -239,7 +239,7 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool AqlAnalyzer::normalize_vpack(const irs::string_ref& args,
+/*static*/ bool AqlAnalyzer::normalize_vpack(irs::string_ref args,
                                              std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
   VPackBuilder builder;
@@ -251,7 +251,7 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ bool AqlAnalyzer::normalize_json(const irs::string_ref& args,
+/*static*/ bool AqlAnalyzer::normalize_json(irs::string_ref args,
                                             std::string& out) {
   auto src = VPackParser::fromJson(args.c_str(), args.size());
   VPackBuilder builder;

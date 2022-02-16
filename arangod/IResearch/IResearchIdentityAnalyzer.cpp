@@ -26,7 +26,7 @@
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool IdentityAnalyzer::normalize(const irs::string_ref& /*args*/,
+/*static*/ bool IdentityAnalyzer::normalize(irs::string_ref /*args*/,
                                             std::string& out) {
   out.resize(VPackSlice::emptyObjectSlice().byteSize());
   std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
@@ -38,8 +38,8 @@ namespace iresearch {
   return std::make_unique<IdentityAnalyzer>();
 }
 
-/*static*/ bool IdentityAnalyzer::normalize_json(
-    const irs::string_ref& /*args*/, std::string& out) {
+/*static*/ bool IdentityAnalyzer::normalize_json(irs::string_ref /*args*/,
+                                                 std::string& out) {
   out = "{}";
   return true;
 }
