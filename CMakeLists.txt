@@ -33,7 +33,7 @@ else()
   set(BUILDING_FOR_ARM64 OFF)
 endif()
 
-find_package(Git 1.5.3... REQUIRED)
+find_package(Git 1.5.3 REQUIRED)
 
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
