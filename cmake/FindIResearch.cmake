@@ -29,23 +29,19 @@ if (NOT "${IRESEARCH_ROOT}" STREQUAL "")
   string(REPLACE "\\" "/" IRESEARCH_ROOT ${IRESEARCH_ROOT})
 endif()
 
-if (NOT EXISTS "${CMAKE_SOURCE_DIR}/3rdParty/iresearch/README.md" AND NOT EXISTS "${IRESEARCH_ROOT}/README.md")
-  execute_process(
-    COMMAND git submodule update --init --remote --recursive -- "3rdParty/iresearch"
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  )
-endif()
+execute_process(
+  COMMAND git submodule update --init --depth=1 --remote -- "3rdParty/iresearch"
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  ERROR_QUIET
+)
 
 set(IRESEARCH_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdParty/iresearch")
 set(IRESEARCH_CXX_FLAGS " ") # has to be a non-empty string
-#set(IRESEARCH_CXX_FLAGS "-DIRESEARCH_DLL") Arango now links statically against iResearch
 
 if (MSVC)
   # do not use min/max '#define' from Microsoft since iResearch declares methods
   set(IRESEARCH_CXX_FLAGS ${IRESEARCH_CXX_FLAGS} "-DNOMINMAX")
 endif ()
-
-set(IRESEARCH_FOUND TRUE) # always found since using git submodule as fallback
 
 unset(IRESEARCH_INCLUDE)
 list(APPEND IRESEARCH_INCLUDE
