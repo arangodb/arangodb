@@ -1,6 +1,9 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
 * Shorten the license grace period to the documented 3 hours.
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
