@@ -1589,7 +1589,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
       // Now replicate the good operations on all followers:
       return replicateOperations(collection, followers, options, newValue,
-                                 operation, resDocs, std::move(excludePositions))
+                                 operation, resDocs,
+                                 std::move(excludePositions))
           .thenValue([options, errs = std::move(errorCounter),
                       resDocs](Result&& res) mutable {
             if (!res.ok()) {
