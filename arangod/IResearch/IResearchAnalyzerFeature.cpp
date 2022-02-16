@@ -887,7 +887,7 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
 }
 
 /*static*/ AnalyzerPool::Builder::ptr AnalyzerPool::Builder::make(
-    irs::string_ref const& type, VPackSlice properties) {
+    irs::string_ref type, VPackSlice properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
     return nullptr;
