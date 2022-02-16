@@ -70,8 +70,7 @@ std::pair<ExecutionState, arangodb::Result> FixedOutputExecutionBlockMock::initi
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> FixedOutputExecutionBlockMock::execute(
-    AqlCallStack const& stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> FixedOutputExecutionBlockMock::execute(AqlCallStack stack) {
   _executeEnterHook(stack);
   traceExecuteBegin(stack);
   SkipResult skipped{};
