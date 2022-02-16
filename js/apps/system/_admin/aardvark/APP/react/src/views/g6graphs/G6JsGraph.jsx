@@ -25,9 +25,15 @@ import { SlideInMenu } from './SlideInMenu';
 //import omit from "lodash";
 import { omit } from "lodash";
 import { JsonEditor as Editor } from 'jsoneditor-react';
+import { UrlParametersContext } from "./url-parameters-context";
+import URLPARAMETERS from "./UrlParameters";
+import FetchData from "./FetchData";
+import ParameterPokemon from "./ParameterPokemon";
 import './tooltip.css';
 
 const G6JsGraph = () => {
+  const [urlParameters, setUrlParameters] = React.useState(URLPARAMETERS);
+
   let responseTimesObject = {
     fetchStarted: null,
     fetchFinished: null,
@@ -132,6 +138,7 @@ const G6JsGraph = () => {
   const [showNodeToAddModal, setShowNodeToAddModal] = useState();
   const [type, setLayout] = React.useState('graphin-force');
   let [aqlQueryString, setAqlQueryString] = useState("/_admin/aardvark/g6graph/routeplanner");
+
   const handleChange = value => {
     console.log('handleChange (value): ', value);
     //setLayout(value);
@@ -716,132 +723,136 @@ const G6JsGraph = () => {
 
   return (
     <div>
-      <SlideInMenu>
-        <h5>Graph</h5>
-        <AqlEditor
-            queryString={queryString}
-            onNewSearch={(myString) => {setQueryString(myString)}}
-            onQueryChange={(myString) => {setQueryString(myString)}}
-            onOnclickHandler={(myString) => changeCollection(myString)}
-            onReduceNodes={(nodes) => changeGraphNodes(nodes)}
-            onAqlQueryHandler={(myString) => getNewGraphData(myString)}
-        />
-        <h5>Nodes</h5>
-        <NodeList
-          nodes={graphData.nodes}
+      <UrlParametersContext.Provider value={urlParameters}>
+        <FetchData />
+        <ParameterPokemon />
+        <SlideInMenu>
+          <h5>Graph</h5>
+          <AqlEditor
+              queryString={queryString}
+              onNewSearch={(myString) => {setQueryString(myString)}}
+              onQueryChange={(myString) => {setQueryString(myString)}}
+              onOnclickHandler={(myString) => changeCollection(myString)}
+              onReduceNodes={(nodes) => changeGraphNodes(nodes)}
+              onAqlQueryHandler={(myString) => getNewGraphData(myString)}
+          />
+          <h5>Nodes</h5>
+          <NodeList
+            nodes={graphData.nodes}
+            graphData={graphData}
+            onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
+          />
+          <h5>Edges</h5>
+          <EdgeList edges={graphData.edges} />
+                      
+        </SlideInMenu>
+        <EditModal
+          shouldShow={showEditModal}
+          onRequestClose={() => {
+            setShowEditModal(false);
+            setNodeDataToEdit(undefined);
+          }}
+          node={nodeToEdit}
+          nodeData={nodeDataToEdit}
+          editorContent={nodeToEdit}
+          onUpdateNode={() => {
+            //setGraphData(newGraphData);
+            setShowEditModal(false);
+          }}
+          nodeKey={nodeKey}
+          nodeCollection={nodeCollection}
+        >
+          <strong>Edit node: {nodeToEdit}</strong>
+        </EditModal>
+        <EditEdgeModal
+          shouldShow={showEditEdgeModal}
+          onRequestClose={() => {
+            setShowEditEdgeModal(false);
+            setEdgeDataToEdit(undefined);
+          }}
+          edge={edgeToEdit}
+          edgeData={edgeDataToEdit}
+          editorContent={edgeToEdit}
+          onUpdateEdge={() => {
+            //setGraphData(newGraphData);
+            setShowEditEdgeModal(false);
+          }}
+          edgeKey={edgeKey}
+          edgeCollection={edgeCollection}
+        >
+          <strong>Edit edge: {edgeToEdit}</strong>
+        </EditEdgeModal>
+        <EditNodeModal
           graphData={graphData}
-          onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
-        />
-        <h5>Edges</h5>
-        <EdgeList edges={graphData.edges} />
-                    
-      </SlideInMenu>
-      <EditModal
-        shouldShow={showEditModal}
-        onRequestClose={() => {
-          setShowEditModal(false);
-          setNodeDataToEdit(undefined);
-        }}
-        node={nodeToEdit}
-        nodeData={nodeDataToEdit}
-        editorContent={nodeToEdit}
-        onUpdateNode={() => {
-          //setGraphData(newGraphData);
-          setShowEditModal(false);
-        }}
-        nodeKey={nodeKey}
-        nodeCollection={nodeCollection}
-      >
-        <strong>Edit node: {nodeToEdit}</strong>
-      </EditModal>
-      <EditEdgeModal
-        shouldShow={showEditEdgeModal}
-        onRequestClose={() => {
-          setShowEditEdgeModal(false);
-          setEdgeDataToEdit(undefined);
-        }}
-        edge={edgeToEdit}
-        edgeData={edgeDataToEdit}
-        editorContent={edgeToEdit}
-        onUpdateEdge={() => {
-          //setGraphData(newGraphData);
-          setShowEditEdgeModal(false);
-        }}
-        edgeKey={edgeKey}
-        edgeCollection={edgeCollection}
-      >
-        <strong>Edit edge: {edgeToEdit}</strong>
-      </EditEdgeModal>
-      <EditNodeModal
-        graphData={graphData}
-        shouldShow={showEditNodeModal}
-        onRequestClose={() => {
-          setShowEditNodeModal(false);
-        }}
-        node={editNode}
-        onUpdateNode={(newGraphData) => {
-          console.log('newGraphData in EditNode: ', newGraphData);
-          //setGraphData(newGraphData);
-          setShowEditNodeModal(false);
-        }}
-      >
-        <strong>Edit Node (new)</strong>
-        <strong>Really edit node: {editNode}</strong>
-        <strong>Edit node (object): {JSON.stringify(selectedNodeData, null, 2)}</strong>
-      </EditNodeModal>
-      <FetchFullGraphModal
-        shouldShow={showFetchFullGraphModal}
-        onRequestClose={() => {
-          setShowFetchFullGraphModal(false);
-        }}
-        onFullGraphLoaded={(newGraphData) => setGraphData(newGraphData)}
-        graphName={graphName}
-      >
-        <strong>Fetch full graph</strong>
-        <p><span class="text-error">Caution:</span> Really load full graph? If no limit is set, your result set could be too big.</p>
-      </FetchFullGraphModal>
-      <AddNodeModal2
-        shouldShow={showNodeToAddModal}
-        onRequestClose={() => {
-          setShowNodeToAddModal(false);
-          //setNodeDataToEdit(undefined);
-        }}
-        node={'nodeToEdit'}
-        nodeData={[]}
-        editorContent={'nodeToEdit'}
-        onAddNode={() => {
-          //setGraphData(newGraphData);
-          setShowNodeToAddModal(false);
-        }}
-        nodeKey={'Munich'}
-        nodeCollection={'germanCity'}
-        onNodeCreation={(newNode) => updateGraphDataWithNode(newNode)}
-      >
-        <strong>Add node</strong>
-      </AddNodeModal2>
-      <button onClick={() => testApiParams()}>Test API Params</button>
-      <button onClick={() => setShowFetchFullGraphModal(true)}>Open fetch full graph modal</button>
-      <GraphView
-            data={graphData}
-            onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
-            onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
-            onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
-            onAddSingleEdge={(newEdge) => updateGraphDataWithEdge(newEdge)}
-            onRemoveSingleNode={(node) => removeNode(node)}
-            onRemoveSingleEdge={(edge) => removeEdge(edge)}
-            onEditNode={(node) => openEditModal(node)}
-            onEditEdge={(edge) => openEditEdgeModal(edge)}
-            onAddNodeToDb={() => openAddNodeModal()}
-            onExpandNode={(node) => expandNode(node)}
-            onSetStartnode={(node) => setStartnode(node)}
-            onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
-            graphName={graphName}
-            responseDuration={responseTimes.fetchDuration}
-            onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
-            onClickDocument={(document) => lookUpDocument(document)}
-            onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
-      />    
-      <AttributesInfo attributes={lookedUpData} /> 
+          shouldShow={showEditNodeModal}
+          onRequestClose={() => {
+            setShowEditNodeModal(false);
+          }}
+          node={editNode}
+          onUpdateNode={(newGraphData) => {
+            console.log('newGraphData in EditNode: ', newGraphData);
+            //setGraphData(newGraphData);
+            setShowEditNodeModal(false);
+          }}
+        >
+          <strong>Edit Node (new)</strong>
+          <strong>Really edit node: {editNode}</strong>
+          <strong>Edit node (object): {JSON.stringify(selectedNodeData, null, 2)}</strong>
+        </EditNodeModal>
+        <FetchFullGraphModal
+          shouldShow={showFetchFullGraphModal}
+          onRequestClose={() => {
+            setShowFetchFullGraphModal(false);
+          }}
+          onFullGraphLoaded={(newGraphData) => setGraphData(newGraphData)}
+          graphName={graphName}
+        >
+          <strong>Fetch full graph</strong>
+          <p><span class="text-error">Caution:</span> Really load full graph? If no limit is set, your result set could be too big.</p>
+        </FetchFullGraphModal>
+        <AddNodeModal2
+          shouldShow={showNodeToAddModal}
+          onRequestClose={() => {
+            setShowNodeToAddModal(false);
+            //setNodeDataToEdit(undefined);
+          }}
+          node={'nodeToEdit'}
+          nodeData={[]}
+          editorContent={'nodeToEdit'}
+          onAddNode={() => {
+            //setGraphData(newGraphData);
+            setShowNodeToAddModal(false);
+          }}
+          nodeKey={'Munich'}
+          nodeCollection={'germanCity'}
+          onNodeCreation={(newNode) => updateGraphDataWithNode(newNode)}
+        >
+          <strong>Add node</strong>
+        </AddNodeModal2>
+        <button onClick={() => testApiParams()}>Test API Params</button>
+        <button onClick={() => setShowFetchFullGraphModal(true)}>Open fetch full graph modal</button>
+        <GraphView
+              data={graphData}
+              onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
+              onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
+              onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
+              onAddSingleEdge={(newEdge) => updateGraphDataWithEdge(newEdge)}
+              onRemoveSingleNode={(node) => removeNode(node)}
+              onRemoveSingleEdge={(edge) => removeEdge(edge)}
+              onEditNode={(node) => openEditModal(node)}
+              onEditEdge={(edge) => openEditEdgeModal(edge)}
+              onAddNodeToDb={() => openAddNodeModal()}
+              onExpandNode={(node) => expandNode(node)}
+              onSetStartnode={(node) => setStartnode(node)}
+              onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}
+              graphName={graphName}
+              responseDuration={responseTimes.fetchDuration}
+              onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
+              onClickDocument={(document) => lookUpDocument(document)}
+              onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
+        />    
+        <AttributesInfo attributes={lookedUpData} /> 
+      </UrlParametersContext.Provider>
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { ResponseInfo } from './ResponseInfo';
 import { data2 } from './data2';
 import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
+import ParameterNodeStart from "./ParameterNodeStart";
+import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect }) => {
   
@@ -54,12 +56,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
 
   const menuActionButtons = <>
     <Space>
-      <Button
-        type="primary"
-        icon={<SaveOutlined />}
-        onClick={() => onChangeGraphData(data2)}>
-        Save
-      </Button>
+      <ButtonSave />
       <Button>
         Restore default values
       </Button>
@@ -119,6 +116,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
               }
               style={{ width: 240, marginTop: '24px' }}
             />
+            <ParameterNodeStart />
             <br />
             <LayoutSelector
               value={layout}
