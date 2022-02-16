@@ -1074,7 +1074,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  size_t numExclusions = 0;
+  [[maybe_unused]] size_t numExclusions = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
@@ -1478,7 +1478,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
 
-  size_t numExclusions = 0;
+  [[maybe_unused]] size_t numExclusions = 0;
 
   // lambda //////////////
   auto workForOneDocument = [this, &numExclusions, &operation, &options,
