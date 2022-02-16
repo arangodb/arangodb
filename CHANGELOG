@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
   too few results
 
