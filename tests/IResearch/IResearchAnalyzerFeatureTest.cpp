@@ -195,7 +195,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  explicit TestTokensTypedAnalyzer(irs::string_ref const& args)
+  explicit TestTokensTypedAnalyzer(irs::string_ref args)
       : irs::analysis::analyzer(irs::type<TestTokensTypedAnalyzer>::get()) {
     VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
     if (slice.hasKey("type")) {
@@ -4087,9 +4087,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     std::string _name;
     std::string _properties;
     std::string _type;
-    ExpectedType(irs::string_ref const& name, irs::string_ref const& properties,
+    ExpectedType(irs::string_ref name, irs::string_ref properties,
                  arangodb::iresearch::Features const& features,
-                 irs::string_ref const& type)
+                 irs::string_ref type)
         : _features(features),
           _name(name),
           _properties(properties),

@@ -130,7 +130,7 @@ REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
 REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json,
                        AqlAnalyzer::normalize_json);
 
-bool normalize(std::string& out, irs::string_ref const& type,
+bool normalize(std::string& out, irs::string_ref type,
                VPackSlice const properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
@@ -393,7 +393,7 @@ void addFunctions(aql::AqlFunctionFeature& functions) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return pool will generate analyzers as per supplied parameters
 ////////////////////////////////////////////////////////////////////////////////
-bool equalAnalyzer(AnalyzerPool const& pool, irs::string_ref const& type,
+bool equalAnalyzer(AnalyzerPool const& pool, irs::string_ref type,
                    VPackSlice const properties, Features const& features) {
   std::string normalizedProperties;
 
@@ -698,11 +698,11 @@ Result parseAnalyzerSlice(VPackSlice const& slice, irs::string_ref& name,
 }
 
 inline std::string normalizedAnalyzerName(std::string database,
-                                          irs::string_ref const& analyzer) {
+                                          irs::string_ref analyzer) {
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
-bool analyzerInUse(ArangodServer& server, irs::string_ref const& dbName,
+bool analyzerInUse(ArangodServer& server, irs::string_ref dbName,
                    AnalyzerPool::ptr const& analyzerPtr) {
   TRI_ASSERT(analyzerPtr);
 

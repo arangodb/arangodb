@@ -761,7 +761,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     irs::order expected;
 
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
-    dummy_scorer::validateArgs = [](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [](irs::string_ref args) -> bool {
       EXPECT_TRUE((irs::string_ref("[\"abc\"]") == args));
       return true;
     };
@@ -782,8 +782,8 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
 
     size_t attempt = 0;
-    dummy_scorer::validateArgs =
-        [&valid, &attempt](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [&valid,
+                                  &attempt](irs::string_ref args) -> bool {
       attempt++;
       return valid == (args == "[\"abc\"]");
     };
@@ -806,8 +806,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
 
     size_t attempt = 0;
-    dummy_scorer::validateArgs =
-        [&attempt](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       attempt++;
       EXPECT_TRUE(
           (irs::string_ref("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args));
@@ -831,8 +830,8 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
 
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
-    dummy_scorer::validateArgs =
-        [&valid, &attempt](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [&valid,
+                                  &attempt](irs::string_ref args) -> bool {
       attempt++;
       valid = irs::string_ref("[\"{\\\"abc\\\": \\\"def\\\"}\"]") == args;
       return valid;
@@ -855,8 +854,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
 
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
-    dummy_scorer::validateArgs =
-        [&attempt](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       ++attempt;
       EXPECT_TRUE((irs::string_ref("[{\"abc\":\"def\"}]") == args));
       return true;
@@ -878,8 +876,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
 
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
-    dummy_scorer::validateArgs =
-        [&attempt](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       ++attempt;
       EXPECT_TRUE((irs::string_ref("[\"abc\",\"def\"]") == args));
       return true;
@@ -901,8 +898,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
 
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
-    dummy_scorer::validateArgs =
-        [&attempt](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       ++attempt;
       EXPECT_TRUE((
           irs::string_ref("[\"abc\",\"{\\\"def\\\": \\\"ghi\\\"}\"]") == args));
@@ -925,8 +921,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
 
     expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
-    dummy_scorer::validateArgs =
-        [&attempt](irs::string_ref const& args) -> bool {
+    dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       ++attempt;
       EXPECT_TRUE((irs::string_ref("[\"abc\",{\"def\":\"ghi\"}]") == args));
       return true;

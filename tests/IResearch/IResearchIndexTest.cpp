@@ -124,7 +124,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestAnalyzer(irs::string_ref const& value)
+  TestAnalyzer(irs::string_ref value)
       : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
