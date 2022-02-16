@@ -414,6 +414,21 @@ describe('Foxx Swagger', function () {
             });
         });
 
+        it('includes explicit optional joi schema', function () {
+          service.router.post('/hello', noop)
+          .body(joi.string().optional());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              description: undefined,
+              required: false,
+              schema: {type: 'string'}
+            });
+        });
+
         it('includes explicit JSON schema', function () {
           service.router.post('/hello', noop)
           .body({type: 'string'});
@@ -518,6 +533,21 @@ describe('Foxx Swagger', function () {
             });
         });
 
+        it('includes explicit optional joi schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', joi.string().optional());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              description: undefined,
+              required: false,
+              type: 'string'
+            });
+        });
+
         it('includes explicit JSON schema', function () {
           service.router.post('/hello', noop)
           .queryParam('q', {type: 'string'});
@@ -578,6 +608,21 @@ describe('Foxx Swagger', function () {
             });
         });
 
+        it('includes explicit optional joi schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', joi.string().optional());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              description: undefined,
+              required: false,
+              type: 'string'
+            });
+        });
+
         it('includes explicit JSON schema', function () {
           service.router.post('/hello', noop)
           .header('x-custom', {type: 'string'});
@@ -592,7 +637,7 @@ describe('Foxx Swagger', function () {
             });
         });
 
-        it('includes explicit optionl JSON schema', function () {
+        it('includes explicit optional JSON schema', function () {
           service.router.post('/hello', noop)
           .header('x-custom', {schema: {type: 'string'}, optional: true});
           service.buildRoutes();
