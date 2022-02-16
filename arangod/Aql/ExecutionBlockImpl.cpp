@@ -1755,7 +1755,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         LOG_QUERY("0ca35", DEBUG)
             << printTypeInfo() << " ShadowRows moved, continue with next subquery.";
 
-        if (!ctx.stack.hasAllValidCalls()) {
+        if (!stack.hasAllValidCalls()) {
           // We can only continue if we still have a valid call
           // on all levels
           _execState = ExecState::DONE;
