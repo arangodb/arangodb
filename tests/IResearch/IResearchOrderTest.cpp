@@ -57,11 +57,11 @@
 namespace {
 
 struct dummy_scorer : public irs::sort {
-  static std::function<bool(irs::string_ref const&)> validateArgs;
+  static std::function<bool(irs::string_ref)> validateArgs;
   static constexpr irs::string_ref type_name() noexcept {
     return "TEST::TFIDF";
   }
-  static ptr make(const irs::string_ref& args) {
+  static ptr make(irs::string_ref args) {
     if (!validateArgs(args)) return nullptr;
     PTR_NAMED(dummy_scorer, ptr);
     return ptr;
@@ -70,9 +70,8 @@ struct dummy_scorer : public irs::sort {
   virtual sort::prepared::ptr prepare() const override { return nullptr; }
 };
 
-/*static*/ std::function<bool(irs::string_ref const&)>
-    dummy_scorer::validateArgs =
-        [](irs::string_ref const&) -> bool { return true; };
+/*static*/ std::function<bool(irs::string_ref)> dummy_scorer::validateArgs =
+    [](irs::string_ref) -> bool { return true; };
 
 REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 
