@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,73 +17,54 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <memory>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/ReplicatedState/StateInterfaces.h"
-#include "Replication2/Streams/Streams.h"
-#include "Replication2/Streams/LogMultiplexer.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
+
+#include <memory>
+
+namespace arangodb::replication2::replicated_log {
+struct LogUnconfiguredParticipant;
+}
 
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
-struct LeaderStateManager
+struct UnconfiguredStateManager
     : ReplicatedState<S>::StateManagerBase,
-      std::enable_shared_from_this<LeaderStateManager<S>> {
+      std::enable_shared_from_this<UnconfiguredStateManager<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
-  explicit LeaderStateManager(
+  UnconfiguredStateManager(
       std::shared_ptr<ReplicatedState<S>> const& parent,
-      std::shared_ptr<replicated_log::ILogLeader> leader,
+      std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+          unconfiguredParticipant,
       std::unique_ptr<CoreType> core,
-      std::unique_ptr<ReplicatedStateToken> token,
-      std::shared_ptr<Factory> factory) noexcept;
-
-  using Stream = streams::ProducerStream<EntryType>;
-  using Iterator = typename Stream::Iterator;
-
-  [[nodiscard]] auto getStatus() const -> StateStatus final;
+      std::unique_ptr<ReplicatedStateToken> token);
 
   void run();
+
+  [[nodiscard]] auto getStatus() const -> StateStatus override;
 
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<ReplicatedStateToken>> override;
 
-  using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
-  std::shared_ptr<IReplicatedLeaderState<S>> state;
-  std::shared_ptr<Stream> stream;
-  std::weak_ptr<ReplicatedState<S>> parent;
-  std::shared_ptr<replicated_log::ILogLeader> logLeader;
-
-  LeaderInternalState internalState{LeaderInternalState::kUninitializedState};
-  std::chrono::system_clock::time_point lastInternalStateChange;
-  std::optional<LogRange> recoveryRange;
-
-  std::unique_ptr<CoreType> core;
-  std::unique_ptr<ReplicatedStateToken> token;
-
-  std::shared_ptr<Factory> const factory;
-  bool _didResign = false;
-
  private:
-  void updateInternalState(LeaderInternalState newState,
-                           std::optional<LogRange> range = std::nullopt) {
-    internalState = newState;
-    lastInternalStateChange = std::chrono::system_clock::now();
-    recoveryRange = range;
-  }
-
-  void beginWaitingForParticipantResigned();
-
-  // TODO locking
+  std::weak_ptr<ReplicatedState<S>> _parent;
+  std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+      _unconfiguredParticipant;
+  std::unique_ptr<CoreType> _core;
+  std::unique_ptr<ReplicatedStateToken> _token;
 };
 }  // namespace arangodb::replication2::replicated_state

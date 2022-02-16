@@ -406,17 +406,22 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
     // Thus we have to make a new map unique and use std::swap to
     // transfer the content. And then move the unique_ptr into
     // the lambda.
-    auto queue =
-        std::make_unique<WaitForQueue>(std::move(leaderData._waitForQueue));
-
-    auto action = [promises = std::move(queue)]() mutable noexcept {
-      for (auto& [idx, promise] : *promises) {
+    struct Queues {
+      WaitForQueue waitForQueue;
+      WaitForBag waitForResignQueue;
+    };
+    auto queues = std::make_unique<Queues>();
+    std::swap(queues->waitForQueue, leaderData._waitForQueue);
+    queues->waitForResignQueue = std::move(leaderData._waitForResignQueue);
+    auto action = [queues = std::move(queues)]() mutable noexcept {
+      for (auto& [idx, promise] : queues->waitForQueue) {
         // Check this to make sure that setException does not throw
         if (!promise.isFulfilled()) {
           promise.setException(ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
         }
       }
+      queues->waitForResignQueue.resolveAll();
     };
 
     LOG_CTX("8696f", DEBUG, _logContext) << "resign";
@@ -1380,6 +1385,11 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
 
     return std::make_pair(activeGeneration, committedGeneration);
   });
+}
+
+auto replicated_log::LogLeader::waitForResign()
+    -> futures::Future<futures::Unit> {
+  return _guardedLeaderData.getLockedGuard()->_waitForResignQueue.addWaitFor();
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const

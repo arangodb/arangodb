@@ -130,7 +130,9 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     return _follower->waitForIterator(index);
   }
-
+  auto waitForResign() -> futures::Future<futures::Unit> override {
+    return _follower->waitForResign();
+  }
   auto release(LogIndex doneWithIdx) -> Result override {
     return _follower->release(doneWithIdx);
   }
