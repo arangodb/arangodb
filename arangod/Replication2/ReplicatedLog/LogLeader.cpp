@@ -944,7 +944,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
       << ", current commit index = " << _commitIndex;
-  TRI_ASSERT(newCommitIndex >= _commitIndex);
   if (newCommitIndex > _commitIndex) {
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));
