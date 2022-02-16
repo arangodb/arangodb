@@ -2186,9 +2186,15 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
   }
 
   auto& failureOracle = server().getFeature<cluster::FailureOracleFeature>();
+  auto global = _request->parsedValue("global", false);
 
-  if (auto global{_request->parsedValue("global", true)};
-      ServerState::instance()->isCoordinator() && global) {
+  if (ServerState::instance()->isDBServer() && global) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "global=true is only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (ServerState::instance()->isCoordinator() && global) {
     auto* pool = server().getFeature<NetworkFeature>().pool();
 
     // Locally flush the cache for this coordinator
@@ -2238,12 +2244,12 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
     return waitForFuture(std::move(fut).thenValue(
         [self = std::static_pointer_cast<RestAdminClusterHandler>(
              shared_from_this())](auto builder) mutable {
-          self->generateOk(rest::ResponseCode::ACCEPTED,
-                           std::move(builder.slice()));
+          self->generateOk(rest::ResponseCode::OK, std::move(builder.slice()));
           return RestStatus::DONE;
         }));
   }
+
   failureOracle.flush();
-  generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
+  generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
   return RestStatus::DONE;
 }

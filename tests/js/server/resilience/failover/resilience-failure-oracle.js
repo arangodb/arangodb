@@ -49,10 +49,7 @@ function getFailureOracleStatus(url) {
 }
 
 function flushFailureOracle(url, global = false) {
-  const status = request.post(`${url}/_admin/cluster/failureOracle/flush`, {
-    body: {global: global},
-    json: true
-  });
+  const status = request.post(`${url}/_admin/cluster/failureOracle/flush?global=${global}`);
   checkRequestResult(status);
   return status.json.result;
 }
@@ -153,7 +150,7 @@ const FailureOracleSuite = function () {
       statusOnDbs = getFailureOracleStatus(dbs0Url);
       assertTrue(statusOnDbs !== lastUpdated);
       for (const dbs of dbservers) {
-        assertEqual(response[dbs], 202);
+        assertEqual(response[dbs], 200);
       }
     },
   };

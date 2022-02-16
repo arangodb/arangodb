@@ -111,7 +111,7 @@ void FailureOracleImpl::stop() {
       agencyCallbackRegistry->unregisterCallback(_agencyCallback);
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("42bf2", WARN, Logger::REPLICATION2)
+    LOG_TOPIC("42bf2", WARN, Logger::CLUSTER)
         << "Caught unexpected exception while unregistering agency callback "
            "for FailureOracleImpl: "
         << ex.what();
@@ -170,7 +170,7 @@ void FailureOracleImpl::scheduleFlush() noexcept {
           try {
             self->flush();
           } catch (std::exception& ex) {
-            LOG_TOPIC("42bf3", WARN, Logger::REPLICATION2)
+            LOG_TOPIC("42bf3", WARN, Logger::CLUSTER)
                 << "Exception while flushing the failure oracle " << ex.what();
             FATAL_ERROR_EXIT();
           }
