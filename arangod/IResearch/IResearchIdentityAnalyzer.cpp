@@ -34,7 +34,7 @@ namespace iresearch {
 }
 
 /*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
-    irs::string_ref const& /*args*/) {
+    irs::string_ref /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
 }
 
@@ -45,7 +45,7 @@ namespace iresearch {
 }
 
 /*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(
-    irs::string_ref const& /*args*/) {
+    irs::string_ref /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
 }
 

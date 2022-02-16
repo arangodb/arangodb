@@ -263,13 +263,13 @@ namespace iresearch {
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(
-    irs::string_ref const& args) {
+    irs::string_ref args) {
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(
-    irs::string_ref const& args) {
+    irs::string_ref args) {
   auto builder = VPackParser::fromJson(args.c_str(), args.size());
   return make_slice(builder->slice());
 }
@@ -444,7 +444,7 @@ bool AqlAnalyzer::next() {
   return false;
 }
 
-bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
+bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
   try {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
