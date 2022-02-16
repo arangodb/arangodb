@@ -82,8 +82,8 @@ const FailureOracleSuite = function () {
       // Check the existence of time field
       let statusOnCoord = getFailureOracleStatus(coordUrl);
       let statusOnDbs = getFailureOracleStatus(dbs1Url);
-      assertTrue(statusOnCoord.time !== undefined);
-      assertTrue(statusOnDbs.time !== undefined);
+      assertTrue(statusOnCoord.lastUpdated !== undefined);
+      assertTrue(statusOnDbs.lastUpdated !== undefined);
 
       // All servers should be healthy
       waitFor(function () {
@@ -139,14 +139,14 @@ const FailureOracleSuite = function () {
 
       // Check if a flush took place by comparing the last updated time
       let statusOnDbs = getFailureOracleStatus(dbs0Url);
-      let lastUpdated = statusOnDbs.time;
+      let lastUpdated = statusOnDbs.lastUpdated;
       sleep(1);
       flushFailureOracle(dbs0Url);
       statusOnDbs = getFailureOracleStatus(dbs0Url);
       assertTrue(statusOnDbs !== lastUpdated);
 
       // Check if the global flush works
-      lastUpdated = statusOnDbs.time;
+      lastUpdated = statusOnDbs.lastUpdated;
 
       sleep(1);
       let response = flushFailureOracle(coordUrl, true);

@@ -205,11 +205,9 @@ FailureOracleFeature::FailureOracleFeature(Server& server)
 }
 
 void FailureOracleFeature::prepare() {
-  if (ServerState::instance()->isAgent()) {
-    disable();
-  } else {
-    enable();
-  }
+  bool const enabled = ServerState::instance()->isCoordinator() ||
+                       ServerState::instance()->isDBServer();
+  setEnabled(enabled);
 }
 
 void FailureOracleFeature::start() {
@@ -219,7 +217,7 @@ void FailureOracleFeature::start() {
   _cache->createAgencyCallback(server());
   _cache->start();
 
-  LOG_TOPIC("42af3", DEBUG, Logger::REPLICATION2)
+  LOG_TOPIC("42af3", DEBUG, Logger::CLUSTER)
       << "FailureOracleFeature is ready";
 }
 
@@ -237,7 +235,7 @@ auto FailureOracleFeature::getFailureOracle()
 void FailureOracleFeature::Status::toVelocyPack(
     velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("time", VPackValue(timepointToString(lastUpdated)));
+  builder.add("lastUpdated", VPackValue(timepointToString(lastUpdated)));
   {
     VPackObjectBuilder ob2(&builder, "isFailed");
     for (auto const& [pid, status] : isFailed) {
