@@ -330,6 +330,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/FollowerWaitFor.cpp
   Replication2/ReplicatedLog/InMemoryLogTest.cpp
   Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
+  Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
   Replication2/ReplicatedLog/LogReclaimTest.cpp
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
