@@ -1,6 +1,8 @@
 devel
 -----
 
+* Changed Foxx service generator output to use static variable names
+
 * As we are now in constant stall regime, stall onset and warnings are
   demoted to DEBUG.
 
