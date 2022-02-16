@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <exception>
 #include <vector>
 
 namespace arangodb::futures {
