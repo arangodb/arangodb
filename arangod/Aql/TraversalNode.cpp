@@ -1014,12 +1014,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         regs.emplace_back(reg);
       }
 
-      //      arangodb::graph::SingleServerBaseProviderOptions
-      //      baseProviderOptions{
-      //          opts->tmpVar(), std::move(usedIndexes),
-      //          opts->getExpressionCtx(), filterConditionVariables,
-      //          opts->collectionToShard()};
-
       arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
                                                          opts->maxDepth};
       PathValidatorOptions validatorOptions{opts->_tmpVar,
