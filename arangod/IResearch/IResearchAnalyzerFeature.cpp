@@ -31,14 +31,17 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/text_token_stream.hpp"
 #include "analysis/delimited_token_stream.hpp"
+#include "analysis/collation_token_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
-#include "analysis/token_streams.hpp"
-#include "analysis/text_token_stemming_stream.hpp"
 #include "analysis/text_token_normalizing_stream.hpp"
+#include "analysis/text_token_stemming_stream.hpp"
+#include "analysis/text_token_stream.hpp"
+#include "analysis/token_stopwords_stream.hpp"
 #include "analysis/pipeline_token_stream.hpp"
+#include "analysis/segmentation_token_stream.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 #include "index/norm.hpp"
@@ -83,6 +86,10 @@
 #include "VocBase/vocbase.h"
 #include "frozen/map.h"
 #include <Containers/HashSet.h>
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
+#endif
 
 namespace {
 
@@ -2486,9 +2493,18 @@ void IResearchAnalyzerFeature::prepare() {
   if (!isEnabled()) {
     return;
   }
-
-  // load all known analyzers
-  ::iresearch::analysis::analyzers::init();
+  ::iresearch::analysis::delimited_token_stream::init();
+  ::iresearch::analysis::collation_token_stream::init();
+  ::iresearch::analysis::ngram_token_stream_base::init();
+  ::iresearch::analysis::normalizing_token_stream::init();
+  ::iresearch::analysis::stemming_token_stream::init();
+  ::iresearch::analysis::text_token_stream::init();
+  ::iresearch::analysis::token_stopwords_stream::init();
+  ::iresearch::analysis::pipeline_token_stream::init();
+  ::iresearch::analysis::segmentation_token_stream::init();
+#ifdef USE_ENTERPRISE
+  initAnalyzersEE();
+#endif
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();

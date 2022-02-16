@@ -66,7 +66,7 @@ struct IndexIteratorOptions;
 class IndexIteratorCoveringData {
  public:
   virtual ~IndexIteratorCoveringData() = default;
-  virtual VPackSlice at(size_t i) = 0;
+  virtual VPackSlice at(size_t i) const = 0;
   virtual bool isArray() const noexcept = 0;
   virtual VPackSlice value() const {
     // Only some "projections" are not accessed by index, but directly by value.
@@ -89,7 +89,7 @@ class IndexIterator {
    public:
     explicit SliceCoveringData(VPackSlice slice) : _slice(slice) {}
 
-    VPackSlice at(size_t i) override {
+    VPackSlice at(size_t i) const override {
       TRI_ASSERT(_slice.isArray());
       return _slice.at(i);
     }
@@ -113,7 +113,7 @@ class IndexIterator {
           _sliceLength(slice.length()),
           _storedValuesLength(storedValues.length()) {}
 
-    VPackSlice at(size_t i) override {
+    VPackSlice at(size_t i) const override {
       if (i >= _sliceLength) {
         TRI_ASSERT(_storedValues.isArray());
         return _storedValues.at(i - _sliceLength);

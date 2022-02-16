@@ -566,6 +566,37 @@ auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
   return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
+auto LogFollower::construct(LoggerContext const& loggerContext,
+                            std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+                            ParticipantId id, std::unique_ptr<LogCore> logCore,
+                            LogTerm term, std::optional<ParticipantId> leaderId)
+    -> std::shared_ptr<LogFollower> {
+  auto log = InMemoryLog::loadFromLogCore(*logCore);
+
+  auto const lastIndex = log.getLastTermIndexPair();
+
+  if (lastIndex.term >= term) {
+    LOG_CTX("2d80c", WARN, loggerContext)
+        << "Becoming follower in term " << term
+        << " but spearhead is already at term " << lastIndex.term;
+  }
+
+  struct MakeSharedWrapper : LogFollower {
+    MakeSharedWrapper(LoggerContext const& loggerContext,
+                      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+                      ParticipantId id, std::unique_ptr<LogCore> logCore,
+                      LogTerm term, std::optional<ParticipantId> leaderId,
+                      InMemoryLog inMemoryLog)
+        : LogFollower(loggerContext, std::move(logMetrics), std::move(id),
+                      std::move(logCore), term, std::move(leaderId),
+                      std::move(inMemoryLog)) {}
+  };
+
+  return std::make_shared<MakeSharedWrapper>(
+      loggerContext, std::move(logMetrics), std::move(id), std::move(logCore),
+      term, std::move(leaderId), std::move(log));
+}
+
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
     const noexcept -> LogStatistics {
   auto result = LogStatistics{};
