@@ -1570,6 +1570,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   TRI_ASSERT(!newValue.isArray() || options.silent ||
              resultBuilder.slice().length() == newValue.length());
 
+  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+    TRI_ASSERT(excludePositions.empty());
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(numExclusions == excludePositions.size());
 #endif
