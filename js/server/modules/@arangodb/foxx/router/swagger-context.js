@@ -590,7 +590,7 @@ function swaggerifyType (joi) {
 
 function swaggerifyParam (schema, optional) {
   if (!schema || typeof schema !== "object") {
-    return {required: !optional};
+    return {required: typeof optional === "boolean" ? !optional : false};
   }
   if (!schema.isJoi) {
     return {...schema, required: !optional};
@@ -625,7 +625,7 @@ function swaggerifyParam (schema, optional) {
 
 function swaggerifyBody (schema, optional) {
   if (!schema || typeof schema !== "object") {
-    return {required: !optional};
+    return {required: typeof optional === "boolean" ? !optional : false};
   }
   if (!schema.isJoi) {
     return {schema, required: !optional};
