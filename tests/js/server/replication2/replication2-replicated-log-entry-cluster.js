@@ -87,6 +87,8 @@ const replicatedLogEntrySuite = function () {
 
   return {
     setUpAll, tearDownAll,
+    setUp: lh.registerAgencyTestBegin,
+    tearDown: lh.registerAgencyTestEnd,
 
     testCheckFirstIndexOfTermEntry: function () {
       const {logId, leader, servers} = lh.createReplicatedLog(database, targetConfig);
@@ -107,11 +109,11 @@ const replicatedLogEntrySuite = function () {
     },
 
     testCheckUpdateParticipantsConfig: function () {
-      const {logId, leader, servers, followers} = lh.createReplicatedLog(database, targetConfig);
+      const {logId, servers, followers} = lh.createReplicatedLog(database, targetConfig);
       waitForReplicatedLogAvailable(logId);
       const follower = _.sample(followers);
 
-      lh.replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
+      lh.replicatedLogUpdateTargetParticipants(database, logId, {
         [follower]: {forced: true},
       });
       lh.waitFor(lh.replicatedLogParticipantsFlag(database, logId, {
