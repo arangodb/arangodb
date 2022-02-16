@@ -1,6 +1,9 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
+* Optimize further RocksDB throttle to allow for no change on any given
+  calculation cycle.
+
 * As we are now in constant stall regime, stall onset and warnings are demoted
   to DEBUG.
 
