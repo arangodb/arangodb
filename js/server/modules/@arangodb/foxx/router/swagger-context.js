@@ -32,7 +32,7 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 const { uuidv4 } = require('@arangodb/crypto');
 
 const MIME_JSON = 'application/json; charset=utf-8';
-const MATCH_ALL_MODEL = check.validateSchema(true).value;
+const MATCH_ALL_MODEL = check.validateModel({schema:true, optional: true}).value;
 const MATCH_REQ_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: false}).value;
 const MATCH_OPT_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: true}).value;
 const DEFAULT_ERROR_MODEL = check.validateSchema({
@@ -468,10 +468,9 @@ module.exports = exports =
       }
 
       for (const [name, def] of this._pathParams.entries()) {
-        const parameter = swaggerifyParam(def.schema);
+        const parameter = swaggerifyParam(def.schema, false);
         parameter.name = name;
         parameter.in = 'path';
-        parameter.required = true;
         if (def.description) {
           parameter.description = def.description;
         }
@@ -479,10 +478,9 @@ module.exports = exports =
       }
 
       for (const [name, def] of this._queryParams.entries()) {
-        const parameter = swaggerifyParam(def.schema);
+        const parameter = swaggerifyParam(def.schema, def.optional);
         parameter.name = name;
         parameter.in = 'query';
-        parameter.required = !def.optional;
         if (def.description) {
           parameter.description = def.description;
         }
@@ -490,10 +488,9 @@ module.exports = exports =
       }
 
       for (const [name, def] of this._headers.entries()) {
-        const parameter = swaggerifyParam(def.schema);
+        const parameter = swaggerifyParam(def.schema, def.optional);
         parameter.name = name;
         parameter.in = 'header';
-        parameter.required = !def.optional;
         if (def.description) {
           parameter.description = def.description;
         }
@@ -503,17 +500,16 @@ module.exports = exports =
       if (this._bodyParam) {
         if (this._bodyParam.contentTypes) {
           const def = this._bodyParam;
-          const parameter = swaggerifyBody(def.model.schema);
+          const parameter = swaggerifyBody(def.model.schema, def.model.optional);
           parameter.name = 'body';
           parameter.in = 'body';
-          parameter.required = !def.model.optional;
           if (def.description) {
             parameter.description = def.description;
           }
           operation.parameters.push(parameter);
         }
       } else {
-        const parameter = swaggerifyBody(MATCH_ALL_MODEL.schema);
+        const parameter = swaggerifyBody(MATCH_ALL_MODEL.schema, true);
         parameter.name = 'body';
         parameter.in = 'body';
         operation.parameters.push(parameter);
@@ -592,12 +588,15 @@ function swaggerifyType (joi) {
   }
 }
 
-function swaggerifyParam (schema) {
+function swaggerifyParam (schema, optional) {
+  if (!schema || typeof schema !== "object") {
+    return {required: !optional};
+  }
   if (!schema.isJoi) {
-    return schema;
+    return {...schema, required: !optional};
   }
   const param = {
-    required: schema._flags.presence === 'required',
+    required: typeof optional === "boolean" ? !optional : schema._flags.presence === 'required',
     description: schema._description || undefined
   };
   let item = param;
@@ -624,12 +623,15 @@ function swaggerifyParam (schema) {
   return param;
 }
 
-function swaggerifyBody (schema) {
+function swaggerifyBody (schema, optional) {
+  if (!schema || typeof schema !== "object") {
+    return {required: !optional};
+  }
   if (!schema.isJoi) {
-    return {schema};
+    return {schema, required: !optional};
   }
   return {
-    required: schema._flags.presence === 'required',
+    required: typeof optional === "boolean" ? !optional : schema._flags.presence === 'required',
     description: schema._description || undefined,
     schema: joiToJsonSchema(schema)
   };

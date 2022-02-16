@@ -395,7 +395,7 @@ describe('Foxx Swagger', function () {
             .that.is.eql({
               in: 'body',
               name: 'body',
-              schema: true
+              required: false
             });
         });
 
