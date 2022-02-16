@@ -23,10 +23,11 @@
 
 #include "TraversalExecutor.h"
 
+#include <utility>
+
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -49,8 +50,7 @@ using namespace arangodb::graph;
 namespace {
 auto toHashedStringRef(std::string const& id)
     -> arangodb::velocypack::HashedStringRef {
-  return arangodb::velocypack::HashedStringRef(
-      id.data(), static_cast<uint32_t>(id.length()));
+  return {id.data(), static_cast<uint32_t>(id.length())};
 }
 
 template<typename Derived, typename Base, typename Del>
@@ -61,6 +61,7 @@ std::unique_ptr<Derived, Del> static_unique_ptr_cast(
 }
 }  // namespace
 
+// on the coordinator
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::unique_ptr<traverser::Traverser>&& traverser,
     std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
@@ -72,32 +73,30 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, bool refactor,
-    double defaultWeight, std::string const& weightAttribute,
+    double defaultWeight, std::string weightAttribute,
     transaction::Methods* trx, arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     TraverserOptions* opts,
-    std::pair<std::vector<IndexAccessor>,
-              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
-        usedIndexes,
-    std::unordered_map<ServerID, aql::EngineId> const* engines)
+    ClusterBaseProviderOptions&& clusterBaseProviderOptions)
     : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
       _filterConditionVariables(
-          filterConditionVariables),  // TODO [GraphRefactor]:
-                                      // Remove the _ as soon as we
-                                      // can get rid of the old code
+          std::move(filterConditionVariables)),  // TODO [GraphRefactor]:
+                                                 // Remove the _ as soon as we
+                                                 // can get rid of the old code
       _ast(ast),
       _uniqueVertices(vertexUniqueness),
       _uniqueEdges(edgeUniqueness),
       _order(order),
       _refactor(refactor),
       _defaultWeight(defaultWeight),
-      _weightAttribute(weightAttribute),
+      _weightAttribute(std::move(weightAttribute)),
       _trx(trx),
       _query(query) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (!refactor) {
     TRI_ASSERT(_traverser != nullptr);
   }
@@ -116,28 +115,80 @@ TraversalExecutorInfos::TraversalExecutorInfos(
      */
     TRI_ASSERT(_traversalEnumerator == nullptr);
 
-    if (ServerState::instance()->isCoordinator()) {
-      auto cache = std::make_shared<RefactoredClusterTraverserCache>(
-          opts->query().resourceMonitor());
+    auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+        opts->query().resourceMonitor());
 
-      TRI_ASSERT(engines != nullptr);
-      ClusterBaseProviderOptions clusterBaseProviderOptions(
-          cache, engines, false, &opts->getExpressionCtx(),
-          std::move(filterConditionVariables));
-      parseTraversalEnumeratorCluster(
-          getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
-          _weightAttribute, query, std::move(clusterBaseProviderOptions),
-          std::move(pathValidatorOptions), std::move(enumeratorOptions));
-    } else {
-      TRI_ASSERT(engines == nullptr);
-      arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
-          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          std::move(filterConditionVariables), opts->collectionToShard()};
-      parseTraversalEnumeratorSingleServer(
-          getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
-          _weightAttribute, query, std::move(baseProviderOptions),
-          std::move(pathValidatorOptions), std::move(enumeratorOptions));
-    }
+    parseTraversalEnumeratorCluster(
+        getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
+        _weightAttribute, query, std::move(clusterBaseProviderOptions),
+        std::move(pathValidatorOptions), std::move(enumeratorOptions));
+
+    TRI_ASSERT(_traversalEnumerator != nullptr);
+  }
+}
+
+// on non-coordinator (single server or DB-server)
+TraversalExecutorInfos::TraversalExecutorInfos(
+    std::unique_ptr<traverser::Traverser>&& traverser,
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash>
+        registerMapping,
+    std::string fixedSource, RegisterId inputRegister,
+    std::vector<std::pair<Variable const*, RegisterId>>
+        filterConditionVariables,
+    Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
+    traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
+    traverser::TraverserOptions::Order order, bool refactor,
+    double defaultWeight, std::string weightAttribute,
+    transaction::Methods* trx, arangodb::aql::QueryContext& query,
+    arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+    TraverserOptions* opts,
+    graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions)
+    : _traverser(std::move(traverser)),
+      _registerMapping(std::move(registerMapping)),
+      _fixedSource(std::move(fixedSource)),
+      _inputRegister(inputRegister),
+      _filterConditionVariables(
+          std::move(filterConditionVariables)),  // TODO [GraphRefactor]:
+                                                 // Remove the _ as soon as we
+                                                 // can get rid of the old code
+      _ast(ast),
+      _uniqueVertices(vertexUniqueness),
+      _uniqueEdges(edgeUniqueness),
+      _order(order),
+      _refactor(refactor),
+      _defaultWeight(defaultWeight),
+      _weightAttribute(std::move(weightAttribute)),
+      _trx(trx),
+      _query(query) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (!refactor) {
+    TRI_ASSERT(_traverser != nullptr);
+  }
+
+  // _fixedSource XOR _inputRegister
+  // note: _fixedSource can be the empty string here
+  TRI_ASSERT(_fixedSource.empty() ||
+             (!_fixedSource.empty() &&
+              _inputRegister.value() == RegisterId::maxRegisterId));
+  // All Nodes are located in the AST it cannot be non existing.
+  TRI_ASSERT(_ast != nullptr);
+  if (isRefactor()) {
+    /*
+     * In the refactored variant we need to parse the correct enumerator type
+     * here, before we're allowed to use it.
+     */
+    TRI_ASSERT(_traversalEnumerator == nullptr);
+
+    auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+        opts->query().resourceMonitor());
+
+    parseTraversalEnumeratorSingleServer(
+        getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
+        _weightAttribute, query, std::move(singleServerBaseProviderOptions),
+        std::move(pathValidatorOptions), std::move(enumeratorOptions));
+
     TRI_ASSERT(_traversalEnumerator != nullptr);
   }
 }
@@ -145,11 +196,11 @@ TraversalExecutorInfos::TraversalExecutorInfos(
 // REFACTOR
 arangodb::graph::TraversalEnumerator&
 TraversalExecutorInfos::traversalEnumerator() const {
-  return *_traversalEnumerator.get();
+  return *_traversalEnumerator;
 }
 
 // OLD
-Traverser& TraversalExecutorInfos::traverser() { return *_traverser.get(); }
+Traverser& TraversalExecutorInfos::traverser() { return *_traverser; }
 
 bool TraversalExecutorInfos::usesOutputRegister(
     TraversalExecutorInfosHelper::OutputName type) const {
@@ -171,7 +222,7 @@ bool TraversalExecutorInfos::usePathOutput() const {
 Ast* TraversalExecutorInfos::getAst() const { return _ast; }
 
 std::string TraversalExecutorInfos::typeToString(
-    TraversalExecutorInfosHelper::OutputName type) const {
+    TraversalExecutorInfosHelper::OutputName type) {
   switch (type) {
     case TraversalExecutorInfosHelper::VERTEX:
       return std::string{"VERTEX"};
@@ -274,9 +325,8 @@ TraversalExecutorInfos::convertUniquenessLevels() const {
     edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   }
 
-  if (getUniqueEdges() == traverser::TraverserOptions::PATH) {
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
-  } else if (getUniqueEdges() == traverser::TraverserOptions::GLOBAL) {
+  if (getUniqueEdges() == traverser::TraverserOptions::PATH ||
+      getUniqueEdges() == traverser::TraverserOptions::GLOBAL) {
     edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   }
 

@@ -31,7 +31,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
@@ -57,10 +56,10 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Graph/algorithm-aliases.h>
 #include <memory>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -173,14 +172,14 @@ TraversalNode::TraversalNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls, Variable const* inVariable,
-    std::string const& vertexId, TRI_edge_direction_e defaultDirection,
+    std::string vertexId, TRI_edge_direction_e defaultDirection,
     std::vector<TRI_edge_direction_e> const& directions,
     std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
                 directions, std::move(options), graph),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
-      _vertexId(vertexId),
+      _vertexId(std::move(vertexId)),
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
@@ -333,7 +332,7 @@ void TraversalNode::setPathOutput(Variable const* outVar) {
 /// @brief return the in variable
 Variable const* TraversalNode::inVariable() const { return _inVariable; }
 
-std::string const TraversalNode::getStartVertex() const { return _vertexId; }
+std::string TraversalNode::getStartVertex() const { return _vertexId; }
 
 void TraversalNode::setInVariable(Variable const* inVariable) {
   _inVariable = inVariable;
@@ -964,6 +963,12 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           validatorOptions.setVertexExpression(depth, std::move(expression));
         }
 
+        arangodb::graph::SingleServerBaseProviderOptions
+            singleServerBaseProviderOptions{
+                opts->tmpVar(), std::move(usedIndexes),
+                opts->getExpressionCtx(), filterConditionVariables,
+                opts->collectionToShard()};
+
         auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
                                                       // SingleServer,
                                                       // Cluster...
@@ -974,7 +979,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
             opts->trx(), opts->query(), std::move(validatorOptions),
             //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
             //                                 opts->maxDepth});
-            std::move(options), opts, std::move(usedIndexes), engines());
+            std::move(options), opts,
+            std::move(singleServerBaseProviderOptions));
 
         return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1052,6 +1058,12 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         validatorOptions.setVertexExpression(depth, std::move(expression));
       }
 
+      auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+          opts->query().resourceMonitor());
+      ClusterBaseProviderOptions clusterBaseProviderOptions(
+          cache, engines(), false, &opts->getExpressionCtx(),
+          filterConditionVariables);
+
       auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
                                                     // SingleServer, Cluster...
           nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
@@ -1061,7 +1073,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->query(), std::move(validatorOptions),
           //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
           //                                 opts->maxDepth});
-          std::move(options), opts, std::move(usedIndexes), nullptr);
+          std::move(options), opts, std::move(clusterBaseProviderOptions));
 
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1078,6 +1090,11 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   usedIndexes.first = buildUsedIndexes();
   usedIndexes.second = buildUsedDepthBasedIndexes();
 
+  arangodb::graph::SingleServerBaseProviderOptions
+      singleServerBaseProviderOptions{
+          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+          filterConditionVariables, opts->collectionToShard()};
+
   PathValidatorOptions validatorOptions{opts->_tmpVar,
                                         opts->getExpressionCtx()};
   auto executorInfos = TraversalExecutorInfos(
@@ -1088,7 +1105,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       std::move(validatorOptions),
       arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
                                                  opts->maxDepth},
-      opts, std::move(usedIndexes), engines());
+      opts, std::move(singleServerBaseProviderOptions));
 
   return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

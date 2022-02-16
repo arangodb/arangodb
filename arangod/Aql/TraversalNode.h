@@ -92,7 +92,7 @@ class TraversalNode : public virtual GraphNode {
   TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 std::vector<Collection*> const& edgeColls,
                 std::vector<Collection*> const& vertexColls,
-                Variable const* inVariable, std::string const& vertexId,
+                Variable const* inVariable, std::string vertexId,
                 TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<graph::BaseOptions> options,
@@ -159,7 +159,7 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the in variable
   Variable const* inVariable() const;
 
-  std::string const getStartVertex() const;
+  std::string getStartVertex() const;
 
   void setInVariable(Variable const* inVariable);
 

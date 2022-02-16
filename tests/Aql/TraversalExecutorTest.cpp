@@ -334,10 +334,11 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false, 1,
-                      "weightAttribute", server.createFakeTransaction().get(),
-                      *fakedQuery.get(), std::move(baseProviderOptions),
+                      std::string("weightAttribute"),
+                      server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
-                      std::move(enumeratorOptions)) {}
+                      std::move(enumeratorOptions), &traversalOptions,
+                      std::move(baseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestInputStartVertex,
@@ -544,10 +545,11 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false, 1,
-                      "weightAttribute", server.createFakeTransaction().get(),
-                      *fakedQuery, std::move(baseProviderOptions),
+                      std::string("weightAttribute"),
+                      server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
-                      std::move(enumeratorOptions)) {}
+                      std::move(enumeratorOptions), &traversalOptions,
+                      std::move(baseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex,
