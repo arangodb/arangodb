@@ -217,8 +217,7 @@ void FailureOracleFeature::start() {
   _cache->createAgencyCallback(server());
   _cache->start();
 
-  LOG_TOPIC("42af3", DEBUG, Logger::CLUSTER)
-      << "FailureOracleFeature is ready";
+  LOG_TOPIC("42af3", DEBUG, Logger::CLUSTER) << "FailureOracleFeature is ready";
 }
 
 void FailureOracleFeature::stop() { _cache->stop(); }
