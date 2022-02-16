@@ -106,7 +106,7 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  return Step{_opts.getCache()->persistString(vertex)};
+  return Step{_opts.getCache()->persistString(vertex), depth, weight};
 }
 
 template<class StepImpl>
@@ -433,12 +433,15 @@ auto ClusterProvider<StepImpl>::expand(
 
   if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
     for (auto const& relation : relations->second) {
-      bool const fetched = _vertexConnectedEdges.contains(relation.second);
+      bool const fetchedTargetVertex =
+          _vertexConnectedEdges.contains(relation.second);
       // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
       // need a mechanism here as well to distinguish between (non)required
       // parameters.
-      callback(Step{relation.second, relation.first, previous, fetched,
-                    step.getDepth() + 1});
+      callback(
+          Step{relation.second, relation.first, previous, fetchedTargetVertex,
+               step.getDepth() + 1,
+               _opts.weightEdge(step.getWeight(), readEdge(relation.first))});
     }
   } else {
     throw std::out_of_range{"ClusterProvider::_vertexConnectedEdges"};
@@ -458,6 +461,11 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
     -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::readEdge(EdgeType const& edgeID) const -> VPackSlice {
+  return _opts.getCache()->getCachedEdge(edgeID);
 }
 
 template<class StepImpl>

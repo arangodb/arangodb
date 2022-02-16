@@ -661,26 +661,25 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     TRI_ASSERT(order == TraverserOptions::Order::WEIGHTED);
     // It is valid to not have set a weightAttribute.
     // TRI_ASSERT(_opts->hasWeightAttribute());
-    //    if (weightAttribute.empty()) {
-    //      baseProviderOptions.setWeightEdgeCallback(
-    //          [defaultWeight](double previousWeight, VPackSlice edge) ->
-    //          double {
-    //            return previousWeight + defaultWeight;
-    //          });
-    //    } else {
-    //      baseProviderOptions.setWeightEdgeCallback(
-    //          [weightAttribute = weightAttribute, defaultWeight](
-    //              double previousWeight, VPackSlice edge) -> double {
-    //            auto const weight =
-    //                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-    //                    edge, weightAttribute, defaultWeight);
-    //            if (weight < 0.) {
-    //              THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-    //            }
-    //
-    //            return previousWeight + weight;
-    //          });
-    //    }
+    if (weightAttribute.empty()) {
+      baseProviderOptions.setWeightEdgeCallback(
+          [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+            return previousWeight + defaultWeight;
+          });
+    } else {
+      baseProviderOptions.setWeightEdgeCallback(
+          [weightAttribute = weightAttribute, defaultWeight](
+              double previousWeight, VPackSlice edge) -> double {
+            auto const weight =
+                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                    edge, weightAttribute, defaultWeight);
+            if (weight < 0.) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+            }
+
+            return previousWeight + weight;
+          });
+    }
 
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:

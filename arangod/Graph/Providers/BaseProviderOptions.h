@@ -140,6 +140,9 @@ struct SingleServerBaseProviderOptions {
 };
 
 struct ClusterBaseProviderOptions {
+  using WeightCallback = std::function<double(
+      double originalWeight, arangodb::velocypack::Slice edge)>;
+
  public:
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
@@ -166,6 +169,13 @@ struct ClusterBaseProviderOptions {
   void unPrepareContext();
   aql::FixedVarExpressionContext* expressionContext();
 
+  bool hasWeightMethod() const;
+
+  double weightEdge(double prefixWeight,
+                    arangodb::velocypack::Slice edge) const;
+
+  void setWeightEdgeCallback(WeightCallback callback);
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
@@ -180,6 +190,9 @@ struct ClusterBaseProviderOptions {
   // non-refactored code, we will do a move instead of a copy operation.
   std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
       _filterConditionVariables;
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 
 }  // namespace graph

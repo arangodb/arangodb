@@ -90,6 +90,7 @@ class ClusterProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+  VPackSlice readEdge(EdgeType const& edgeID) const;
 
   // fetch vertices and store in cache
   auto fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
@@ -124,6 +125,7 @@ class ClusterProvider {
   arangodb::aql::TraversalStats _stats;
 
   /// @brief vertex reference to all connected edges including the edges target
+  // Info: SourceVertex -> [[ConnectedEdge, TargetVertex], ...]
   containers::FlatHashMap<VertexType,
                           std::vector<std::pair<EdgeType, VertexType>>>
       _vertexConnectedEdges;

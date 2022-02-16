@@ -144,7 +144,8 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),
-      _expressionContext(nullptr) {
+      _expressionContext(nullptr),
+      _weightCallback(std::nullopt) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -159,7 +160,8 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
       _engines(engines),
       _backward(backward),
       _expressionContext(expressionContext),
-      _filterConditionVariables(filterConditionVariables) {
+      _filterConditionVariables(filterConditionVariables),
+      _weightCallback(std::nullopt) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -198,4 +200,22 @@ void ClusterBaseProviderOptions::unPrepareContext() {
 aql::FixedVarExpressionContext*
 ClusterBaseProviderOptions::expressionContext() {
   return _expressionContext;
+}
+
+bool ClusterBaseProviderOptions::hasWeightMethod() const {
+  return _weightCallback.has_value();
+}
+
+void ClusterBaseProviderOptions::setWeightEdgeCallback(
+    WeightCallback callback) {
+  _weightCallback = std::move(callback);
+}
+
+double ClusterBaseProviderOptions::weightEdge(
+    double prefixWeight, arangodb::velocypack::Slice edge) const {
+  if (!hasWeightMethod()) {
+    // We do not have a weight. Hardcode.
+    return prefixWeight + 1;
+  }
+  return _weightCallback.value()(prefixWeight, edge);
 }

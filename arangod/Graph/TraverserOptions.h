@@ -151,6 +151,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
+  bool hasSpecificCursorForDepth(uint64_t depth) const;
+
   bool vertexHasFilter(uint64_t) const;
 
   bool hasEdgeFilter(int64_t, size_t) const;
