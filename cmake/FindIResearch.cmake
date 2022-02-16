@@ -30,7 +30,7 @@ if (NOT "${IRESEARCH_ROOT}" STREQUAL "")
 endif()
 
 execute_process(
-  COMMAND git submodule update --init --depth=1 -- "3rdParty/iresearch"
+  COMMAND ${GIT_EXECUTABLE} submodule update --init --depth=1 -- "3rdParty/iresearch"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   ERROR_QUIET
 )
