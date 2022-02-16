@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
@@ -145,6 +146,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool override;
 
   auto waitForLeadership() -> WaitForFuture override;
+
+  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
 
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
@@ -307,6 +310,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
         _follower{};
     WaitForQueue _waitForQueue{};
+    WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
     LogIndex _lowestIndexToKeep{0};

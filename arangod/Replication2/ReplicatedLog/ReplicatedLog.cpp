@@ -28,11 +28,11 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Metrics/Counter.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
 #include <Basics/voc-errors.h>
 
 #include <optional>
@@ -51,8 +51,8 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     LoggerContext const& logContext)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
-      _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(
-          std::move(core), metrics)),
+      _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core),
+                                                                metrics)),
       _metrics(metrics),
       _options(std::move(options)) {}
 
@@ -112,10 +112,10 @@ auto replicated_log::ReplicatedLog::becomeFollower(
     LOG_CTX("1ed24", DEBUG, _logContext)
         << "becoming follower in term " << term << " with leader "
         << leaderId.value_or("<none>");
-    auto log = InMemoryLog::loadFromLogCore(*logCore);
-    auto follower = std::make_shared<LogFollower>(
-        _logContext, _metrics, std::move(id), std::move(logCore), term,
-        std::move(leaderId), log);
+
+    auto follower =
+        LogFollower::construct(_logContext, _metrics, std::move(id),
+                               std::move(logCore), term, std::move(leaderId));
     _participant = std::static_pointer_cast<ILogParticipant>(follower);
     _metrics->replicatedLogStartedFollowingNumber->operator++();
     return std::make_tuple(follower, std::move(deferred));
