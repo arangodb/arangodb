@@ -41,10 +41,6 @@ UnconfiguredStateManager<S>::UnconfiguredStateManager(
 
 template<typename S>
 void UnconfiguredStateManager<S>::run() {
-  // We need to drop the lock before calling `thenFinal`, because it might
-  // immediately be executed and try to acquire the lock again.
-  // Thus execute it in the DeferredAction.
-
   _unconfiguredParticipant->waitForResign().thenFinal(
       [weak = _parent](futures::Try<futures::Unit>&& result) {
         TRI_ASSERT(result.valid());

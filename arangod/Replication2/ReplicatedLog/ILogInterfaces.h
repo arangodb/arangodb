@@ -54,7 +54,7 @@ struct WaitForResult {
 
   WaitForResult(LogIndex index, std::shared_ptr<QuorumData const> quorum);
   WaitForResult() = default;
-  WaitForResult(velocypack::Slice);
+  explicit WaitForResult(velocypack::Slice);
 
   void toVelocyPack(velocypack::Builder&) const;
 };
@@ -95,7 +95,7 @@ struct ILogParticipant {
  * if they want to refer to a LogFollower instance.
  */
 struct ILogFollower : ILogParticipant, AbstractFollower {
-  virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
   [[nodiscard]] virtual auto getLeader() const noexcept
       -> std::optional<ParticipantId> const& = 0;
 };
@@ -116,7 +116,7 @@ struct ILogLeader : ILogParticipant {
 
   [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
       -> bool = 0;
-  virtual auto waitForLeadership() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto waitForLeadership() -> WaitForFuture = 0;
   [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
 };
 

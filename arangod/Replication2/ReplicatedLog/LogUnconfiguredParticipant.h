@@ -48,7 +48,7 @@ struct LogUnconfiguredParticipant final
       -> arangodb::replication2::replicated_log::LogStatus override;
   [[nodiscard]] auto getQuickStatus() const
       -> arangodb::replication2::replicated_log::QuickLogStatus override;
-  auto resign() && -> std::tuple<
+  [[nodiscard]] auto resign() && -> std::tuple<
       std::unique_ptr<arangodb::replication2::replicated_log::LogCore>,
       arangodb::DeferredAction> override;
   [[nodiscard]] auto waitFor(arangodb::replication2::LogIndex)
@@ -57,7 +57,7 @@ struct LogUnconfiguredParticipant final
       -> arangodb::Result override;
   [[nodiscard]] auto waitForIterator(arangodb::replication2::LogIndex index)
       -> WaitForIteratorFuture override;
-  auto waitForResign() -> futures::Future<futures::Unit> override;
+  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getCommitIndex() const noexcept
       -> arangodb::replication2::LogIndex override;
 
@@ -71,11 +71,11 @@ struct LogUnconfiguredParticipant final
         std::unique_ptr<arangodb::replication2::replicated_log::LogCore>
             logCore);
 
-    auto resign() && -> std::tuple<
+    [[nodiscard]] auto resign() && -> std::tuple<
         std::unique_ptr<arangodb::replication2::replicated_log::LogCore>,
         arangodb::DeferredAction>;
 
-    auto waitForResign() -> futures::Future<futures::Unit>;
+    [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit>;
 
     std::unique_ptr<arangodb::replication2::replicated_log::LogCore> _logCore;
     WaitForBag _waitForResignQueue;
