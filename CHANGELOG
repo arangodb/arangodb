@@ -1,6 +1,9 @@
 v3.7.17 (2022-01-25)
 --------------------
 
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
 * Fix creation of satellite graphs with a `numberOfShards` value != 1.
 
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
