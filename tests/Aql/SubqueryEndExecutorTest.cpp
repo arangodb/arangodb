@@ -39,7 +39,7 @@ using RegisterSet = std::unordered_set<RegisterId>;
 namespace {
 RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
   RegIdSet prototype{};
-  for (RegisterId::value_t r = 0; r < numRegs; ++r) {
+  for (RegisterId r = 0; r < numRegs; ++r) {
     prototype.emplace(r);
   }
   RegIdSetStack regsToKeep{};
@@ -152,5 +152,5 @@ TEST_F(SubqueryEndExecutorTest, count_shadow_rows_test) {
 
   ASSERT_EQ(numCalls, 2);
   EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(block->numRows(), 12);
+  EXPECT_EQ(block->size(), 12);
 }
