@@ -30,7 +30,7 @@ if (NOT "${IRESEARCH_ROOT}" STREQUAL "")
 endif()
 
 execute_process(
-  COMMAND git submodule update --init --depth=1 --remote -- "3rdParty/iresearch"
+  COMMAND git submodule update --init --depth=1 -- "3rdParty/iresearch"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   ERROR_QUIET
 )
@@ -49,7 +49,6 @@ list(APPEND IRESEARCH_INCLUDE
   "${IRESEARCH_ROOT}/external"
   "${IRESEARCH_BUILD_DIR}/core"
 )
-
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(IRESEARCH
