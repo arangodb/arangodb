@@ -28,6 +28,8 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "VocBase/LogicalCollection.h"
+#include "PruneExpressionEvaluator.h"
+#include "TraversalExecutor.h"
 
 namespace arangodb {
 
@@ -118,6 +120,19 @@ class TraversalNode : public virtual GraphNode {
       ExecutionEngine& engine,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
       const override;
+
+  std::unique_ptr<ExecutionBlock> createRefactoredBlock(
+      ExecutionEngine& engine,
+      std::vector<std::pair<Variable const*, RegisterId>>&&,
+      std::function<
+          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+      std::function<
+          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+      const std::unordered_map<TraversalExecutorInfosHelper::OutputName,
+                               RegisterId,
+                               TraversalExecutorInfosHelper::OutputNameHash>&,
+      RegisterId, RegisterInfos,
+      std::unordered_map<ServerID, aql::EngineId> const*) const;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
