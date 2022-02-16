@@ -228,8 +228,9 @@ FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
         << "Shard " << _docColl->name()
         << " is temporarily in read-only mode, since we could not update the "
            "failover candidates in the agency.";
+    return WriteState::UNAVAILABLE;
   }
-  return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
+  return WriteState::ALLOWED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -112,10 +112,10 @@ auto replicated_log::ReplicatedLog::becomeFollower(
     LOG_CTX("1ed24", DEBUG, _logContext)
         << "becoming follower in term " << term << " with leader "
         << leaderId.value_or("<none>");
-    auto log = InMemoryLog::loadFromLogCore(*logCore);
-    auto follower = std::make_shared<LogFollower>(
-        _logContext, _metrics, std::move(id), std::move(logCore), term,
-        std::move(leaderId), log);
+
+    auto follower =
+        LogFollower::construct(_logContext, _metrics, std::move(id),
+                               std::move(logCore), term, std::move(leaderId));
     _participant = std::static_pointer_cast<ILogParticipant>(follower);
     _metrics->replicatedLogStartedFollowingNumber->operator++();
     return std::make_tuple(follower, std::move(deferred));

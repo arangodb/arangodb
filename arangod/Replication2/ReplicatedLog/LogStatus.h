@@ -80,7 +80,7 @@ struct FollowerStatistics : LogStatistics {
 struct LeaderStatus {
   LogStatistics local;
   LogTerm term;
-  LogIndex largestCommonIndex;
+  LogIndex lowestIndexToKeep;
   bool leadershipEstablished{false};
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
@@ -100,7 +100,7 @@ struct FollowerStatus {
   LogStatistics local;
   std::optional<ParticipantId> leader;
   LogTerm term;
-  LogIndex largestCommonIndex;
+  LogIndex lowestIndexToKeep;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatus;
