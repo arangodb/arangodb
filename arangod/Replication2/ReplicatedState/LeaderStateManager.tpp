@@ -197,13 +197,12 @@ auto LeaderStateManager<S>::resign() && noexcept
 
 template<typename S>
 void LeaderStateManager<S>::beginWaitingForParticipantResigned() {
-  logLeader->waitFor(LogIndex{std::numeric_limits<std::uint64_t>::max()})
-      .thenFinal([weak = this->weak_from_this()](auto&&) {
-        if (auto self = weak.lock(); self != nullptr) {
-          if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
-            parentPtr->forceRebuild();
-          }
-        }
-      });
+  logLeader->waitForResign().thenFinal([weak = this->weak_from_this()](auto&&) {
+    if (auto self = weak.lock(); self != nullptr) {
+      if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
+        parentPtr->forceRebuild();
+      }
+    }
+  });
 }
 }  // namespace arangodb::replication2::replicated_state

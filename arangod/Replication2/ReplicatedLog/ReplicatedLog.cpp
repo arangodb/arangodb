@@ -28,11 +28,11 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Metrics/Counter.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
 #include <Basics/voc-errors.h>
 
 #include <optional>
@@ -51,8 +51,8 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     LoggerContext const& logContext)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
-      _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(
-          std::move(core), metrics)),
+      _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core),
+                                                                metrics)),
       _metrics(metrics),
       _options(std::move(options)) {}
 
