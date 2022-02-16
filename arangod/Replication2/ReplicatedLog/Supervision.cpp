@@ -49,7 +49,7 @@ auto checkLogAdded(const Log& log, ParticipantsHealth const& health)
         if (health.isHealthy) {
           newTarget.participants.emplace(pid, ParticipantFlags{});
         }
-        if (log.target.participants.size() ==
+        if (newTarget.participants.size() ==
             log.target.config.replicationFactor) {
           break;
         }
