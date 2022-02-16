@@ -1,6 +1,9 @@
 devel
 -----
 
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
 * Changed Foxx service generator output to use static variable names
 
 * As we are now in constant stall regime, stall onset and warnings are
