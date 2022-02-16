@@ -303,8 +303,9 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
-      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
+  arangodb::graph::SingleServerBaseProviderOptions
+      singleServerBaseProviderOptions{
+          &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
@@ -338,7 +339,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
                       server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
                       std::move(enumeratorOptions), &traversalOptions,
-                      std::move(baseProviderOptions)) {}
+                      std::move(singleServerBaseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestInputStartVertex,
@@ -516,8 +517,9 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction(), *fakedQuery, aqlCache};
-  arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
-      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
+  arangodb::graph::SingleServerBaseProviderOptions
+      singleServerBaseProviderOptions{
+          &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
@@ -549,7 +551,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
                       server.createFakeTransaction().get(), *fakedQuery,
                       std::move(pathValidatorOptions),
                       std::move(enumeratorOptions), &traversalOptions,
-                      std::move(baseProviderOptions)) {}
+                      std::move(singleServerBaseProviderOptions)) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex,
