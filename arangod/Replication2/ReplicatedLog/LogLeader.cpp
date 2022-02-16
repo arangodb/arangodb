@@ -51,6 +51,7 @@
 #include <utility>
 
 #include "Basics/ErrorCode.h"
+#include "Cluster/FailureOracle.h"
 #include "Futures/Promise-inl.h"
 #include "Futures/Promise.h"
 #include "Futures/Unit.h"
@@ -95,10 +96,12 @@ replicated_log::LogLeader::LogLeader(
     LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     LogConfig config, ParticipantId id, LogTerm term, LogIndex firstIndex,
-    InMemoryLog inMemoryLog)
+    InMemoryLog inMemoryLog,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
+      _failureOracle(std::move(failureOracle)),
       _config(config),
       _id(std::move(id)),
       _currentTerm(term),
@@ -293,7 +296,8 @@ auto replicated_log::LogLeader::construct(
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
@@ -318,10 +322,12 @@ auto replicated_log::LogLeader::construct(
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
         LogConfig config, ParticipantId id, LogTerm term,
-        LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog)
+        LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
+        std::shared_ptr<cluster::IFailureOracle const> failureOracle)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(options), config, std::move(id), term,
-                    firstIndexOfCurrentTerm, std::move(inMemoryLog)) {}
+                    firstIndexOfCurrentTerm, std::move(inMemoryLog),
+                    std::move(failureOracle)) {}
   };
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
@@ -349,7 +355,7 @@ auto replicated_log::LogLeader::construct(
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
       std::move(logMetrics), std::move(options), config, std::move(id), term,
-      lastIndex.index + 1u, log);
+      lastIndex.index + 1u, log, std::move(failureOracle));
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
@@ -811,7 +817,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.lastAckedEntry = lastIndex;
         follower.lastAckedCommitIndex = currentCommitIndex;
         follower.lastAckedLowestIndexToKeep = currentLITK;
-        toBeResolved = checkCommitIndex();
       } else {
         TRI_ASSERT(response.reason.error !=
                    AppendEntriesErrorReason::ErrorType::kNone);
@@ -863,6 +868,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     FATAL_ERROR_EXIT();
   }
 
+  // checkCommitIndex is called regardless of follower response.
+  // The follower might be failed, but the agency can't tell that immediately.
+  // Thus, we might have to commit an entry without this follower.
+  toBeResolved = checkCommitIndex();
   // try sending the next batch
   return std::make_pair(prepareAppendEntries(), std::move(toBeResolved));
 }
@@ -907,8 +916,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerIndexes()
 
     indexes.emplace_back(algorithms::ParticipantStateTuple{
         .lastAckedEntry = follower->lastAckedEntry,
-        .id = follower->_impl->getParticipantId(),
-        .failed = false,
+        .id = pid,
+        .failed = _self._failureOracle->isServerFailed(pid),
         .flags = flags->second});
 
     largestCommonIndex =
@@ -940,7 +949,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
       << ", current commit index = " << _commitIndex;
-  TRI_ASSERT(newCommitIndex >= _commitIndex);
   if (newCommitIndex > _commitIndex) {
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));
