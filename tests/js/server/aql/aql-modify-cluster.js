@@ -69,16 +69,13 @@ function ahuacatlModifySuite () {
 
     setUp : function () {
       db._drop(cn1);
-      db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:5});
-      c2 = db._create(cn2, {numberOfShards:5});
 
-      c1.save({ _key: "foo", a: 1 });
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({name: `test${i}`});
       }
-      c2.insert(docs);
+      c1.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,14 +119,14 @@ function ahuacatlModifySuite () {
 
     testUpsertUpdateEmpty: function () {
       for (let i = 0; i < 5; ++i) {
-        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn2} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} UPDATE {} IN ${cn1} OPTIONS { } RETURN { new: NEW, old: OLD }`);
         const res = actual.json[0];
         if (i > 0) {
           assertEqual(res.old._rev, res.new._rev);
           assertEqual(res.old.name, "test1500");
           assertEqual(4, Object.keys(res.old).length);
         }
-        assertEqual(1001, c2.count());
+        assertEqual(1001, c1.count());
         assertEqual(4, Object.keys(res.new).length);
         assertEqual(res.new.name, "test1500");
       }
@@ -147,7 +144,7 @@ function ahuacatlModifySuite () {
 
     testUpsertReplaceEmpty: function () {
       for (let i = 0; i < 5; ++i) {
-        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} REPLACE {} IN ${cn2} OPTIONS { } RETURN { new: NEW, old: OLD }`);
+        const actual = AQL_EXECUTE(`UPSERT {name: "test1500"} INSERT {name: "test1500"} REPLACE {} IN ${cn1} OPTIONS { } RETURN { new: NEW, old: OLD }`);
         const res = actual.json[0];
         if (i % 2 !== 0) {
           assertNotEqual(res.old._rev, res.new._rev);
@@ -160,7 +157,7 @@ function ahuacatlModifySuite () {
           assertEqual(4, Object.keys(res.new).length);
         }
       }
-      assertEqual(1003, c2.count());
+      assertEqual(1003, c1.count());
     },
 
   };
@@ -1239,11 +1236,9 @@ function ahuacatlUpdateSuite () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
-      db._drop(cn4);
       c1 = db._create(cn1, {numberOfShards: 5});
       c2 = db._create(cn2, {numberOfShards: 5});
       c3 = db._create(cn3, {numberOfShards: 1});
-      c4 = db._create(cn4, {numberOfShards: 5});
 
       let docs = [];
       for (i = 0; i < 100; ++i) {
@@ -1251,8 +1246,8 @@ function ahuacatlUpdateSuite () {
       }
       c1.insert(docs);
       docs = [];
-      for (i = 0; i < 50; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({name: `test${i}`});
       }
       c2.insert(docs);
       docs = [];
@@ -1260,11 +1255,6 @@ function ahuacatlUpdateSuite () {
         docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
       c3.insert(docs);
-      docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({name: `test${i}`});
-      }
-      c4.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1275,11 +1265,9 @@ function ahuacatlUpdateSuite () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
-      db._drop(cn4);
       c1 = null;
       c2 = null;
       c3 = null;
-      c4 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1429,7 +1417,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateEmpty3: function () {
-      const actual = AQL_EXECUTE(`FOR doc IN ${cn4} UPDATE doc WITH {} IN ${cn4} RETURN {old: OLD, new: NEW}`);
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn2} UPDATE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
       const res = actual.json;
       assertEqual(res.length, 1000);
       for (let i = 0; i < res.length; ++i) {
@@ -1948,7 +1936,7 @@ false
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceEmpty: function () {
-      const actual = AQL_EXECUTE(`FOR doc IN ${cn4} REPLACE doc WITH {} IN ${cn4} RETURN {old: OLD, new: NEW}`);
+      const actual = AQL_EXECUTE(`FOR doc IN ${cn2} REPLACE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
       const res = actual.json;
       assertEqual(res.length, 1000);
       for (let i = 0; i < res.length; ++i) {
