@@ -43,7 +43,7 @@ auto LogUnconfiguredParticipant::getQuickStatus() const -> QuickLogStatus {
 LogUnconfiguredParticipant::LogUnconfiguredParticipant(
     std::unique_ptr<LogCore> logCore,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics)
-    : _guardedData(std::move(logCore)), _logMetrics(std::move(logMetrics)) {
+    : _logMetrics(std::move(logMetrics)), _guardedData(std::move(logCore)) {
   _logMetrics->replicatedLogInactiveNumber->fetch_add(1);
 }
 
