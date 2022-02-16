@@ -1,12 +1,12 @@
 v3.8.6 (XXXX-XX-XX)
 -------------------
 
-* Optimize further RocksDB throttle to allow for no change on any
-  given calculation cycle.
+* Optimize further RocksDB throttle to allow for no change on any given
+  calculation cycle.
 
+* As we are now in constant stall regime, stall onset and warnings are demoted
+  to DEBUG.
 
-v3.8.5.1 (2022-02-03)
----------------------
 * Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
