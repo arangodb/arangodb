@@ -135,7 +135,7 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
 
-  static ptr make(irs::string_ref const& args) {
+  static ptr make(irs::string_ref args) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return nullptr;
@@ -146,7 +146,7 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
   // test implementation
   // string will be normalized as is. But object will be converted!
   // need this to test comparison "old-normalized"  against "new-normalized"
-  static bool normalize(irs::string_ref const& args, std::string& definition) {
+  static bool normalize(irs::string_ref args, std::string& definition) {
     auto slice = arangodb::iresearch::slice(args);
     arangodb::velocypack::Builder builder;
     if (slice.isString()) {
@@ -170,7 +170,7 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
 
   virtual bool next() override { return false; }
 
-  virtual bool reset(irs::string_ref const& data) override { return false; }
+  virtual bool reset(irs::string_ref) override { return false; }
 
  private:
   TestAttribute _attr;
@@ -185,12 +185,12 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     return "iresearch-tokens-typed";
   }
 
-  static ptr make(irs::string_ref const& args) {
+  static ptr make(irs::string_ref args) {
     PTR_NAMED(TestTokensTypedAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref const& args, std::string& out) {
+  static bool normalize(irs::string_ref args, std::string& out) {
     out.assign(args.c_str(), args.size());
     return true;
   }
@@ -217,7 +217,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(irs::string_ref const& data) override {
+  virtual bool reset(irs::string_ref data) override {
     if (!data.null()) {
       _strVal = data;
     } else {
