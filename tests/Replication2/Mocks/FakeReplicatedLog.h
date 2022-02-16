@@ -49,11 +49,9 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
                      std::unique_ptr<replicated_log::LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
       : DelayedFollowerLog([&] {
-          auto inMemoryLog =
-              replicated_log::InMemoryLog::loadFromLogCore(*logCore);
-          return std::make_shared<replicated_log::LogFollower>(
+          return replicated_log::LogFollower::construct(
               logContext, std::move(logMetricsMock), id, std::move(logCore),
-              term, std::move(leaderId), std::move(inMemoryLog));
+              term, std::move(leaderId));
         }()) {}
 
   auto appendEntries(replicated_log::AppendEntriesRequest req)
@@ -132,7 +130,9 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     return _follower->waitForIterator(index);
   }
-
+  auto waitForResign() -> futures::Future<futures::Unit> override {
+    return _follower->waitForResign();
+  }
   auto release(LogIndex doneWithIdx) -> Result override {
     return _follower->release(doneWithIdx);
   }
