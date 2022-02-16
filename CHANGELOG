@@ -5,6 +5,9 @@ v3.8.6 (XXXX-XX-XX)
 
 * Replaced internal JS dependency ansi-html with ansi-html-community.
 
+* As we are now in constant stall regime, stall onset and warnings are demoted
+  to DEBUG.
+
 * Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
@@ -57,49 +60,6 @@ v3.8.5 (2022-01-20)
   collection is accessed in exclusive mode, because the optimized query would
   use a slightly different mode of locking then.
 
-<<<<<<< HEAD
-=======
-
-v3.9.0 (2022-02-07)
--------------------
-
-* Convert v3.9.0-rc.1 into v3.9.0 (GA).
-
-
-v3.9.0-rc.1 (2022-02-03)
-------------------------
-
-* Fix potential access to dangling reference in cancellation of shard
-  synchronization.
-
-* Fixed BTS-740 (no released version infected) fixed Smart<->Sat SmartEdgeCollections
-  determining the shard in SingleRemoteModification Nodes was incorrect. E.g. this could
-  be triggered, by viewing the details of an edge in the UI. Only alpha/beta of 3.9.0
-  contained this bug
-
-* Fixed BTS-729 (no released version infected): Some conditions in a Hybrid
-  Smart Graph could led to wrong shard location calculation and therefore to
-  wrong graph query results. Only alpha/beta of 3.9.0 contained this bug.
-
-* Fixed minDepth handling of weighted Traversals. When using a minDepth of 3, also paths of length
-  2 have been returned, on all locally executed variants (SingleServer, OneShard, DisjointSmart).
-
-* Fixed BTS-728 (no released version infected) fixed: for DisjointSmartGraphs, that include
-  a satellite vertex collection, valid disjoint path were not always followed, if one of the
-  satellites has a connection to two (or more) vertices that have different shardValues that
-  by chance are routed to the same shard.
-
-* Fix creation of satellite graphs with a `numberOfShards` value != 1.
-
-* Fixed BTS-712: Collation analyzer now always produces valid UTF-8 sequence.
-
-* Updated Enterprise license behavior: now there will be a 48 hour period for a
-  new deployment and upgrade decision to provide the license. After that period,
-  the read-only mode will be enforced.
-  Upgrade procedure for a deployment without license will not take upgrade
-  period into account for the read-only mode will enforcement.
-
->>>>>>> 803f9613cff... Replace xmldom with @xmldom/xmldom (#15660)
 * Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
 * BTS-590: When creating a new database in Web UI the value of the write concern
