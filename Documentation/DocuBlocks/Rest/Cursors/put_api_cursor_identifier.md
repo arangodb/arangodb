@@ -22,6 +22,13 @@ attributes:
 - *result*: a list of documents for the current batch
 - *hasMore*: *false* if this was the last batch
 - *count*: if present the total number of elements
+- *code*: the HTTP status code
+- *error*: boolean flag to indicate whether an error occurred
+- *errorNum*: the server error number (if *error* is *true*)
+- *errorMessage*: a descriptive error message (if *error* is *true*)
+- *extra*: an object with additional information about the query result, with
+  the nested objects *stats* and *warnings*. Only delivered as part of the last
+  batch in case of a cursor with the *stream* option enabled.
 
 Note that even if *hasMore* returns *true*, the next call might
 still return no documents. If, however, *hasMore* is *false*, then
