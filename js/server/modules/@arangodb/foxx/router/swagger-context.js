@@ -469,50 +469,60 @@ module.exports = exports =
 
       for (const [name, def] of this._pathParams.entries()) {
         const parameter = swaggerifyParam(def.schema, false);
-        parameter.name = name;
-        parameter.in = 'path';
-        if (def.description) {
-          parameter.description = def.description;
+        if (parameter) {
+          parameter.name = name;
+          parameter.in = 'path';
+          if (def.description) {
+            parameter.description = def.description;
+          }
+          operation.parameters.push(parameter);
         }
-        operation.parameters.push(parameter);
       }
 
       for (const [name, def] of this._queryParams.entries()) {
         const parameter = swaggerifyParam(def.schema, def.optional);
-        parameter.name = name;
-        parameter.in = 'query';
-        if (def.description) {
-          parameter.description = def.description;
+        if (parameter) {
+          parameter.name = name;
+          parameter.in = 'query';
+          if (def.description) {
+            parameter.description = def.description;
+          }
+          operation.parameters.push(parameter);
         }
-        operation.parameters.push(parameter);
       }
 
       for (const [name, def] of this._headers.entries()) {
         const parameter = swaggerifyParam(def.schema, def.optional);
-        parameter.name = name;
-        parameter.in = 'header';
-        if (def.description) {
-          parameter.description = def.description;
+        if (parameter) {
+          parameter.name = name;
+          parameter.in = 'header';
+          if (def.description) {
+            parameter.description = def.description;
+          }
+          operation.parameters.push(parameter);
         }
-        operation.parameters.push(parameter);
       }
 
       if (this._bodyParam) {
         if (this._bodyParam.contentTypes) {
           const def = this._bodyParam;
           const parameter = swaggerifyBody(def.model.schema, def.model.optional);
-          parameter.name = 'body';
-          parameter.in = 'body';
-          if (def.description) {
-            parameter.description = def.description;
+          if (parameter) {
+            parameter.name = 'body';
+            parameter.in = 'body';
+            if (def.description) {
+              parameter.description = def.description;
+            }
+            operation.parameters.push(parameter);
           }
-          operation.parameters.push(parameter);
         }
       } else {
         const parameter = swaggerifyBody(MATCH_ALL_MODEL.schema, true);
-        parameter.name = 'body';
-        parameter.in = 'body';
-        operation.parameters.push(parameter);
+        if (parameter) {
+          parameter.name = 'body';
+          parameter.in = 'body';
+          operation.parameters.push(parameter);
+        }
       }
 
       operation.responses = {
@@ -589,6 +599,9 @@ function swaggerifyType (joi) {
 }
 
 function swaggerifyParam (schema, optional) {
+  if (schema === false) {
+    return false;
+  }
   if (!schema || typeof schema !== "object") {
     return {required: typeof optional === "boolean" ? !optional : false};
   }
@@ -624,6 +637,9 @@ function swaggerifyParam (schema, optional) {
 }
 
 function swaggerifyBody (schema, optional) {
+  if (schema === false) {
+    return false;
+  }
   if (!schema || typeof schema !== "object") {
     return {required: typeof optional === "boolean" ? !optional : false};
   }

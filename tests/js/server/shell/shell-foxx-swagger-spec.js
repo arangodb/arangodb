@@ -456,6 +456,28 @@ describe('Foxx Swagger', function () {
               schema: {type: 'string'}
             });
         });
+
+        it('includes explicit catchall schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              required: false
+            });
+        });
+
+        it('omits explicit forbidden schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: false});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters')
+            .to.eql([]);
+        });
       });
 
       describe('in:path', function () {
@@ -575,6 +597,29 @@ describe('Foxx Swagger', function () {
               type: 'string'
             });
         });
+
+        it('includes explicit catchall schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', {schema: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              required: false
+            });
+        });
+
+        it('omits explicit forbidden schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: false})
+          .queryParam('q', {schema: false});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters')
+            .to.eql([]);
+        });
       });
 
       describe('in:header', function () {
@@ -649,6 +694,29 @@ describe('Foxx Swagger', function () {
               required: false,
               type: 'string'
             });
+        });
+
+        it('includes explicit catchall schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', {schema: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              required: false
+            });
+        });
+
+        it('omits explicit forbidden schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: false})
+          .header('x-custom', {schema: false});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters')
+            .to.eql([]);
         });
       });
     });
