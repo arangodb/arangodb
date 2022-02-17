@@ -531,7 +531,7 @@ KShortestPathsNode::buildReverseUsedIndexes() const {
 std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildIndexes(
     bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
-  bool onlyEdgeIndexes = true;
+  constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;
   indexAccessors.reserve(numEdgeColls);
@@ -545,6 +545,12 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildIndexes(
     aql::AstNode* condition =
         ((dir == TRI_EDGE_IN) != reverse) ? _toCondition : _fromCondition;
     aql::AstNode* clonedCondition = condition->clone(_plan->getAst());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // very expensive, but only used for assertions:
+    // we are stringifying the contents of clonedCondition to figure out
+    // if the call to getBestIndexHandleForFilterCondition modifies it.
+    std::string const conditionString = clonedCondition->toString();
+#endif
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         *_edgeColls[i], clonedCondition, options()->tmpVar(), 1000,
         aql::IndexHint(), indexToUse, onlyEdgeIndexes);
@@ -552,10 +558,18 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildIndexes(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // check that getBestIndexHandleForFilterCondition did not modify
+    // clonedCondition in any way.
+    // this assumption must hold true, because we can only use an edge
+    // index in this method (onlyEdgeIndexes == true) and edge conditions
+    // are always simple.
+    TRI_ASSERT(clonedCondition->toString() == conditionString);
+#endif
 
-    indexAccessors.emplace_back(std::move(indexToUse),
-                                condition->clone(_plan->getAst()), 0, nullptr,
-                                std::nullopt, i, reverse ? opposite : dir);
+    indexAccessors.emplace_back(std::move(indexToUse), clonedCondition, 0,
+                                nullptr, std::nullopt, i,
+                                reverse ? opposite : dir);
   }
 
   return indexAccessors;
