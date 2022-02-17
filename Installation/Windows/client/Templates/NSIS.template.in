@@ -491,6 +491,10 @@ Function hide_install_directory
   ${EndIf}
 FunctionEnd
 
+;--------------------------------
+Function skip_page
+FunctionEnd
+
 Var mycheckbox ; You could just store the HWND in $1 etc if you don't want this extra variable
 
 ;--------------------------------
