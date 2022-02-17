@@ -11,6 +11,7 @@ import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
+import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -235,15 +236,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
               style={{ width: 240, marginTop: '24px' }}
             />
             <br />
-            <Switch
-              checkedChildren="Show collection name"
-              unCheckedChildren="Hide collection name"
-              onChange={onSwitchChange}
-              style={{ marginTop: '24px' }}
-            />
-            <Tooltip title="Set label text by collection. If activated edge label attribute will be ignored.">
-              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
-            </Tooltip>
+            <ParameterEdgeLabelByCollection />
             <br />
             <Switch
               checkedChildren="Color by collections"
