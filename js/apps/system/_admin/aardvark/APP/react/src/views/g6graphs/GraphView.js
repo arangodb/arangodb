@@ -571,6 +571,7 @@ export class GraphView extends React.Component {
         }}
         onLoadFullGraph={() => this.props.onLoadFullGraph}
         onDocumentSelect={(document) => this.highlightDocument(document)}
+        onGraphDataLoaded={(newGraphData) => this.props.onGraphDataLoaded(newGraphData)}
       />
       <Card
           title={this.props.graphName}

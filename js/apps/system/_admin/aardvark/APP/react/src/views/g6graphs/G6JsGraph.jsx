@@ -850,6 +850,7 @@ const G6JsGraph = () => {
               onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
               onClickDocument={(document) => lookUpDocument(document)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
+              onGraphDataLoaded={(newGraphData) => setGraphData(newGraphData)}
         />    
         <AttributesInfo attributes={lookedUpData} /> 
       </UrlParametersContext.Provider>

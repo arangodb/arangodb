@@ -10,7 +10,7 @@ import { EdgeList } from './components/edge-list/edge-list.component';
 import ParameterNodeStart from "./ParameterNodeStart";
 import ButtonSave from "./ButtonSave";
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -56,7 +56,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
 
   const menuActionButtons = <>
     <Space>
-      <ButtonSave />
+      <ButtonSave onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}/>
       <Button>
         Restore default values
       </Button>
@@ -106,16 +106,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
             }
             key="1"
           >
-            <Input
-              addonBefore="Startnode"
-              placeholder="Startnode"
-              suffix={
-                <Tooltip title="A valid node id or space seperated list of id's. If empty a random node will be chosen.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
             <ParameterNodeStart />
             <br />
             <LayoutSelector
