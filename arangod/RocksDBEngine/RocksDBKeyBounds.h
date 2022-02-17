@@ -120,23 +120,21 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all index-entries within a value range belonging to a
   /// specified non-unique index (skiplist and permanent)
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds VPackIndex(uint64_t indexId, VPackSlice const& left,
-                                     VPackSlice const& right);
+  static RocksDBKeyBounds VPackIndex(uint64_t indexId, VPackSlice left,
+                                     VPackSlice right);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
-                                           VPackSlice const& left,
-                                           VPackSlice const& right);
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice left,
+                                           VPackSlice right);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index. this method is used for point lookups
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
-                                           VPackSlice const& left);
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice left);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all views belonging to a specified database
@@ -210,6 +208,9 @@ class RocksDBKeyBounds {
 
   // checks if the bounds' internals are empty
   bool empty() const noexcept { return internals().empty(); }
+
+  void fill(RocksDBEntryType type, uint64_t first, VPackSlice second,
+            VPackSlice third);
 
  private:
   RocksDBKeyBounds();

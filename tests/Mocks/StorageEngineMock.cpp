@@ -134,8 +134,6 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator-mock"; }
 
-  bool hasExtra() const override { return true; }
-
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     // We can at most return limit
     for (size_t l = 0; l < limit; ++l) {
@@ -155,33 +153,6 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
       return prepareNextRange();
     }
     return true;
-  }
-
-  bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
-    auto res = nextImpl(
-        [&](arangodb::LocalDocumentId docId) -> bool {
-          auto res = _collection->getPhysical()->read(
-              _trx, docId,
-              [&](arangodb::LocalDocumentId const& token,
-                  arangodb::velocypack::Slice doc) -> bool {
-                // The nextExtra API in EdgeIndex will deliver the _id value of
-                // the oposite vertex. We simulate that here by reading the real
-                // document one more time and just extracting this value.
-                if (_isFrom) {
-                  return cb(token, doc.get(arangodb::StaticStrings::ToString));
-                } else {
-                  return cb(token,
-                            doc.get(arangodb::StaticStrings::FromString));
-                }
-              },
-              arangodb::ReadOwnWrites::no);
-          // We can only have good responses here.
-          // Otherwise storage and Index do differ
-          TRI_ASSERT(res.ok());
-          return res.ok();
-        },
-        limit);
-    return res;
   }
 
   void resetImpl() override {
@@ -788,8 +759,6 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     _end = _documents.end();
   }
 
-  bool hasCovering() const override { return true; }
-
  private:
   HashIndexMap const& _map;
   std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> _documents;
@@ -825,8 +794,6 @@ class HashIndexMock final : public arangodb::Index {
   char const* typeName() const override { return "hash"; }
 
   bool canBeDropped() const override { return false; }
-
-  bool hasCoveringIterator() const override { return true; }
 
   bool isHidden() const override { return false; }
 
