@@ -301,8 +301,7 @@ class bitvector final {
     }
 
     size_ = (set_.words() * bits_required<word_t>())
-          - math::math_traits<word_t>::clz(*(begin() + set_.words() - 1))
-          ;
+             - std::countl_zero(*(begin() + set_.words() - 1));
   }
 
   void set(size_t i) { reset(i, true); }

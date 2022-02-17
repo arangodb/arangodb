@@ -114,7 +114,7 @@ struct custom_sort: public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {
+      virtual void collect(irs::bytes_ref in) override {
         // NOOP
       }
 
@@ -145,7 +145,7 @@ struct custom_sort: public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {
+      virtual void collect(irs::bytes_ref in) override {
         // NOOP
       }
 
@@ -425,7 +425,7 @@ struct frequency_sort: public irs::sort {
         docs_count = 0;
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {
+      virtual void collect(irs::bytes_ref in) override {
         // NOOP
       }
 

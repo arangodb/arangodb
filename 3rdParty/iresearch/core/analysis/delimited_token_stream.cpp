@@ -29,9 +29,11 @@
 #include "velocypack/velocypack-aliases.h"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
-irs::bytes_ref eval_term(irs::bstring& buf, const irs::bytes_ref& data) {
+irs::bytes_ref eval_term(irs::bstring& buf, irs::bytes_ref data) {
   if (!data.size() || '"' != data[0]) {
     return data; // not a quoted term (even if quotes inside
   }
@@ -62,7 +64,7 @@ irs::bytes_ref eval_term(irs::bstring& buf, const irs::bytes_ref& data) {
   return start != 1 && start == data.size() ? irs::bytes_ref(buf) : data; // return identity for mismatched quotes
 }
 
-size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
+size_t find_delimiter(irs::bytes_ref data, irs::bytes_ref delim) {
   if (delim.null()) {
     return data.size();
   }
@@ -95,7 +97,7 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
-constexpr VPackStringRef DELIMITER_PARAM_NAME {"delimiter"};
+constexpr std::string_view DELIMITER_PARAM_NAME {"delimiter"};
 
 bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
 
@@ -145,7 +147,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -173,7 +175,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder)
   }
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_vpack_config(irs::string_ref args, std::string& definition) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   bool res = normalize_vpack_config(slice, &builder);
@@ -183,7 +185,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
   return res;
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing delimited_token_stream");
@@ -202,7 +204,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing delimited_token_stream");
@@ -228,11 +230,11 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a delimiter to use for tokenization
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_text(irs::string_ref args) {
   return irs::memory::make_unique<irs::analysis::delimited_token_stream>(args);
 }
 
-bool normalize_text_config(const irs::string_ref& delimiter, std::string& definition) {
+bool normalize_text_config(irs::string_ref delimiter, std::string& definition) {
   definition = delimiter;
   return true;
 }
@@ -246,7 +248,7 @@ REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text, normali
 namespace iresearch {
 namespace analysis {
 
-delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
+delimited_token_stream::delimited_token_stream(string_ref delimiter)
   : analyzer(irs::type<delimited_token_stream>::get()),
     delim_(ref_cast<byte_type>(delimiter)) {
   if (!delim_.null()) {
@@ -255,7 +257,7 @@ delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   }
 }
 
-/*static*/ analyzer::ptr delimited_token_stream::make(const string_ref& delimiter) {
+/*static*/ analyzer::ptr delimited_token_stream::make(string_ref delimiter) {
   return make_text(delimiter);
 }
 
@@ -293,7 +295,7 @@ bool delimited_token_stream::next() {
   return true;
 }
 
-bool delimited_token_stream::reset(const string_ref& data) {
+bool delimited_token_stream::reset(string_ref data) {
   data_ = ref_cast<byte_type>(data);
 
   auto& offset = std::get<irs::offset>(attrs_);

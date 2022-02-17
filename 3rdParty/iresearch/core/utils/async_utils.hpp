@@ -42,7 +42,7 @@ namespace async_utils {
 /// @brief spinlock implementation for Win32 since std::mutex cannot be used
 ///        in calls going through dllmain()
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API busywait_mutex final {
+class busywait_mutex final {
  public:
   busywait_mutex();
   ~busywait_mutex();
@@ -52,12 +52,10 @@ class IRESEARCH_API busywait_mutex final {
   void unlock();
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::atomic<std::thread::id> owner_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-class IRESEARCH_API thread_pool {
+class thread_pool {
  public:
   using native_char_t = std::remove_pointer_t<thread_name_t>;
   using clock_t = std::chrono::steady_clock;
@@ -118,7 +116,6 @@ class IRESEARCH_API thread_pool {
     std::shared_ptr<shared_state> shared_state);
   bool maybe_spawn_worker();
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::shared_ptr<shared_state> shared_state_;
   size_t active_{ 0 };
   std::atomic<size_t> threads_{ 0 };
@@ -126,7 +123,6 @@ class IRESEARCH_API thread_pool {
   size_t max_threads_;
   std::priority_queue<task> queue_;
   std::basic_string<native_char_t> worker_name_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // thread_pool
 
 } // async_utils

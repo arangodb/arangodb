@@ -34,7 +34,7 @@ namespace iresearch {
 /// @class cost
 /// @brief represents an estimated cost of the query execution
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API cost final : public attribute {
+class cost final : public attribute {
  public:
   using cost_t = uint64_t;
   using cost_f = std::function<cost_t()> ;
@@ -102,11 +102,9 @@ class IRESEARCH_API cost final : public attribute {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   cost_f func_{[]{ return 0; }}; // evaluation function
   mutable cost_t value_{ 0 };
   mutable bool init_{ true };
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 
 } // ROOT

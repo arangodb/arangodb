@@ -82,7 +82,7 @@ class text_token_stream final
 
   static constexpr string_ref type_name() noexcept { return "text"; }
   static void init(); // for triggering registration in a static build
-  static ptr make(const string_ref& locale);
+  static ptr make(string_ref locale);
   static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
@@ -90,7 +90,7 @@ class text_token_stream final
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(const string_ref& data) override;
+  virtual bool reset(string_ref data) override;
 
  private:
   using attributes = std::tuple<

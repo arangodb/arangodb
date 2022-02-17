@@ -43,8 +43,8 @@ namespace {
 // by default no transformation is performed and value is treated verbatim
 const irs::iql::query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const irs::string_ref& locale,
-     const irs::string_ref& field,
+     irs::string_ref locale,
+     irs::string_ref field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
     irs::bstring minValue;
@@ -78,8 +78,8 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER
 
 const irs::iql::query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const irs::string_ref& locale,
-     const irs::string_ref& field,
+     irs::string_ref locale,
+     irs::string_ref field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
      irs::bstring minValue;
@@ -113,8 +113,8 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER
 
 const irs::iql::query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const irs::string_ref& locale,
-     const irs::string_ref& field,
+     irs::string_ref locale,
+     irs::string_ref field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
     irs::bstring minValue;
@@ -148,8 +148,8 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER
 
 const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const irs::string_ref& locale,
-     const irs::string_ref& field,
+     irs::string_ref locale,
+     irs::string_ref field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
     irs::bstring minValue;
@@ -197,8 +197,8 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER
 
 const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER =
   [](irs::iql::proxy_filter& root,
-     const irs::string_ref& locale,
-     const irs::string_ref& field,
+     irs::string_ref locale,
+     irs::string_ref field,
      void* cookie,
      const std::vector<irs::iql::function_arg>& args)->bool {
     irs::bstring value;
@@ -285,7 +285,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
    public:
     parse_context(
       const std::string& sQuery,
-      const irs::string_ref& locale,
+      irs::string_ref locale,
       void* cookie,
       const irs::iql::functions& functions,
       const irs::iql::query_builder::branch_builders& branch_builders);
@@ -327,13 +327,13 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     irs::iql::parser::semantic_type init(T& node, const query_node& src) const;
     irs::iql::parser::semantic_type initRange(
       irs::iql::proxy_filter& node,
-      const irs::string_ref& field,
+      irs::string_ref field,
       const irs::iql::parser::semantic_type& min_node_id, bool min_inclusive,
       const irs::iql::parser::semantic_type& max_value_id, bool max_inclusive
     ) const;
     irs::iql::parser::semantic_type initSimilar(
       irs::iql::proxy_filter& node,
-      const irs::string_ref& field,
+      irs::string_ref field,
       const irs::iql::parser::semantic_type& value_id
     ) const;
     irs::iql::parser::semantic_type order(
@@ -348,7 +348,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   parse_context::parse_context(
     const std::string& sQuery,
-    const irs::string_ref& locale,
+    irs::string_ref locale,
     void* cookie,
     const irs::iql::functions& functions,
     const irs::iql::query_builder::branch_builders& branch_builders
@@ -590,7 +590,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         std::move(fnArgs),
         [this, node_id](
             irs::iql::proxy_filter& node,
-            const irs::string_ref&,
+            irs::string_ref,
             void* const&,
             const irs::iql::function_arg::fn_args_t& args)->bool {
           return args.empty() && SUCCESS == init(node.proxy<irs::Or>(), find_node(node_id));
@@ -600,7 +600,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
      case query_node::NodeType::INTERSECTION:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
           irs::iql::proxy_filter& node,
-          const irs::string_ref&, void* const&,
+          irs::string_ref, void* const&,
           const irs::iql::function_arg::fn_args_t& args)->bool {
         return args.empty() && SUCCESS == init(node.proxy<irs::And>(), find_node(node_id));
       });
@@ -608,7 +608,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
      case query_node::NodeType::BOOL_TRUE:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
           irs::iql::proxy_filter& node,
-          const irs::string_ref&,
+          irs::string_ref,
           void* const&,
           const irs::iql::function_arg::fn_args_t& args)->bool {
         auto& argNode = find_node(node_id);
@@ -637,7 +637,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         if (node.bNegated) {
           auto fnBranchArg = [this, node_id](
             irs::iql::proxy_filter& node,
-            const irs::string_ref& locale,
+            irs::string_ref locale,
             void* const& cookie,
             const std::vector<irs::iql::function_arg>& args
           )->bool {
@@ -679,7 +679,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
      case query_node::NodeType::LIKE:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
           irs::iql::proxy_filter& node,
-          const irs::string_ref&,
+          irs::string_ref,
           void* const&,
           const irs::iql::function_arg::fn_args_t& args)->bool {
         auto& argNode = find_node(node_id);
@@ -808,7 +808,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   irs::iql::parser::semantic_type parse_context::initRange(
     irs::iql::proxy_filter& node,
-    const irs::string_ref& field,
+    irs::string_ref field,
     const irs::iql::parser::semantic_type& min_node_id, bool min_inclusive,
     const irs::iql::parser::semantic_type& max_value_id, bool max_inclusive
   ) const {
@@ -865,7 +865,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   irs::iql::parser::semantic_type parse_context::initSimilar(
     irs::iql::proxy_filter& node,
-    const irs::string_ref& field,
+    irs::string_ref field,
     const irs::iql::parser::semantic_type& value_id
   ) const {
     irs::iql::function_arg::fn_args_t args;
@@ -925,7 +925,7 @@ query_builder::query_builder(
 
 query query_builder::build(
   const std::string& query,
-  const irs::string_ref& locale,
+  irs::string_ref locale,
   void* cookie /*= nullptr*/,
   proxy_filter* root /*= nullptr*/
 ) const {

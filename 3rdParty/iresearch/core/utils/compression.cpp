@@ -146,12 +146,12 @@ compression_registrar::compression_registrar(
   }
 }
 
-bool exists(const string_ref& name, bool load_library /*= true*/ ) {
+bool exists(string_ref name, bool load_library /*= true*/ ) {
   return !compression_register::instance().get(name, load_library).empty();
 }
 
 compressor::ptr get_compressor(
-    const string_ref& name,
+    string_ref name,
     const options& opts,
     bool load_library /*= true*/) noexcept {
   try {
@@ -165,7 +165,7 @@ compressor::ptr get_compressor(
   return nullptr;
 }
 
-decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*= true*/) noexcept {
+decompressor::ptr get_decompressor(string_ref name, bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance().get(name, load_library).decompressor_factory_;
 
@@ -189,8 +189,8 @@ void load_all(const std::string& path) {
   load_libraries(path, FILENAME_PREFIX, "");
 }
 
-bool visit(const std::function<bool(const string_ref&)>& visitor) {
-  compression_register::visitor_t wrapper = [&visitor](const string_ref& key)->bool {
+bool visit(const std::function<bool(string_ref)>& visitor) {
+  compression_register::visitor_t wrapper = [&visitor](string_ref key)->bool {
     return visitor(key);
   };
 

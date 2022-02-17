@@ -42,7 +42,7 @@ class by_phrase;
 /// @class by_phrase_options
 /// @brief options for phrase filter
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_phrase_options {
+class by_phrase_options {
  private:
   using phrase_part = std::variant<
     by_term_options,
@@ -181,7 +181,7 @@ class IRESEARCH_API by_phrase_options {
 /// @class by_phrase
 /// @brief user-side phrase filter
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
+class by_phrase : public filter_base<by_phrase_options> {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @returns features required for filter

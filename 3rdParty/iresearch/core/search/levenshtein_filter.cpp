@@ -179,9 +179,9 @@ void visit(
 template<typename Collector>
 bool collect_terms(
     const index_reader& index,
-    const string_ref& field,
-    const bytes_ref& prefix,
-    const bytes_ref& term,
+    string_ref field,
+    bytes_ref prefix,
+    bytes_ref term,
     const parametric_description& d,
     Collector& collector) {
   const auto acceptor = make_levenshtein_automaton(d, prefix, term);
@@ -212,9 +212,9 @@ filter::prepared::ptr prepare_levenshtein_filter(
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& prefix,
-    const bytes_ref& term,
+    string_ref field,
+    bytes_ref prefix,
+    bytes_ref term,
     size_t terms_limit,
     const parametric_description& d) {
   field_collectors field_stats(order);
@@ -282,8 +282,8 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance) // cppcheck-suppress unknownMacro
             const bytes_ref term) -> field_visitor {
       struct automaton_context : util::noncopyable {
         automaton_context(const parametric_description& d,
-                          const bytes_ref& prefix,
-                          const bytes_ref& term)
+                          bytes_ref prefix,
+                          bytes_ref term)
           : acceptor(make_levenshtein_automaton(d, prefix, term)),
             matcher(make_automaton_matcher(acceptor)) {
         }
@@ -317,13 +317,13 @@ DEFINE_FACTORY_DEFAULT(by_edit_distance) // cppcheck-suppress unknownMacro
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& term,
+    string_ref field,
+    bytes_ref term,
     size_t scored_terms_limit,
     byte_type max_distance,
     options_type::pdp_f provider,
     bool with_transpositions,
-    const bytes_ref& prefix) {
+    bytes_ref prefix) {
 
   return executeLevenshtein(
     max_distance, provider, with_transpositions, prefix, term,

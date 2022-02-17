@@ -85,7 +85,7 @@ arangodb::aql::Variable const* getScorerRef(
   return reinterpret_cast<arangodb::aql::Variable const*>(arg0->getData());
 }
 
-bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
+bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
                 arangodb::aql::AstNode const& args,
                 arangodb::iresearch::QueryContext const& ctx) {
   TRI_ASSERT(!args.numMembers() ||
@@ -147,7 +147,7 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
   return bool(scorer);
 }
 
-bool fromFCall(irs::sort::ptr* scorer, irs::string_ref const& scorerName,
+bool fromFCall(irs::sort::ptr* scorer, irs::string_ref scorerName,
                arangodb::aql::AstNode const* args,
                arangodb::iresearch::QueryContext const& ctx) {
   auto const* ref = getScorerRef(args);

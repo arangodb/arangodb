@@ -36,7 +36,7 @@ namespace {
 #endif
 
 // use inline to avoid GCC warning
-inline bool append_path(std::string& buf, const irs::string_ref& value) {
+inline bool append_path(std::string& buf, irs::string_ref value) {
   buf.append(value.c_str(), value.size());
 
   return true;
@@ -61,7 +61,7 @@ utf8_path::utf8_path(const std::string& utf8_path) {
   }
 }
 
-utf8_path::utf8_path(const irs::string_ref& utf8_path) {
+utf8_path::utf8_path(irs::string_ref utf8_path) {
   if (utf8_path.null()) {
     std::basic_string<native_char_t> buf;
 
@@ -92,7 +92,7 @@ utf8_path& utf8_path::operator+=(const std::string &utf8_name) {
   return *this;
 }
 
-utf8_path& utf8_path::operator+=(const string_ref& utf8_name) {
+utf8_path& utf8_path::operator+=(string_ref utf8_name) {
   if (!append_path(path_, utf8_name)) {
     // emulate boost::filesystem behaviour by throwing an exception
     throw io_error("path conversion failure");
@@ -118,7 +118,7 @@ utf8_path& utf8_path::operator/=(const std::string &utf8_name) {
   return *this;
 }
 
-utf8_path& utf8_path::operator/=(const string_ref& utf8_name) {
+utf8_path& utf8_path::operator/=(string_ref utf8_name) {
   if (!path_.empty()) {
     path_.append(1, file_path_delimiter);
   }

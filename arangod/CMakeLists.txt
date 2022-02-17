@@ -45,8 +45,6 @@ endif ()
 ## IResearch
 ################################################################################
 
-find_package(IResearch REQUIRED)
-
 list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/ApplicationServerHelper.h
   IResearch/AqlHelper.h

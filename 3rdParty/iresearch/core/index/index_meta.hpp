@@ -45,21 +45,21 @@ typedef std::shared_ptr<const format> format_ptr;
 }
 
 // format_ptr
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro 
+MSVC_ONLY(template class std::shared_ptr<const irs::format>;) // cppcheck-suppress unknownMacro
 
 namespace iresearch {
 
 struct directory;
 class index_writer;
 
-struct IRESEARCH_API segment_meta {
+struct segment_meta {
   using file_set = absl::flat_hash_set<std::string>;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
   segment_meta(segment_meta&& rhs)
       noexcept(noexcept(std::is_nothrow_move_constructible_v<file_set>));
-  segment_meta(const string_ref& name, format_ptr codec);
+  segment_meta(string_ref name, format_ptr codec);
   segment_meta(std::string&& name,
                format_ptr codec,
                uint64_t docs_count,
@@ -100,9 +100,9 @@ inline bool has_columnstore(const segment_meta& meta) noexcept {
 static_assert(std::is_nothrow_move_constructible_v<segment_meta>);
 static_assert(std::is_nothrow_move_assignable_v<segment_meta>);
 
-class IRESEARCH_API index_meta {
+class index_meta {
  public:
-  struct IRESEARCH_API index_segment_t {
+  struct index_segment_t {
     index_segment_t() = default;
     // cppcheck-suppress noExplicitConstructor
     index_segment_t(segment_meta&& meta);
@@ -227,14 +227,12 @@ class IRESEARCH_API index_meta {
   friend struct index_meta_reader;
   friend struct index_meta_writer;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   uint64_t gen_;
   uint64_t last_gen_;
   std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
   bstring payload_buf_;
   bytes_ref payload_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 
   uint64_t next_generation() const noexcept;
 

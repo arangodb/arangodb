@@ -38,7 +38,7 @@ struct filter_visitor;
 /// @struct by_granular_range_options
 /// @brief options for granular range filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_granular_range_options {
+struct by_granular_range_options {
   using filter_type = by_granular_range;
 
   using terms = std::vector<bstring>;
@@ -82,7 +82,7 @@ void set_granular_term(by_granular_range_options::terms& boundary, T&& value) {
 /// @brief convenient helper for setting granular term at a specified range
 ///        boundary
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void set_granular_term(
+void set_granular_term(
   by_granular_range_options::terms& boundary,
   numeric_token_stream& term);
 
@@ -97,7 +97,7 @@ IRESEARCH_API void set_granular_term(
 ///              termA@0 + termA@2 + termA@5 + termA@10
 ///              termB@0 + termB@2 + termB@6 + termB@10
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_granular_range
+class by_granular_range
     : public filter_base<by_granular_range_options> {
  public:
   static ptr make();
@@ -106,7 +106,7 @@ class IRESEARCH_API by_granular_range
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit);
 
