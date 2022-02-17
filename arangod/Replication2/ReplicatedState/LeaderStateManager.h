@@ -55,7 +55,7 @@ struct LeaderStateManager
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
-  void run();
+  void run() noexcept;
 
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,

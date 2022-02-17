@@ -236,7 +236,7 @@ void FollowerStateManager<S>::awaitLeaderShip() {
 }
 
 template<typename S>
-void FollowerStateManager<S>::run() {
+void FollowerStateManager<S>::run() noexcept {
   // 1. wait for log follower to have committed at least one entry
   // 2. receive a new snapshot (if required)
   //    if (old_generation != new_generation || snapshot_status != Completed)

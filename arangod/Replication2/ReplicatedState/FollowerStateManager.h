@@ -48,7 +48,7 @@ struct FollowerStateManager
       std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
-  void run();
+  void run() noexcept;
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 

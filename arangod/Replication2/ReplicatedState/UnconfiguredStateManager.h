@@ -52,7 +52,7 @@ struct UnconfiguredStateManager
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token);
 
-  void run();
+  void run() noexcept;
 
   [[nodiscard]] auto getStatus() const -> StateStatus override;
 

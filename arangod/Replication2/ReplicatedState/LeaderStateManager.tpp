@@ -27,7 +27,7 @@
 
 namespace arangodb::replication2::replicated_state {
 template<typename S>
-void LeaderStateManager<S>::run() {
+void LeaderStateManager<S>::run() noexcept {
   // 1. wait for leadership established
   // 1.2. digest available entries into multiplexer
   // 2. construct leader state

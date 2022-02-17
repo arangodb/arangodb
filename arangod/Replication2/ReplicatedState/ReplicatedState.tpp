@@ -189,6 +189,7 @@ auto ReplicatedState<S>::GuardedData::runFollower(
       std::move(token), _self.factory);
   currentManager = manager;
 
+  static_assert(noexcept(manager->run()));
   return DeferredAction{[manager]() noexcept { manager->run(); }};
 } catch (std::exception const& e) {
   LOG_TOPIC("ab9de", DEBUG, Logger::REPLICATED_STATE)
@@ -207,6 +208,7 @@ auto ReplicatedState<S>::GuardedData::runLeader(
       std::move(token), _self.factory);
   currentManager = manager;
 
+  static_assert(noexcept(manager->run()));
   return DeferredAction{[manager]() noexcept { manager->run(); }};
 } catch (std::exception const& e) {
   LOG_TOPIC("016f3", DEBUG, Logger::REPLICATED_STATE)
@@ -227,6 +229,7 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
       std::move(core), std::move(token));
   currentManager = manager;
 
+  static_assert(noexcept(manager->run()));
   return DeferredAction{[manager]() noexcept { manager->run(); }};
 } catch (std::exception const& e) {
   LOG_TOPIC("6f1eb", DEBUG, Logger::REPLICATED_STATE)
