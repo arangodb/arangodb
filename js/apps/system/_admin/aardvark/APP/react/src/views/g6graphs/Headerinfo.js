@@ -9,6 +9,7 @@ import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
 import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
+import ParameterLimit from "./ParameterLimit";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -135,16 +136,8 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
             <br />
             <ParameterDepth />
             <br />
-            <Input
-              addonBefore="Limit"
-              placeholder="Limit"
-              suffix={
-                <Tooltip title="Limit nodes count. If empty or zero, no limit is set.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px', marginBottom: '24px' }}
-            />
+            <ParameterLimit />
+            <br />
           </TabPane>
           <TabPane
             tab={
