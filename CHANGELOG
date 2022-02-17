@@ -3,6 +3,11 @@ devel
 
 * Internal refactoring of IndexIterator APIs.
 
+* Added back the optimization for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated), handling them 
+  in a special way without performing any writes, also excluding such special 
+  cases of operation from replication to followers.
+
 * Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
 
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
