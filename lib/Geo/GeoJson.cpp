@@ -377,13 +377,11 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region,
 
     // subsequent loops must be holes within first loop:
     if (loops.size() > 1 && !loops.front()->Contains(loop)) {
-      bool bad = false;
-      if (legacy) {
-        bad = true;
-      } else {
+      bool bad = true;
+      if (!legacy) {
         loop->Invert();
-        if (!loops.front()->Contains(loop)) {
-          bad = true;
+        if (loops.front()->Contains(loop)) {
+          bad = false;
         }
       }
       if (bad) {
@@ -505,13 +503,11 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
       // Any subsequent loop must be a hole within first loop
       if (outerLoop + 1 < loops.size() &&
           !loops[outerLoop]->Contains(loops.back().get())) {
-        bool bad = false;
-        if (legacy) {
-          bad = true;
-        } else {
+        bool bad = true;
+        if (!legacy) {
           loop->Invert();
-          if (!loops[outerLoop]->Contains(loop)) {
-            bad = true;
+          if (loops[outerLoop]->Contains(loop)) {
+            bad = false;
           }
         }
         if (bad) {
