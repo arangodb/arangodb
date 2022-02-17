@@ -453,8 +453,9 @@ void EnvironmentFeature::prepare() {
       }
       LOG_TOPIC("51705", WARN, arangodb::Logger::COMMUNICATION)
           << "Parent process id ppid = " << parentId
-          << (procName != "" ? ". Process name =\"" + std::string(procName)
-             + "\"" : "");
+          << (procName != ""
+                  ? ". Process name =\"" + std::string(procName) + "\""
+                  : "");
     }
   } catch (...) {
   }
