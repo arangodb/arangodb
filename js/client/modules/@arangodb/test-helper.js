@@ -151,11 +151,24 @@ exports.getChecksum = function (endpoint, name) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW( '/_api/collection/' + name + '/checksum');
+    let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
     if (res.code !== 200) {
       throw "Error getting collection checksum";
     }
     return res.parsedBody.checksum;
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+};
+exports.getMetricRaw = function (endpoint) {
+  const primaryEndpoint = arango.getEndpoint();
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.GET_RAW('/_admin/metrics/v2');
+    if (res.code !== 200) {
+      throw "error fetching metric";
+    }
+    return res.body;
   } finally {
     reconnectRetry(primaryEndpoint, "_system", "root", "");
   }

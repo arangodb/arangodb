@@ -34,11 +34,11 @@
 #include <filesystem>
 #include <regex>
 
-#include "Aql/QueryRegistry.h"
 #include "Basics/files.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/common.h"
 #include "IResearchTestCompressor.h"

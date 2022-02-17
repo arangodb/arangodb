@@ -22,15 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "RestServer/arangod.h"
+
 #include <string>
 #include <string_view>
 
+namespace arangodb::velocypack {
+
+class Builder;
+
+}  // namespace arangodb::velocypack
 namespace arangodb::metrics {
 
 class IBatch {
  public:
   virtual void toPrometheus(std::string& result,
                             std::string_view globals) const = 0;
+
+  virtual void toVPack(velocypack::Builder& builder, ArangodServer&) const = 0;
 
   virtual size_t remove(std::string_view labels) = 0;
 
