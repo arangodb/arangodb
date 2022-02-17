@@ -110,8 +110,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
         _begin(_map.end()),
         _end(_map.end()),
         _keys(std::move(keys)),
-        _keysIt(_keys->slice()),
-        _isFrom(isFrom) {}
+        _keysIt(_keys->slice()) {}
 
   bool prepareNextRange() {
     if (_keysIt.valid()) {
@@ -167,7 +166,6 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
   Map::const_iterator _end;
   std::unique_ptr<VPackBuilder> _keys;
   arangodb::velocypack::ArrayIterator _keysIt;
-  bool _isFrom;
 };  // EdgeIndexIteratorMock
 
 class EdgeIndexMock final : public arangodb::Index {
