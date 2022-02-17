@@ -156,6 +156,7 @@ Function un.ReadSettings
 
   ;MessageBox MB_OK "Add to path: $ADD_TO_PATH"
   ReadRegStr $ADD_DESKTOP_ICON         SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
+FunctionEnd
 
 !include Sections.nsh
 
