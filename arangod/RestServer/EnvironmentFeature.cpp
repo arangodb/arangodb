@@ -49,29 +49,22 @@
 
 namespace {
 std::string_view trimProcName(std::string_view const& content) {
-  auto findSecondWord = [](const std::string_view& data, const char begin,
-                           const char end) -> std::string_view {
-    size_t firstSpacePos = data.find(begin);
-    if (firstSpacePos == data.npos || ++firstSpacePos > data.size()) {
-      return {};
+  std::size_t pos = content.find(' ');
+  if (pos != std::string_view::npos && pos + 1 < content.size()) {
+    std::size_t pos2 = std::string_view::npos;
+    if (content[++pos] == '(') {
+      ++pos;
+      if (pos + 1 < content.size()) {
+        pos2 = content.find(')', pos);
+      }
+    } else {
+      pos2 = content.find(' ', pos);
     }
-    size_t secondSpacePos = data.find(end, firstSpacePos);
-    if (secondSpacePos == data.npos || secondSpacePos > data.size()) {
-      return {};
+    if (pos2 != std::string_view::npos) {
+      return content.substr(pos, pos2 - pos);
     }
-    return data.substr(firstSpacePos, secondSpacePos - firstSpacePos);
-  };
-
-  size_t firstSpacePos = content.find(' ');
-  if (firstSpacePos == content.npos || firstSpacePos + 1 > content.size()) {
-    return {};
   }
-  char firstCharAfterFirstSpacePos = content[firstSpacePos + 1];
-  if (firstCharAfterFirstSpacePos == '(') {
-    return findSecondWord(content, '(', ')');
-  } else {
-    return findSecondWord(content, ' ', ' ');
-  }
+  return {};
 }
 }  // namespace
 
