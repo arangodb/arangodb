@@ -13,6 +13,7 @@ import ParameterLimit from "./ParameterLimit";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
 import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
+import ParameterEdgeLabel from "./ParameterEdgeLabel";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -217,16 +218,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
             }
             key="3"
           >
-            <Input
-              addonBefore="Label"
-              placeholder="Attribute"
-              suffix={
-                <Tooltip title="Default edge label">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
+            <ParameterEdgeLabel />
             <br />
             <ParameterEdgeLabelByCollection />
             <br />
