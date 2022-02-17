@@ -1,6 +1,12 @@
 v3.7.18 (XXXX-XX-XX)
 --------------------
 
+* Fixed an assertion failure which could occur when there was an error in
+  the HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP
+  header parsing).
+
 * Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
   did not work properly. The supplied data by sending a PUT request has not been
   stored to the correct location. The Web UI uses this endpoint to store its
