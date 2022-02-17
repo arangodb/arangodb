@@ -23,7 +23,7 @@ git diff --cached --diff-filter=ACMRT --name-only -- arangod/ lib/ client-tools/
 if [ -s "$changed_files_filename" ]; then
   # hand over a list of changed files from the local filesystem into a Docker container that contains a fixed
   # version of clang-format and some small shell wrapper to iterate over the list of files
-  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb jsteemann/clang-format-docker:0.2 "validate" "$changed_files_filename"
+  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb jsteemann/clang-format-docker:0.3 "validate" "$changed_files_filename"
 fi
 status=$?
 
