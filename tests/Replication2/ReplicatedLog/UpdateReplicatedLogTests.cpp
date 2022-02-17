@@ -25,6 +25,7 @@
 
 #include "Basics/voc-errors.h"
 
+#include <Replication2/Mocks/FakeFailureOracle.h>
 #include <Replication2/ReplicatedLog/Algorithms.h>
 
 #include <utility>
@@ -86,7 +87,8 @@ struct ReplicationMaintenanceActionTest : ReplicatedLogTest,
 TEST_F(ReplicationMaintenanceActionTest, drop_replicated_log) {
   auto const logId = LogId{12};
   algorithms::updateReplicatedLog(*this, ParticipantId{"A"}, RebootId{17},
-                                  logId, nullptr);
+                                  logId, nullptr,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 0);
 }
@@ -101,7 +103,8 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log) {
   spec.currentTerm->term = LogTerm{8};
   spec.participantsConfig.participants[serverId] = {};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
@@ -121,7 +124,8 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader) {
   spec.currentTerm->leader =
       agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
@@ -146,7 +150,8 @@ TEST_F(ReplicationMaintenanceActionTest,
   spec.currentTerm->leader =
       agency::LogPlanTermSpecification::Leader{serverId, RebootId{18}};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
@@ -171,7 +176,8 @@ TEST_F(ReplicationMaintenanceActionTest,
   spec.currentTerm->leader =
       agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
@@ -197,7 +203,8 @@ TEST_F(ReplicationMaintenanceActionTest,
   spec.currentTerm->leader =
       agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
-  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
+  algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
+                                  std::make_shared<FakeFailureOracle>());
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);

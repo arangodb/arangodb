@@ -480,7 +480,8 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   }
 
   TRI_ASSERT(value.isObject() || value.isNull());
-  _expressionCtx.setVariable(_tmpVar, value);
+  _expressionCtx.setVariableValue(_tmpVar,
+                                  AqlValue(AqlValueHintSliceNoCopy(value)));
   ScopeGuard defer(
       [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
   bool mustDestroy = false;
@@ -488,7 +489,6 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
-  _expressionCtx.clearVariable(_tmpVar);
   if (!result) {
     cache()->increaseFilterCounter();
   }

@@ -23,27 +23,82 @@
 
 #pragma once
 
-#include "Aql/QueryExpressionContext.h"
+#include "Aql/DocumentProducingExpressionContext.h"
 
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-namespace aql {
+namespace transaction {
+class Methods;
+}
 
-class DocumentExpressionContext final : public QueryExpressionContext {
+namespace aql {
+class InputAqlItemRow;
+class QueryContext;
+struct Variable;
+
+// Expression context used when filtering on full documents or on index values
+class DocumentExpressionContext : public DocumentProducingExpressionContext {
  public:
-  DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
-                            AqlFunctionsInternalCache& cache,
-                            arangodb::velocypack::Slice document) noexcept;
+  DocumentExpressionContext(
+      transaction::Methods& trx, QueryContext& query,
+      aql::AqlFunctionsInternalCache& cache,
+      std::vector<std::pair<VariableId, RegisterId>> const&
+          filterVarsToRegister,
+      InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept;
 
   ~DocumentExpressionContext() = default;
 
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only used for assertions
+  bool isLateMaterialized() const noexcept final { return false; }
+#endif
 
- private:
-  /// @brief temporary storage for expression data context
+  void setCurrentDocument(arangodb::velocypack::Slice document) noexcept {
+    _document = document;
+  }
+
+ protected:
+  Variable const* _outputVariable;
+
+  // brief temporary storage for expression data context (changing for
+  // every input row)
   arangodb::velocypack::Slice _document;
 };
+
+// expression context which only has a single variable (the current document or
+// index entry!)
+class SimpleDocumentExpressionContext final : public DocumentExpressionContext {
+ public:
+  SimpleDocumentExpressionContext(
+      transaction::Methods& trx, QueryContext& query,
+      aql::AqlFunctionsInternalCache& cache,
+      std::vector<std::pair<VariableId, RegisterId>> const&
+          filterVarsToRegister,
+      InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept;
+
+  ~SimpleDocumentExpressionContext() = default;
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
+};
+
+// expression context which only has multiple variables available
+class GenericDocumentExpressionContext final
+    : public DocumentExpressionContext {
+ public:
+  GenericDocumentExpressionContext(
+      transaction::Methods& trx, QueryContext& query,
+      aql::AqlFunctionsInternalCache& cache,
+      std::vector<std::pair<VariableId, RegisterId>> const&
+          filterVarsToRegister,
+      InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept;
+
+  ~GenericDocumentExpressionContext() = default;
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
+};
+
 }  // namespace aql
 }  // namespace arangodb

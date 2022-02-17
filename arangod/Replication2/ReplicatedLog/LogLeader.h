@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
@@ -69,6 +70,9 @@ namespace arangodb::futures {
 template<typename T>
 class Try;
 }
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
 namespace arangodb::replication2::algorithms {
 struct ParticipantStateTuple;
 }
@@ -93,7 +97,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::shared_ptr<ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-      std::shared_ptr<ReplicatedLogGlobalSettings const> options)
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      std::shared_ptr<cluster::IFailureOracle const> failureOracle)
       -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false)
@@ -146,6 +151,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   auto waitForLeadership() -> WaitForFuture override;
 
+  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
+
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
@@ -168,7 +175,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             LogConfig config, ParticipantId id, LogTerm term,
-            LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog);
+            LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
+            std::shared_ptr<cluster::IFailureOracle const> failureOracle);
 
  private:
   struct GuardedLeaderData;
@@ -307,6 +315,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
         _follower{};
     WaitForQueue _waitForQueue{};
+    WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
     LogIndex _lowestIndexToKeep{0};
@@ -325,6 +334,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
+  std::shared_ptr<cluster::IFailureOracle const> const _failureOracle;
   LogConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;

@@ -152,3 +152,7 @@ test::AsyncLeader::~AsyncLeader() {
     stop();
   }
 }
+
+auto test::AsyncLeader::waitForResign() -> futures::Future<futures::Unit> {
+  return _leader->waitForResign();
+}

@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "StateMachineTestHelper.h"
+#include "Replication2/Mocks/FakeFailureOracle.h"
 
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -114,7 +115,8 @@ struct Leader : ParticipantBase {
         });
 
     this->log = log->becomeLeader(config, std::move(id), term, follower,
-                                  participantsConfig);
+                                  participantsConfig,
+                                  std::make_shared<test::FakeFailureOracle>());
   }
 
   std::shared_ptr<replicated_log::LogLeader> log;
