@@ -52,11 +52,11 @@ inline constexpr std::string_view StringApplyRecentEntries =
 inline constexpr std::string_view StringUninitializedState =
     "UninitializedState";
 
-inline constexpr auto StringRole = velocypack::StringRef{"role"};
-inline constexpr auto StringDetail = velocypack::StringRef{"detail"};
-inline constexpr auto StringManagerState =
-    velocypack::StringRef{"managerState"};
-inline constexpr auto StringLog = velocypack::StringRef{"log"};
+inline constexpr auto StringRole = std::string_view{"role"};
+inline constexpr auto StringUnconfigured = std::string_view{"unconfigured"};
+inline constexpr auto StringDetail = std::string_view{"detail"};
+inline constexpr auto StringManagerState = std::string_view{"managerState"};
+inline constexpr auto StringLog = std::string_view{"log"};
 
 auto followerStateFromString(std::string_view str) -> FollowerInternalState {
   if (str == StringUninitializedState) {
@@ -141,6 +141,8 @@ auto StateStatus::fromVelocyPack(velocypack::Slice slice) -> StateStatus {
     return StateStatus{LeaderStatus::fromVelocyPack(slice)};
   } else if (role == StaticStrings::Follower) {
     return StateStatus{FollowerStatus::fromVelocyPack(slice)};
+  } else if (role == StringUnconfigured) {
+    return StateStatus{UnconfiguredStatus::fromVelocyPack(slice)};
   } else {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER, "unknown role %*s",
                                   role.size(), role.data());
@@ -165,6 +167,25 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(velocypack::Value("snapshot"));
   snapshot.toVelocyPack(builder);
   builder.add("generation", velocypack::Value(generation.value));
+}
+
+void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  builder.add(StringRole, velocypack::Value(StringUnconfigured));
+  builder.add(velocypack::Value("snapshot"));
+  snapshot.toVelocyPack(builder);
+  builder.add("generation", velocypack::Value(generation.value));
+}
+
+auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice s)
+    -> UnconfiguredStatus {
+  TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Follower);
+  auto generation = s.get(StringLog).extract<StateGeneration>();
+  auto snapshot = SnapshotInfo::fromVelocyPack(s.get("snapshot"));
+  return UnconfiguredStatus{
+      .generation = generation,
+      .snapshot = snapshot,
+  };
 }
 
 auto FollowerStatus::fromVelocyPack(velocypack::Slice s) -> FollowerStatus {

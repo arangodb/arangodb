@@ -274,7 +274,10 @@ const allServersHealthy = function () {
 
 const checkServerHealth = function (serverId, value) {
   return function () {
-    return value === getServerHealth(serverId);
+    if (value === getServerHealth(serverId)) {
+      return true;
+    }
+    return Error(`${serverId} is not ${value}`);
   };
 };
 
@@ -287,7 +290,7 @@ const continueServerWaitOk = function (serverId) {
 };
 
 const stopServerWaitFailed = function (serverId) {
-  continueServer(serverId);
+  stopServer(serverId);
   waitFor(serverFailed(serverId));
 };
 
@@ -450,3 +453,6 @@ exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
 exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.createReplicatedLog = createReplicatedLog;
+exports.checkRequestResult = checkRequestResult;
+exports.getServerUrl = getServerUrl;
+exports.getServerHealth = getServerHealth;

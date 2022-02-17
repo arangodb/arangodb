@@ -47,49 +47,94 @@ endif ()
 
 find_package(IResearch REQUIRED)
 
-add_library(arango_iresearch
-  STATIC
-  IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
-  IResearch/AqlHelper.cpp IResearch/AqlHelper.h
-  IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
-  IResearch/Geo.cpp IResearch/Geo.h
-  IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
-  IResearch/GeoFilter.cpp IResearch/GeoFilter.h
-  IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
-  IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
-  IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
-  IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
-  IResearch/IResearchDataStore.cpp IResearch/IResearchDataStore.h
-  IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
-  IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
-  IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
-  IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
-  IResearch/IResearchFilterOptimization.cpp IResearch/IResearchFilterOptimization.h
-  IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
-  IResearch/IResearchInvertedIndex.h IResearch/IResearchInvertedIndex.cpp
-  IResearch/IResearchInvertedIndexMeta.h IResearch/IResearchInvertedIndexMeta.cpp
-  IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
-  IResearch/IResearchLink.cpp IResearch/IResearchLink.h
-  IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
-  IResearch/IResearchLinkHelper.cpp IResearch/IResearchLinkHelper.h
-  IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
-  IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
-  IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
-  IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
-  IResearch/IResearchRocksDBEncryption.cpp IResearch/IResearchRocksDBEncryption.h
-  IResearch/IResearchRocksDBInvertedIndex.cpp IResearch/IResearchRocksDBInvertedIndex.h
-  IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
-  IResearch/IResearchRocksDBRecoveryHelper.cpp
+list(APPEND ARANGO_IRESEARCH_HEADERS
+  IResearch/ApplicationServerHelper.h
+  IResearch/AqlHelper.h
+  IResearch/ExpressionFilter.h
+  IResearch/Geo.h
+  IResearch/GeoAnalyzer.h
+  IResearch/GeoFilter.h
+  IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAqlAnalyzer.h
+  IResearch/IResearchCommon.h
+  IResearch/IResearchCompression.h
+  IResearch/IResearchDataStore.h
+  IResearch/IResearchDocument.h
+  IResearch/IResearchExpressionContext.h
+  IResearch/IResearchFeature.h
+  IResearch/IResearchFilterFactory.h
+  IResearch/IResearchFilterOptimization.h
+  IResearch/IResearchIdentityAnalyzer.h
+  IResearch/IResearchInvertedIndex.h
+  IResearch/IResearchInvertedIndexMeta.h
+  IResearch/IResearchKludge.h
+  IResearch/IResearchLink.h
+  IResearch/IResearchLinkCoordinator.h
+  IResearch/IResearchLinkHelper.h
+  IResearch/IResearchLinkMeta.h
+  IResearch/IResearchOrderFactory.h
+  IResearch/IResearchPDP.h
+  IResearch/IResearchPrimaryKeyFilter.h
+  IResearch/IResearchRocksDBEncryption.h
+  IResearch/IResearchRocksDBInvertedIndex.h
+  IResearch/IResearchRocksDBLink.h
   IResearch/IResearchRocksDBRecoveryHelper.h
-  IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
-  IResearch/IResearchView.cpp IResearch/IResearchView.h
-  IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
-  IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
-  IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
-  IResearch/IResearchViewStoredValues.cpp IResearch/IResearchViewStoredValues.h
-  IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
-  RestHandler/RestAnalyzerHandler.cpp RestHandler/RestAnalyzerHandler.h
-)
+  IResearch/IResearchVPackComparer.h
+  IResearch/IResearchView.h
+  IResearch/IResearchViewCoordinator.h
+  IResearch/IResearchViewMeta.h
+  IResearch/IResearchViewSort.h
+  IResearch/IResearchViewStoredValues.h
+  IResearch/VelocyPackHelper.h
+  RestHandler/RestAnalyzerHandler.h
+  )
+
+list(APPEND ARANGO_IRESEARCH_SOURCES
+  IResearch/ApplicationServerHelper.cpp
+  IResearch/AqlHelper.cpp
+  IResearch/ExpressionFilter.cpp
+  IResearch/Geo.cpp
+  IResearch/GeoAnalyzer.cpp
+  IResearch/GeoFilter.cpp
+  IResearch/IResearchAnalyzerFeature.cpp
+  IResearch/IResearchAqlAnalyzer.cpp
+  IResearch/IResearchCommon.cpp
+  IResearch/IResearchCompression.cpp
+  IResearch/IResearchDataStore.cpp
+  IResearch/IResearchDocument.cpp
+  IResearch/IResearchExpressionContext.cpp
+  IResearch/IResearchFeature.cpp
+  IResearch/IResearchFilterFactory.cpp
+  IResearch/IResearchFilterOptimization.cpp
+  IResearch/IResearchIdentityAnalyzer.cpp
+  IResearch/IResearchInvertedIndex.cpp
+  IResearch/IResearchInvertedIndexMeta.cpp
+  IResearch/IResearchKludge.cpp
+  IResearch/IResearchLink.cpp
+  IResearch/IResearchLinkCoordinator.cpp
+  IResearch/IResearchLinkHelper.cpp
+  IResearch/IResearchLinkMeta.cpp
+  IResearch/IResearchOrderFactory.cpp
+  IResearch/IResearchPDP.cpp
+  IResearch/IResearchPrimaryKeyFilter.cpp
+  IResearch/IResearchRocksDBEncryption.cpp
+  IResearch/IResearchRocksDBInvertedIndex.cpp
+  IResearch/IResearchRocksDBLink.cpp
+  IResearch/IResearchRocksDBRecoveryHelper.cpp
+  IResearch/IResearchVPackComparer.cpp
+  IResearch/IResearchView.cpp
+  IResearch/IResearchViewCoordinator.cpp
+  IResearch/IResearchViewMeta.cpp
+  IResearch/IResearchViewSort.cpp
+  IResearch/IResearchViewStoredValues.cpp
+  IResearch/VelocyPackHelper.cpp
+  RestHandler/RestAnalyzerHandler.cpp
+  )
+
+add_library(arango_iresearch STATIC
+  ${ARANGO_IRESEARCH_HEADERS}
+  ${ARANGO_IRESEARCH_SOURCES}
+  )
 
 target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
@@ -306,7 +351,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentExpressionContext.cpp
-  Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/ClusterQuery.cpp
@@ -344,6 +388,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
+  Aql/LateMaterializedExpressionContext.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
   Aql/LimitStats.cpp
@@ -562,6 +607,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/LogFollower.cpp
   Replication2/ReplicatedLog/LogLeader.cpp
   Replication2/ReplicatedLog/LogStatus.cpp
+  Replication2/ReplicatedLog/LogUnconfiguredParticipant.cpp
   Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
   Replication2/ReplicatedLog/NetworkMessages.cpp
   Replication2/ReplicatedLog/ReplicatedLog.cpp
@@ -569,10 +615,12 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
   Replication2/ReplicatedLog/Supervision.cpp
   Replication2/ReplicatedLog/SupervisionAction.cpp
+  Replication2/ReplicatedLog/WaitForBag.cpp Replication2/ReplicatedLog/WaitForBag.h
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
   Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
+  Replication2/ReplicatedState/UnconfiguredStateManager.tpp Replication2/ReplicatedState/UnconfiguredStateManager.h
   Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp
@@ -697,6 +745,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
+  Cluster/FailureOracleFeature.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp

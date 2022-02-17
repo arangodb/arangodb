@@ -34,9 +34,9 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Expression.h"
-#include "Aql/NonConstExpression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/NonConstExpression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"
 #include "Aql/QueryContext.h"
@@ -102,43 +102,11 @@ IndexIterator::CoveringCallback getCallback(
       return false;
     }
 
-    if (context.hasFilter()) {
-      struct filterContext {
-        IndexNode::IndexValuesVars const& outNonMaterializedIndVars;
-        IndexIteratorCoveringData& covering;
-      };
-      filterContext fc{outNonMaterializedIndVars, covering};
-
-      auto getValue = [](void const* ctx, Variable const* var, bool doCopy) {
-        TRI_ASSERT(ctx && var);
-        auto const& fc = *reinterpret_cast<filterContext const*>(ctx);
-        auto const it = fc.outNonMaterializedIndVars.second.find(var);
-        TRI_ASSERT(fc.outNonMaterializedIndVars.second.cend() != it);
-        if (ADB_UNLIKELY(fc.outNonMaterializedIndVars.second.cend() == it)) {
-          return AqlValue();
-        }
-        velocypack::Slice s;
-        // hash/skiplist/persistent
-        if (fc.covering.isArray()) {
-          TRI_ASSERT(it->second < fc.covering.length());
-          if (ADB_UNLIKELY(it->second >= fc.covering.length())) {
-            return AqlValue();
-          }
-          s = fc.covering.at(it->second);
-        } else {  // primary/edge
-          s = fc.covering.value();
-        }
-        if (doCopy) {
-          return AqlValue(AqlValueHintSliceCopy(s));
-        }
-        return AqlValue(AqlValueHintSliceNoCopy(s));
-      };
-
-      if (!context.checkFilter(getValue, &fc)) {
-        context.incrFiltered();
-        return false;
-      }
+    if (context.hasFilter() && !context.checkFilter(&covering)) {
+      context.incrFiltered();
+      return false;
     }
+
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
@@ -186,6 +154,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     Collection const* collection, Variable const* outVariable,
     bool produceResult, Expression* filter,
     arangodb::aql::Projections projections,
+    std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
     NonConstExpressionContainer&& nonConstExpressions, bool count,
     ReadOwnWrites readOwnWrites, AstNode const* condition,
     bool oneIndexCondition,
@@ -202,6 +171,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outVariable(outVariable),
       _filter(filter),
       _projections(std::move(projections)),
+      _filterVarsToRegs(std::move(filterVarsToRegs)),
       _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
@@ -323,6 +293,11 @@ Ast* IndexExecutorInfos::getAst() const noexcept { return _ast; }
 std::vector<std::pair<VariableId, RegisterId>> const&
 IndexExecutorInfos::getVarsToRegister() const noexcept {
   return _nonConstExpressions._varToRegisterMapping;
+}
+
+std::vector<std::pair<VariableId, RegisterId>> const&
+IndexExecutorInfos::getFilterVarsToRegister() const noexcept {
+  return _filterVarsToRegs;
 }
 
 void IndexExecutorInfos::setHasMultipleExpansions(bool flag) {
@@ -553,11 +528,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _trx(infos.query().newTrxContext()),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _state(ExecutorState::HASMORE),
-      _documentProducingFunctionContext(
-          _input, nullptr, infos.getOutputRegisterId(),
-          infos.getProduceResult(), infos.query(), _trx, infos.getFilter(),
-          infos.getProjections(), false,
-          infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
+      _documentProducingFunctionContext(_trx, _input, infos),
       _infos(infos),
       _ast(_infos.query()),
       _currentIndex(_infos.getIndexes().size()),
