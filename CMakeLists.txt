@@ -33,8 +33,6 @@ else()
   set(BUILDING_FOR_ARM64 OFF)
 endif()
 
-find_package(Git 1.5.3 REQUIRED)
-
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -62,6 +60,8 @@ option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
 
 option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing debug information" OFF)
+
+find_package(Git REQUIRED)
 
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
