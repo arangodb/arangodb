@@ -35,6 +35,9 @@
 #include <utility>
 #include <vector>
 
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
 namespace arangodb::replication2::replicated_log {
 class LogFollower;
 class LogLeader;
@@ -84,7 +87,8 @@ struct alignas(64) ReplicatedLog {
   auto becomeLeader(
       LogConfig config, ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-      std::shared_ptr<ParticipantsConfig const> participantsConfig)
+      std::shared_ptr<ParticipantsConfig const> participantsConfig,
+      std::shared_ptr<cluster::IFailureOracle const> failureOracle)
       -> std::shared_ptr<LogLeader>;
   auto becomeFollower(ParticipantId id, LogTerm term,
                       std::optional<ParticipantId> leaderId)

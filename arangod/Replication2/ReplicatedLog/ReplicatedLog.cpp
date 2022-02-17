@@ -31,6 +31,7 @@
 #include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Metrics/Counter.h"
+#include "Cluster/FailureOracle.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
@@ -70,7 +71,8 @@ replicated_log::ReplicatedLog::~ReplicatedLog() {
 auto replicated_log::ReplicatedLog::becomeLeader(
     LogConfig config, ParticipantId id, LogTerm newTerm,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-    std::shared_ptr<ParticipantsConfig const> participantsConfig)
+    std::shared_ptr<ParticipantsConfig const> participantsConfig,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
@@ -87,7 +89,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
         << "becoming leader in term " << newTerm;
     auto leader = LogLeader::construct(
         config, std::move(logCore), follower, participantsConfig, std::move(id),
-        newTerm, _logContext, _metrics, _options);
+        newTerm, _logContext, _metrics, _options, std::move(failureOracle));
     _participant = std::static_pointer_cast<ILogParticipant>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
     return std::make_pair(std::move(leader), std::move(deferred));

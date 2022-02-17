@@ -312,6 +312,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/AsyncLeader.cpp
   Replication2/Mocks/FakeAbstractFollower.h
+  Replication2/Mocks/FakeFailureOracle.h
+  Replication2/Mocks/FakeFailureOracle.cpp
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
