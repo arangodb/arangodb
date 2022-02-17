@@ -8,6 +8,7 @@ import { data2 } from './data2';
 import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
 import ParameterNodeStart from "./ParameterNodeStart";
+import ParameterDepth from "./ParameterDepth";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -132,16 +133,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
               <Option value="Yiminghe">yiminghe</Option>
             </Select>
             <br />
-            <Input
-              addonBefore="Search depth"
-              placeholder="Search depth"
-              suffix={
-                <Tooltip title="Search depth, starting from your startnode">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
+            <ParameterDepth />
             <br />
             <Input
               addonBefore="Limit"
