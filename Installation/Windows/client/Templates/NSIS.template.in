@@ -593,17 +593,6 @@ Function .onInstSuccess
     Return
 
 continueUI:
-  ${If} $LaunchAfterInstall == '1'
-    ${If} $TRI_INSTALL_SERVICE == "0"
-      ExecShell "" "$LaunchLink"
-      sleep 5000
-      StrCpy $ServiceUp "1"
-    ${EndIf}
-    ${If} $ServiceUp == 1
-      ; open web ui in default browser
-      ExecShell "" "${TRI_AARDVARK_URL}"
-    ${EndIf}
-  ${EndIf}
 FunctionEnd
 
 Function is_writable
