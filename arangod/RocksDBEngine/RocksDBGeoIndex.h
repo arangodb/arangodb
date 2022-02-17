@@ -61,7 +61,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   std::vector<std::vector<arangodb::basics::AttributeName>> const&
   coveredFields() const override {
     // index does not cover the index attribute(s)!
-    return Index::emptyCoveredFields;
+    return arangodb::Index::emptyCoveredFields;
   }
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
