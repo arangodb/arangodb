@@ -141,6 +141,15 @@ FunctionEnd
   call un.determine_install_scope
 !macroend
 
+
+;--------------------------------
+Function edit_finish_page
+  IfSilent 0 continueUI
+  Return
+continueUI:
+FunctionEnd
+
+
 Function un.ReadSettings
   SetRegView ${BITS}
   ; A single user isn''t in HKCC...
