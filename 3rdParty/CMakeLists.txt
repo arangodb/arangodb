@@ -178,7 +178,6 @@ mark_as_advanced(
 )
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
-set(CMAKE_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH}) # remember CMAKE_MODULE_PATH
 list(APPEND CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
   "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
@@ -192,7 +191,6 @@ foreach(ELEMENT ${IRESEARCH_PREBUILT})
 endforeach()
 
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
 unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
