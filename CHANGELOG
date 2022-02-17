@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Introducing BlobDB
+
 * Shorten the license grace period to the documented 3 hours.
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.

@@ -717,6 +717,8 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
       break;
 
     case RocksDBColumnFamilyManager::Family::Documents:
+      options.enable_blob_files = true;
+      options.blob_file_size = 512;
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
     case RocksDBColumnFamilyManager::Family::FulltextIndex:
