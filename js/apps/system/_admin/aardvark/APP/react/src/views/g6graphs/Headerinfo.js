@@ -10,6 +10,7 @@ import { EdgeList } from './components/edge-list/edge-list.component';
 import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
+import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -159,15 +160,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
               style={{ width: 240, marginTop: '24px' }}
             />
             <br />
-            <Switch
-              checkedChildren="Show collection name"
-              unCheckedChildren="Hide collection name"
-              onChange={onSwitchChange}
-              style={{ marginTop: '24px' }}
-            />
-            <Tooltip title="Append collection name to the label?">
-              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
-            </Tooltip>
+            <ParameterNodeLabelByCollection />
             <br />
             <Switch
               checkedChildren="Color by collections"
