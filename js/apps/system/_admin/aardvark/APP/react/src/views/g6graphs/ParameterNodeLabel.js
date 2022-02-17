@@ -13,7 +13,7 @@ const ParameterNodeLabel = () => {
   return (
     <>
       <Input
-              addonBefore="Search limit"
+              addonBefore="Label"
               placeholder={urlParameters.nodeLabel || ''}
               onChange={onNodeLabelChange}
               suffix={
