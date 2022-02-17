@@ -27,11 +27,11 @@ TEST(misc_test, cached_func_contexpr) {
   constexpr auto cached_func = irs::cache_func<uint32_t, 3>(
     0, [](uint32_t v) { return v + 1; });
   static_assert (3 == cached_func.size());
-  static_assert (1 == cached_func(0));
-  static_assert (2 == cached_func(1));
-  static_assert (3 == cached_func(2));
-  static_assert (4 == cached_func(3));
-  static_assert (5 == cached_func(4));
+  static_assert (1 == cached_func.get<false>(0));
+  static_assert (2 == cached_func.get<true>(1));
+  static_assert (3 == cached_func.get<true>(2));
+  static_assert (4 == cached_func.get<true>(3));
+  static_assert (5 == cached_func.get<true>(4));
 }
 
 TEST(misc_test, cached_func) {
@@ -43,14 +43,14 @@ TEST(misc_test, cached_func) {
   ASSERT_EQ(calls, cached_func.size());
   ASSERT_EQ(3, cached_func.size());
   ASSERT_EQ(3, cached_func.size());
-  ASSERT_EQ(1, cached_func(0));
+  ASSERT_EQ(1, cached_func.get<true>(0));
   ASSERT_EQ(3, calls);
-  ASSERT_EQ(2, cached_func(1));
+  ASSERT_EQ(2, cached_func.get<true>(1));
   ASSERT_EQ(3, calls);
-  ASSERT_EQ(3, cached_func(2));
+  ASSERT_EQ(3, cached_func.get<false>(2));
   ASSERT_EQ(3, calls);
-  ASSERT_EQ(4, cached_func(3));
+  ASSERT_EQ(4, cached_func.get<true>(3));
   ASSERT_EQ(4, calls);
-  ASSERT_EQ(5, cached_func(4));
+  ASSERT_EQ(5, cached_func.get<true>(4));
   ASSERT_EQ(5, calls);
 }

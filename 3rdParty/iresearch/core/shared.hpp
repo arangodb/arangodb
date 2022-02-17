@@ -24,12 +24,6 @@
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
 
-#ifdef __APPLE__
-#include <machine/endian.h>
-#elif __linux__
-#include <endian.h>
-#endif
-
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
@@ -37,6 +31,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <string>
+#include <bit>
 
 #include "types.hpp" // iresearch types
 
@@ -149,8 +144,8 @@
 #endif
 
 // hook for MSVC-only code
-#if defined(_MSC_VER)
-  #define MSVC_ONLY(...) __VA_ARGS__
+#if defined(_MSC_VER) && !defined(__clang__)
+#define MSVC_ONLY(...) __VA_ARGS__
 #else
   #define MSVC_ONLY(...)
 #endif
@@ -186,37 +181,19 @@
 #endif
 
 // IRESEARCH_API is used for the public API symbols. It either DLL imports or DLL exports (or does nothing for static build)
-// IRESEARCH_LOCAL is used for non-api symbols.
-// IRESEARCH_PLUGIN is used for public API symbols of plugin modules
 #ifdef IRESEARCH_DLL
   #ifdef IRESEARCH_DLL_EXPORTS
     #define IRESEARCH_API IRESEARCH_HELPER_DLL_EXPORT    
-    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_EXPORT 
   #else
     #define IRESEARCH_API IRESEARCH_HELPER_DLL_IMPORT
-    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_IMPORT 
   #endif // IRESEARCH_DLL_EXPORTS
-  #define IRESEARCH_API_PRIVATE_VARIABLES_BEGIN MSVC_ONLY(__pragma(warning(disable: 4251)))
-  #define IRESEARCH_API_PRIVATE_VARIABLES_END MSVC_ONLY(__pragma(warning(default: 4251)))
-  #define IRESEARCH_LOCAL IRESEARCH_HELPER_DLL_LOCAL
   #ifdef IRESEARCH_DLL_PLUGIN
-    #define IRESEARCH_PLUGIN IRESEARCH_HELPER_DLL_EXPORT
     #define IRESEARCH_PLUGIN_EXPORT extern "C" IRESEARCH_HELPER_DLL_EXPORT
   #else
-    #define IRESEARCH_PLUGIN IRESEARCH_HELPER_DLL_IMPORT
     #define IRESEARCH_PLUGIN_EXPORT
   #endif // IRESEARCH_DLL_PLUGIN
-  #define IRESEARCH_TEMPLATE_EXPORT(x) template IRESEARCH_API x
-  #define IRESEARCH_TEMPLATE_IMPORT(x) extern template x
 #else // IRESEARCH_DLL is not defined: this means IRESEARCH is a static lib.
   #define IRESEARCH_API 
-  #define IRESEARCH_API_TEMPLATE
-  #define IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  #define IRESEARCH_API_PRIVATE_VARIABLES_END
-  #define IRESEARCH_LOCAL
-  #define IRESEARCH_PLUGIN
-  #define IRESEARCH_TEMPLATE_EXPORT(x)
-  #define IRESEARCH_TEMPLATE_IMPORT(x) 
 #endif // IRESEARCH_DLL
 
 // MSVC 2015 does not define __cpp_lib_generic_associative_lookup macro
@@ -248,7 +225,7 @@
 // NOTE: the alias points to a compile time finction not a preprocessor macro
 #if defined(__FUNCSIG__)
   #define IRESEARCH_CURRENT_FUNCTION __FUNCSIG__
-#elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__)
+#elif defined(__PRETTY_FUNCTION__) || defined(__GNUC__) || defined(__clang__)
   #define IRESEARCH_CURRENT_FUNCTION __PRETTY_FUNCTION__
 #else
   #error "compiler is not supported"
@@ -301,24 +278,6 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Endianess
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __APPLE__
-#if BYTE_ORDER == BIG_ENDIAN
-#define IRESEARCH_BIG_ENDIAN
-#endif
-#elif _WIN32
-// always LE
-#elif __linux__
-#if __BYTE_ORDER == __BIG_ENDIAN
-#define IRESEARCH_BIG_ENDIAN
-#endif
-#elif !defined(_MSC_VER)
-#error "unsupported os or compiler"
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
 // macro definitions similar to the ones at
@@ -342,12 +301,8 @@
 
 namespace iresearch_absl { }
 namespace iresearch {
-constexpr bool is_big_endian() noexcept {
-#ifdef IRESEARCH_BIG_ENDIAN
- return true;
-#else
- return false;
-#endif
+consteval bool is_big_endian() noexcept {
+  return std::endian::native == std::endian::big;
 }
 // we are using custom absl namespace (and also prefixed macros names)
 // as absl does not support side-by-side compiling in single project

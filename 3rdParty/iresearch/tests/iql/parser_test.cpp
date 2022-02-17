@@ -374,7 +374,8 @@ TEST_F(IqlParserTestSuite, test_sequence) {
   }
 
   {
-    std::string sData = u8"\u041F\u043E==a";
+    constexpr std::u8string_view utf8data{u8"\u041F\u043E==a"};
+    std::string sData{utf8data.begin(), utf8data.end()};
     test_context ctx(sData);
     parser parser(ctx);
 
@@ -395,7 +396,7 @@ TEST_F(IqlParserTestSuite, test_sequence) {
 
     ASSERT_EQ(pNode->SEQUENCE, pNode->type);
     std::basic_string<wchar_t> actual;
-    ASSERT_EQ(u8"\u041F\u043E", pNode->sValue);
+    ASSERT_TRUE(u8"\u041F\u043E" == irs::ref_cast<char8_t>(pNode->sValue));
   }
 
   // ...........................................................................

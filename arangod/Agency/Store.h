@@ -26,6 +26,7 @@
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "RestServer/arangod.h"
 #include "Node.h"
 #include <map>
 
@@ -70,7 +71,7 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(application_features::ApplicationServer& server, Agent* agent,
+  explicit Store(arangodb::ArangodServer& server, Agent* agent,
                  std::string const& name = "root");
 
   /// @brief Destruct
@@ -182,7 +183,7 @@ class Store {
 
  private:
   /// @brief underlying application server, needed for testing code
-  application_features::ApplicationServer& _server;
+  arangodb::ArangodServer& _server;
 
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;

@@ -30,7 +30,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -648,7 +647,7 @@ network::Timeout AgencyCommHelper::defaultTimeout() {
 
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
-AgencyComm::AgencyComm(application_features::ApplicationServer& server)
+AgencyComm::AgencyComm(ArangodServer& server)
     : _server(server),
       _agency_comm_request_time_ms(
           _server.getFeature<arangodb::ClusterFeature>()
@@ -1068,9 +1067,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   return result;
 }
 
-application_features::ApplicationServer& AgencyComm::server() {
-  return _server;
-}
+ArangodServer& AgencyComm::server() { return _server; }
 
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM)

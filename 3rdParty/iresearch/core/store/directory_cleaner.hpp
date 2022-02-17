@@ -39,7 +39,7 @@ struct directory;
 /// @brief represents a cleaner for directory files without any references
 //////////////////////////////////////////////////////////////////////////////
 
-class IRESEARCH_API directory_cleaner {
+class directory_cleaner {
  public:
   typedef std::function<bool(const std::string& filename)> removal_acceptor_t;
 

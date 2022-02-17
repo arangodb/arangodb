@@ -46,7 +46,7 @@ FORCE_INLINE size_t hash_combine(size_t seed, T const& v) noexcept(noexcept(std:
 }
 
 template<typename Elem>
-class IRESEARCH_API_TEMPLATE hashed_basic_string_ref : public basic_string_ref<Elem> {
+class hashed_basic_string_ref : public basic_string_ref<Elem> {
  public:
   typedef basic_string_ref<Elem> base_t;
 

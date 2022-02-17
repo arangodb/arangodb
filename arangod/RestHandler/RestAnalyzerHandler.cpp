@@ -42,9 +42,9 @@
 namespace arangodb {
 namespace iresearch {
 
-RestAnalyzerHandler::RestAnalyzerHandler(
-    application_features::ApplicationServer& server,
-    arangodb::GeneralRequest* request, arangodb::GeneralResponse* response)
+RestAnalyzerHandler::RestAnalyzerHandler(ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 void RestAnalyzerHandler::createAnalyzer(  // create
@@ -59,13 +59,12 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   }
 
   if (body.isEmptyObject()) {
-    generateError(arangodb::rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_CORRUPTED_JSON);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
   if (!body.isObject()) {
-    generateError(arangodb::Result(
+    generateError(Result(
         TRI_ERROR_BAD_PARAMETER,
         "expecting body to be of the form { name: <string>, type: <string>[, "
         "properties: <object|string>[, features: <string-array>]] }"));
@@ -76,8 +75,7 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   auto nameSlice = body.get(StaticStrings::AnalyzerNameField);
 
   if (!nameSlice.isString()) {
-    generateError(
-        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+    generateError(Result(TRI_ERROR_BAD_PARAMETER,
                          "invalid 'name', expecting body to be of the form { "
                          "name: <string>, type: <string>[, properties: "
                          "<object|string>[, features: <string-array>]] }"));

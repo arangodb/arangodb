@@ -92,6 +92,13 @@ void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
   c.setMaxProjections(maxProjections());
 }
 
+void DocumentProducingNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (hasFilter()) {
+    _filter->replaceVariables(replacements);
+  }
+}
+
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
                                          unsigned flags) const {
   builder.add(VPackValue("outVariable"));

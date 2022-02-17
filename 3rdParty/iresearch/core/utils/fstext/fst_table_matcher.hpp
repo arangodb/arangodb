@@ -57,10 +57,8 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
       }
     }
 
-    const size_t size = irs::math::math_traits<size_t>::pop(bits[0]) +
-                        irs::math::math_traits<size_t>::pop(bits[1]) +
-                        irs::math::math_traits<size_t>::pop(bits[2]) +
-                        irs::math::math_traits<size_t>::pop(bits[3]);
+    const size_t size = std::popcount(bits[0]) + std::popcount(bits[1]) +
+                        std::popcount(bits[2]) + std::popcount(bits[3]);
 
     std::vector<Label> labels(1 + size);
     auto begin = labels.begin();

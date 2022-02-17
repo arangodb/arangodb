@@ -31,25 +31,29 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-bool FixedVarExpressionContext::isDataFromCollection(
-    Variable const* variable) const {
-  return false;
-}
+FixedVarExpressionContext::FixedVarExpressionContext(
+    transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache)
+    : QueryExpressionContext(trx, context, cache) {}
 
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = false;
-  auto it = _vars.find(variable);
-  if (it == _vars.end()) {
-    TRI_ASSERT(false);
-    return AqlValue(AqlValueHintNull());
-  }
-  if (doCopy) {
-    mustDestroy = true;
-    return it->second.clone();
-  }
-  return it->second;
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        // now check our own temporary variables
+        auto it = _vars.find(variable);
+        if (it == _vars.end()) {
+          TRI_ASSERT(false);
+          return AqlValue(AqlValueHintNull());
+        }
+        mustDestroy = doCopy;
+        if (doCopy) {
+          return it->second.clone();
+        }
+        return it->second;
+      });
 }
 
 void FixedVarExpressionContext::clearVariableValues() noexcept {
@@ -58,10 +62,13 @@ void FixedVarExpressionContext::clearVariableValues() noexcept {
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var,
                                                  AqlValue const& value) {
-  _vars.try_emplace(var, value);
+  TRI_ASSERT(!_vars.contains(var));
+  // always overwrite current map value if it exists.
+  _vars.insert_or_assign(var, value);
 }
 
-void FixedVarExpressionContext::clearVariableValue(Variable const* var) {
+void FixedVarExpressionContext::clearVariableValue(
+    Variable const* var) noexcept {
   _vars.erase(var);
 }
 
@@ -77,41 +84,13 @@ void FixedVarExpressionContext::serializeAllVariables(
   }
 }
 
-FixedVarExpressionContext::FixedVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache)
+NoVarExpressionContext::NoVarExpressionContext(transaction::Methods& trx,
+                                               QueryContext& context,
+                                               AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
 
-SingleVarExpressionContext::SingleVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache, Variable* var, AqlValue val)
-    : QueryExpressionContext(trx, context, cache),
-      _variable(var),
-      _value(val) {}
-
-SingleVarExpressionContext::SingleVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache)
-    : SingleVarExpressionContext(trx, context, cache, nullptr,
-                                 AqlValue(AqlValueHintNull())) {}
-
-SingleVarExpressionContext::~SingleVarExpressionContext() { _value.destroy(); }
-
-bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
-  return false;
-}
-
-AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
-                                                      bool&) const {
-  if (var == _variable) {
-    return _value;
-  } else {
-    return AqlValue(AqlValueHintNull());
-  }
-}
-
-void SingleVarExpressionContext::setVariableValue(Variable* variable,
-                                                  AqlValue& value) {
-  _variable = variable;
-  _value = value;
+AqlValue NoVarExpressionContext::getVariableValue(Variable const* /*variable*/,
+                                                  bool /*doCopy*/,
+                                                  bool& /*mustDestroy*/) const {
+  return AqlValue(AqlValueHintNull());
 }

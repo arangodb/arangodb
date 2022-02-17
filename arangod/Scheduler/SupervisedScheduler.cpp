@@ -32,7 +32,6 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -45,6 +44,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Statistics/RequestStatistics.h"
 #include "Cluster/ServerState.h"
@@ -119,14 +119,15 @@ void logQueueFullEveryNowAndThen(int64_t fifo, uint64_t maxQueueSize) {
 
 namespace arangodb {
 
-class SupervisedSchedulerThread : virtual public Thread {
+class SupervisedSchedulerThread : public Thread {
  public:
-  explicit SupervisedSchedulerThread(
-      application_features::ApplicationServer& server,
-      SupervisedScheduler& scheduler)
-      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SupervisedSchedulerThread() =
-      default;  // shutdown is called by derived implementation!
+  explicit SupervisedSchedulerThread(ArangodServer& server,
+                                     SupervisedScheduler& scheduler,
+                                     std::string const& name = "Scheduler")
+      : Thread(server, name), _scheduler(scheduler) {}
+
+  // shutdown is called by derived implementation!
+  ~SupervisedSchedulerThread() = default;
 
  protected:
   SupervisedScheduler& _scheduler;
@@ -135,22 +136,18 @@ class SupervisedSchedulerThread : virtual public Thread {
 class SupervisedSchedulerManagerThread final
     : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerManagerThread(
-      application_features::ApplicationServer& server,
-      SupervisedScheduler& scheduler)
-      : Thread(server, "SchedMan"),
-        SupervisedSchedulerThread(server, scheduler) {}
+  explicit SupervisedSchedulerManagerThread(ArangodServer& server,
+                                            SupervisedScheduler& scheduler)
+      : SupervisedSchedulerThread(server, scheduler, "SchedMan") {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
   void run() override { _scheduler.runSupervisor(); }
 };
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerWorkerThread(
-      application_features::ApplicationServer& server,
-      SupervisedScheduler& scheduler)
-      : Thread(server, "SchedWorker"),
-        SupervisedSchedulerThread(server, scheduler) {}
+  explicit SupervisedSchedulerWorkerThread(ArangodServer& server,
+                                           SupervisedScheduler& scheduler)
+      : SupervisedSchedulerThread(server, scheduler, "SchedWorker") {}
   ~SupervisedSchedulerWorkerThread() { shutdown(); }
   void run() override { _scheduler.runWorker(); }
 };
@@ -159,12 +156,6 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 DECLARE_GAUGE(arangodb_scheduler_num_awake_threads, uint64_t,
               "Number of awake worker threads");
-DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_dequeued, uint64_t,
-                     "Total number of jobs dequeued");
-DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_done, uint64_t,
-                     "Total number of queue jobs done");
-DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_submitted, uint64_t,
-                     "Total number of jobs submitted to the scheduler");
 DECLARE_COUNTER(arangodb_scheduler_jobs_done_total,
                 "Total number of queue jobs done");
 DECLARE_COUNTER(arangodb_scheduler_jobs_submitted_total,
@@ -207,9 +198,9 @@ DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
 
 SupervisedScheduler::SupervisedScheduler(
-    application_features::ApplicationServer& server, uint64_t minThreads,
-    uint64_t maxThreads, uint64_t maxQueueSize, uint64_t fifo1Size,
-    uint64_t fifo2Size, uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
+    ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
+    uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
+    uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
     double unavailabilityQueueFillGrade)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
@@ -229,12 +220,6 @@ SupervisedScheduler::SupervisedScheduler(
       _numAwake(0),
       _metricsQueueLength(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_scheduler_queue_length{})),
-      _metricsJobsDone(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_done{})),
-      _metricsJobsSubmitted(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_submitted{})),
-      _metricsJobsDequeued(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_dequeued{})),
       _metricsJobsDoneTotal(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_scheduler_jobs_done_total{})),
       _metricsJobsSubmittedTotal(
@@ -293,6 +278,7 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
     return false;
   }
 
+  TRI_ASSERT(lane != RequestLane::UNDEFINED);
   auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
   TRI_ASSERT(queueNo < NumberOfQueues);
 
@@ -611,9 +597,6 @@ void SupervisedScheduler::runSupervisor() {
     if (roundCount++ >= 5) {
       // approx every 0.5s update the metrics
       _metricsQueueLength.operator=(queueLength);
-      _metricsJobsDone.operator=(jobsDone);
-      _metricsJobsSubmitted.operator=(jobsSubmitted);
-      _metricsJobsDequeued.operator=(jobsDequeued);
       _metricsJobsDoneTotal.operator=(jobsDone);
       _metricsJobsSubmittedTotal.operator=(jobsSubmitted);
       _metricsJobsDequeuedTotal.operator=(jobsDequeued);

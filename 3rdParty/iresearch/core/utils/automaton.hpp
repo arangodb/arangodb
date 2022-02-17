@@ -55,9 +55,6 @@
 namespace fst {
 namespace fsa {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class BooleanWeight
-////////////////////////////////////////////////////////////////////////////////
 class BooleanWeight {
  public:
   using ReverseWeight = BooleanWeight;
@@ -137,12 +134,43 @@ class BooleanWeight {
 
   PayloadType v_{Invalid};
   PayloadType p_{};
-}; // BooleanWeight
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct RangeLabel
-////////////////////////////////////////////////////////////////////////////////
-struct RangeLabel {
+struct RangeLabelLE {
+  constexpr RangeLabelLE(int64_t ilabel) noexcept
+    : ilabel{ilabel} {}
+  constexpr RangeLabelLE(uint32_t min, uint32_t max) noexcept
+    : max{max}, min{min} {}
+
+  union {
+    int64_t ilabel;
+    struct {
+      uint32_t max;
+      uint32_t min;
+    };
+  };
+};
+
+struct RangeLabelBE {
+  constexpr RangeLabelBE(int64_t ilabel) noexcept
+    : ilabel{ilabel} {}
+  constexpr RangeLabelBE(uint32_t min, uint32_t max) noexcept
+    : min{min}, max{max} {}
+
+  union {
+    int64_t ilabel;
+    struct {
+      uint32_t min;
+      uint32_t max;
+    };
+  };
+};
+
+using RangeLabelType = std::conditional_t<
+    irs::is_big_endian(), RangeLabelBE, RangeLabelLE>;
+
+// We inherit from annonymous union to be OpenFST compliant.
+struct RangeLabel : RangeLabelType {
   static constexpr RangeLabel fromRange(uint32_t min, uint32_t max) noexcept {
     return RangeLabel{min, max};
   }
@@ -154,16 +182,13 @@ struct RangeLabel {
   }
 
   constexpr RangeLabel() noexcept
-    : ilabel{fst::kNoLabel} {
-  }
+    : RangeLabel{fst::kNoLabel} { }
 
   constexpr RangeLabel(uint32_t min, uint32_t max) noexcept
-    : max{max}, min{min} {
-  }
+    : RangeLabelType{min, max} { }
 
   constexpr explicit RangeLabel(int64_t ilabel) noexcept
-    : ilabel{ilabel} {
-  }
+    : RangeLabelType{ilabel} { }
 
   constexpr operator int64_t() const noexcept {
     return ilabel;
@@ -173,26 +198,8 @@ struct RangeLabel {
     strm << '[' << l.min << ".." << l.max << ']';
     return strm;
   }
-
-  union {
-    int64_t ilabel;
-#ifdef IRESEARCH_BIG_ENDIAN
-    struct {
-      uint32_t min;
-      uint32_t max;
-    };
-#else
-    struct {
-      uint32_t max;
-      uint32_t min;
-    };
-#endif
-  };
 }; // RangeLabel
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct Transition
-////////////////////////////////////////////////////////////////////////////////
 template<typename W = BooleanWeight>
 struct Transition : RangeLabel {
   using Weight = W;
@@ -233,7 +240,7 @@ struct Transition : RangeLabel {
     : RangeLabel{ilabel},
       nextstate{nextstate} {
   }
-}; // Transition
+};
 
 } // fsa
 

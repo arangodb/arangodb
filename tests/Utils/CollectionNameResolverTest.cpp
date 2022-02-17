@@ -39,19 +39,24 @@
 
 namespace {
 struct TestView : public arangodb::LogicalView {
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(42),
+                     std::string_view{"testViewType"}};
+  }
+
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
-                                                Serialization) const override {
-    return arangodb::Result();
+      : arangodb::LogicalView(*this, vocbase, definition) {}
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
+                                   Serialization, bool) const override {
+    return {};
   }
   virtual arangodb::Result dropImpl() override {
-    return arangodb::LogicalViewHelperStorageEngine::drop(*this);
+    return arangodb::storage_helper::drop(*this);
   }
   virtual void open() override {}
   virtual arangodb::Result renameImpl(std::string const& oldName) override {
-    return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
+    return arangodb::storage_helper::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice, bool,
                                       bool) override {
@@ -83,10 +88,6 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class CollectionNameResolverTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
@@ -95,15 +96,9 @@ class CollectionNameResolverTest : public ::testing::Test {
   CollectionNameResolverTest() {
     // register view factory
     server.getFeature<arangodb::ViewTypesFeature>().emplace(
-        arangodb::LogicalDataSource::Type::emplace(
-            std::string_view("testViewType")),
-        viewFactory);
+        TestView::typeInfo().second, viewFactory);
   }
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 TEST_F(CollectionNameResolverTest, test_getDataSource) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(

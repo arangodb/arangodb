@@ -164,7 +164,7 @@ bool test_env::prepare(const cmdline::parser& parser) {
   if (parser.exist(IRES_OUTPUT)) {
     std::unique_ptr<char*[]> argv(new char*[2 + argc_]);
     std::memcpy(argv.get(), argv_, sizeof(char*)*(argc_));
-    argv_ires_output_.append("--gtest_output=xml:").append(res_path_.u8string());
+    argv_ires_output_.append("--gtest_output=xml:").append(res_path_.string());
     argv[argc_++] = &argv_ires_output_[0];
 
     // let last argv equals to nullptr
@@ -181,16 +181,16 @@ void test_env::make_directories() {
   exec_path_ = exec_path;
   exec_file_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.basename)};
   exec_dir_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.dirname)};
-  test_name_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.stem)}.u8string();
+  test_name_ = irs::utf8_path{std::basic_string_view<irs::utf8_path::value_type>(path_parts.stem)}.string();
 
   if (out_dir_.native().empty()) {
     out_dir_ = exec_dir_;
   }
 
-  std::cout << "launching: " << exec_path_.u8string() << std::endl;
+  std::cout << "launching: " << exec_path_.string() << std::endl;
   std::cout << "options:" << std::endl;
-  std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.u8string() << std::endl;
-  std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.u8string() << std::endl;
+  std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.string() << std::endl;
+  std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.string() << std::endl;
 
   irs::file_utils::ensure_absolute(out_dir_);
   (res_dir_ = out_dir_) /= test_name_;
@@ -216,7 +216,7 @@ void test_env::make_directories() {
     res_dir_ += std::string_view{templ, sizeof templ - 1};
   }
 
-  auto res_dir_templ = res_dir_.u8string();
+  auto res_dir_templ = res_dir_.string();
 
   res_dir_ = mkdtemp(res_dir_templ.data());
   (res_path_ = res_dir_) /= test_results;
@@ -245,8 +245,8 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
   cmd.add(IRES_LOG_LEVEL, 0, "threshold log level <FATAL|ERROR|WARN|INFO|DEBUG|TRACE>", false, irs::logger::level_t::IRL_FATAL, log_level_reader);
   cmd.add(IRES_LOG_STACK, 0, "always log stack trace", false, false);
   cmd.add(IRES_OUTPUT, 0, "generate an XML report");
-  cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.u8string());
-  cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, irs::utf8_path(IResearch_test_resource_dir).u8string());
+  cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.string());
+  cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, irs::utf8_path(IResearch_test_resource_dir).string());
   cmd.add(IRES_ICU_DATA, 0, "custom icu data file", false, std::string());
   cmd.parse(argc_, argv_);
 
@@ -350,7 +350,7 @@ int main( int argc, char* argv[] ) {
   const int code = test_env::initialize( argc, argv );
 
   std::cout << "Path to test result directory: " 
-            << test_env::test_results_dir().u8string()
+            << test_env::test_results_dir().string()
             << std::endl;
 
   u_cleanup(); // cleanup ICU resources

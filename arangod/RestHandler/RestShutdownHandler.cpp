@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -39,9 +40,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestShutdownHandler::RestShutdownHandler(ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////

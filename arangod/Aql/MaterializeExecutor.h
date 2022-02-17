@@ -46,7 +46,6 @@ class InputAqlItemRow;
 class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
-class NoStats;
 
 template<typename T>
 class MaterializerExecutorInfos {
@@ -94,7 +93,7 @@ class MaterializeExecutor {
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = MaterializerExecutorInfos<T>;
-  using Stats = NoStats;
+  using Stats = MaterializeStats;
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
   MaterializeExecutor(MaterializeExecutor const&) = delete;

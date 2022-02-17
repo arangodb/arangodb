@@ -402,7 +402,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -450,7 +450,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // string expression, analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -502,7 +502,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   }
   // filter with constexpr analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -724,7 +724,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -939,7 +939,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1199,7 +1199,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 

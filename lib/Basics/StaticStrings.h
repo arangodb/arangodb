@@ -132,6 +132,7 @@ class StaticStrings {
   static std::string const IndexIsBuilding;    // index build in-process
   static std::string const IndexName;          // index name
   static std::string const IndexSparse;        // index sparsity marker
+  static std::string const IndexStoredValues;  // index stored values
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
   static std::string const IndexEstimates;     // index estimates flag
@@ -341,6 +342,7 @@ class StaticStrings {
   static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
+  static std::string const Outcome;
 
   // generic attribute names
   static std::string const AttrCoordinator;

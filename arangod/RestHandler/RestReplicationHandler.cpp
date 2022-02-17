@@ -32,7 +32,6 @@
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
@@ -255,12 +254,10 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   return {};
 }
 
-RestReplicationHandler::RestReplicationHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
-
-RestReplicationHandler::~RestReplicationHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server

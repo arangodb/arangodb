@@ -34,6 +34,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+#include <regex>
 #include <velocypack/Iterator.h>
 
 #include "utils/string_utils.hpp"
@@ -351,7 +352,7 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::DATA_SOURCE_TYPE.name());
+                arangodb::iresearch::StaticStrings::DataSourceType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -525,7 +526,7 @@ TEST_P(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::DATA_SOURCE_TYPE.name());
+                arangodb::iresearch::StaticStrings::DataSourceType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -1627,13 +1628,13 @@ TEST_P(IResearchQueryJoinTest, test) {
         "collection_1 FILTER x.seq == d.seq && x.name == d.name SORT "
         "customscorer(d, x.seq) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    auto queryResult = arangodb::tests::explainQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+    ASSERT_TRUE(std::regex_search(
+        std::string(queryResult.errorMessage()),
+        std::regex("variable 'x' is used in scorer function.*CUSTOMSCORER")));
 
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -1845,13 +1846,13 @@ TEST_P(IResearchQueryJoinTest, test) {
         "    SORT customscorer(d, x.seq) "
         "RETURN x";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    auto queryResult = arangodb::tests::explainQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+    ASSERT_TRUE(std::regex_search(
+        std::string(queryResult.errorMessage()),
+        std::regex("variable 'x' is used in scorer function.*CUSTOMSCORER")));
 
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -1864,13 +1865,13 @@ TEST_P(IResearchQueryJoinTest, test) {
         "    SORT customscorer(d, x.seq) "
         "RETURN x";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query,
-        {
-            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-        }));
+    auto queryResult = arangodb::tests::explainQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+    ASSERT_TRUE(std::regex_search(
+        std::string(queryResult.errorMessage()),
+        std::regex("variable 'x' is used in scorer function.*CUSTOMSCORER")));
 
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 }

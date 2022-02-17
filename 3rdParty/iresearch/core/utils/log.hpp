@@ -81,24 +81,24 @@ using log_appender_callback_t = void(*)(void* context, const char* function,
                                         const char* file, int line, level_t level,
                                         const char* message, size_t message_len);
 
-IRESEARCH_API bool enabled(level_t level);
+bool enabled(level_t level);
 
 // Backward compatible fd-appender control functions
-IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
-IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
+void output(level_t level, FILE* out); // nullptr == /dev/null
+void output_le(level_t level, FILE* out); // nullptr == /dev/null
 // Custom appender control functions
-IRESEARCH_API void output(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
-IRESEARCH_API void output_le(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
-IRESEARCH_API void log(const char* function, const char* file, int line,
+void output(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
+void output_le(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
+void log(const char* function, const char* file, int line,
                        level_t level, const char* message, size_t len);
-IRESEARCH_API void stack_trace(level_t level);
-IRESEARCH_API void stack_trace(level_t level, const std::exception_ptr& eptr);
-IRESEARCH_API irs::logger::level_t stack_trace_level(); // stack trace output level
-IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
+void stack_trace(level_t level);
+void stack_trace(level_t level, const std::exception_ptr& eptr);
+irs::logger::level_t stack_trace_level(); // stack trace output level
+void stack_trace_level(level_t level); // stack trace output level
 
 #ifndef _MSC_VER
   // +1 to skip stack_trace_nomalloc(...)
-  void IRESEARCH_API stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
+  void stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
 #endif
 
 namespace detail {

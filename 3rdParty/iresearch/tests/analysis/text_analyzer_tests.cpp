@@ -397,9 +397,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   }
 
   {
-    const std::string data(u8"\u043f\u043e\u0020\u0432\u0435\u0447\u0435\u0440\u0430\u043c\u0020\u0435\u0436\u0438\u043a\u0020\u0445\u043e\u0434\u0438\u043b\u0020\u043a\u0020\u043c\u0435\u0434\u0432\u0435\u0436\u043e\u043d\u043a\u0443\u0020\u0441\u0447\u0438\u0442\u0430\u0442\u044c\u0020\u0437\u0432\u0435\u0437\u0434\u044b");
+    constexpr std::u8string_view data(u8"\u043f\u043e\u0020\u0432\u0435\u0447\u0435\u0440\u0430\u043c\u0020\u0435\u0436\u0438\u043a\u0020\u0445\u043e\u0434\u0438\u043b\u0020\u043a\u0020\u043c\u0435\u0434\u0432\u0435\u0436\u043e\u043d\u043a\u0443\u0020\u0441\u0447\u0438\u0442\u0430\u0442\u044c\u0020\u0437\u0432\u0435\u0437\u0434\u044b");
 
-    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+    auto testFunc = [](irs::string_ref data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
 
       auto* pOffset = irs::get<irs::offset>(*pStream);
@@ -456,18 +456,18 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       irs::analysis::text_token_stream::options_t options;
       options.locale = icu::Locale::createFromName("ru_RU.UTF-16"); // we ignore encoding specified in locale
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
-      testFunc(data, &stream);
+      testFunc(irs::ref_cast<char>(data), &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
       auto stream = irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), R"({"locale":"ru_RU.UTF-16", "stopwords":[]})");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream.get());
+      testFunc(irs::ref_cast<char>(data), stream.get());
     }
   }
 
   {
-    const std::string data (u8"\U0000043f\U0000043e\U00000020\U00000432\U00000435\U00000447\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435\U00000436\U00000438\U0000043a");
+    const std::u8string_view data (u8"\U0000043f\U0000043e\U00000020\U00000432\U00000435\U00000447\U00000435\U00000440\U00000430\U0000043c\U00000020\U00000435\U00000436\U00000438\U0000043a");
 
     auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
       ASSERT_TRUE(pStream->reset(data));
@@ -503,7 +503,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
       options.locale = icu::Locale::createFromName("en_US.utf32"); // ignore encoding
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
-      testFunc(data, &stream);
+      testFunc(irs::ref_cast<char>(data), &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
@@ -511,7 +511,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
         "text", irs::type<irs::text_format::json>::get(), // ignore encoding
         "{\"locale\":\"en_US.utf32\", \"stopwords\":[]}");
       ASSERT_NE(nullptr, stream);
-      testFunc(data, stream.get());
+      testFunc(irs::ref_cast<char>(data), stream.get());
     }
   }
 }
@@ -1072,9 +1072,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       options.locale = icu::Locale::createFromName("en_US.UTF-8");
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
-      options.min_gram_set = 4;
+      options.min_gram_set = true;
       options.max_gram = 3;
-      options.max_gram_set = 3;
+      options.max_gram_set = true;
       options.preserve_original = false;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 
@@ -1105,9 +1105,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
       options.locale = icu::Locale::createFromName("en_US.UTF-8");
       options.explicit_stopwords.emplace("a");
       options.min_gram = 4;
-      options.min_gram_set = 4;
+      options.min_gram_set = true;
       options.max_gram = 3;
-      options.max_gram_set = 3;
+      options.max_gram_set = true;
       options.preserve_original = true;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
 

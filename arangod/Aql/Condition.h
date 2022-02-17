@@ -188,7 +188,8 @@ class Condition {
   /// filtering(first) and sorting(second)
   std::pair<bool, bool> findIndexes(
       EnumerateCollectionNode const*,
-      std::vector<transaction::Methods::IndexHandle>&, SortCondition const*);
+      std::vector<transaction::Methods::IndexHandle>&, SortCondition const*,
+      bool&);
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)

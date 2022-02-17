@@ -29,7 +29,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -1206,7 +1205,7 @@ futures::Future<OperationResult> Collections::revisionId(
 
     iterator->allDocuments(
         [&](LocalDocumentId const&, VPackSlice doc) {
-          cb(doc.resolveExternal());
+          cb(doc);
           return true;
         },
         1000);

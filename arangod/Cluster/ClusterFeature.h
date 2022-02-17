@@ -32,14 +32,24 @@
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
+namespace application_features {
+class CommunicationFeaturePhase;
+class DatabaseFeaturePhase;
+}  // namespace application_features
+namespace metrics {
+class MetricsFeature;
+}
 
 class AgencyCache;
 class AgencyCallbackRegistry;
+class DatabaseFeature;
 class HeartbeatThread;
 
-class ClusterFeature : public application_features::ApplicationFeature {
+class ClusterFeature : public ArangodFeature {
  public:
-  explicit ClusterFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Cluster"; }
+
+  explicit ClusterFeature(Server& server);
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -174,6 +184,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
                             std::string const& endpoints);
 
  private:
+  ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
+                 DatabaseFeature& database, size_t registration);
   void reportRole(ServerState::RoleEnum);
 
   std::vector<std::string> _agencyEndpoints;
@@ -208,6 +220,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
+  metrics::MetricsFeature& _metrics;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;

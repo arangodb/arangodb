@@ -23,7 +23,9 @@
 
 #include "RestBatchHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -40,9 +42,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBatchHandler::RestBatchHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestBatchHandler::RestBatchHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response), _errors(0) {}
 
 RestBatchHandler::~RestBatchHandler() = default;

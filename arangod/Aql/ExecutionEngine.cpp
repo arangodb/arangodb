@@ -826,7 +826,7 @@ void arangodb::aql::ExecutionEngine::initFromPlanForCalculation(
   plan.findVarUsage();
   plan.planRegisters(ExplainRegisterPlan::No);
   initializeConstValueBlock(plan, _itemBlockManager);
-  // plan.findCollectionAccessVariables();
+
   SingleServerQueryInstanciator inst(*this);
   plan.root()->walk(inst);
   TRI_ASSERT(inst.root);

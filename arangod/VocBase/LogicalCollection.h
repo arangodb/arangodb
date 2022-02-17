@@ -21,7 +21,6 @@
 /// @author Michael Hackstein
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "Basics/Common.h"
@@ -41,6 +40,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
@@ -126,8 +126,6 @@ class LogicalCollection : public LogicalDataSource {
   uint32_t v8CacheVersion() const;
 
   TRI_col_type_e type() const;
-
-  std::string globallyUniqueId() const;
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -241,8 +239,8 @@ class LogicalCollection : public LogicalDataSource {
   bool allowUserKeys() const;
 
   // SECTION: Modification Functions
-  virtual Result drop() override;
-  virtual Result rename(std::string&& name) override;
+  Result drop() override;
+  Result rename(std::string&& name) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
@@ -376,8 +374,8 @@ class LogicalCollection : public LogicalDataSource {
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
 
-  virtual Result appendVelocyPack(velocypack::Builder& builder,
-                                  Serialization context) const override;
+  Result appendVPack(velocypack::Builder& build, Serialization ctx,
+                     bool safe) const override;
 
   Result updateSchema(VPackSlice schema);
 
@@ -385,7 +383,7 @@ class LogicalCollection : public LogicalDataSource {
    * Enterprise only method. See enterprise code for implementation
    * Community has a dummy stub.
    */
-  std::string createSmartToSatKey(arangodb::velocypack::Slice input);
+  std::string createSmartToSatKey(velocypack::Slice input);
 
   void decorateWithInternalEEValidators();
 
@@ -445,10 +443,7 @@ class LogicalCollection : public LogicalDataSource {
 
   transaction::CountCache _countCache;
 
-  // SECTION: Key Options
-
-  // @brief options for key creation
-  std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;
+  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
 
   std::unique_ptr<PhysicalCollection> _physical;

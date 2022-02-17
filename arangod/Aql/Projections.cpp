@@ -24,6 +24,7 @@
 #include "Aql/Projections.h"
 #include "Basics/debugging.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
@@ -224,12 +225,12 @@ void Projections::toVelocyPackFromDocument(
 
 /// @brief projections from a covering index
 void Projections::toVelocyPackFromIndex(
-    arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+    arangodb::velocypack::Builder& b, IndexIteratorCoveringData& covering,
     transaction::Methods const* trxPtr) const {
   TRI_ASSERT(_supportsCoveringIndex);
   TRI_ASSERT(b.isOpenObject());
 
-  bool const isArray = slice.isArray();
+  bool const isArray = covering.isArray();
   for (auto const& it : _projections) {
     if (isArray) {
       // _id cannot be part of a user-defined index
@@ -237,10 +238,10 @@ void Projections::toVelocyPackFromIndex(
 
       // we will get a Slice with an array of index values. now we need
       // to look up the array values from the correct positions to
-      // populate the result with the projection values this case will
+      // populate the result with the projection values. this case will
       // be triggered for indexes that can be set up on any number of
-      // attributes (hash/skiplist)
-      VPackSlice found = slice.at(it.coveringIndexPosition);
+      // attributes (persistent/hash/skiplist)
+      VPackSlice found = covering.at(it.coveringIndexPosition);
       if (found.isNone()) {
         found = VPackSlice::nullSlice();
       }
@@ -258,6 +259,7 @@ void Projections::toVelocyPackFromIndex(
       // no array Slice... this case will be triggered for indexes that
       // contain simple string values, such as the primary index or the
       // edge index
+      auto slice = covering.value();
       if (it.type == AttributeNamePath::Type::IdAttribute) {
         b.add(it.path[0], VPackValue(transaction::helpers::makeIdFromParts(
                               trxPtr->resolver(), _datasourceId, slice)));

@@ -38,18 +38,11 @@
 
 namespace iresearch {
 
-// <16, 8> => buffer sizes 256B, 512B, 1K, 2K, 4K, 8K, 16K, 32K, 64K, 128K, 256K, 512K, 1M, 2M, 4M, 8M
-MSVC_ONLY(template class IRESEARCH_API container_utils::raw_block_vector<
-  memory_allocator::allocator_type::SIZE, // total number of levels
-  8, // size of the first level 2^8
-  memory_allocator::allocator_type
->;)
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_file
 /// @brief in memory file
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API memory_file
+class memory_file
     : public container_utils::raw_block_vector<16, 8, memory_allocator::allocator_type> {
  private:
   typedef container_utils::raw_block_vector<
@@ -164,7 +157,7 @@ class IRESEARCH_API memory_file
 /// @class memory_index_input
 /// @brief in memory input stream
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API memory_index_input final : public index_input {
+class memory_index_input final : public index_input {
  public:
   explicit memory_index_input(const memory_file& file) noexcept;
 
@@ -213,7 +206,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
 /// @class memory_index_output
 /// @brief in memory output stream
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API memory_index_output : public index_output {
+class memory_index_output : public index_output {
  public:
   explicit memory_index_output(memory_file& file) noexcept;
   memory_index_output(const memory_index_output&) = default; 
@@ -271,7 +264,7 @@ class IRESEARCH_API memory_index_output : public index_output {
 /// @class memory_directory
 /// @brief in memory index directory
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API memory_directory final : public directory {
+class memory_directory final : public directory {
  public:
   explicit memory_directory(
     directory_attributes attributes = directory_attributes{});
@@ -317,20 +310,18 @@ class IRESEARCH_API memory_directory final : public directory {
   using file_map = absl::flat_hash_map<std::string, std::unique_ptr<memory_file>>; // unique_ptr because of rename
   using lock_map = absl::flat_hash_set<std::string>;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory_attributes attrs_;
   mutable std::shared_mutex flock_;
   std::mutex llock_;
   file_map files_;
   lock_map locks_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct memory_output
 /// @brief memory_file + memory_stream
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API memory_output {
+struct memory_output {
   explicit memory_output(const memory_allocator& alloc) noexcept
     : file(alloc) {
   }

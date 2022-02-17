@@ -23,18 +23,23 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Agency/Agent.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
+namespace application_features {
+class FoxxFeaturePhase;
+}
 
 namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public application_features::ApplicationFeature {
+class AgencyFeature : public ArangodFeature {
  public:
-  explicit AgencyFeature(application_features::ApplicationServer& server);
-  ~AgencyFeature();
+  static constexpr std::string_view name() { return "Agency"; }
+
+  explicit AgencyFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

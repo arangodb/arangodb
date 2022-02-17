@@ -141,9 +141,12 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_accessor->indexHandle(), node, tmpVar,
-                                         ::defaultIndexIteratorOptions,
-                                         ReadOwnWrites::no);
+    _cursor = trx->indexScanForCondition(
+        _accessor->indexHandle(), node, tmpVar, ::defaultIndexIteratorOptions,
+        ReadOwnWrites::no,
+        static_cast<int>(_accessor->getMemberToUpdate().has_value()
+                             ? _accessor->getMemberToUpdate().value()
+                             : transaction::Methods::kNoMutableConditionIdx));
   }
 }
 
@@ -201,6 +204,7 @@ void RefactoredSingleServerEdgeCursor<
   auto& nonConstPart = _accessor->nonConstPart();
   for (auto& toReplace : nonConstPart._expressions) {
     auto exp = toReplace->expression.get();
+    TRI_ASSERT(exp != nullptr);
     bool mustDestroy;
     AqlValue a = exp->execute(&ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
@@ -338,18 +342,11 @@ bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(
 
   TRI_ASSERT(value.isObject() || value.isNull());
 
-  aql::AqlValue edgeVal(aql::AqlValueHintDocumentNoCopy(value.begin()));
-  _expressionCtx.setVariableValue(_tmpVar, edgeVal);
-  ScopeGuard defer([&]() noexcept {
-    try {
-      _expressionCtx.clearVariableValue(_tmpVar);
-    } catch (...) {
-      // This method could in theory throw, if the
-      // _tmpVar is not in the list. However this is
-      // guaranteed by this code. If it would throw
-      // with not found, nothing bad has happened
-    }
-  });
+  // register temporary variables in expression context
+  _expressionCtx.setVariableValue(
+      _tmpVar, aql::AqlValue{aql::AqlValueHintSliceNoCopy{value}});
+  ScopeGuard defer(
+      [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
 
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);

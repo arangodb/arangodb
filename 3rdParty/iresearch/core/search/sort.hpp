@@ -51,7 +51,7 @@ constexpr boost_t no_boost() noexcept { return 1.f; }
 /// @brief represents an addition to score from filter specific to a particular
 ///        document. May vary from document to document.
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API filter_boost final : attribute {
+struct filter_boost final : attribute {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::filter_boost";
   }
@@ -63,7 +63,7 @@ struct IRESEARCH_API filter_boost final : attribute {
 /// @brief stateful object used for computing the document score based on the
 ///        stored state
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API score_ctx {
+struct score_ctx {
   score_ctx() = default;
   score_ctx(score_ctx&&) = default;
   score_ctx& operator=(score_ctx&&) = default;
@@ -154,7 +154,7 @@ class score_function : util::noncopyable {
 /// @note score and stats are meant to be trivially constructible and will be
 ///       zero initialized before usage
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API sort {
+class sort {
  public:
   using ptr = std::unique_ptr<sort>;
 
@@ -163,7 +163,7 @@ class IRESEARCH_API sort {
   ///        field, that are required by the scorer for scoring individual
   ///        documents
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API field_collector {
+  class field_collector {
     public:
      using ptr = std::unique_ptr<field_collector>;
 
@@ -190,7 +190,7 @@ class IRESEARCH_API sort {
      /// @brief collect field related statistics from a serialized
      ///        representation as produced by write(...) below
      ///////////////////////////////////////////////////////////////////////////
-     virtual void collect(const bytes_ref& in) = 0;
+     virtual void collect(bytes_ref in) = 0;
 
      ///////////////////////////////////////////////////////////////////////////
      /// @brief serialize the internal data representation into 'out'
@@ -214,7 +214,7 @@ class IRESEARCH_API sort {
   ///        term of a field, that are required by the scorer for scoring
   ///        individual documents
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API term_collector {
+  class term_collector {
    public:
     using ptr = std::unique_ptr<term_collector>;
 
@@ -243,7 +243,7 @@ class IRESEARCH_API sort {
     /// @brief collect term related statistics from a serialized
     ///        representation as produced by write(...) below
     ///////////////////////////////////////////////////////////////////////////
-    virtual void collect(const bytes_ref& in) = 0;
+    virtual void collect(bytes_ref in) = 0;
 
     ///////////////////////////////////////////////////////////////////////////
     /// @brief serialize the internal data representation into 'out'
@@ -271,7 +271,7 @@ class IRESEARCH_API sort {
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared {
+  class prepared {
    public:
     using ptr = std::unique_ptr<prepared>;
 
@@ -753,7 +753,7 @@ template<typename ScoreType,
 /// @class sort
 /// @brief base class for all user-side sort entries
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API order final {
+class order final {
  public:
   class entry : private util::noncopyable {
    public:
@@ -821,7 +821,7 @@ class IRESEARCH_API order final {
   /// @class sort
   /// @brief base class for all compiled sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared final : private util::noncopyable {
+  class prepared final : private util::noncopyable {
    public:
     using prepared_order_t = std::vector<order_bucket>;
 
@@ -829,7 +829,7 @@ class IRESEARCH_API order final {
     /// @brief a convinience class for doc_iterators to invoke scorer functions
     ///        on scorers in each order bucket
     ////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API scorers : private util::noncopyable { // noncopyable required by MSVC
+    class scorers : private util::noncopyable { // noncopyable required by MSVC
      public:
       struct scorer {
         scorer(score_function&& func, const order_bucket* bucket) noexcept
@@ -896,10 +896,8 @@ class IRESEARCH_API order final {
       }
 
      private:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       std::vector<scorer> scorers_; // scorer + offset
       const byte_type* score_buf_;
-      IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
 
     static_assert(std::is_nothrow_move_constructible_v<scorers>);
@@ -1117,12 +1115,10 @@ class IRESEARCH_API order final {
     }
 
 
-    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     prepared_order_t order_;
     size_t score_size_{ 0 };
     size_t stats_size_{ 0 };
     IndexFeatures index_features_{ IndexFeatures::NONE };
-    IRESEARCH_API_PRIVATE_VARIABLES_END
   }; // prepared
 
   // std::is_nothrow_move_constructible_v<flags> == false
@@ -1178,9 +1174,7 @@ class IRESEARCH_API order final {
   iterator end() noexcept { return order_.end(); }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   order_t order_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
 
 static_assert(std::is_nothrow_move_constructible_v<order>);

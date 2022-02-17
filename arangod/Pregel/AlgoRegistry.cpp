@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/Algos/AsyncSCC.h"

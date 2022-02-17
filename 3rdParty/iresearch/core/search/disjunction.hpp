@@ -1087,7 +1087,7 @@ class block_disjunction final : public doc_iterator, private score_ctx {
         }
       }
 
-      const size_t offset = math::math_traits<uint64_t>::ctz(cur_);
+      const size_t offset = std::countr_zero(cur_);
       irs::unset_bit(cur_, offset);
 
       [[maybe_unused]] const size_t buf_offset = buf_offset_ + offset;

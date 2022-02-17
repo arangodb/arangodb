@@ -80,9 +80,9 @@ void MockGraph::VertexDef::addToBuilder(
   builder.close();
 }
 
-MockGraph::EdgeDef MockGraph::addEdge(std::string from, std::string to,
-                                      double weight) {
-  EdgeDef newEdge{from, to, weight, _edgeCollectionName};
+MockGraph::EdgeDef MockGraph::addEdge(size_t uniqueEdgeId, std::string from,
+                                      std::string to, double weight) {
+  EdgeDef newEdge{uniqueEdgeId, from, to, weight, _edgeCollectionName};
   _edges.emplace_back(newEdge);
   _vertices.emplace(std::move(from));
   _vertices.emplace(std::move(to));
@@ -92,6 +92,7 @@ MockGraph::EdgeDef MockGraph::addEdge(std::string from, std::string to,
 
 MockGraph::EdgeDef MockGraph::addEdge(size_t from, size_t to, double weight) {
   return addEdge(
+      _edges.size(),
       getVertexCollectionName() + "/" + basics::StringUtils::itoa(from),
       getVertexCollectionName() + "/" + basics::StringUtils::itoa(to), weight);
 }

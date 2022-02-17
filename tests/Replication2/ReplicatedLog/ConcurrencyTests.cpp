@@ -122,7 +122,8 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
           ASSERT_LE(idx.value, snapshot.size());
           auto const& entry = snapshot[idx.value - 1];
           EXPECT_EQ(idx, entry.entry().logIndex());
-          EXPECT_EQ(payload, entry.entry().logPayload());
+          ASSERT_TRUE(entry.entry().hasPayload());
+          EXPECT_EQ(payload, *entry.entry().logPayload());
           if (i == 1000) {
             // we should have done at least a few iterations before finishing
             data.threadsSatisfied.fetch_add(1, std::memory_order_relaxed);
@@ -164,12 +165,11 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
         ASSERT_LE(idx.value, snapshot.size());
         auto const& entry = snapshot[idx.value - 1];
         EXPECT_EQ(idx, entry.entry().logIndex());
-        EXPECT_EQ(payload, entry.entry().logPayload())
-            << VPackSlice(payload->dummy.data()).toJson() << " "
-            << (entry.entry().logPayload()
-                    ? VPackSlice(entry.entry().logPayload()->dummy.data())
-                          .toJson()
-                    : "std::nullopt"s);
+        ASSERT_TRUE(entry.entry().hasPayload());
+        EXPECT_EQ(payload, *entry.entry().logPayload())
+            << payload->slice().toJson() << " "
+            << (entry.entry().logPayload() ? payload->slice().toJson()
+                                           : "std::nullopt"s);
       }
       if (i == 10 * batch) {
         // we should have done at least a few iterations before finishing

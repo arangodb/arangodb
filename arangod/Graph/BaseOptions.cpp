@@ -30,12 +30,12 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
@@ -244,7 +244,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _refactor(false) {}
+      _refactor(arangodb::ServerState::instance()->isSingleServer()) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -422,12 +422,12 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   list.emplace_back(std::move(info));
 }
 
-void BaseOptions::clearVariableValues() {
+void BaseOptions::clearVariableValues() noexcept {
   _expressionCtx.clearVariableValues();
 }
 
 void BaseOptions::setVariableValue(aql::Variable const* var,
-                                   aql::AqlValue const value) {
+                                   aql::AqlValue value) {
   _expressionCtx.setVariableValue(var, value);
 }
 
@@ -480,15 +480,15 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   }
 
   TRI_ASSERT(value.isObject() || value.isNull());
-  expression->setVariable(_tmpVar, value);
+  _expressionCtx.setVariableValue(_tmpVar,
+                                  AqlValue(AqlValueHintSliceNoCopy(value)));
+  ScopeGuard defer(
+      [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
+  aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
-  expression->clearVariable(_tmpVar);
-  if (mustDestroy) {
-    res.destroy();
-  }
   if (!result) {
     cache()->increaseFilterCounter();
   }

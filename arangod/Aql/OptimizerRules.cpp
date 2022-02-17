@@ -59,7 +59,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
@@ -193,7 +192,7 @@ void replaceGatherNodeVariables(
   using EN = arangodb::aql::ExecutionNode;
 
   std::string cmp;
-  arangodb::basics::StringBuffer buffer(128, false);
+  std::string buffer;
 
   // look for all sort elements in the GatherNode and replace them
   // if they match what we have changed
@@ -219,18 +218,13 @@ void replaceGatherNodeVariables(
         auto* expr = arangodb::aql::ExecutionNode::castTo<
                          arangodb::aql::CalculationNode const*>(setter)
                          ->expression();
-        try {
-          // stringifying an expression may fail with "too long" error
-          buffer.clear();
-          expr->stringify(&buffer);
-          if (cmp.size() == buffer.size() &&
-              cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
-            // finally a match!
-            it.var = it3.second;
-            it.attributePath.clear();
-            break;
-          }
-        } catch (...) {
+        buffer.clear();
+        expr->stringify(buffer);
+        if (cmp == buffer) {
+          // finally a match!
+          it.var = it3.second;
+          it.attributePath.clear();
+          break;
         }
       }
     }
@@ -1215,7 +1209,6 @@ void arangodb::aql::removeRedundantSortsRule(
   }
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
-  arangodb::basics::StringBuffer buffer;
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -1225,7 +1218,7 @@ void arangodb::aql::removeRedundantSortsRule(
 
     auto const sortNode = ExecutionNode::castTo<SortNode*>(n);
 
-    auto sortInfo = sortNode->getSortInformation(plan.get(), &buffer);
+    auto sortInfo = sortNode->getSortInformation();
 
     if (sortInfo.isValid && !sortInfo.criteria.empty()) {
       // we found a sort that we can understand
@@ -1243,8 +1236,7 @@ void arangodb::aql::removeRedundantSortsRule(
           // we found another sort. now check if they are compatible!
 
           auto other =
-              ExecutionNode::castTo<SortNode*>(current)->getSortInformation(
-                  plan.get(), &buffer);
+              ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
 
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
@@ -2621,7 +2613,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  arangodb::basics::StringBuffer buffer;
+  std::string buffer;
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -2635,16 +2627,15 @@ void arangodb::aql::removeRedundantCalculationsRule(
     arangodb::aql::Variable const* outvar = nn->outVariable();
 
     try {
-      nn->expression()->stringifyIfNotTooLong(&buffer);
+      buffer.clear();
+      nn->expression()->stringifyIfNotTooLong(buffer);
     } catch (...) {
       // expression could not be stringified (maybe because not all node types
       // are supported). this is not an error, we just skip the optimization
-      buffer.reset();
       continue;
     }
 
-    std::string const referenceExpression(buffer.c_str(), buffer.length());
-    buffer.reset();
+    std::string const referenceExpression(std::move(buffer));
 
     std::vector<ExecutionNode*> stack;
     n->dependencies(stack);
@@ -2655,54 +2646,48 @@ void arangodb::aql::removeRedundantCalculationsRule(
 
       if (current->getType() == EN::CALCULATION) {
         try {
-          // ExecutionNode::castTo<CalculationNode*>(current)->expression()->node()->dump(0);
-          ExecutionNode::castTo<CalculationNode*>(current)
+          buffer.clear();
+          ExecutionNode::castTo<CalculationNode const*>(current)
               ->expression()
-              ->stringifyIfNotTooLong(&buffer);
+              ->stringifyIfNotTooLong(buffer);
+
+          if (buffer == referenceExpression) {
+            // expressions are identical
+            // check if target variable is already registered as a replacement
+            // this covers the following case:
+            // - replacements is set to B => C
+            // - we're now inserting a replacement A => B
+            // the goal now is to enter a replacement A => C instead of A => B
+            auto target = ExecutionNode::castTo<CalculationNode const*>(current)
+                              ->outVariable();
+            while (target != nullptr) {
+              auto it = replacements.find(target->id);
+
+              if (it != replacements.end()) {
+                target = (*it).second;
+              } else {
+                break;
+              }
+            }
+            replacements.emplace(outvar->id, target);
+
+            // also check if the insertion enables further shortcuts
+            // this covers the following case:
+            // - replacements is set to A => B
+            // - we have just inserted a replacement B => C
+            // the goal now is to change the replacement A => B to A => C
+            for (auto it = replacements.begin(); it != replacements.end();
+                 ++it) {
+              if ((*it).second == outvar) {
+                (*it).second = target;
+              }
+            }
+          }
         } catch (...) {
           // expression could not be stringified (maybe because not all node
           // types are supported). this is not an error, we just skip the
           // optimization
-          buffer.reset();
           continue;
-        }
-
-        bool const isEqual =
-            (buffer.length() == referenceExpression.size() &&
-             memcmp(buffer.c_str(), referenceExpression.c_str(),
-                    buffer.length()) == 0);
-        buffer.reset();
-
-        if (isEqual) {
-          // expressions are identical
-          // check if target variable is already registered as a replacement
-          // this covers the following case:
-          // - replacements is set to B => C
-          // - we're now inserting a replacement A => B
-          // the goal now is to enter a replacement A => C instead of A => B
-          auto target = ExecutionNode::castTo<CalculationNode const*>(current)
-                            ->outVariable();
-          while (target != nullptr) {
-            auto it = replacements.find(target->id);
-
-            if (it != replacements.end()) {
-              target = (*it).second;
-            } else {
-              break;
-            }
-          }
-          replacements.emplace(outvar->id, target);
-
-          // also check if the insertion enables further shortcuts
-          // this covers the following case:
-          // - replacements is set to A => B
-          // - we have just inserted a replacement B => C
-          // the goal now is to change the replacement A => B to A => C
-          for (auto it = replacements.begin(); it != replacements.end(); ++it) {
-            if ((*it).second == outvar) {
-              (*it).second = target;
-            }
-          }
         }
       }
 
@@ -3148,12 +3133,15 @@ struct SortToIndexNode final
         // and contains the best index found.
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
-
+        TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
         auto newNode = std::make_unique<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
-            outVariable, usedIndexes, std::move(condition), opts);
+            outVariable, usedIndexes,
+            false,  // here we could always assume false as there is no lookup
+                    // condition here
+            std::move(condition), opts);
 
         auto n = newNode.release();
         enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
@@ -3244,25 +3232,30 @@ struct SortToIndexNode final
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    if (isOnlyAttributeAccess && isSorted && !isSparse &&
-        sortCondition.isUnidirectional() &&
-        sortCondition.isAscending() == indexNode->options().ascending) {
-      // we have found a sort condition, which is unidirectional and in the same
-      // order as the IndexNode...
-      // now check if the sort attributes match the ones of the index
-      size_t const numCovered =
-          sortCondition.coveredAttributes(outVariable, fields);
+    // FIXME: why not just call index->supportsSortCondition here always?
+    bool indexCoversSortCondition = false;
+    if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      indexCoversSortCondition =
+          index->supportsSortCondition(&sortCondition, outVariable, 1)
+              .supportsCondition;
+    } else {
+      indexCoversSortCondition =
+          isOnlyAttributeAccess && isSorted && !isSparse &&
+          sortCondition.isUnidirectional() &&
+          sortCondition.isAscending() == indexNode->options().ascending &&
+          sortCondition.coveredAttributes(outVariable, fields) >=
+              sortCondition.numAttributes();
+    }
 
-      if (numCovered >= sortCondition.numAttributes()) {
-        // sort condition is fully covered by index... now we can remove the
-        // sort node from the plan
-        _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-        // we need to have a sorted result later on, so we will need a sorted
-        // GatherNode in the cluster
-        indexNode->needsGatherNodeSort(true);
-        _modified = true;
-        handled = true;
-      }
+    if (indexCoversSortCondition) {
+      // sort condition is fully covered by index... now we can remove the
+      // sort node from the plan
+      _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+      // we need to have a sorted result later on, so we will need a sorted
+      // GatherNode in the cluster
+      indexNode->needsGatherNodeSort(true);
+      _modified = true;
+      handled = true;
     }
 
     if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
@@ -3469,10 +3462,12 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
-            auto newNode = condition.removeIndexCondition(
-                plan.get(), indexNode->outVariable(), indexCondition->root(),
-                indexesUsed[0].get());
-
+            AstNode* newNode{nullptr};
+            if (!indexNode->isAllCoveredByOneIndex()) {
+              newNode = condition.removeIndexCondition(
+                  plan.get(), indexNode->outVariable(), indexCondition->root(),
+                  indexesUsed[0].get());
+            }
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
@@ -7160,6 +7155,8 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
                              info.collectionNodeOutVar,
                              std::vector<transaction::Methods::IndexHandle>{
                                  transaction::Methods::IndexHandle{info.index}},
+                             false,  // here we are not using inverted index so
+                                     // for sure no "whole" coverage
                              std::move(condition), opts);
   plan->registerNode(inode);
   plan->replaceNode(info.collectionNodeToReplace, inode);
@@ -7629,6 +7626,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
   plan->findNodesOfType(nodes, ::moveFilterIntoEnumerateTypes, true);
 
   VarSet found;
+  VarSet introduced;
 
   for (auto const& n : nodes) {
     auto en = dynamic_cast<DocumentProducingNode*>(n);
@@ -7651,9 +7649,10 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
       continue;
     }
 
-    ExecutionNode* current = n->getFirstParent();
-
     std::unordered_map<Variable const*, CalculationNode*> calculations;
+    introduced.clear();
+
+    ExecutionNode* current = n->getFirstParent();
 
     while (current != nullptr) {
       if (current->getType() != EN::FILTER &&
@@ -7715,9 +7714,27 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
         TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.size() == 1 && found.find(outVariable) != found.end()) {
-          calculations.emplace(calculationNode->outVariable(), calculationNode);
+        if (found.find(outVariable) != found.end()) {
+          // check if the introduced variable refers to another temporary
+          // variable that is not valid yet in the EnumerateCollection/Index
+          // node, which would prevent moving the calculation and filter
+          // upwards, e.g.
+          //   FOR doc IN collection
+          //     LET a = RAND()
+          //     FILTER doc.value == 2 && doc.value > a
+          bool eligible = std::none_of(
+              introduced.begin(), introduced.end(), [&](Variable const* temp) {
+                return (found.find(temp) != found.end());
+              });
+
+          if (eligible) {
+            calculations.emplace(calculationNode->outVariable(),
+                                 calculationNode);
+          }
         }
+
+        // track all newly introduced variables
+        introduced.emplace(calculationNode->outVariable());
       }
 
       current = current->getFirstParent();

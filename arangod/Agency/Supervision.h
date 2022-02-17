@@ -113,7 +113,7 @@ class Supervision : public arangodb::Thread {
   };
 
   /// @brief Construct cluster consistency checking
-  explicit Supervision(application_features::ApplicationServer& server);
+  explicit Supervision(ArangodServer& server);
 
   /// @brief Default dtor
   ~Supervision();
@@ -195,6 +195,9 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Check replicated logs
   void checkReplicatedLogs();
+
+  /// @brief Check replicated logs
+  void checkReplicatedStates();
 
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
@@ -336,8 +339,6 @@ class Supervision : public arangodb::Thread {
   metrics::Histogram<metrics::LogScale<uint64_t>>& _supervision_runtime_msec;
   metrics::Histogram<metrics::LogScale<uint64_t>>&
       _supervision_runtime_wait_for_sync_msec;
-  metrics::Counter& _supervision_accum_runtime_msec;
-  metrics::Counter& _supervision_accum_runtime_wait_for_sync_msec;
   metrics::Counter& _supervision_failed_server_counter;
 };
 

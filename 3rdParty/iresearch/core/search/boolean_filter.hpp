@@ -36,7 +36,7 @@ namespace iresearch {
 /// @brief defines user-side boolean filter, as the container for other 
 /// filters
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
+class boolean_filter : public filter, private util::noncopyable {
  public:
   typedef std::vector<filter::ptr> filters_t;
   typedef ptr_iterator< filters_t::const_iterator > const_iterator;
@@ -87,15 +87,13 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl) const;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class And
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API And: public boolean_filter {
+class And: public boolean_filter {
  public:
   static ptr make();
 
@@ -116,7 +114,7 @@ class IRESEARCH_API And: public boolean_filter {
 //////////////////////////////////////////////////////////////////////////////
 /// @class Or
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API Or : public boolean_filter {
+class Or : public boolean_filter {
  public:
   static ptr make();
 
@@ -153,7 +151,7 @@ class IRESEARCH_API Or : public boolean_filter {
 //////////////////////////////////////////////////////////////////////////////
 /// @class not
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API Not: public filter {
+class Not: public filter {
  public:
   static ptr make();
 
@@ -199,9 +197,7 @@ class IRESEARCH_API Not: public filter {
   virtual bool equals(const irs::filter& rhs) const noexcept override;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filter::ptr filter_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 }

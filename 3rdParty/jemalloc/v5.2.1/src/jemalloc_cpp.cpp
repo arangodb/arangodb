@@ -56,6 +56,12 @@ void	operator delete[](void* ptr, std::size_t size, std::align_val_t al) noexcep
 JEMALLOC_NOINLINE
 static void *
 handleOOM(std::size_t size, bool nothrow) {
+	if (opt_experimental_infallible_new) {
+		safety_check_fail("<jemalloc>: Allocation failed and "
+		    "opt.experimental_infallible_new is true. Aborting.\n");
+		return nullptr;
+	}
+
 	void *ptr = nullptr;
 
 	while (ptr == nullptr) {
@@ -93,7 +99,6 @@ fallback_impl(std::size_t size) noexcept(IsNoExcept) {
 	if (likely(ptr != nullptr)) {
 		return ptr;
 	}
-
 	return handleOOM(size, IsNoExcept);
 }
 

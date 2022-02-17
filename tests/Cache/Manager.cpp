@@ -30,7 +30,7 @@
 #include <thread>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"

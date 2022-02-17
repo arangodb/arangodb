@@ -52,9 +52,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestCollectionHandler::RestCollectionHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestCollectionHandler::execute() {
@@ -83,6 +83,7 @@ void RestCollectionHandler::shutdownExecute(bool isFinalized) noexcept {
     _activeTrx.reset();
     _ctxt.reset();
   }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 RestStatus RestCollectionHandler::handleCommandGet() {

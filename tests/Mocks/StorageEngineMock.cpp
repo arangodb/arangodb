@@ -331,7 +331,7 @@ class EdgeIndexMock final : public arangodb::Index {
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
-      arangodb::ReadOwnWrites) override {
+      arangodb::ReadOwnWrites, int) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
     TRI_ASSERT(node->numMembers() == 1);
@@ -507,8 +507,7 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 };  // AllIteratorMock
 
 struct IndexFactoryMock : arangodb::IndexFactory {
-  IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
-                   bool injectClusterIndexes)
+  IndexFactoryMock(arangodb::ArangodServer& server, bool injectClusterIndexes)
       : IndexFactory(server) {
     if (injectClusterIndexes) {
       arangodb::ClusterIndexFactory::linkIndexFactories(server, *this);
@@ -762,9 +761,10 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
 
   char const* typeName() const override { return "hash-index-iterator-mock"; }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
-      cb(_begin->first, _begin->second.slice());
+      auto data = SliceCoveringData(_begin->second.slice());
+      cb(_begin->first, data);
       ++_begin;
       --limit;
     }
@@ -909,7 +909,7 @@ class HashIndexMock final : public arangodb::Index {
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&,
-      arangodb::ReadOwnWrites) override {
+      arangodb::ReadOwnWrites, int) override {
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
     keys->openArray();
@@ -1095,7 +1095,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     index = EdgeIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare("hash")) {
     index = HashIndexMock::make(id, _logicalCollection, info);
-  } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
+  } else if (0 ==
+             type.compare(
+                 arangodb::iresearch::StaticStrings::DataSourceType.data())) {
     try {
       auto& server = _logicalCollection.vocbase().server();
       if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -1586,10 +1588,9 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
-StorageEngineMock::StorageEngineMock(
-    arangodb::application_features::ApplicationServer& server,
-    bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "",
+StorageEngineMock::StorageEngineMock(arangodb::ArangodServer& server,
+                                     bool injectClusterIndexes)
+    : StorageEngine(server, "Mock", "", std::numeric_limits<size_t>::max(),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),
@@ -1622,20 +1623,11 @@ void StorageEngineMock::changeCollection(
 }
 
 arangodb::Result StorageEngineMock::changeView(
-    TRI_vocbase_t& vocbase, arangodb::LogicalView const& view, bool doSync) {
+    arangodb::LogicalView const& view, arangodb::velocypack::Slice update) {
   before();
-  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) !=
-             views.end());
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  auto res = view.properties(
-      builder, arangodb::LogicalDataSource::Serialization::Persistence);
-  if (!res.ok()) {
-    return res;
-  }
-  builder.close();
-  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
+  std::pair key{view.vocbase().id(), view.id()};
+  TRI_ASSERT(views.find(key) != views.end());
+  views.emplace(key, update);
   return {};
 }
 
@@ -2017,9 +2009,9 @@ arangodb::Result TransactionCollectionMock::doUnlock(
   return {};
 }
 
-size_t TransactionStateMock::abortTransactionCount;
-size_t TransactionStateMock::beginTransactionCount;
-size_t TransactionStateMock::commitTransactionCount;
+std::atomic_size_t TransactionStateMock::abortTransactionCount{0};
+std::atomic_size_t TransactionStateMock::beginTransactionCount{0};
+std::atomic_size_t TransactionStateMock::commitTransactionCount{0};
 
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(

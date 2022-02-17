@@ -92,11 +92,21 @@ if (MSVC)
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 else()
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst
-    PRIVATE "-fPIC"
-  )
+  CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
+  if (SUPPORT_FPIC)
+    target_compile_options(
+      ${IResearch_TARGET_NAME}-ofst
+      PRIVATE "-fPIC"
+    )
+  endif ()
 endif()
+
+# force c++17 for ofst as transitional step
+set_target_properties(${IResearch_TARGET_NAME}-ofst
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
 
 target_include_directories(
   ${IResearch_TARGET_NAME}-ofst
@@ -176,11 +186,37 @@ endif()
 ################################################################################
 ### Boost::Text library
 ################################################################################
-
+# Force C++17 for boost::text
+set(CXX_STD 17 CACHE STRING "Set to 14, 17, etc., to enable C++14, C++17, etc." FORCE)
 add_subdirectory(text)
+# force c++17
+set_target_properties(text
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
 
 ################################################################################
 ### fastText library
 ################################################################################
 
 add_subdirectory(fastText)
+
+# force c++17
+set_target_properties(fasttext-static
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
+
+set_target_properties(fasttext-shared
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)
+
+set_target_properties(fasttext-static_pic
+    PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED YES
+)

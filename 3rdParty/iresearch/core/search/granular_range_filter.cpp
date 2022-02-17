@@ -51,14 +51,14 @@ namespace {
 //////////////////////////////////////////////////////////////////////////////
 
 // return the granularity portion of the term
-irs::bytes_ref mask_granularity(const irs::bytes_ref& term, size_t prefix_size) {
+irs::bytes_ref mask_granularity(irs::bytes_ref term, size_t prefix_size) {
   return term.size() > prefix_size
     ? irs::bytes_ref(term.c_str(), prefix_size)
     : term;
 }
 
 // return the value portion of the term
-irs::bytes_ref mask_value(const irs::bytes_ref& term, size_t prefix_size) {
+irs::bytes_ref mask_value(irs::bytes_ref term, size_t prefix_size) {
   if (term.null()) {
     return term;
   }
@@ -98,8 +98,8 @@ void collect_terms_between(
     const irs::term_reader& field,
     irs::seek_term_iterator& terms,
     size_t prefix_size,
-    const irs::bytes_ref& begin_term,
-    const irs::bytes_ref& end_term, // granularity level for end_term is ingored during comparison
+    irs::bytes_ref begin_term,
+    irs::bytes_ref end_term, // granularity level for end_term is ingored during comparison
     bool include_begin_term, // should begin_term also be included
     bool include_end_term, /* should end_term also be included*/
     Visitor& visitor) {
@@ -548,7 +548,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range) // cppcheck-suppress unknownMacro
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit) {
   if (!rng.min.empty() && !rng.max.empty()) {

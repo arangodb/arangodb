@@ -59,7 +59,8 @@ IndexNode::IndexNode(
     ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
     Variable const* outVariable,
     std::vector<transaction::Methods::IndexHandle> const& indexes,
-    std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)
+    bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
+    IndexIteratorOptions const& opts)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
@@ -67,7 +68,8 @@ IndexNode::IndexNode(
       _condition(std::move(condition)),
       _needsGatherNodeSort(false),
       _options(opts),
-      _outNonMaterializedDocId(nullptr) {
+      _outNonMaterializedDocId(nullptr),
+      _allCoveredByOneIndex(allCoveredByOneIndex) {
   TRI_ASSERT(_condition != nullptr);
 
   _projections.determineIndexSupport(this->collection()->id(), _indexes);
@@ -127,6 +129,8 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   }
 
   _condition = Condition::fromVPack(plan, condition);
+  _allCoveredByOneIndex = basics::VelocyPackHelper::getBooleanValue(
+      base, "allCoveredByOneIndex", false);
 
   TRI_ASSERT(_condition != nullptr);
 
@@ -214,6 +218,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   }
   builder.add(VPackValue("condition"));
   _condition->toVelocyPack(builder, flags);
+  builder.add("allCoveredByOneIndex", VPackValue(_allCoveredByOneIndex));
   // IndexIteratorOptions
   builder.add("sorted", VPackValue(_options.sorted));
   builder.add("ascending", VPackValue(_options.ascending));
@@ -233,7 +238,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
           return index->id() == _outNonMaterializedIndVars.first;
         });
     TRI_ASSERT(indIt != _indexes.cend());
-    auto const& fields = (*indIt)->fields();
+    auto const& coveredFields = (*indIt)->coveredFields();
     VPackArrayBuilder arrayScope(&builder, "indexValuesVars");
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
@@ -242,9 +247,9 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("name",
                   VPackValue(fieldVar.first->name));  // for explainer.js
       std::string fieldName;
-      TRI_ASSERT(fieldVar.second < fields.size());
-      basics::TRI_AttributeNamesToString(fields[fieldVar.second], fieldName,
-                                         true);
+      TRI_ASSERT(fieldVar.second < coveredFields.size());
+      basics::TRI_AttributeNamesToString(coveredFields[fieldVar.second],
+                                         fieldName, true);
       builder.add("field", VPackValue(fieldName));  // for explainer.js
     }
   }
@@ -315,6 +320,22 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   /// by their _condition node path indexes
   auto nonConstExpressions = initializeOnce();
 
+  // check which variables are used by the node's post-filter
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+  if (hasFilter()) {
+    VarSet inVars;
+    filter()->variables(inVars);
+
+    filterVarsToRegs.reserve(inVars.size());
+
+    for (auto& var : inVars) {
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+    }
+  }
+
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
   auto const outRegister = variableToRegisterId(outVariable);
@@ -362,8 +383,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto executorInfos = IndexExecutorInfos(
       outRegister, engine.getQuery(), this->collection(), _outVariable,
       isProduceResult(), this->_filter.get(), this->projections(),
-      std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
-      _condition->root(), this->getIndexes(), _plan->getAst(), this->options(),
+      std::move(filterVarsToRegs), std::move(nonConstExpressions), doCount(),
+      canReadOwnWrites(), _condition->root(), _allCoveredByOneIndex,
+      this->getIndexes(), _plan->getAst(), this->options(),
       _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
@@ -395,7 +417,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   auto c = std::make_unique<IndexNode>(
-      plan, _id, collection(), outVariable, _indexes,
+      plan, _id, collection(), outVariable, _indexes, _allCoveredByOneIndex,
       std::unique_ptr<Condition>(_condition->clone()), _options);
 
   c->_projections = _projections;
@@ -405,6 +427,13 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void IndexNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  DocumentProducingNode::replaceVariables(replacements);
 }
 
 /// @brief destroy the IndexNode
@@ -424,16 +453,15 @@ CostEstimate IndexNode::estimateCost() const {
   double totalCost = 0.0;
 
   auto root = _condition->root();
-
+  TRI_ASSERT(!_allCoveredByOneIndex || _indexes.size() == 1);
   for (size_t i = 0; i < _indexes.size(); ++i) {
     Index::FilterCosts costs =
         Index::FilterCosts::defaultCosts(itemsInCollection);
 
     if (root != nullptr && root->numMembers() > i) {
-      arangodb::aql::AstNode const* condition = root->getMember(i);
-      costs = _indexes[i]->supportsFilterCondition(
-          std::vector<std::shared_ptr<Index>>(), condition, _outVariable,
-          itemsInCollection);
+      auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
+      costs = _indexes[i]->supportsFilterCondition({}, condition, _outVariable,
+                                                   itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;
@@ -453,9 +481,15 @@ CostEstimate IndexNode::estimateCost() const {
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
-
+  if (hasFilter()) {
+    Ast::getReferencedVariables(filter()->node(), vars);
+  }
+  for (auto const& it : _outNonMaterializedIndVars.second) {
+    vars.erase(it.first);
+  }
   vars.erase(_outVariable);
 }
+
 ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
 
 Condition* IndexNode::condition() const { return _condition.get(); }

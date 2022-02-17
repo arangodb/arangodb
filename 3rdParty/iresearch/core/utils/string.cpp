@@ -20,63 +20,21 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
+#include "string.hpp"
 
 #include <absl/hash/internal/city.h>
 
-#include "string.hpp"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     hash function
-// -----------------------------------------------------------------------------
-
-namespace {
-using namespace irs;
-template<typename T>
-size_t get_hash(const T* value, size_t size) noexcept {
-  return absl::hash_internal::CityHash64(reinterpret_cast<const char*>(value), size);
-}
-
-}
-
 namespace iresearch {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                   basic_string_ref implementation
-// -----------------------------------------------------------------------------
-
-#if defined(_MSC_VER) && defined(IRESEARCH_DLL)
-
-template class IRESEARCH_API basic_string_ref<char>;
-template class IRESEARCH_API basic_string_ref<byte_type>;
-
-#endif
-
 namespace hash_utils {
 
-size_t hash(const std::string& value) noexcept {
-  return get_hash(value.c_str(), value.size());
+size_t hash(const char* value, size_t size) noexcept {
+  return irs::absl::hash_internal::CityHash64(value, size);
 }
 
-size_t hash(const bstring& value) noexcept {
-  return get_hash(value.c_str(), value.size());
+size_t hash(const byte_type* value, size_t size) noexcept {
+  static_assert(sizeof(byte_type) == sizeof(char));
+  return hash(reinterpret_cast<const char*>(value), size);
 }
 
-size_t hash(const char* value) noexcept {
-  return get_hash(value, std::char_traits<char>::length(value) * sizeof(char));
 }
-
-size_t hash(const wchar_t* value) noexcept {
-  return get_hash(value, std::char_traits<wchar_t>::length(value) * sizeof(wchar_t));
-}
-
-size_t hash(const bytes_ref& value) noexcept {
-  return get_hash(value.c_str(), value.size());
-}
-
-size_t hash(const string_ref& value) noexcept {
-  return get_hash(value.c_str(), value.size());
-}
-
-} // hash_utils
 }
