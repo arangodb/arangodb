@@ -451,7 +451,7 @@ void EnvironmentFeature::prepare() {
       if (rv.ok()) {
         procName = ::trimProcName(content);
       }
-      LOG_TOPIC("51705", WARN, arangodb::Logger::COMMUNICATION)
+      LOG_TOPIC("51705", INFO, arangodb::Logger::STARTUP)
           << "Parent process: " << parentId
           << (procName.empty() ? "" : "(" + std::string(procName) + ")");
     }
