@@ -36,9 +36,9 @@ void LeaderStateManager<S>::run() noexcept {
 
   LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
       << "LeaderStateManager waiting for leadership to be established";
-  _guardedData.template doUnderLock([](GuardedLeaderStateManagerData& self) {
+  _guardedData.doUnderLock([](GuardedLeaderStateManagerData& self) {
     if (self._internalState == LeaderInternalState::kUninitializedState) {
-      self->updateInternalState(
+      self.updateInternalState(
           LeaderInternalState::kWaitingForLeadershipEstablished);
     } else {
       LOG_TOPIC("e1861", FATAL, Logger::REPLICATED_STATE)
@@ -60,7 +60,7 @@ void LeaderStateManager<S>::run() noexcept {
         }
         LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
             << "LeaderStateManager established";
-        TRI_ASSERT(self->_guardedData.getLockedGuard()->_state ==
+        TRI_ASSERT(self->_guardedData.getLockedGuard()->_internalState ==
                    LeaderInternalState::kWaitingForLeadershipEstablished);
         self->_guardedData.getLockedGuard()->updateInternalState(
             LeaderInternalState::kIngestingExistingLog);
@@ -82,12 +82,17 @@ void LeaderStateManager<S>::run() noexcept {
                 return futures::Future<Result>{
                     TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
               }
-              TRI_ASSERT(self->_guardedData.getLockedGuard()->_state ==
-                         LeaderInternalState::kIngestingExistingLog);
-              self->_guardedData.getLockedGuard()->updateInternalState(
-                  LeaderInternalState::kRecoveryInProgress, result->range());
-              std::shared_ptr<IReplicatedLeaderState<S>> machine =
-                  self->factory->constructLeader(std::move(self->core));
+              auto machine = self->_guardedData.doUnderLock(
+                  [&](auto& data)
+                      -> std::shared_ptr<IReplicatedLeaderState<S>> {
+                    TRI_ASSERT(data->_internalState ==
+                               LeaderInternalState::kIngestingExistingLog);
+                    data->updateInternalState(
+                        LeaderInternalState::kRecoveryInProgress,
+                        result->range());
+                    return self->factory->constructLeader(
+                        std::move(data->_core));
+                  });
               return machine->recoverEntries(std::move(result))
                   .then([weak,
                          machine](futures::Try<Result>&& tryResult) mutable
@@ -104,7 +109,8 @@ void LeaderStateManager<S>::run() noexcept {
                         self->state = machine;
                         self->token->snapshot.updateStatus(
                             SnapshotStatus::kCompleted);
-                        TRI_ASSERT(self->_guardedData.getLockedGuard()->_state ==
+                        TRI_ASSERT(self->_guardedData.getLockedGuard()
+                                       ->_internalState ==
                                    LeaderInternalState::kRecoveryInProgress);
                         self->_guardedData.getLockedGuard()
                             ->updateInternalState(
@@ -165,10 +171,8 @@ LeaderStateManager<S>::LeaderStateManager(
     std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logLeader(std::move(leader)),
-      core(std::move(core)),
-      token(std::move(token)),
       factory(std::move(factory)),
-      _guardedData() {
+      _guardedData(std::move(core), std::move(token)) {
   TRI_ASSERT(this->core != nullptr);
   TRI_ASSERT(this->token != nullptr);
 }
@@ -176,7 +180,9 @@ LeaderStateManager<S>::LeaderStateManager(
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   if (_didResign) {
-    TRI_ASSERT(core == nullptr && token == nullptr);
+    TRI_ASSERT(_guardedData.doUnderLock([](auto const& self) {
+      return self._core == nullptr && self._token == nullptr;
+    }));
     throw replicated_log::ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
   } else {
@@ -184,11 +190,10 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
     // started (more particularly, when the leader state is created), but
     // `this->state` is only set after replaying the log has finished.
     // Thus both can be null here.
-    TRI_ASSERT(token != nullptr);
+    TRI_ASSERT(_guardedData.doUnderLock(
+        [](auto const& self) { return self._token != nullptr; }));
   }
   auto leaderStatus = _guardedData.getLockedGuard()->getLeaderStatus();
-  leaderStatus.snapshot = token->snapshot;
-  leaderStatus.generation = token->generation;
   return StateStatus{.variant = std::move(leaderStatus)};
 }
 
@@ -198,14 +203,16 @@ auto LeaderStateManager<S>::resign() && noexcept
                  std::unique_ptr<ReplicatedStateToken>> {
   LOG_TOPIC("edcf3", TRACE, Logger::REPLICATED_STATE)
       << "Leader manager resign";
-  auto core = std::invoke([&] {
+
+  auto [core, token] = _guardedData.doUnderLock([&](auto& self) {
     if (state != nullptr) {
-      TRI_ASSERT(this->core == nullptr);
-      return std::move(*state).resign();
+      TRI_ASSERT(self._core == nullptr);
+      return std::pair(std::move(*state).resign(), std::move(self._token));
     } else {
-      return std::move(this->core);
+      return std::pair(std::move(self._core), std::move(self._token));
     }
   });
+
   TRI_ASSERT(core != nullptr);
   TRI_ASSERT(token != nullptr);
   TRI_ASSERT(!_didResign);
@@ -225,9 +232,12 @@ void LeaderStateManager<S>::beginWaitingForParticipantResigned() {
 }
 
 template<typename S>
-LeaderStateManager<
-    S>::GuardedLeaderStateManagerData::GuardedLeaderStateManagerData()
-    : _internalState(LeaderInternalState::kWaitingForLeadershipEstablished) {}
+LeaderStateManager<S>::GuardedLeaderStateManagerData::
+    GuardedLeaderStateManagerData(std::unique_ptr<CoreType> core,
+                                  std::unique_ptr<ReplicatedStateToken> token)
+    : _internalState(LeaderInternalState::kWaitingForLeadershipEstablished),
+      _core(std::move(core)),
+      _token(std::move(token)) {}
 
 template<typename S>
 void LeaderStateManager<S>::GuardedLeaderStateManagerData::updateInternalState(
@@ -250,6 +260,8 @@ auto LeaderStateManager<S>::GuardedLeaderStateManagerData::getLeaderStatus()
   } else {
     status.managerState.detail = std::nullopt;
   }
+  status.snapshot = _token->snapshot;
+  status.generation = _token->generation;
   return status;
 }
 

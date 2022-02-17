@@ -67,19 +67,20 @@ struct LeaderStateManager
   std::weak_ptr<ReplicatedState<S>> parent;
   std::shared_ptr<replicated_log::ILogLeader> logLeader;
 
-  std::unique_ptr<CoreType> core;
-  std::unique_ptr<ReplicatedStateToken> token;
-
   std::shared_ptr<Factory> const factory;
   bool _didResign = false;
 
   struct GuardedLeaderStateManagerData {
-    GuardedLeaderStateManagerData();
+    GuardedLeaderStateManagerData(std::unique_ptr<CoreType> core,
+                                  std::unique_ptr<ReplicatedStateToken> token);
 
     LeaderInternalState _internalState{
         LeaderInternalState::kUninitializedState};
     std::chrono::system_clock::time_point _lastInternalStateChange;
     std::optional<LogRange> _recoveryRange;
+
+    std::unique_ptr<CoreType> _core;
+    std::unique_ptr<ReplicatedStateToken> _token;
 
     void updateInternalState(LeaderInternalState newState,
                              std::optional<LogRange> range = std::nullopt);
