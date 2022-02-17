@@ -12,6 +12,7 @@ import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
 import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
+import ParameterNodeLabel from "./ParameterNodeLabel";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -150,16 +151,7 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
             }
             key="2"
           >
-            <Input
-              addonBefore="Label"
-              placeholder="Attribute"
-              suffix = {
-                <Tooltip title="Node label. Please choose a valid and available node attribute.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
+            <ParameterNodeLabel />
             <br />
             <ParameterNodeLabelByCollection />
             <br />
