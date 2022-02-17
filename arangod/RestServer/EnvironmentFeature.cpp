@@ -48,7 +48,7 @@
 #endif
 
 namespace {
-std::string_view trimProcName(std::string_view const& content) {
+std::string_view trimProcName(std::string_view content) {
   std::size_t pos = content.find(' ');
   if (pos != std::string_view::npos && pos + 1 < content.size()) {
     std::size_t pos2 = std::string_view::npos;
