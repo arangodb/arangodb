@@ -287,7 +287,8 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
   return election;
 }
 
-auto tryLeadershipElection(LogPlanSpecification const& plan,
+auto tryLeadershipElection(LogTarget const& target,
+                           LogPlanSpecification const& plan,
                            LogCurrent const& current,
                            ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
@@ -323,12 +324,24 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   }
 
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
-    // We randomly elect on of the electible leaders
-    auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-    auto const& newLeader =
-        election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
+    auto newLeader = std::invoke([&] {
+      if (target.leader.has_value()) {
+        // check if the target leader is one of the electible leaders
+        auto iter =
+            std::find(election.electibleLeaderSet.begin(),
+                      election.electibleLeaderSet.end(), *target.leader);
+        if (iter != std::end(election.electibleLeaderSet)) {
+          // the server is electible - take it
+          return *target.leader;
+        }
+      }
 
+      // We randomly elect on of the electible leaders
+      auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+      return election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+    });
+
+    auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
     election.outcome = LogCurrentSupervisionElection::Outcome::SUCCESS;
     return std::make_unique<LeaderElectionAction>(
         plan.id, election,
@@ -344,13 +357,14 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   }
 }
 
-auto checkLeaderPresent(LogPlanSpecification const& plan,
+auto checkLeaderPresent(LogTarget const& target,
+                        LogPlanSpecification const& plan,
                         LogCurrent const& current,
                         ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   // currentTerm has no leader
   if (!plan.currentTerm->leader.has_value()) {
-    return tryLeadershipElection(plan, current, health);
+    return tryLeadershipElection(target, plan, current, health);
   } else {
     return std::make_unique<EmptyAction>();
   }
@@ -489,7 +503,8 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   }
 
   // Check that the log has a leader in plan; if not try electing one
-  if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
+  if (auto action =
+          checkLeaderPresent(log.target, *log.plan, *log.current, health);
       !isEmptyAction(action)) {
     return action;
   }
