@@ -36,8 +36,21 @@ void LeaderStateManager<S>::run() noexcept {
 
   LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
       << "LeaderStateManager waiting for leadership to be established";
-  _guardedData.getLockedGuard()->updateInternalState(
-      LeaderInternalState::kWaitingForLeadershipEstablished);
+  _guardedData.template doUnderLock([](GuardedLeaderStateManagerData& self) {
+    if (self._internalState == LeaderInternalState::kUninitializedState) {
+      self->updateInternalState(
+          LeaderInternalState::kWaitingForLeadershipEstablished);
+    } else {
+      LOG_TOPIC("e1861", FATAL, Logger::REPLICATED_STATE)
+          << "LeaderStateManager was started twice, this must not happen. "
+             "Bailing out.";
+      FATAL_ERROR_EXIT();
+    }
+  });
+
+  // TODO What happens when the LogLeader instance is resigned
+  //      during run()? Are exceptions thrown that we must handle?
+
   logLeader->waitForLeadership()
       .thenValue([weak = this->weak_from_this()](auto&& result) {
         auto self = weak.lock();
@@ -47,6 +60,8 @@ void LeaderStateManager<S>::run() noexcept {
         }
         LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
             << "LeaderStateManager established";
+        TRI_ASSERT(self->_guardedData.getLockedGuard()->_state ==
+                   LeaderInternalState::kWaitingForLeadershipEstablished);
         self->_guardedData.getLockedGuard()->updateInternalState(
             LeaderInternalState::kIngestingExistingLog);
         auto mux = Multiplexer::construct(self->logLeader);
@@ -67,6 +82,8 @@ void LeaderStateManager<S>::run() noexcept {
                 return futures::Future<Result>{
                     TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
               }
+              TRI_ASSERT(self->_guardedData.getLockedGuard()->_state ==
+                         LeaderInternalState::kIngestingExistingLog);
               self->_guardedData.getLockedGuard()->updateInternalState(
                   LeaderInternalState::kRecoveryInProgress, result->range());
               std::shared_ptr<IReplicatedLeaderState<S>> machine =
@@ -87,6 +104,8 @@ void LeaderStateManager<S>::run() noexcept {
                         self->state = machine;
                         self->token->snapshot.updateStatus(
                             SnapshotStatus::kCompleted);
+                        TRI_ASSERT(self->_guardedData.getLockedGuard()->_state ==
+                                   LeaderInternalState::kRecoveryInProgress);
                         self->_guardedData.getLockedGuard()
                             ->updateInternalState(
                                 LeaderInternalState::kServiceAvailable);
@@ -118,6 +137,11 @@ void LeaderStateManager<S>::run() noexcept {
               return;
             }
             try {
+              // Note that if one of the previous actions returned
+              // TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, this will
+              // be because the shared_ptr is already gone. Thus weak.lock()
+              // above will have failed, too; thus we'll never see that error
+              // code here.
               auto res = result.get();  // throws exceptions
               TRI_ASSERT(res.ok());
             } catch (std::exception const& e) {
