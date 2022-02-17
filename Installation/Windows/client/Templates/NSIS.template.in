@@ -855,7 +855,6 @@ inst:
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
-  ReadEnvStr $PROGRAMDATA ProgramData
   ; check to see if /D has been used to change
   ; the install directory by comparing it to the
   ; install directory that is expected to be the
