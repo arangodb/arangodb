@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed an assertion failure which could occur when there was an error in
+  the HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP
+  header parsing).
+
 * Added back the optimization for empty document update operations (i.e. update
   requests in which no attributes were specified to be updated), handling them 
   in a special way without performing any writes, also excluding such special 
