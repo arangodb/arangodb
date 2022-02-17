@@ -689,7 +689,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(
     // allow custom types being sent here
     validationOptions.disallowCustom = false;
 
-    VPackValidator validator(&vpackOptions);
+    VPackValidator validator(&validationOptions);
 
     // now check the sub-format of the velocypack data we received...
     VPackSlice s(reinterpret_cast<uint8_t const*>(p));
