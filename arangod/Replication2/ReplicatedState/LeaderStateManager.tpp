@@ -36,7 +36,8 @@ void LeaderStateManager<S>::run() {
 
   LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
       << "LeaderStateManager waiting for leadership to be established";
-  updateInternalState(LeaderInternalState::kWaitingForLeadershipEstablished);
+  _guardedData.getLockedGuard()->updateInternalState(
+      LeaderInternalState::kWaitingForLeadershipEstablished);
   logLeader->waitForLeadership()
       .thenValue([weak = this->weak_from_this()](auto&& result) {
         auto self = weak.lock();
@@ -46,7 +47,8 @@ void LeaderStateManager<S>::run() {
         }
         LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
             << "LeaderStateManager established";
-        self->updateInternalState(LeaderInternalState::kIngestingExistingLog);
+        self->_guardedData.getLockedGuard()->updateInternalState(
+            LeaderInternalState::kIngestingExistingLog);
         auto mux = Multiplexer::construct(self->logLeader);
         mux->digestAvailableEntries();
         self->stream = mux->template getStreamById<1>();  // TODO fix stream id
@@ -65,7 +67,7 @@ void LeaderStateManager<S>::run() {
                 return futures::Future<Result>{
                     TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
               }
-              self->updateInternalState(
+              self->_guardedData.getLockedGuard()->updateInternalState(
                   LeaderInternalState::kRecoveryInProgress, result->range());
               std::shared_ptr<IReplicatedLeaderState<S>> machine =
                   self->factory->constructLeader(std::move(self->core));
@@ -85,8 +87,9 @@ void LeaderStateManager<S>::run() {
                         self->state = machine;
                         self->token->snapshot.updateStatus(
                             SnapshotStatus::kCompleted);
-                        self->updateInternalState(
-                            LeaderInternalState::kServiceAvailable);
+                        self->_guardedData.getLockedGuard()
+                            ->updateInternalState(
+                                LeaderInternalState::kServiceAvailable);
                         self->state->_stream = self->stream;
                         self->beginWaitingForParticipantResigned();
                         return result;
@@ -138,10 +141,10 @@ LeaderStateManager<S>::LeaderStateManager(
     std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logLeader(std::move(leader)),
-      internalState(LeaderInternalState::kWaitingForLeadershipEstablished),
       core(std::move(core)),
       token(std::move(token)),
-      factory(std::move(factory)) {
+      factory(std::move(factory)),
+      _guardedData() {
   TRI_ASSERT(this->core != nullptr);
   TRI_ASSERT(this->token != nullptr);
 }
@@ -159,19 +162,10 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
     // Thus both can be null here.
     TRI_ASSERT(token != nullptr);
   }
-  LeaderStatus status;
-  status.managerState.state = internalState;
-  status.managerState.lastChange = lastInternalStateChange;
-  if (internalState == LeaderInternalState::kRecoveryInProgress &&
-      recoveryRange) {
-    status.managerState.detail =
-        "recovery range is " + to_string(*recoveryRange);
-  } else {
-    status.managerState.detail = std::nullopt;
-  }
-  status.snapshot = token->snapshot;
-  status.generation = token->generation;
-  return StateStatus{.variant = std::move(status)};
+  auto leaderStatus = _guardedData.getLockedGuard()->getLeaderStatus();
+  leaderStatus.snapshot = token->snapshot;
+  leaderStatus.generation = token->generation;
+  return StateStatus{.variant = std::move(leaderStatus)};
 }
 
 template<typename S>
@@ -205,4 +199,34 @@ void LeaderStateManager<S>::beginWaitingForParticipantResigned() {
     }
   });
 }
+
+template<typename S>
+LeaderStateManager<
+    S>::GuardedLeaderStateManagerData::GuardedLeaderStateManagerData()
+    : _internalState(LeaderInternalState::kWaitingForLeadershipEstablished) {}
+
+template<typename S>
+void LeaderStateManager<S>::GuardedLeaderStateManagerData::updateInternalState(
+    LeaderInternalState newState, std::optional<LogRange> range) {
+  _internalState = newState;
+  _lastInternalStateChange = std::chrono::system_clock::now();
+  _recoveryRange = range;
+}
+
+template<typename S>
+auto LeaderStateManager<S>::GuardedLeaderStateManagerData::getLeaderStatus()
+    const -> LeaderStatus {
+  LeaderStatus status;
+  status.managerState.state = _internalState;
+  status.managerState.lastChange = _lastInternalStateChange;
+  if (_internalState == LeaderInternalState::kRecoveryInProgress &&
+      _recoveryRange) {
+    status.managerState.detail =
+        "recovery range is " + to_string(*_recoveryRange);
+  } else {
+    status.managerState.detail = std::nullopt;
+  }
+  return status;
+}
+
 }  // namespace arangodb::replication2::replicated_state

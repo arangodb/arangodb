@@ -21,12 +21,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <memory>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/Streams/Streams.h"
 #include "Replication2/Streams/LogMultiplexer.h"
+
+#include <Basics/Guarded.h>
+
+#include <memory>
 
 namespace arangodb::replication2::replicated_state {
 
@@ -64,26 +67,30 @@ struct LeaderStateManager
   std::weak_ptr<ReplicatedState<S>> parent;
   std::shared_ptr<replicated_log::ILogLeader> logLeader;
 
-  LeaderInternalState internalState{LeaderInternalState::kUninitializedState};
-  std::chrono::system_clock::time_point lastInternalStateChange;
-  std::optional<LogRange> recoveryRange;
-
   std::unique_ptr<CoreType> core;
   std::unique_ptr<ReplicatedStateToken> token;
 
   std::shared_ptr<Factory> const factory;
   bool _didResign = false;
 
+  struct GuardedLeaderStateManagerData {
+    GuardedLeaderStateManagerData();
+
+    LeaderInternalState _internalState{
+        LeaderInternalState::kUninitializedState};
+    std::chrono::system_clock::time_point _lastInternalStateChange;
+    std::optional<LogRange> _recoveryRange;
+
+    void updateInternalState(LeaderInternalState newState,
+                             std::optional<LogRange> range = std::nullopt);
+
+    [[nodiscard]] auto getLeaderStatus() const -> LeaderStatus;
+  };
+
+  Guarded<GuardedLeaderStateManagerData> _guardedData;
+
  private:
-  void updateInternalState(LeaderInternalState newState,
-                           std::optional<LogRange> range = std::nullopt) {
-    internalState = newState;
-    lastInternalStateChange = std::chrono::system_clock::now();
-    recoveryRange = range;
-  }
-
   void beginWaitingForParticipantResigned();
-
-  // TODO locking
 };
+
 }  // namespace arangodb::replication2::replicated_state
