@@ -1,0 +1,3 @@
+!scan-path "include/boost/text" ".*\.hpp" true 
+
+!scan-path "example" ".*\.cpp" 

@@ -1,0 +1,57 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section trie, trie_map, and trie_set ]
+
+A _Trie_ is a is a prefix-tree that associates keys (which must be sequences)
+with values. Each node represents a prefix, and each child node represents a
+possible next element of the key.  Here's a diagram of one:
+
+[$../../doc/trie.svg]
+
+This is a trie for the key-value pairs `Elements = {("car", 15), ("cat", 9),
+("cats", 11), ("ear", -3), ("eat", 100)}`.  Each node represents a prefix of
+one or more of the key values in `Elements`.  The text in on the left in the
+node header is the prefix represented by that node.  This is for illustration
+only; the real data structure does not store so much data in each node.  The
+value on the right of each node header is the value associated with that
+prefix in `Elements`, if any.  For instance, `"car"` is associated with `15`
+in `Elements`, and so the `"car"` node has a value of `15`, but `"ca"` is not
+in `Elements`, so the `"ca"` node has no associated value.
+
+A node's children are all of that node's suffixes within the keys in
+`Elements`.  To find a value associated with some key `k`, you simply start at
+the root, look for the child node for element `k[0]`, then from that node look
+for the child node that contains the element `k[1]`, etc.
+
+This data structure has the nice property that a search is linear in the length
+of the searched-for key `k`, but is independent of the size of the trie.  This
+is similar to how hash lookups are (in an ideal hash table) independent of the
+size of the table.
+
+Lookup performance is comparable to hashing containers, except that a trie
+additionally allows one to easily do longest-match and match-extension
+queries.  This is something that is unavailable in either tree-based maps or
+hash maps.
+
+For example:
+
+[trie_intro]
+
+`trie::operator[]` works differently from how it works in `std::map`-like
+containers.  It works how I wish the `std::map::operator[]` /did/ work:
+
+[trie_index_results]
+
+The only wonky thing about `optional_ref` is the specialization for `bool`.
+Think about how often a map from `T` to `bool` comes up.  It's almost never,
+because that would more naturally be expressed as a set of `T` anyway.
+
+[note `trie` is not a container.  It has no iterators.  If you need a version
+of `trie` that is iterable, use `trie_map` or `trie_set` instead.  Note that
+there is a modest performance overhead associated with the iterator
+implementations, which is why `trie` does not have them.]
+
+[endsect]

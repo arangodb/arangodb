@@ -1,0 +1,25 @@
+[section Intro]
+
+[heading Motivation]
+
+C and C++ are the only major production languages that do not have robust
+Unicode support.  This library attempts to provide that support for C++.
+
+This library provides a Unicode implementation suitable for use by anyone
+_emdash_ including those who know next to nothing about Unicode.
+
+
+[heading Features]
+
+- Iterators, views, and algorithms that convert among UTF-8, UTF-16, and UTF-32.
+
+- An implementation of the Unicode algorithms for dealing with encodings,
+  normalization, text segmentation, etc.
+
+- A family of types for use in Unicode-aware text processing.  This includes
+  _t_, _tv_, _r_, and _rv_.
+
+- Code familiarity -- all of the above types and algorithms work like the STL
+  containers and algorithms.
+
+[endsect]

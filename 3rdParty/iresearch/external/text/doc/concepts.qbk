@@ -1,0 +1,59 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section:concepts Concepts]
+
+[heading C++20 Concepts]
+
+All of the concepts below apply to the pre-C++20 interfaces.  Interfaces that
+are meant for use in C++20 use these concepts:
+
+From concepts.hpp:
+
+[concepts_concepts]
+
+From word_break.hpp:
+
+[word_break_concepts]
+
+From line_break.hpp:
+
+[line_break_concepts]
+
+From collation_search.hpp:
+
+[collation_search_concepts]
+
+[heading Pre-C++20 Concept Emulation]
+
+All constraints in the pre-C++20 interfaces are implemented using SFINAE.  All
+such interfaces use a template parameter naming convention to communicate the
+notional concept that applies to that template parameter.  Below are all the
+names that are used.  Each name corresponds to a C++20 concept, and emulates
+the corresponding concept as closely as possible.  This table summarizes the
+correspondence:
+
+[table Pre-C++20 Template Parameter Names and Their Associated C++20 Concepts
+    [[Pre-C++20 Template Parameter Name] [C++20 Concept]]
+
+    [[`CharIter`] [`utf8_iter`]]
+    [[`CharRange`] [`utf8_range`]]
+    [[`ContigCharRange`] [`contiguous_utf8_range`]]
+    [[`CUIter`] [`code_unit_iterator`]]
+    [[`CURange`] [`code_unit_range`]]
+    [[`CPIter`] [`code_point_iter`]]
+    [[`CPRange`] [`code_point_range`]]
+    [[`GraphemeIterator`] [`grapheme_iter`]]
+    [[`GraphemeRange`] [`grapheme_range`]]
+    [[`GraphemeIterCUator`] [`grapheme_iter_code_unit`]]
+    [[`GraphemeRangeCU`] [`grapheme_range_code_unit`]]
+    [[`CPExtentFunc`] [`line_break_cp_extent_func`]]
+    [[`WordPropFunc`] [`word_prop_func`]]
+    [[`CPWordBreakFunc`] [`word_break_func`]]
+    [[`BreakFunc`] [`searcher_break_func`]]
+    [[`Searcher`] [`searcher`]]
+]
+
+[endsect]

@@ -1,0 +1,18 @@
+HighTerm: ref # freq=541190
+MedTerm: second # freq=54014
+LowTerm: demographics # freq=5408
+HighPhrase: "ref name" # freq=238640|541190|301735
+MedPhrase: "books id" # freq=23116|51894|65546
+LowPhrase: "year ref" # freq=3113|175324|541190
+AndHighHigh: +state +south # freq=77492 freq=55802 1.4
+AndHighMed: +12 +federal # freq=67469 freq=15487
+AndHighLow: +from +house's # freq=359428 freq=140
+OrHighHigh: about september # freq=91907 freq=54310
+OrHighMed: south 1929 # freq=55802 freq=5879
+OrHighLow: york projectile # freq=60893 freq=484
+Prefix3: sec*
+Wildcard: re*f
+Or4High: about ref from cite # freq=91907 freq=541190 freq=359428 freq=265368
+Or6High4Med2Low: about ref from cite http which roman short europe party rapid donald # freq=91907 freq=541190 freq=359428 freq=265368 freq=389790 freq=253402 freq=31137 freq=31137 freq=31053 freq=30836 freq=4972 freq=4940
+MinMatch2High2Med: 2 about ref roman short # freq=91907 freq=541190 freq=31137 freq=31137
+

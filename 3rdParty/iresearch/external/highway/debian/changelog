@@ -1,0 +1,71 @@
+highway (0.14.2-1) UNRELEASED; urgency=medium
+
+  * Add MaskedLoad
+  * Fix non-glibc PPC, Windows GCC, MSVC 19.14
+  * Opt-in for -Werror; separate design_philosophy.md
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 24 Aug 2021 15:00:00 +0200
+
+highway (0.14.1-1) UNRELEASED; urgency=medium
+
+  * Add LoadMaskBits, CompressBits[Store]
+  * Fix CPU feature check (AES/F16C) and warnings
+  * Improved DASSERT - disabled in optimized builds
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 17 Aug 2021 14:00:00 +0200
+
+highway (0.14.0-1) UNRELEASED; urgency=medium
+
+  * Add SVE, S-SSE3, AVX3_DL targets
+  * Support partial vectors in all ops
+  * Add PopulationCount, FindFirstTrue, Ne, TableLookupBytesOr0
+  * Add AESRound, CLMul, MulOdd, HWY_CAP_FLOAT16
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 29 Jul 2021 15:00:00 +0200
+
+highway (0.12.2-1) UNRELEASED; urgency=medium
+
+  * fix scalar-only test and Windows macro conflict with Load/StoreFence
+  * replace deprecated wasm intrinsics
+
+ -- Jan Wassenberg <janwas@google.com>  Mon, 31 May 2021 16:00:00 +0200
+
+highway (0.12.1-1) UNRELEASED; urgency=medium
+
+  * doc updates, ARM GCC support, fix s390/ppc, complete partial vectors
+  * fix warnings, faster ARM div/sqrt, separate hwy_contrib library
+  * add Abs(i64)/FirstN/Pause, enable AVX2 on MSVC
+
+ -- Jan Wassenberg <janwas@google.com>  Wed, 19 May 2021 15:00:00 +0200
+
+highway (0.12.0-1) UNRELEASED; urgency=medium
+
+  * Add Shift*8, Compress16, emulated Scatter/Gather, StoreInterleaved3/4
+  * Remove deprecated HWY_*_LANES, deprecate HWY_GATHER_LANES
+  * Proper IEEE rounding, reduce libstdc++ usage, inlined math
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 15 Apr 2021 20:00:00 +0200
+
+highway (0.11.1-1) UNRELEASED; urgency=medium
+
+  * Fix clang7 asan error, finish f16 conversions and add test
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 25 Feb 2021 16:00:00 +0200
+
+highway (0.11.0-1) UNRELEASED; urgency=medium
+
+  * Add RVV+mask logical ops, allow Shl/ShiftLeftSame on all targets, more math
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 18 Feb 2021 20:00:00 +0200
+
+highway (0.7.0-1) UNRELEASED; urgency=medium
+
+  * Added API stability notice, Compress[Store], contrib/, SignBit, CopySign
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 5 Jan 2021 17:00:00 +0200
+
+highway (0.1-1) UNRELEASED; urgency=medium
+
+  * Initial debian package.
+
+ -- Alex Deymo <deymo@google.com>  Mon, 19 Oct 2020 16:48:07 +0200
