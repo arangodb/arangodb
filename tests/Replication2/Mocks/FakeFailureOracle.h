@@ -18,30 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
+/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentIndexExpressionContext.h"
-#include "Aql/AqlValue.h"
-#include "Aql/Variable.h"
+#pragma once
 
-using namespace arangodb::aql;
+#include "Cluster/FailureOracle.h"
 
-DocumentIndexExpressionContext::DocumentIndexExpressionContext(
-    arangodb::transaction::Methods& trx, QueryContext& query,
-    AqlFunctionsInternalCache& cache,
-    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
-    void const* ctx)
-    : QueryExpressionContext(trx, query, cache),
-      _getValue(getValue),
-      _ctx(ctx) {}
+#include <string>
+#include <unordered_map>
 
-AqlValue DocumentIndexExpressionContext::getVariableValue(
-    Variable const* variable, bool doCopy, bool& mustDestroy) const {
-  return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
-        mustDestroy = doCopy;  // as we are copying
-        return _getValue(_ctx, variable, doCopy);
-      });
-}
+namespace arangodb::replication2::test {
+struct FakeFailureOracle : arangodb::cluster::IFailureOracle {
+  auto isServerFailed(std::string_view serverId) const noexcept
+      -> bool override;
+
+  std::unordered_map<std::string, bool> isFailed;
+};
+}  // namespace arangodb::replication2::test

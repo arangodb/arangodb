@@ -102,6 +102,11 @@ class IndexNode : public ExecutionNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 

@@ -325,6 +325,22 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   /// by their _condition node path indexes
   auto nonConstExpressions = initializeOnce();
 
+  // check which variables are used by the node's post-filter
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+  if (hasFilter()) {
+    VarSet inVars;
+    filter()->variables(inVars);
+
+    filterVarsToRegs.reserve(inVars.size());
+
+    for (auto& var : inVars) {
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+    }
+  }
+
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
   auto const outRegister = variableToRegisterId(outVariable);
@@ -372,10 +388,10 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto executorInfos = IndexExecutorInfos(
       outRegister, engine.getQuery(), this->collection(), _outVariable,
       isProduceResult(), this->_filter.get(), this->projections(),
-      std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
-      _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
-      _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs));
+      std::move(filterVarsToRegs), std::move(nonConstExpressions), doCount(),
+      canReadOwnWrites(), _condition->root(), _allCoveredByOneIndex,
+      this->getIndexes(), _plan->getAst(), this->options(),
+      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -416,6 +432,13 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void IndexNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  DocumentProducingNode::replaceVariables(replacements);
 }
 
 /// @brief destroy the IndexNode
@@ -463,9 +486,15 @@ CostEstimate IndexNode::estimateCost() const {
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
-
+  if (hasFilter()) {
+    Ast::getReferencedVariables(filter()->node(), vars);
+  }
+  for (auto const& it : _outNonMaterializedIndVars.second) {
+    vars.erase(it.first);
+  }
   vars.erase(_outVariable);
 }
+
 ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
 
 Condition* IndexNode::condition() const { return _condition.get(); }
