@@ -131,8 +131,6 @@ add_subdirectory(velocypack EXCLUDE_FROM_ALL)
 ## IResearch
 ################################################################################
 
-include(FetchContent)
-
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
@@ -163,18 +161,35 @@ set(BFD_ROOT "invalid")
 set(IRESEARCH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch")
 set(IRESEARCH_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdParty/iresearch")
 
-FetchContent_Declare(
-  iresearch-static
-  GIT_REPOSITORY "https://github.com/iresearch-toolkit/iresearch.git"
-  GIT_TAG "870422682c9d33cb07fba82fe8ac9452bc2216f5"
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} submodule update --init --depth=1 -- "iresearch"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  RESULT_VARIABLE GIT_SUBMOD_RESULT
 )
 
-FetchContent_Populate(iresearch-static)
+if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+  message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+endif()
 
-set(IRESEARCH_INCLUDE ${IRESEARCH_BUILD_DIR}/core)
-mark_as_advanced(IRESEARCH_BUILD_DIR)
+unset(IRESEARCH_INCLUDE)
+list(APPEND IRESEARCH_INCLUDE
+  "${IRESEARCH_ROOT}/core"
+  "${IRESEARCH_ROOT}/external"
+  "${IRESEARCH_BUILD_DIR}/core"
+)
+
+mark_as_advanced(
+  IRESEARCH_BUILD_DIR
+  IRESEARCH_INCLUDE
+  IRESEARCH_ROOT
+)
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
+set(CMAKE_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH}) # remember CMAKE_MODULE_PATH
+list(APPEND CMAKE_MODULE_PATH
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
+  "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
+)
 
 # copy pre-built files over to the build directory
 # this is required to avoid triggering file generation via bison and perl during the build procedure
@@ -183,7 +198,8 @@ foreach(ELEMENT ${IRESEARCH_PREBUILT})
   configure_file("${IRESEARCH_ROOT}.build/${ELEMENT}" "${IRESEARCH_BUILD_DIR}/${ELEMENT}" COPYONLY)
 endforeach()
 
-add_subdirectory(${iresearch-static_SOURCE_DIR} ${iresearch-static_BINARY_DIR} EXCLUDE_FROM_ALL) # do not build unused targets
+add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
 unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
