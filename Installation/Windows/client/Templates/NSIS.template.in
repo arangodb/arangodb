@@ -491,9 +491,6 @@ Function hide_install_directory
   ${EndIf}
 FunctionEnd
 
-  ReserveFile "NSIS.InstallOptions.ini"
-  !insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
-
 Var mycheckbox ; You could just store the HWND in $1 etc if you don't want this extra variable
 
 ;--------------------------------
