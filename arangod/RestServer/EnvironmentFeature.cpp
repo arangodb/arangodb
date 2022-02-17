@@ -33,10 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
-#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
-#include "Basics/operating-system.h"
-#include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -44,7 +41,34 @@
 
 #ifdef __linux__
 #include <sys/sysinfo.h>
+#include <unistd.h>
 #endif
+
+namespace {
+
+std::optional<std::string_view> trimName(std::string_view const& content) {
+  std::optional<std::string_view> result = std::nullopt;
+  size_t foundIndex = content.find(" ");
+  if (foundIndex != content.npos) {
+    size_t firstPos = foundIndex + 1;
+    foundIndex = content.find("(");
+    if (foundIndex != content.npos) {
+      firstPos = foundIndex + 1;
+      foundIndex = content.find(")");
+      if (foundIndex != std::string::npos) {
+        result = content.substr(firstPos, foundIndex - firstPos);
+      }
+    } else {
+      foundIndex = content.find(" ", firstPos);
+      if (foundIndex != content.npos) {
+        result = content.substr(firstPos, foundIndex - firstPos);
+      }
+    }
+    return result;
+  }
+  return std::nullopt;
+}
+}  // namespace
 
 using namespace arangodb::basics;
 
@@ -416,6 +440,28 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
+
+#ifdef __linux__
+  try {
+    pid_t parentId = getppid();
+    std::string content;
+    if (parentId) {
+      std::string procFileName = std::string("/proc/")
+                                 + std::to_string(parentId) + "/stat";
+      auto rv = basics::FileUtils::slurp(procFileName, content);
+      std::optional<std::string_view> result;
+      if (rv.ok()) {
+        result = ::trimName(content);
+      }
+      LOG_TOPIC("51705", WARN, arangodb::Logger::COMMUNICATION)
+          << "Parent process id ppid=" << parentId
+          << (result.has_value()
+                  ? ". Process name = \"" + std::string(*result) + "\""
+                  : "");
+    }
+  } catch (...) {
+  }
+#endif
 
   std::vector<std::string> paths = {
       "/sys/kernel/mm/transparent_hugepage/enabled",
