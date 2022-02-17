@@ -647,7 +647,7 @@ TEST_F(SubqueryStartSpecficTest, count_shadow_rows_test) {
 
   ASSERT_EQ(numCalls, 2);
   EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(block->numRows(), 28);
+  EXPECT_EQ(block->size(), 28);
 }
 
 TEST_F(SubqueryStartSpecficTest, handle_non_continue_call_on_outer_subqueries) {
@@ -728,5 +728,5 @@ TEST_F(SubqueryStartSpecficTest, handle_non_continue_call_on_outer_subqueries) {
 
   ASSERT_EQ(numCalls, 2);
   EXPECT_EQ(state, ExecutionState::HASMORE);
-  EXPECT_EQ(block->numRows(), 16);
+  EXPECT_EQ(block->size(), 16);
 }
