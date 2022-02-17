@@ -61,7 +61,8 @@ class DFSFinderTest
   // using DFSFinder = DFSEnumerator<MockGraphProvider,
   // VertexUniquenessLevel::PATH>;
   using DFSFinder =
-      TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
+      TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH,
+                          EdgeUniquenessLevel::PATH>;
 
  protected:
   bool activateLogging{false};

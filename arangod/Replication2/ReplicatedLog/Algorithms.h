@@ -32,6 +32,10 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
+
 namespace arangodb::replication2::algorithms {
 
 struct ParticipantRecord {
@@ -66,9 +70,10 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
-                         RebootId myRebootId, LogId logId,
-                         agency::LogPlanSpecification const* spec) noexcept
+auto updateReplicatedLog(
+    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result>;
 
 struct ParticipantStateTuple {
