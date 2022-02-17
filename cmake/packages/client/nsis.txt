@@ -30,6 +30,7 @@ set(BIN_ARANGOSH @BIN_ARANGOSH@)
 set(BIN_ARANGOVPACK @BIN_ARANGOVPACK@)
 set(CMAKE_INSTALL_BINDIR "@CMAKE_INSTALL_BINDIR@")
 set(ARANGO_BIG_ICON "@ARANGO_BIG_ICON@")
+set(ARANGO_GRAPH_ICON "@ARANGO_GRAPH_ICON@")
 
 ################################################################################
 #   build specific variables:
