@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
+
 * Fixed an assertion failure which could occur when there was an error in
   the HTTP header, so that the message body was not actually read.
 
