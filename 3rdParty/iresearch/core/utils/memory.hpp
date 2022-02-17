@@ -53,7 +53,7 @@ inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr
 ///////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void dump_mem_stats_trace() noexcept;
+void dump_mem_stats_trace() noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class aligned_storage
@@ -255,7 +255,7 @@ class allocator_array_deleter : public compact<0, Alloc> {
  public:
   typedef compact<0, Alloc> allocator_t;
   typedef typename allocator_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
+  typedef typename std::allocator_traits<allocator_type>::pointer pointer;
 
   allocator_array_deleter(const allocator_type& alloc, size_t size) noexcept
     : allocator_t(alloc), size_(size) {

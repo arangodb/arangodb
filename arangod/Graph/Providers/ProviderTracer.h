@@ -83,6 +83,9 @@ class ProviderTracer {
 
   [[nodiscard]] transaction::Methods* trx();
 
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+
  private:
   ProviderImpl _impl;
 

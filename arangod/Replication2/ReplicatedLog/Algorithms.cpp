@@ -28,6 +28,7 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Cluster/FailureOracle.h"
 
 #include <algorithm>
 #include <type_traits>
@@ -126,7 +127,8 @@ auto keySetDifference = [](auto const& left, auto const& right) {
 
 auto algorithms::updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec) noexcept
+    LogId logId, agency::LogPlanSpecification const* spec,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
     -> futures::Future<arangodb::Result> {
   auto result = basics::catchToResultT([&]() -> futures::Future<
                                                  arangodb::Result> {
@@ -190,7 +192,8 @@ auto algorithms::updateReplicatedLog(
       auto newLeader = log->becomeLeader(
           spec->currentTerm->config, myServerId, spec->currentTerm->term,
           followers,
-          std::make_shared<ParticipantsConfig>(spec->participantsConfig));
+          std::make_shared<ParticipantsConfig>(spec->participantsConfig),
+          std::move(failureOracle));
       newLeader->triggerAsyncReplication();  // TODO move this call into
                                              // becomeLeader?
       return newLeader->waitForLeadership().thenValue(
@@ -290,7 +293,7 @@ auto algorithms::calculateCommitIndex(
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
     auto const& who = std::min_element(
         std::begin(eligible), std::end(eligible), [](auto& left, auto& right) {
-          return left.lastAckedEntry.index < right.lastAckedEntry.index;
+          return left.lastIndex() < right.lastIndex();
         });
     return {currentCommitIndex,
             CommitFailReason::withQuorumSizeNotReached(who->id),
@@ -313,8 +316,8 @@ auto algorithms::calculateCommitIndex(
                 CommitFailReason::withForcedParticipantNotInQuorum(pt.id),
                 {}};
       }
-      if (pt.lastAckedEntry.index < minForcedCommitIndex) {
-        minForcedCommitIndex = pt.lastAckedEntry.index;
+      if (pt.lastIndex() < minForcedCommitIndex) {
+        minForcedCommitIndex = pt.lastIndex();
         minForcedParticipantId = pt.id;
       }
     }
@@ -333,8 +336,7 @@ auto algorithms::calculateCommitIndex(
 
     std::nth_element(std::begin(eligible), nth, std::end(eligible),
                      [](auto& left, auto& right) {
-                       return left.lastAckedEntry.index >
-                              right.lastAckedEntry.index;
+                       return left.lastIndex() > right.lastIndex();
                      });
     auto const minNonExcludedCommitIndex = nth->lastIndex();
 

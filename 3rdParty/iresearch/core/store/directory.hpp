@@ -39,7 +39,7 @@ class directory_attributes;
 /// @struct index_lock
 /// @brief an interface for abstract resource locking
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_lock : private util::noncopyable {
+struct index_lock : private util::noncopyable {
   DECLARE_IO_PTR(index_lock, unlock);
   DEFINE_FACTORY_INLINE(index_lock);
 
@@ -125,7 +125,7 @@ ENABLE_BITMASK_ENUM(IOAdvice); // enable bitmap operations on the enum
 /// @struct directory
 /// @brief represents a flat directory of write once/read many files
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API directory : private util::noncopyable {
+struct directory : private util::noncopyable {
  public:
   using visitor_f = std::function<bool(std::string&)>;
   using ptr = std::unique_ptr<directory>;

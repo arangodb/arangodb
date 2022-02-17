@@ -381,7 +381,7 @@ TEST_F(utf8_path_tests, file) {
   // assign test
   auto other = irs::current_path();
   other.assign(path.c_str());
-  ASSERT_EQ(other.u8string(), path.u8string());
+  ASSERT_EQ(other.string(), path.string());
 
 }
 

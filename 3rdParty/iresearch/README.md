@@ -548,12 +548,12 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## Supported compilers
 
-- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3, 10
-- MSVC: 17 (VS 2015), 19 (VS 2017)
-- Apple Clang: 9-12
+- GCC: 10-11
+- MSVC: 2019
+- Apple Clang: 12
 
 ## License
-Copyright (c) 2017-2021 ArangoDB GmbH
+Copyright (c) 2017-2022 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 

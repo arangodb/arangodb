@@ -30,11 +30,13 @@
 #include "velocypack/vpack.h"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
-constexpr VPackStringRef PIPELINE_PARAM_NAME    {"pipeline"};
-constexpr VPackStringRef TYPE_PARAM_NAME        {"type"};
-constexpr VPackStringRef PROPERTIES_PARAM_NAME  {"properties"};
+constexpr std::string_view PIPELINE_PARAM_NAME    {"pipeline"};
+constexpr std::string_view TYPE_PARAM_NAME        {"type"};
+constexpr std::string_view PROPERTIES_PARAM_NAME  {"properties"};
 
 const irs::offset NO_OFFSET;
 
@@ -45,7 +47,7 @@ class empty_analyzer final
   virtual irs::attribute* get_mutable(irs::type_info::type_id) override { return nullptr;  }
   static constexpr irs::string_ref type_name() noexcept { return "empty_analyzer"; }
   virtual bool next() override { return false; }
-  virtual bool reset(const irs::string_ref&) override { return false; }
+  virtual bool reset(irs::string_ref) override { return false; }
 };
 
 using options_normalize_t = std::vector<std::pair<std::string, std::string>>;
@@ -202,7 +204,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
   return false;
 }
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -229,12 +231,12 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing pipeline_token_stream");
@@ -252,7 +254,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing pipeline_token_stream");
@@ -389,7 +391,7 @@ bool pipeline_token_stream::next() {
   return true;
 }
 
-bool pipeline_token_stream::reset(const string_ref& data) {
+bool pipeline_token_stream::reset(string_ref data) {
   current_ = top_;
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }

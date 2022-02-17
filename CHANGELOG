@@ -1,5 +1,73 @@
 devel
 -----
+* Support JSON schema objects for documenting Foxx endpoints.
+
+* Fixed an assertion failure which could occur when there was an error in
+  the HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP
+  header parsing).
+
+* Added back the optimization for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated), handling them 
+  in a special way without performing any writes, also excluding such special 
+  cases of operation from replication to followers.
+
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
+* Changed Foxx service generator output to use static variable names
+
+* As we are now in constant stall regime, stall onset and warnings are
+  demoted to DEBUG.
+
+* Allow early pruning (moving a FILTER condition into an IndexNode or
+  EnumerateCollectionNode) in more cases than before. Previously, early
+  pruning was only possible if the FILTER condition referred to exactly one
+  variable, which had to be the FOR loop's own variable. Now, early
+  pruning is possible with arbitrary variables that are accessible by the
+  FOR loop.
+
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a
+  follower to that shard.
+
+* In an attempt to make the performance of the RocksDB throttle much
+  more consistent and predictable the default compaction slow down
+  trigger is lowered to 128kB.
+
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example: 
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.  
+
+* The multi-dimensional index type `zkd` now supports an optional index hint for
+  tweaking performance by prefetching documents:
+	
+	```
+	FOR app IN appointments OPTIONS { lookahead: 32 }
+    FILTER @to <= app.to
+    FILTER app.from <= @from
+    RETURN app
+	```
+	
+	Specifiying a lookahead value greater than zero makes the index fetch more documents
+	that are no longer in the search box, before seeking to the next lookup position.
+	Because the seek operation is computationally expensive, probing more documents
+	before seeking may reduce the number of seeks, if matching documents are found.
+	Please keep in mind that it might also affect performance negatively if documents
+	are fetched unnecessarily.
+
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
+* Enabled new internal graph refactored code for depth-first, breadth-first and
+  weighted traversals by default.
+
+* Replaced internal JS dependency ansi-html with ansi-html-community.
 
 * Improved performance of inner joins with dynamic lookup conditions being
   injected from an outer loop, for indexes of type "persistent", "hash" and

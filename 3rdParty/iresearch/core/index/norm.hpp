@@ -47,7 +47,7 @@ struct NormReaderContext {
 static_assert(std::is_nothrow_move_constructible_v<NormReaderContext>);
 static_assert(std::is_nothrow_move_assignable_v<NormReaderContext>);
 
-class IRESEARCH_API Norm : public attribute {
+class Norm : public attribute {
  public:
   using Context = NormReaderContext;
 
@@ -91,7 +91,7 @@ enum class Norm2Encoding : byte_type {
   Int = sizeof(uint32_t)
 };
 
-class IRESEARCH_API Norm2Header final {
+class Norm2Header final {
  public:
   constexpr static size_t ByteSize() noexcept {
     return sizeof(Norm2Version) + sizeof(encoding_) +
@@ -215,9 +215,10 @@ struct Norm2ReaderContext : NormReaderContext {
   }
 
   uint32_t num_bytes{};
+  uint32_t max_num_bytes{};
 };
 
-class IRESEARCH_API Norm2 : public attribute {
+class Norm2 : public attribute {
  public:
   using ValueType = uint32_t;
   using Context = Norm2ReaderContext;

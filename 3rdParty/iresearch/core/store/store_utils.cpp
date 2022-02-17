@@ -119,7 +119,7 @@ double_t read_zvdouble(data_input& in) {
 // --SECTION--                                   bytes_ref_input implementation
 // ----------------------------------------------------------------------------
 
-bytes_ref_input::bytes_ref_input(const bytes_ref& ref)
+bytes_ref_input::bytes_ref_input(bytes_ref ref)
   : data_(ref), pos_(data_.begin()) {
 }
 

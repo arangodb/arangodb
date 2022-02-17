@@ -34,7 +34,7 @@ namespace iresearch {
     /// @brief class for passing control to the proxied query
     ////////////////////////////////////////////////////////////////////////////////
     template<typename PTR>
-    class IRESEARCH_API proxy_filter_t: public irs::filter {
+    class proxy_filter_t: public irs::filter {
      public:
       explicit proxy_filter_t(const type_info& type): irs::filter(type) {}
       template<typename T, typename... Args>
@@ -68,15 +68,13 @@ namespace iresearch {
       }
 
      protected:
-      IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       PTR filter_;
-      IRESEARCH_API_PRIVATE_VARIABLES_END
     };
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief proxy_filter specialized for irs::filter::ptr
     ////////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API proxy_filter: public proxy_filter_t<irs::filter::ptr> {
+    class proxy_filter: public proxy_filter_t<irs::filter::ptr> {
      public:
       static ptr make();
 
@@ -107,7 +105,7 @@ namespace iresearch {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief helper class for transforming a textual query into an iResearch query
     ////////////////////////////////////////////////////////////////////////////////
-    class IRESEARCH_API query_builder {
+    class query_builder {
      public:
        ////////////////////////////////////////////////////////////////////////////////
        /// @brief fns to build an iResearch query branch based at 'root' for field/args
@@ -120,12 +118,12 @@ namespace iresearch {
        ////////////////////////////////////////////////////////////////////////////////
        typedef std::function<bool(
          proxy_filter& root,
-         const string_ref& locale,
-         const string_ref& field,
+         string_ref locale,
+         string_ref field,
          void* const& cookie,
          const function_arg::fn_args_t& args)> branch_builder_function_t;
 
-       struct IRESEARCH_API branch_builders {
+       struct branch_builders {
          const branch_builder_function_t& range_ee; // range exclude/exclude - (,)
          const branch_builder_function_t& range_ei; // range exclude/include - (,]
          const branch_builder_function_t& range_ie; // range include/exclude - [,)
@@ -166,7 +164,7 @@ namespace iresearch {
       ////////////////////////////////////////////////////////////////////////////////
       query build(
         const std::string& query,
-        const irs::string_ref& locale,
+        irs::string_ref locale,
         void* cookie = nullptr,
         proxy_filter* root = nullptr) const;
 

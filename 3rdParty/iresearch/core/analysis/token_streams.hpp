@@ -35,7 +35,7 @@ namespace iresearch {
 /// @brief convenient helper implementation providing access to "increment"
 ///        and "term_attributes" attributes
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API basic_token_stream : public analysis::analyzer {
+class basic_token_stream : public analysis::analyzer {
  public:
 
   explicit basic_token_stream(const type_info& type) : analysis::analyzer(type) {}
@@ -44,7 +44,7 @@ class IRESEARCH_API basic_token_stream : public analysis::analyzer {
     return irs::get_mutable(attrs_, type);
   }
 
-  bool reset(const string_ref&) override {
+  bool reset(string_ref) override {
     return false;
   }
 
@@ -56,7 +56,7 @@ class IRESEARCH_API basic_token_stream : public analysis::analyzer {
 /// @class null_token_stream
 /// @brief token_stream implementation for boolean field, a single bool term.
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API boolean_token_stream final
+class boolean_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
@@ -99,7 +99,7 @@ class IRESEARCH_API boolean_token_stream final
 ///        it does not tokenize or analyze field, just set attributes based
 ///        on initial string length 
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API string_token_stream final
+class string_token_stream final
     : public analysis::analyzer,
       private util::noncopyable {
  public:
@@ -111,12 +111,12 @@ class IRESEARCH_API string_token_stream final
     return irs::get_mutable(attrs_, id);
   }
 
-  void reset(const bytes_ref& value) noexcept {
+  void reset(bytes_ref value) noexcept {
     value_ = value;
     in_use_ = false; 
   }
 
-  bool reset(const string_ref& value) noexcept override {
+  bool reset(string_ref value) noexcept override {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
     return true;
@@ -138,7 +138,7 @@ class IRESEARCH_API string_token_stream final
 ///        step it produces several terms representing ranges of the input 
 ///        term
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API numeric_token_stream final
+class numeric_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
@@ -179,7 +179,7 @@ class IRESEARCH_API numeric_token_stream final
   /// @class numeric_term
   /// @brief term_attribute implementation for numeric_token_stream
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API numeric_term final {
+  class numeric_term final {
    public:
     static bytes_ref value(bstring& buf, int32_t value) {
       decltype(val_) val;
@@ -279,7 +279,7 @@ class IRESEARCH_API numeric_token_stream final
 /// @class null_token_stream
 /// @brief token_stream implementation for null field, a single null term.
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API null_token_stream final
+class null_token_stream final
     : public basic_token_stream,
       private util::noncopyable {
  public:
