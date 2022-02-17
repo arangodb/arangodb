@@ -33,7 +33,10 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -45,28 +48,30 @@
 #endif
 
 namespace {
-
-std::optional<std::string_view> trimName(std::string_view const& content) {
-  std::optional<std::string_view> result = std::nullopt;
-  size_t foundIndex = content.find(" ");
-  if (foundIndex != content.npos) {
-    size_t firstPos = foundIndex + 1;
-    foundIndex = content.find("(");
-    if (foundIndex != content.npos) {
-      firstPos = foundIndex + 1;
-      foundIndex = content.find(")");
-      if (foundIndex != std::string::npos) {
-        result = content.substr(firstPos, foundIndex - firstPos);
-      }
-    } else {
-      foundIndex = content.find(" ", firstPos);
-      if (foundIndex != content.npos) {
-        result = content.substr(firstPos, foundIndex - firstPos);
-      }
+std::string_view trimProcName(std::string_view const& content) {
+  auto findSecondWord = [](const std::string_view& data, const char begin,
+                           const char end) -> std::string_view {
+    size_t firstSpacePos = data.find(begin);
+    if (firstSpacePos == data.npos || ++firstSpacePos > data.size()) {
+      return {};
     }
-    return result;
+    size_t secondSpacePos = data.find(end, firstSpacePos);
+    if (secondSpacePos == data.npos || secondSpacePos > data.size()) {
+      return {};
+    }
+    return data.substr(firstSpacePos, secondSpacePos - firstSpacePos);
+  };
+
+  size_t firstSpacePos = content.find(' ');
+  if (firstSpacePos == content.npos || firstSpacePos + 1 > content.size()) {
+    return {};
   }
-  return std::nullopt;
+  char firstCharAfterFirstSpacePos = content[firstSpacePos + 1];
+  if (firstCharAfterFirstSpacePos == '(') {
+    return findSecondWord(content, '(', ')');
+  } else {
+    return findSecondWord(content, ' ', ' ');
+  }
 }
 }  // namespace
 
@@ -449,15 +454,14 @@ void EnvironmentFeature::prepare() {
       std::string procFileName = std::string("/proc/")
                                  + std::to_string(parentId) + "/stat";
       auto rv = basics::FileUtils::slurp(procFileName, content);
-      std::optional<std::string_view> result;
+      std::string_view procName;
       if (rv.ok()) {
-        result = ::trimName(content);
+        procName = ::trimProcName(content);
       }
       LOG_TOPIC("51705", WARN, arangodb::Logger::COMMUNICATION)
-          << "Parent process id ppid=" << parentId
-          << (result.has_value()
-                  ? ". Process name = \"" + std::string(*result) + "\""
-                  : "");
+          << "Parent process id ppid = " << parentId
+          << (procName != "" ? ". Process name =\"" + std::string(procName)
+             + "\"" : "");
     }
   } catch (...) {
   }
