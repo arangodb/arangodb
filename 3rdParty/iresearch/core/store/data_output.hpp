@@ -36,7 +36,7 @@ namespace iresearch {
 /// @struct data_output
 /// @brief base interface for all low-level output data streams
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_output {
+struct data_output {
   using iterator_category = std::output_iterator_tag;
   using value_type = void;
   using pointer = void;
@@ -81,7 +81,7 @@ struct IRESEARCH_API data_output {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_output
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_output : public data_output {
+struct index_output : public data_output {
  public:
   DECLARE_IO_PTR(index_output, close);
   DEFINE_FACTORY_INLINE(index_output);
@@ -98,7 +98,7 @@ struct IRESEARCH_API index_output : public data_output {
 //////////////////////////////////////////////////////////////////////////////
 /// @class output_buf
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable {
+class output_buf final : public std::streambuf, util::noncopyable {
  public:
   typedef std::streambuf::char_type char_type;
   typedef std::streambuf::int_type int_type;
@@ -121,7 +121,7 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 //////////////////////////////////////////////////////////////////////////////
 /// @class buffered_index_output
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
+class buffered_index_output : public index_output, util::noncopyable {
  public:
   virtual void flush() override;
 
@@ -158,13 +158,11 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   byte_type* buf_{};
   byte_type* pos_{}; // position in buffer
   byte_type* end_{};
   size_t start_{};   // position of buffer in a file
   size_t buf_size_{};
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_output
 
 }

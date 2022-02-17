@@ -32,7 +32,7 @@ class by_edit_distance;
 class parametric_description;
 struct filter_visitor;
 
-struct IRESEARCH_API by_edit_distance_filter_options {
+struct by_edit_distance_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parametric description provider
   //////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ struct IRESEARCH_API by_edit_distance_filter_options {
 /// @struct by_edit_distance_options
 /// @brief options for levenshtein filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options {
+struct by_edit_distance_options : by_edit_distance_filter_options {
   using filter_type = by_edit_distance;
   using filter_options = by_edit_distance_filter_options;
 
@@ -107,7 +107,7 @@ struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options 
 /// @class by_edit_distance
 /// @brief user-side levenstein filter
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_edit_distance final
+class by_edit_distance final
     : public filter_base<by_edit_distance_options> {
  public:
   static ptr make();
@@ -116,13 +116,13 @@ class IRESEARCH_API by_edit_distance final
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& term,
+    string_ref field,
+    bytes_ref term,
     size_t terms_limit,
     byte_type max_distance,
     options_type::pdp_f provider,
     bool with_transpositions,
-    const bytes_ref& prefix);
+    bytes_ref prefix);
 
   static field_visitor visitor(
     const options_type::filter_options& options);

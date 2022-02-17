@@ -1147,35 +1147,6 @@ class sparse_block : util::noncopyable {
     end_ = index_ + size;
   }
 
-  bool value(doc_id_t key, bytes_ref& out) const {
-    // find the right ref
-    auto it = std::lower_bound(
-      index_, end_, key,
-        [] (const ref& lhs, doc_id_t rhs) {
-        return lhs.key < rhs;
-    });
-
-    if (end_ == it || key < it->key) {
-      // no document with such id in the block
-      return false;
-    }
-
-    if (data_.empty()) {
-      // block without data_, but we've found a key
-      return true;
-    }
-
-    const auto vbegin = it->offset;
-    const auto vend = (++it == end_ ? data_.size() : it->offset);
-
-    assert(vend >= vbegin);
-    out = bytes_ref(
-      data_.c_str() + vbegin, // start
-      vend - vbegin); // length
-
-    return true;
-  }
-
  private:
   // TODO: use single memory block for both index & data
 
@@ -1298,27 +1269,6 @@ class dense_block : util::noncopyable {
     end_ = index_ + size;
   }
 
-  bool value(doc_id_t key, bytes_ref& out) const {
-    const auto* begin = index_ + key - base_;
-    if (begin < index_ || begin >= end_) {
-      // there is no item with the speicified key
-      return false;
-    }
-
-    if (data_.empty()) {
-      // block without data, but we've found a key
-      return true;
-    }
-
-    const auto vbegin = *begin;
-    const auto vend = (++begin == end_ ? data_.size() : *begin);
-    assert(vend >= vbegin);
-
-    out = bytes_ref(data_.c_str() + vbegin, vend - vbegin);
-
-    return true;
-  }
-
  private:
   // TODO: use single memory block for both index & data
 
@@ -1439,27 +1389,6 @@ class dense_fixed_offset_block : util::noncopyable {
     read_compact(in, cipher, decomp, buf, data_);
   }
 
-  bool value(doc_id_t key, bytes_ref& out) const {
-    key -= base_key_;
-
-    if (key >= size_) {
-      return false;
-    }
-
-    // expect 0-based key
-
-    if (data_.empty()) {
-      // block without data, but we've found a key
-      return true;
-    }
-
-    const auto vbegin = base_offset_ + key*avg_length_;
-    const auto vlength = (size_ == ++key ? data_.size() - vbegin : avg_length_);
-
-    out = bytes_ref(data_.c_str() + vbegin, vlength);
-    return true;
-  }
-
  private:
   doc_id_t base_key_{}; // base key
   uint32_t base_offset_{}; // base offset
@@ -1547,18 +1476,6 @@ class sparse_mask_block : util::noncopyable {
     if (!encode::avg::check_block_rl64(in, 0)) {
       throw index_error("'sparse_mask_block' expected to contain no data");
     }
-  }
-
-  bool value(doc_id_t key, bytes_ref& /*reader*/) const {
-    // we don't evaluate 'end' here as 'keys_ + size_'
-    // since it all blocks except the tail one are
-    // going to be fully filled, that allows compiler
-    // to generate better optimized code
-
-    const auto it = std::lower_bound(
-      std::begin(keys_), std::end(keys_), key);
-
-    return !(std::end(keys_) == it || *it > key);
   }
 
  private:
@@ -1660,10 +1577,6 @@ class dense_mask_block {
     }
 
     max_ = min_ + size;
-  }
-
-  bool value(doc_id_t key, bytes_ref& /*reader*/) const noexcept {
-    return min_ <= key && key < max_;
   }
 
  private:
@@ -2359,11 +2272,6 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 
 
     min_ = this->max() - this->count();
-  }
-
-  bool value(doc_id_t key, bytes_ref& value) const noexcept {
-    value = bytes_ref::NIL;
-    return key > min_ && key <= this->max();
   }
 
   virtual irs::doc_iterator::ptr iterator(bool consolidation) const override;

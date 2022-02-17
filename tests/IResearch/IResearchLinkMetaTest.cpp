@@ -77,12 +77,12 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
   static constexpr irs::string_ref type_name() noexcept { return "empty"; }
 
-  static ptr make(irs::string_ref const&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref const& args, std::string& out) {
+  static bool normalize(irs::string_ref args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     arangodb::velocypack::Builder builder;
     if (slice.isString()) {
@@ -112,7 +112,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref const&) override { return true; }
+  virtual bool reset(irs::string_ref) override { return true; }
 
  private:
   TestAttributeZ _attr;

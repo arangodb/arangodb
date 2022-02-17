@@ -344,7 +344,7 @@ class index_profile_test_case : public tests::index_test_base {
     out.close();
 
     irs::file_utils::ensure_absolute(path);
-    std::cout << "Path to timing log: " << path.u8string() << std::endl;
+    std::cout << "Path to timing log: " << path.string() << std::endl;
 
     auto reader = irs::directory_reader::open(dir(), codec());
     ASSERT_EQ(true, 1 <= reader.size()); // not all commits might produce a new segment, some might merge with concurrent commits

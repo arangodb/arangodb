@@ -82,7 +82,6 @@
 
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
-#include "utils/math_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
 
 #ifdef USE_ENTERPRISE
@@ -7397,7 +7396,7 @@ AqlValue Functions::BitPopcount(ExpressionContext* expressionContext,
     auto result = bitOperationValue<uint64_t>(v);
     if (result.has_value()) {
       uint64_t x = result.value();
-      size_t count = ::iresearch::math::math_traits<decltype(x)>::pop(x);
+      size_t const count = std::popcount(x);
       return AqlValue(AqlValueHintUInt(count));
     }
   }

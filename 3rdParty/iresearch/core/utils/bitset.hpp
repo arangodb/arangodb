@@ -214,7 +214,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
 
   // counts bits set
   word_t count() const noexcept {
-    return math::math_traits<word_t>::pop(begin(), end());
+    return math::popcount(begin(), end());
   }
 
  private:

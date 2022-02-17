@@ -34,7 +34,7 @@ class by_column_existence;
 /// @struct by_column_existence_options
 /// @brief options for column existence filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_column_existence_options {
+struct by_column_existence_options {
   using filter_type = by_column_existence;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,7 @@ struct IRESEARCH_API by_column_existence_options {
 /// @class by_column_existence
 /// @brief user-side column existence filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_column_existence final
+class by_column_existence final
     : public filter_base<by_column_existence_options> {
  public:
   static ptr make();

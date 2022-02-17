@@ -31,11 +31,13 @@
 #include "velocypack/velocypack-aliases.h"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
+constexpr std::string_view LOCALE_PARAM_NAME {"locale"};
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
@@ -121,7 +123,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(const string_ref& args) {
+analysis::analyzer::ptr make_vpack(string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -150,7 +152,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(const string_ref& args, std::string& config) {
+bool normalize_vpack_config(string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -160,7 +162,7 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(const string_ref& args) {
+analysis::analyzer::ptr make_json(string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing text_token_normalizing_stream");
@@ -179,7 +181,7 @@ analysis::analyzer::ptr make_json(const string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const string_ref& args, std::string& definition) {
+bool normalize_json_config(string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing text_token_normalizing_stream");
@@ -235,7 +237,7 @@ bool stemming_token_stream::next() {
   return true;
 }
 
-bool stemming_token_stream::reset(const string_ref& data) {
+bool stemming_token_stream::reset(string_ref data) {
   if (!stemmer_) {
     // defaults to utf-8
     stemmer_ = make_stemmer_ptr(options_.locale.getLanguage(), nullptr);
