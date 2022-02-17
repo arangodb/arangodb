@@ -32,7 +32,6 @@ endif()
 execute_process(
   COMMAND ${GIT_EXECUTABLE} submodule update --init --depth=1 -- "3rdParty/iresearch"
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  ERROR_QUIET
 )
 
 set(IRESEARCH_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdParty/iresearch")
