@@ -161,11 +161,6 @@ set(BFD_ROOT "invalid")
 set(IRESEARCH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch")
 set(IRESEARCH_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdParty/iresearch")
 
-execute_process(
-  COMMAND ${GIT_EXECUTABLE} submodule update --init --depth=1 -- "iresearch"
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
 unset(IRESEARCH_INCLUDE)
 list(APPEND IRESEARCH_INCLUDE
   "${IRESEARCH_ROOT}/core"
