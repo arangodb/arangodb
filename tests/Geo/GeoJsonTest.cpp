@@ -2182,4 +2182,18 @@ TEST_F(ValidGeoJSONInputTest, proper_inclusion_testing_multi) {
   VPackSlice polyS = velocypack::Slice(poly->data());
   ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false).ok());
 }
+
+TEST_F(ValidGeoJSONInputTest, NestedHoles) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[[10,10],[20,10],[20,20],[10,20],[10,10]],
+                    [[11,11],[19,11],[19,19],[11,19],[11,11]],
+                    [[12,12],[18,12],[18,18],[12,18],[12,12]],
+                    [[13,13],[17,13],[17,17],[13,17],[13,13]],
+                    [[14,14],[16,14],[16,16],[14,16],[14,14]]]
+  })"_vpack;
+  VPackSlice polyS = velocypack::Slice(poly->data());
+  ASSERT_TRUE(geo::geojson::parseRegion(polyS, shape, false).ok());
+}
+
 }  // namespace arangodb
