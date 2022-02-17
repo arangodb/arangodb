@@ -55,6 +55,7 @@ struct BackupMeta {
   bool _potentiallyInconsistent;
   bool _isAvailable;
   unsigned int _nrPiecesPresent;
+  bool _countIncludesDirectories;
 
   static constexpr const char *ID = "id";
   static constexpr const char *VERSION = "version";
@@ -68,6 +69,7 @@ struct BackupMeta {
       "potentiallyInconsistent";
   static constexpr const char *AVAILABLE = "available";
   static constexpr const char *NRPIECESPRESENT = "nrPiecesPresent";
+  static constexpr const char *COUNTINCLUDESDIRS = "countIncludesDirectories";
 
   void toVelocyPack(VPackBuilder &builder) const {
     {
@@ -95,6 +97,7 @@ struct BackupMeta {
       }
       builder.add(POTENTIALLYINCONSISTENT,
                   VPackValue(_potentiallyInconsistent));
+      builder.add(COUNTINCLUDESDIRS, VPackValue(false));
     }
   }
 
@@ -129,6 +132,9 @@ struct BackupMeta {
       meta._nrPiecesPresent =
           basics::VelocyPackHelper::getNumericValue<unsigned int>(
               slice, NRPIECESPRESENT, 1);
+      meta._countIncludesDirectories =
+          basics::VelocyPackHelper::getBooleanValue(slice, COUNTINCLUDESDIRS,
+                                                    true);
       return meta;
     } catch (std::exception const &e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
@@ -150,7 +156,8 @@ struct BackupMeta {
         _serverId(serverId),
         _potentiallyInconsistent(potentiallyInconsistent),
         _isAvailable(true),
-        _nrPiecesPresent(1) {}
+        _nrPiecesPresent(1),
+        _countIncludesDirectories(false) {}
 
  private:
   BackupMeta() {}
