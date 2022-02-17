@@ -266,10 +266,13 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
       auto cid = collection->id();
 
       if (coveringPosition != aql::Projections::kNoCoveringIndexPosition) {
+        // thanks AppleClang for having to declare this extra variable!
+        uint16_t cv = coveringPosition;
+
         cursor->allCovering([&](LocalDocumentId const& token,
                                 IndexIteratorCoveringData& covering) {
           TRI_ASSERT(covering.isArray());
-          VPackSlice edge = covering.at(coveringPosition);
+          VPackSlice edge = covering.at(cv);
           TRI_ASSERT(edge.isString());
 
 #ifdef USE_ENTERPRISE
