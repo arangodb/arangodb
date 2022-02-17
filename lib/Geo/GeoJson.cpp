@@ -359,7 +359,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region,
     // Therefore, we are supposed to deliver all our loops in CCW
     // convention (aka right hand rule, interiour is to the left of
     // the polyline).
-    // Since we want to want to allow for loops, whose interiour covers
+    // Since we want to allow for loops, whose interiour covers
     // more than half of the earth, we must not blindly "Normalize"
     // the loops, as we did in earlier versions, although RFC7946
     // says "parsers SHOULD NOT reject Polygons that do not follow
@@ -486,7 +486,7 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
       // Therefore, we are supposed to deliver all our loops in CCW
       // convention (aka right hand rule, interiour is to the left of
       // the polyline).
-      // Since we want to want to allow for loops, whose interiour covers
+      // Since we want to allow for loops, whose interiour covers
       // more than half of the earth, we must not blindly "Normalize"
       // the loops, as we did in earlier versions, although RFC7946
       // says "parsers SHOULD NOT reject Polygons that do not follow

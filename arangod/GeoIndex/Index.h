@@ -80,18 +80,18 @@ struct Index {
   /// Public to allow usage by legacy geo indexes
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
-                             geo::QueryParams& params);
+                             geo::QueryParams& params, bool legacy);
 
   Variant variant() const { return _variant; }
 
  private:
   static S2LatLng parseGeoDistance(aql::AstNode const* node,
-                                   aql::Variable const* ref);
+                                   aql::Variable const* ref, bool legacy);
 
   static S2LatLng parseDistFCall(aql::AstNode const* node,
-                                 aql::Variable const* ref);
+                                 aql::Variable const* ref, bool legacy);
   static void handleNode(aql::AstNode const* node, aql::Variable const* ref,
-                         geo::QueryParams& params);
+                         geo::QueryParams& params, bool legacy);
 
  protected:
   /// @brief immutable region coverer parameters

@@ -739,7 +739,7 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   params.ascending = opts.ascending;
   params.pointsOnly = pointsOnly();
   params.limit = opts.limit;
-  geo_index::Index::parseCondition(node, reference, params);
+  geo_index::Index::parseCondition(node, reference, params, _legacyPolygons);
 
   // First check if we can use the simpler method with a covering of the
   // target object:
