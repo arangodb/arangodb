@@ -520,101 +520,44 @@ void KShortestPathsNode::getVariablesUsedHere(VarSet& vars) const {
 
 std::vector<arangodb::graph::IndexAccessor>
 KShortestPathsNode::buildUsedIndexes() const {
-  std::vector<IndexAccessor> indexAccessors{};
-
-  size_t numEdgeColls = _edgeColls.size();
-  bool onlyEdgeIndexes = true;
-
-  for (size_t i = 0; i < numEdgeColls; ++i) {
-    auto dir = _directions[i];
-    switch (dir) {
-      case TRI_EDGE_IN: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
-
-        indexAccessors.emplace_back(
-            indexToUse, _toCondition->clone(options()->query().ast()), 0,
-            nullptr, std::nullopt, i);
-        break;
-      }
-      case TRI_EDGE_OUT: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
-
-        indexAccessors.emplace_back(
-            indexToUse, _fromCondition->clone(options()->query().ast()), 0,
-            nullptr, std::nullopt, i);
-        break;
-      }
-      case TRI_EDGE_ANY:
-        TRI_ASSERT(false);
-        break;
-    }
-  }
-  return indexAccessors;
+  return buildIndexes(/*reverse*/ false);
 }
 
 std::vector<arangodb::graph::IndexAccessor>
 KShortestPathsNode::buildReverseUsedIndexes() const {
-  std::vector<IndexAccessor> indexAccessors{};
+  return buildIndexes(/*reverse*/ true);
+}
 
+std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildIndexes(
+    bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
   bool onlyEdgeIndexes = true;
 
+  std::vector<IndexAccessor> indexAccessors;
+  indexAccessors.reserve(numEdgeColls);
+
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
-    switch (dir) {
-      case TRI_EDGE_IN: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
+    TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+    auto opposite = (dir == TRI_EDGE_IN ? TRI_EDGE_OUT : TRI_EDGE_IN);
 
-        indexAccessors.emplace_back(
-            indexToUse, _fromCondition->clone(options()->query().ast()), 0,
-            nullptr, std::nullopt, i);
-        break;
-      }
-      case TRI_EDGE_OUT: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
-
-        indexAccessors.emplace_back(
-            indexToUse, _toCondition->clone(options()->query().ast()), 0,
-            nullptr, std::nullopt, i);
-        break;
-      }
-      case TRI_EDGE_ANY:
-        TRI_ASSERT(false);
-        break;
+    std::shared_ptr<Index> indexToUse;
+    aql::AstNode* condition =
+        ((dir == TRI_EDGE_IN) != reverse) ? _toCondition : _fromCondition;
+    aql::AstNode* clonedCondition = condition->clone(_plan->getAst());
+    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+        *_edgeColls[i], clonedCondition, options()->tmpVar(), 1000,
+        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "expected edge index not found");
     }
+
+    indexAccessors.emplace_back(std::move(indexToUse),
+                                condition->clone(_plan->getAst()), 0, nullptr,
+                                std::nullopt, i, reverse ? opposite : dir);
   }
+
   return indexAccessors;
 }
 
@@ -636,18 +579,20 @@ void KShortestPathsNode::prepareOptions() {
     switch (dir) {
       case TRI_EDGE_IN:
         opts->addLookupInfo(_plan, _edgeColls[i]->name(),
-                            StaticStrings::ToString, _toCondition->clone(ast));
+                            StaticStrings::ToString, _toCondition->clone(ast),
+                            /*onlyEdgeIndexes*/ false, dir);
         opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
-                                   _fromCondition->clone(ast));
+                                   _fromCondition->clone(ast),
+                                   /*onlyEdgeIndexes*/ false, TRI_EDGE_OUT);
         break;
       case TRI_EDGE_OUT:
-        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
-                            StaticStrings::FromString,
-                            _fromCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::ToString,
-                                   _toCondition->clone(ast));
+        opts->addLookupInfo(
+            _plan, _edgeColls[i]->name(), StaticStrings::FromString,
+            _fromCondition->clone(ast), /*onlyEdgeIndexes*/ false, dir);
+        opts->addReverseLookupInfo(
+            _plan, _edgeColls[i]->name(), StaticStrings::ToString,
+            _toCondition->clone(ast), /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
         break;
       case TRI_EDGE_ANY:
         TRI_ASSERT(false);

@@ -387,34 +387,23 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
     uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
 
-    // we currently only support the usage of covering indexes for edge indexes.
-    // this restriction is artificial and could be lifted easily once we would
-    // know the name of the opposite attribute (_from or _to) here that we need
-    // to extract from the index data. however, the LookupInfo does not know if
-    // it is INBOUND or OUTBOUND, so we cannot make any assumption here except
-    // when using an edge index.
-    if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      // projections we want to cover
-      aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
-          {StaticStrings::FromString, StaticStrings::ToString}));
+    // projections we want to cover
+    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
+        {StaticStrings::FromString, StaticStrings::ToString}));
 
-      if (index->covers(edgeProjections)) {
-        // find opposite attribute
-        if (index->fields().size() == 1) {
-          // a normal edge index is on a single attribute only,
-          // however, during mocking an edge index can also have zero
-          // attributes... 🙄
-          edgeProjections.setCoveringContext(index->collection().id(), index);
+    if (index->covers(edgeProjections)) {
+      // find opposite attribute
+      edgeProjections.setCoveringContext(index->collection().id(), index);
 
-          if (index->fields()[0][0] ==
-              basics::AttributeName(StaticStrings::FromString, false)) {
-            coveringPosition = edgeProjections.coveringIndexPosition(
-                aql::AttributeNamePath::Type::ToAttribute);
-          } else {
-            coveringPosition = edgeProjections.coveringIndexPosition(
-                aql::AttributeNamePath::Type::FromAttribute);
-          }
-        }
+      TRI_edge_direction_e dir = info.direction;
+      TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+
+      if (dir == TRI_EDGE_OUT) {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::ToAttribute);
+      } else {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::FromAttribute);
       }
     }
 

@@ -104,7 +104,8 @@ class SingleServerProviderTest : public ::testing::Test {
     // can be used to create an expression, currently unused but may be helpful
     // for additional tests auto expr = conditionKeyMatches(stringToMatch);
     usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0,
-                                           nullptr, std::nullopt, 0});
+                                           nullptr, std::nullopt, 0,
+                                           TRI_EDGE_OUT});
 
     _expressionContext =
         std::make_unique<arangodb::aql::FixedVarExpressionContext>(

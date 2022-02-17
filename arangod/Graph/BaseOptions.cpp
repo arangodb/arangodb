@@ -56,21 +56,38 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-BaseOptions::LookupInfo::LookupInfo()
+BaseOptions::LookupInfo::LookupInfo(TRI_edge_direction_e direction)
     : indexCondition(nullptr),
+      direction(direction),
       conditionNeedUpdate(false),
       conditionMemberToUpdate(0) {
   // NOTE: We need exactly one in this case for the optimizer to update
   idxHandles.resize(1);
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 }
 
 BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
-                                    VPackSlice const& info,
-                                    VPackSlice const& shards) {
+                                    VPackSlice info, VPackSlice shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
+
+  TRI_edge_direction_e dir = TRI_EDGE_ANY;
+  VPackSlice dirSlice = info.get("direction");
+  if (dirSlice.isEqualString("inbound")) {
+    dir = TRI_EDGE_IN;
+  } else if (dirSlice.isEqualString("outbound")) {
+    dir = TRI_EDGE_OUT;
+  }
+  if (dir == TRI_EDGE_ANY) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Missing or invalid direction attribute in graph definition");
+  }
+  // set direction for lookup info
+  direction = dir;
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 
   conditionNeedUpdate = arangodb::basics::VelocyPackHelper::getBooleanValue(
       info, "condNeedUpdate", false);
@@ -129,16 +146,28 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
     : idxHandles(other.idxHandles),
       indexCondition(other.indexCondition),
+      direction(other.direction),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
   if (other.expression != nullptr) {
     expression = other.expression->clone(nullptr);
   }
   _nonConstContainer = other._nonConstContainer.clone(nullptr);
+
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
+
+  // direction
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
+  if (direction == TRI_EDGE_IN) {
+    result.add("direction", VPackValue("inbound"));
+  } else {
+    result.add("direction", VPackValue("outbound"));
+  }
+
   result.add(VPackValue("handle"));
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
@@ -341,9 +370,10 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
 void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 std::string const& collectionName,
                                 std::string const& attributeName,
-                                aql::AstNode* condition, bool onlyEdgeIndexes) {
+                                aql::AstNode* condition, bool onlyEdgeIndexes,
+                                TRI_edge_direction_e direction) {
   injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition, onlyEdgeIndexes);
+                         condition, onlyEdgeIndexes, direction);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
@@ -351,8 +381,14 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
                                          aql::AstNode* condition,
-                                         bool onlyEdgeIndexes) {
-  LookupInfo info;
+                                         bool onlyEdgeIndexes,
+                                         TRI_edge_direction_e direction) {
+  TRI_ASSERT(
+      (direction == TRI_EDGE_IN && attributeName == StaticStrings::ToString) ||
+      (direction == TRI_EDGE_OUT &&
+       attributeName == StaticStrings::FromString));
+
+  LookupInfo info(direction);
   info.indexCondition = condition->clone(plan->getAst());
   auto coll = _query.collections().get(collectionName);
   if (!coll) {

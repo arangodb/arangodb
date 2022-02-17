@@ -195,6 +195,12 @@ class EdgeIndexMock final : public arangodb::Index {
 
   char const* typeName() const override { return "edge"; }
 
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the index attribute!
+    return Index::emptyCoveredFields;
+  }
+
   bool canBeDropped() const override { return false; }
 
   bool isHidden() const override { return false; }

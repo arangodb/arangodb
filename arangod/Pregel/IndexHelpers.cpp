@@ -57,16 +57,21 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
 
   for (std::shared_ptr<arangodb::Index> const& idx :
        _collection->getIndexes()) {
-    // we currently rely on an edge index, but this could be changed to use a
-    // different index in the future.
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-        idx->covers(edgeProjections)) {
-      edgeProjections.setCoveringContext(_collection->id(), idx);
-      // Pregel currently only supports outbound edges.
-      _coveringPosition = edgeProjections.coveringIndexPosition(
-          aql::AttributeNamePath::Type::ToAttribute);
-      _index = idx;
-      break;
+    // we currently rely on an outbound edge index, but this could be changed to
+    // use a different index in the future.
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto const& fields = idx->fieldNames();
+      if (fields.size() == 1 && fields[0].size() == 1 &&
+          fields[0][0] == StaticStrings::FromString) {
+        if (idx->covers(edgeProjections)) {
+          edgeProjections.setCoveringContext(_collection->id(), idx);
+          // Pregel currently only supports outbound edges.
+          _coveringPosition = edgeProjections.coveringIndexPosition(
+              aql::AttributeNamePath::Type::ToAttribute);
+        }
+        _index = idx;
+        break;
+      }
     }
   }
   TRI_ASSERT(_index != nullptr);  // We always have an edge index
