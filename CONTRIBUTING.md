@@ -649,8 +649,8 @@ The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is
 browseable; thus you can easily download the files you need by hand. It
 contains of a list of directories corresponding to the components of ArangoDB, e.g.:
 
-- arango - the basic arangodb library needed by all components
-- arango_v8 - the basic V8 wrappers needed by all components
+- lib - the basic arangodb libraries needed by all components
+- lib/V8 - the basic V8 wrappers needed by all components
 - arangod - the server process
 - the client utilities:
   - arangobackup
