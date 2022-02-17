@@ -718,7 +718,8 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
 
     case RocksDBColumnFamilyManager::Family::Documents:
       options.enable_blob_files = true;
-      options.blob_file_size = 512;
+      options.blob_file_size = options.write_buffer_size;
+      options.min_blob_size = 512;
       [[fallthrough]];
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
