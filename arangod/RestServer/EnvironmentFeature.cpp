@@ -444,8 +444,8 @@ void EnvironmentFeature::prepare() {
     pid_t parentId = getppid();
     std::string content;
     if (parentId) {
-      std::string procFileName = std::string("/proc/")
-                                 + std::to_string(parentId) + "/stat";
+      std::string procFileName =
+          std::string("/proc/") + std::to_string(parentId) + "/stat";
       auto rv = basics::FileUtils::slurp(procFileName, content);
       std::string_view procName;
       if (rv.ok()) {
