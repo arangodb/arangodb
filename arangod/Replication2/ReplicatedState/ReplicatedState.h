@@ -115,8 +115,8 @@ struct ReplicatedState final
    */
   void forceRebuild() override;
 
-  struct StateManagerBase {
-    virtual ~StateManagerBase() = default;
+  struct IStateManager {
+    virtual ~IStateManager() = default;
     [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
     [[nodiscard]] virtual auto resign() && noexcept
         -> std::pair<std::unique_ptr<CoreType>,
@@ -160,7 +160,7 @@ struct ReplicatedState final
     explicit GuardedData(ReplicatedState& self) : _self(self) {}
 
     ReplicatedState& _self;
-    std::shared_ptr<StateManagerBase> currentManager = nullptr;
+    std::shared_ptr<IStateManager> currentManager = nullptr;
   };
   Guarded<GuardedData> guardedData;
 };

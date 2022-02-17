@@ -32,7 +32,7 @@ namespace arangodb::replication2::replicated_state {
 
 template<typename S>
 struct LeaderStateManager
-    : ReplicatedState<S>::StateManagerBase,
+    : ReplicatedState<S>::IStateManager,
       std::enable_shared_from_this<LeaderStateManager<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
