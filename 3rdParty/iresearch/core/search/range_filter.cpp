@@ -98,19 +98,19 @@ void visit(
   switch (rng.max_type) {
     case BoundType::UNBOUNDED:
       ::collect_terms(
-        segment, reader, *terms, visitor, [](const bytes_ref&) {
+        segment, reader, *terms, visitor, [](bytes_ref) {
           return true;
       });
       break;
     case BoundType::INCLUSIVE:
       ::collect_terms(
-        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](bytes_ref term) {
           return term <= max;
       });
       break;
     case BoundType::EXCLUSIVE:
       ::collect_terms(
-        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
+        segment, reader, *terms, visitor, [max](bytes_ref term) {
           return term < max;
       });
       break;
@@ -127,7 +127,7 @@ DEFINE_FACTORY_DEFAULT(by_range) // cppcheck-suppress unknownMacro
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit) {
   //TODO: optimize unordered case

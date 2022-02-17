@@ -54,7 +54,7 @@ class ctr_cipher_stream : public encryption::stream {
  public:
   explicit ctr_cipher_stream(
       const cipher& cipher,
-      const bytes_ref& iv,
+      bytes_ref iv,
       uint64_t counter_base
   ) noexcept
     : cipher_(&cipher),

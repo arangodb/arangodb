@@ -146,15 +146,8 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 5.62794 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      3, // 3.22245 = (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
-      0, // 2.68195 = (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
-      1, // 2.60158 = (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
-      5, // 2.39742 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-    };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{ 7, 3, 0, 1, 5 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -194,16 +187,10 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 5.62794 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      0, // 5.42788 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
-      5, // 5.15876 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
-      3, // 3.22245 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
-      2, // 2.73505 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(5))/(52/8)))
-      1, // 2.60158 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(10))/(52/8)))
-    };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    const auto expected = norm == irs::type<irs::Norm2>::id()
+        ? std::array{ 0, 7, 5, 3, 2, 1 }
+        : std::array{ 7, 0, 5, 3, 2, 1 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -393,12 +380,11 @@ TEST_P(bm25_test_case, test_phrase) {
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
-    std::vector<std::string> expected{
-      "O", // jumps high jumps high hotdog
-      "P", // jumps high jumps left jumps right jumps down jumps back
-      "Q", // jumps high jumps left jumps right jumps down walks back
-      "R"  // jumps high jumps left jumps right walks down walks back
-    };
+    constexpr std::array<std::string_view, 4> expected{
+      "O",  // jumps high jumps high hotdog
+      "P",  // jumps high jumps left jumps right jumps down jumps back
+      "Q",  // jumps high jumps left jumps right jumps down walks back
+      "R"}; // jumps high jumps left jumps right walks down walks back
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -447,12 +433,11 @@ TEST_P(bm25_test_case, test_phrase) {
 
     std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
 
-    std::vector<std::string> expected{
-      "SPWLC0", // cookies cake pie biscuit meringue cookies cake pie biscuit marshmallows paste bread
-      "SPWLC1", // cookies cake pie biskuit marshmallows cookies pie meringue
-      "SPWLC2", // cookies cake pie biscwit meringue pie biscuit paste
-      "SPWLC3"  // cookies cake pie biscuet marshmallows cake meringue
-    };
+    constexpr std::array<std::string_view, 4> expected{
+      "SPWLC0",   // cookies cake pie biscuit meringue cookies cake pie biscuit marshmallows paste bread
+      "SPWLC1",   // cookies cake pie biskuit marshmallows cookies pie meringue
+      "SPWLC2",   // cookies cake pie biscwit meringue pie biscuit paste
+      "SPWLC3"};  // cookies cake pie biscuet marshmallows cake meringue
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
@@ -521,8 +506,8 @@ TEST_P(bm25_test_case, test_query) {
     *filter.mutable_field() = "field";
     filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{ 0, 1, 5, 7 };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{ 0, 1, 5, 7 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -602,10 +587,10 @@ TEST_P(bm25_test_case, test_query) {
     *filter.mutable_field() = "field";
     filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("6"));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{
       0, 2, // segment 0
-      5 // segment 1
+      5     // segment 1
     };
 
     irs::bytes_ref_input in;
@@ -705,8 +690,8 @@ TEST_P(bm25_test_case, test_query) {
       sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     }
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{
       3, 7, // same value in 2 documents
       0, 2, 5 // same value in 3 documents
     };
@@ -798,8 +783,8 @@ TEST_P(bm25_test_case, test_query) {
     *filter.mutable_field() = "prefix";
     filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref(""));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{
       0, 8, 20, 28, // segment 0
       3, 15, 23, 25, // segment 1
       30, 31, // same value in segment 0 and segment 1 (smaller idf() -> smaller tfidf() + reverse)
@@ -852,8 +837,8 @@ TEST_P(bm25_test_case, test_query) {
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{ 0, 1, 5, 7 };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{ 0, 1, 5, 7 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -893,8 +878,8 @@ TEST_P(bm25_test_case, test_query) {
     filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     filter.mutable_options()->scored_terms_limit = 1;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{ 3, 7 };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{ 3, 7 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -934,8 +919,8 @@ TEST_P(bm25_test_case, test_query) {
 //      .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("8")
 //      .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("9");
 //
-//    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-//    std::vector<uint64_t> expected{ 3, 7 };
+//    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+//    constexpr std::array expected{ 3, 7 };
 //
 //    irs::bytes_ref_input in;
 //    auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -975,15 +960,8 @@ TEST_P(bm25_test_case, test_query) {
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 3.45083 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1) + 1.2)
-      3, // 1.98083 = (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(0) + 1.2)
-      0, // 1.91043 = (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
-      1, // 1.74950 = (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
-      5, // 1.47000 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
-    };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{ 7, 3, 0, 1, 5 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -1022,16 +1000,8 @@ TEST_P(bm25_test_case, test_query) {
     filter.mutable_options()->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("8"));
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7, // 3.45083 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1) + 1.2)
-      0, // 3.60357 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
-      5, // 3.16315 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
-      3, // 1.98082 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1) + 1.2)
-      2, // 1.69314 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
-      1, // 1.74950 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
-    };
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{ 7, 0, 5, 3, 2, 1 };
 
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -1068,8 +1038,8 @@ TEST_P(bm25_test_case, test_query) {
     *filter.mutable_field() = "field";
     filter.mutable_options()->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
-    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<std::pair<float_t, uint64_t>> expected = {
+    std::multimap<irs::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    std::vector<std::pair<float_t, uint32_t>> expected = {
       { -1, 0 },
       { -1, 1 },
       { -1, 5 },
@@ -1499,8 +1469,8 @@ TEST_P(bm25_test_case, test_order) {
 
     query.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("7"));
 
-    std::multimap<iresearch::bstring, uint64_t, decltype(comparer)> sorted(comparer);
-    std::vector<uint64_t> expected{ 0, 1, 5, 7 };
+    std::multimap<iresearch::bstring, uint32_t, decltype(comparer)> sorted(comparer);
+    constexpr std::array expected{ 0, 1, 5, 7 };
 
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);

@@ -41,10 +41,10 @@ namespace detail {
 class bytes_input final: public data_input, public bytes_ref {
  public:
   bytes_input() = default;
-  explicit bytes_input(const bytes_ref& data);
+  explicit bytes_input(bytes_ref data);
   bytes_input(bytes_input&& rhs) noexcept;
   bytes_input& operator=(bytes_input&& rhs) noexcept;
-  bytes_input& operator=(const bytes_ref& data);
+  bytes_input& operator=(bytes_ref data);
 
   void skip(size_t size) {
     assert(pos_ + size <= this->end());
@@ -99,17 +99,15 @@ class bytes_input final: public data_input, public bytes_ref {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring buf_;
   const byte_type* pos_{ buf_.c_str() };
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // bytes_input
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                       bytes_input implementation
 // ----------------------------------------------------------------------------
 
-bytes_input::bytes_input(const bytes_ref& data)
+bytes_input::bytes_input(bytes_ref data)
   : buf_(data.c_str(), data.size()),
     pos_(this->buf_.c_str()) {
   this->data_ = buf_.data();
@@ -125,7 +123,7 @@ bytes_input::bytes_input(bytes_input&& other) noexcept
   other.size_ = 0;
 }
 
-bytes_input& bytes_input::operator=(const bytes_ref& data) {
+bytes_input& bytes_input::operator=(bytes_ref data) {
   if (this != &data) {
     buf_.assign(data.c_str(), data.size());
     pos_ = this->buf_.c_str();

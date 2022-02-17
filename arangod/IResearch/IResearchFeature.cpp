@@ -613,7 +613,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
   irs::string_ref constexpr args(".|+");
 
   irs::scorers::visit(
-      [&functions, &args](irs::string_ref const& name,
+      [&functions, &args](irs::string_ref name,
                           irs::type_info const& args_format) -> bool {
         // ArangoDB, for API consistency, only supports scorers configurable via
         // jSON

@@ -54,7 +54,7 @@ class segmentation_token_stream final
   }
   explicit segmentation_token_stream(options_t&& opts);
   virtual bool next() override;
-  virtual bool reset(const string_ref& data) override;
+  virtual bool reset(string_ref data) override;
 
  private:
   using attributes = std::tuple<
