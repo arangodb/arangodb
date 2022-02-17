@@ -1,5 +1,6 @@
 devel
 -----
+* Support JSON schema objects for documenting Foxx endpoints.
 
 * Fixed an assertion failure which could occur when there was an error in
   the HTTP header, so that the message body was not actually read.
