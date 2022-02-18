@@ -224,7 +224,9 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.disallowBCD = true;
 
   // allow at most 80 levels of nested arrays/objects
-  VPackOptions::Defaults.nestingLimit = 80;
+  // must be 80 + 1 because in velocypack the threshold value is exclusive,
+  // not inclusive.
+  VPackOptions::Defaults.nestingLimit = 80 + 1;
 
   // set up options for validating incoming end-user requests
   strictRequestValidationOptions = VPackOptions::Defaults;
