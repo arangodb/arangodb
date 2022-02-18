@@ -74,6 +74,8 @@ std::atomic<bool> receivedShutdownRequest{false};
 // id of process that will not be used to send SIGHUP requests
 constexpr pid_t processIdUnspecified{std::numeric_limits<pid_t>::min()};
 
+static_assert(processIdUnspecified != 0, "minimum pid number must be != 0");
+
 // id of process that requested a log rotation via SIGHUP
 std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 #endif
@@ -426,8 +428,14 @@ extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
 extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
   TRI_ASSERT(signal == SIGHUP);
 
-  // id of process that issued the SIGHUP
+  // id of process that issued the SIGHUP.
+  // if we don't have any information about the issuing process, we
+  // assume a pid of 0.
   pid_t processIdRequesting = info ? info->si_pid : 0;
+  // note that we need to be able to tell pid 0 and the "unspecified"
+  // process id apart.
+  static_assert(::processIdUnspecified != 0, "unspecified pid should be != 0");
+
   // the expected process id that we want to see
   pid_t processIdExpected = ::processIdUnspecified;
 
@@ -441,9 +449,8 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
     return;
   }
 
-  // no log rotate request queued before.
-
-  bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+  // no log rotate request queued before. now issue one.
+  SchedulerFeature::SCHEDULER->queue(
       RequestLane::CLIENT_SLOW, [processIdRequesting]() {
         try {
           LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
@@ -457,10 +464,6 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
         }
         ::processIdRequestingLogRotate.store(::processIdUnspecified);
       });
-  if (!queued) {
-    // in case we couldn't queue the log rotate request, just give up
-    ::processIdRequestingLogRotate.store(::processIdUnspecified);
-  }
 }
 #endif
 
