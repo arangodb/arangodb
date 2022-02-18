@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertTrue, assertEqual*/
+/*global arango, assertTrue, assertEqual, db*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test hotbackup in single server
@@ -28,7 +28,7 @@ const internal = require("internal");
 
 const dbName = "UnitTestData";
 
-dirmaker = function(n, withData) {
+function dirmaker(n, withData) {
   db._useDatabase("_system");
   db._createDatabase(n);
   db._useDatabase(n);
@@ -58,7 +58,7 @@ function createSomeData() {
   let v = db._createView("v", "arangosearch", {});
   v.properties({links:{c:{includeAllFields:true}}});
   let l = [];
-  for (i = 0; i < 10000; ++i) {
+  for (let i = 0; i < 10000; ++i) {
     l.push({Hallo:i}); 
     if (l.length % 10000 === 0) {
       c.insert(l);
