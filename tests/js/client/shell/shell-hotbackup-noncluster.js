@@ -100,24 +100,10 @@ function HotBackupSuite () {
 
     testCheckSumsAndCounts: function() {
       let fs = require("fs");
-      let tempPath = fs.getTempPath();
-      console.warn("Temporary path:", tempPath);
       let backup = arango.POST("/_admin/backup/create", {}).result;
-      let upload  = arango.POST("/_admin/backup/upload",
-        {"id":backup.id,"remoteRepository":"local:" + tempPath,
-         "config":{"local":{"type":"local","copy-links":"false",
-                            "links":"false","one_file_system":"true"}}}
-      ).result;
-      while (true) {
-        let progress = arango.POST("/_admin/backup/upload", 
-          {uploadId: upload.uploadId}).result;
-        console.warn(JSON.stringify(progress));
-        if (progress.DBServers.SNGL.Status === "COMPLETED") {
-          break;
-        }
-        internal.wait(1);
-      }
-      let backupPath = fs.join(tempPath, backup.id);
+      let dbPath = arango.POST("/_admin/execute", `return require("internal").db._path();`);
+      let backupPath = fs.join(dbPath, "backups", backup.id);
+      console.warn("Habakuk:", backupPath);
       let META = JSON.parse(fs.readFileSync(fs.join(backupPath, "META")));
       assertTrue(META.countIncludesFilesOnly);
       let tree = fs.listTree(backupPath);
