@@ -164,6 +164,7 @@
             }          
         },
         error: function (response) {
+          // non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
           if(response.status !== 403) {
             self.showGetTimeError();
           }
