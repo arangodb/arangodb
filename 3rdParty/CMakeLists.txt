@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------
 
 include(ExternalProject)
-include(RefreshModule)
+include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
@@ -169,7 +169,7 @@ list(APPEND IRESEARCH_INCLUDE
   "${IRESEARCH_BUILD_DIR}/core"
 )
 
-RefreshModule("iresearch" ${CMAKE_CURRENT_SOURCE_DIR})
+UpdateModule(${GIT_EXECUTABLE} "iresearch" ${CMAKE_CURRENT_SOURCE_DIR})
 
 mark_as_advanced(
   IRESEARCH_BUILD_DIR
