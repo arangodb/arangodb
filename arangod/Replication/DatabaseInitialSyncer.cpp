@@ -684,11 +684,11 @@ Result DatabaseInitialSyncer::parseCollectionDump(
 
   if (isVelocyPack(*response)) {
     // received a velocypack response from the leader
-    
+
     // intentional copy
     VPackOptions validationOptions =
         basics::VelocyPackHelper::strictRequestValidationOptions;
-    
+
     // allow custom types being sent here
     validationOptions.disallowCustom = false;
 
@@ -1775,6 +1775,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
       if (::isVelocyPack(*chunkResponse)) {
         // velocypack body...
+
         // intentional copy of options
         VPackOptions validationOptions =
             basics::VelocyPackHelper::strictRequestValidationOptions;
