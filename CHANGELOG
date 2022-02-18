@@ -5,6 +5,10 @@ devel
   of the parent process id and, if able to acknowledge it, the name of the 
   parent process.
 
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can
+  be executed race-free.
+
 * Parallelize applying of revision tree changes with fetching next revision
   tree range in incremental collection replication for collections created 
   with ArangoDB 3.8 and higher.
