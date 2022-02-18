@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <string>
 
 #include "velocypack/velocypack-common.h"
@@ -100,7 +102,8 @@ struct Options {
   // clear builder before starting to parse in Parser
   bool clearBuilderBeforeParse = true;
 
-  // validate UTF-8 strings when JSON-parsing with Parser
+  // validate UTF-8 strings when JSON-parsing with Parser or validating with 
+  // Validator
   bool validateUtf8Strings = false;
 
   // validate that attribute names in Object values are actually
@@ -146,6 +149,10 @@ struct Options {
 
   // write tags to JSON output
   bool debugTags = false;
+
+  // max recursion level for object/array nesting. checked by Parser and 
+  // Validator.
+  uint32_t nestingLimit = std::numeric_limits<uint32_t>::max(); 
 
   // default options with the above settings
   static Options Defaults;

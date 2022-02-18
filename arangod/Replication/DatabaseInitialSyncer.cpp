@@ -683,8 +683,13 @@ Result DatabaseInitialSyncer::parseCollectionDump(
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION)
         << "using vpack for chunk contents";
 
-    VPackValidator validator(
-        &basics::VelocyPackHelper::strictRequestValidationOptions);
+    // intentional copy
+    VPackOptions validationOptions =
+        basics::VelocyPackHelper::strictRequestValidationOptions;
+    // allow custom types being sent here
+    validationOptions.disallowCustom = false;
+
+    VPackValidator validator(&validationOptions);
 
     // now check the sub-format of the velocypack data we received...
     VPackSlice s(reinterpret_cast<uint8_t const*>(p));
