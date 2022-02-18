@@ -1,6 +1,6 @@
 devel
 -----
-* Add 403 server error check to license info for better user experience of on-root users.
+* Remove error handling fetching license information to improve user experience. To display the license informationn in the UI is only informational. It disturbs the user experience to know somthing went wrong and doesn't provide any important information for the user.
 
 * Support JSON schema objects for documenting Foxx endpoints.
 
