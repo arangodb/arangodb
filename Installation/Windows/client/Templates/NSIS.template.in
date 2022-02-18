@@ -487,7 +487,7 @@ continueUI:
 
 
   !insertmacro determineInstallScope 1
-  Call check_previous_install
+  ; Call check_previous_install
   Pop $R2
   Pop $R1
   Pop $R0
@@ -538,10 +538,10 @@ FunctionEnd
 Section "-Core installation"
   IfSilent 0 continueBaseInstall
     ; this would be called inside the UI code:
-    Call check_previous_install
-    ${If} $UpgradeInstall == "1"
-      Call stop_old_service
-    ${EndIf}
+    ; Call check_previous_install
+    ;${If} $UpgradeInstall == "1"
+    ;  Call stop_old_service
+    ;${EndIf}
 continueBaseInstall:
   ;Use the entire tree produced by the INSTALL target.  Keep the
   ;list of directories here in sync with the RMDir commands below.
