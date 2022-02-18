@@ -381,14 +381,12 @@ class Methods {
 
 #ifndef USE_ENTERPRISE
   bool skipInaccessible() const { return false; }
-  bool isInaccessibleCollection(DataSourceId /*cid*/) const { return false; }
-  bool isInaccessibleCollection(std::string_view /*cname*/) const {
-    return false;
-  }
+  bool isInaccessibleCollection(DataSourceId /*cid*/) { return false; }
+  bool isInaccessibleCollection(std::string_view /*cname*/) { return false; }
 #else
   bool skipInaccessible() const;
-  bool isInaccessibleCollection(DataSourceId /*cid*/) const;
-  bool isInaccessibleCollection(std::string_view /*cname*/) const;
+  bool isInaccessibleCollection(DataSourceId /*cid*/);
+  bool isInaccessibleCollection(std::string_view /*cname*/);
 #endif
 
   static ErrorCode validateSmartJoinAttribute(
