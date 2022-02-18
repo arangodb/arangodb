@@ -62,7 +62,7 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
   RestStatus reportMessage(arangodb::rest::ResponseCode, std::string const&);
   RestStatus handleStores();
   RestStatus handleStore();
-  RestStatus handleRead();
+  RestStatus handleRead(consensus::API api);
   RestStatus handleWrite();
   RestStatus handleTransact();
   RestStatus handleConfig();

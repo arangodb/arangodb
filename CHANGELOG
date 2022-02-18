@@ -1,6 +1,8 @@
 devel
 -----
 
+* V2 API agency read returns results without paths.
+
 * Parallelize applying of revision tree changes with fetching next revision
   tree range in incremental collection replication for collections created 
   with ArangoDB 3.8 and higher.

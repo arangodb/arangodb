@@ -651,12 +651,12 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
 
 /// Read queries into result
 std::vector<bool> Store::readMultiple(VPackSlice queries,
-                                      Builder& result) const {
+                                      Builder& result, API api) const {
   std::vector<bool> success;
   if (queries.isArray()) {
     VPackArrayBuilder r(&result);
     for (auto const& query : VPackArrayIterator(queries)) {
-      success.push_back(read(query, result));
+      success.push_back(read(query, result, api));
     }
   } else {
     LOG_TOPIC("fec72", ERR, Logger::AGENCY)
@@ -665,8 +665,9 @@ std::vector<bool> Store::readMultiple(VPackSlice queries,
   return success;
 }
 
+
 /// Read single query into ret
-bool Store::read(VPackSlice query, Builder& ret) const {
+bool Store::read(VPackSlice query, Builder& ret, API api) const {
   bool success = true;
   bool showHidden = false;
 
@@ -683,18 +684,20 @@ bool Store::read(VPackSlice query, Builder& ret) const {
   }
 
   // Remove double ranges (inclusion / identity)
-  std::sort(query_strs.begin(), query_strs.end());  // sort paths
-  for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
-    if (i != j && i->compare(0, i->size(), *j) == 0) {
-      *i = "";
-    } else {
-      j = i;
+  if (api == API::v1) {
+    std::sort(query_strs.begin(), query_strs.end());  // sort paths
+    for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
+      if (i != j && i->compare(0, i->size(), *j) == 0) {
+        *i = "";
+      } else {
+        j = i;
+      }
     }
-  }
-  auto cut =
+    auto cut =
       std::remove_if(query_strs.begin(), query_strs.end(),
                      [](std::string const& s) -> bool { return s.empty(); });
-  query_strs.erase(cut, query_strs.end());
+    query_strs.erase(cut, query_strs.end());
+  }
 
   // Distinguish two cases:
   //   a fast path for exactly one path, in which we do not have to copy all
@@ -702,23 +705,34 @@ bool Store::read(VPackSlice query, Builder& ret) const {
 
   MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
   if (query_strs.size() == 1) {
-    auto const& path = query_strs[0];
-    std::vector<std::string> pv = split(path);
-    // Build surrounding object structure:
-    size_t e = _node.exists(pv).size();  // note: e <= pv.size()!
-    size_t i = 0;
-    for (auto it = pv.begin(); i < e; ++i, ++it) {
-      ret.openObject();
-      ret.add(VPackValue(*it));
-    }
-    if (e == pv.size()) {  // existing
-      _node.get(pv).value().get().toBuilder(ret, showHidden);
-    } else {
-      VPackObjectBuilder guard(&ret);
-    }
-    // And close surrounding object structures:
-    for (i = 0; i < e; ++i) {
-      ret.close();
+    auto const& path = query_strs.front();
+    switch (api) {
+    case API::v2:
+      if (_node.has(path)) {
+        _node.get(path).value().get().toBuilder(ret, showHidden);
+      } else {
+        ret.add(VPackSlice::nullSlice());
+      }
+      break;
+    default:
+      std::vector<std::string> pv = split(path);
+      // Build surrounding object structure:
+      size_t e = _node.exists(pv).size();  // note: e <= pv.size()!
+      size_t i = 0;
+      for (auto it = pv.begin(); i < e; ++i, ++it) {
+        ret.openObject();
+        ret.add(VPackValue(*it));
+      }
+      if (e == pv.size()) {  // existing
+        _node.get(pv).value().get().toBuilder(ret, showHidden);
+      } else {
+        VPackObjectBuilder guard(&ret);
+      }
+      // And close surrounding object structures:
+      for (i = 0; i < e; ++i) {
+        ret.close();
+      }
+      break;
     }
   } else {  // slow path for 0 or more than 2 paths:
     // Create response tree
@@ -727,21 +741,37 @@ bool Store::read(VPackSlice query, Builder& ret) const {
       std::vector<std::string> pv = split(path);
       size_t e = _node.exists(pv).size();
       if (e == pv.size()) {  // existing
-        copy.getOrCreate(pv) = _node.get(pv)->get();
-      } else {  // non-existing
-        for (size_t i = 0; i < pv.size() - e + 1; ++i) {
-          pv.pop_back();
+        switch (api) {
+        case API::v2:
+          _node.get(path).value().get().toBuilder(ret, showHidden);
+          break;
+        default:
+          copy.getOrCreate(pv) = _node.get(pv)->get();
+          break;
         }
-        if (copy.getOrCreate(pv).type() == LEAF &&
-            copy.getOrCreate(pv).slice().isNone()) {
-          copy.getOrCreate(pv) =
+      } else {  // non-existing
+        switch (api) {
+        case API::v2:
+          ret.add(VPackSlice::nullSlice());
+          break;
+        default:
+          for (size_t i = 0; i < pv.size() - e + 1; ++i) {
+            pv.pop_back();
+          }
+          if (copy.getOrCreate(pv).type() == LEAF &&
+              copy.getOrCreate(pv).slice().isNone()) {
+            copy.getOrCreate(pv) =
               arangodb::velocypack::Slice::emptyObjectSlice();
+          }
+          break;
         }
       }
     }
 
     // Into result builder
-    copy.toBuilder(ret, showHidden);
+    if (api == API::v1) {
+      copy.toBuilder(ret, showHidden);
+    }
   }
 
   return success;

@@ -40,6 +40,8 @@ extern std::string const pubApiPrefix;
 extern std::string const privApiPrefix;
 extern std::string const NO_LEADER;
 
+enum API {v1 = 1, v2};
+
 enum role_t { FOLLOWER, CANDIDATE, LEADER };
 
 enum apply_ret_t { APPLIED, PRECONDITION_FAILED, FORBIDDEN, UNKNOWN_ERROR };

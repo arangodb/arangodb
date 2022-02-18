@@ -1498,7 +1498,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 }
 
 /// Read from store
-read_ret_t Agent::read(query_t const& query) {
+read_ret_t Agent::read(query_t const& query, API api) {
   // Note that we are leading (_constituent.leading()) if and only
   // if _constituent.leaderId == our own ID. Therefore, we do not have
   // to use leading() or _constituent.leading() here, but can simply
@@ -1530,7 +1530,7 @@ read_ret_t Agent::read(query_t const& query) {
   READ_LOCKER(oLocker, _outputLock);
 
   // Retrieve data from readDB
-  std::vector<bool> success = _readDB.readMultiple(query->slice(), *result);
+  std::vector<bool> success = _readDB.readMultiple(query->slice(), *result, api);
 
   ++_read_ok;
   return read_ret_t(true, std::move(leader), std::move(success),

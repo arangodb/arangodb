@@ -110,11 +110,13 @@ class Store {
 
   /// @brief Read multiple entries from store
   std::vector<bool> readMultiple(arangodb::velocypack::Slice query,
-                                 arangodb::velocypack::Builder& result) const;
+                                 arangodb::velocypack::Builder& result,
+                                 API api = API::v1) const;
 
   /// @brief Read individual entry specified in slice into builder
   bool read(arangodb::velocypack::Slice query,
-            arangodb::velocypack::Builder& result) const;
+            arangodb::velocypack::Builder& result,
+            API api = API::v1) const;
 
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;

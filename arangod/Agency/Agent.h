@@ -122,7 +122,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
                     WriteMode const& wmode = WriteMode()) override;
 
   /// @brief Read from agency
-  read_ret_t read(query_t const&);
+  read_ret_t read(query_t const&, API api = API::v1);
 
   /// @brief Long pool for higher index than given if leader or else empty
   /// builder and false

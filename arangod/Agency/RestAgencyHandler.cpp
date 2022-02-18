@@ -660,7 +660,7 @@ RestStatus RestAgencyHandler::handleInquire() {
   return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::handleRead() {
+RestStatus RestAgencyHandler::handleRead(API api) {
   if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
     try {
@@ -674,7 +674,7 @@ RestStatus RestAgencyHandler::handleRead() {
                            "No leader");
     }
 
-    read_ret_t ret = _agent->read(query);
+    read_ret_t ret = _agent->read(query, api);
 
     if (ret.accepted) {  // I am leading
       if (ret.success.size() == 1 && !ret.success.at(0)) {
@@ -790,39 +790,47 @@ RestStatus RestAgencyHandler::execute() {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request
       return reportErrorEmptyRequest();
-    } else if (suffixes.size() > 1) {  // path size >= 2
+    } else if (suffixes.size() > 2) {  // path size >= 2
       return reportTooManySuffices();
     } else {
-      if (suffixes[0] == "write") {
-        return handleWrite();
-      } else if (suffixes[0] == "read") {
-        return handleRead();
-      } else if (suffixes[0] == "poll") {
-        return handlePoll();
-      } else if (suffixes[0] == "inquire") {
-        return handleInquire();
-      } else if (suffixes[0] == "transient") {
-        return handleTransient();
-      } else if (suffixes[0] == "transact") {
-        return handleTransact();
-      } else if (suffixes[0] == "config") {
-        if (_request->requestType() != rest::RequestType::GET &&
-            _request->requestType() != rest::RequestType::PUT &&
-            _request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
+      if (suffixes.size() == 1) {
+        if (suffixes[0] == "write") {
+          return handleWrite();
+        } else if (suffixes[0] == "read") {
+          return handleRead(API::v1);
+        } else if (suffixes[0] == "poll") {
+          return handlePoll();
+        } else if (suffixes[0] == "inquire") {
+          return handleInquire();
+        } else if (suffixes[0] == "transient") {
+          return handleTransient();
+        } else if (suffixes[0] == "transact") {
+          return handleTransact();
+        } else if (suffixes[0] == "config") {
+          if (_request->requestType() != rest::RequestType::GET &&
+              _request->requestType() != rest::RequestType::PUT &&
+              _request->requestType() != rest::RequestType::POST) {
+            return reportMethodNotAllowed();
+          }
+          return handleConfig();
+        } else if (suffixes[0] == "state") {
+          if (_request->requestType() != rest::RequestType::GET) {
+            return reportMethodNotAllowed();
+          }
+          return handleState();
+        } else if (suffixes[0] == "stores") {
+          return handleStores();
+        } else if (suffixes[0] == "store") {
+          return handleStore();
+        } else {
+          return reportUnknownMethod();
         }
-        return handleConfig();
-      } else if (suffixes[0] == "state") {
-        if (_request->requestType() != rest::RequestType::GET) {
-          return reportMethodNotAllowed();
-        }
-        return handleState();
-      } else if (suffixes[0] == "stores") {
-        return handleStores();
-      } else if (suffixes[0] == "store") {
-        return handleStore();
       } else {
-        return reportUnknownMethod();
+        if (suffixes[0] == "v2" && suffixes[1] == "read") {
+          return handleRead(API::v2);
+        } else {
+          return reportUnknownMethod();
+        }
       }
     }
   } catch (...) {
