@@ -43,11 +43,6 @@ void Query::loadGraph() {
   Result res = trx.begin();
   CollectionNameResolver collectionNameResolver(_vocbase);
 
-  // for every vertex v, map a neighbor w (actually, its index in
-  // _graph.vertexProperties) to the index of w in the list
-  // _graph.vertexProperties.neighbors[v] of neighbors of v
-  std::vector<containers::FlatHashMap<size_t, size_t>> neighbors;
-
   auto addVertex = [&](LocalDocumentId const& token, VPackSlice slice) {
     // LOG_DEVEL << "Adding a vertex" << slice.toJson();
     // todo add dependence on _graphSpec (other graphs)
@@ -69,7 +64,7 @@ void Query::loadGraph() {
 
   // adding an edge if we know that the graph has no multiple edges (but can
   // have self-loops). In this case, we don't check if a neighbor has already
-  // been added.
+  // been added. todo check this lambda, it may be wrong
   [[maybe_unused]] auto addEdgeSingleEdge = [&](LocalDocumentId const& token,
                                                 VPackSlice slice) -> bool {
     // LOG_DEVEL << "Adding an edge" << slice.toJson();
@@ -79,7 +74,10 @@ void Query::loadGraph() {
     std::string from = slice.get("_from").copyString();
     size_t const toIdx = _graph->vertexIdToIdx.find(to)->second;
     size_t const fromIdx = _graph->vertexIdToIdx.find(from)->second;
+
     _graph->vertexProperties[fromIdx].neighbors.push_back(toIdx);
+    _graph->vertexProperties[fromIdx].neighborsReverse[toIdx] =
+        _graph->vertexProperties[fromIdx].neighbors.size();
     if (!_graph->graphProperties.isDirected) {
       _graph->vertexProperties[toIdx].neighbors.push_back(fromIdx);
     }
@@ -95,47 +93,63 @@ void Query::loadGraph() {
     // emplace a new edge
     _graph->edgeProperties.emplace_back(
         BaseGraph::EdgeProps(/*currently empty*/));
-    size_t const edgePos = _graph->edgeProperties.size();
+    size_t const edgeIdx = _graph->edgeProperties.size();
     // get _to and _from
     std::string to = slice.get("_to").copyString();
     std::string from = slice.get("_from").copyString();
     size_t const toIdx = _graph->vertexIdToIdx.find(to)->second;
     size_t const fromIdx = _graph->vertexIdToIdx.find(from)->second;
 
-    // toIdx may already been added as a neighbor of fromIdx
-    auto it = neighbors[fromIdx].find(toIdx);
-    if (it !=
-        neighbors[fromIdx].end()) {  // fromIdx doesn't have toIdx as a neighbor
-      _graph->vertexProperties[fromIdx].neighbors.push_back(toIdx);
+    // toIdx may have already been added as a neighbor of fromIdx
+    auto it = _graph->vertexProperties[fromIdx].neighborsReverse.find(toIdx);
+    if (it == _graph->vertexProperties[fromIdx].neighborsReverse.end()) {
+      // fromIdx doesn't have toIdx as a neighbor
       size_t const posOfToIdx =
           _graph->vertexProperties[fromIdx].neighbors.size();
-      // insert (currently, empty) edge properties of the current edge
-      // (fromIdx, toIdx) to the edges of fromIdx
+      _graph->vertexProperties[fromIdx].neighbors.push_back(toIdx);
+      // set the reverse
+      _graph->vertexProperties[fromIdx].neighborsReverse.insert(
+          std::make_pair(toIdx, posOfToIdx));
+      // insert the edge index to the edges of fromIdx
       _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].emplace_back(
-          edgePos);
+          edgeIdx);
+      // set the reverse. this is the first edge, hence the 0
+      _graph->vertexProperties[fromIdx].egdesReverse[edgeIdx] =
+          BaseVertexProperties::IncidentEdgePosition{posOfToIdx, 0};
 
-      if (!_graph->graphProperties.isDirected) {
+      if (!_graph->isDirected()) {
         // insert the index of the same edge as an edge from toIdx to fromIdx
         _graph->vertexProperties[toIdx].neighbors.push_back(fromIdx);
         size_t const posOfFromIdx =
             _graph->vertexProperties[toIdx].neighbors.size();
+        _graph->vertexProperties[toIdx].neighborsReverse[fromIdx] =
+            posOfFromIdx;
         _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].emplace_back(
-            edgePos);
+            edgeIdx);
+        _graph->vertexProperties[toIdx].egdesReverse[edgeIdx] =
+            BaseVertexProperties::IncidentEdgePosition{posOfFromIdx, 0};
       }
     } else {  // toIdx is already a neighbor of fromIdx
       size_t const posOfToIdx = it->second;  // see comment on neighbors
       // insert (currently, empty) edge properties of the current edge
       // (fromIdx, toIdx) to the edges of fromIdx
       _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].emplace_back(
-          edgePos);
+          edgeIdx);
+      // set the inverse
+      _graph->vertexProperties[fromIdx].egdesReverse[edgeIdx] =
+          BaseVertexProperties::IncidentEdgePosition{
+              posOfToIdx,
+              _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].size() -
+                  1};
       if (!_graph->graphProperties.isDirected) {
-        _graph->vertexProperties[toIdx].outEdges[posOfToIdx].emplace_back(
-            edgePos);
-        // As we found toIdx in the set of neighbors of fromIdx,
-        // we can be sure that fromIdx is in the set of neighbors of toIdx.
-        size_t const posOfFromIdx = neighbors[toIdx].find(fromIdx)->second;
+        size_t const posOfFromIdx =
+            _graph->vertexProperties[toIdx].neighborsReverse[fromIdx];
         _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].emplace_back(
-            edgePos);
+            edgeIdx);
+        _graph->vertexProperties[toIdx].egdesReverse[edgeIdx] =
+            BaseVertexProperties::IncidentEdgePosition{
+                posOfFromIdx,
+                _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].size()};
       }
     }
     return true;
@@ -164,8 +178,6 @@ void Query::loadGraph() {
           addVertex, Utils::standardBatchSize)) {  // todo let user input it
       }
     }
-
-    neighbors.resize(_graph->numVertices());
 
     // add edges
     for (auto const& collName :

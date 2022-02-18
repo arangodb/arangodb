@@ -27,26 +27,44 @@
 namespace arangodb::pregel3 {
 
 template<DerivedFromBaseGraphProperties A, DerivedFromBaseVertexProperties B,
-         DerivedFromBaseEdgeProperties C>
-void Graph<A, B, C>::makeUndirected() {
-  for (auto source = 0; source < numVertices(); ++source) {
-    for (auto const& target : vertexProperties.at(source).neighbors) {
-      if (!isEdge(target, source)) {
+         DerivedFromSimulateUndirectedEdgeProperties C>
+void UndirectableGraph<A, B, C>::makeUndirected() {
+  for (auto source = 0; source < this->numVertices(); ++source) {
+    for (auto const& target : this->vertexProperties.at(source).neighbors) {
+      auto idxOfSource = neighborsIdx(target, source);
+      if (idxOfSource != -1) {
+        addEdge(target, source, idxOfSource);
       }
     }
   }
 }
+template<DerivedFromBaseGraphProperties GP, DerivedFromBaseVertexProperties VP,
+         DerivedFromSimulateUndirectedEdgeProperties EP>
+ssize_t UndirectableGraph<GP, VP, EP>::addEdge(size_t source, size_t target,
+                                               ssize_t idx, bool ensureSingle,
+                                               bool origin) {
+  idx = Graph<GP, VP, EP>::addEdge(source, target, idx, ensureSingle);
+  if (idx != -1) {
+    this->edgeProperties[idx].origin = origin;
+  }
+  return idx;
+}
 
 template<DerivedFromBaseGraphProperties G, DerivedFromBaseVertexProperties V,
          DerivedFromBaseEdgeProperties E>
-void Graph<G, V, E>::addEdge(size_t source, size_t target, ssize_t idx,
-                             bool ensureSingle) {
+ssize_t Graph<G, V, E>::addEdge(size_t source, size_t target, ssize_t idx,
+                                bool ensureSingle) {
+  auto idxOfTarget = neighborsIdx(source, target);
+  if (ensureSingle && idxOfTarget != -1) {
+    return -1;
+  }
   if (idx == -1) {
     idx = edgeProperties.size();
     edgeProperties.emplace_back();
   }
   vertexProperties[source].neighbors.push_back(target);
-  // vertexProperties[source].outEdges
+  vertexProperties[source].outEdges[idxOfTarget].push_back(idx);
+  return idx;
 }
 
 }  // namespace arangodb::pregel3
