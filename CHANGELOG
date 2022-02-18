@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added a log message that appears upon starting arangod that shows the number 
+  of the parent process id and, if able to acknowledge it, the name of the 
+  parent process.
+
 * Avoid multiple parallel SIGHUP requests to be handled at the same time.
   Now collapse multiple incoming SIGHUP requests into a single one, which can
   be executed race-free.

@@ -44,7 +44,31 @@
 
 #ifdef __linux__
 #include <sys/sysinfo.h>
+#include <unistd.h>
 #endif
+
+namespace {
+#ifdef __linux__
+std::string_view trimProcName(std::string_view content) {
+  std::size_t pos = content.find(' ');
+  if (pos != std::string_view::npos && pos + 1 < content.size()) {
+    std::size_t pos2 = std::string_view::npos;
+    if (content[++pos] == '(') {
+      ++pos;
+      if (pos + 1 < content.size()) {
+        pos2 = content.find(')', pos);
+      }
+    } else {
+      pos2 = content.find(' ', pos);
+    }
+    if (pos2 != std::string_view::npos) {
+      return content.substr(pos, pos2 - pos);
+    }
+  }
+  return {};
+}
+#endif
+}  // namespace
 
 using namespace arangodb::basics;
 
@@ -416,6 +440,26 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
+
+#ifdef __linux__
+  try {
+    pid_t parentId = getppid();
+    std::string content;
+    if (parentId) {
+      std::string procFileName =
+          std::string("/proc/") + std::to_string(parentId) + "/stat";
+      auto rv = basics::FileUtils::slurp(procFileName, content);
+      std::string_view procName;
+      if (rv.ok()) {
+        procName = ::trimProcName(content);
+      }
+      LOG_TOPIC("51705", INFO, arangodb::Logger::STARTUP)
+          << "Parent process: " << parentId
+          << (procName.empty() ? "" : " (" + std::string(procName) + ")");
+    }
+  } catch (...) {
+  }
+#endif
 
   std::vector<std::string> paths = {
       "/sys/kernel/mm/transparent_hugepage/enabled",
