@@ -1,5 +1,7 @@
 devel
 -----
+* Add 403 server error check to license info for better user experience of on-root users.
+
 * Support JSON schema objects for documenting Foxx endpoints.
 
 * Fixed an assertion failure which could occur when there was an error in
