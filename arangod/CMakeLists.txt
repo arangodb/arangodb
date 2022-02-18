@@ -45,8 +45,6 @@ endif ()
 ## IResearch
 ################################################################################
 
-find_package(IResearch REQUIRED)
-
 list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/ApplicationServerHelper.h
   IResearch/AqlHelper.h
@@ -544,6 +542,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
 
 set(LIB_ARANGO_INDEXES_SOURCES
   GeoIndex/Index.cpp
+  GeoIndex/Covering.cpp
   GeoIndex/Near.cpp
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp

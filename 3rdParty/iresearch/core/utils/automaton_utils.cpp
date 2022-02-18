@@ -32,7 +32,7 @@ void utf8_emplace_arc(
     automaton& a,
     automaton::StateId from,
     automaton::StateId rho_state,
-    const bytes_ref& label,
+    bytes_ref label,
     automaton::StateId to) {
   if (fst::kNoStateId == rho_state) {
     return utf8_emplace_arc(a, from, label, to);
@@ -111,7 +111,7 @@ void utf8_emplace_arc(
 void utf8_emplace_arc(
     automaton& a,
     automaton::StateId from,
-    const bytes_ref& label,
+    bytes_ref label,
     automaton::StateId to) {
   switch (label.size()) {
     case 1: {
@@ -399,7 +399,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 }
 
 filter::prepared::ptr prepare_automaton_filter(
-    const string_ref& field,
+    string_ref field,
     const automaton& acceptor,
     size_t scored_terms_limit,
     const index_reader& index,

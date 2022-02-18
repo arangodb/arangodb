@@ -31,15 +31,11 @@
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           helpers
-// -----------------------------------------------------------------------------
-
 /// @brief initialize an encryption header and create corresponding cipher stream
 /// @returns true if cipher stream was initialized, false if encryption is not
 ///          appliclabe
 /// @throws index_error in case of error on header or stream creation
-IRESEARCH_API bool encrypt(
+bool encrypt(
   const std::string& filename,
   index_output& out,
   encryption* enc,
@@ -51,7 +47,7 @@ IRESEARCH_API bool encrypt(
 /// @returns true if cipher stream was initialized, false if encryption is not
 ///          appliclabe
 /// @throws index_error in case of error on cipher stream creation
-IRESEARCH_API bool decrypt(
+bool decrypt(
   const std::string& filename,
   index_input& in,
   encryption* enc,
@@ -66,7 +62,7 @@ constexpr size_t DEFAULT_ENCRYPTION_BUFFER_SIZE = 1024;
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyable {
+class encrypted_output : public irs::index_output, util::noncopyable {
  public:
   encrypted_output(
     index_output& out,
@@ -116,7 +112,6 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
     return std::distance(pos_, end_);
   }
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_output::ptr managed_out_;
   index_output* out_;
   encryption::stream* cipher_;
@@ -125,10 +120,9 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
   size_t start_; // position of buffer in a file
   byte_type* pos_; // position in buffer
   byte_type* end_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // encrypted_output
 
-class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopyable {
+class encrypted_input : public buffered_index_input, util::noncopyable {
  public:
   encrypted_input(
     index_input& in,

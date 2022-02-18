@@ -34,7 +34,7 @@ struct attribute;
 /// @class attribute_provider
 /// @brief base class for all objects with externally visible attributes
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API attribute_provider {
+struct attribute_provider {
   virtual ~attribute_provider() = default;
 
   //////////////////////////////////////////////////////////////////////////////

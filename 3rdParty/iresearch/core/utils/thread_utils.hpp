@@ -70,9 +70,9 @@ template<typename Mutex, typename Mode>
 /// @brief set name of a current thread
 /// @returns true if a specified name if succesully set, false - otherwise
 //////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API bool set_thread_name(const thread_name_t name) noexcept;
+bool set_thread_name(const thread_name_t name) noexcept;
 
-IRESEARCH_API bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
+bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
 
 }
 

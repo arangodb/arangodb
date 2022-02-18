@@ -29,7 +29,6 @@
 #include <fstream>
 
 #include "velocypack/vpack.h"
-#include "velocypack/vpack.h"
 #include "velocypack/velocypack-exception-macros.h"
 
 using namespace arangodb::velocypack;
@@ -150,8 +149,12 @@ int main(int argc, char* argv[]) {
     s = convertFromHex(s);
   }
 
+  Options options;
+  options.checkAttributeUniqueness = true;
+  options.validateUtf8Strings = true;
+
   try {
-    Validator validator;
+    Validator validator(&options);
     validator.validate(reinterpret_cast<uint8_t const*>(s.data()), s.size(), false);
     std::cout << "The velocypack in infile '" << infile << "' is valid" << std::endl;
   } catch (Exception const& ex) {

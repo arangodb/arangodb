@@ -54,7 +54,7 @@ TEST(classification_stream_test, test_load) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     irs::string_ref data{"baking"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
@@ -85,7 +85,7 @@ TEST(classification_stream_test, test_load) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
@@ -127,7 +127,7 @@ TEST(classification_stream_test, test_load) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
@@ -159,7 +159,7 @@ TEST(classification_stream_test, test_load) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get("classification", irs::type<irs::text_format::json>::get(), input_json);
@@ -194,7 +194,7 @@ TEST(classification_stream_test, test_load) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
 
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("classification",
@@ -234,7 +234,7 @@ TEST(classification_stream_test, test_custom_provider) {
 #ifdef  WIN32
     const auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    const auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    const auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
   EXPECTED_MODEL = model_loc;
 
@@ -259,7 +259,7 @@ TEST(classification_stream_test, test_make_config_json) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
@@ -273,7 +273,7 @@ TEST(classification_stream_test, test_make_config_json) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.0}";
@@ -287,7 +287,7 @@ TEST(classification_stream_test, test_make_config_json) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.1}";
@@ -301,7 +301,7 @@ TEST(classification_stream_test, test_make_config_json) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config = "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1, \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2, \"threshold\": 0.1}";
@@ -315,7 +315,7 @@ TEST(classification_stream_test, test_make_config_json) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config = "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
     auto expected_conf = "{\"model_location\": \"" + model_loc + "\", \"top_k\": 1, \"threshold\": 0.0}";
@@ -334,7 +334,7 @@ TEST(classification_stream_test, test_make_config_json) {
 #ifdef  WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
 #else
-    auto model_loc = test_base::resource("model_cooking.bin").u8string();
+    auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
 
     ASSERT_FALSE(irs::analysis::analyzers::normalize(

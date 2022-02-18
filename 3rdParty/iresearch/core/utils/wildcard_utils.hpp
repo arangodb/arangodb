@@ -37,7 +37,7 @@ enum class WildcardType {
   WILDCARD        // f_o*
 };
 
-IRESEARCH_API WildcardType wildcard_type(const bytes_ref& pattern) noexcept;
+WildcardType wildcard_type(bytes_ref pattern) noexcept;
 
 enum WildcardMatch : byte_type {
   ANY_STRING = '%',
@@ -57,9 +57,9 @@ enum WildcardMatch : byte_type {
 /// @note if an input expression is incorrect UTF-8 sequence, function returns
 ///       empty automaton
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API automaton from_wildcard(const bytes_ref& expr);
+automaton from_wildcard(bytes_ref expr);
 
-inline automaton from_wildcard(const string_ref& expr) {
+inline automaton from_wildcard(string_ref expr) {
   return from_wildcard(ref_cast<byte_type>(expr));
 }
 

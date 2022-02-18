@@ -390,7 +390,7 @@ struct character {
 /// @return characteristic vectors for a specified word
 //////////////////////////////////////////////////////////////////////////////
 std::vector<character> make_alphabet(
-    const bytes_ref& word,
+    bytes_ref word,
     size_t& utf8_size) {
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> chars(arena);
@@ -582,8 +582,8 @@ parametric_description read(data_input& in) {
 
 automaton make_levenshtein_automaton(
     const parametric_description& description,
-    const bytes_ref& prefix,
-    const bytes_ref& target) {
+    bytes_ref prefix,
+    bytes_ref target) {
   assert(description);
 
   struct state {
