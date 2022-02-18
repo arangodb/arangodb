@@ -49,7 +49,6 @@ Var AllowGlobalInstall
 
 Var ChooseInstallPath
 
-VAR TRI_INSTALL_SERVICE       ; x bool
 VAR TRI_INSTALL_SCOPE_ALL     ; x bool => All / ThisUser
 Var newCfgValues              ; keep new config file values
 Var newCfgValuesUtf8          ; translated version of the content
@@ -155,7 +154,6 @@ Function un.ReadSettings
   ; A single user isn''t in HKCC...
   StrCpy $TRI_INSTALL_SCOPE_ALL '0'
   ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
-  ReadRegStr $TRI_INSTALL_SERVICE   HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service"
 
   !insertmacro un.determineInstallScope 0
 
@@ -327,7 +325,7 @@ Var AR_RegFlags
   !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
 
-  Page custom InstallOptionsPage1 InstallOptionsPage1_results
+  ;Page custom InstallOptionsPage1 InstallOptionsPage1_results
 
   !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
@@ -348,7 +346,7 @@ Var AR_RegFlags
   !insertmacro MUI_PAGE_FINISH
 
   !insertmacro MUI_UNPAGE_WELCOME
-  UninstPage custom un.unInstallOptionsPage1 un.unInstallOptionsPage1_results
+  ;UninstPage custom un.unInstallOptionsPage1 un.unInstallOptionsPage1_results
   !insertmacro MUI_UNPAGE_CONFIRM
   !insertmacro MUI_UNPAGE_INSTFILES
 
@@ -472,10 +470,8 @@ continueUI:
 
   ${If} $R0 = ${BST_CHECKED}
     StrCpy $TRI_INSTALL_SCOPE_ALL "1"
-    StrCpy $TRI_INSTALL_SERVICE "1"
   ${Else}
     StrCpy $TRI_INSTALL_SCOPE_ALL "0"
-    StrCpy $TRI_INSTALL_SERVICE "0"
   ${EndIf}
 
   ${NSD_GetState} $Dlg1_CB_DesktopIcon $R0
@@ -578,7 +574,6 @@ continueBaseInstall:
 
   StrCmp "0" "$ADD_DESKTOP_ICON" noDesktopIcon
   CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   noDesktopIcon:
 
   ; Write special uninstall registry entries
@@ -612,7 +607,7 @@ Function is_writable
 ; is does not matter if we do some errors here
    ${If} $TRI_INSTALL_SCOPE_ALL == '1'
      CreateDirectory $INSTDIR
-     Call assignFileRights
+     ;Call assignFileRights
     ${EndIf}
 FunctionEnd
 
@@ -650,10 +645,8 @@ Function un.onInit
 
   Pop $0
   SetShellVarContext current
-  StrCpy $TRI_INSTALL_SERVICE   "0"
   StrCpy $TRI_INSTALL_SCOPE_ALL "0"
   ${If} $AllowGlobalInstall == "1"
-    ReadRegStr $TRI_INSTALL_SERVICE   HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service"
     ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
   ${EndIf}
 
@@ -698,7 +691,6 @@ Section "Uninstall"
 
   StrCmp "0" "$ADD_DESKTOP_ICON" noDesktopIconRemove
   Delete  "$DESKTOP\Arango Shell.lnk"
-  Delete  "$DESKTOP\Arango Management Interface.lnk"
   noDesktopIconRemove:
 
 
@@ -734,7 +726,6 @@ Section "Uninstall"
   ; Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
   ; they are deleted from '$SMPROGRAMS\$MUI_TEMP'
   Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Server.lnk'
-  Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Shell.lnk'
 
   ;Delete empty start menu parent diretories
   StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"
@@ -756,7 +747,6 @@ Section "Uninstall"
   ; Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
   ; they are deleted from '$SMPROGRAMS\$MUI_TEMP'
   Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Server.lnk'
-  Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Shell.lnk'
 
   ;Delete empty start menu parent diretories
   StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"
@@ -775,6 +765,7 @@ Section "Uninstall"
   ; Delete flag which controls if ArangoDB is started as service or not
   DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@"
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
+  DeleteRegKey HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@"
 
   ${If} $ADD_TO_PATH == 1
     ${If} $TRI_INSTALL_SCOPE_ALL = "1"
