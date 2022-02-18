@@ -48,6 +48,7 @@
 #endif
 
 namespace {
+#ifdef __linux__
 std::string_view trimProcName(std::string_view content) {
   std::size_t pos = content.find(' ');
   if (pos != std::string_view::npos && pos + 1 < content.size()) {
@@ -66,6 +67,7 @@ std::string_view trimProcName(std::string_view content) {
   }
   return {};
 }
+#endif
 }  // namespace
 
 using namespace arangodb::basics;
