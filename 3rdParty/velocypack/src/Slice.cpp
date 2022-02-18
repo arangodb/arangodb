@@ -132,6 +132,10 @@ std::string Slice::toJson(Options const* options) const {
 }
 
 std::string& Slice::toJson(std::string& out, Options const* options) const {
+  // reserve some initial space in the output string to avoid
+  // later reallocations. we use the Slice's byteSize as a first
+  // approximation for the needed output buffer size.
+  out.reserve(out.size() + byteSize());
   StringSink sink(&out);
   toJson(&sink, options);
   return out;
@@ -152,6 +156,11 @@ std::string Slice::toString(Options const* options) const {
   prettyOptions.prettyPrint = true;
 
   std::string buffer;
+  // reserve some initial space in the output string to avoid
+  // later reallocations. we use the Slice's byteSize as a first
+  // approximation for the needed output buffer size.
+  buffer.reserve(buffer.size() + byteSize());
+
   StringSink sink(&buffer);
   Dumper::dump(this, &sink, &prettyOptions);
   return buffer;
