@@ -1,5 +1,10 @@
 devel
 -----
+
+* Avoid multiple parallel SIGHUP requests to be handled at the same time.
+  Now collapse multiple incoming SIGHUP requests into a single one, which can
+  be executed race-free.
+
 * Support JSON schema objects for documenting Foxx endpoints.
 
 * Sorted out various geo problems:
