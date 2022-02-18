@@ -652,6 +652,164 @@ TEST(ValidatorTest, LongStringLongerThanSpecified2) {
   ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
 }
 
+TEST(ValidatorTest, Custom1ByteDisallowed) {
+  std::string value("\xf0\x00", 2);
+
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+}
+
+TEST(ValidatorTest, Custom2BytesDisallowed) {
+  std::string value("\xf1\x00\x01", 3);
+
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+}
+
+TEST(ValidatorTest, Custom4BytesDisallowed) {
+  std::string value("\xf2\x00\x01\x02\x03", 5);
+
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+}
+
+TEST(ValidatorTest, Custom8BytesDisallowed) {
+  std::string value("\xf3\x00\x01\x02\x03\x04\x05\x06\x07", 9);
+
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+}
+
+TEST(ValidatorTest, Custom1ByteAllowed) {
+  std::string value("\xf0\x00", 2);
+
+  Options options;
+  options.disallowCustom = false;
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(value.c_str(), value.size()));
+  
+  Slice s(reinterpret_cast<uint8_t const*>(value.data()));
+  ASSERT_TRUE(s.isCustom());
+}
+
+TEST(ValidatorTest, Custom2BytesAllowed) {
+  std::string value("\xf1\x00\x01", 3);
+
+  Options options;
+  options.disallowCustom = false;
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(value.c_str(), value.size()));
+  
+  Slice s(reinterpret_cast<uint8_t const*>(value.data()));
+  ASSERT_TRUE(s.isCustom());
+}
+
+TEST(ValidatorTest, Custom4BytesAllowed) {
+  std::string value("\xf2\x00\x01\x02\x03", 5);
+
+  Options options;
+  options.disallowCustom = false;
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(value.c_str(), value.size()));
+  
+  Slice s(reinterpret_cast<uint8_t const*>(value.data()));
+  ASSERT_TRUE(s.isCustom());
+}
+
+TEST(ValidatorTest, Custom8BytesAllowed) {
+  std::string value("\xf3\x00\x01\x02\x03\x04\x05\x06\x07", 9);
+
+  Options options;
+  options.disallowCustom = false;
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(value.c_str(), value.size()));
+  
+  Slice s(reinterpret_cast<uint8_t const*>(value.data()));
+  ASSERT_TRUE(s.isCustom());
+}
+
+TEST(ValidatorTest, Custom1ByteLengthDisallowed) {
+  std::string value("\xf4\x01\xff", 3);
+  
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  
+  // this covers custom types 0xf4 to 0xf6
+  for (size_t i = 0; i < 3; ++i) {
+    ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+    value[0]++;
+  }
+}
+
+TEST(ValidatorTest, Custom2BytesLengthDisallowed) {
+  std::string value("\xf7\x00\x01\xff", 4);
+  
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  
+  // this covers custom types 0xf7 to 0xf9
+  for (size_t i = 0; i < 3; ++i) {
+    ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+    value[0]++;
+  }
+}
+
+TEST(ValidatorTest, Custom4BytesLengthDisallowed) {
+  std::string value("\xfa\x00\x00\x00\x01\xff", 6);
+  
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  
+  // this covers custom types 0xfa to 0xfc
+  for (size_t i = 0; i < 3; ++i) {
+    ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+    value[0]++;
+  }
+}
+
+TEST(ValidatorTest, Custom8BytesLengthDisallowed) {
+  std::string value("\xfd\x00\x00\x00\x00\x00\x00\x00\x01\xff", 10);
+  
+  Options options;
+  options.disallowCustom = true;
+  Validator validator(&options);
+  
+  // this covers custom types 0xfd to 0xff
+  for (size_t i = 0; i < 3; ++i) {
+    ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderCustomDisallowed);
+    value[0]++;
+  }
+}
+
+TEST(ValidatorTest, Custom1ByteLengthAllowed) {
+  std::string value("\xf4\x01\xff", 3);
+  
+  Options options;
+  options.disallowCustom = false;
+  Validator validator(&options);
+  
+  // this covers custom types 0xf4 to 0xf6
+  for (size_t i = 0; i < 3; ++i) {
+    ASSERT_TRUE(validator.validate(value.c_str(), value.size()));
+  
+    Slice s(reinterpret_cast<uint8_t const*>(value.data()));
+    ASSERT_TRUE(s.isCustom());
+
+    value[0]++;
+  }
+}
+
 TEST(ValidatorTest, TagsAllowed) {
   std::string value("\xee\x01\x0a", 3);
 
@@ -712,6 +870,34 @@ TEST(ValidatorTest, TagsDisallowed8Bytes) {
   ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderTagsDisallowed);
   
   value.pop_back(); // make the value invalid
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderTagsDisallowed);
+}
+
+TEST(ValidatorTest, NestedTagsAllowed) {
+  std::string value("\xee\x01\xee\x02\x0a", 5);
+
+  Options options;
+  options.disallowTags = false;
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(value.c_str(), value.size()));
+
+  Slice s(reinterpret_cast<uint8_t const*>(value.data()));
+  ASSERT_TRUE(s.isTagged());
+  ASSERT_EQ(5, s.byteSize());
+  ASSERT_EQ(0x01, s.getFirstTag());
+  ASSERT_TRUE(s.hasTag(0x01));
+  ASSERT_EQ(std::vector<uint64_t>({0x01, 0x02}), s.getTags());
+  ASSERT_EQ(1, s.value().byteSize());
+  ASSERT_TRUE(s.value().isObject());
+  ASSERT_EQ(0, s.value().length());
+}
+
+TEST(ValidatorTest, NestedTagsDisallowed) {
+  std::string value("\xee\x01\xee\x02\x0a", 5);
+
+  Options options;
+  options.disallowTags = true;
+  Validator validator(&options);
   ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::BuilderTagsDisallowed);
 }
 
@@ -1935,6 +2121,66 @@ TEST(ValidatorTest, ArrayMoreItemsThanIndex) {
   ASSERT_VELOCYPACK_EXCEPTION(validator.validate(value.c_str(), value.size()), Exception::ValidatorInvalidLength);
 }
 
+TEST(ValidatorTest, ArrayNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray();
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, CompactArrayNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray(true);
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, ArrayNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray();
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
+}
+
+TEST(ValidatorTest, CompactArrayNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openArray(true);
+  }
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
+}
+
 TEST(ValidatorTest, ObjectMoreItemsThanIndex) {
   std::string const value("\x0B\x08\x01\xBE\x41\x61\x31\x04", 8);
 
@@ -2406,6 +2652,74 @@ TEST(ValidatorTest, ObjectFourByteManyEntries) {
 
   Validator validator;
   ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, ObjectNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject();
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, CompactObjectNestingCloseToLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject(true);
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 6;
+
+  Validator validator(&options);
+  ASSERT_TRUE(validator.validate(b.slice().start(), b.slice().byteSize()));
+}
+
+TEST(ValidatorTest, ObjectNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject(true);
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
+}
+
+TEST(ValidatorTest, CompactObjectNestingBeyondLimit) {
+  Builder b;
+  for (int i = 0; i < 5; ++i) {
+    b.openObject(true);
+    b.add(Value("key"));
+  }
+  b.add(Value(true));
+  for (int i = 0; i < 5; ++i) {
+    b.close();
+  }
+  Options options;
+  options.nestingLimit = 5;
+
+  Validator validator(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(validator.validate(b.slice().start(), b.slice().byteSize()), Exception::TooDeepNesting);
 }
 
 int main(int argc, char* argv[]) {
