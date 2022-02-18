@@ -41,7 +41,7 @@ struct timer_stat_t {
   std::atomic<size_t> time;
 };
 
-class IRESEARCH_API scoped_timer : util::noncopyable {
+class scoped_timer : util::noncopyable {
  public:
   explicit scoped_timer(timer_stat_t& stat);
   scoped_timer(scoped_timer&&) = default;
@@ -60,7 +60,7 @@ static_assert(std::is_nothrow_move_constructible_v<scoped_timer>);
 // --SECTION--                                                timer registration
 // -----------------------------------------------------------------------------
 
-IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
+timer_stat_t& get_stat(const std::string& key);
 
 // Note: MSVC sometimes initializes the static variable and sometimes leaves it as *(nullptr)
 //       therefore for MSVC before use, check if the static variable has been initialized
@@ -97,21 +97,21 @@ IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 ///        NOTE: this method call must be externally synchronized with
 ///              get_stat(...) and visit(...), i.e. do not call both concurrently
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void init_stats(
+void init_stats(
   bool track_all_keys = false,
   const absl::flat_hash_set<std::string>& tracked_keys = {});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all tracked keys
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API bool visit(
+bool visit(
   const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush formatted timer stats to a specified stream
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void flush_stats(std::ostream &out);
+void flush_stats(std::ostream &out);
 
 } // timer_utils
 } // namespace iresearch {

@@ -63,43 +63,43 @@ struct equal_size_type<unsigned long, 8> { typedef uint64_t type; };
 namespace iresearch {
 namespace numeric_utils {
 
-IRESEARCH_API const bytes_ref& mini64();
-IRESEARCH_API const bytes_ref& maxi64();
+const bytes_ref& mini64();
+const bytes_ref& maxi64();
 
-IRESEARCH_API uint64_t decode64(const byte_type* out);
-IRESEARCH_API size_t encode64(uint64_t value, byte_type* out, size_t shift = 0);
-IRESEARCH_API uint64_t hton64(uint64_t value);
-IRESEARCH_API uint64_t ntoh64(uint64_t value);
-IRESEARCH_API const bytes_ref& minu64();
-IRESEARCH_API const bytes_ref& maxu64();
+uint64_t decode64(const byte_type* out);
+size_t encode64(uint64_t value, byte_type* out, size_t shift = 0);
+uint64_t hton64(uint64_t value);
+uint64_t ntoh64(uint64_t value);
+const bytes_ref& minu64();
+const bytes_ref& maxu64();
 
-IRESEARCH_API const bytes_ref& mini32();
-IRESEARCH_API const bytes_ref& maxi32();
+const bytes_ref& mini32();
+const bytes_ref& maxi32();
 
-IRESEARCH_API uint32_t decode32(const byte_type* out);
-IRESEARCH_API size_t encode32(uint32_t value, byte_type* out, size_t shift = 0);
-IRESEARCH_API uint32_t hton32(uint32_t value);
-IRESEARCH_API uint32_t ntoh32(uint32_t value);
-IRESEARCH_API const bytes_ref& minu32();
-IRESEARCH_API const bytes_ref& maxu32();
+uint32_t decode32(const byte_type* out);
+size_t encode32(uint32_t value, byte_type* out, size_t shift = 0);
+uint32_t hton32(uint32_t value);
+uint32_t ntoh32(uint32_t value);
+const bytes_ref& minu32();
+const bytes_ref& maxu32();
 
-IRESEARCH_API size_t encodef32(uint32_t value, byte_type* out, size_t shift = 0);
-IRESEARCH_API uint32_t decodef32(const byte_type* out);
-IRESEARCH_API int32_t ftoi32(float_t value);
-IRESEARCH_API float_t i32tof(int32_t value);
-IRESEARCH_API const bytes_ref& minf32();
-IRESEARCH_API const bytes_ref& maxf32();
-IRESEARCH_API const bytes_ref& finf32();
-IRESEARCH_API const bytes_ref& nfinf32();
+size_t encodef32(uint32_t value, byte_type* out, size_t shift = 0);
+uint32_t decodef32(const byte_type* out);
+int32_t ftoi32(float_t value);
+float_t i32tof(int32_t value);
+const bytes_ref& minf32();
+const bytes_ref& maxf32();
+const bytes_ref& finf32();
+const bytes_ref& nfinf32();
 
-IRESEARCH_API size_t encoded64(uint64_t value, byte_type* out, size_t shift = 0);
-IRESEARCH_API uint64_t decoded64(const byte_type* out);
-IRESEARCH_API int64_t dtoi64(double_t value);
-IRESEARCH_API double_t i64tod(int64_t value);
-IRESEARCH_API const bytes_ref& mind64();
-IRESEARCH_API const bytes_ref& maxd64();
-IRESEARCH_API const bytes_ref& dinf64();
-IRESEARCH_API const bytes_ref& ndinf64();
+size_t encoded64(uint64_t value, byte_type* out, size_t shift = 0);
+uint64_t decoded64(const byte_type* out);
+int64_t dtoi64(double_t value);
+double_t i64tod(int64_t value);
+const bytes_ref& mind64();
+const bytes_ref& maxd64();
+const bytes_ref& dinf64();
+const bytes_ref& ndinf64();
 
 template<typename T>
 struct numeric_traits;

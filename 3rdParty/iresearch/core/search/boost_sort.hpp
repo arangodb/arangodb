@@ -27,7 +27,7 @@
 
 namespace iresearch {
 
-struct IRESEARCH_API boost_sort final : public sort {
+struct boost_sort final : public sort {
   static constexpr string_ref type_name() noexcept {
     return "boostscore";
   }

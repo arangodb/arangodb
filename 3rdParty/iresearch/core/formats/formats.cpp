@@ -99,15 +99,15 @@ namespace iresearch {
 }
 
 /*static*/ bool formats::exists(
-    const string_ref& name,
+    string_ref name,
     bool load_library /*= true*/) {
   auto const key = std::make_pair(name, string_ref::NIL);
   return nullptr != format_register::instance().get(key, load_library);
 }
 
 /*static*/ format::ptr formats::get(
-    const string_ref& name,
-    const string_ref& module /*= string_ref::NIL*/,
+    string_ref name,
+    string_ref module /*= string_ref::NIL*/,
     bool load_library /*= true*/) noexcept {
   try {
     auto const key = std::make_pair(name, module);
@@ -132,7 +132,7 @@ namespace iresearch {
 }
 
 /*static*/ bool formats::visit(
-    const std::function<bool(const string_ref&)>& visitor) {
+    const std::function<bool(string_ref)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
     if (!visitor(key.first)) {
       return false;
@@ -149,7 +149,7 @@ namespace iresearch {
 
 format_registrar::format_registrar(
     const type_info& type,
-    const string_ref& module,
+    string_ref module,
     format::ptr(*factory)(),
     const char* source /*= nullptr*/) {
   string_ref source_ref(source);

@@ -64,12 +64,12 @@ using namespace tests;
 
 TEST_F(analyzer_test, duplicate_register) {
   struct dummy_analyzer: public irs::analysis::analyzer {
-    static ptr make(const irs::string_ref&) { return ptr(new dummy_analyzer()); }
-    static bool normalize(const irs::string_ref&, std::string&) { return true; }
+    static ptr make(irs::string_ref) { return ptr(new dummy_analyzer()); }
+    static bool normalize(irs::string_ref, std::string&) { return true; }
     dummy_analyzer(): irs::analysis::analyzer(irs::type<dummy_analyzer>::get()) { }
     virtual irs::attribute* get_mutable(irs::type_info::type_id) override { return nullptr;}
     virtual bool next() override { return false; }
-    virtual bool reset(const irs::string_ref&) override { return false; }
+    virtual bool reset(irs::string_ref) override { return false; }
   };
 
   static bool initial_expected = true;

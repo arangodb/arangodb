@@ -61,8 +61,7 @@ bool lazy_filter_bitset_iterator::next() {
     word_ = 0;
     return false;
   }
-  const irs::doc_id_t delta =
-      irs::doc_id_t(irs::math::math_traits<lazy_bitset::word_t>::ctz(word_));
+  const irs::doc_id_t delta = std::countr_zero(word_);
   assert(delta < irs::bits_required<lazy_bitset::word_t>());
   word_ >>= (delta + 1);
   doc_.value += 1 + delta;

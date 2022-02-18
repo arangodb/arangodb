@@ -1,6 +1,10 @@
 master
 -------------------------
 
+* Speedup BM25 scorer.
+
+* Move to C++20.
+
 * Add `classification_stream` capable of classifying input data based on FastText NN model.
 
 * Add `nearest_neighbors_stream` capable of generating synonyms based on FastText NN model.

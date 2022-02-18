@@ -34,7 +34,7 @@ const char* not_supported::what() const noexcept {
 }
 
 lock_obtain_failed::lock_obtain_failed(
-    const irs::string_ref& filename /*= "" */
+    irs::string_ref filename /*= "" */
 ) : error_("Lock obtain timed out") {
   if (filename.null()) {
     error_ += ".";
@@ -49,7 +49,7 @@ const char* lock_obtain_failed::what() const noexcept {
 }
 
 file_not_found::file_not_found(
-    const irs::string_ref& filename /*= "" */
+    irs::string_ref filename /*= "" */
 ): error_("File not found") {
   if (filename.null()) {
     error_ += ".";

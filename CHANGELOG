@@ -1,5 +1,6 @@
 devel
 -----
+* Support JSON schema objects for documenting Foxx endpoints.
 
 * Sorted out various geo problems:
 

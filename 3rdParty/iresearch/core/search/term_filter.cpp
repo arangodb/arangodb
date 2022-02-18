@@ -78,7 +78,7 @@ template<typename Visitor>
 void visit(
     const sub_reader& segment,
     const term_reader& field,
-    const bytes_ref& term,
+    bytes_ref term,
     Visitor& visitor) {
   // find term
   auto terms = field.iterator(SeekMode::RANDOM_ONLY);
@@ -107,7 +107,7 @@ DEFINE_FACTORY_DEFAULT(by_term)
 /*static*/ void by_term::visit(
     const sub_reader& segment,
     const term_reader& field,
-    const bytes_ref& term,
+    bytes_ref term,
     filter_visitor& visitor) {
   ::visit(segment, field, term, visitor);
 }
@@ -116,8 +116,8 @@ DEFINE_FACTORY_DEFAULT(by_term)
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& term) {
+    string_ref field,
+    bytes_ref term) {
   term_query::states_t states(index);
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);

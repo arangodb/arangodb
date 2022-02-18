@@ -509,7 +509,7 @@ Result filter(irs::boolean_filter* filter, QueryContext const& queryctx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends value tokens to a phrase filter
 ////////////////////////////////////////////////////////////////////////////////
-void appendTerms(irs::by_phrase& filter, irs::string_ref const& value,
+void appendTerms(irs::by_phrase& filter, irs::string_ref value,
                  irs::analysis::analyzer& stream, size_t firstOffset) {
   // reset stream
   stream.reset(value);

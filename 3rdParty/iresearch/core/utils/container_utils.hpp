@@ -196,7 +196,7 @@ MSVC_ONLY(__pragma(warning(pop)))
 namespace memory {
 
 template<typename BucketFactory, size_t Size>
-class IRESEARCH_API_TEMPLATE bucket_allocator: private util::noncopyable { // noncopyable because of 'pools_' (declaration required by MSVC2017)
+class bucket_allocator: private util::noncopyable { // noncopyable because of 'pools_' (declaration required by MSVC2017)
  public:
   // number of pools
   static const size_t SIZE = Size;
@@ -243,7 +243,7 @@ struct default_allocator {
 template<size_t SkipBits>
 size_t compute_bucket_offset(size_t position) noexcept {
   // 63 == 64 bits per size_t - 1 for allignment, +1 == align first value to start of bucket
-  return 63 - math::clz64((position >> SkipBits) + 1);
+  return 63 - std::countl_zero((position >> SkipBits) + 1);
 }
 
 template<typename Allocator>
@@ -322,9 +322,7 @@ class raw_block_vector_base
     return buffers_.back();
   }
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<buffer_entry_t> buffers_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // raw_block_vector_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -335,7 +333,7 @@ template<
   size_t NumBuckets,
   size_t SkipBits,
   typename Allocator = memory::default_allocator
-> class IRESEARCH_API_TEMPLATE raw_block_vector : public raw_block_vector_base<Allocator> {
+> class raw_block_vector : public raw_block_vector_base<Allocator> {
  public:
   static const size_t NUM_BUCKETS = NumBuckets; // total number of buckets
   static const size_t FIRST_BUCKET_SIZE = 1 << SkipBits; // size of the first bucket

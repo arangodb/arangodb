@@ -255,7 +255,7 @@ struct BoostScorer : public irs::sort {
     }
   };  // namespace
 
-  static irs::sort::ptr make(irs::string_ref const&) {
+  static irs::sort::ptr make(irs::string_ref) {
     return std::make_unique<BoostScorer>();
   }
 
@@ -327,7 +327,7 @@ struct CustomScorer : public irs::sort {
     float_t i;
   };
 
-  static irs::sort::ptr make(irs::string_ref const& args) {
+  static irs::sort::ptr make(irs::string_ref args) {
     if (args.null()) {
       return std::make_unique<CustomScorer>(0u);
     }
