@@ -1067,24 +1067,44 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   usedIndexes.first = buildUsedIndexes();
   usedIndexes.second = buildUsedDepthBasedIndexes();
 
-  arangodb::graph::SingleServerBaseProviderOptions
-      singleServerBaseProviderOptions =
-          getSingleServerBaseProviderOptions(opts, filterConditionVariables);
-
   PathValidatorOptions validatorOptions{opts->_tmpVar,
                                         opts->getExpressionCtx()};
-  auto executorInfos = TraversalExecutorInfos(
-      std::move(traverser), outputRegisterMapping, getStartVertex(),
-      inputRegister, std::move(filterConditionVariables), plan()->getAst(),
-      opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
-      opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-      std::move(validatorOptions),
-      arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-                                                 opts->maxDepth},
-      opts, std::move(singleServerBaseProviderOptions));
 
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  if (ServerState::instance()->isCoordinator()) {
+    auto clusterBaseProviderOptions =
+        getClusterBaseProviderOptions(opts, filterConditionVariables);
+
+    auto executorInfos = TraversalExecutorInfos(
+        std::move(traverser), outputRegisterMapping, getStartVertex(),
+        inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions),
+        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                   opts->maxDepth},
+        opts, std::move(clusterBaseProviderOptions));
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  } else {
+    arangodb::graph::SingleServerBaseProviderOptions
+        singleServerBaseProviderOptions =
+            getSingleServerBaseProviderOptions(opts, filterConditionVariables);
+
+
+    auto executorInfos = TraversalExecutorInfos(
+        std::move(traverser), outputRegisterMapping, getStartVertex(),
+        inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions),
+        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                   opts->maxDepth},
+        opts, std::move(singleServerBaseProviderOptions));
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
