@@ -51,7 +51,7 @@ typedef range<segment_writer::update_context> update_contexts_ref;
 
 constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
-const column_info_provider_t kDefaultColumnInfo = [](const string_ref&) {
+const column_info_provider_t kDefaultColumnInfo = [](string_ref) {
   // no compression, no encryption
   return column_info{ irs::type<compression::none>::get(), {}, false };
 };

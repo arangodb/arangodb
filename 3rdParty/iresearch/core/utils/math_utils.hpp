@@ -46,10 +46,9 @@ namespace math {
 /// @returns false if sum is overflowed, true - otherwise
 template<
   typename T,
-  typename = typename std::enable_if<
-    std::is_integral<T>::value && std::is_unsigned<T>::value
-  >::type
-> inline bool sum_check_overflow(T lhs, T rhs, T& sum) noexcept {
+  typename = typename std::enable_if_t<
+    std::is_integral_v<T> && std::is_unsigned_v<T>>>
+inline bool sum_check_overflow(T lhs, T rhs, T& sum) noexcept {
   sum = lhs + rhs;
   return sum >= lhs && sum >= rhs;
 }
@@ -71,10 +70,8 @@ inline constexpr size_t roundup_power2(size_t v) noexcept {
 // undefined for 0
 template<typename T>
 constexpr inline bool is_power2(T v) noexcept {
-  static_assert(
-    std::is_integral<T>::value,
-    "T must be an integral type"
-  );
+  static_assert(std::is_integral_v<T>,
+                "T must be an integral type");
 
   return !(v & (v-1));
 }
@@ -112,133 +109,11 @@ constexpr inline uint32_t ceil32(uint32_t value, uint32_t step) noexcept {
   return div_ceil32(value, step)*step;
 }
 
-IRESEARCH_API uint32_t log2_64(uint64_t value);
+uint32_t log2_64(uint64_t value) noexcept;
 
-IRESEARCH_API uint32_t log2_32(uint32_t value);
+uint32_t log2_32(uint32_t value) noexcept;
 
-IRESEARCH_API uint32_t log(uint64_t x, uint64_t base);
-
-/* returns number of set bits in a set of words */
-template<typename T>
-inline size_t popcnt(const T* value, size_t count) noexcept {
-  constexpr char bitsperbyte[] =
-    "\0\1\1\2\1\2\2\3\1\2\2\3\2\3\3\4"
-    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-    "\1\2\2\3\2\3\3\4\2\3\3\4\3\4\4\5"
-    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-    "\2\3\3\4\3\4\4\5\3\4\4\5\4\5\5\6"
-    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-    "\3\4\4\5\4\5\5\6\4\5\5\6\5\6\6\7"
-    "\4\5\5\6\5\6\6\7\5\6\6\7\6\7\7\x8";
-  const unsigned char* begin = reinterpret_cast< const unsigned char* >( value );
-  const unsigned char* end = begin + count;
-
-  return std::accumulate(
-    begin, end, size_t(0),
-    [bitsperbyte] (size_t v, unsigned char c) {
-      return v + bitsperbyte[c];
-  } );
-}
-
-/* Hamming weight for 64bit values */
-constexpr inline uint64_t popcnt64(uint64_t v) noexcept {
-  v = v - ( ( v >> 1 ) & ( uint64_t ) ~( uint64_t ) 0 / 3 );
-  v = ( v & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 ) + ( ( v >> 2 ) & ( uint64_t ) ~( uint64_t ) 0 / 15 * 3 );
-  v = ( v + ( v >> 4 ) ) & ( uint64_t ) ~( uint64_t ) 0 / 255 * 15;                      
-  return ( ( uint64_t ) ( v * ( ( uint64_t ) ~( uint64_t ) 0 / 255 ) ) >> ( sizeof( uint64_t ) - 1 ) * CHAR_BIT); 
-}
-
-/* Hamming weight for 32bit values */
-constexpr uint32_t popcnt32(uint32_t v) noexcept{
-  v = v - ( ( v >> 1 ) & 0x55555555 );                    
-  v = ( v & 0x33333333 ) + ( ( v >> 2 ) & 0x33333333 );  
-  v = (v + (v >> 4)) & 0xF0F0F0F;
-  return ((v * 0x1010101) >> 24);
-}
-
-FORCE_INLINE uint32_t pop32(uint32_t v) noexcept {
-#if __GNUC__ >= 4
-  return __builtin_popcount(v);
-#elif defined(_MSC_VER) 
-  //TODO: compile time
-  return cpuinfo::support_popcnt() ?__popcnt(v) : popcnt32(v);
-#else
-  #pragma message("pop32: fallback to popcnt32")
-  return popcnt32(v);
-#endif
-}
-
-FORCE_INLINE uint64_t pop64(uint64_t v) noexcept{
-#if  __GNUC__ >= 4
-  return __builtin_popcountll(v);
-#elif defined(_MSC_VER) && defined(_M_X64)
-  //TODO: compile time
-  return cpuinfo::support_popcnt() ? __popcnt64(v) : popcnt64(v);
-#else
-  #pragma message("pop64: fallback to popcnt64")
-  return popcnt64(v);
-#endif
-}
-
-FORCE_INLINE uint32_t ctz32(uint32_t v) noexcept {
-  assert(v); // 0 is not supported
-#if  __GNUC__ >= 4
-  return __builtin_ffs(v) - 1; // __builit_ffs returns `index`+1
-#elif defined(_MSC_VER)
-  unsigned long idx;
-  _BitScanForward(&idx, v);
-  return idx;
-#else
-  static_assert(false, "Not supported");
-#endif
-}
-
-FORCE_INLINE uint64_t ctz64(uint64_t v) noexcept {
-  assert(v); // 0 is not supported
-#if  __GNUC__ >= 4
-  return __builtin_ffsll(v) - 1; // __builit_ffsll returns `index`+1
-#elif defined(_MSC_VER)
-  unsigned long idx;
-  _BitScanForward64(&idx, v);
-  return idx;
-#else
-  static_assert(false, "Not supported");
-#endif
-}
-
-FORCE_INLINE uint32_t clz32(uint32_t v) noexcept {
-  assert(v); // 0 is not supported
-#if  __GNUC__ >= 4
-  return __builtin_clz(v);
-#elif defined(_MSC_VER)
-  unsigned long idx;
-  _BitScanReverse(&idx, v);
-  return 31 - idx;
-#else
-  static_assert(false, "Not supported");
-#endif
-}
-
-FORCE_INLINE uint64_t clz64(uint64_t v) noexcept {
-  assert(v); // 0 is not supported
-#if  __GNUC__ >= 4
-  return __builtin_clzll(v);
-#elif defined(_MSC_VER)
-  unsigned long idx;
-  _BitScanReverse64(&idx, v);
-  return 63 - idx;
-#else
-  static_assert(false, "Not supported");
-#endif
-}
+uint32_t log(uint64_t x, uint64_t base) noexcept;
 
 FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
 #if __GNUC__ >= 4
@@ -253,8 +128,7 @@ FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
 }
 
 FORCE_INLINE uint32_t log2_ceil_32(uint32_t v) {
-  static const uint32_t CEIL_EXTRA[] = { 1, 0 };
-  return log2_floor_32(v) + CEIL_EXTRA[is_power2(v)];
+  return log2_floor_32(v) + uint32_t{!is_power2(v)};
 }
 
 FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
@@ -270,33 +144,27 @@ FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
 }
 
 FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
-  return log2_floor_64(v) + uint64_t(!is_power2(v));
+  return log2_floor_64(v) + uint64_t{!is_power2(v)};
 }
 
 template<typename T, size_t N = sizeof(T)>
 struct math_traits {
-  static size_t clz(T value);
-  static size_t ctz(T value);
-  static size_t pop(T value);
-  static size_t pop(const T* begin, const T* end);
   static size_t ceil(T value, T step);
   static uint32_t bits_required(T val) noexcept;
 }; // math_traits
+
+template<typename Iterator>
+constexpr size_t popcount(Iterator begin, Iterator end) noexcept {
+  return std::accumulate(begin, end, size_t{0},
+                         [](size_t acc, auto word) {
+                             return acc + std::popcount(word);
+                         });
+}
 
 template<typename T>
 struct math_traits<T, sizeof(uint32_t)> {
   typedef T type;
 
-  static size_t clz(type value) noexcept { return clz32(value); }
-  static size_t ctz(type value) noexcept { return ctz32(value); }
-  static size_t pop(type value) noexcept { return pop32(value); }
-  static size_t pop(const type* begin, const type* end) noexcept {
-    return std::accumulate(
-      begin, end, type{0},
-      [](type acc, type word) {
-        return acc + pop(word);
-    });
-  }
   static size_t div_ceil(type num, type den) noexcept {
     return div_ceil32(num, den);
   }
@@ -304,7 +172,7 @@ struct math_traits<T, sizeof(uint32_t)> {
     return ceil32(value, step);
   }
   static uint32_t bits_required(type val) noexcept {
-    return 0 == val ? 0 : 32 - static_cast<uint32_t>(clz(val));
+    return 0 == val ? 0 : 32 - static_cast<uint32_t>(std::countl_zero(val));
   }
 }; // math_traits
 
@@ -312,16 +180,6 @@ template<typename T>
 struct math_traits<T, sizeof(uint64_t)> {
   typedef T type;
 
-  static size_t clz(type value) noexcept { return clz64(value); }
-  static size_t ctz(type value) noexcept { return ctz64(value); }
-  static size_t pop(type value) noexcept { return pop64(value); }
-  static size_t pop(const type* begin, const type* end) noexcept {
-    return std::accumulate(
-      begin, end, type{0},
-      [](type acc, type word) {
-        return acc + pop(word);
-    });
-  }
   static size_t div_ceil(type num, type den) noexcept {
     return div_ceil64(num, den);
   }
@@ -329,40 +187,9 @@ struct math_traits<T, sizeof(uint64_t)> {
     return ceil64(value, step);
   }
   static uint32_t bits_required(type val) noexcept {
-    return 0 == val ? 0 : 64 - static_cast<uint32_t>(clz(val));
+    return 0 == val ? 0 : 64 - static_cast<uint32_t>(std::countl_zero(val));
   }
 }; // math_traits
-
-template<
-  typename Input, 
-  typename Output, 
-  Input Size,
-  typename = typename std::enable_if<std::is_integral<Input>::value>::type
-> class sqrt {
- public:
-  typedef Input input_type;
-  typedef Output output_type;
-
-  sqrt() noexcept {
-    for (input_type i = 0, size = Size; i < size; ++i) {
-      table_[i] = std::sqrt(static_cast<output_type>(i));
-    }
-  }
-
-  FORCE_INLINE output_type operator()(input_type value) const noexcept {
-    static_assert(
-      std::is_same<decltype(std::sqrt(static_cast<output_type>(value))), output_type>::value,
-      "invalid overload"
-    );
-
-    return value < Size
-      ? table_[value]
-      : std::sqrt(static_cast<output_type>(value));
-  }
-
- private:
-  output_type table_[Size];
-}; // sqrt
 
 } // math
 } // root

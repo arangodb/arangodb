@@ -37,7 +37,7 @@ struct filter_visitor;
 /// @struct by_terms_options
 /// @brief options for terms filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_terms_options {
+struct by_terms_options {
   struct search_term {
     bstring term;
     boost_t boost;
@@ -48,7 +48,7 @@ struct IRESEARCH_API by_terms_options {
       : term(std::move(term)), boost(boost) {
     }
 
-    explicit search_term(const bytes_ref& term, boost_t boost = no_boost())
+    explicit search_term(bytes_ref term, boost_t boost = no_boost())
       : term(term.c_str(), term.size()), boost(boost) {
     }
 
@@ -87,7 +87,7 @@ struct IRESEARCH_API by_terms_options {
 /// @class by_terms
 /// @brief user-side filter by a set of terms
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_terms final
+class by_terms final
     : public filter_base<by_terms_options> {
  public:
   static ptr make();

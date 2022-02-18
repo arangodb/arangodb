@@ -59,7 +59,7 @@ using callback_f = std::function<bool(doc_iterator&)>;
 /// @class term_meta
 /// @brief represents metadata associated with the term
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_meta : attribute {
+struct term_meta : attribute {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::term_meta";
   }
@@ -83,7 +83,7 @@ struct IRESEARCH_API term_meta : attribute {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API postings_writer : attribute_provider {
+struct postings_writer : attribute_provider {
   using ptr = std::unique_ptr<postings_writer>;
 
   class releaser {
@@ -127,7 +127,7 @@ void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct field_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API field_writer {
+struct field_writer {
   using ptr = std::unique_ptr<field_writer>;
 
   virtual ~field_writer() = default;
@@ -143,7 +143,7 @@ struct IRESEARCH_API field_writer {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API postings_reader {
+struct postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
   using term_provider_f = std::function<const term_meta*()>;
 
@@ -192,7 +192,7 @@ struct IRESEARCH_API postings_reader {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct basic_term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API basic_term_reader : public attribute_provider {
+struct basic_term_reader : public attribute_provider {
   virtual ~basic_term_reader() = default;
 
   virtual term_iterator::ptr iterator() const = 0;
@@ -226,7 +226,7 @@ enum class SeekMode : uint32_t {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_reader: public attribute_provider {
+struct term_reader: public attribute_provider {
   using ptr = std::unique_ptr<term_reader>;
   using cookie_provider = std::function<const seek_cookie*()>;
 
@@ -287,7 +287,7 @@ struct IRESEARCH_API term_reader: public attribute_provider {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct field_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API field_reader {
+struct field_reader {
   using ptr = std::unique_ptr<field_reader>;
 
   virtual ~field_reader() = default;
@@ -297,7 +297,7 @@ struct IRESEARCH_API field_reader {
     const segment_meta& meta,
     const document_mask& mask) = 0;
 
-  virtual const term_reader* field(const string_ref& field) const = 0;
+  virtual const term_reader* field(string_ref field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
   virtual size_t size() const = 0;
 }; // field_reader
@@ -313,7 +313,7 @@ struct column_output : data_output {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct columnstore_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API columnstore_writer {
+struct columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
 
   // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc < type_limits<type_t::doc_id_t>::eof()
@@ -335,9 +335,6 @@ struct IRESEARCH_API columnstore_writer {
 }; // columnstore_writer
 
 }
-
-// columnstore_writer::values_writer_f
-MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::doc_id_t)>;) 
 
 namespace iresearch {
 
@@ -365,7 +362,7 @@ struct column_reader {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct columnstore_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API columnstore_reader {
+struct columnstore_reader {
   using ptr = std::unique_ptr<columnstore_reader>;
 
   using column_visitor_f = std::function<bool(const column_reader&)>;
@@ -393,7 +390,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API document_mask_writer {
+struct document_mask_writer {
   using ptr = memory::managed_ptr<document_mask_writer>;
 
   virtual ~document_mask_writer() = default;
@@ -409,7 +406,7 @@ struct IRESEARCH_API document_mask_writer {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API document_mask_reader {
+struct document_mask_reader {
   using ptr = memory::managed_ptr<document_mask_reader>;
 
   virtual ~document_mask_reader() = default;
@@ -427,7 +424,7 @@ struct IRESEARCH_API document_mask_reader {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct segment_meta_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API segment_meta_writer {
+struct segment_meta_writer {
   using ptr = memory::managed_ptr<segment_meta_writer>;
 
   virtual ~segment_meta_writer() = default;
@@ -441,7 +438,7 @@ struct IRESEARCH_API segment_meta_writer {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct segment_meta_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API segment_meta_reader {
+struct segment_meta_reader {
   using ptr = memory::managed_ptr<segment_meta_reader>;
 
   virtual ~segment_meta_reader() = default;
@@ -449,13 +446,13 @@ struct IRESEARCH_API segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::NIL) = 0; // null == use meta
+    string_ref filename = string_ref::NIL) = 0; // null == use meta
 }; // segment_meta_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_meta_writer {
+struct index_meta_writer {
   using ptr = std::unique_ptr<index_meta_writer>;
 
   virtual ~index_meta_writer() = default;
@@ -471,7 +468,7 @@ struct IRESEARCH_API index_meta_writer {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_meta_reader {
+struct index_meta_reader {
   using ptr = memory::managed_ptr<index_meta_reader>;
 
   virtual ~index_meta_reader() = default;
@@ -482,7 +479,7 @@ struct IRESEARCH_API index_meta_reader {
   virtual void read(
     const directory& dir, 
     index_meta& meta,
-    const string_ref& filename = string_ref::NIL) = 0; // null == use meta
+    string_ref filename = string_ref::NIL) = 0; // null == use meta
 
  protected:
   static void complete(
@@ -496,7 +493,7 @@ struct IRESEARCH_API index_meta_reader {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct format
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API format {
+class format {
  public:
   using ptr = std::shared_ptr<const format>;
 
@@ -526,8 +523,6 @@ class IRESEARCH_API format {
 
 }
 
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<irs::format>;) // format::ptr
-
 namespace iresearch {
 
 struct flush_state {
@@ -548,12 +543,12 @@ struct reader_state {
 // --SECTION--                                               convinience methods
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API formats {
+class formats {
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether a format with the specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(const string_ref& name, bool load_library = true);
+  static bool exists(string_ref name, bool load_library = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find a format by name, or nullptr if not found
@@ -561,8 +556,8 @@ class IRESEARCH_API formats {
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
   static format::ptr get(
-    const string_ref& name,
-    const string_ref& module = string_ref::NIL,
+    string_ref name,
+    string_ref module = string_ref::NIL,
     bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -580,7 +575,7 @@ class IRESEARCH_API formats {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief visit all loaded formats, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
-  static bool visit(const std::function<bool(const string_ref&)>& visitor);
+  static bool visit(const std::function<bool(string_ref)>& visitor);
 
  private:
   formats() = delete;
@@ -590,11 +585,11 @@ class IRESEARCH_API formats {
 // --SECTION--                                               format registration
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API format_registrar {
+class format_registrar {
  public:
   format_registrar(
     const type_info& type,
-    const string_ref& module,
+    string_ref module,
     format::ptr(*factory)(),
     const char* source = nullptr);
 

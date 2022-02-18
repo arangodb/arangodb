@@ -31,7 +31,7 @@ struct noop_field_collector final : sort::field_collector {
 
   }
   virtual void reset() override { }
-  virtual void collect(const bytes_ref&) override { }
+  virtual void collect(bytes_ref) override { }
   virtual void write(data_output&) const override { }
 };
 
@@ -41,7 +41,7 @@ struct noop_term_collector final : sort::term_collector {
                        const attribute_provider&) override {
   }
   virtual void reset() override { }
-  virtual void collect(const bytes_ref&) override { }
+  virtual void collect(bytes_ref) override { }
   virtual void write(data_output&) const override { }
 };
 

@@ -33,7 +33,10 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/SortCondition.h"
+#include "Aql/types.h"
+#include "Basics/Exceptions.h"
 #include "Basics/fasthash.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchOrderFactory.h"
@@ -82,7 +85,7 @@ arangodb::aql::Variable const* getScorerRef(
   return reinterpret_cast<arangodb::aql::Variable const*>(arg0->getData());
 }
 
-bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
+bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
                 arangodb::aql::AstNode const& args,
                 arangodb::iresearch::QueryContext const& ctx) {
   TRI_ASSERT(!args.numMembers() ||
@@ -144,7 +147,7 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
   return bool(scorer);
 }
 
-bool fromFCall(irs::sort::ptr* scorer, irs::string_ref const& scorerName,
+bool fromFCall(irs::sort::ptr* scorer, irs::string_ref scorerName,
                arangodb::aql::AstNode const* args,
                arangodb::iresearch::QueryContext const& ctx) {
   auto const* ref = getScorerRef(args);
@@ -322,11 +325,33 @@ void ScorerReplacer::replace(aql::CalculationNode& node) {
   }
 }
 
-void ScorerReplacer::extract(aql::Variable const& var,
+void ScorerReplacer::extract(IResearchViewNode const& viewNode,
                              std::vector<Scorer>& scorers) {
+  arangodb::aql::VarSet usedVars;
+
   for (auto it = _dedup.begin(), end = _dedup.end(); it != end;) {
-    if (it->first.var == &var) {
-      scorers.emplace_back(it->second, it->first.node);
+    Scorer const& scorer = it->first;
+    if (scorer.var == &viewNode.outVariable()) {
+      // extract all variables used in scorer
+      usedVars.clear();
+      arangodb::aql::Ast::getReferencedVariables(scorer.node, usedVars);
+
+      // get all variables valid in view node
+      auto const& validVars = viewNode.getVarsValid();
+      for (auto v : usedVars) {
+        if (!validVars.contains(v)) {
+          TRI_ASSERT(scorer.node);
+          auto const funcName = iresearch::getFuncName(*scorer.node);
+
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_BAD_PARAMETER,
+              "Inaccesible non-ArangoSearch view variable '%s' is used in "
+              "scorer function '%s'",
+              v->name.c_str(), funcName.c_str());
+        }
+      }
+
+      scorers.emplace_back(it->second, scorer.node);
       it = _dedup.erase(it);
     } else {
       ++it;

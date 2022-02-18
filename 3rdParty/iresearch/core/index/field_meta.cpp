@@ -42,7 +42,7 @@ field_meta::field_meta(field_meta&& rhs) noexcept
 }
 
 field_meta::field_meta(
-    const string_ref& name,
+    string_ref name,
     IndexFeatures index_features)
   : name(name.c_str(), name.size()),
     index_features(index_features) {

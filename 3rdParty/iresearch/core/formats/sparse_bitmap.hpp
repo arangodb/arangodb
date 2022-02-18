@@ -104,7 +104,7 @@ class sparse_bitmap_writer {
  private:
   void flush(uint32_t next_block) {
     const uint32_t popcnt = static_cast<uint32_t>(
-      math::math_traits<size_t>::pop(std::begin(bits_), std::end(bits_)));
+      math::popcount(std::begin(bits_), std::end(bits_)));
     if (popcnt) {
       add_block(next_block);
       do_flush(popcnt);

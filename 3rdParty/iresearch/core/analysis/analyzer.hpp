@@ -29,13 +29,13 @@
 namespace iresearch {
 namespace analysis {
 
-class IRESEARCH_API analyzer : public token_stream {
+class analyzer : public token_stream {
  public:
   using ptr = std::unique_ptr<analyzer>;
 
   explicit analyzer(const type_info& type) noexcept;
 
-  virtual bool reset(const string_ref& data) = 0;
+  virtual bool reset(string_ref data) = 0;
 
   constexpr type_info::type_id type() const noexcept { return type_; }
 

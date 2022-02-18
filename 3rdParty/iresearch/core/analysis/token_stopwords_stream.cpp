@@ -24,6 +24,7 @@
 #include "token_stopwords_stream.hpp"
 
 #include <cctype> // for std::isspace(...)
+#include <string_view>
 
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
@@ -52,16 +53,16 @@ constexpr char HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
 };
 
-bool hex_decode(std::string& buf, VPackStringRef value) {
+bool hex_decode(std::string& buf, std::string_view value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      std::string{value}.c_str());
+      std::string(value).c_str());
 
     return false;
   }
 
-  buf.reserve(buf.size() + value.length()/2);
+  buf.reserve(buf.size() + value.length() / 2);
 
   for (size_t i = 0, count = value.length(); i < count; i += 2) {
     auto hi = HEX_DECODE_MAP[size_t(value[i])];
@@ -93,7 +94,7 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
       return nullptr;
     }
     std::string token;
-    auto value = (*itr).stringRef();
+    auto value = (*itr).stringView();
     if (!hex) {
       tokens.emplace(std::string(value.data(), value.length())); // interpret verbatim
     } else if (hex_decode(token, value)) {
@@ -106,8 +107,8 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
     std::move(tokens));
 }
 
-constexpr VPackStringRef STOPWORDS_PARAM_NAME {"stopwords"};
-constexpr VPackStringRef HEX_PARAM_NAME {"hex"};
+constexpr std::string_view STOPWORDS_PARAM_NAME {"stopwords"};
+constexpr std::string_view HEX_PARAM_NAME {"hex"};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -145,12 +146,12 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_vpack(irs::string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
 
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+irs::analysis::analyzer::ptr make_json(irs::string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing token_stopwords_stream ");
@@ -211,7 +212,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   return false;
 }
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -221,7 +222,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   return false;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing token_stopwords_stream");
@@ -273,7 +274,7 @@ bool token_stopwords_stream::next() {
   return true;
 }
 
-bool token_stopwords_stream::reset(const string_ref& data) {
+bool token_stopwords_stream::reset(string_ref data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = uint32_t(data.size());
