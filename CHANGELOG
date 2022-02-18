@@ -1,5 +1,150 @@
 devel
 -----
+* Support JSON schema objects for documenting Foxx endpoints.
+
+* Fixed an assertion failure which could occur when there was an error in
+  the HTTP header, so that the message body was not actually read.
+
+* Fixed a crash which could occur when there was an error in the HTTP
+  header parsing).
+
+* Added back the optimization for empty document update operations (i.e. update
+  requests in which no attributes were specified to be updated), handling them 
+  in a special way without performing any writes, also excluding such special 
+  cases of operation from replication to followers.
+
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
+* Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return
+  too few results
+
+* Changed Foxx service generator output to use static variable names
+
+* As we are now in constant stall regime, stall onset and warnings are
+  demoted to DEBUG.
+
+* Allow early pruning (moving a FILTER condition into an IndexNode or
+  EnumerateCollectionNode) in more cases than before. Previously, early
+  pruning was only possible if the FILTER condition referred to exactly one
+  variable, which had to be the FOR loop's own variable. Now, early
+  pruning is possible with arbitrary variables that are accessible by the
+  FOR loop.
+
+* Fixed a race detected with chaos tests, where a db server could have
+  momentarily lost leadership, just when it was about to drop a
+  follower to that shard.
+
+* In an attempt to make the performance of the RocksDB throttle much
+  more consistent and predictable the default compaction slow down
+  trigger is lowered to 128kB.
+
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+  containing the keywords UPDATE or REPLACE together with the keyword WITH and
+  the same key value would result in an error. For example: 
+  `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
+  because the same key used to update was provided in the object to update the
+  document with.  
+
+* The multi-dimensional index type `zkd` now supports an optional index hint for
+  tweaking performance by prefetching documents:
+	
+	```
+	FOR app IN appointments OPTIONS { lookahead: 32 }
+    FILTER @to <= app.to
+    FILTER app.from <= @from
+    RETURN app
+	```
+	
+	Specifiying a lookahead value greater than zero makes the index fetch more documents
+	that are no longer in the search box, before seeking to the next lookup position.
+	Because the seek operation is computationally expensive, probing more documents
+	before seeking may reduce the number of seeks, if matching documents are found.
+	Please keep in mind that it might also affect performance negatively if documents
+	are fetched unnecessarily.
+
+* Replaced internal JS dependency xmldom with @xmldom/xmldom.
+
+* Enabled new internal graph refactored code for depth-first, breadth-first and
+  weighted traversals by default.
+
+* Replaced internal JS dependency ansi-html with ansi-html-community.
+
+* Improved performance of inner joins with dynamic lookup conditions being
+  injected from an outer loop, for indexes of type "persistent", "hash" and
+  "skiplist". Performance improvements can be expected if the inner join is
+  invoked a lot of times with many different values fed in by the outer loop.
+  The performance improvements are due to some improved handling of index
+  lookup conditions in the internals of the VelocyPack-based index.
+
+* Upgrade bundled version of jemalloc to 5.3rc (upstream commit a4e8122).
+
+* Improve usefulness of `storedValues` together with late materialization.
+
+* Reintroduce shard synchronization cancellation check that was disabled
+  before.
+
+* Bug-Fix: AQL WINDOW statement if applied within a subquery could accidentally
+  skip over some subquery results. This did only show up if the subquery fills
+  exactly one internal batch before it is completed, so it is rather unlikely.
+
+* Fix potential access to dangling reference in cancellation of shard
+  synchronization.
+
+* Limited module resolution in arangosh to the path from which arangosh is invoked.
+
+* Fixed BTS-621 Fixed rare case of segfault in cluster during database recovery if DBServer is
+  in upgrade mode in the same time.
+
+* Changed default value of startup option 
+  `--rocksdb.cache-index-and-filter-blocks` from `false` to `true`.
+  This makes RocksDB track all loaded index and filter blocks in the block
+  cache, so they are accounted for in RocksDB's block cache. Also the default
+  value for the startup option `--rocksdb.enforce-block-cache-size-limit`
+  was flipped from `false` to `true` to make the RocksDB block cache not
+  temporarily exceed the configured memory limit (`--rocksdb.block-cache-size`).
+
+  These default value changes will make RocksDB adhere much better to the
+  configured memory limit. This is a trade-off between memory usage stability
+  and performance. These change may have a small negative impact on performance
+  because if the block cache is not large enough to hold the data plus the
+  index and filter blocks, additional disk I/O may be performed compared to
+  previous versions. In case there is still unused RAM capacity available, it
+  may be sensible to increase the total size of the RocksDB block cache.
+
+* Add "filtered" column to AQL query profiling output.
+  This column shows how many documents were filtered by the node and thus
+  provides insights into if additional indexes could help.
+
+* Reuse ExecutorExpressionContext inside IndexExecutor, so that repeated
+  setup and teardown of expression contexts can be avoided.
+
+* Reduce memory usage of inner joins if they were performed by the 
+  IndexExecutor with dynamic index lookup expressions that needed to be
+  recomputed for input from the outer loop.
+
+  For example, in the query
+  ```
+  FOR i IN 1..1000
+    FOR doc IN collection
+      FILTER doc.indexAttribute == i
+      RETURN doc
+  ```
+  the inner loop will be executed 1000 times. The IndexExecutor in the inner
+  loop needed to rebuild the index lookup attribute from the value of `i` 1000
+  times as well. The memory for index lookup attributes came from the Ast's
+  memory allocator and was not freed until the end of the query. In this
+  query, it would mean that up to 1000 lookup values were held in memory. With
+  larger inputs even more memory would be used.
+
+  Now the memory for index lookup values is freed when a new lookup value is
+  computed, i.e. only a single lookup value is held in memory.
+  This drastically reduces peak memory usage for queries that use index lookups
+  in inner loops and that get lots of different inputs from outer loops.
+
+* Adjust interal RocksDB setting `optimize_filters_for_hits` for Documents
+  column family, setting it from `false` to `true`. This should reduce memory
+  and disk space requirements for the bottom-most .sst files of the documents
+  column family.
 
 * Upgrade VelocyPack library to latest version.
 

@@ -61,6 +61,8 @@ option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from .
 
 option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing debug information" OFF)
 
+find_package(Git REQUIRED)
+
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
 # add_definitions("-DARANGODB_STANDALONE_ASIO=0")
@@ -277,6 +279,16 @@ endif ()
 
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if (USE_FAIL_ON_WARNINGS
+    AND CMAKE_GENERATOR MATCHES "^Visual Studio"
+    AND CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
+  message(WARNING [[
+    clang-cl is used with USE_FAIL_ON_WARNINGS (i.e. /WX).
+    The build will probably fail, because system header includes aren't passed
+    as system header includes to clang-cl through the VS toolchain.
+  ]])
+endif()
 
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
@@ -574,25 +586,24 @@ add_definitions("-DARANGODB_BITS=${BITS}")
 ## COMPILER FEATURES
 ################################################################################
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 endif ()
 
-if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
+set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
+set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
+set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
+set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
+set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+
+if (MSVC)
+  set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
   # Increase the reserved stack size for all threads to 4MB
   # Note: this is only _reserved_ memory, not necessarily _committed_ memory
-  set(BASE_LD_FLAGS  "/STACK:4194304"             CACHE STRING "base linker flags")
-else ()
-  set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
-  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
-  set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
-  set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+  set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -604,7 +615,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(MSVC)
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
@@ -619,7 +630,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   endif()
 endif()
 
-if (CMAKE_COMPILER_IS_CLANG)
+if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
   if (APPLE)
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
       set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
@@ -643,7 +654,8 @@ set(CMAKE_CXX_STANDARD 20)
 # turn off compiler language extensions (e.g. don't use -std=gnu++20, but
 # -std=c++20).
 set(CMAKE_CXX_EXTENSIONS OFF)
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # we need to exclude clang-cl
   # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
   # remain restricted to /std:c++latest due to WG21's upcoming changes.
   # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895")
@@ -739,11 +751,15 @@ set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
 # iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-if (NOT MSVC)
+if (NOT WIN32)
   find_package(Backtrace)
 endif()
 
-set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+if (Backtrace_LIBRARY)
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+else()
+  set(BT_LIBS "" CACHE PATH "Debug Helper libraries")
+endif()
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
@@ -991,6 +1007,9 @@ if (MSVC)
   endif ()
 
   add_definitions(/bigobj)
+  if (CMAKE_COMPILER_IS_CLANG) # clang-cl
+    set(BASE_FLAGS "-Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  endif()
 else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
@@ -1064,7 +1083,7 @@ else () # NOT MSVC
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       # On Darwin -fstandalone-debug is enabled by default, so we don't need
       # to add it for AppleClang.
       set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
@@ -1365,6 +1384,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
+  absl-static
 )
 
 add_subdirectory(lib)

@@ -15,7 +15,9 @@ set (fasttext_VERSION_MINOR 1)
 
 include_directories(src)
 
-set(CMAKE_CXX_FLAGS " -pthread -std=c++11 -funroll-loops -O3 -march=native")
+if (NOT MSVC)
+  set(CMAKE_CXX_FLAGS " -pthread -std=c++11 -funroll-loops -O3 -march=native")
+endif()
 
 set(HEADER_FILES
     src/args.h
@@ -62,6 +64,7 @@ add_library(fasttext-static_pic STATIC ${SOURCE_FILES} ${HEADER_FILES})
 set_target_properties(fasttext-shared PROPERTIES OUTPUT_NAME fasttext
   SOVERSION "${fasttext_VERSION_MAJOR}")
 set_target_properties(fasttext-static PROPERTIES OUTPUT_NAME fasttext)
+set_target_properties(fasttext-static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set_target_properties(fasttext-static_pic PROPERTIES OUTPUT_NAME fasttext_pic
   POSITION_INDEPENDENT_CODE True)
 add_executable(fasttext-bin src/main.cc)

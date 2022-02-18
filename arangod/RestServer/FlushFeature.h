@@ -26,10 +26,9 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/arangod.h"
 #include "Utils/FlushThread.h"
 #include "VocBase/voc-types.h"
-
-#include <list>
 
 struct TRI_vocbase_t;
 
@@ -45,17 +44,18 @@ struct FlushSubscription {
   virtual TRI_voc_tick_t tick() const = 0;
 };
 
-class FlushFeature final : public application_features::ApplicationFeature {
+class FlushFeature final : public ArangodFeature {
  public:
   /// @brief handle a 'Flush' marker during recovery
   /// @param vocbase the vocbase the marker applies to
   /// @param slice the originally stored marker body
   /// @return success
-  typedef std::function<Result(TRI_vocbase_t const& vocbase,
-                               velocypack::Slice const& slice)>
-      FlushRecoveryCallback;
+  using FlushRecoveryCallback = std::function<Result(
+      TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)>;
 
-  explicit FlushFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Flush"; }
+
+  explicit FlushFeature(Server& server);
 
   void collectOptions(
       std::shared_ptr<options::ProgramOptions> options) override;

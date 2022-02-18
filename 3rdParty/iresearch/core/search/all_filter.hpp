@@ -31,7 +31,7 @@ namespace iresearch {
 /// @class all
 /// @brief filter that returns all documents
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API all: public filter {
+class all: public filter {
  public:
   static ptr make();
 

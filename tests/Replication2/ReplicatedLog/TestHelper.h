@@ -23,7 +23,9 @@
 #pragma once
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
+#include "Replication2/Mocks/FakeFailureOracle.h"
 
+#include "Cluster/FailureOracle.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -86,7 +88,8 @@ struct ReplicatedLogTest : ::testing::Test {
   auto createLeaderWithDefaultFlags(
       ParticipantId id, LogTerm term, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-      std::size_t writeConcern, bool waitForSync = false)
+      std::size_t writeConcern, bool waitForSync = false,
+      std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<LogLeader> {
     auto config =
         LogConfig{writeConcern, writeConcern, follower.size() + 1, waitForSync};
@@ -101,9 +104,14 @@ struct ReplicatedLogTest : ::testing::Test {
             .participants = std::move(participants),
         });
 
+    if (!failureOracle) {
+      failureOracle = std::make_shared<FakeFailureOracle>();
+    }
+
     return LogLeader::construct(config, std::move(logCore), {follower},
                                 std::move(participantsConfig), id, term,
-                                defaultLogger(), _logMetricsMock, _optionsMock);
+                                defaultLogger(), _logMetricsMock, _optionsMock,
+                                failureOracle);
   }
 
   auto stopAsyncMockLogs() -> void {

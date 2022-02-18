@@ -53,21 +53,18 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
     auto ref1a = refs.add(1);
     auto* ref1a_val = ref1a.get();
 
-    ASSERT_FALSE(ref1a.unique());
     ASSERT_EQ(2, ref1a.use_count());
     ASSERT_EQ(1, *(ref1a.get()));
     ASSERT_EQ(1, refs.find(1));
 
     auto ref2 = refs.add(2);
 
-    ASSERT_FALSE(ref2.unique());
     ASSERT_EQ(2, ref2.use_count());
     ASSERT_EQ(2, *(ref2.get()));
     ASSERT_EQ(1, refs.find(2));
 
     auto ref1b = refs.add(1);
 
-    ASSERT_FALSE(ref1b.unique());
     ASSERT_EQ(3, ref1b.use_count());
     ASSERT_EQ(1, *(ref1b.get()));
     ASSERT_EQ(ref1a_val, ref1b.get());
@@ -83,7 +80,6 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
 
     auto ref1c = refs.add(1);
 
-    ASSERT_FALSE(ref1c.unique());
     ASSERT_EQ(2, ref1c.use_count());
     ASSERT_EQ(1, *(ref1c.get()));
     ASSERT_EQ(ref1a_val, ref1c.get());
@@ -99,21 +95,18 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
     auto ref1a = refs.add("abc");
     auto* ref1a_val = ref1a.get();
 
-    ASSERT_FALSE(ref1a.unique());
     ASSERT_EQ(2, ref1a.use_count());
     ASSERT_EQ(std::string("abc"), *(ref1a.get()));
     ASSERT_EQ(1, refs.find("abc"));
 
     auto ref2 = refs.add("def");
 
-    ASSERT_FALSE(ref2.unique());
     ASSERT_EQ(2, ref2.use_count());
     ASSERT_EQ(std::string("def"), *(ref2.get()));
     ASSERT_EQ(1, refs.find("def"));
 
     auto ref1b = refs.add("abc");
 
-    ASSERT_FALSE(ref1b.unique());
     ASSERT_EQ(3, ref1b.use_count());
     ASSERT_EQ(std::string("abc"), *(ref1b.get()));
     ASSERT_EQ(ref1a_val, ref1b.get());
@@ -129,7 +122,6 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
 
     auto ref1c = refs.add("abc");
 
-    ASSERT_FALSE(ref1c.unique());
     ASSERT_EQ(2, ref1c.use_count());
     ASSERT_EQ(std::string("abc"), *(ref1c.get()));
     ASSERT_EQ(ref1a_val, ref1c.get());

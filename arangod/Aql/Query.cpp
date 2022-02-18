@@ -23,6 +23,7 @@
 
 #include "Query.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"

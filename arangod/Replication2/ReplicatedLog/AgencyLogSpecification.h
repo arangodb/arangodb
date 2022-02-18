@@ -148,7 +148,10 @@ auto to_string(LogCurrentSupervisionElection::Outcome) noexcept
 auto toVelocyPack(LogCurrentSupervisionElection::Outcome, VPackBuilder&)
     -> void;
 
-enum class LogCurrentSupervisionError { TARGET_LEADER_INVALID };
+enum class LogCurrentSupervisionError {
+  TARGET_LEADER_INVALID,
+  TARGET_LEADER_EXCLUDED
+};
 
 auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;
 auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder&) -> void;

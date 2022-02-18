@@ -30,8 +30,7 @@ namespace arangodb {
 
 class RestCompactHandler : public arangodb::RestBaseHandler {
  public:
-  RestCompactHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestCompactHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override;

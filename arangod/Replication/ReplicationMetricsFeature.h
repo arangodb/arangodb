@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 
 #include <cstdint>
 
@@ -33,11 +33,13 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ReplicationMetricsFeature final
-    : public application_features::ApplicationFeature {
+class ReplicationMetricsFeature final : public ArangodFeature {
  public:
-  explicit ReplicationMetricsFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept {
+    return "ReplicationMetrics";
+  }
+
+  explicit ReplicationMetricsFeature(Server& server);
 
   struct InitialSyncStats {
     explicit InitialSyncStats(ReplicationMetricsFeature& feature,

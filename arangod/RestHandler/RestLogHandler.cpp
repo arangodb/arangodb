@@ -36,6 +36,7 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
@@ -237,10 +238,9 @@ RestStatus RestLogHandler::handleDeleteRequest(
       }));
 }
 
-RestLogHandler::RestLogHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* req, GeneralResponse* resp)
+RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,
+                               GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}
-RestLogHandler::~RestLogHandler() = default;
 
 RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
   return waitForFuture(

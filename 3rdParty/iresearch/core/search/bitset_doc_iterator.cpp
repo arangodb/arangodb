@@ -29,7 +29,7 @@ namespace iresearch {
 bitset_doc_iterator::bitset_doc_iterator(
     const word_t* begin,
     const word_t* end) noexcept
-  : cost_(math::math_traits<word_t>::pop(begin, end)),
+  : cost_(math::popcount(begin, end)),
     doc_(cost_.estimate()
       ? doc_limits::invalid()
       : doc_limits::eof()),
@@ -67,7 +67,7 @@ bool bitset_doc_iterator::next() noexcept {
   }
 
   // FIXME remove conversion
-  const doc_id_t delta = doc_id_t(math::math_traits<word_t>::ctz(word_));
+  const doc_id_t delta = doc_id_t(std::countr_zero(word_));
   assert(delta < bits_required<word_t>());
 
   word_ = (word_ >> delta) >> 1;

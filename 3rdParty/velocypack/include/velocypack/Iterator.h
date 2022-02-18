@@ -34,9 +34,13 @@
 
 namespace arangodb::velocypack {
 
-class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
+class ArrayIterator {
  public:
   using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using value_type = Slice;
+  using pointer = Slice*;
+  using reference = Slice&;
 
   struct Empty {};
 
@@ -190,9 +194,15 @@ struct ObjectIteratorPair {
   Slice const value;
 };
 
-class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIteratorPair> {
+class ObjectIterator {
  public:
   using ObjectPair = ObjectIteratorPair;
+
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using value_type = ObjectIteratorPair;
+  using pointer = ObjectIteratorPair*;
+  using reference = ObjectIteratorPair&;
 
   ObjectIterator() = delete;
 

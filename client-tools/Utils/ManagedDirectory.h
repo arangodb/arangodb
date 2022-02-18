@@ -190,9 +190,8 @@ class ManagedDirectory {
    * @param create       If `true` and directory does not exist, create it
    * @param writeGzip    True if writes should use gzip (reads autodetect .gz)
    */
-  ManagedDirectory(application_features::ApplicationServer& server,
-                   std::string const& path, bool requireEmpty, bool create,
-                   bool writeGzip);
+  ManagedDirectory(EncryptionFeature* encryption, std::string const& path,
+                   bool requireEmpty, bool create, bool writeGzip);
   ~ManagedDirectory();
 
  public:

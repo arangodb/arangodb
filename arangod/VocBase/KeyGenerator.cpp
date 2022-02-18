@@ -641,19 +641,17 @@ GeneratorType generatorType(VPackSlice const& parameters) {
   return GeneratorType::UNKNOWN;
 }
 
-std::unordered_map<
-    GeneratorMapType,
-    std::function<KeyGenerator*(application_features::ApplicationServer&, bool,
-                                VPackSlice)>> const factories = {
+std::unordered_map<GeneratorMapType,
+                   std::function<KeyGenerator*(ArangodServer&, bool,
+                                               VPackSlice)>> const factories = {
     {static_cast<GeneratorMapType>(GeneratorType::UNKNOWN),
-     [](application_features::ApplicationServer&, bool,
-        VPackSlice) -> KeyGenerator* {
+     [](ArangodServer&, bool, VPackSlice) -> KeyGenerator* {
        // unknown key generator type
        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
                                       "invalid key generator type");
      }},
     {static_cast<GeneratorMapType>(GeneratorType::TRADITIONAL),
-     [](application_features::ApplicationServer& server, bool allowUserKeys,
+     [](ArangodServer& server, bool allowUserKeys,
         VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
@@ -663,7 +661,7 @@ std::unordered_map<
                                                 ::readLastValue(options));
      }},
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
-     [](application_features::ApplicationServer&, bool allowUserKeys,
+     [](ArangodServer&, bool allowUserKeys,
         VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
@@ -717,12 +715,11 @@ std::unordered_map<
            allowUserKeys, ::readLastValue(options), offset, increment);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::UUID),
-     [](application_features::ApplicationServer&, bool allowUserKeys,
-        VPackSlice) -> KeyGenerator* {
+     [](ArangodServer&, bool allowUserKeys, VPackSlice) -> KeyGenerator* {
        return new UuidKeyGenerator(allowUserKeys);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::PADDED),
-     [](application_features::ApplicationServer& server, bool allowUserKeys,
+     [](ArangodServer& server, bool allowUserKeys,
         VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
@@ -800,8 +797,7 @@ void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 }
 
 /// @brief create a key generator based on the options specified
-KeyGenerator* KeyGenerator::factory(
-    application_features::ApplicationServer& server, VPackSlice options) {
+KeyGenerator* KeyGenerator::factory(ArangodServer& server, VPackSlice options) {
   if (!options.isObject()) {
     options = VPackSlice::emptyObjectSlice();
   }

@@ -31,6 +31,7 @@
 
 #include "Basics/Identifier.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -62,10 +63,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
     }
   };
 
-  explicit IResearchRocksDBRecoveryHelper(
-      application_features::ApplicationServer&);
-
-  virtual ~IResearchRocksDBRecoveryHelper() override = default;
+  explicit IResearchRocksDBRecoveryHelper(ArangodServer&);
 
   virtual void prepare() override;
 
@@ -91,7 +89,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                       rocksdb::SequenceNumber tick);
 
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
   DatabaseFeature* _dbFeature{};
   RocksDBEngine* _engine{};

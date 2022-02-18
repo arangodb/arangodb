@@ -65,11 +65,11 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {}
+      virtual void collect(irs::bytes_ref) override {}
 
       virtual void reset() override {}
 
-      virtual void write(irs::data_output& out) const override {}
+      virtual void write(irs::data_output&) const override {}
 
      private:
       const custom_sort& sort_;
@@ -87,11 +87,11 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(const irs::bytes_ref& in) override {}
+      virtual void collect(irs::bytes_ref) override {}
 
       virtual void reset() override {}
 
-      virtual void write(irs::data_output& out) const override {}
+      virtual void write(irs::data_output&) const override {}
 
      private:
       const custom_sort& sort_;

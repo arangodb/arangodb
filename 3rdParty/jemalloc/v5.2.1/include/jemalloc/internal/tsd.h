@@ -73,6 +73,8 @@ typedef ql_elm(tsd_t) tsd_link_t;
     O(peak_dalloc_event_wait,	uint64_t,	uint64_t)		\
     O(prof_tdata,		prof_tdata_t *,		prof_tdata_t *)	\
     O(prng_state,		uint64_t,		uint64_t)	\
+    O(san_extents_until_guard_small,	uint64_t,	uint64_t)	\
+    O(san_extents_until_guard_large,	uint64_t,	uint64_t)	\
     O(iarena,			arena_t *,		arena_t *)	\
     O(arena,			arena_t *,		arena_t *)	\
     O(arena_decay_ticker,	ticker_geom_t,		ticker_geom_t)	\
@@ -103,6 +105,8 @@ typedef ql_elm(tsd_t) tsd_link_t;
     /* peak_dalloc_event_wait */	0,				\
     /* prof_tdata */		NULL,					\
     /* prng_state */		0,					\
+    /* san_extents_until_guard_small */	0,				\
+    /* san_extents_until_guard_large */	0,				\
     /* iarena */		NULL,					\
     /* arena */			NULL,					\
     /* arena_decay_ticker */						\
@@ -115,7 +119,7 @@ typedef ql_elm(tsd_t) tsd_link_t;
     /* activity_callback_thunk */					\
 	ACTIVITY_CALLBACK_THUNK_INITIALIZER,				\
     /* tcache_slow */		TCACHE_SLOW_ZERO_INITIALIZER,		\
-    /* rtree_ctx */		RTREE_CTX_ZERO_INITIALIZER,
+    /* rtree_ctx */		RTREE_CTX_INITIALIZER,
 
 /*  O(name,			type,			nullable type) */
 #define TSD_DATA_FAST							\

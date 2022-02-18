@@ -34,7 +34,7 @@ class by_same_position;
 /// @struct by_terms_options
 /// @brief options for "by same position" filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_same_position_options {
+struct by_same_position_options {
   using filter_type = by_same_position;
 
   using search_term = std::pair<std::string, bstring>;
@@ -62,7 +62,7 @@ struct IRESEARCH_API by_same_position_options {
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_same_position
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_same_position
+class by_same_position
     : public filter_with_options<by_same_position_options> {
  public:
   static ptr make();

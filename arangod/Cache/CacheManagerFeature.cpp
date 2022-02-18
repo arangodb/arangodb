@@ -24,7 +24,7 @@
 #include "CacheManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -33,7 +33,6 @@
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -49,9 +48,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheManagerFeature::CacheManagerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CacheManager"),
+CacheManagerFeature::CacheManagerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize(

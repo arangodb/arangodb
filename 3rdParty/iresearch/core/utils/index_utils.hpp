@@ -87,42 +87,42 @@ struct consolidate_tier {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+index_writer::consolidation_policy_t consolidation_policy(
   const consolidate_bytes& options
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+index_writer::consolidation_policy_t consolidation_policy(
   const consolidate_bytes_accum& options
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+index_writer::consolidation_policy_t consolidation_policy(
   const consolidate_count& options
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+index_writer::consolidation_policy_t consolidation_policy(
   const consolidate_docs_fill& options
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+index_writer::consolidation_policy_t consolidation_policy(
   const consolidate_docs_live& options
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a consolidation policy with the specified options
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API index_writer::consolidation_policy_t consolidation_policy(
+index_writer::consolidation_policy_t consolidation_policy(
   const consolidate_tier& options
 );
 

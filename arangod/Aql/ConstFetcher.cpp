@@ -52,7 +52,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     _skipped.reset();
     // we are done, nothing to move arround here.
     return {ExecutionState::DONE, skipped,
-            AqlItemBlockInputRange{ExecutorState::DONE}};
+            AqlItemBlockInputRange{MainQueryState::DONE}};
   }
 
   arangodb::containers::SmallVector<
@@ -168,7 +168,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     _skipped.reset();
     skipped.didSkip(call.getSkipCount());
     return {ExecutionState::DONE, skipped,
-            DataRange{ExecutorState::DONE, call.getSkipCount(),
+            DataRange{MainQueryState::DONE, call.getSkipCount(),
                       std::move(_blockForPassThrough), 0}};
   }
 
@@ -189,9 +189,9 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   ExecutionState resState = _blockForPassThrough == nullptr
                                 ? ExecutionState::DONE
                                 : ExecutionState::HASMORE;
-  ExecutorState rangeState = _blockForPassThrough == nullptr
-                                 ? ExecutorState::DONE
-                                 : ExecutorState::HASMORE;
+  MainQueryState rangeState = _blockForPassThrough == nullptr
+                                  ? MainQueryState::DONE
+                                  : MainQueryState::HASMORE;
 
   SkipResult skipped = _skipped;
   _skipped.reset();

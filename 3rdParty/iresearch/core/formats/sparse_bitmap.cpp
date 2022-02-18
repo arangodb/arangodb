@@ -95,7 +95,7 @@ void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
     irs::write<uint16_t>(block, popcnt);
 
     for (uint32_t i = 0; i < DENSE_BLOCK_INDEX_WORDS_PER_BLOCK; ++i) {
-      popcnt += math::math_traits<size_t>::pop(begin[i]);
+      popcnt += std::popcount(begin[i]);
     }
   }
 
@@ -231,7 +231,7 @@ struct container_iterator<BT_DENSE> {
         ctx.word = ctx.u64data[-1];
       }
 
-      ctx.popcnt = ctx.index_base + popcnt + math::math_traits<size_t>::pop(ctx.word);
+      ctx.popcnt = ctx.index_base + popcnt + std::popcount(ctx.word);
       ctx.word_idx = word_idx;
     }
 
@@ -240,7 +240,7 @@ struct container_iterator<BT_DENSE> {
     if constexpr (AT_STREAM == Access) {
       for (; word_delta; --word_delta) {
         ctx.word = self->in_->read_long();
-        ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
+        ctx.popcnt += std::popcount(ctx.word);
       }
       ctx.word_idx = target_word_idx;
     } else {
@@ -255,7 +255,7 @@ struct container_iterator<BT_DENSE> {
             static_assert(AT_DIRECT == Access);
             std::memcpy(&ctx.word, ctx.u64data, sizeof(size_t));
           }
-          ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
+          ctx.popcnt += std::popcount(ctx.word);
         }
         if constexpr (!is_big_endian()) {
           ctx.word = numeric_utils::numeric_traits<size_t>::ntoh(ctx.word);
@@ -267,10 +267,10 @@ struct container_iterator<BT_DENSE> {
     const size_t left = ctx.word >> (target % bits_required<size_t>());
 
     if (left) {
-      const doc_id_t offset = math::math_traits<decltype(left)>::ctz(left);
+      const doc_id_t offset = std::countr_zero(left);
       std::get<document>(self->attrs_).value = target + offset;
       std::get<value_index>(self->attrs_).value
-        = ctx.popcnt - math::math_traits<decltype(left)>::pop(left);
+        = ctx.popcnt - std::popcount(left);
       return true;
     }
 
@@ -295,12 +295,12 @@ struct container_iterator<BT_DENSE> {
           ctx.word = numeric_utils::numeric_traits<size_t>::ntoh(ctx.word);
         }
 
-        const doc_id_t offset = math::math_traits<size_t>::ctz(ctx.word);
+        const doc_id_t offset = std::countr_zero(ctx.word);
 
         std::get<document>(self->attrs_).value
           = self->block_ + ctx.word_idx * bits_required<size_t>() + offset;
         std::get<value_index>(self->attrs_).value = ctx.popcnt;
-        ctx.popcnt += math::math_traits<size_t>::pop(ctx.word);
+        ctx.popcnt += std::popcount(ctx.word);
 
         return true;
       }

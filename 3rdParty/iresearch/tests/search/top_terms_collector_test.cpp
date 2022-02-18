@@ -81,7 +81,7 @@ struct sort : irs::sort {
         total_term_freq = 0;
       }
 
-      virtual void collect(const irs::bytes_ref& in) override { }
+      virtual void collect(irs::bytes_ref in) override { }
       virtual void write(irs::data_output& out) const override { }
     };
 
@@ -102,7 +102,7 @@ struct sort : irs::sort {
         docs_with_term = 0;
       }
 
-      virtual void collect(const irs::bytes_ref& in) override { }
+      virtual void collect(irs::bytes_ref in) override { }
       virtual void write(irs::data_output& out) const override { }
     };
 

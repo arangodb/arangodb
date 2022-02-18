@@ -31,23 +31,24 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/text_token_stream.hpp"
 #include "analysis/delimited_token_stream.hpp"
+#include "analysis/collation_token_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
-#include "analysis/token_streams.hpp"
-#include "analysis/text_token_stemming_stream.hpp"
 #include "analysis/text_token_normalizing_stream.hpp"
+#include "analysis/text_token_stemming_stream.hpp"
+#include "analysis/text_token_stream.hpp"
+#include "analysis/token_stopwords_stream.hpp"
 #include "analysis/pipeline_token_stream.hpp"
+#include "analysis/segmentation_token_stream.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 #include "index/norm.hpp"
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
@@ -57,7 +58,6 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearchAqlAnalyzer.h"
@@ -68,9 +68,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -89,6 +87,10 @@
 #include "frozen/map.h"
 #include <Containers/HashSet.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
+#endif
+
 namespace {
 
 using namespace std::literals::string_literals;
@@ -99,7 +101,6 @@ namespace StringUtils = arangodb::basics::StringUtils;
 char constexpr ANALYZER_PREFIX_DELIM = ':';  // name prefix delimiter (2 chars)
 size_t constexpr ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024;  // arbitrary value
 size_t constexpr DEFAULT_POOL_SIZE = 8;                       // arbitrary value
-std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 static constexpr frozen::map<irs::string_ref, irs::string_ref, 13>
     STATIC_ANALYZERS_NAMES{{irs::type<IdentityAnalyzer>::name(),
                             irs::type<IdentityAnalyzer>::name()},
@@ -129,7 +130,7 @@ REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
 REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json,
                        AqlAnalyzer::normalize_json);
 
-bool normalize(std::string& out, irs::string_ref const& type,
+bool normalize(std::string& out, irs::string_ref type,
                VPackSlice const properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
@@ -392,7 +393,7 @@ void addFunctions(aql::AqlFunctionFeature& functions) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return pool will generate analyzers as per supplied parameters
 ////////////////////////////////////////////////////////////////////////////////
-bool equalAnalyzer(AnalyzerPool const& pool, irs::string_ref const& type,
+bool equalAnalyzer(AnalyzerPool const& pool, irs::string_ref type,
                    VPackSlice const properties, Features const& features) {
   std::string normalizedProperties;
 
@@ -697,12 +698,11 @@ Result parseAnalyzerSlice(VPackSlice const& slice, irs::string_ref& name,
 }
 
 inline std::string normalizedAnalyzerName(std::string database,
-                                          irs::string_ref const& analyzer) {
+                                          irs::string_ref analyzer) {
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
-bool analyzerInUse(application_features::ApplicationServer& server,
-                   irs::string_ref const& dbName,
+bool analyzerInUse(ArangodServer& server, irs::string_ref dbName,
                    AnalyzerPool::ptr const& analyzerPtr) {
   TRI_ASSERT(analyzerPtr);
 
@@ -780,8 +780,7 @@ bool analyzerInUse(application_features::ApplicationServer& server,
 }
 
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
-    application_features::ApplicationServer& server,
-    irs::string_ref const& vocbase) {
+    ArangodServer& server, irs::string_ref const& vocbase) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
     TRI_ASSERT(server.hasFeature<ClusterFeature>());
     auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
@@ -888,7 +887,7 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
 }
 
 /*static*/ AnalyzerPool::Builder::ptr AnalyzerPool::Builder::make(
-    irs::string_ref const& type, VPackSlice properties) {
+    irs::string_ref type, VPackSlice properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
     return nullptr;
@@ -1089,9 +1088,8 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   return {};
 }
 
-IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, IResearchAnalyzerFeature::name()) {
+IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   // used for registering IResearch analyzer functions
@@ -2372,10 +2370,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   return {};
 }
 
-/*static*/ std::string const& IResearchAnalyzerFeature::name() noexcept {
-  return FEATURE_NAME;
-}
-
 /*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
     irs::string_ref dbNameFromAnalyzer, irs::string_ref currentDbName,
     bool forGetters) noexcept {
@@ -2499,9 +2493,18 @@ void IResearchAnalyzerFeature::prepare() {
   if (!isEnabled()) {
     return;
   }
-
-  // load all known analyzers
-  ::iresearch::analysis::analyzers::init();
+  ::iresearch::analysis::delimited_token_stream::init();
+  ::iresearch::analysis::collation_token_stream::init();
+  ::iresearch::analysis::ngram_token_stream_base::init();
+  ::iresearch::analysis::normalizing_token_stream::init();
+  ::iresearch::analysis::stemming_token_stream::init();
+  ::iresearch::analysis::text_token_stream::init();
+  ::iresearch::analysis::token_stopwords_stream::init();
+  ::iresearch::analysis::pipeline_token_stream::init();
+  ::iresearch::analysis::segmentation_token_stream::init();
+#ifdef USE_ENTERPRISE
+  initAnalyzersEE();
+#endif
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();

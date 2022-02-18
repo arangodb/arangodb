@@ -35,24 +35,11 @@ Counter::~Counter() { _b.push(); }
 
 std::string_view Counter::type() const noexcept { return "counter"; }
 
-void Counter::toPrometheus(std::string& result, std::string_view globals,
-                           std::string_view alternativeName) const {
+void Counter::toPrometheus(std::string& result,
+                           std::string_view globals) const {
   _b.push();
-  result.append(alternativeName.empty() ? name() : alternativeName);
-  result.push_back('{');
-  bool haveGlobals = !globals.empty();
-  if (haveGlobals) {
-    result.append(globals);
-  }
-  if (!labels().empty()) {
-    if (haveGlobals) {
-      result.push_back(',');
-    }
-    result.append(labels());
-  }
-  result.append("} ");
-  result.append(std::to_string(load()));
-  result.push_back('\n');
+  Metric::addMark(result, name(), globals, labels());
+  result.append(std::to_string(load())) += '\n';
 }
 
 uint64_t Counter::load() const noexcept {
