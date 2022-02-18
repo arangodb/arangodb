@@ -247,6 +247,9 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
 
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
   TypeParam testee =
       this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
@@ -288,6 +291,9 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
 
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
 
   auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
@@ -345,6 +351,10 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
 
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
+
   auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = g.vertexToId(0);
   VPackHashedStringRef startH{startString.c_str(),
@@ -396,6 +406,9 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
   MockGraph empty{};
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
   TypeParam testee =
       this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
 
