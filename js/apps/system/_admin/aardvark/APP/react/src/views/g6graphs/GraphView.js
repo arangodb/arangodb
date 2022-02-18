@@ -542,8 +542,45 @@ export class GraphView extends React.Component {
   <LayoutSelector value={this.type} onChange={this.changeLayout} />
   */
 
+  colorNodesByCollection = (graphData) => {
+    console.log("Color these nodes: ", graphData.nodes);
+    /*
+    data.nodes.forEach(node => {
+      if (model.id === '0') {
+        node.style = {
+          fill: '#e18826',
+          // ... other styles
+        }
+      } else {
+        node.style = {
+          fill: '#002a67',
+          // ... other styles
+        }
+      }
+    });
+    */
+  }
+
   render() {
     return <>
+      <button onClick={() => {
+        console.log("Color these nodes: ", this.props.data.nodes);
+        this.props.data.nodes.forEach(node => {
+          if (node.id.startsWith("frenchCity")) {
+            node.style = {
+              fill: '#e18826',
+              // ... other styles
+            }
+          } else {
+            node.style = {
+              fill: '#002a67',
+              // ... other styles
+            }
+          }
+        });
+      }}>
+        Color nodes by collection
+      </button>
       <button onClick={() => {
         const node = this.graph.findById('frenchCity/Paris');
         console.log("Found node: ", node);

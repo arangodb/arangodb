@@ -5,7 +5,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 import { Button, Tooltip } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 
-const ParameterStartnode = () => {
+const ParameterStartnode = ({ onGraphDataLoaded }) => {
   const urlParameters = useContext(UrlParametersContext);
 
   const callApi = () => {
@@ -24,7 +24,7 @@ const ParameterStartnode = () => {
         data: urlParameters,
         success: function (data) {
           console.log("Graph based on urlParameter context loaded: ", data);
-          //onFullGraphLoaded(data);
+          onGraphDataLoaded(data);
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not load graph.');

@@ -9,7 +9,7 @@ const URLPARAMETERS = {
   edgeColor: "#cccccc",
   edgeColorAttribute: "",
   nodeLabel: "_key",
-  edgeLabel: "distance",
+  edgeLabel: "_id",
   nodeSize: "",
   nodeSizeByEdges: true,
   edgeEditable: true,

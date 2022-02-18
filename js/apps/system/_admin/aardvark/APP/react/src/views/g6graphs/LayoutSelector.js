@@ -1,10 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import { Select } from "antd";
 
 const SelectOption = Select.Option;
-const LayoutSelector = props => {
+const LayoutSelector = ({props, onLayoutChange}) => {
+  const [layout, setLayout] = useState('graphin-force');
+
+  const onChange = (value) => {
+    console.log("new value for layout: ", value);
+    onLayoutChange(value);
+    setLayout(value);
+    console.log("layout value in LayoutSelector: ", layout);
+  }
+
   const layouts = [
-    { type: 'graphin-force' },
+    {
+      type: 'graphin-force'
+    },
     {
         type: 'grid',
     },
@@ -68,7 +79,7 @@ const LayoutSelector = props => {
         type: 'comboForce',
     },
   ];
-  const { value, onChange } = props;
+  //const { value, onChange } = props;
   //const { layouts } = apis.getInfo();
   /*
   {layouts.map(item => {
@@ -79,10 +90,11 @@ const LayoutSelector = props => {
             </SelectOption>
           );
         })}
+        <div style={{ position: "absolute", top: 62, left: 10 }}>
         */
   return (
-    <div style={{ position: "absolute", top: 62, left: 10 }}>
-      <Select style={{ width: "200px" }} value={value} onChange={onChange}>
+    <div>
+      <Select style={{ marginTop: '24px', width: '240px' }} value={layout} onChange={onChange}>
         <SelectOption key='graphin-force' value='graphin-force'>
         </SelectOption>
         <SelectOption key='grid' value='grid'>
