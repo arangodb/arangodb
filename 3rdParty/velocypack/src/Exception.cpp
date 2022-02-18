@@ -66,6 +66,8 @@ char const* Exception::message(ExceptionType type) noexcept {
       return "Key not found";
     case BadTupleSize:
       return "Array size does not match tuple size";
+    case TooDeepNesting:
+      return "Too deep nesting in Array/Object";
     case BuilderNotSealed:
       return "Builder value not yet sealed";
     case BuilderNeedOpenObject:
