@@ -67,12 +67,19 @@ Validator::Validator(Options const* options)
 }
 
 bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart) {
+  // reset internal state
+  _level = 0;
+  validatePart(ptr, length, isSubPart);
+  return true;
+}
+
+void Validator::validatePart(uint8_t const* ptr, std::size_t length, bool isSubPart) {
   if (length == 0) {
     throw Exception(Exception::ValidatorInvalidLength, "length 0 is invalid for any VelocyPack value");
   }
-
+  
   uint8_t head = *ptr;
-
+    
   // type() only reads the first byte, which is safe
   ValueType const type = Slice(ptr).type();
 
@@ -122,14 +129,18 @@ bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart)
     }
 
     case ValueType::Array: {
-      ++_level;
+      if (++_level >= options->nestingLimit) {
+        throw Exception(Exception::TooDeepNesting);
+      }
       validateArray(ptr, length);
       --_level;
       break;
     }
 
     case ValueType::Object: {
-      ++_level;
+      if (++_level >= options->nestingLimit) {
+        throw Exception(Exception::TooDeepNesting);
+      }
       validateObject(ptr, length);
       --_level;
       break;
@@ -146,27 +157,7 @@ bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart)
       if (options->disallowTags) {
         throw Exception(Exception::BuilderTagsDisallowed);
       }
-      do {
-        if (head == 0xee) {
-          // 1 byte tag type
-          // the actual Slice (without tag) must be at least one byte long
-          validateBufferLength(1 + 1 + 1, length, true);
-          VELOCYPACK_ASSERT(length > 2);
-          ptr += 2;
-          length -= 2;
-        } else if (head == 0xef) {
-          // 8 bytes tag type
-          // the actual Slice (without tag) must be at least one byte long
-          validateBufferLength(1 + 8 + 1, length, true);
-          VELOCYPACK_ASSERT(length > 9);
-          ptr += 9;
-          length -= 9;
-        } else {
-          throw Exception(Exception::NotImplemented);
-        }
-        VELOCYPACK_ASSERT(length > 0);
-        head = *ptr;
-      } while (head == 0xee || head == 0xef);
+      validateTagged(ptr, length); 
       break;
     }
 
@@ -182,6 +173,9 @@ bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart)
     }
 
     case ValueType::Custom: {
+      if (options->disallowCustom) {
+        throw Exception(Exception::BuilderCustomDisallowed);
+      }
       ValueLength byteSize = 0;
 
       if (head == 0xf0U) {
@@ -225,7 +219,35 @@ bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart)
 
   // common validation that must happen for all types
   validateSliceLength(ptr, length, isSubPart);
-  return true;
+}
+
+void Validator::validateTagged(uint8_t const* ptr, std::size_t length) {
+  uint8_t head = *ptr;
+     
+  do {
+    // looping here to skip over nested tags.
+    if (head == 0xee) {
+      // 1 byte tag type
+      // the actual Slice (without tag) must be at least one byte long
+      validateBufferLength(1 + 1 + 1, length, true);
+      VELOCYPACK_ASSERT(length > 2);
+      ptr += 2;
+      length -= 2;
+    } else if (head == 0xef) {
+      // 8 bytes tag type
+      // the actual Slice (without tag) must be at least one byte long
+      validateBufferLength(1 + 8 + 1, length, true);
+      VELOCYPACK_ASSERT(length > 9);
+      ptr += 9;
+      length -= 9;
+    } else {
+      throw Exception(Exception::NotImplemented);
+    }
+    VELOCYPACK_ASSERT(length > 0);
+    head = *ptr;
+  } while (head == 0xee || head == 0xef);
+      
+  validatePart(ptr, length, true);
 }
 
 void Validator::validateArray(uint8_t const* ptr, std::size_t length) {
@@ -272,7 +294,7 @@ void Validator::validateCompactArray(uint8_t const* ptr, std::size_t length) {
     if (p >= e) {
       throw Exception(Exception::ValidatorInvalidLength, "Array items number is out of bounds");
     }
-    validate(p, e - p, true);
+    validatePart(p, e - p, true);
     p += Slice(p).byteSize();
   }
 }
@@ -309,7 +331,7 @@ void Validator::validateUnindexedArray(uint8_t const* ptr, std::size_t length) {
     throw Exception(Exception::ValidatorInvalidLength, "Array padding is invalid");
   }
   
-  validate(p, length - (p - ptr), true);
+  validatePart(p, length - (p - ptr), true);
   ValueLength itemSize = Slice(p).byteSize();
   if (itemSize == 0) {
     throw Exception(Exception::ValidatorInvalidLength, "Array itemSize value is invalid");
@@ -329,7 +351,7 @@ void Validator::validateUnindexedArray(uint8_t const* ptr, std::size_t length) {
       throw Exception(Exception::ValidatorInvalidLength, "Array value is out of bounds");
     }
     // validate sub value
-    validate(p, e - p, true);
+    validatePart(p, e - p, true);
     if (Slice(p).byteSize() != itemSize) {
       // got a sub-object with a different size. this is not allowed
       throw Exception(Exception::ValidatorInvalidLength, "Unexpected Array value length");
@@ -405,7 +427,7 @@ void Validator::validateIndexedArray(uint8_t const* ptr, std::size_t length) {
   ValueLength actualNrItems = 0;
   uint8_t const* member = firstMember;
   while (member < indexTable) {
-    validate(member, indexTable - member, true);
+    validatePart(member, indexTable - member, true);
     ValueLength offset = readIntegerNonEmpty<ValueLength>(
         indexTable + actualNrItems * byteSizeLength, byteSizeLength);
     if (offset != static_cast<ValueLength>(member - ptr)) {
@@ -463,7 +485,7 @@ void Validator::validateCompactObject(uint8_t const* ptr, std::size_t length) {
       throw Exception(Exception::ValidatorInvalidLength, "Object items number is out of bounds");
     }
     // validate key
-    validate(p, e - p, true);
+    validatePart(p, e - p, true);
     Slice key(p);
     bool isString = key.isString();
     if (!isString) {
@@ -475,12 +497,12 @@ void Validator::validateCompactObject(uint8_t const* ptr, std::size_t length) {
     ValueLength keySize = key.byteSize();
     // validate key
     if (isString && options->validateUtf8Strings) {
-      validate(p, keySize, true);
+      validatePart(p, keySize, true);
     }
 
     // validate value
     p += keySize;
-    validate(p, e - p, true);
+    validatePart(p, e - p, true);
     p += Slice(p).byteSize();
   }
 
@@ -575,7 +597,7 @@ void Validator::validateIndexedObject(uint8_t const* ptr, std::size_t length) {
   ValueLength actualNrItems = 0;
   uint8_t const* member = firstMember;
   while (member < indexTable) {
-    validate(member, indexTable - member, true);
+    validatePart(member, indexTable - member, true);
 
     Slice key(member);
     bool const isString = key.isString();
@@ -588,14 +610,14 @@ void Validator::validateIndexedObject(uint8_t const* ptr, std::size_t length) {
 
     ValueLength const keySize = key.byteSize();
     if (isString && options->validateUtf8Strings) {
-      validate(member, keySize, true);
+      validatePart(member, keySize, true);
     }
 
     uint8_t const* value = member + keySize;
     if (value >= indexTable) {
       throw Exception(Exception::ValidatorInvalidLength, "Object value leaking into index table");
     }
-    validate(value, indexTable - value, true);
+    validatePart(value, indexTable - value, true);
 
     ValueLength offset = static_cast<ValueLength>(member - ptr);
     if (nrItems <= 128) {
