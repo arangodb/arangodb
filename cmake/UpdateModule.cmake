@@ -1,4 +1,4 @@
-macro(UpdateModule _GIT _SUBMODULE _CWD)
+macro(UpdateModule _GIT _SUBMODULE _CWD _SENTINEL)
   execute_process(
     COMMAND ${_GIT} rev-parse @:./${_SUBMODULE}
     WORKING_DIRECTORY ${_CWD}
@@ -9,9 +9,10 @@ macro(UpdateModule _GIT _SUBMODULE _CWD)
     WORKING_DIRECTORY ${_CWD}/${_SUBMODULE}
     OUTPUT_VARIABLE _ACTUAL_SUBMODULE_HASH)
 
-  if (NOT ${_EXPECTED_SUBMODULE_HASH} EQUAL ${_ACTUAL_SUBMODULE_HASH})
+  if (NOT EXISTS ${_CWD}/${_SUBMODULE}/${_SENTINEL} OR
+      NOT ${_EXPECTED_SUBMODULE_HASH} EQUAL ${_ACTUAL_SUBMODULE_HASH})
     execute_process(
-      COMMAND ${_GIT} submodule update --init -- ${_SUBMODULE}
+      COMMAND ${_GIT} submodule update --init --force -- ${_SUBMODULE}
       RESULT_VARIABLE _INIT_RESULT
       WORKING_DIRECTORY ${_CWD})
 

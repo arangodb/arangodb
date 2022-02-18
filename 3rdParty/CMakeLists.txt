@@ -169,7 +169,7 @@ list(APPEND IRESEARCH_INCLUDE
   "${IRESEARCH_BUILD_DIR}/core"
 )
 
-UpdateModule(${GIT_EXECUTABLE} "iresearch" ${CMAKE_CURRENT_SOURCE_DIR})
+UpdateModule(${GIT_EXECUTABLE} "iresearch" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
 mark_as_advanced(
   IRESEARCH_BUILD_DIR
