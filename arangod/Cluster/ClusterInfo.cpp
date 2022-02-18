@@ -3079,25 +3079,44 @@ Result ClusterInfo::createCollectionsCoordinator(
                                              info.isBuildingSlice()));
 
     for (auto [shardId, serverIds] : VPackObjectIterator(info.json["shards"])) {
-      replication2::agency::LogPlanSpecification spec;
+      replication2::agency::LogTarget target;
       std::string logId{shardId.stringView().data() + 1,
                         shardId.stringView().size() - 1};
-      spec.id = replication2::LogId(StringUtils::uint64(logId));
+      target.id = replication2::LogId(StringUtils::uint64(logId));
       replication2::LogConfig config(info.writeConcern, info.replicationFactor,
                                      info.replicationFactor, false);
+<<<<<<< HEAD
       spec.targetConfig = config;
       spec.participantsConfig.generation = 1;
       for (auto serverId : VPackArrayIterator(serverIds)) {
         spec.participantsConfig.participants.emplace(
             serverId.copyString(), replication2::ParticipantFlags{});
+=======
+      target.config = config;
+      std::unordered_map<replication2::ParticipantId,
+                         replication2::ParticipantFlags>
+          participants;
+      LOG_DEVEL << serverIds.toJson();
+      for (auto serverId : VPackArrayIterator(serverIds)) {
+        participants.emplace(serverId.copyString(),
+                             replication2::ParticipantFlags{});
+>>>>>>> origin/feature/CINFRA-174-create-replicated-logs-for-each-shard
       }
+
+      LOG_DEVEL << serverIds.at(0).toJson();
+      target.leader = serverIds.at(0).copyString();
+      target.participants = std::move(participants);
       auto builder = std::make_shared<VPackBuilder>();
+<<<<<<< HEAD
       spec.currentTerm = replication2::agency::LogPlanTermSpecification(
           replication2::LogTerm(1), config, std::nullopt);
 
       spec.toVelocyPack(*builder);
+=======
+      target.toVelocyPack(*builder);
+>>>>>>> origin/feature/CINFRA-174-create-replicated-logs-for-each-shard
       opers.emplace_back(
-          AgencyOperation("Plan/ReplicatedLogs/" + databaseName + "/" + logId,
+          AgencyOperation("Target/ReplicatedLogs/" + databaseName + "/" + logId,
                           AgencyValueOperationType::SET, std::move(builder)));
     }
 

@@ -54,12 +54,12 @@ enum class Version : int32_t {
   MAX = IMMUTABLE_FST
 }; // Version
 
-IRESEARCH_API irs::field_writer::ptr make_writer(
+irs::field_writer::ptr make_writer(
   Version version,
   irs::postings_writer::ptr&& writer,
   bool consolidation);
 
-IRESEARCH_API irs::field_reader::ptr make_reader(
+irs::field_reader::ptr make_reader(
   irs::postings_reader::ptr&& reader);
 
 } // burst_trie

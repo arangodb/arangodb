@@ -105,13 +105,13 @@ struct sub_reader final : irs::sub_reader {
   explicit sub_reader(size_t num_docs)
     : num_docs(num_docs) {
   }
-  virtual const irs::column_reader* column(const irs::string_ref&) const override {
+  virtual const irs::column_reader* column(irs::string_ref) const override {
     return nullptr;
   }
   virtual irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
-  virtual const irs::columnstore_reader::column_reader* column(irs::field_id) const override {
+  virtual const irs::column_reader* column(irs::field_id) const override {
     return nullptr;
   }
   virtual uint64_t docs_count() const override {
@@ -120,7 +120,7 @@ struct sub_reader final : irs::sub_reader {
   virtual irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
-  virtual const irs::term_reader* field(const irs::string_ref&) const override {
+  virtual const irs::term_reader* field(irs::string_ref) const override {
     return nullptr;
   }
   virtual irs::field_iterator::ptr fields() const override {

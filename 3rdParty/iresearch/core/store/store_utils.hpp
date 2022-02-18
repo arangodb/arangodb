@@ -159,13 +159,13 @@ inline size_t read_size(data_input& in) {
   return ::read_write_helper<size_t>::read(in);
 }
 
-void IRESEARCH_API write_zvfloat(data_output& out, float_t v);
+void write_zvfloat(data_output& out, float_t v);
 
-float_t IRESEARCH_API read_zvfloat(data_input& in);
+float_t read_zvfloat(data_input& in);
 
-void IRESEARCH_API write_zvdouble(data_output& out, double_t v);
+void write_zvdouble(data_output& out, double_t v);
 
-double_t IRESEARCH_API read_zvdouble(data_input& in);
+double_t read_zvdouble(data_input& in);
 
 inline void write_zvint(data_output& out, int32_t v) {
   out.write_vint(zig_zag_encode32(v));
@@ -364,7 +364,7 @@ FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_output
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API bytes_output : public data_output {
+class bytes_output : public data_output {
  public:
   explicit bytes_output(bstring& buf) noexcept
     : buf_(&buf) {
@@ -379,18 +379,16 @@ class IRESEARCH_API bytes_output : public data_output {
   }
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring* buf_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // bytes_output
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_ref_input
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API bytes_ref_input : public index_input {
+class bytes_ref_input : public index_input {
  public:
   bytes_ref_input() = default;
-  explicit bytes_ref_input(const bytes_ref& data);
+  explicit bytes_ref_input(bytes_ref data);
 
   void skip(size_t size) noexcept {
     assert(pos_ + size <= data_.end());
@@ -454,7 +452,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     pos_ = data;
   }
 
-  void reset(const bytes_ref& ref) noexcept {
+  void reset(bytes_ref ref) noexcept {
     reset(ref.c_str(), ref.size());
   }
 

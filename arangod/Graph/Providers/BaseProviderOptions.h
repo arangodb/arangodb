@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <optional>
 #include <vector>
@@ -82,6 +83,8 @@ struct BaseProviderOptions {
                 std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
           indexInfo,
       aql::FixedVarExpressionContext& expressionContext,
+      std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+          filterConditionVariables,
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap);
 
@@ -97,6 +100,9 @@ struct BaseProviderOptions {
   collectionToShardMap() const;
 
   aql::FixedVarExpressionContext& expressionContext() const;
+
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
 
   bool hasWeightMethod() const;
 
@@ -125,6 +131,11 @@ struct BaseProviderOptions {
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+
+  // TODO: Currently this will be a copy. As soon as we remove the old
+  // non-refactored code, we will do a move instead of a copy operation.
+  std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+      _filterConditionVariables;
 };
 
 struct ClusterBaseProviderOptions {

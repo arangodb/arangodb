@@ -22,9 +22,9 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
-const joi = require('joi');
-const DEFAULT_PARAM_SCHEMA = joi.string().required();
+const check = require('@arangodb/foxx/check-args');
 
+const MATCH_STRINGS_MODEL = check.validateSchema({type: 'string'}).value;
 const $_WILDCARD = Symbol.for('@@wildcard'); // catch-all suffix
 const $_TERMINAL = Symbol.for('@@terminal'); // terminal -- routes be here
 const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, like static part)
@@ -59,7 +59,7 @@ module.exports = Object.assign(
       }
       name = name.slice(1);
       ctx._pathParamNames.push(name);
-      ctx._pathParams.set(name, {schema: DEFAULT_PARAM_SCHEMA});
+      ctx._pathParams.set(name, MATCH_STRINGS_MODEL);
       return $_PARAM;
     });
     if (tokens[tokens.length - 1] !== $_WILDCARD) {

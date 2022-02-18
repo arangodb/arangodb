@@ -730,7 +730,7 @@ class term_reader final : public irs::basic_term_reader,
 };
 
 field_data::field_data(
-    const string_ref& name,
+    string_ref name,
     const features_t& features,
     const feature_info_provider_t& feature_columns,
     std::deque<cached_column>& cached_features,

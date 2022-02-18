@@ -34,7 +34,7 @@ class by_ngram_similarity;
 /// @struct by_ngram_similarity_options
 /// @brief options for ngram similarity filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_ngram_similarity_options {
+struct by_ngram_similarity_options {
   using filter_type = by_ngram_similarity;
 
   std::vector<bstring> ngrams;
@@ -56,7 +56,7 @@ struct IRESEARCH_API by_ngram_similarity_options {
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_ngram_similarity
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_ngram_similarity
+class by_ngram_similarity
     : public filter_base<by_ngram_similarity_options> {
  public:
   static ptr make();

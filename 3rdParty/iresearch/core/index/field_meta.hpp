@@ -54,14 +54,14 @@ using features_t = range<const type_info::type_id>;
 /// @struct field_meta 
 /// @brief represents field metadata
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API field_meta { 
+struct field_meta {
  public:
   static const field_meta EMPTY;
 
   field_meta() = default;
   field_meta(const field_meta&) = default;
   field_meta(field_meta&& rhs) noexcept;
-  field_meta(const string_ref& field, IndexFeatures index_features);
+  field_meta(string_ref field, IndexFeatures index_features);
 
   field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;

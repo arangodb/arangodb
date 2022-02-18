@@ -59,8 +59,8 @@ class ngram_token_stream_base
      Options(size_t min, size_t max,
              bool original,
              InputType stream_type,
-             const irs::bytes_ref& start,
-             const irs::bytes_ref& end)
+             irs::bytes_ref start,
+             irs::bytes_ref end)
          : start_marker(start),
            end_marker(end),
            min_gram(min), max_gram(max),
@@ -81,7 +81,7 @@ class ngram_token_stream_base
 
    explicit ngram_token_stream_base(const Options& options);
 
-   virtual bool reset(const string_ref& data) noexcept override;
+   virtual bool reset(string_ref data) noexcept override;
    virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
      return irs::get_mutable(attrs_, type);
    }

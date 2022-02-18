@@ -222,10 +222,6 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
     size_t d;
   };
 
-  auto comparer = [](const test_data& lhs, const test_data& rhs) {
-    return lhs.a == rhs.a;
-  };
-
   const size_t size = 10000;
   iresearch::timer_utils::init_stats(true);
 
@@ -378,7 +374,7 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
   out.close();
 
   irs::file_utils::ensure_absolute(path);
-  std::cout << "Path to timing log: " << path.u8string() << std::endl;
+  std::cout << "Path to timing log: " << path.string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_multimap) {
@@ -395,10 +391,6 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
     size_t b;
     size_t c;
     size_t d;
-  };
-
-  auto comparer = [](const test_data& lhs, const test_data& rhs) {
-    return lhs.a == rhs.a;
   };
 
   const size_t size = 10000;
@@ -583,7 +575,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
   out.close();
 
   irs::file_utils::ensure_absolute(path);
-  std::cout << "Path to timing log: " << path.u8string() << std::endl;
+  std::cout << "Path to timing log: " << path.string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_list) {
@@ -732,7 +724,7 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
   out.close();
 
   irs::file_utils::ensure_absolute(path);
-  std::cout << "Path to timing log: " << path.u8string() << std::endl;
+  std::cout << "Path to timing log: " << path.string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_set) {
@@ -749,10 +741,6 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
     size_t b;
     size_t c;
     size_t d;
-  };
-
-  auto comparer = [](const test_data& lhs, const test_data& rhs) {
-    return lhs.a == rhs.a;
   };
 
   const size_t size = 10000;
@@ -907,7 +895,7 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
   out.close();
 
   irs::file_utils::ensure_absolute(path);
-  std::cout << "Path to timing log: " << path.u8string() << std::endl;
+  std::cout << "Path to timing log: " << path.string() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, allocate_unique) {
