@@ -378,7 +378,7 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
       if (json.isArray() && json.length() >= 2) {
         res = shape.parseCoordinates(json, /*GeoJson*/ true);
       } else {
-        res = geo::geojson::parseRegion(json, shape);
+        res = geo::geojson::parseRegion(json, shape, false);
       }
       if (res.fail()) {
         return res;
@@ -4056,7 +4056,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
 
     Result res;
     if (shapeValue.isObject()) {
-      res = geo::geojson::parseRegion(shapeValue.slice(), shape);
+      res = geo::geojson::parseRegion(shapeValue.slice(), shape, false);
     } else if (shapeValue.isArray()) {
       auto const slice = shapeValue.slice();
 
