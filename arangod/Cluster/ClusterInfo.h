@@ -756,7 +756,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   Result setViewPropertiesCoordinator(std::string const& databaseName,
-                                      std::string_view const& viewID,
+                                      std::string const& viewID,
                                       VPackSlice json);
 
   //////////////////////////////////////////////////////////////////////////////
