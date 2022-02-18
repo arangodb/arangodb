@@ -270,7 +270,7 @@ One of the possible log topics.
 @RESTBODYPARAM{clustercomm,string,optional,string}
 One of the possible log topics.
 
-@RESTBODYPARAM{collector,string,optional,string} !
+@RESTBODYPARAM{collector,string,optional,string}
 One of the possible log topics.
 
 @RESTBODYPARAM{communication,string,optional,string}
