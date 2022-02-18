@@ -201,7 +201,7 @@ namespace boost { namespace stl_interfaces { BOOST_STL_INTERFACES_NAMESPACE_V1 {
 }}}
 
 
-#if defined(BOOST_STL_INTERFACES_DOXYGEN) || defined(__cpp_lib_concepts)
+#if defined(BOOST_STL_INTERFACES_DOXYGEN) || (!defined(BOOST_TEXT_DISABLE_CONCEPTS) && defined(__cpp_lib_concepts))
 
 namespace boost { namespace stl_interfaces { BOOST_STL_INTERFACES_NAMESPACE_V2 {
 

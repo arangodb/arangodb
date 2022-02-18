@@ -8,7 +8,7 @@
 
 #include <boost/stl_interfaces/config.hpp>
 
-#if defined(__cpp_lib_concepts)
+#if !defined(BOOST_TEXT_DISABLE_CONCEPTS) && defined(__cpp_lib_concepts)
 #include <ranges>
 #endif
 #if defined(__cpp_lib_three_way_comparison)

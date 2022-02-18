@@ -15,7 +15,7 @@
 // Note that this only applies to code for which a v2 namespace alternative
 // exists.  Some instances of the v1 namespace may still be inline, if there
 // is no v2 version of its contents.
-#if defined(__cpp_lib_concepts)
+#if !defined(BOOST_TEXT_DISABLE_CONCEPTS) && defined(__cpp_lib_concepts)
 #    define BOOST_STL_INTERFACES_NAMESPACE_V1 namespace v1
 #    define BOOST_STL_INTERFACES_NAMESPACE_V2 inline namespace v2
 #else
