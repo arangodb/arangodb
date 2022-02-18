@@ -455,7 +455,7 @@ void EnvironmentFeature::prepare() {
       }
       LOG_TOPIC("51705", INFO, arangodb::Logger::STARTUP)
           << "Parent process: " << parentId
-          << (procName.empty() ? "" : "(" + std::string(procName) + ")");
+          << (procName.empty() ? "" : " (" + std::string(procName) + ")");
     }
   } catch (...) {
   }
