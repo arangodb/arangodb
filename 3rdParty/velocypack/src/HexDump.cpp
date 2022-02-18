@@ -43,13 +43,13 @@ void HexDump::appendHex(std::string& result, uint8_t value) {
 }
 
 std::string HexDump::toString() const {
-  ValueLength length = slice.byteSize();
   std::string result;
   result.reserve(4 * (length + separator.size()) + (length / valuesPerLine) + 1); 
 
+  uint8_t const* p = data;
+  uint8_t const* e = p + length;
   int current = 0;
-
-  for (uint8_t it : slice) {
+  while (p < e) {
     if (current != 0) {
       result.append(separator);
 
@@ -60,7 +60,7 @@ std::string HexDump::toString() const {
     }
 
     result.append(header);
-    HexDump::appendHex(result, it);
+    HexDump::appendHex(result, *p++);
     ++current;
   }
 
