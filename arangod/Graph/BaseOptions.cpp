@@ -74,10 +74,10 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
   idxHandles.reserve(shards.length());
 
   TRI_edge_direction_e dir = TRI_EDGE_ANY;
-  VPackSlice dirSlice = info.get("direction");
-  if (dirSlice.isEqualString("inbound")) {
+  VPackSlice dirSlice = info.get(StaticStrings::GraphDirection);
+  if (dirSlice.isEqualString(StaticStrings::GraphDirectionInbound)) {
     dir = TRI_EDGE_IN;
-  } else if (dirSlice.isEqualString("outbound")) {
+  } else if (dirSlice.isEqualString(StaticStrings::GraphDirectionOutbound)) {
     dir = TRI_EDGE_OUT;
   }
   if (dir == TRI_EDGE_ANY) {
@@ -163,9 +163,11 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // direction
   TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
   if (direction == TRI_EDGE_IN) {
-    result.add("direction", VPackValue("inbound"));
+    result.add(StaticStrings::GraphDirection,
+               VPackValue(StaticStrings::GraphDirectionInbound));
   } else {
-    result.add("direction", VPackValue("outbound"));
+    result.add(StaticStrings::GraphDirection,
+               VPackValue(StaticStrings::GraphDirectionOutbound));
   }
 
   result.add(VPackValue("handle"));
