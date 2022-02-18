@@ -157,14 +157,16 @@
         type: "GET",
         url: url,
         success: function (timeData) {
-          if (!timeData.error && timeData.code === 200 && timeData.time) {
-            self.fetchLicenseInfo(timeData.time);
-          } else {
+            if (!timeData.error && timeData.code === 200 && timeData.time) {
+              self.fetchLicenseInfo(timeData.time);
+            } else {
+              self.showGetTimeError();
+            }          
+        },
+        error: function (response) {
+          if(response.status !== 403) {
             self.showGetTimeError();
           }
-        },
-        error: function () {
-          self.showGetTimeError();
         }
       });
     },
