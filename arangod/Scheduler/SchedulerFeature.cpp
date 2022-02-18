@@ -435,8 +435,13 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
   // prevents duplicate execution of log rotate requests.
   // if the CAS fails, it doesn't matter, because it means that a log rotate
   // request was already queued
-  ::processIdRequestingLogRotate.compare_exchange_strong(processIdExpected,
-                                                         processIdRequesting);
+  if (!::processIdRequestingLogRotate.compare_exchange_strong(
+          processIdExpected, processIdRequesting)) {
+    // already a log rotate request queued. do nothing...
+    return;
+  }
+
+  // no log rotate request queued before.
 
   bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
       RequestLane::CLIENT_SLOW, [processIdRequesting]() {
