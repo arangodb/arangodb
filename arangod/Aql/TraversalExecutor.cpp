@@ -115,9 +115,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
      */
     TRI_ASSERT(_traversalEnumerator == nullptr);
 
-    auto cache = std::make_shared<RefactoredClusterTraverserCache>(
-        opts->query().resourceMonitor());
-
     parseTraversalEnumeratorCluster(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
         _weightAttribute, query, std::move(clusterBaseProviderOptions),
@@ -162,7 +159,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _weightAttribute(std::move(weightAttribute)),
       _trx(trx),
       _query(query) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!refactor) {
     TRI_ASSERT(_traverser != nullptr);
   }
@@ -175,14 +171,12 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   // All Nodes are located in the AST it cannot be non existing.
   TRI_ASSERT(_ast != nullptr);
   if (isRefactor()) {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
     /*
      * In the refactored variant we need to parse the correct enumerator type
      * here, before we're allowed to use it.
      */
     TRI_ASSERT(_traversalEnumerator == nullptr);
-
-    auto cache = std::make_shared<RefactoredClusterTraverserCache>(
-        opts->query().resourceMonitor());
 
     parseTraversalEnumeratorSingleServer(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
