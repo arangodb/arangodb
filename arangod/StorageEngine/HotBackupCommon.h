@@ -98,7 +98,7 @@ struct BackupMeta {
       }
       builder.add(POTENTIALLYINCONSISTENT,
                   VPackValue(_potentiallyInconsistent));
-      builder.add(COUNTINCLUDESFILESONLY, VPackValue(true));
+      builder.add(COUNTINCLUDESFILESONLY, VPackValue(_countIncludeFilesOnly));
     }
   }
 
