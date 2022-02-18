@@ -30,19 +30,19 @@
 namespace iresearch {
 namespace compression {
 
-class IRESEARCH_API delta_compressor : public compressor, private util::noncopyable {
+class delta_compressor : public compressor, private util::noncopyable {
  public:
   virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override final;
 }; // delta_compressor
 
-class IRESEARCH_API delta_decompressor : public decompressor, private util::noncopyable {
+class delta_decompressor : public decompressor, private util::noncopyable {
  public:
   /// @returns bytes_ref::NIL in case of error
   virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                byte_type* dst, size_t dst_size) override final;
 }; // delta_decompressor
 
-struct IRESEARCH_API delta {
+struct delta {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::compression::delta";
   }

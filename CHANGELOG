@@ -1,5 +1,23 @@
 devel
 -----
+* Support JSON schema objects for documenting Foxx endpoints.
+
+* Sorted out various geo problems:
+
+  - No more special detection of "latitude-longitude rectangles" is done,
+    since this is in conflict with the definition of polygon boundaries to
+    be geodesics.
+  - Linear rings in polygons are no longer automatically "normalized", so
+    now it is possible to have polygons which cover more than half of the
+    Earth.
+  - Rules for polygons and multigons have been clarified and are now properly
+    enforced for the `GEO_POLYGON` and `GEO_MULTIPOLYGON` AQL functions.
+  - Introduced `legacyPolygon` flag for geo indexes to continue to support
+    the old behaviour in existing geo indexes.
+  - Added lots of additional tests, thereby fixing several bugs in geo index
+    lookup.
+  - Use a faster algorithm for pure `GEO_CONTAINS` and `GEO_INTERSECTS`
+    queries.
 
 * Fix counts and file size sum in hotbackup META files. Do no longer count
   directories.

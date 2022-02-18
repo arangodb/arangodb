@@ -36,7 +36,7 @@ namespace {
 
 using namespace irs;
 
-bytes_ref unescape(const bytes_ref& in, bstring& out) {
+bytes_ref unescape(bytes_ref in, bstring& out) {
   out.reserve(in.size());
 
   bool copy = true;
@@ -101,14 +101,14 @@ namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(by_wildcard) // cppcheck-suppress unknownMacro
 
-field_visitor by_wildcard::visitor(const bytes_ref& term) {
+field_visitor by_wildcard::visitor(bytes_ref term) {
   bstring buf;
   return executeWildcard(
     buf, term,
     []() -> field_visitor {
       return [](const sub_reader&, const term_reader&, filter_visitor&) { };
     },
-    [](const bytes_ref& term) -> field_visitor {
+    [](bytes_ref term) -> field_visitor {
       // must copy term as it may point to temporary string
       return [term = bstring(term)](
           const sub_reader& segment,
@@ -117,7 +117,7 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
         by_term::visit(segment, field, term, visitor);
       };
     },
-    [](const bytes_ref& term) -> field_visitor {
+    [](bytes_ref term) -> field_visitor {
       // must copy term as it may point to temporary string
       return [term = bstring(term)](
           const sub_reader& segment,
@@ -126,9 +126,9 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
         by_prefix::visit(segment, field, term, visitor);
       };
     },
-    [](const bytes_ref& term) -> field_visitor{
+    [](bytes_ref term) -> field_visitor{
       struct automaton_context : util::noncopyable {
-        automaton_context(const bytes_ref& term)
+        automaton_context(bytes_ref term)
           : acceptor(from_wildcard(term)),
             matcher(make_automaton_matcher(acceptor)) {
         }
@@ -157,8 +157,8 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& term,
+    string_ref field,
+    bytes_ref term,
     size_t scored_terms_limit) {
   bstring buf;
   return executeWildcard(
@@ -166,13 +166,13 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
     []() -> filter::prepared::ptr {
       return prepared::empty();
     },
-    [&index, &order, boost, &field](const bytes_ref& term) -> filter::prepared::ptr {
+    [&index, &order, boost, &field](bytes_ref term) -> filter::prepared::ptr {
       return by_term::prepare(index, order, boost, field, term);
     },
-    [&index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) -> filter::prepared::ptr {
+    [&index, &order, boost, &field, scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
       return by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);
     },
-    [&index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) -> filter::prepared::ptr {
+    [&index, &order, boost, &field, scored_terms_limit](bytes_ref term) -> filter::prepared::ptr {
       return prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit,
                                       index, order, boost);
     }

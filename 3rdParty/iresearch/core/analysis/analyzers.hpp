@@ -38,10 +38,10 @@ namespace analysis {
 // --SECTION--                                             analyzer registration
 // -----------------------------------------------------------------------------
 
-typedef analysis::analyzer::ptr(*factory_f)(const string_ref& args);
-typedef bool(*normalizer_f)(const string_ref& args, std::string& config);
+typedef analysis::analyzer::ptr(*factory_f)(string_ref args);
+typedef bool(*normalizer_f)(string_ref args, std::string& config);
 
-class IRESEARCH_API analyzer_registrar {
+class analyzer_registrar {
  public:
    analyzer_registrar(
     const type_info& type,
@@ -71,13 +71,13 @@ class IRESEARCH_API analyzer_registrar {
 // --SECTION--                                               convinience methods
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API analyzers {
+class analyzers {
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether an analyzer with the specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
   static bool exists(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
     bool load_library = true);
 
@@ -88,9 +88,9 @@ class IRESEARCH_API analyzers {
   ////////////////////////////////////////////////////////////////////////////////
   static bool normalize(
     std::string& out,
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -100,9 +100,9 @@ class IRESEARCH_API analyzers {
   ////////////////////////////////////////////////////////////////////////////////
   static result get(
     analyzer::ptr& analyzer,
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -111,9 +111,9 @@ class IRESEARCH_API analyzers {
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
   static analyzer::ptr get(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +132,7 @@ class IRESEARCH_API analyzers {
   /// @brief visit all loaded analyzers, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
   static bool visit(
-    const std::function<bool(const string_ref&, const type_info&)>& visitor);
+    const std::function<bool(string_ref, const type_info&)>& visitor);
 
  private:
   analyzers() = delete;

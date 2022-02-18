@@ -35,13 +35,13 @@
 
 namespace iresearch {
 
-struct IRESEARCH_API attributes {
+struct attributes {
   static bool exists(
-    const string_ref& name,
+    string_ref name,
     bool load_library = true);
 
   static type_info get(
-    const string_ref& name,
+    string_ref name,
     bool load_library = true) noexcept;
 
   attributes() = delete;
@@ -52,13 +52,13 @@ struct IRESEARCH_API attributes {
 /// @brief base class for all attributes that can be used with attribute_map
 ///        an empty struct tag type with no virtual methods
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API attribute { };
+struct attribute { };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            Attribute registration
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API attribute_registrar {
+class attribute_registrar {
  public:
   explicit attribute_registrar(
     const type_info& type,

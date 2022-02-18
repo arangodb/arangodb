@@ -74,10 +74,10 @@ struct cached_column {
   columnstore_writer::column_finalizer_f finalizer;
 };
 
-class IRESEARCH_API field_data : util::noncopyable {
+class field_data : util::noncopyable {
  public:
   field_data(
-    const string_ref& name,
+    string_ref name,
     const features_t& features,
     const feature_info_provider_t& feature_columns,
     std::deque<cached_column>& cached_columns,
@@ -165,7 +165,7 @@ class IRESEARCH_API field_data : util::noncopyable {
   bool seen_{false};
 }; // field_data
 
-class IRESEARCH_API fields_data: util::noncopyable {
+class fields_data: util::noncopyable {
  private:
   struct field_ref_eq : value_ref_eq<field_data*> {
     using self_t::operator();
@@ -213,7 +213,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   void reset() noexcept;
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
   const feature_info_provider_t* feature_info_;
   std::deque<field_data> fields_; // pointers remain valid
@@ -225,7 +224,6 @@ class IRESEARCH_API fields_data: util::noncopyable {
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fields_data
 
 } // iresearch

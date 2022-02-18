@@ -38,7 +38,7 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 template<typename T>
-struct IRESEARCH_API_TEMPLATE iterator {
+struct iterator {
   virtual ~iterator() = default;
   virtual T value() const = 0;
   virtual bool next() = 0;
@@ -75,7 +75,7 @@ class iterator_adaptor
     return *cur_;
   }
 
-  bool seek(const key_type& key) noexcept override {
+  bool seek(key_type key) noexcept override {
     begin_ = std::lower_bound(cur_, end_, key, comparer_t::get());
     return next();
   }

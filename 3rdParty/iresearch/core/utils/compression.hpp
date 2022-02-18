@@ -78,7 +78,7 @@ struct options {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API compressor {
+struct compressor {
   using ptr = memory::managed_ptr<compressor>;
 
   /// @note returns a value as it is
@@ -96,7 +96,7 @@ struct IRESEARCH_API compressor {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API decompressor {
+struct decompressor {
   using ptr = memory::managed_ptr<decompressor>;
 
   virtual ~decompressor() = default;
@@ -118,7 +118,7 @@ typedef irs::compression::decompressor::ptr(*decompressor_factory_f)();
 // --SECTION--                                          compression registration
 // -----------------------------------------------------------------------------
 
-class IRESEARCH_API compression_registrar {
+class compression_registrar {
  public:
    compression_registrar(const type_info& type,
                          compressor_factory_f compressor_factory,
@@ -136,13 +136,13 @@ class IRESEARCH_API compression_registrar {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether an comopression with the specified name is registered
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API bool exists(const string_ref& name, bool load_library = true);
+bool exists(string_ref name, bool load_library = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API compressor::ptr get_compressor(
-    const string_ref& name,
+compressor::ptr get_compressor(
+    string_ref name,
     const options& opts,
     bool load_library = true) noexcept;
 
@@ -159,8 +159,8 @@ inline compressor::ptr get_compressor(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API decompressor::ptr get_decompressor(
-    const string_ref& name,
+decompressor::ptr get_decompressor(
+    string_ref name,
     bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,23 +177,23 @@ inline decompressor::ptr get_decompressor(
 ///        for shared lib NOOP
 ///        no explicit call of fn is required, existence of fn is sufficient
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void init();
+void init();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load all compressions from plugins directory
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void load_all(const std::string& path);
+void load_all(const std::string& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all loaded compressions, terminate early if visitor returns false
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API bool visit(const std::function<bool(const string_ref&)>& visitor);
+bool visit(const std::function<bool(string_ref)>& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw
 /// @brief no compression
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API none {
+struct none {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::compression::none";
   }

@@ -34,9 +34,9 @@ namespace iresearch {
 /// @class memory_allocator
 /// @brief a reusable thread-safe allocator for memory files
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API memory_allocator final {
+class memory_allocator final {
  private:
-  struct IRESEARCH_API buffer {
+  struct buffer {
     using ptr = std::unique_ptr<byte_type[]>;
     static ptr make(size_t size);
   }; // buffer
@@ -65,7 +65,7 @@ class IRESEARCH_API memory_allocator final {
 /// @struct encryption
 /// @brief directory encryption provider
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API encryption {
+struct encryption {
   DECLARE_UNIQUE_PTR(encryption);
 
   // FIXME check if it's possible to rename to iresearch::encryption?
@@ -112,7 +112,7 @@ struct IRESEARCH_API encryption {
 /// @class index_file_refs
 /// @brief represents a ref_counter for index related files
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API index_file_refs final {
+class index_file_refs final {
  public:
   typedef std::unique_ptr<index_file_refs> ptr;
   typedef ref_counter<std::string> counter_t;
@@ -138,7 +138,7 @@ class IRESEARCH_API index_file_refs final {
 /// @class directory_attributes
 /// @brief represents common directory attributes
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API directory_attributes {
+class directory_attributes {
  public:
   // 0 == pool_size -> use global allocator, noexcept
   explicit directory_attributes(

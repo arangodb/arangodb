@@ -58,7 +58,7 @@ enum class BufferHint {
 /// @struct data_input
 /// @brief base interface for all low-level input data streams
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_input {
+struct data_input {
   using iterator_category = std::forward_iterator_tag;
   using value_type = byte_type;
   using pointer = void;
@@ -118,7 +118,7 @@ struct IRESEARCH_API data_input {
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_input
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_input : public data_input {
+struct index_input : public data_input {
  public:
   using ptr = std::unique_ptr<index_input>;
 
@@ -156,7 +156,7 @@ struct IRESEARCH_API index_input : public data_input {
 //////////////////////////////////////////////////////////////////////////////
 /// @class input_buf
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
+class input_buf final : public std::streambuf, util::noncopyable {
  public:
   typedef std::streambuf::char_type char_type;
   typedef std::streambuf::int_type int_type;
@@ -182,7 +182,7 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 /// @class buffered_index_input
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API buffered_index_input : public index_input {
+class buffered_index_input : public index_input {
  public:
   virtual byte_type read_byte() override final;
 
@@ -261,13 +261,11 @@ class IRESEARCH_API buffered_index_input : public index_input {
     return std::distance(buf_, end_);
   }
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   byte_type* buf_{}; // buffer itself
   byte_type* begin_{ buf_ }; // current position in the buffer
   byte_type* end_{ buf_ }; // end of the valid bytes in the buffer
   size_t start_{}; // position of the buffer in file
   size_t buf_size_{}; // size of the buffer in bytes
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_input
 
 }

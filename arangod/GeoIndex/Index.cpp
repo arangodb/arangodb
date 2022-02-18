@@ -35,6 +35,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
@@ -51,6 +52,8 @@ Index::Index(VPackSlice const& info,
              std::vector<std::vector<basics::AttributeName>> const& fields)
     : _variant(Variant::NONE) {
   _coverParams.fromVelocyPack(info);
+  _legacyPolygons = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      info, StaticStrings::IndexLegacyPolygons, true);
 
   if (fields.size() == 1) {
     bool geoJson =
@@ -91,13 +94,20 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
                                           centroid);
     }
     geo::ShapeContainer shape;
-    Result r = geo::geojson::parseRegion(loc, shape);
+    Result r = geo::geojson::parseRegion(loc, shape, _legacyPolygons);
     if (r.ok()) {
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(&coverer);
       centroid = shape.centroid();
       if (!S2LatLng(centroid).is_valid()) {
         return TRI_ERROR_BAD_PARAMETER;
+      }
+      if (!_legacyPolygons &&
+          shape.type() != geo::ShapeContainer::Type::S2_POINT) {
+        // We add the centroid to be able to satisfy GEO_DISTANCE queries
+        // for indexed polygons whose centroid does not lie within the
+        // cell covering (non-convex).
+        cells.emplace_back(centroid);
       }
     } else if (r.is(TRI_ERROR_NOT_IMPLEMENTED)) {
       // ignore not-implemented error on inserts, because index is sparse
@@ -135,7 +145,7 @@ Result Index::shape(velocypack::Slice const& doc,
     if (loc.isArray() && loc.length() >= 2) {
       return shape.parseCoordinates(loc, /*geoJson*/ true);
     } else if (loc.isObject()) {
-      return geo::geojson::parseRegion(loc, shape);
+      return geo::geojson::parseRegion(loc, shape, _legacyPolygons);
     }
     return TRI_ERROR_BAD_PARAMETER;
   } else if (_variant == Variant::COMBINED_LAT_LON) {
@@ -156,7 +166,7 @@ Result Index::shape(velocypack::Slice const& doc,
 
 // Handle GEO_DISTANCE(<something>, doc.field)
 S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
-                                 aql::Variable const* ref) {
+                                 aql::Variable const* ref, bool legacy) {
   // aql::AstNode* dist = node->getMemberUnchecked(0);
   TRI_ASSERT(args->numMembers() == 2);
   if (args->numMembers() != 2) {
@@ -187,7 +197,7 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
     if (json.isArray() && json.length() >= 2) {
       res = shape.parseCoordinates(json, /*GeoJson*/ true);
     } else {
-      res = geo::geojson::parseRegion(json, shape);
+      res = geo::geojson::parseRegion(json, shape, legacy);
     }
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -198,14 +208,14 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
 
 // either parses GEO_DISTANCE call argument values
 S2LatLng Index::parseDistFCall(aql::AstNode const* node,
-                               aql::Variable const* ref) {
+                               aql::Variable const* ref, bool legacy) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
   aql::Function const* func =
       static_cast<aql::Function const*>(node->getData());
   TRI_ASSERT(func != nullptr);
   if (func->name == "GEO_DISTANCE") {
-    return Index::parseGeoDistance(args, ref);
+    return Index::parseGeoDistance(args, ref, legacy);
   }
   // we should not get here for any other functions, not even DISTANCE
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -215,7 +225,7 @@ S2LatLng Index::parseDistFCall(aql::AstNode const* node,
 }
 
 void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
-                       geo::QueryParams& qp) {
+                       geo::QueryParams& qp, bool legacy) {
   switch (node->type) {
     // Handle GEO_CONTAINS(<geoJson-object>, doc.field)
     // or GEO_INTERSECTS(<geoJson-object>, doc.field)
@@ -242,7 +252,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);
-      Result res = geo::geojson::parseRegion(bb.slice(), qp.filterShape);
+      Result res =
+          geo::geojson::parseRegion(bb.slice(), qp.filterShape, legacy);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -265,7 +276,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
       TRI_ASSERT(node->numMembers() == 2);
-      qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
+      qp.origin =
+          Index::parseDistFCall(node->getMemberUnchecked(0), ref, legacy);
       if (!qp.origin.is_valid()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
@@ -286,7 +298,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       [[fallthrough]];
     case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
       TRI_ASSERT(node->numMembers() == 2);
-      qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
+      qp.origin =
+          Index::parseDistFCall(node->getMemberUnchecked(0), ref, legacy);
       if (!qp.origin.is_valid()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
@@ -307,13 +320,13 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 
 void Index::parseCondition(aql::AstNode const* node,
                            aql::Variable const* reference,
-                           geo::QueryParams& params) {
+                           geo::QueryParams& params, bool legacy) {
   if (aql::Ast::IsAndOperatorType(node->type)) {
     for (size_t i = 0; i < node->numMembers(); i++) {
-      handleNode(node->getMemberUnchecked(i), reference, params);
+      handleNode(node->getMemberUnchecked(i), reference, params, legacy);
     }
   } else {
-    handleNode(node, reference, params);
+    handleNode(node, reference, params, legacy);
   }
 
   // allow for GEO_DISTANCE(g, d.geometry) <= 0

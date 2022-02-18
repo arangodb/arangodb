@@ -91,7 +91,9 @@ bool Norm2ReaderContext::Reset(
   if (NormReaderContext::Reset(reader, column_id, doc)) {
     const auto hdr = Norm2Header::Read(header);
     if (hdr.has_value()) {
-      num_bytes = hdr.value().NumBytes();
+      auto& value = hdr.value();
+      num_bytes = value.NumBytes();
+      max_num_bytes = value.MaxNumBytes();
       return true;
     }
   }

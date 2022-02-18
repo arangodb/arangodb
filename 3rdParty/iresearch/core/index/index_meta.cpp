@@ -32,7 +32,7 @@ namespace iresearch {
  * segment_meta
  * ------------------------------------------------------------------*/
 
-segment_meta::segment_meta(const string_ref& name, format::ptr codec)
+segment_meta::segment_meta(string_ref name, format::ptr codec)
   : name(name.c_str(), name.size()),
     codec(codec),
     column_store(false) {

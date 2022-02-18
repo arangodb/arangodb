@@ -44,13 +44,13 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 /*static*/ bool attributes::exists(
-    const string_ref& name,
+    string_ref name,
     bool load_library /*= true*/) {
   return static_cast<bool>(attribute_register::instance().get(name, load_library));
 }
 
 /*static*/ type_info attributes::get(
-    const string_ref& name,
+    string_ref name,
     bool load_library /*= true*/) noexcept {
   try {
     return attribute_register::instance().get(name, load_library);

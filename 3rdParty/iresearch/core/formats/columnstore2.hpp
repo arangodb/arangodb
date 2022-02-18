@@ -354,8 +354,8 @@ enum class Version : int32_t {
   kMax = kMin
 };
 
-IRESEARCH_API irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
-IRESEARCH_API irs::columnstore_reader::ptr make_reader();
+irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
+irs::columnstore_reader::ptr make_reader();
 
 } // columnstore2
 } // iresearch

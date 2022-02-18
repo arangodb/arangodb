@@ -9,7 +9,7 @@ endif()
 ### set required standard version
 ################################################################################
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ################################################################################
@@ -106,13 +106,15 @@ if (MSVC)
   # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
   # MSVC2017.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
-  
+
   add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
   # min/max macros interferes with our codebase
   add_definitions(-DNOMINMAX)
-  
+
+  add_definitions(-D_USE_MATH_DEFINES)
+
   # we don't want obvious warning
   add_compile_options(/wd4324)
 
@@ -127,6 +129,10 @@ elseif (NOT IS_ARM)
   # allow 16 byte compare-exchange
   add_compile_options(-mcx16)
 endif()
+
+# fix strange issue with utf_8_to_32_iterator failing
+# to follow std::bidirectional_iterator concept
+add_definitions(-DBOOST_TEXT_DISABLE_CONCEPTS)
 
 ################################################################################
 ### setup clang-tidy
