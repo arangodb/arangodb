@@ -1,5 +1,10 @@
 devel
 -----
+
+* Added a log message that appears upon starting arangod that shows the number 
+  of the parent process id and, if able to acknowledge it, the name of the 
+  parent process.
+
 * Support JSON schema objects for documenting Foxx endpoints.
 
 * Fixed an assertion failure which could occur when there was an error in
