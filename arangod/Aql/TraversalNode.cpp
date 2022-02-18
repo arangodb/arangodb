@@ -1069,8 +1069,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   PathValidatorOptions validatorOptions{opts->_tmpVar,
                                         opts->getExpressionCtx()};
-
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() && !isSmart()) {
+    // Note: In case we're smart, we are NOT allowed to initialize the
+    // ClusterProvider.
     auto clusterBaseProviderOptions =
         getClusterBaseProviderOptions(opts, filterConditionVariables);
 
@@ -1091,19 +1092,56 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         singleServerBaseProviderOptions =
             getSingleServerBaseProviderOptions(opts, filterConditionVariables);
 
+    if (isSmart() && ServerState::instance()->isCoordinator()) {
+      /*
+       * Ok this whole file is causing a lot of headache:
+       *
+       * We do have too many cases. The flow is not clear anymore.
+       * This is caused by (isSmart(), isDisjoint(), isCluster(),
+       * isSingleServer()) and so on. This needs to be cleaned up before we
+       * merge back. Cannot stay like this(!).
+       *
+       * This particular if statement here is required as in a cluster
+       * environment where we do have a SmartGraph - we are not allowed to parse
+       * a local traversal enumerator on the coordinator side - therefore we
+       * have to manually force the refactor flag to be set to false.
+       *
+       * This needs to be done as we did not refactor the Coordinator side of a
+       * SmartGraph at all. This will be the next step.
+       *
+       */
+      const bool forceIsRefactor = false;
 
-    auto executorInfos = TraversalExecutorInfos(
-        std::move(traverser), outputRegisterMapping, getStartVertex(),
-        inputRegister, std::move(filterConditionVariables), plan()->getAst(),
-        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
-        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-        std::move(validatorOptions),
-        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-                                                   opts->maxDepth},
-        opts, std::move(singleServerBaseProviderOptions));
+      arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
+          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+          filterConditionVariables, opts->collectionToShard()};
 
-    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+      auto executorInfos = TraversalExecutorInfos(
+          std::move(traverser), outputRegisterMapping, getStartVertex(),
+          inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+          opts->uniqueVertices, opts->uniqueEdges, opts->mode, forceIsRefactor,
+          opts->defaultWeight, opts->weightAttribute, opts->trx(),
+          opts->query(), std::move(validatorOptions),
+          arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                     opts->maxDepth},
+          opts, std::move(baseProviderOptions));
+
+      return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    } else {
+      auto executorInfos = TraversalExecutorInfos(
+          std::move(traverser), outputRegisterMapping, getStartVertex(),
+          inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+          opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+          opts->defaultWeight, opts->weightAttribute, opts->trx(),
+          opts->query(), std::move(validatorOptions),
+          arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                     opts->maxDepth},
+          opts, std::move(singleServerBaseProviderOptions));
+
+      return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    }
   }
 }
 
