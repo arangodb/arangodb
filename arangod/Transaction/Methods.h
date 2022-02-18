@@ -380,13 +380,18 @@ class Methods {
   CollectionNameResolver const* resolver() const;
 
 #ifndef USE_ENTERPRISE
-  bool skipInaccessible() const { return false; }
-  bool isInaccessibleCollection(DataSourceId /*cid*/) { return false; }
-  bool isInaccessibleCollection(std::string_view /*cname*/) { return false; }
+  [[nodiscard]] bool skipInaccessible() const { return false; }
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const {
+    return false;
+  }
+  [[nodiscard]] bool isInaccessibleCollection(
+      std::string_view /*cname*/) const {
+    return false;
+  }
 #else
-  bool skipInaccessible() const;
-  bool isInaccessibleCollection(DataSourceId /*cid*/);
-  bool isInaccessibleCollection(std::string_view /*cname*/);
+  [[nodiscard]] bool skipInaccessible() const;
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const;
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view /*cname*/) const;
 #endif
 
   static ErrorCode validateSmartJoinAttribute(

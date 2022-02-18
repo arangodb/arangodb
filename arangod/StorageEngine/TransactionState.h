@@ -266,8 +266,8 @@ class TransactionState {
 
 #ifdef USE_ENTERPRISE
   void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
-  [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid);
-  [[nodiscard]] bool isInaccessibleCollection(std::string_view cname);
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid) const;
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view cname) const;
 #endif
 
   /// @brief roll a new transaction ID on the coordintor. Use this method
