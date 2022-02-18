@@ -82,7 +82,9 @@ class Projections {
   Projections(Projections const&) = default;
   Projections& operator=(Projections const&) = default;
 
-  /// @brief determine if there is covering support by indexes passed
+  static bool isCoveringIndexPosition(uint16_t position) noexcept;
+
+  /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
                           std::shared_ptr<arangodb::Index> const& index);
 

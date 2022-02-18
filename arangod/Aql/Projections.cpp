@@ -92,6 +92,10 @@ Projections::Projections(
   init();
 }
 
+bool Projections::isCoveringIndexPosition(uint16_t position) noexcept {
+  return position != kNoCoveringIndexPosition;
+}
+
 /// @brief set the index context for projections using an index
 void Projections::setCoveringContext(
     DataSourceId const& id, std::shared_ptr<arangodb::Index> const& index) {
@@ -114,7 +118,7 @@ uint16_t Projections::coveringIndexPosition(
 
   for (auto const& it : _projections) {
     if (it.type == type) {
-      TRI_ASSERT(it.coveringIndexPosition != kNoCoveringIndexPosition);
+      TRI_ASSERT(isCoveringIndexPosition(it.coveringIndexPosition));
       return it.coveringIndexPosition;
     }
   }
@@ -226,7 +230,7 @@ void Projections::toVelocyPackFromIndex(
       // populate the result with the projection values. this case will
       // be triggered for indexes that can be set up on any number of
       // attributes (persistent/hash/skiplist)
-      TRI_ASSERT(it.coveringIndexPosition != kNoCoveringIndexPosition);
+      TRI_ASSERT(isCoveringIndexPosition(it.coveringIndexPosition));
       VPackSlice found = covering.at(it.coveringIndexPosition);
       if (found.isNone()) {
         found = VPackSlice::nullSlice();

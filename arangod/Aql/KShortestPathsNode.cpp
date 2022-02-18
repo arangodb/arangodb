@@ -551,8 +551,12 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildIndexes(
     // if the call to getBestIndexHandleForFilterCondition modifies it.
     std::string const conditionString = clonedCondition->toString();
 #endif
+    // arbitrary value for "number of edges in collection" used here. the
+    // actual value does not matter much. 1000 has historically worked fine.
+    constexpr size_t itemsInCollection = 1000;
+
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
-        *_edgeColls[i], clonedCondition, options()->tmpVar(), 1000,
+        *_edgeColls[i], clonedCondition, options()->tmpVar(), itemsInCollection,
         aql::IndexHint(), indexToUse, onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

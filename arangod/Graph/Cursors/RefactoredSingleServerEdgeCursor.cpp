@@ -181,6 +181,8 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
         coveringPosition = edgeProjections.coveringIndexPosition(
             aql::AttributeNamePath::Type::FromAttribute);
       }
+
+      TRI_ASSERT(aql::Projections::isCoveringIndexPosition(coveringPosition));
     }
 
     _coveringIndexPosition = coveringPosition;
@@ -310,7 +312,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     uint16_t coveringPosition = lookupInfo.coveringIndexPosition();
 
     if (!_requiresFullDocument &&
-        coveringPosition != aql::Projections::kNoCoveringIndexPosition) {
+        aql::Projections::isCoveringIndexPosition(coveringPosition)) {
       // use covering index and projections
       cursor.allCovering([&](LocalDocumentId const& token,
                              IndexIteratorCoveringData& covering) {

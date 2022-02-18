@@ -193,7 +193,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
         return false;
       }
     } else {
-      if (coveringPosition != aql::Projections::kNoCoveringIndexPosition) {
+      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
         bool operationSuccessful = false;
         cursor->nextCovering(
             [&](LocalDocumentId const& token,
@@ -265,7 +265,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
       LogicalCollection* collection = cursor->collection();
       auto cid = collection->id();
 
-      if (coveringPosition != aql::Projections::kNoCoveringIndexPosition) {
+      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
         // thanks AppleClang for having to declare this extra variable!
         uint16_t cv = coveringPosition;
 
@@ -408,6 +408,8 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
         coveringPosition = edgeProjections.coveringIndexPosition(
             aql::AttributeNamePath::Type::FromAttribute);
       }
+
+      TRI_ASSERT(aql::Projections::isCoveringIndexPosition(coveringPosition));
     }
 
     csrs.emplace_back(

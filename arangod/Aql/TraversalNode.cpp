@@ -623,8 +623,12 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     aql::AstNode* indexCondition = condition->clone(ast);
     std::shared_ptr<Index> indexToUse;
 
+    // arbitrary value for "number of edges in collection" used here. the
+    // actual value does not matter much. 1000 has historically worked fine.
+    constexpr size_t itemsInCollection = 1000;
+
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
-        *_edgeColls[i], indexCondition, options()->tmpVar(), 1000,
+        *_edgeColls[i], indexCondition, options()->tmpVar(), itemsInCollection,
         aql::IndexHint(), indexToUse, onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

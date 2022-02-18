@@ -397,8 +397,12 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  // arbitrary value for "number of edges in collection" used here. the
+  // actual value does not matter much. 1000 has historically worked fine.
+  constexpr size_t itemsInCollection = 1000;
+
   bool res = aql::utils::getBestIndexHandleForFilterCondition(
-      *coll, info.indexCondition, _tmpVar, 1000, aql::IndexHint(),
+      *coll, info.indexCondition, _tmpVar, itemsInCollection, aql::IndexHint(),
       info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
