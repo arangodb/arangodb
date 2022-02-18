@@ -1,5 +1,10 @@
 devel
 -----
+
+* Parallelize applying of revision tree changes with fetching next revision
+  tree range in incremental collection replication for collections created 
+  with ArangoDB 3.8 and higher.
+
 * Support JSON schema objects for documenting Foxx endpoints.
 
 * Sorted out various geo problems:
