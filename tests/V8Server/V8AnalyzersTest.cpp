@@ -99,11 +99,11 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 
     return nullptr;
   }
-  static ptr make(irs::string_ref const&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref const& args, std::string& out) {
+  static bool normalize(irs::string_ref args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -125,7 +125,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool reset(irs::string_ref data) override { return true; }
 
  private:
   irs::frequency _attr;

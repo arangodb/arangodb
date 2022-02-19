@@ -47,7 +47,7 @@ add_custom_target(pyresearch-install
 )
 else()
 add_custom_target(pyresearch
-  DEPENDS _pyresearch ${IResearch_TARGET_NAME}-shared
+  DEPENDS _pyresearch ${IResearch_TARGET_NAME}-static
   COMMAND ${Python_EXECUTABLE} ${SETUP_PY_OUT} build_ext --inplace
 )
 add_custom_target(pyresearch-install

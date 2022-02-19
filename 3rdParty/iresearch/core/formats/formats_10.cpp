@@ -150,8 +150,8 @@ inline void prepare_output(
     std::string& str,
     index_output::ptr& out,
     const flush_state& state,
-    const string_ref& ext,
-    const string_ref& format,
+    string_ref ext,
+    string_ref format,
     const int32_t version) {
   assert(!out);
   file_name(str, state.name, ext);
@@ -171,8 +171,8 @@ inline void prepare_input(
     index_input::ptr& in,
     IOAdvice advice,
     const reader_state& state,
-    const string_ref& ext,
-    const string_ref& format,
+    string_ref ext,
+    string_ref format,
     const int32_t min_ver,
     const int32_t max_ver ) {
   assert(!in);
@@ -375,7 +375,7 @@ class postings_writer_base : public irs::postings_writer {
   struct pay_buffer : skip_buffer {
     using ptr = std::unique_ptr<pay_buffer>;
 
-    void push_payload(uint32_t i, const bytes_ref& pay) {
+    void push_payload(uint32_t i, bytes_ref pay) {
       if (!pay.empty()) {
         pay_buf_.append(pay.c_str(), pay.size());
       }
@@ -1968,7 +1968,7 @@ struct index_meta_reader final: public irs::index_meta_reader {
   virtual void read(
     const directory& dir,
     index_meta& meta,
-    const string_ref& filename = string_ref::NIL) override; // null == use meta
+    string_ref filename = string_ref::NIL) override; // null == use meta
 }; // index_meta_reader
 
 template<>
@@ -2124,7 +2124,7 @@ bool index_meta_reader::last_segments_file(const directory& dir, std::string& ou
 void index_meta_reader::read(
     const directory& dir,
     index_meta& meta,
-    const string_ref& filename /*= string_ref::NIL*/) {
+    string_ref filename /*= string_ref::NIL*/) {
 
   const std::string meta_file = filename.null()
     ? file_name<irs::index_meta_reader>(meta)
@@ -2265,13 +2265,13 @@ struct segment_meta_reader final : public irs::segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::NIL) override; // null == use meta
+    string_ref filename = string_ref::NIL) override; // null == use meta
 }; // segment_meta_reader
 
 void segment_meta_reader::read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename /*= string_ref::NIL*/) {
+    string_ref filename /*= string_ref::NIL*/) {
 
   const std::string meta_file = filename.null()
     ? file_name<irs::segment_meta_writer>(meta)

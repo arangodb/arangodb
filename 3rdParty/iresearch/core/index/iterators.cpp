@@ -129,7 +129,7 @@ struct empty_field_iterator final : irs::field_iterator {
     return EMPTY_TERM_READER;
   }
 
-  virtual bool seek(const irs::string_ref&) override {
+  virtual bool seek(irs::string_ref) override {
     return false;
   }
 
@@ -170,7 +170,7 @@ struct empty_column_iterator final : irs::column_iterator {
     return EMPTY_COLUMN_READER;
   }
 
-  virtual bool seek(const irs::string_ref&) override {
+  virtual bool seek(irs::string_ref) override {
     return false;
   }
 

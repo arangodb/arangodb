@@ -1,6 +1,6 @@
 // Tencent is pleased to support the open source community by making RapidJSON available.
 // 
-// Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip. All rights reserved.
+// Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
 //
 // Licensed under the MIT License (the "License"); you may not use this file except
 // in compliance with the License. You may obtain a copy of the License at
@@ -17,7 +17,7 @@
 
 #include "rapidjson.h"
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
 RAPIDJSON_DIAG_PUSH
 RAPIDJSON_DIAG_OFF(4244) // conversion from 'type1' to 'type2', possible loss of data
 RAPIDJSON_DIAG_OFF(4702)  // unreachable code
@@ -144,9 +144,9 @@ struct UTF8 {
 
     template <typename InputStream>
     static bool Decode(InputStream& is, unsigned* codepoint) {
-#define COPY() c = is.Take(); *codepoint = (*codepoint << 6) | (static_cast<unsigned char>(c) & 0x3Fu)
-#define TRANS(mask) result &= ((GetRange(static_cast<unsigned char>(c)) & mask) != 0)
-#define TAIL() COPY(); TRANS(0x70)
+#define RAPIDJSON_COPY() c = is.Take(); *codepoint = (*codepoint << 6) | (static_cast<unsigned char>(c) & 0x3Fu)
+#define RAPIDJSON_TRANS(mask) result &= ((GetRange(static_cast<unsigned char>(c)) & mask) != 0)
+#define RAPIDJSON_TAIL() RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x70)
         typename InputStream::Ch c = is.Take();
         if (!(c & 0x80)) {
             *codepoint = static_cast<unsigned char>(c);
@@ -161,44 +161,44 @@ struct UTF8 {
         }
         bool result = true;
         switch (type) {
-        case 2: TAIL(); return result;
-        case 3: TAIL(); TAIL(); return result;
-        case 4: COPY(); TRANS(0x50); TAIL(); return result;
-        case 5: COPY(); TRANS(0x10); TAIL(); TAIL(); return result;
-        case 6: TAIL(); TAIL(); TAIL(); return result;
-        case 10: COPY(); TRANS(0x20); TAIL(); return result;
-        case 11: COPY(); TRANS(0x60); TAIL(); TAIL(); return result;
+        case 2: RAPIDJSON_TAIL(); return result;
+        case 3: RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
+        case 4: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x50); RAPIDJSON_TAIL(); return result;
+        case 5: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x10); RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
+        case 6: RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
+        case 10: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x20); RAPIDJSON_TAIL(); return result;
+        case 11: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x60); RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
         default: return false;
         }
-#undef COPY
-#undef TRANS
-#undef TAIL
+#undef RAPIDJSON_COPY
+#undef RAPIDJSON_TRANS
+#undef RAPIDJSON_TAIL
     }
 
     template <typename InputStream, typename OutputStream>
     static bool Validate(InputStream& is, OutputStream& os) {
-#define COPY() os.Put(c = is.Take())
-#define TRANS(mask) result &= ((GetRange(static_cast<unsigned char>(c)) & mask) != 0)
-#define TAIL() COPY(); TRANS(0x70)
+#define RAPIDJSON_COPY() os.Put(c = is.Take())
+#define RAPIDJSON_TRANS(mask) result &= ((GetRange(static_cast<unsigned char>(c)) & mask) != 0)
+#define RAPIDJSON_TAIL() RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x70)
         Ch c;
-        COPY();
+        RAPIDJSON_COPY();
         if (!(c & 0x80))
             return true;
 
         bool result = true;
         switch (GetRange(static_cast<unsigned char>(c))) {
-        case 2: TAIL(); return result;
-        case 3: TAIL(); TAIL(); return result;
-        case 4: COPY(); TRANS(0x50); TAIL(); return result;
-        case 5: COPY(); TRANS(0x10); TAIL(); TAIL(); return result;
-        case 6: TAIL(); TAIL(); TAIL(); return result;
-        case 10: COPY(); TRANS(0x20); TAIL(); return result;
-        case 11: COPY(); TRANS(0x60); TAIL(); TAIL(); return result;
+        case 2: RAPIDJSON_TAIL(); return result;
+        case 3: RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
+        case 4: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x50); RAPIDJSON_TAIL(); return result;
+        case 5: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x10); RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
+        case 6: RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
+        case 10: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x20); RAPIDJSON_TAIL(); return result;
+        case 11: RAPIDJSON_COPY(); RAPIDJSON_TRANS(0x60); RAPIDJSON_TAIL(); RAPIDJSON_TAIL(); return result;
         default: return false;
         }
-#undef COPY
-#undef TRANS
-#undef TAIL
+#undef RAPIDJSON_COPY
+#undef RAPIDJSON_TRANS
+#undef RAPIDJSON_TAIL
     }
 
     static unsigned char GetRange(unsigned char c) {
@@ -384,7 +384,7 @@ struct UTF16BE : UTF16<CharType> {
     static CharType Take(InputByteStream& is) {
         RAPIDJSON_STATIC_ASSERT(sizeof(typename InputByteStream::Ch) == 1);
         unsigned c = static_cast<unsigned>(static_cast<uint8_t>(is.Take())) << 8;
-        c |= static_cast<uint8_t>(is.Take());
+        c |= static_cast<unsigned>(static_cast<uint8_t>(is.Take()));
         return static_cast<CharType>(c);
     }
 
@@ -709,7 +709,7 @@ struct Transcoder<Encoding, Encoding> {
 
 RAPIDJSON_NAMESPACE_END
 
-#if defined(__GNUC__) || defined(_MSC_VER)
+#if defined(__GNUC__) || (defined(_MSC_VER) && !defined(__clang__))
 RAPIDJSON_DIAG_POP
 #endif
 

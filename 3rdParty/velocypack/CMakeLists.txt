@@ -3,11 +3,13 @@
 cmake_minimum_required(VERSION 3.9)
 project(velocypack CXX C)
 
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "target C++ standard")
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "target C++ standard")
 message(STATUS "Require C++${CMAKE_CXX_STANDARD}")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(UseIPO "AUTO" CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
 set_property(CACHE UseIPO PROPERTY STRINGS AUTO ON OFF)

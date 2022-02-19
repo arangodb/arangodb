@@ -73,7 +73,7 @@ ENABLE_BITMASK_ENUM(Action);
 ///        an object that represents a single ongoing transaction
 ///        non-thread safe
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API segment_writer : util::noncopyable {
+class segment_writer : util::noncopyable {
  public:
   struct update_context {
     size_t generation;
@@ -438,7 +438,6 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
   void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::deque<cached_column> cached_columns_; // pointers remain valid
   sorted_column sort_;
   update_contexts docs_context_;
@@ -455,12 +454,8 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   uint64_t tick_{0};
   bool initialized_;
   bool valid_{ true }; // current state
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // segment_writer
 
 }
-
-// segment_writer::ptr
-MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // cppcheck-suppress unknownMacro 
 
 #endif // IRESEARCH_SEGMENT_WRITER_H

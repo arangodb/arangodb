@@ -61,7 +61,7 @@ class pipeline_test_analyzer : public irs::frozen_attributes<4, irs::analysis::a
     offs_.end = static_cast<uint32_t>(term_.value.size());
     return true;
   }
-  virtual bool reset(const irs::string_ref& data) override {
+  virtual bool reset(irs::string_ref data) override {
     term_emitted = false;
     term_.value = irs::ref_cast<irs::byte_type>(data);
     return true;
@@ -121,7 +121,7 @@ class pipeline_test_analyzer2 : public irs::frozen_attributes<3, irs::analysis::
     }
     return false;
   }
-  virtual bool reset(const irs::string_ref& data) override {
+  virtual bool reset(irs::string_ref data) override {
     if (current_reset_ != resets_.end()) {
       return *(current_reset_++);
     }

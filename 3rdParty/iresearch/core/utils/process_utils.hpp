@@ -29,7 +29,7 @@
 
 namespace iresearch {
 
-IRESEARCH_API pid_t get_pid();
+pid_t get_pid();
 bool is_running(pid_t pid);
 bool is_valid_pid(const char* buf);
 
