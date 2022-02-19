@@ -385,13 +385,14 @@ class Methods {
     return false;
   }
   [[nodiscard]] bool isInaccessibleCollection(
-      std::string_view /*cname*/) const {
+      std::string const& /*cname*/) const {
     return false;
   }
 #else
   [[nodiscard]] bool skipInaccessible() const;
   [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const;
-  [[nodiscard]] bool isInaccessibleCollection(std::string_view /*cname*/) const;
+  [[nodiscard]] bool isInaccessibleCollection(
+      std::string const& /*cname*/) const;
 #endif
 
   static ErrorCode validateSmartJoinAttribute(

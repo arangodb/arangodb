@@ -38,7 +38,6 @@
 #include "VocBase/voc-types.h"
 
 #include <map>
-#include <string_view>
 #include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -267,7 +266,7 @@ class TransactionState {
 #ifdef USE_ENTERPRISE
   void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
   [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid);
-  [[nodiscard]] bool isInaccessibleCollection(std::string_view cname);
+  [[nodiscard]] bool isInaccessibleCollection(std::string const& cname);
 #endif
 
   /// @brief roll a new transaction ID on the coordintor. Use this method
