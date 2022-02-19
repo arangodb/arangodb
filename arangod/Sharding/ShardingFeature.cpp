@@ -36,8 +36,6 @@
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 

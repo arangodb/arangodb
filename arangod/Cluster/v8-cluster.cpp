@@ -24,7 +24,6 @@
 #include "v8-cluster.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"

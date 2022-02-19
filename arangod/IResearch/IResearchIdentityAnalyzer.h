@@ -26,7 +26,6 @@
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
 #include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 namespace iresearch {
