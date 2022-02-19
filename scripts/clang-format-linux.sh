@@ -18,7 +18,7 @@ pushd "$adb_path" > /dev/null
 
 changed_files_filename=".clang-format-$$.changed.tmp"
 # clean up after ourselves
-trap "rm -f $changed_files_filename" EXIT SIGINT SIGTERM SIGHUP
+trap "rm -f $changed_files_filename $changed_files_filename.sorted" EXIT SIGINT SIGTERM SIGHUP
 
 if [[ "$#" -gt 0 ]]
 then
@@ -29,7 +29,11 @@ then
   done
 else
   # no arguments given
+  # now get a list of all locally modified files
+  # add unstaged changes
   git diff --diff-filter=ACMRT --name-only -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+  # add staged changes
+  git diff --diff-filter=ACMRT --name-only HEAD -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
 
   ent_dir="enterprise"
   if [ -d "$ent_dir" ]
@@ -37,16 +41,23 @@ else
     # collect changes from enterprise repository as well
     echo "Enterprise directory: $adb_path/$ent_dir"
     pushd "$ent_dir" > /dev/null
+    # add unstaged changes
     git diff --diff-filter=ACMRT --name-only -- Enterprise tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' | sed -e "s/^/$ent_dir\//g" >> "../$changed_files_filename"
+    # add staged changes
+    git diff --diff-filter=ACMRT --name-only HEAD -- Enterprise tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' | sed -e "s/^/$ent_dir\//g" >> "../$changed_files_filename"
     popd > /dev/null
   fi
 fi
 
 if [ -s "$changed_files_filename" ]; then
-  echo "About to run formatting on the following files:"
-  cat -n "$changed_files_filename"
+  sort "$changed_files_filename" | uniq > "$changed_files_filename.sorted"
 
-  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb jsteemann/clang-format-docker:0.3 "format" "$changed_files_filename" 
+  echo 
+  echo "About to run formatting on the following files:"
+  cat -n "$changed_files_filename.sorted"
+  echo
+
+  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb jsteemann/clang-format-docker:0.3 "format" "$changed_files_filename.sorted" 
 fi
 status=$?
 
