@@ -7,5 +7,5 @@ module.exports = function (attach) {
     require('./native')(methods);
   }
 
-  return methods
+  return methods;
 };
