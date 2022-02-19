@@ -1,6 +1,9 @@
 devel
 -----
 
+* Optimize further RocksDB throttle to allow for no change on any
+  given calculation cycle.
+
 * Added a log message that appears upon starting arangod that shows the number 
   of the parent process id and, if able to acknowledge it, the name of the 
   parent process.
