@@ -105,32 +105,32 @@ inline T max_value(uint32_t bits) noexcept {
     : ~(~T(0) << bits);
 }
 
-IRESEARCH_API void pack_block(
+void pack_block(
   const uint32_t* RESTRICT first,
   uint32_t* RESTRICT out,
   const uint32_t bit) noexcept;
 
-IRESEARCH_API void pack_block(
+void pack_block(
   const uint64_t* RESTRICT first,
   uint64_t* RESTRICT out,
   const uint32_t bit) noexcept;
 
-IRESEARCH_API void unpack_block(
+void unpack_block(
   const uint32_t* RESTRICT in,
   uint32_t* RESTRICT out,
   const uint32_t bit) noexcept;
 
-IRESEARCH_API void unpack_block(
+void unpack_block(
   const uint64_t* RESTRICT in,
   uint64_t* RESTRICT out,
   const uint32_t bit) noexcept;
 
-IRESEARCH_API uint32_t fastpack_at(
+uint32_t fastpack_at(
   const uint32_t* encoded,
   const size_t i,
   const uint32_t bit) noexcept;
 
-IRESEARCH_API uint64_t fastpack_at(
+uint64_t fastpack_at(
   const uint64_t* encoded,
   const size_t i,
   const uint32_t bit) noexcept;

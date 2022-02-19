@@ -48,9 +48,7 @@ inline bool memcmp_less(
   return res < 0;
 }
 
-inline bool memcmp_less(
-    const bytes_ref& lhs,
-    const bytes_ref& rhs) noexcept {
+inline bool memcmp_less(bytes_ref lhs, bytes_ref rhs) noexcept {
   return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
@@ -74,7 +72,7 @@ struct posting {
   doc_id_t size{ 1 }; // length of postings
 };
 
-class IRESEARCH_API postings : util::noncopyable {
+class postings : util::noncopyable {
  public:
   using writer_t = byte_block_pool::inserter;
 
@@ -94,7 +92,7 @@ class IRESEARCH_API postings : util::noncopyable {
 
   /// @note on error returns std::ptr(nullptr, false)
   /// @note returned poitern remains valid until the next call
-  std::pair<posting*, bool> emplace(const bytes_ref& term);
+  std::pair<posting*, bool> emplace(bytes_ref term);
 
   bool empty() const noexcept { return map_.empty(); }
   size_t size() const noexcept { return map_.size(); }
@@ -123,11 +121,9 @@ class IRESEARCH_API postings : util::noncopyable {
 
   using map_t = flat_hash_set<term_id_eq>;
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<posting> postings_;
   map_t map_;
   writer_t& writer_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 }

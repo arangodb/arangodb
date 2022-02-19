@@ -48,8 +48,6 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
                                size_t vertexVarIdx, size_t edgeVarIdx,
                                size_t pathVarIdx);
 
-  InAndOutRowExpressionContext(InAndOutRowExpressionContext&&) = default;
-
   ~InAndOutRowExpressionContext() override = default;
 
   void setInputRow(InputAqlItemRow input);

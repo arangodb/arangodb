@@ -31,7 +31,7 @@ namespace iresearch {
 class by_prefix;
 struct filter_visitor;
 
-struct IRESEARCH_API by_prefix_filter_options {
+struct by_prefix_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief search prefix
   //////////////////////////////////////////////////////////////////////////////
@@ -50,7 +50,7 @@ struct IRESEARCH_API by_prefix_filter_options {
 /// @struct by_prefix_options
 /// @brief options for prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
+struct by_prefix_options : by_prefix_filter_options {
   using filter_type = by_prefix;
   using filter_options = by_prefix_filter_options;
 
@@ -73,7 +73,7 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
 /// @class by_prefix
 /// @brief user-side prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
+class by_prefix : public filter_base<by_prefix_options> {
  public:
   static ptr make();
 
@@ -81,14 +81,14 @@ class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
-    const bytes_ref& prefix,
+    string_ref field,
+    bytes_ref prefix,
     size_t scored_terms_limit);
 
   static void visit(
     const sub_reader& segment,
     const term_reader& reader,
-    const bytes_ref& prefix,
+    bytes_ref prefix,
     filter_visitor& visitor);
 
   using filter::prepare;

@@ -50,7 +50,7 @@ namespace iresearch {
 ///   - `value()` must return `type_limits<type_t>::eof()`
 ///
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API doc_iterator
+struct doc_iterator
     : iterator<doc_id_t>,
       attribute_provider {
   using ptr = memory::managed_ptr<doc_iterator>;
@@ -71,7 +71,7 @@ struct IRESEARCH_API doc_iterator
 /// @struct resettable_doc_iterator
 /// @brief same as `doc_iterator` but also support `reset()` operation
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API resettable_doc_iterator : doc_iterator {
+struct resettable_doc_iterator : doc_iterator {
   ////////////////////////////////////////////////////////////////////////////
   /// @brief reset iterator to initial state
   ////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ struct term_reader;
 /// @struct field_iterator
 /// @brief an iterator providing sequential and random access to indexed fields
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
+struct field_iterator : iterator<const term_reader&> {
   using ptr = memory::managed_ptr<field_iterator>;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
   /// @brief position iterator at a specified target
   /// @return if the target is found, false otherwise
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool seek(const string_ref& target) = 0;
+  virtual bool seek(string_ref target) = 0;
 }; // field_iterator
 
 struct column_reader;
@@ -105,7 +105,7 @@ struct column_reader;
 /// @struct column_iterator
 /// @brief an iterator providing sequential and random access to stored columns
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_iterator : iterator<const column_reader&> {
+struct column_iterator : iterator<const column_reader&> {
   using ptr = memory::managed_ptr<column_iterator>;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -117,14 +117,14 @@ struct IRESEARCH_API column_iterator : iterator<const column_reader&> {
   /// @brief position iterator at a specified target
   /// @return if the target is found, false otherwise
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool seek(const string_ref& name) = 0;
+  virtual bool seek(string_ref name) = 0;
 }; // column_iterator
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct term_iterator
 /// @brief an iterator providing sequential access to term dictionary
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_iterator
+struct term_iterator
     : iterator<const bytes_ref&>,
       public attribute_provider {
   using ptr = memory::managed_ptr<term_iterator>;
@@ -172,7 +172,7 @@ enum class SeekResult {
 /// @struct seek_cookie
 /// @brief implementation defined term value state
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API seek_cookie : attribute_provider {
+struct seek_cookie : attribute_provider {
   using ptr = std::unique_ptr<seek_cookie>;
 }; // seek_cookie
 
@@ -181,7 +181,7 @@ struct IRESEARCH_API seek_cookie : attribute_provider {
 /// @brief an iterator providing random and sequential access to term
 ///        dictionary
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API seek_term_iterator : term_iterator {
+struct seek_term_iterator : term_iterator {
   using ptr = memory::managed_ptr<seek_term_iterator>;
   using cookie_ptr = seek_cookie::ptr;
 

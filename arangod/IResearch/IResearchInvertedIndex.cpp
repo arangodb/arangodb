@@ -61,8 +61,7 @@ bool lazy_filter_bitset_iterator::next() {
     word_ = 0;
     return false;
   }
-  const irs::doc_id_t delta =
-      irs::doc_id_t(irs::math::math_traits<lazy_bitset::word_t>::ctz(word_));
+  const irs::doc_id_t delta = std::countr_zero(word_);
   assert(delta < irs::bits_required<lazy_bitset::word_t>());
   word_ >>= (delta + 1);
   doc_.value += 1 + delta;
@@ -259,7 +258,7 @@ struct CoveringValue {
     }
   }
 
-  VPackSlice get(irs::doc_id_t doc, size_t index) {
+  VPackSlice get(irs::doc_id_t doc, size_t index) const {
     if (itr && doc == itr->seek(doc)) {
       size_t i = 0;
       auto const totalSize = value->value.size();
@@ -333,7 +332,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
 
   void seek(irs::doc_id_t doc) { _doc = doc; }
 
-  VPackSlice at(size_t i) override { return get(i); }
+  VPackSlice at(size_t i) const override { return get(i); }
 
   bool isArray() const noexcept override { return true; }
 
@@ -345,7 +344,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
   // for prototype cloning
   CoveringVector() = default;
 
-  VPackSlice get(size_t i) {
+  VPackSlice get(size_t i) const {
     TRI_ASSERT(irs::doc_limits::valid(_doc));
     size_t column{0};
     // FIXME: check for the performance bottleneck!
@@ -359,6 +358,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
     }
     return VPackSlice::noneSlice();
   }
+
   std::vector<std::pair<size_t, CoveringValue>> _coverage;
   irs::doc_id_t _doc{irs::doc_limits::invalid()};
   velocypack::ValueLength _length{0};

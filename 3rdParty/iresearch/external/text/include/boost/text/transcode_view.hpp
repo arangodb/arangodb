@@ -199,8 +199,8 @@ namespace boost { namespace text {
             Defined on Windows only. */
         friend std::wostream & operator<<(std::wostream & os, utf8_view v)
         {
-            boost::text::transcode_utf_8_to_16(
-                v.begin(), v.end(), std::ostreambuf_iterator<wchar_t>(os));
+            detail::transcode_utf_8_to_16<false>(
+                v.begin(), v.end(), 0, std::ostreambuf_iterator<wchar_t>(os));
             return os;
         }
 #endif

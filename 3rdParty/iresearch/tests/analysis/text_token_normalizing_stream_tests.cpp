@@ -237,14 +237,15 @@ TEST_F(normalizing_token_stream_tests, test_load) {
 
   // remove accent 
   {
-    const std::string data = u8"\u00F6\u00F5";
+    constexpr std::u8string_view data{u8"\u00F6\u00F5"};
+    const auto ref = irs::ref_cast<char>(data);
 
     auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(),
       "{\"locale\":\"de_DE.UTF8\", \"case\":\"lower\", \"accent\":false}");
    
     ASSERT_NE(nullptr, stream);
-    ASSERT_TRUE(stream->reset(data));
+    ASSERT_TRUE(stream->reset(ref));
     auto* offset = irs::get<irs::offset>(*stream);
     auto* payload = irs::get<irs::payload>(*stream);
     ASSERT_EQ(nullptr, payload);
@@ -254,7 +255,7 @@ TEST_F(normalizing_token_stream_tests, test_load) {
     
     ASSERT_EQ(0, offset->start);
     ASSERT_EQ(data.size(), offset->end);
-    ASSERT_EQ(u8"\u006F\u006F", irs::ref_cast<char>(term->value));
+    ASSERT_TRUE(u8"\u006F\u006F" == irs::ref_cast<char8_t>(term->value));
     
     ASSERT_FALSE(stream->next());
   }

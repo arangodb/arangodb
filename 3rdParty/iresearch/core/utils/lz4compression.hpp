@@ -46,12 +46,12 @@ typedef std::unique_ptr<void, LZ4_streamDecode_deleter> lz4stream_decode;
 lz4stream lz4_make_stream();
 lz4stream_decode lz4_make_stream_decode();
 
-struct IRESEARCH_API lz4 {
+struct lz4 {
   static constexpr string_ref type_name() noexcept {
     return "iresearch::compression::lz4";
   }
 
-  class IRESEARCH_API lz4compressor final : public compression::compressor {
+  class lz4compressor final : public compression::compressor {
    public:
     explicit lz4compressor(int acceleration = 0) noexcept
       : acceleration_(acceleration) {
@@ -68,7 +68,7 @@ struct IRESEARCH_API lz4 {
     const int acceleration_{0}; // 0 - default acceleration
   };
 
-  class IRESEARCH_API lz4decompressor final : public compression::decompressor {
+  class lz4decompressor final : public compression::decompressor {
    public:
     virtual bytes_ref decompress(
       const byte_type* src, size_t src_size,

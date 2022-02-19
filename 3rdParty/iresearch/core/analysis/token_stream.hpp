@@ -30,7 +30,7 @@
 
 namespace iresearch {
 
-class IRESEARCH_API token_stream : public attribute_provider {
+class token_stream : public attribute_provider {
  public:
   using ptr = std::unique_ptr<token_stream>;
 

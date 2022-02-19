@@ -53,7 +53,7 @@ class token_stopwords_stream final
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(const string_ref& data) override;
+  virtual bool reset(string_ref data) override;
 
  private:
   using attributes = std::tuple<

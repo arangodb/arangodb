@@ -56,10 +56,10 @@ enum class Version : int32_t {
   MAX = 1,
 }; // Version
 
-IRESEARCH_API irs::columnstore_writer::ptr make_writer(
+irs::columnstore_writer::ptr make_writer(
     Version version,
     ColumnMetaVersion meta_version);
-IRESEARCH_API irs::columnstore_reader::ptr make_reader();
+irs::columnstore_reader::ptr make_reader();
 
 } // columnstore
 } // iresearch
