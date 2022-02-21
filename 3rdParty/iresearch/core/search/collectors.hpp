@@ -149,10 +149,8 @@ class collectors_base {
   }
 
  protected:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::vector<Collector> collectors_;
   const order::prepared* buckets_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // collectors_base
 
 ////////////////////////////////////////////////////////////////////////////
@@ -166,7 +164,7 @@ class field_collector_wrapper
   using collector_type = sort::field_collector;
   using base_type = collector_wrapper<field_collector_wrapper, collector_type>;
 
-  IRESEARCH_API static collector_type& noop() noexcept;
+  static collector_type& noop() noexcept;
 
   field_collector_wrapper() = default;
   field_collector_wrapper(field_collector_wrapper&&) = default;
@@ -188,7 +186,7 @@ static_assert(std::is_nothrow_move_assignable_v<field_collector_wrapper>);
 /// @brief create an field level index statistics compound collector for
 ///        all buckets
 ////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API field_collectors : public collectors_base<field_collector_wrapper> {
+class field_collectors : public collectors_base<field_collector_wrapper> {
  public:
   explicit field_collectors(const order::prepared& buckets);
   field_collectors(field_collectors&&) = default;
@@ -235,7 +233,7 @@ class term_collector_wrapper
   using collector_type = sort::term_collector;
   using base_type = collector_wrapper<term_collector_wrapper, collector_type>;
 
-  IRESEARCH_API static collector_type& noop() noexcept;
+  static collector_type& noop() noexcept;
 
   term_collector_wrapper() = default;
   term_collector_wrapper(term_collector_wrapper&&) = default;
@@ -258,7 +256,7 @@ static_assert(std::is_nothrow_move_assignable_v<term_collector_wrapper>);
 ///        all buckets
 /// @param terms_count number of term_collectors to allocate
 ////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API term_collectors : public collectors_base<term_collector_wrapper> {
+class term_collectors : public collectors_base<term_collector_wrapper> {
  public:
   term_collectors(const order::prepared& buckets, size_t size);
   term_collectors(term_collectors&&) = default;

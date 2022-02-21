@@ -44,6 +44,7 @@
 #include "search/term_filter.hpp"
 
 #include "utils/log.hpp"
+#include "Basics/DownCast.h"
 
 namespace {
 
@@ -189,7 +190,7 @@ inline bool canHandleValue(
 
 // returns 'context' in case if can't find the specified 'field'
 inline arangodb::iresearch::FieldMeta const* findMeta(
-    irs::string_ref const& key, arangodb::iresearch::FieldMeta const* context) {
+    irs::string_ref key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
   auto const* meta = context->_fields.findPtr(key);
@@ -311,13 +312,7 @@ namespace iresearch {
   field._value =
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
   field._analyzer = StringStreamPool.emplace(AnalyzerPool::StringStreamTag());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream =
-      dynamic_cast<irs::string_token_stream&>(*field._analyzer.get());
-#else
-  auto& sstream =
-      static_cast<irs::string_token_stream&>(*field._analyzer.get());
-#endif
+  auto& sstream = basics::downCast<irs::string_token_stream>(*field._analyzer);
   sstream.reset(field._value);
 }
 
@@ -488,13 +483,9 @@ bool FieldIterator::setValue(VPackSlice const value,
       setBoolValue(_currentTypedAnalyzerValue->value);
       _primitiveTypeResetter = [](irs::token_stream* stream,
                                   VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
-        TRI_ASSERT(bool_stream);
-#else
-        auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
-#endif
+        TRI_ASSERT(stream);
         TRI_ASSERT(slice.isBool());
+        auto* bool_stream = basics::downCast<irs::boolean_token_stream>(stream);
         bool_stream->reset(slice.getBool());
       };
     } break;
@@ -509,13 +500,10 @@ bool FieldIterator::setValue(VPackSlice const value,
       setNumericValue(_currentTypedAnalyzerValue->value);
       _primitiveTypeResetter = [](irs::token_stream* stream,
                                   VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
-        TRI_ASSERT(number_stream);
-#else
-        auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
-#endif
+        TRI_ASSERT(stream);
         TRI_ASSERT(slice.isNumber());
+        auto* number_stream =
+            basics::downCast<irs::numeric_token_stream>(stream);
         number_stream->reset(slice.getNumber<double>());
       };
     } break;
@@ -973,13 +961,9 @@ bool InvertedIndexFieldIterator::setValue(
       setBoolValue(_currentTypedAnalyzerValue->value);
       _primitiveTypeResetter = [](irs::token_stream* stream,
                                   VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
-        TRI_ASSERT(bool_stream);
-#else
-        auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
-#endif
+        TRI_ASSERT(stream);
         TRI_ASSERT(slice.isBool());
+        auto* bool_stream = basics::downCast<irs::boolean_token_stream>(stream);
         bool_stream->reset(slice.getBool());
       };
     } break;
@@ -994,13 +978,10 @@ bool InvertedIndexFieldIterator::setValue(
       setNumericValue(_currentTypedAnalyzerValue->value);
       _primitiveTypeResetter = [](irs::token_stream* stream,
                                   VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
-        TRI_ASSERT(number_stream);
-#else
-        auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
-#endif
+        TRI_ASSERT(stream);
         TRI_ASSERT(slice.isNumber());
+        auto* number_stream =
+            basics::downCast<irs::numeric_token_stream>(stream);
         number_stream->reset(slice.getNumber<double>());
       };
     } break;

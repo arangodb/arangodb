@@ -41,14 +41,14 @@ class delimited_token_stream final
  public:
   static constexpr string_ref type_name() noexcept { return "delimiter"; }
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& delimiter);
+  static ptr make(string_ref delimiter);
 
-  explicit delimited_token_stream(const string_ref& delimiter);
+  explicit delimited_token_stream(string_ref delimiter);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
   virtual bool next() override;
-  virtual bool reset(const string_ref& data) override;
+  virtual bool reset(string_ref data) override;
 
  private:
   using attributes = std::tuple<

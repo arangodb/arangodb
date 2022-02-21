@@ -43,7 +43,7 @@ struct sub_reader;
 /// @struct index_reader
 /// @brief generic interface for accessing an index
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API index_reader {
+struct index_reader {
   class reader_iterator {
    public:
     using iterator_category = std::forward_iterator_tag;
@@ -124,7 +124,7 @@ struct IRESEARCH_API index_reader {
 /// @struct sub_reader
 /// @brief generic interface for accessing an index segment
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API sub_reader : index_reader {
+struct sub_reader : index_reader {
   using ptr = std::shared_ptr<const sub_reader>;
 
   static const sub_reader& empty() noexcept;
@@ -169,7 +169,5 @@ void visit(const index_reader& index, string_ref field,
 }
 
 }
-// sub_reader::value_visitor_f
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // cppcheck-suppress unknownMacro 
 
 #endif

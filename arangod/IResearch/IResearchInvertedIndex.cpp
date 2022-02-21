@@ -29,6 +29,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
@@ -60,8 +61,7 @@ bool lazy_filter_bitset_iterator::next() {
     word_ = 0;
     return false;
   }
-  const irs::doc_id_t delta =
-      irs::doc_id_t(irs::math::math_traits<lazy_bitset::word_t>::ctz(word_));
+  const irs::doc_id_t delta = std::countr_zero(word_);
   assert(delta < irs::bits_required<lazy_bitset::word_t>());
   word_ >>= (delta + 1);
   doc_.value += 1 + delta;
@@ -258,7 +258,7 @@ struct CoveringValue {
     }
   }
 
-  VPackSlice get(irs::doc_id_t doc, size_t index) {
+  VPackSlice get(irs::doc_id_t doc, size_t index) const {
     if (itr && doc == itr->seek(doc)) {
       size_t i = 0;
       auto const totalSize = value->value.size();
@@ -332,7 +332,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
 
   void seek(irs::doc_id_t doc) { _doc = doc; }
 
-  VPackSlice at(size_t i) override { return get(i); }
+  VPackSlice at(size_t i) const override { return get(i); }
 
   bool isArray() const noexcept override { return true; }
 
@@ -344,7 +344,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
   // for prototype cloning
   CoveringVector() = default;
 
-  VPackSlice get(size_t i) {
+  VPackSlice get(size_t i) const {
     TRI_ASSERT(irs::doc_limits::valid(_doc));
     size_t column{0};
     // FIXME: check for the performance bottleneck!
@@ -358,6 +358,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
     }
     return VPackSlice::noneSlice();
   }
+
   std::vector<std::pair<size_t, CoveringValue>> _coverage;
   irs::doc_id_t _doc{irs::doc_limits::invalid()};
   velocypack::ValueLength _length{0};
@@ -448,11 +449,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     auto& state = *(_trx->state());
 
     // TODO FIXME find a better way to look up a State
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* ctx = dynamic_cast<IResearchSnapshotState*>(state.cookie(_index));
-#else
-    auto* ctx = static_cast<IResearchSnapshotState*>(state.cookie(_index));
-#endif
+    auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(_index));
     if (!ctx) {
       auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();

@@ -172,7 +172,7 @@ void FollowerStateManager<S>::ingestLogData() {
 
   LOG_TOPIC("1d843", TRACE, Logger::REPLICATED_STATE)
       << "creating follower state instance";
-  auto hiddenState = factory->constructFollower();
+  auto hiddenState = factory->constructFollower(std::move(core));
 
   LOG_TOPIC("ea777", TRACE, Logger::REPLICATED_STATE)
       << "check if new snapshot is required";
@@ -248,8 +248,7 @@ template<typename S>
 FollowerStateManager<S>::FollowerStateManager(
     std::shared_ptr<ReplicatedStateBase> parent,
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token,
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logFollower(std::move(logFollower)),
@@ -262,10 +261,16 @@ FollowerStateManager<S>::FollowerStateManager(
 
 template<typename S>
 auto FollowerStateManager<S>::getStatus() const -> StateStatus {
-  if (token == nullptr || core == nullptr) {
+  if (_didResign) {
     TRI_ASSERT(core == nullptr && token == nullptr);
     throw replicated_log::ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+  } else {
+    // Note that `this->core` is passed into the state when the follower is
+    // started (more particularly, when the follower state is created), but
+    // `this->state` is only set after replaying the log has finished.
+    // Thus both can be null here.
+    TRI_ASSERT(token != nullptr);
   }
   FollowerStatus status;
   status.managerState.state = internalState;
@@ -277,23 +282,29 @@ auto FollowerStateManager<S>::getStatus() const -> StateStatus {
 }
 
 template<typename S>
-auto FollowerStateManager<S>::getFollowerState()
+auto FollowerStateManager<S>::getFollowerState() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
-  if (state == nullptr) {
-    // TODO better error code
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
-  }
   return state;
 }
 
 template<typename S>
 auto FollowerStateManager<S>::resign() && noexcept
-    -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+    -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<ReplicatedStateToken>> {
   LOG_TOPIC("63622", TRACE, Logger::REPLICATED_STATE)
       << "Follower manager resigning";
+  auto core = std::invoke([&] {
+    if (state != nullptr) {
+      TRI_ASSERT(this->core == nullptr);
+      return std::move(*state).resign();
+    } else {
+      return std::move(this->core);
+    }
+  });
   TRI_ASSERT(core != nullptr);
   TRI_ASSERT(token != nullptr);
+  TRI_ASSERT(!_didResign);
+  _didResign = true;
   return {std::move(core), std::move(token)};
 }
 }  // namespace arangodb::replication2::replicated_state

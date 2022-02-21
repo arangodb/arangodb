@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 #include "IResearchViewOptimizerRules.h"
 
@@ -52,6 +53,7 @@
 
 #include <utils/misc.hpp>
 
+using namespace arangodb;
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -60,24 +62,20 @@ namespace {
 
 inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl =
-        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.primarySort();
   }
-
-  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(view);
   return viewImpl.primarySort();
 }
 
 inline IResearchViewStoredValues const& storedValues(
     arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl =
-        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(view);
     return viewImpl.storedValues();
   }
-
-  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  auto const& viewImpl = basics::downCast<IResearchView>(view);
   return viewImpl.storedValues();
 }
 
@@ -743,7 +741,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     }
 
     // find scorers that have to be evaluated by a view
-    scorerReplacer.extract(viewNode.outVariable(), scorers);
+    scorerReplacer.extract(viewNode, scorers);
     viewNode.scorers(std::move(scorers));
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {

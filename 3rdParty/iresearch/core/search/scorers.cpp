@@ -40,7 +40,7 @@ struct entry_key_t {
   const irs::string_ref name_;
 
   entry_key_t(
-      const irs::string_ref& name,
+      irs::string_ref name,
       const irs::type_info& args_format)
     : args_format_(args_format), name_(name) {
   }
@@ -70,7 +70,7 @@ namespace {
 const std::string FILENAME_PREFIX("libscorer-");
 
 class scorer_register:
-  public irs::tagged_generic_register<entry_key_t, irs::sort::ptr(*)(const irs::string_ref& args), irs::string_ref, scorer_register> {
+  public irs::tagged_generic_register<entry_key_t, irs::sort::ptr(*)(irs::string_ref args), irs::string_ref, scorer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     auto& name = key.name_;
@@ -97,16 +97,16 @@ class scorer_register:
 namespace iresearch {
 
 /*static*/ bool scorers::exists(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
     bool load_library /*= true*/) {
   return nullptr != scorer_register::instance().get(entry_key_t(name, args_format),load_library);
 }
 
 /*static*/ sort::ptr scorers::get(
-    const string_ref& name,
+    string_ref name,
     const type_info& args_format,
-    const string_ref& args,
+    string_ref args,
     bool load_library /*= true*/) noexcept {
   try {
     auto* factory = scorer_register::instance().get(
@@ -134,7 +134,7 @@ namespace iresearch {
 }
 
 /*static*/ bool scorers::visit(
-    const std::function<bool(const string_ref&, const type_info&)>& visitor) {
+    const std::function<bool(string_ref, const type_info&)>& visitor) {
   scorer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
     return visitor(key.name_, key.args_format_);
   };
@@ -149,7 +149,7 @@ namespace iresearch {
 scorer_registrar::scorer_registrar(
     const type_info& type,
     const type_info& args_format,
-    sort::ptr(*factory)(const irs::string_ref& args),
+    sort::ptr(*factory)(irs::string_ref args),
     const char* source /*= nullptr*/) {
   irs::string_ref source_ref(source);
   auto entry = scorer_register::instance().set(

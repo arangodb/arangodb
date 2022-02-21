@@ -38,7 +38,7 @@ utf8_path current_path();
 
 namespace iresearch {
 
-class IRESEARCH_API utf8_path {
+class utf8_path {
  public:
   #ifdef _WIN32
     typedef wchar_t native_char_t;
@@ -54,13 +54,13 @@ class IRESEARCH_API utf8_path {
   utf8_path() = default;
   utf8_path(const char* utf8_path); // cppcheck-suppress noExplicitConstructor
   utf8_path(const std::string& utf8_path); // cppcheck-suppress noExplicitConstructor
-  utf8_path(const irs::string_ref& utf8_path); // cppcheck-suppress noExplicitConstructor
+  utf8_path(irs::string_ref utf8_path); // cppcheck-suppress noExplicitConstructor
   utf8_path& operator+=(const char* utf8_name);
   utf8_path& operator+=(const std::string& utf8_name);
-  utf8_path& operator+=(const irs::string_ref& utf8_name);
+  utf8_path& operator+=(irs::string_ref utf8_name);
   utf8_path& operator/=(const char* utf8_name);
   utf8_path& operator/=(const std::string& utf8_name);
-  utf8_path& operator/=(const irs::string_ref& utf8_name);
+  utf8_path& operator/=(irs::string_ref utf8_name);
 
   bool is_absolute(bool& result) const noexcept;
 
@@ -85,9 +85,7 @@ class IRESEARCH_API utf8_path {
   void clear();
 
  private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   native_str_t path_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 // need this operator to be closer to std::filesystem::path

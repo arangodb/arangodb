@@ -503,7 +503,7 @@ void write_segment_features_legacy(
   const auto index_features = state.index_features;
 
   const size_t count = (features ? features->size() : 0) +
-                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+                        std::popcount(static_cast<uint32_t>(index_features));
 
   feature_map.clear();
   feature_map.reserve(count);
@@ -586,7 +586,7 @@ void write_field_features_legacy(
   };
 
   const size_t count = features.size() +
-                       math::math_traits<uint32_t>::pop(static_cast<uint32_t>(index_features));
+                       std::popcount(static_cast<uint32_t>(index_features));
 
   out.write_vlong(count);
 
@@ -773,8 +773,8 @@ inline void prepare_output(
     std::string& str,
     index_output::ptr& out,
     const flush_state& state,
-    const string_ref& ext,
-    const string_ref& format,
+    string_ref ext,
+    string_ref format,
     const int32_t version) {
   assert(!out);
 
@@ -796,8 +796,8 @@ inline int32_t prepare_input(
     index_input::ptr& in,
     irs::IOAdvice advice,
     const reader_state& state,
-    const string_ref& ext,
-    const string_ref& format,
+    string_ref ext,
+    string_ref format,
     const int32_t min_ver,
     const int32_t max_ver,
     int64_t* checksum = nullptr) {
@@ -1024,7 +1024,7 @@ class field_writer final : public irs::field_writer {
   // count - number of entries to write into block
   void write_blocks(size_t prefix, size_t count);
 
-  void push(const irs::bytes_ref& term);
+  void push(bytes_ref term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
 #ifdef __cpp_lib_memory_resource
@@ -1234,7 +1234,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   }
 }
 
-void field_writer::push( const bytes_ref& term ) {
+void field_writer::push(bytes_ref term) {
   const irs::bytes_ref& last = last_term_;
   const size_t limit = std::min(last.size(), term.size());
 
@@ -3278,7 +3278,7 @@ class field_reader final : public irs::field_reader {
     const segment_meta& meta,
     const document_mask& mask) override;
 
-  virtual const irs::term_reader* field(const string_ref& field) const override;
+  virtual const irs::term_reader* field(string_ref field) const override;
   virtual irs::field_iterator::ptr iterator() const override;
   virtual size_t size() const noexcept override {
     return name_to_field_.size();
@@ -3574,7 +3574,7 @@ void field_reader::prepare(
   format_utils::read_checksum(*terms_in_);
 }
 
-const irs::term_reader* field_reader::field(const string_ref& field) const {
+const irs::term_reader* field_reader::field(string_ref field) const {
   auto it = name_to_field_.find(make_hashed_ref(field));
   return it == name_to_field_.end() ? nullptr : it->second;
 }
@@ -3583,7 +3583,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
   struct less {
     bool operator()(
         const irs::term_reader& lhs,
-        const string_ref& rhs) const noexcept {
+        string_ref rhs) const noexcept {
       return lhs.meta().name < rhs;
     }
   }; // less

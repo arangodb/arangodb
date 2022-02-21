@@ -255,7 +255,7 @@ struct BoostScorer : public irs::sort {
     }
   };  // namespace
 
-  static irs::sort::ptr make(irs::string_ref const&) {
+  static irs::sort::ptr make(irs::string_ref) {
     return std::make_unique<BoostScorer>();
   }
 
@@ -327,7 +327,7 @@ struct CustomScorer : public irs::sort {
     float_t i;
   };
 
-  static irs::sort::ptr make(irs::string_ref const& args) {
+  static irs::sort::ptr make(irs::string_ref args) {
     if (args.null()) {
       return std::make_unique<CustomScorer>(0u);
     }
@@ -449,7 +449,7 @@ void v8Init() {
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    std::vector<int> expectedRulesIds,
+    std::vector<int> const& expectedRulesIds,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
     std::string const& optionsString /*= "{}"*/
 ) {
@@ -474,11 +474,12 @@ bool assertRules(
     arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 
     for (auto const& rule : rules) {
-      auto const strRule = rule.copyString();
-      expectedRules.erase(strRule);
+      expectedRules.erase(rule.copyString());
     }
   }
 
+  // note: expectedRules may also not be empty because the query failed.
+  // assertRules does not report failed queries so far.
   return expectedRules.empty();
 }
 

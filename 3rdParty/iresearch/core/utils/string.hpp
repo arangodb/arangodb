@@ -332,9 +332,6 @@ template<typename Elem, typename Traits>
   reinterpret_cast<const Elem*>(""), 0 // FIXME
 );
 
-template class IRESEARCH_API basic_string_ref<char>;
-template class IRESEARCH_API basic_string_ref<byte_type>;
-
 template< typename _Elem, typename _Traits >
 inline constexpr bool starts_with(
     const basic_string_ref<_Elem, _Traits >& first,
@@ -447,11 +444,22 @@ constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string_view
 
 namespace hash_utils {
 
-IRESEARCH_API size_t hash(const irs::bstring& value) noexcept;
-IRESEARCH_API size_t hash(const char* value) noexcept;
-IRESEARCH_API size_t hash(const wchar_t* value) noexcept;
-IRESEARCH_API size_t hash(const bytes_ref& value) noexcept;
-IRESEARCH_API size_t hash(const string_ref& value) noexcept;
+size_t hash(const char* value, size_t size) noexcept;
+size_t hash(const byte_type* value, size_t size) noexcept;
+
+inline size_t hash(bytes_ref value) noexcept {
+  return hash(value.c_str(), value.size());
+}
+inline size_t hash(string_ref value) noexcept {
+  return hash(value.c_str(), value.size());
+}
+inline size_t hash(const char* value) noexcept {
+  return hash(value, std::char_traits<char>::length(value));
+}
+inline size_t hash(const wchar_t* value) noexcept {
+  return hash(reinterpret_cast<const char*>(value),
+              std::char_traits<wchar_t>::length(value)*sizeof(wchar_t));
+}
 
 } // hash_utils
 

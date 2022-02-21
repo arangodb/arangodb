@@ -204,6 +204,7 @@ void RefactoredSingleServerEdgeCursor<
   auto& nonConstPart = _accessor->nonConstPart();
   for (auto& toReplace : nonConstPart._expressions) {
     auto exp = toReplace->expression.get();
+    TRI_ASSERT(exp != nullptr);
     bool mustDestroy;
     AqlValue a = exp->execute(&ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);

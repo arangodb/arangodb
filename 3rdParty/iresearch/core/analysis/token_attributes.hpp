@@ -40,7 +40,7 @@ namespace iresearch {
 /// @class offset 
 /// @brief represents token offset in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API offset final : attribute {
+struct offset final : attribute {
   static constexpr string_ref type_name() noexcept { return "offset"; }
 
   void clear() noexcept {
@@ -56,7 +56,7 @@ struct IRESEARCH_API offset final : attribute {
 /// @class increment 
 /// @brief represents token increment in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API increment final : attribute {
+struct increment final : attribute {
   static constexpr string_ref type_name() noexcept { return "increment"; }
 
   uint32_t value{1};
@@ -66,7 +66,7 @@ struct IRESEARCH_API increment final : attribute {
 /// @class term_attribute 
 /// @brief represents term value in a stream 
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_attribute final : attribute {
+struct term_attribute final : attribute {
   static constexpr string_ref type_name() noexcept { return "term_attribute"; }
 
   bytes_ref value;
@@ -77,7 +77,7 @@ struct IRESEARCH_API term_attribute final : attribute {
 /// @brief represents an arbitrary byte sequence associated with
 ///        the particular term position in a field
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API payload final : attribute {
+struct payload final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "payload"; }
 
@@ -88,7 +88,7 @@ struct IRESEARCH_API payload final : attribute {
 /// @class document 
 /// @brief contains a document identifier
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API document : attribute {
+struct document : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "document"; }
 
@@ -103,7 +103,7 @@ struct IRESEARCH_API document : attribute {
 /// @class frequency 
 /// @brief how many times term appears in a document
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API frequency final : attribute {
+struct frequency final : attribute {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept { return "frequency"; }
 
@@ -117,7 +117,7 @@ struct IRESEARCH_API frequency final : attribute {
 ///        exact values are prefixed with 0
 ///        the less precise the token the greater its granularity prefix value
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API granularity_prefix final {
+struct granularity_prefix final {
   // DO NOT CHANGE NAME
   static constexpr string_ref type_name() noexcept {
     return "iresearch::granularity_prefix";
@@ -128,7 +128,7 @@ struct IRESEARCH_API granularity_prefix final {
 /// @class position 
 /// @brief iterator represents term positions in a document
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API position
+class position
   : public attribute,
     public attribute_provider {
  public:

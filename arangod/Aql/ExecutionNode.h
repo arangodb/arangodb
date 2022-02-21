@@ -56,9 +56,7 @@
 
 #include <memory>
 #include <vector>
-#include <set>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
@@ -183,7 +181,6 @@ class ExecutionNode {
 
  public:
   /// @brief constructor using an id
-  ExecutionNode(ExecutionPlan* plan, size_t id) { TRI_ASSERT(false); }
   ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   /// @brief constructor using a VPackSlice
@@ -192,7 +189,6 @@ class ExecutionNode {
   /// @brief destructor, free dependencies
   virtual ~ExecutionNode() = default;
 
- public:
   /// @brief factory from JSON
   static ExecutionNode* fromVPackFactory(
       ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
@@ -660,9 +656,17 @@ class EnumerateCollectionNode : public ExecutionNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
+
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
   CostEstimate estimateCost() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;

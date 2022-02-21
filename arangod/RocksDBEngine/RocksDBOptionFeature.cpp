@@ -151,7 +151,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(16),
       _level0StopTrigger(256),
-      _pendingCompactionBytesSlowdownTrigger(8 * 1073741824ull),
+      _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(true),

@@ -73,8 +73,9 @@ in the ArangoDB source tree:
 
 ### Style Guide
 
-We use `clang-format` to enfore consistent code formatting. Check STYLEGUIDE.md
-for comprehensive description of ArangoDB Coding Guidelines.
+We use `clang-format` to enfore consistent code formatting. Check 
+[STYLEGUIDE.md](STYLEGUIDE.md) for a comprehensive description of ArangoDB's 
+Coding Guidelines.
 
 ### Compiler support policy
 
@@ -934,7 +935,7 @@ To aid their development, they can also be used from the ArangoDB source tree.
 The [makedata framework](https://github.com/arangodb/release-test-automation#makedata--checkdata-framework)
 is implemented in arangosh javascript.
 It uses the respective interface to execute DDL and DML operations. 
-It falicitates a per database approach, and can be run multiple times in loops. 
+It facilitates a per database approach, and can be run multiple times in loops. 
 It has hooks, that are intended to create DDL/DML objects in a way their existence
 can be revalidated later on by other script hooks. The check hooks must respect a 
 flag whether they can create resources or whether they're talking to a read-only source.
