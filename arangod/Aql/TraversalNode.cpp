@@ -1148,13 +1148,15 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       if (opts->_baseVertexExpression != nullptr) {
         auto baseVertexExpression =
             opts->_baseVertexExpression->clone(_plan->getAst());
-        validatorOptions.setAllVerticesExpression(std::move(baseVertexExpression));
+        validatorOptions.setAllVerticesExpression(
+            std::move(baseVertexExpression));
       }
 
       // III. Depth-based prune expressions
       for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
         auto depth = vertexExpressionPerDepth.first;
-        auto expression = vertexExpressionPerDepth.second->clone(_plan->getAst());
+        auto expression =
+            vertexExpressionPerDepth.second->clone(_plan->getAst());
         validatorOptions.setVertexExpression(depth, std::move(expression));
       }
 
@@ -1179,6 +1181,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
+
+      /*
+       * TODO [GraphRefactor]: In which state and why this section is being reached?
+       */
       auto executorInfos = TraversalExecutorInfos(
           std::move(traverser), outputRegisterMapping, getStartVertex(),
           inputRegister, std::move(filterConditionVariables), plan()->getAst(),
