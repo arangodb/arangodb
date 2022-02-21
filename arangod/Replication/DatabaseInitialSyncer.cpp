@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -1455,9 +1456,11 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
       batchExtend();
     }
 
+    using ::arangodb::basics::StringUtils::urlEncode;
+
     // assemble URL to call
     std::string url = baseUrl + "&" + StaticStrings::RevisionTreeResume + "=" +
-                      requestResume.toString();
+                      urlEncode(requestResume.toString());
 
     bool isVPack = false;
     auto headers = replutils::createHeaders();
@@ -1926,6 +1929,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         return res;
       }
       toFetch.clear();
+
+      res = trx->state()->performIntermediateCommitIfRequired(coll->id());
+
+      if (res.fail()) {
+        return res;
+      }
     }
 
     // adjust counts
