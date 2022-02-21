@@ -100,7 +100,7 @@ function BaseTestConfig () {
     
     testExistingPatchBrokenFollowerCounters1: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -162,7 +162,7 @@ function BaseTestConfig () {
     
     testExistingPatchBrokenFollowerCounters2: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -719,7 +719,7 @@ function BaseTestConfig () {
 
     testUpdateHugeIntermediateCommits: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -814,7 +814,7 @@ function BaseTestConfig () {
     
     testIntermediateCommitsUsageOnInsert: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -866,6 +866,7 @@ function BaseTestConfig () {
         incremental: true
       });
 
+      db._flushCache();
       assertEqual(100100, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
       
@@ -881,7 +882,7 @@ function BaseTestConfig () {
     
     testIntermediateCommitsUsageOnUpdate: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -928,6 +929,7 @@ function BaseTestConfig () {
         incremental: true
       });
 
+      db._flushCache();
       assertEqual(100000, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
       
@@ -943,7 +945,7 @@ function BaseTestConfig () {
     
     testIntermediateCommitsUsageOnRemove: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      let r = arango.GET("/_admin/debug/failat");
       if (String(r) === "false" || r.error) {
         return;
       }
@@ -990,6 +992,7 @@ function BaseTestConfig () {
         incremental: true
       });
 
+      db._flushCache();
       assertEqual(50000, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
       

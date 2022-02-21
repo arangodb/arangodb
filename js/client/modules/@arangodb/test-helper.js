@@ -180,7 +180,7 @@ exports.getMetric = function (endpoint, name) {
     }
     return getMetricName(res.body, name);
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
