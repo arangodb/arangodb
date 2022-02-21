@@ -1,6 +1,9 @@
 devel
 -----
 
+* Enable range deletions in the WAL for truncate operationns in the cluster, 
+  too. This can speed up truncate operations for large collections/shards.
+
 * Optimize further RocksDB throttle to allow for no change on any
   given calculation cycle.
 

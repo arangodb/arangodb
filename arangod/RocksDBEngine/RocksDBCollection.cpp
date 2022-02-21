@@ -235,7 +235,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                             .server()
                             .getFeature<CacheManagerFeature>()
                             .manager() != nullptr),
-      _numIndexCreations(0),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -257,7 +256,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                   .server()
                   .getFeature<CacheManagerFeature>()
                   .manager() != nullptr),
-      _numIndexCreations(0),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
@@ -414,11 +412,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     throw;
   }
 
-  _numIndexCreations.fetch_add(1, std::memory_order_release);
-  auto colGuard = scopeGuard([&]() noexcept {
-    _numIndexCreations.fetch_sub(1, std::memory_order_release);
-    vocbase.release();
-  });
+  auto colGuard = scopeGuard([&]() noexcept { vocbase.release(); });
 
   READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
 
@@ -546,6 +540,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         _indexes.emplace(buildIdx);
       }
 
+      RocksDBFilePurgePreventer walKeeper(&engine);
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
@@ -781,7 +776,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
       return rocksutils::convertStatus(s);
     }
 
-    // delete indexes, place estimator blockers
+    // delete index values
     {
       RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -2120,10 +2115,6 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
 
 /// @brief can use non transactional range delete in write ahead log
 bool RocksDBCollection::canUseRangeDeleteInWal() const {
-  if (_numIndexCreations.load(std::memory_order_acquire) != 0) {
-    // disableWalFilePruning is used by createIndex
-    return false;
-  }
   if (ServerState::instance()->isSingleServer()) {
     return true;
   }
