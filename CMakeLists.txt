@@ -715,7 +715,7 @@ endif ()
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
-if (NOT WINDOWS)
+if (NOT WINDOWS AND NOT BUILDING_FOR_ARM64)
   include(TargetArch)
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
