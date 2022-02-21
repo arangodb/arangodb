@@ -263,10 +263,6 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
     return IResearchInvertedIndex::covers(projections);
   }
 
-  bool hasCoveringIterator() const override {
-    return !meta()._storedValues.empty() || !meta()._sort.empty();
-  }
-
   Result drop() override { return {}; }
   void load() override {}
   void unload() override {}

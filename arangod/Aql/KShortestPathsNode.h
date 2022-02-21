@@ -160,10 +160,11 @@ class KShortestPathsNode : public virtual GraphNode {
                       unsigned flags) const override final;
 
  private:
+  std::vector<arangodb::graph::IndexAccessor> buildIndexes(bool reverse) const;
+
   void kShortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,
                                  bool withProperties) const;
 
- private:
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
   arangodb::graph::ShortestPathType::Type _shortestPathType;
 
