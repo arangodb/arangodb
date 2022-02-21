@@ -29,6 +29,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
 import FetchData from "./FetchData";
 import ParameterPokemon from "./ParameterPokemon";
+import G6FuncComponent from "./G6FuncComponent";
 import './tooltip.css';
 
 const G6JsGraph = () => {
@@ -109,6 +110,7 @@ const G6JsGraph = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditEdgeModal, setShowEditEdgeModal] = useState(false);
   const [editNode, setEditNode] = useState();
+  const [vertexCollections, setVertexCollections] = useState([]);
   const [nodeToEdit, setNodeToEdit] = useState(
   {
     "keys": [
@@ -156,6 +158,8 @@ const G6JsGraph = () => {
       responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
       setResponseTimes(responseTimesObject);
       console.log("NEW DATA for graphData: ", data);
+      console.log("data.settings.vertexCollections: ", data.settings.vertexCollections);
+      setVertexCollections(data.settings.vertexCollections);
       setGraphData(data);
     })
     .catch((err) => {
@@ -719,11 +723,9 @@ const G6JsGraph = () => {
         graphData={graphData}
         responseDuration={responseTimes.fetchDuration}
       />
-      */
-
-  return (
-    <div>
-      <UrlParametersContext.Provider value={urlParameters}>
+      <G6FuncComponent
+          data={graphData}
+        />
         <FetchData />
         <ParameterPokemon />
         <SlideInMenu>
@@ -746,6 +748,17 @@ const G6JsGraph = () => {
           <EdgeList edges={graphData.edges} />
                       
         </SlideInMenu>
+      */
+
+        
+        const changeGraphDataTest = () => {
+          console.log("changeGraphDataTest");
+          setGraphData(data2);
+        }
+
+  return (
+    <div>
+      <UrlParametersContext.Provider value={urlParameters}>
         <EditModal
           shouldShow={showEditModal}
           onRequestClose={() => {
@@ -817,6 +830,7 @@ const G6JsGraph = () => {
             //setNodeDataToEdit(undefined);
           }}
           node={'nodeToEdit'}
+          vertexCollections={vertexCollections}
           nodeData={[]}
           editorContent={'nodeToEdit'}
           onAddNode={() => {
@@ -830,9 +844,11 @@ const G6JsGraph = () => {
           <strong>Add node</strong>
         </AddNodeModal2>
         <button onClick={() => testApiParams()}>Test API Params</button>
-        <button onClick={() => setShowFetchFullGraphModal(true)}>Open fetch full graph modal</button>
+        <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
+        
         <GraphView
               data={graphData}
+              vertexCollections={vertexCollections}
               onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
               onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
               onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}

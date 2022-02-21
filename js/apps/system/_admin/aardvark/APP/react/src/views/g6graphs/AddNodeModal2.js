@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
-import { Modal, Button, notification, Space } from 'antd';
+import { Modal, Button, notification, Space, Select } from 'antd';
 
 
 const ModalBackground = styled.div`
@@ -23,8 +23,9 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
-  export const AddNodeModal2 = ({ shouldShow, onUpdateNode, onRequestClose, node, nodeData, editorContent, children, nodeKey, nodeCollection, onNodeCreation }) => {
+  export const AddNodeModal2 = ({ shouldShow, onUpdateNode, onRequestClose, node, vertexCollections, nodeData, editorContent, children, nodeKey, nodeCollection, onNodeCreation }) => {
 
+    const { Option } = Select;
     const [visible, setVisibility] = useState(shouldShow);
     const [nodeKeyName, setNodeKeyName] = useState('');
     const [loading, setLoading] = useState(false);
@@ -107,6 +108,10 @@ const ModalBody = styled.div`
       setIsModalVisible(false);
     };
 
+    const handleChange = (value) => {
+      console.log(`selected vertex collection: ${value}`);
+    }
+
     /*
   return (
     <>
@@ -139,6 +144,14 @@ const ModalBody = styled.div`
           <div>
             {children}<br />
           </div>
+          <Select defaultValue="0" style={{ width: 120 }} onChange={handleChange}>
+            <Option value="0">Please choose vertex collection</Option>
+            {
+              vertexCollections.map((vertexCollection) => {
+                return <Option value={vertexCollection.id}>{vertexCollection.name}</Option>;
+              })
+            }
+          </Select>
           <div>
             {
               nodeData ? (
