@@ -36,9 +36,9 @@ else
   # no arguments given
   # now get a list of all locally modified files
   # add unstaged changes
-  git diff --diff-filter=ACMRT --name-only -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+  git diff --diff-filter=ACMRT --name-only -- arangod/ lib/ arangosh/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
   # add staged changes
-  git diff --diff-filter=ACMRT --name-only HEAD -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+  git diff --diff-filter=ACMRT --name-only HEAD -- arangod/ lib/ arangosh/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
 
   ent_dir="enterprise"
   if [ -d "$ent_dir" ]
