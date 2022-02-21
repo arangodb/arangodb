@@ -114,7 +114,6 @@
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iomanip>
 #include <limits>

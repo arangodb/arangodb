@@ -24,7 +24,6 @@
 #include "RocksDBCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/PlanCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
@@ -64,11 +63,9 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
-#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
@@ -85,7 +82,6 @@
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 // number of write operations in transactions after which we will start
@@ -1222,6 +1218,15 @@ Result RocksDBCollection::performUpdateOrReplace(
       return res.reset(TRI_ERROR_ARANGO_CONFLICT,
                        "conflict, _rev values do not match");
     }
+  }
+
+  if (newSlice.length() <= 1 && isUpdate) {
+    // shortcut. no need to do anything
+    resultMdr.setManaged(oldDoc.begin());
+    TRI_ASSERT(!resultMdr.empty());
+
+    trackWaitForSync(trx, options);
+    return res;
   }
 
   // merge old and new values

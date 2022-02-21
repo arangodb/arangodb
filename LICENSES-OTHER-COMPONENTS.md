@@ -965,6 +965,15 @@ License Id: MIT
 #### ajv
 
 Name: ajv
+Version: 8.2.0
+Project Home: https://github.com/epoberezkin/ajv
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/LICENSE
+License Name: MIT License
+License Id: MIT
+
+#### ajv
+
+Name: ajv
 Version: 6.10.0
 Project Home: https://github.com/epoberezkin/ajv
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ajv/LICENSE
@@ -980,12 +989,12 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### ansi-html
+#### ansi-html-community
 
-Name: ansi-html
-Version: 0.0.7
-Project Home: https://github.com/Tjatse/ansi-html
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi-html/LICENSE
+Name: ansi-html-community
+Version: 0.0.8
+Project Home: https://github.com/mahdyar/ansi-html-community
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi-html-community/LICENSE
 License Name: Apache License 2.0
 License Id: Apache-2.0
 
@@ -1424,6 +1433,15 @@ License Id: MIT
 #### fast-deep-equal
 
 Name: fast-deep-equal
+Version: 3.1.3
+Project Home: https://github.com/epoberezkin/fast-deep-equal
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/fast-deep-equal/LICENSE
+License Name: MIT License
+License Id: MIT
+
+#### fast-deep-equal
+
+Name: fast-deep-equal
 Version: 2.0.1
 Project Home: https://github.com/epoberezkin/fast-deep-equal
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/fast-deep-equal/LICENSE
@@ -1766,6 +1784,15 @@ License Id: MIT
 #### json-schema-traverse
 
 Name: json-schema-traverse
+Version: 1.0.0
+Project Home: https://github.com/epoberezkin/json-schema-traverse
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/json-schema-traverse/LICENSE
+License Name: MIT License
+License Id: MIT
+
+#### json-schema-traverse
+
+Name: json-schema-traverse
 Version: 0.4.1
 Project Home: https://github.com/epoberezkin/json-schema-traverse
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/json-schema-traverse/LICENSE
@@ -2011,6 +2038,15 @@ License Id: MIT
 Name: punycode
 Version: 2.1.1
 Project Home: https://mathiasbynens.be/
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/punycode/LICENSE-MIT.txt
+License Name: MIT License
+License Id: MIT
+
+#### punycode
+
+Name: punycode
+Version: 2.1.1
+Project Home: https://mathiasbynens.be/
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/punycode/LICENSE-MIT.txt
 License Name: MIT License
 License Id: MIT
@@ -2039,6 +2075,15 @@ Name: regexpp
 Version: 2.0.1
 Project Home: https://github.com/mysticatea
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/regexpp/LICENSE
+License Name: MIT License
+License Id: MIT
+
+#### require-from-string
+
+Name: require-from-string
+Version: 2.0.2
+Project Home: https://github.com/floatdrop/require-from-string#readme
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/require-from-string/license
 License Name: MIT License
 License Id: MIT
 
@@ -2411,6 +2456,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: BSD 2-clause "Simplified" License
 License Id: BSD-2-Clause
 
+#### uri-js
+
+Name: uri-js
+Version: 4.2.2
+Project Home: https://github.com/garycourt/uri-js
+License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/uri-js/README.md
+License Name: BSD 2-clause "Simplified" License
+License Id: BSD-2-Clause
+
 #### util
 
 Name: util
@@ -2465,11 +2519,11 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
-#### xmldom
+#### @xmldom/xmldom
 
-Name: xmldom
-Version: 0.6.0
-Project Home: http://www.xidea.org
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
+Name: @xmldom/xmldom
+Version: 0.8.0
+Project Home: https://github.com/xmldom/xmldom
+License: httpsx://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
 License Name: MIT (dual license)
 License Id: MIT

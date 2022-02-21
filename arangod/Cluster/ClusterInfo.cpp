@@ -82,7 +82,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -2921,7 +2920,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         serverIds.emplace_back(sid);
         allServers.emplace(sid);
       }
-      shardServers.try_emplace(shardID, serverIds);
+      shardServers.try_emplace(std::move(shardID), std::move(serverIds));
     }
 
     // Counts the elements of result in nrDone and checks that they match

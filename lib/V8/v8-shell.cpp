@@ -40,7 +40,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 #include <sys/types.h>

@@ -27,7 +27,6 @@
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Utf8Helper.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Index.h"
 

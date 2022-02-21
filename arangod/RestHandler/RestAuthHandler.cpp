@@ -25,7 +25,6 @@
 
 #include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"

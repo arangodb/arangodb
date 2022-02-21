@@ -82,7 +82,6 @@
 
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
-#include "utils/math_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
 
 #ifdef USE_ENTERPRISE
@@ -107,7 +106,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -1207,7 +1205,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat1(vopts);
   geo::ShapeContainer outer, inner;
-  Result res = geo::geojson::parseRegion(mat1.slice(p1, true), outer);
+  Result res = geo::geojson::parseRegion(mat1.slice(p1, true), outer, false);
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
     return AqlValue(AqlValueHintNull());
@@ -1225,7 +1223,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   if (p2.isArray() && p2.length() >= 2) {
     res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/ true);
   } else if (p2.isObject()) {
-    res = geo::geojson::parseRegion(mat2.slice(p2, true), inner);
+    res = geo::geojson::parseRegion(mat2.slice(p2, true), inner, false);
   } else {
     res.reset(TRI_ERROR_BAD_PARAMETER,
               "Second arg requires coordinate pair or GeoJSON");
@@ -1349,7 +1347,7 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   if (value.isArray() && value.length() >= 2) {
     return shape.parseCoordinates(mat.slice(value, true), /*geoJson*/ true);
   } else if (value.isObject()) {
-    return geo::geojson::parseRegion(mat.slice(value, true), shape);
+    return geo::geojson::parseRegion(mat.slice(value, true), shape, false);
   } else {
     return {TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON"};
   }
@@ -5987,8 +5985,8 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(vopts);
 
   geo::ShapeContainer first, second;
-  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first);
-  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second);
+  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first, false);
+  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second, false);
 
   if (res1.fail()) {
     registerWarning(expressionContext, "GEO_EQUALS", res1);
@@ -6015,7 +6013,7 @@ AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
   AqlValueMaterializer mat(vopts);
 
   geo::ShapeContainer shape;
-  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape);
+  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape, false);
 
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_AREA", res);
@@ -6244,6 +6242,14 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
   builder->close();  // coordinates
   builder->close();  // object
 
+  // Now actually parse the result with S2:
+  geo::ShapeContainer container;
+  res = geo::geojson::parsePolygon(builder->slice(), container, false);
+  if (res.fail()) {
+    registerWarning(expressionContext, "GEO_POLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
+
   return AqlValue(builder->slice(), builder->size());
 }
 
@@ -6318,6 +6324,15 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 
   builder->close();
   builder->close();
+
+  // Now actually parse the result with S2:
+  geo::ShapeContainer container;
+  Result res =
+      geo::geojson::parseMultiPolygon(builder->slice(), container, false);
+  if (res.fail()) {
+    registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
 
   return AqlValue(builder->slice(), builder->size());
 }
@@ -7397,7 +7412,7 @@ AqlValue Functions::BitPopcount(ExpressionContext* expressionContext,
     auto result = bitOperationValue<uint64_t>(v);
     if (result.has_value()) {
       uint64_t x = result.value();
-      size_t count = ::iresearch::math::math_traits<decltype(x)>::pop(x);
+      size_t const count = std::popcount(x);
       return AqlValue(AqlValueHintUInt(count));
     }
   }

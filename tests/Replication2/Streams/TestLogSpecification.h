@@ -31,6 +31,7 @@
 #include <Replication2/Streams/StreamSpecification.h>
 
 #include <Replication2/Mocks/FakeReplicatedLog.h>
+#include <Replication2/Mocks/FakeFailureOracle.h>
 #include <Replication2/Mocks/PersistedLog.h>
 #include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
 #include <Mocks/LogLevels.h>
@@ -77,7 +78,8 @@ struct LogMultiplexerTestBase
             .participants = std::move(participants),
         });
     return log->becomeLeader(config, std::move(id), term, follower,
-                             std::move(participantsConfig));
+                             std::move(participantsConfig),
+                             std::make_shared<FakeFailureOracle>());
   }
 
  private:

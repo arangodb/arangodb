@@ -259,13 +259,13 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
     ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
     auto value = std::get<LeaderStatus>(status.getVariant());
     EXPECT_EQ(value.local.commitIndex, LogIndex{0});
-    EXPECT_EQ(value.largestCommonIndex, LogIndex{0});
+    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
   }
 
   {
     auto const& request = follower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{0});
-    EXPECT_EQ(request.largestCommonIndex, LogIndex{0});
+    EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
   // let follower1 run and raise the commit index
   follower1->resolveWithOk();
@@ -275,7 +275,7 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
     ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
     auto value = std::get<LeaderStatus>(status.getVariant());
     EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.largestCommonIndex, LogIndex{0});
+    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
   }
 
   // follower1 received a message with that commitIndex is now 1
@@ -283,7 +283,7 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
   {
     auto const& request = follower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
-    EXPECT_EQ(request.largestCommonIndex, LogIndex{0});
+    EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
   follower1->resolveWithOk();
   // there are now no more requests pending for follower1
@@ -298,7 +298,7 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
     ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
     auto value = std::get<LeaderStatus>(status.getVariant());
     EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.largestCommonIndex, LogIndex{0});
+    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
   }
 
   // follower2 is now updated with the commit index
@@ -306,7 +306,7 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
   {
     auto const& request = follower2->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
-    EXPECT_EQ(request.largestCommonIndex, LogIndex{0});
+    EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
   // let follower2 run again - this will raise the lci
   follower2->resolveWithOk();
@@ -316,7 +316,7 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
     ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
     auto value = std::get<LeaderStatus>(status.getVariant());
     EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.largestCommonIndex, LogIndex{1});
+    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{1});
   }
 
   // now follower2 received an update with lci = 1
@@ -324,7 +324,7 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
   {
     auto const& request = follower2->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
-    EXPECT_EQ(request.largestCommonIndex, LogIndex{1});
+    EXPECT_EQ(request.lowestIndexToKeep, LogIndex{1});
   }
 
   // now follower1 received an update with lci = 1
@@ -332,6 +332,6 @@ TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
   {
     auto const& request = follower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
-    EXPECT_EQ(request.largestCommonIndex, LogIndex{1});
+    EXPECT_EQ(request.lowestIndexToKeep, LogIndex{1});
   }
 }

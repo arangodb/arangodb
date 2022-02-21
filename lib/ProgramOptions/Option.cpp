@@ -28,7 +28,6 @@
 #include "ProgramOptions/Parameters.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
