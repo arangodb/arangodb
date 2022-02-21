@@ -202,6 +202,8 @@ FailureOracleFeature::FailureOracleFeature(Server& server)
   setOptional(true);
   startsAfter<SchedulerFeature>();
   startsAfter<ClusterFeature>();
+  onlyEnabledWith<SchedulerFeature>();
+  onlyEnabledWith<ClusterFeature>();
 }
 
 void FailureOracleFeature::prepare() {
@@ -213,7 +215,7 @@ void FailureOracleFeature::prepare() {
 void FailureOracleFeature::start() {
   TRI_ASSERT(_cache == nullptr);
   _cache = std::make_shared<FailureOracleImpl>(
-      server().getEnabledFeature<ClusterFeature>());
+      server().getFeature<ClusterFeature>());
   _cache->createAgencyCallback(server());
   _cache->start();
 
