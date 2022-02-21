@@ -1,8 +1,11 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
-* Optimize further RocksDB throttle to allow for no change on any
-  given calculation cycle.
+* Optimize further RocksDB throttle to allow for no change on any given
+  calculation cycle.
+
+* As we are now in constant stall regime, stall onset and warnings are demoted
+  to DEBUG.
 
 * Shorten the license grace period to the documented 3 hours.
 
