@@ -11,10 +11,10 @@ You are expected to format your local changes via clang-format. Here are your op
         * On Linux: bash, with some common tools installed
     * how-to (one-time setup)
         * `cd arangodb`
-        * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+        * `cp .githooks/pre-commit .git/hooks/pre-commit`
         * `git config core.hooksPath .git/hooks`
         * `cd enterprise`
-        * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+        * `cp .githooks/pre-commit .git/hooks/pre-commit`
         * `git config core.hooksPath .git/hooks`
 
    The commit hook will automatically verify that all to-be-committed files are

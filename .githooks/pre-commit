@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Configure this hook by running the following:
 #    1. cd arangodb
-#    2a. Linux: cp .githooks/pre-commit-linux .git/hooks/pre-commit
-#    2b. macOS: cp .githooks/pre-commit-macos .git/hooks/pre-commit
+#    2. cp .githooks/pre-commit .git/hooks/pre-commit
 #    3. git config core.hooksPath .git/hooks
 # pre-requisite: Linux-based system || macOS-based system
 # pre-requisite: Docker
