@@ -47,7 +47,7 @@ macro(standard_test test_name)
 
     include_directories(${testName} PRIVATE ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
     add_executable(${testName} ${testCpp})
-    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
       set_source_files_properties(${testCpp} PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
     endif()
     target_link_libraries(${testName} gtest velocypack ${CMAKE_THREAD_LIBS_INIT})
