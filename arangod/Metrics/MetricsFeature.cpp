@@ -162,7 +162,6 @@ constexpr auto kCoordinatorBatch = frozen::make_unordered_set<frozen::string>({
 
 constexpr auto kCoordinatorMetrics =
     frozen::make_unordered_set<frozen::string>({
-        "arangodb_search_link_stats",
         "arangodb_search_num_failed_commits",
         "arangodb_search_num_failed_cleanups",
         "arangodb_search_num_failed_consolidations",
