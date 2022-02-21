@@ -347,7 +347,7 @@ class RocksDBEngine final : public StorageEngine {
 
   double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
   bool useEdgeCache() const { return _useEdgeCache; }
-  
+
   // whether or not to issue range delete markers in the write-ahead log
   bool useRangeDeleteInWal() const noexcept { return _useRangeDeleteInWal; }
 
