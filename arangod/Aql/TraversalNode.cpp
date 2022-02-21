@@ -1061,11 +1061,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
 
   TRI_ASSERT(traverser != nullptr);
-  std::pair<std::vector<IndexAccessor>,
-            std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-      usedIndexes{};
-  usedIndexes.first = buildUsedIndexes();
-  usedIndexes.second = buildUsedDepthBasedIndexes();
 
   PathValidatorOptions validatorOptions{opts->_tmpVar,
                                         opts->getExpressionCtx()};
@@ -1111,8 +1106,63 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        *
        */
       const bool forceIsRefactor = false;
+      TRI_ASSERT(traverser != nullptr);
 
-      arangodb::graph::SingleServerBaseProviderOptions baseProviderOptions{
+      std::pair<std::vector<IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+          usedIndexes{};
+      usedIndexes.first = buildUsedIndexes();
+      usedIndexes.second = buildUsedDepthBasedIndexes();
+
+      /*
+       * [GraphRefactor] Note: This whole section also got lost during attempt
+       * to refactor (pruneExpression && postFilterExpression). This also needs
+       * to be cleaned up before we can merge back to devel.
+       *
+       * This will be easier as soon as we start to get rid of old code.
+       * For now this is being dirty implemented to be able to use Jenkins.
+       *
+       * Path Validator Duplicate Area START
+       *
+       */
+
+      // Prune Section
+      if (pruneExpression() != nullptr) {
+        std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
+        checkPruneAvailability(false, pruneEvaluator);
+        validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
+      }
+
+      // Post-filter section
+      if (postFilterExpression() != nullptr) {
+        std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
+        checkPostFilterAvailability(false, postFilterEvaluator);
+        validatorOptions.setPostFilterEvaluator(std::move(postFilterEvaluator));
+      }
+
+      // Vertex Expressions Section
+      // I. Set the list of allowed collections
+      validatorOptions.addAllowedVertexCollections(opts->vertexCollections);
+
+      // II. Global prune expression
+      if (opts->_baseVertexExpression != nullptr) {
+        auto baseVertexExpression =
+            opts->_baseVertexExpression->clone(_plan->getAst());
+        validatorOptions.setAllVerticesExpression(std::move(baseVertexExpression));
+      }
+
+      // III. Depth-based prune expressions
+      for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
+        auto depth = vertexExpressionPerDepth.first;
+        auto expression = vertexExpressionPerDepth.second->clone(_plan->getAst());
+        validatorOptions.setVertexExpression(depth, std::move(expression));
+      }
+
+      /*
+       * Path Validator Duplicate Area END
+       */
+
+      arangodb::graph::SingleServerBaseProviderOptions smartBaseProviderOptions{
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
           filterConditionVariables, opts->collectionToShard()};
 
@@ -1124,7 +1174,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->query(), std::move(validatorOptions),
           arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
                                                      opts->maxDepth},
-          opts, std::move(baseProviderOptions));
+          opts, std::move(smartBaseProviderOptions));
 
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
