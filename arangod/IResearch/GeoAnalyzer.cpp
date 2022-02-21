@@ -30,7 +30,6 @@
 
 #include "analysis/analyzers.hpp"
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"

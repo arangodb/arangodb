@@ -30,7 +30,6 @@
 #include <vector>
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/debugging.h"
 

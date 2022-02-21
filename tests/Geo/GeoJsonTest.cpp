@@ -28,7 +28,6 @@
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/VelocyPackHelper.h"
 #include "Basics/Common.h"

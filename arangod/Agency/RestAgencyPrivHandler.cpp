@@ -28,7 +28,6 @@
 #include <typeinfo>
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Logger/Logger.h"
 #include "Rest/Version.h"

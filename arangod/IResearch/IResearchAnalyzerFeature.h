@@ -50,7 +50,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Auth/Common.h"
 #include "Basics/ReadWriteLock.h"

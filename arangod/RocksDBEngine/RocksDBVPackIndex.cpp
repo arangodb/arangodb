@@ -56,7 +56,6 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 

@@ -43,7 +43,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

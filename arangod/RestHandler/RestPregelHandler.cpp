@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"

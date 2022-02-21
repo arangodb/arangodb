@@ -37,7 +37,6 @@
 #include "VocBase/ticks.h"
 
 #include <fuerte/types.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace network {
