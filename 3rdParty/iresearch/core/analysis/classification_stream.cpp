@@ -31,13 +31,15 @@
 #include "utils/vpack_utils.hpp"
 #include "store/store_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 using namespace irs::analysis;
 
-constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
-constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
-constexpr VPackStringRef THRESHOLD_PARAM_NAME {"threshold"};
+constexpr std::string_view MODEL_LOCATION_PARAM_NAME {"model_location"};
+constexpr std::string_view TOP_K_PARAM_NAME {"top_k"};
+constexpr std::string_view THRESHOLD_PARAM_NAME {"threshold"};
 
 std::atomic<classification_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 
@@ -142,12 +144,12 @@ analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-analyzer::ptr make_vpack(const irs::string_ref& args) {
+analyzer::ptr make_vpack(irs::string_ref args) {
   VPackSlice slice{reinterpret_cast<const uint8_t*>(args.c_str())};
   return make_vpack(slice);
 }
 
-analyzer::ptr make_json(const irs::string_ref& args) {
+analyzer::ptr make_json(irs::string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing classification_stream ");
@@ -187,7 +189,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
 }
 
 
-bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
+bool normalize_vpack_config(irs::string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -197,7 +199,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& config) {
   return false;
 }
 
-bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+bool normalize_json_config(irs::string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing classification_stream ");
@@ -267,7 +269,7 @@ bool classification_stream::next() {
   return true;
 }
 
-bool classification_stream::reset(const string_ref& data) {
+bool classification_stream::reset(string_ref data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = static_cast<uint32_t>(data.size());

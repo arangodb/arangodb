@@ -46,13 +46,16 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
 namespace {
-RegisterInfos MakeBaseInfos(RegisterCount numRegs) {
+RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
   RegIdSet prototype{};
   for (RegisterId::value_t r = 0; r < numRegs; ++r) {
     prototype.emplace(r);
   }
-  return RegisterInfos({}, {}, numRegs, numRegs, {},
-                       {{prototype}, {prototype}, {prototype}});
+  RegIdSetStack regsToKeep{};
+  for (size_t i = 0; i <= subqueryDepth; ++i) {
+    regsToKeep.push_back({prototype});
+  }
+  return RegisterInfos({}, {}, numRegs, numRegs, {}, regsToKeep);
 }
 }  // namespace
 
@@ -575,27 +578,198 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
   // InnerSubquery (Produce all)
   callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
 
-  for (size_t i = 0; i < 9; ++i) {
-    auto [state, skipped, block] = testee.execute(callStack);
-    // We will always get 3 rows
-    ASSERT_EQ(block->numRows(), 3);
-    // Two of them Shadows
-    ASSERT_EQ(block->numShadowRows(), 2);
+  auto [state, skipped, block] = testee.execute(callStack);
+  // We will always get 9 times 3 rows
+  ASSERT_EQ(block->numRows(), 3 * 9);
+  // Two of the 3 rows are Shadows
+  ASSERT_EQ(block->numShadowRows(), 2 * 9);
 
+  for (size_t i = 0; i < 9; ++i) {
     // First is relevant
-    EXPECT_FALSE(block->isShadowRow(0));
+    EXPECT_FALSE(block->isShadowRow(i * 3 + 0));
     // Second is Depth 0
-    ASSERT_TRUE(block->isShadowRow(1));
-    ShadowAqlItemRow second(block, 1);
+    ASSERT_TRUE(block->isShadowRow(i * 3 + 1));
+    ShadowAqlItemRow second(block, i * 3 + 1);
     EXPECT_EQ(second.getDepth(), 0);
     // Third is Depth 1
-    ASSERT_TRUE(block->isShadowRow(2));
-    ShadowAqlItemRow third(block, 2);
+    ASSERT_TRUE(block->isShadowRow(i * 3 + 2));
+    ShadowAqlItemRow third(block, i * 3 + 2);
     EXPECT_EQ(third.getDepth(), 1);
-    if (i == 8) {
-      EXPECT_EQ(state, ExecutionState::DONE);
-    } else {
-      EXPECT_EQ(state, ExecutionState::HASMORE);
-    }
   }
+  EXPECT_EQ(state, ExecutionState::DONE);
+}
+
+TEST_F(SubqueryStartSpecficTest, count_shadow_rows_test) {
+  // NOTE: This is a regression test for BTS-673
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> inputData{};
+
+  // The issue under test is to return too few results to SubqueryStartExecutor
+  // including higher level shadow rows,which forces the SubqueryStartExecutor
+  // to correctly count the returned rows.
+  inputData.push_back(buildBlock<2>(
+      manager(),
+      {{1, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}},
+       {2, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}},
+       {3, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}},
+       {4, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}},
+       {5, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}},
+       {6, NoneEntry{}},
+       {NoneEntry{}, NoneEntry{}}},
+      {{1, 0}, {2, 1}, {4, 0}, {6, 0}, {7, 1}, {9, 0}, {11, 0}, {13, 0}}));
+  // After this block we have returned 2 level 1 shadowrows, and 3 level 0
+  // shadowrows.
+
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{NoneEntry{}, NoneEntry{}},
+                                     {6, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {7, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}}},
+                                    {{0, 1}, {2, 0}, {4, 0}, {5, 1}}));
+
+  MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1},
+                          ExecutionNode::FILTER};
+  FixedOutputExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
+                                           std::move(inputData)};
+  MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42},
+                       ExecutionNode::SUBQUERY_START};
+  ExecutionBlockImpl<SubqueryStartExecutor> testee{fakedQuery->rootEngine(),
+                                                   &sqNode, MakeBaseInfos(2, 3),
+                                                   MakeBaseInfos(2, 3)};
+  testee.addDependency(&dependency);
+  size_t mainQuerySoftLimit = 100;
+  // MainQuery (SoftLimit 100)
+  AqlCallStack callStack{AqlCallList{
+      AqlCall{0, false, mainQuerySoftLimit, AqlCall::LimitType::SOFT}}};
+  // outer subquery (SoftLimit 10)
+  size_t subQuerySoftLimit = 10;
+  callStack.pushCall(AqlCallList{
+      AqlCall{0, false, subQuerySoftLimit, AqlCall::LimitType::SOFT},
+      AqlCall{0, false, subQuerySoftLimit, AqlCall::LimitType::SOFT}});
+  // InnerSubquery (Produce all)
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+  size_t numCalls = 0;
+
+  dependency.setExecuteEnterHook(
+      [&numCalls, mainQuerySoftLimit,
+       subQuerySoftLimit](AqlCallStack const& stack) {
+        auto mainQCall = stack.getCallAtDepth(2);
+        auto subQCall = stack.getCallAtDepth(1);
+        ASSERT_FALSE(mainQCall.needSkipMore());
+        ASSERT_FALSE(subQCall.needSkipMore());
+        if (numCalls == 0) {
+          // Call with the original limits, SubqueryStart does not reduce it.
+          ASSERT_EQ(mainQCall.getLimit(), mainQuerySoftLimit);
+          ASSERT_EQ(subQCall.getLimit(), subQuerySoftLimit);
+        } else if (numCalls == 1) {
+          // We have returned some rows of each in the block before. They need
+          // to be accounted
+          ASSERT_EQ(mainQCall.getLimit(), mainQuerySoftLimit - 2);
+          ASSERT_EQ(subQCall.getLimit(), subQuerySoftLimit - 3);
+        } else {
+          // Should not be called thrice.
+          ASSERT_TRUE(false);
+        }
+        numCalls++;
+      });
+
+  auto [state, skipped, block] = testee.execute(callStack);
+
+  ASSERT_EQ(numCalls, 2);
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(block->numRows(), 28);
+}
+
+TEST_F(SubqueryStartSpecficTest, handle_non_continue_call_on_outer_subqueries) {
+  // NOTE: This is a regression test for BTS-673
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> inputData{};
+
+  // The issue under test here is that the SubqueryStart needs to return
+  // if it does not have a continue call for a completed outer subquery
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{1, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {2, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {3, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}}},
+                                    {{1, 0}, {3, 0}, {5, 0}}));
+  // Split to enforce two internal calls to upstream
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{4, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {5, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}}},
+                                    {{1, 0}, {3, 0}, {4, 1}}));
+  // Split again.
+  // This block should NOT be fetched on first go, otherwise the Executor logic
+  // failed However we need it to return "HASMORE"
+  inputData.push_back(
+      buildBlock<2>(manager(), {{"\"INVALID\"", "\"INVALID\""}}, {}));
+
+  MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1},
+                          ExecutionNode::FILTER};
+  FixedOutputExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
+                                           std::move(inputData)};
+  MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42},
+                       ExecutionNode::SUBQUERY_START};
+  ExecutionBlockImpl<SubqueryStartExecutor> testee{fakedQuery->rootEngine(),
+                                                   &sqNode, MakeBaseInfos(2, 3),
+                                                   MakeBaseInfos(2, 3)};
+  testee.addDependency(&dependency);
+  size_t mainQuerySoftLimit = 100;
+  // MainQuery (SoftLimit 100)
+  AqlCallStack callStack{AqlCallList{
+      AqlCall{0, false, mainQuerySoftLimit, AqlCall::LimitType::SOFT}}};
+  // outer subquery (SoftLimit 10)
+  size_t subQuerySoftLimit = 10;
+  // Only add one call, no continue call, the SubqueryEnd needs to return as
+  // soon as the first higher (main query) shadowrow is seen.
+  callStack.pushCall(AqlCallList{
+      AqlCall{0, false, subQuerySoftLimit, AqlCall::LimitType::SOFT}});
+  // InnerSubquery (Produce all)
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+  size_t numCalls = 0;
+
+  dependency.setExecuteEnterHook(
+      [&numCalls, mainQuerySoftLimit,
+       subQuerySoftLimit](AqlCallStack const& stack) {
+        auto mainQCall = stack.getCallAtDepth(2);
+        auto subQCall = stack.getCallAtDepth(1);
+        ASSERT_FALSE(mainQCall.needSkipMore());
+        ASSERT_FALSE(subQCall.needSkipMore());
+        if (numCalls == 0) {
+          // Call with the original limits, SubqueryStart does not reduce it.
+          ASSERT_EQ(mainQCall.getLimit(), mainQuerySoftLimit);
+          ASSERT_EQ(subQCall.getLimit(), subQuerySoftLimit);
+        } else if (numCalls == 1) {
+          // We have not returned a mainQuery ShadowRow
+          ASSERT_EQ(mainQCall.getLimit(), mainQuerySoftLimit);
+          // We have not returned 3 subQuery ShadowRows on the first go
+          ASSERT_EQ(subQCall.getLimit(), subQuerySoftLimit - 3);
+        } else {
+          // Should not be called thrice.
+          // The call before had to figure out that we cannot continue after the
+          // first Subquery is completed
+          ASSERT_TRUE(false);
+        }
+        numCalls++;
+      });
+
+  auto [state, skipped, block] = testee.execute(callStack);
+
+  ASSERT_EQ(numCalls, 2);
+  EXPECT_EQ(state, ExecutionState::HASMORE);
+  EXPECT_EQ(block->numRows(), 16);
 }

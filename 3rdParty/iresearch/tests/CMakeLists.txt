@@ -150,17 +150,8 @@ if (MSVC)
 endif()
 
 add_custom_target(${IResearchTests_TARGET_NAME}
-  DEPENDS ${IResearchTests_TARGET_NAME}-shared ${IResearchTests_TARGET_NAME}-static
+  DEPENDS ${IResearchTests_TARGET_NAME}-static
 )
-
-add_executable(${IResearchTests_TARGET_NAME}-shared
-  EXCLUDE_FROM_ALL ${IReSearch_sources}
-  ${IReSearch_tests_sources} ${IReSearch_tests_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
-)
-
-set_ipo(${IResearchTests_TARGET_NAME}-shared)
-add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
 
 add_executable(${IResearchTests_TARGET_NAME}-static
   EXCLUDE_FROM_ALL ${IReSearch_sources}
@@ -177,21 +168,6 @@ add_executable(${IResearchTests_TARGET_NAME}-static
 set_ipo(${IResearchTests_TARGET_NAME}-static)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
-
-add_dependencies(${IResearchTests_TARGET_NAME}-shared
-  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
-  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-shared
-  ${IResearch_TARGET_NAME}-analyzer-norm-shared
-  ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
-  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
-  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
-  ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${IResearch_TARGET_NAME}-scorer-tfidf-shared
-  ${IResearch_TARGET_NAME}-scorer-bm25-shared
-)
-
 add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimiter-static
   ${IResearch_TARGET_NAME}-analyzer-ngram-static
@@ -206,50 +182,20 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
 
-target_include_directories(${IResearchTests_TARGET_NAME}-shared
-  PRIVATE ${PROJECT_BINARY_DIR}/core
-)
-
 target_include_directories(${IResearchTests_TARGET_NAME}-static
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
 
 if(MSVC)
-  target_compile_options(${IResearchTests_TARGET_NAME}-shared
-    PRIVATE "/bigobj"
-  )
-
   target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "/bigobj"
   )
 endif()
 
-set_target_properties(${IResearchTests_TARGET_NAME}-shared
-  PROPERTIES
-  OUTPUT_NAME iresearch-tests
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;IRESEARCH_DLL;BOOST_ALL_DYN_LINK"
-)
-
 set_target_properties(${IResearchTests_TARGET_NAME}-static
   PROPERTIES
   OUTPUT_NAME iresearch-tests-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
-)
-
-target_link_libraries(${IResearchTests_TARGET_NAME}-shared
-  ${GCOV_LIBRARY}
-  ${IResearch_TARGET_NAME}-shared
-  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
-  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-shared
-  ${IResearch_TARGET_NAME}-analyzer-norm-shared
-  ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
-  ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
-  ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
-  ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${GTEST_STATIC_LIBS}
-  ${PTHREAD_LIBRARY}
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
@@ -261,27 +207,10 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
 
 # setup CRT
 if(MSVC)
-  target_compile_options(${IResearchTests_TARGET_NAME}-shared
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-  )
-
   target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 endif()
-
-include_directories(${IResearchTests_TARGET_NAME}-shared
-  ${IResearchTests_INCLUDE_DIR}
-  ${IReSearch_generated_INCLUDE_DIR}
-  ${IResearch_INCLUDE_DIR}
-  ${ICU_INCLUDE_DIR}
-  ${Fasttext_INCLUDE_DIR}
-  ${GTEST_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIRS}
-  ${FROZEN_INCLUDE_DIR}
-  $<TARGET_PROPERTY:absl-static,INTERFACE_INCLUDE_DIRECTORIES>
-  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
-)
 
 include_directories(${IResearchTests_TARGET_NAME}-static
   ${EXTERNAL_INCLUDE_DIRS}
@@ -299,71 +228,3 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
 )
-
-################################################################################
-### @brief copy Boost shared dependencies
-################################################################################
-foreach(ELEMENT ${Boost_SHARED_sharedRT_LIB_RESOURCES})
-  if (APPLE)
-    set(CP_OPTS "-f") # MacOS does not support hard-linking
-  else()
-    set(CP_OPTS "-lf")
-  endif()
-
-  add_custom_command(
-    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
-  )
-endforeach()
-
-################################################################################
-### @brief copy ICU shared dependencies
-################################################################################
-foreach(ELEMENT ${ICU_SHARED_LIB_RESOURCES})
-  if (APPLE)
-    set(CP_OPTS "-f") # MacOS does not support hard-linking
-  else()
-    set(CP_OPTS "-lf")
-  endif()
-
-  add_custom_command(
-    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
-  )
-endforeach()
-
-################################################################################
-### @brief copy BFD shared dependencies
-################################################################################
-foreach(ELEMENT ${BFD_SHARED_LIB_RESOURCES})
-  if (APPLE)
-    set(CP_OPTS "-f") # MacOS does not support hard-linking
-  else()
-    set(CP_OPTS "-lf")
-  endif()
-
-  add_custom_command(
-    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
-  )
-endforeach()
-
-################################################################################
-### @brief copy Unwind shared dependencies
-################################################################################
-foreach(ELEMENT ${Unwind_SHARED_LIB_RESOURCES})
-  if (APPLE)
-    set(CP_OPTS "-f") # MacOS does not support hard-linking
-  else()
-    set(CP_OPTS "-lf")
-  endif()
-
-  add_custom_command(
-    TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
-  )
-endforeach()

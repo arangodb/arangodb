@@ -24,6 +24,7 @@
 #define IRESEARCH_MISC_H
 
 #include <array>
+#include <cassert>
 
 #include "shared.hpp"
 
@@ -107,40 +108,44 @@ move_on_copy<T> make_move_on_copy(T&& value) noexcept {
 /// @brief convenient helper for caching function results
 ////////////////////////////////////////////////////////////////////////////////
 template<
-  typename Input,
-  Input Size,
-  typename Func,
-  typename = typename std::enable_if_t<std::is_integral_v<Input>>
-> class cached_func {
+    typename Input,
+    Input Size,
+    typename Func,
+    typename = typename std::enable_if_t<std::is_integral_v<Input>>>
+class cached_func {
  public:
   using input_type = Input;
   using output_type = std::invoke_result_t<Func, Input>;
 
-  constexpr explicit cached_func(size_t offset, Func&& func)
+  constexpr explicit cached_func(input_type offset, Func&& func)
     : func_{std::forward<Func>(func)} {
-    for (input_type i = offset; i < size(); ++i) {
-      cache_[i] = func_(i);
+    for (; offset < Size; ++offset) {
+      cache_[offset] = func_(offset);
     }
   }
 
-  constexpr FORCE_INLINE output_type operator()(input_type value) const
+  template<bool Checked>
+  constexpr FORCE_INLINE output_type get(input_type value) const
       noexcept(std::is_nothrow_invocable_v<Func, Input>) {
-    return value < size() ? cache_[value] : func_(value);
+    if constexpr (Checked) {
+      return value < size() ? cache_[value] : func_(value);
+    } else {
+      assert(value < cache_.size());
+      return cache_[value];
+    }
   }
 
   constexpr size_t size() const noexcept {
-    return IRESEARCH_COUNTOF(cache_);
+    return cache_.size();
   }
 
  private:
   Func func_;
-  output_type cache_[Size]{};
-
-  static_assert(IRESEARCH_COUNTOF(decltype(cache_){}) == Size);
+  std::array<output_type, Size> cache_{};
 }; // cached_func
 
 template<typename Input, size_t Size, typename Func>
-constexpr cached_func<Input, Size, Func> cache_func(size_t offset, Func&& func) {
+constexpr cached_func<Input, Size, Func> cache_func(Input offset, Func&& func) {
   return cached_func<Input, Size, Func>{ offset, std::forward<Func>(func) };
 }
 

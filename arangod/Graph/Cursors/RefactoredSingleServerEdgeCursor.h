@@ -37,6 +37,7 @@
 #include "Aql/OptimizerUtils.h"
 
 #include "Graph/Providers/TypeAliases.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <vector>
 
@@ -111,7 +112,9 @@ class RefactoredSingleServerEdgeCursor {
   containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
+  // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+
   bool _requiresFullDocument;
 
  public:

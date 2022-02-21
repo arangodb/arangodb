@@ -45,7 +45,7 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
         shape.resetCoordinates(ll);
       }
     } else {
-      res = geo::geojson::parseRegion(slice, shape);
+      res = geo::geojson::parseRegion(slice, shape, false);
     }
   } else if (slice.isArray() && slice.length() >= 2) {
     res = shape.parseCoordinates(slice, /*geoJson*/ true);

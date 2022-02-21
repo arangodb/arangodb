@@ -33,11 +33,13 @@
 
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
+constexpr std::string_view LOCALE_PARAM_NAME {"locale"};
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
@@ -130,7 +132,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-analysis::analyzer::ptr make_vpack(const string_ref& args) {
+analysis::analyzer::ptr make_vpack(string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -158,7 +160,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
   }
 }
 
-bool normalize_vpack_config(const string_ref& args, std::string& config) {
+bool normalize_vpack_config(string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -168,7 +170,7 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(const string_ref& args) {
+analysis::analyzer::ptr make_json(string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing collation_token_stream");
@@ -187,7 +189,7 @@ analysis::analyzer::ptr make_json(const string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const string_ref& args, std::string& definition) {
+bool normalize_json_config(string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing collation_token_stream");
@@ -250,7 +252,7 @@ collation_token_stream::collation_token_stream(
     term_eof_{true} {
 }
 
-bool collation_token_stream::reset(const string_ref& data) {
+bool collation_token_stream::reset(string_ref data) {
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
     state_->collator.reset(icu::Collator::createInstance(state_->options.locale, err));
@@ -280,10 +282,8 @@ bool collation_token_stream::reset(const string_ref& data) {
   // according to ICU docs sort keys are always zero-terminated,
   // there is no reason to store terminal zero in term dictionary
   assert(term_size > 0);
-
-  assert(0 == buf[term_size]);
-
   --term_size;
+  assert(0 == buf[term_size]);
   if (term_size > static_cast<int32_t>(sizeof raw_term_buf)) {
     IR_FRMT_ERROR(
       "Collated token is %d bytes length which exceeds maximum allowed length of %d bytes",
@@ -295,7 +295,7 @@ bool collation_token_stream::reset(const string_ref& data) {
     // enforce valid UTF-8 string
     assert(buf == raw_term_buf);
     termBufIdx = 0;
-    for (size_t i = 0; i < term_size; ++i) {
+    for (decltype(term_size) i{}; i < term_size; ++i) {
       assert(raw_term_buf[i] < kRecalcMap.size());
       const auto [offset, size] = kRecalcMap[raw_term_buf[i]];
       if ((termBufIdx + size) > sizeof state_->term_buf) {

@@ -29,6 +29,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Containers/FlatHashMap.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
@@ -37,6 +38,7 @@ class Expression;
 class ExpressionContext;
 class QueryContext;
 struct Variable;
+class InputAqlItemRow;
 }  // namespace aql
 
 namespace graph {
@@ -49,6 +51,7 @@ class PathValidatorOptions {
   PathValidatorOptions(PathValidatorOptions&&) = default;
   PathValidatorOptions(PathValidatorOptions const&) = default;
 
+  // Vertex expression section
   /**
    * @brief Set the expression that needs to hold true for ALL vertices on the
    * path.
@@ -62,6 +65,45 @@ class PathValidatorOptions {
    */
   void setVertexExpression(uint64_t depth,
                            std::unique_ptr<aql::Expression> expression);
+
+  // Prune section
+  /**
+   * @brief Sets a prune evaluator. This needs to be called from within an Aql
+   * Node, as the node itself holds all the expressions.
+   */
+  void setPruneEvaluator(
+      std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
+
+  void setPostFilterEvaluator(
+      std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
+
+  /**
+   * @brief Returns the current prune evaluator. It is possible that no prune
+   * validator has been set.
+   */
+  std::shared_ptr<aql::PruneExpressionEvaluator>& getPruneEvaluator();
+  std::shared_ptr<aql::PruneExpressionEvaluator>& getPostFilterEvaluator();
+
+  /**
+   * @brief Check whether Prune or PostFilter is enabled or disabled.
+   */
+  bool usesPrune() const;
+  bool usesPostFilter() const;
+
+  /**
+   * @brief In case prune or postFilter has been enabled, we need to unprepare
+   * the context of the inputRow. See explanation in TraversalExecutor.cpp L200
+   */
+  void unpreparePruneContext();
+  void unpreparePostFilterContext();
+
+  /**
+   * @brief In case prune or postFilter is enabled, the prune context must be
+   * set during the processing of all DataRows (InputAqlItemRow) from within the
+   * specific Executor.
+   */
+  void setPruneContext(arangodb::aql::InputAqlItemRow& inputRow);
+  void setPostFilterContext(arangodb::aql::InputAqlItemRow& inputRow);
 
   /**
    * @brief Get the Expression a vertex needs to hold if defined on the given
@@ -81,27 +123,30 @@ class PathValidatorOptions {
 
   aql::FixedVarExpressionContext& getExpressionContext();
 
-  // @brief Only required for rolling upgrades 3.8 => 3.9
-  // If a graph is asked for the first vertex and that is filtered
+  // @brief If a graph is asked for the first vertex and that is filtered
   // it can be removed for 3.9 => nextVersion.
-  void compatibility38IncludeFirstVertex() {
-    _compatibility38IncludeFirstVertex = true;
+  void setBfsResultHasToIncludeFirstVertex() {
+    _bfsResultHasToIncludeFirstVertex = true;
   }
 
-  bool hasCompatibility38IncludeFirstVertex() const {
-    return _compatibility38IncludeFirstVertex;
+  bool bfsResultHasToIncludeFirstVertex() const {
+    return _bfsResultHasToIncludeFirstVertex;
   }
 
  private:
+  // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
   containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>>
       _vertexExpressionOnDepth;
+  std::vector<std::string> _allowedVertexCollections;
+  bool _bfsResultHasToIncludeFirstVertex = false;
+
+  // Prune section
+  std::shared_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
+  std::shared_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
+
   aql::Variable const* _tmpVar;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
-
-  std::vector<std::string> _allowedVertexCollections;
-
-  bool _compatibility38IncludeFirstVertex = false;
 };
 }  // namespace graph
 }  // namespace arangodb

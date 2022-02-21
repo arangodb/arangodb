@@ -78,7 +78,7 @@ class Parser {
   uint8_t const* _start;
   std::size_t _size;
   std::size_t _pos;
-  int _nesting;
+  uint32_t _nesting;
 
  public:
   Options const* options;
@@ -135,7 +135,7 @@ class Parser {
         _size(0), 
         _pos(0), 
         _nesting(0),
-         options(options) {
+        options(options) {
     if (VELOCYPACK_UNLIKELY(options == nullptr)) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
@@ -182,6 +182,7 @@ class Parser {
     _start = start;
     _size = size;
     _pos = 0;
+    _nesting = 0;
     if (options->clearBuilderBeforeParse) {
       _builder->clear();
     }
@@ -302,9 +303,9 @@ class Parser {
     return i;
   }
 
-  inline void increaseNesting() { ++_nesting; }
+  void increaseNesting(); 
 
-  inline void decreaseNesting() { --_nesting; }
+  void decreaseNesting() noexcept; 
 
   void parseNumber();
 

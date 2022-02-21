@@ -48,7 +48,6 @@ namespace arangodb::replication2::replicated_log {
 auto getEnoughHealthyParticipants(size_t replicationFactor,
                                   ParticipantsHealth const &health)
     -> LogTarget::Participants {
-
   LogTarget::Participants participants;
 
   for (auto const &[pid, health] : health._health) {

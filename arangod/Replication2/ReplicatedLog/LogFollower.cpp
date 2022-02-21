@@ -184,7 +184,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto toBeResolved = std::make_unique<WaitForQueue>();
   if (req.entries.empty()) {
     auto action = self->checkCommitIndex(
-        req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+        req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
     auto result = AppendEntriesResult::withOk(self->_follower._currentTerm,
                                               req.messageId);
     self.unlock();  // unlock here, action will be executed via destructor
@@ -249,7 +249,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
 
     auto action = self->checkCommitIndex(
-        req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+        req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
 
     static_assert(noexcept(AppendEntriesResult::withOk(
         self->_follower._currentTerm, req.messageId)));
@@ -275,7 +275,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
-    LogIndex newCommitIndex, LogIndex newLCI,
+    LogIndex newCommitIndex, LogIndex newLITK,
     std::unique_ptr<WaitForQueue> outQueue) noexcept -> DeferredAction {
   TRI_ASSERT(outQueue != nullptr) << "expect outQueue to be preallocated";
 
@@ -318,14 +318,11 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
     }
   };
 
-  // This assertion is no longer true, as followers can now be added.
-  // TRI_ASSERT(newLCI >= _largestCommonIndex)
-  //     << "req.lci = " << newLCI << ", this.lci = " << _largestCommonIndex;
-  if (_largestCommonIndex < newLCI) {
+  if (_lowestIndexToKeep < newLITK) {
     LOG_CTX("fc467", TRACE, _follower._loggerContext)
-        << "largest common index went from " << _largestCommonIndex << " to "
-        << newLCI << ".";
-    _largestCommonIndex = newLCI;
+        << "largest common index went from " << _lowestIndexToKeep << " to "
+        << newLITK << ".";
+    _lowestIndexToKeep = newLITK;
     // TODO do we want to call checkCompaction here?
     std::ignore = checkCompaction();
   }
@@ -358,7 +355,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.local = followerData.getLocalStatistics();
     status.leader = _leaderId;
     status.term = _currentTerm;
-    status.largestCommonIndex = followerData._largestCommonIndex;
+    status.lowestIndexToKeep = followerData._lowestIndexToKeep;
     return LogStatus{std::move(status)};
   });
 }
@@ -385,37 +382,51 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogFollower::resign() && -> std::tuple<
     std::unique_ptr<LogCore>, DeferredAction> {
-  return _guardedFollowerData.doUnderLock([this](GuardedFollowerData&
-                                                     followerData) {
-    LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
-    if (followerData._logCore == nullptr) {
-      LOG_CTX("55a1d", WARN, _loggerContext)
-          << "follower log core is already gone. Resign was called twice!";
-      basics::abortOrThrowException(ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
-    }
+  return _guardedFollowerData.doUnderLock(
+      [this](GuardedFollowerData& followerData) {
+        LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
+        if (followerData._logCore == nullptr) {
+          LOG_CTX("55a1d", WARN, _loggerContext)
+              << "follower log core is already gone. Resign was called twice!";
+          basics::abortOrThrowException(ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+              ADB_HERE));
+        }
 
-    // use a unique ptr because move constructor for multimaps is not noexcept
-    auto queue = std::make_unique<WaitForQueue>(
-        std::move(followerData._waitForQueue.getLockedGuard().get()));
+        // use a unique ptr because move constructor for multimaps is not
+        // noexcept
+        struct Queues {
+          WaitForQueue waitForQueue;
+          WaitForBag waitForResignQueue;
+        };
+        auto queues = std::make_unique<Queues>();
+        std::swap(queues->waitForQueue,
+                  followerData._waitForQueue.getLockedGuard().get());
+        queues->waitForResignQueue =
+            std::move(followerData._waitForResignQueue);
 
-    auto action = [queue = std::move(queue)]() noexcept {
-      std::for_each(queue->begin(), queue->end(), [](auto& pair) {
-        pair.second.setException(ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+        auto action = [queues = std::move(queues)]() noexcept {
+          std::for_each(
+              queues->waitForQueue.begin(), queues->waitForQueue.end(),
+              [](auto& pair) {
+                pair.second.setException(ParticipantResignedException(
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+                    ADB_HERE));
+              });
+          queues->waitForResignQueue.resolveAll();
+        };
+        using action_type = decltype(action);
+
+        static_assert(std::is_nothrow_move_constructible_v<action_type>);
+        static_assert(
+            std::is_nothrow_constructible_v<
+                DeferredAction, std::add_rvalue_reference_t<action_type>>);
+
+        // make_tuple is noexcept, _logCore is a unique_ptr which is nothrow
+        // move constructable
+        return std::make_tuple(std::move(followerData._logCore),
+                               DeferredAction{std::move(action)});
       });
-    };
-    using action_type = decltype(action);
-
-    static_assert(std::is_nothrow_move_constructible_v<action_type>);
-    static_assert(std::is_nothrow_constructible_v<
-                  DeferredAction, std::add_rvalue_reference_t<action_type>>);
-
-    // make_tuple is noexcept, _logCore is a unique_ptr which is nothrow move
-    // constructable
-    return std::make_tuple(std::move(followerData._logCore),
-                           DeferredAction{std::move(action)});
-  });
 }
 
 replicated_log::LogFollower::LogFollower(
@@ -477,10 +488,11 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
           while (actualIndex <= followerData._commitIndex) {
             auto memtry =
                 followerData._inMemoryLog.getEntryByIndex(actualIndex);
+            TRI_ASSERT(memtry.has_value());  // should always have a value
             if (!memtry.has_value()) {
               break;
             }
-            if (memtry->entry().logPayload().has_value()) {
+            if (memtry->entry().hasPayload()) {
               break;
             }
             actualIndex = actualIndex + 1;
@@ -568,6 +580,42 @@ auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
   return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
+auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
+  return _guardedFollowerData.getLockedGuard()
+      ->_waitForResignQueue.addWaitFor();
+}
+
+auto LogFollower::construct(LoggerContext const& loggerContext,
+                            std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+                            ParticipantId id, std::unique_ptr<LogCore> logCore,
+                            LogTerm term, std::optional<ParticipantId> leaderId)
+    -> std::shared_ptr<LogFollower> {
+  auto log = InMemoryLog::loadFromLogCore(*logCore);
+
+  auto const lastIndex = log.getLastTermIndexPair();
+
+  if (lastIndex.term >= term) {
+    LOG_CTX("2d80c", WARN, loggerContext)
+        << "Becoming follower in term " << term
+        << " but spearhead is already at term " << lastIndex.term;
+  }
+
+  struct MakeSharedWrapper : LogFollower {
+    MakeSharedWrapper(LoggerContext const& loggerContext,
+                      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+                      ParticipantId id, std::unique_ptr<LogCore> logCore,
+                      LogTerm term, std::optional<ParticipantId> leaderId,
+                      InMemoryLog inMemoryLog)
+        : LogFollower(loggerContext, std::move(logMetrics), std::move(id),
+                      std::move(logCore), term, std::move(leaderId),
+                      std::move(inMemoryLog)) {}
+  };
+
+  return std::make_shared<MakeSharedWrapper>(
+      loggerContext, std::move(logMetrics), std::move(id), std::move(logCore),
+      term, std::move(leaderId), std::move(log));
+}
+
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
     const noexcept -> LogStatistics {
   auto result = LogStatistics{};
@@ -578,7 +626,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
 }
 
 auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
-  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
+  auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
   if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {

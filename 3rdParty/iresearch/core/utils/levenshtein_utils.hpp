@@ -94,7 +94,7 @@ inline size_t edit_distance(const basic_string_ref<Char>& lhs,
 ///        accepting strings at edit distance less or equal than distance
 ///        specified in description.
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API parametric_description {
+class parametric_description {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief describes trasition among parametric states
@@ -216,7 +216,7 @@ class IRESEARCH_API parametric_description {
 /// @param with_transposition count transpositions
 /// @returns parametric description of Levenshtein automaton for supplied args
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API parametric_description make_parametric_description(
+parametric_description make_parametric_description(
   byte_type max_distance,
   bool with_transposition);
 
@@ -225,7 +225,7 @@ IRESEARCH_API parametric_description make_parametric_description(
 /// @param description parametric description to write
 /// @param out output stream
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void write(const parametric_description& description,
+void write(const parametric_description& description,
                          data_output& out);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +233,7 @@ IRESEARCH_API void write(const parametric_description& description,
 /// @param in input stream
 /// @returns the read parametric description
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API parametric_description read(data_input& in);
+parametric_description read(data_input& in);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief instantiates DFA based on provided parametric description and target
@@ -242,10 +242,10 @@ IRESEARCH_API parametric_description read(data_input& in);
 /// @returns DFA
 /// @note if 'target' isn't a valid UTF-8 sequence, behaviour is undefined
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API automaton make_levenshtein_automaton(
+automaton make_levenshtein_automaton(
   const parametric_description& description,
-  const bytes_ref& prefix,
-  const bytes_ref& target);
+  bytes_ref prefix,
+  bytes_ref target);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evaluates edit distance between the specified words up to
@@ -259,7 +259,7 @@ IRESEARCH_API automaton make_levenshtein_automaton(
 /// @note accepts only valid descriptions, calling function with
 ///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API size_t edit_distance(
+size_t edit_distance(
   const parametric_description& description,
   const byte_type* lhs, size_t lhs_size,
   const byte_type* rhs, size_t rhs_size);
@@ -276,8 +276,8 @@ IRESEARCH_API size_t edit_distance(
 ////////////////////////////////////////////////////////////////////////////////
 inline size_t edit_distance(
     const parametric_description& description,
-    const bytes_ref& lhs,
-    const bytes_ref& rhs) {
+    bytes_ref lhs,
+    bytes_ref rhs) {
   return edit_distance(description, lhs.begin(), lhs.size(), rhs.begin(), rhs.size());
 }
 
@@ -295,7 +295,7 @@ inline size_t edit_distance(
 /// @note accepts only valid descriptions, calling function with
 ///       invalid description is undefined behaviour
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API bool edit_distance(
+bool edit_distance(
   size_t& distance,
   const parametric_description& description,
   const byte_type* lhs, size_t lhs_size,
@@ -315,8 +315,8 @@ IRESEARCH_API bool edit_distance(
 inline bool edit_distance(
     size_t& distance,
     const parametric_description& description,
-    const bytes_ref& lhs,
-    const bytes_ref& rhs) {
+    bytes_ref lhs,
+    bytes_ref rhs) {
   return edit_distance(distance, description,
                        lhs.begin(), lhs.size(),
                        rhs.begin(), rhs.size());

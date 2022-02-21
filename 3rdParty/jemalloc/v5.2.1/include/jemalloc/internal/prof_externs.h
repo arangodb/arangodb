@@ -2,6 +2,7 @@
 #define JEMALLOC_INTERNAL_PROF_EXTERNS_H
 
 #include "jemalloc/internal/mutex.h"
+#include "jemalloc/internal/prof_hook.h"
 
 extern bool opt_prof;
 extern bool opt_prof_active;
@@ -11,6 +12,7 @@ extern ssize_t opt_lg_prof_interval; /* lg(prof_interval). */
 extern bool opt_prof_gdump;          /* High-water memory dumping. */
 extern bool opt_prof_final;          /* Final profile dumping. */
 extern bool opt_prof_leak;           /* Dump leak summary at exit. */
+extern bool opt_prof_leak_error;     /* Exit with error code if memory leaked */
 extern bool opt_prof_accum;          /* Report cumulative bytes. */
 extern bool opt_prof_log;            /* Turn logging on at boot. */
 extern char opt_prof_prefix[
@@ -31,7 +33,7 @@ extern bool opt_prof_sys_thread_name;
 extern bool opt_prof_stats;
 
 /* Accessed via prof_active_[gs]et{_unlocked,}(). */
-extern bool prof_active;
+extern bool prof_active_state;
 
 /* Accessed via prof_gdump_[gs]et{_unlocked,}(). */
 extern bool prof_gdump_val;
@@ -47,12 +49,11 @@ extern size_t lg_prof_sample;
 
 extern bool prof_booted;
 
-/*
- * A hook to mock out backtrace functionality.  This can be handy, since it's
- * otherwise difficult to guarantee that two allocations are reported as coming
- * from the exact same stack trace in the presence of an optimizing compiler.
- */
-extern void (* JET_MUTABLE prof_backtrace_hook)(prof_bt_t *bt);
+void prof_backtrace_hook_set(prof_backtrace_hook_t hook);
+prof_backtrace_hook_t prof_backtrace_hook_get();
+
+void prof_dump_hook_set(prof_dump_hook_t hook);
+prof_dump_hook_t prof_dump_hook_get();
 
 /* Functions only accessed in prof_inlines.h */
 prof_tdata_t *prof_tdata_init(tsd_t *tsd);

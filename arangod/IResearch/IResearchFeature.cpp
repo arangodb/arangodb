@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 // otherwise define conflict between 3rdParty\date\include\date\date.h and
 // 3rdParty\iresearch\core\shared.hpp
@@ -392,17 +393,16 @@ bool upgradeSingleServerArangoSearchView0_1(
   }
 
   for (auto& view : vocbase.views()) {
-    if (!LogicalView::cast<IResearchView>(view.get())) {
+    if (!basics::downCast<IResearchView>(view.get())) {
       continue;  // not an IResearchView
     }
 
     velocypack::Builder builder;
 
     builder.openObject();
+    // get JSON with meta + 'version'
     Result res = view->properties(
-        builder,
-        LogicalDataSource::Serialization::Persistence);  // get JSON with meta +
-                                                         // 'version'
+        builder, LogicalDataSource::Serialization::Persistence);
     builder.close();
 
     if (!res.ok()) {
@@ -613,7 +613,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
   irs::string_ref constexpr args(".|+");
 
   irs::scorers::visit(
-      [&functions, &args](irs::string_ref const& name,
+      [&functions, &args](irs::string_ref name,
                           irs::type_info const& args_format) -> bool {
         // ArangoDB, for API consistency, only supports scorers configurable via
         // jSON
@@ -732,14 +732,8 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
   if (LogicalView::category() != dataSource.category()) {
     return {};  // not a view
   }
-
-// TODO FIXME find a better way to look up a LogicalView
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* view = dynamic_cast<LogicalView*>(&dataSource);
-#else
-  auto* view = static_cast<LogicalView*>(&dataSource);
-#endif
-
+  // TODO FIXME find a better way to look up a LogicalView
+  auto* view = basics::downCast<LogicalView>(&dataSource);
   if (!view) {
     LOG_TOPIC("f42f8", WARN, arangodb::iresearch::TOPIC)
         << "failure to get LogicalView while processing a TransactionState by "
@@ -754,8 +748,7 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
   }
 
   // TODO FIXME find a better way to look up an IResearch View
-  auto& impl = LogicalView::cast<IResearchView>(*view);
-
+  auto& impl = basics::downCast<IResearchView>(*view);
   return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
 }
 

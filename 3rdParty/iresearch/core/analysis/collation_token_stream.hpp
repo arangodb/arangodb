@@ -67,7 +67,7 @@ class collation_token_stream final
     term_eof_ = true;
     return eof;
   }
-  virtual bool reset(const irs::string_ref& data) override;
+  virtual bool reset(string_ref data) override;
 
  private:
   struct state_t;

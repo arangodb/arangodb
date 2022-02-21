@@ -26,10 +26,10 @@
 namespace iresearch {
 namespace math {
 
-uint32_t log2_64( uint64_t value ) {
-  if ( 0 == value ) return 0;
+uint32_t log2_64( uint64_t value ) noexcept {
+  if (0 == value) return 0;
 
-  static const uint32_t tab64[64] = {
+  static constexpr uint32_t tab64[64] = {
     63, 0, 58, 1, 59, 47, 53, 2,
     60, 39, 48, 27, 54, 33, 42, 3,
     61, 51, 37, 40, 49, 18, 28, 20,
@@ -47,11 +47,11 @@ uint32_t log2_64( uint64_t value ) {
   value |= value >> 16;
   value |= value >> 32;
 
-  return tab64[( static_cast< uint64_t >( ( value - ( value >> 1 ) ) * 0x07EDD5E59A4E28C2 ) ) >> 58];
+  return tab64[(static_cast<uint64_t>((value - (value >> 1)) * 0x07EDD5E59A4E28C2)) >> 58];
 }
 
-uint32_t log2_32( uint32_t value ) {
-  static const uint32_t tab32[32] = {
+uint32_t log2_32( uint32_t value ) noexcept {
+  static constexpr uint32_t tab32[32] = {
     0, 9, 1, 10, 13, 21, 2, 29,
     11, 14, 16, 18, 22, 25, 3, 30,
     8, 12, 20, 28, 15, 17, 24, 7,
@@ -64,10 +64,10 @@ uint32_t log2_32( uint32_t value ) {
   value |= value >> 8;
   value |= value >> 16;
 
-  return tab32[static_cast< uint32_t >( value * 0x07C4ACDD ) >> 27];
+  return tab32[static_cast<uint32_t>(value * 0x07C4ACDD) >> 27];
 }
 
-uint32_t log(uint64_t x, uint64_t base) {
+uint32_t log(uint64_t x, uint64_t base) noexcept {
   assert(base > 1);
 
   uint32_t res = 0;

@@ -36,12 +36,14 @@
 #include "utils/utf8_character_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME{"case"};
-constexpr VPackStringRef BREAK_PARAM_NAME       {"break"};
+constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
+constexpr std::string_view BREAK_PARAM_NAME       {"break"};
 
 const frozen::unordered_map<
     string_ref,
@@ -75,7 +77,7 @@ bool parse_vpack_options(const VPackSlice slice,
         CASE_CONVERT_PARAM_NAME.data());
       return false;
     }
-    auto case_convert = case_convert_slice.stringRef();
+    auto case_convert = case_convert_slice.stringView();
     auto itr = CASE_CONVERT_MAP.find(string_ref(case_convert.data(),
                                      case_convert.size()));
 
@@ -97,9 +99,9 @@ bool parse_vpack_options(const VPackSlice slice,
         BREAK_PARAM_NAME.data());
       return false;
     }
-    auto break_type = break_type_slice.stringRef();
+    auto break_type = break_type_slice.stringView();
     auto itr = BREAK_CONVERT_MAP.find(string_ref(break_type.data(),
-                                                      break_type.size()));
+                                                 break_type.size()));
 
     if (itr == BREAK_CONVERT_MAP.end()) {
       IR_FRMT_WARN(
@@ -177,7 +179,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   return nullptr;
 }
 
-analysis::analyzer::ptr make_vpack(const string_ref& args) {
+analysis::analyzer::ptr make_vpack(string_ref args) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   return make_vpack(slice);
 }
@@ -201,7 +203,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* vpack_builder)
   return false;
 }
 
-bool normalize_vpack_config(const string_ref& args, std::string& config) {
+bool normalize_vpack_config(string_ref args, std::string& config) {
   VPackSlice slice(reinterpret_cast<const uint8_t*>(args.c_str()));
   VPackBuilder builder;
   if (normalize_vpack_config(slice, &builder)) {
@@ -211,7 +213,7 @@ bool normalize_vpack_config(const string_ref& args, std::string& config) {
   return false;
 }
 
-analysis::analyzer::ptr make_json(const string_ref& args) {
+analysis::analyzer::ptr make_json(string_ref args) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while constructing segmentation_token_stream");
@@ -230,7 +232,7 @@ analysis::analyzer::ptr make_json(const string_ref& args) {
   return nullptr;
 }
 
-bool normalize_json_config(const string_ref& args, std::string& definition) {
+bool normalize_json_config(string_ref args, std::string& definition) {
   try {
     if (args.null()) {
       IR_FRMT_ERROR("Null arguments while normalizing segmentation_token_stream");
@@ -357,7 +359,7 @@ bool segmentation_token_stream::next() {
   }
 }
 
-bool segmentation_token_stream::reset(const string_ref& data) {
+bool segmentation_token_stream::reset(string_ref data) {
   state_->data = as_graphemes(data.begin(), data.end());
   state_->begin = state_->data.begin();
   state_->end = state_->data.end();

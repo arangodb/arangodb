@@ -68,7 +68,7 @@ void LeaderStateManager<S>::run() {
               self->updateInternalState(
                   LeaderInternalState::kRecoveryInProgress, result->range());
               std::shared_ptr<IReplicatedLeaderState<S>> machine =
-                  self->factory->constructLeader();
+                  self->factory->constructLeader(std::move(self->core));
               return machine->recoverEntries(std::move(result))
                   .then([weak,
                          machine](futures::Try<Result>&& tryResult) mutable
@@ -134,8 +134,7 @@ template<typename S>
 LeaderStateManager<S>::LeaderStateManager(
     std::shared_ptr<ReplicatedState<S>> const& parent,
     std::shared_ptr<replicated_log::ILogLeader> leader,
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token,
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logLeader(std::move(leader)),
@@ -149,10 +148,16 @@ LeaderStateManager<S>::LeaderStateManager(
 
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
-  if (token == nullptr || core == nullptr) {
+  if (_didResign) {
     TRI_ASSERT(core == nullptr && token == nullptr);
     throw replicated_log::ParticipantResignedException(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+  } else {
+    // Note that `this->core` is passed into the state when the leader is
+    // started (more particularly, when the leader state is created), but
+    // `this->state` is only set after replaying the log has finished.
+    // Thus both can be null here.
+    TRI_ASSERT(token != nullptr);
   }
   LeaderStatus status;
   status.managerState.state = internalState;
@@ -171,24 +176,33 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
 
 template<typename S>
 auto LeaderStateManager<S>::resign() && noexcept
-    -> std::pair<std::unique_ptr<ReplicatedStateCore>,
+    -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<ReplicatedStateToken>> {
   LOG_TOPIC("edcf3", TRACE, Logger::REPLICATED_STATE)
       << "Leader manager resign";
+  auto core = std::invoke([&] {
+    if (state != nullptr) {
+      TRI_ASSERT(this->core == nullptr);
+      return std::move(*state).resign();
+    } else {
+      return std::move(this->core);
+    }
+  });
   TRI_ASSERT(core != nullptr);
   TRI_ASSERT(token != nullptr);
+  TRI_ASSERT(!_didResign);
+  _didResign = true;
   return {std::move(core), std::move(token)};
 }
 
 template<typename S>
 void LeaderStateManager<S>::beginWaitingForParticipantResigned() {
-  logLeader->waitFor(LogIndex{std::numeric_limits<std::uint64_t>::max()})
-      .thenFinal([weak = this->weak_from_this()](auto&&) {
-        if (auto self = weak.lock(); self != nullptr) {
-          if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
-            parentPtr->forceRebuild();
-          }
-        }
-      });
+  logLeader->waitForResign().thenFinal([weak = this->weak_from_this()](auto&&) {
+    if (auto self = weak.lock(); self != nullptr) {
+      if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
+        parentPtr->forceRebuild();
+      }
+    }
+  });
 }
 }  // namespace arangodb::replication2::replicated_state

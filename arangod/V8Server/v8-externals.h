@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include <cstdint>
+
 /// @brief wrapped class for TRI_vocbase_t
 /// Layout:
 /// - SLOT_CLASS_TYPE

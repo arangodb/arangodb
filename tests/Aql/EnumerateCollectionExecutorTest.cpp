@@ -113,7 +113,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
                       {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable,
-                      varUsedLater, nullptr, projections, random, count,
+                      varUsedLater, nullptr, projections, {}, random, count,
                       arangodb::ReadOwnWrites::no),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
@@ -134,7 +134,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
 
   SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
 
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
+  AqlItemBlockInputRange inputRange{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear());
@@ -154,7 +154,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
 
   SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
 
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
+  AqlItemBlockInputRange inputRange{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear());
@@ -196,7 +196,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   SCOPED_TRACE(insertQueryC);
   AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
 
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
+  AqlItemBlockInputRange inputRange{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear());
@@ -240,7 +240,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
   {value: 1} } INTO UnitTestCollection)aql"; SCOPED_TRACE(insertQueryC);
   AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
    */
-  AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
+  AqlItemBlockInputRange inputRange{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear());
@@ -305,7 +305,7 @@ class EnumerateCollectionExecutorTestProduce
         registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
                       RegIdFlatSetStack{{}}),
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable,
-                      varUsedLater, nullptr, projections, random, count,
+                      varUsedLater, nullptr, projections, {}, random, count,
                       arangodb::ReadOwnWrites::no) {}
 
   auto makeRegisterInfos(RegisterId outputRegister = 0,
@@ -325,12 +325,17 @@ class EnumerateCollectionExecutorTestProduce
   auto makeExecutorInfos(RegisterId outputRegister = 0,
                          RegisterCount nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
-    auto infos = EnumerateCollectionExecutorInfos{
-        outputRegister, *fakedQuery,
-        &aqlCollection, &outVariable,
-        varUsedLater,   nullptr,
-        projections,    random,
-        count,          arangodb::ReadOwnWrites::no};
+    auto infos = EnumerateCollectionExecutorInfos{outputRegister,
+                                                  *fakedQuery,
+                                                  &aqlCollection,
+                                                  &outVariable,
+                                                  varUsedLater,
+                                                  nullptr,
+                                                  projections,
+                                                  {},
+                                                  random,
+                                                  count,
+                                                  arangodb::ReadOwnWrites::no};
     block = SharedAqlItemBlockPtr{
         new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;

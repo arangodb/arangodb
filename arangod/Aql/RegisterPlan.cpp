@@ -177,8 +177,12 @@ void RegisterPlanWalkerT<T>::after(T* en) {
             // report an error here to prevent crashing
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_INTERNAL,
-                std::string("missing variable #") + std::to_string(v->id) +
-                    " (" + v->name + ") for node #" +
+                std::string("missing variable ") +
+                    ((!v->name.empty() && v->name[0] >= '0' &&
+                      v->name[0] <= '9')
+                         ? "#"
+                         : "") +
+                    v->name + " (id " + std::to_string(v->id) + ") for node #" +
                     std::to_string(en->id().id()) + " (" + en->getTypeString() +
                     ") while planning registers");
           }

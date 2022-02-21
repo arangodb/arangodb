@@ -52,9 +52,12 @@ void *
 ehooks_default_alloc_impl(tsdn_t *tsdn, void *new_addr, size_t size,
     size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
 	arena_t *arena = arena_get(tsdn, arena_ind, false);
-	void *ret = extent_alloc_core(tsdn, arena, new_addr, size, alignment, zero,
-	    commit, (dss_prec_t)atomic_load_u(&arena->dss_prec,
-	    ATOMIC_RELAXED));
+	/* NULL arena indicates arena_create. */
+	assert(arena != NULL || alignment == HUGEPAGE);
+	dss_prec_t dss = (arena == NULL) ? dss_prec_disabled :
+	    (dss_prec_t)atomic_load_u(&arena->dss_prec, ATOMIC_RELAXED);
+	void *ret = extent_alloc_core(tsdn, arena, new_addr, size, alignment,
+	    zero, commit, dss);
 	if (have_madvise_huge && ret) {
 		pages_set_thp_state(ret, size);
 	}
@@ -64,20 +67,8 @@ ehooks_default_alloc_impl(tsdn_t *tsdn, void *new_addr, size_t size,
 static void *
 ehooks_default_alloc(extent_hooks_t *extent_hooks, void *new_addr, size_t size,
     size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
-	tsdn_t *tsdn;
-	arena_t *arena;
-
-	tsdn = tsdn_fetch();
-	arena = arena_get(tsdn, arena_ind, false);
-	/*
-	 * The arena we're allocating on behalf of must have been initialized
-	 * already.
-	 */
-	assert(arena != NULL);
-
-	return ehooks_default_alloc_impl(tsdn, new_addr, size,
-	    ALIGNMENT_CEILING(alignment, PAGE), zero, commit,
-	    arena_ind_get(arena));
+	return ehooks_default_alloc_impl(tsdn_fetch(), new_addr, size,
+	    ALIGNMENT_CEILING(alignment, PAGE), zero, commit, arena_ind);
 }
 
 bool
@@ -251,6 +242,16 @@ ehooks_default_zero_impl(void *addr, size_t size) {
 	if (needs_memset) {
 		memset(addr, 0, size);
 	}
+}
+
+void
+ehooks_default_guard_impl(void *guard1, void *guard2) {
+	pages_mark_guards(guard1, guard2);
+}
+
+void
+ehooks_default_unguard_impl(void *guard1, void *guard2) {
+	pages_unmark_guards(guard1, guard2);
 }
 
 const extent_hooks_t ehooks_default_extent_hooks = {

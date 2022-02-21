@@ -32,7 +32,7 @@ namespace iresearch {
 class by_range;
 struct filter_visitor;
 
-struct IRESEARCH_API by_range_filter_options {
+struct by_range_filter_options {
   using range_type = search_range<bstring>;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ struct IRESEARCH_API by_range_filter_options {
 /// @struct by_prefix_options
 /// @brief options for prefix filter
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API by_range_options : by_range_filter_options {
+struct by_range_options : by_range_filter_options {
   using filter_type = by_range;
   using filter_options = by_range_filter_options;
 
@@ -77,7 +77,7 @@ struct IRESEARCH_API by_range_options : by_range_filter_options {
 /// @class by_range
 /// @brief user-side term range filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_range : public filter_base<by_range_options> {
+class by_range : public filter_base<by_range_options> {
  public:
   static ptr make();
 
@@ -85,7 +85,7 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const string_ref& field,
+    string_ref field,
     const options_type::range_type& rng,
     size_t scored_terms_limit);
 

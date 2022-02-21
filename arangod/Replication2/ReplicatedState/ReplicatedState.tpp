@@ -30,9 +30,11 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LeaderStateManager.h"
 #include "Replication2/ReplicatedState/FollowerStateManager.h"
+#include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
@@ -41,6 +43,7 @@
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedState/LeaderStateManager.tpp"
 #include "Replication2/ReplicatedState/FollowerStateManager.tpp"
+#include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -72,7 +75,9 @@ ReplicatedState<S>::ReplicatedState(
 
 template<typename S>
 void ReplicatedState<S>::flush(StateGeneration planGeneration) {
-  std::ignore = guardedData.getLockedGuard()->flush(planGeneration);
+  auto deferred = guardedData.getLockedGuard()->flush(planGeneration);
+  // execute *after* the lock has been released
+  deferred.fire();
 }
 
 template<typename S>
@@ -116,20 +121,24 @@ template<typename S>
 void ReplicatedState<S>::forceRebuild() {
   LOG_TOPIC("8041a", TRACE, Logger::REPLICATED_STATE)
       << "Force rebuild of replicated state";
-  std::ignore = guardedData.getLockedGuard()->forceRebuild();
+  auto deferred = guardedData.getLockedGuard()->forceRebuild();
+  // execute *after* the lock has been released
+  deferred.fire();
 }
 
 template<typename S>
 void ReplicatedState<S>::start(std::unique_ptr<ReplicatedStateToken> token) {
-  auto core = std::make_unique<ReplicatedStateCore>();
-  std::ignore =
+  auto core = std::make_unique<CoreType>();
+  auto deferred =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
+  // execute *after* the lock has been released
+  deferred.fire();
 }
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::rebuild(
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction try {
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
   LOG_TOPIC("edaef", TRACE, Logger::REPLICATED_STATE)
       << "replicated state rebuilding - query participant";
   auto participant = _self.log->getParticipant();
@@ -146,8 +155,16 @@ auto ReplicatedState<S>::GuardedData::rebuild(
     LOG_TOPIC("f5328", TRACE, Logger::REPLICATED_STATE)
         << "obtained follower participant";
     return runFollower(std::move(follower), std::move(core), std::move(token));
+  } else if (auto unconfiguredLogParticipant = std::dynamic_pointer_cast<
+                 replicated_log::LogUnconfiguredParticipant>(participant);
+             unconfiguredLogParticipant) {
+    LOG_TOPIC("ad84b", TRACE, Logger::REPLICATED_STATE)
+        << "obtained unconfigured participant";
+    return runUnconfigured(std::move(unconfiguredLogParticipant),
+                           std::move(core), std::move(token));
   } else {
-    // unconfigured
+    LOG_TOPIC("33d5f", FATAL, Logger::REPLICATED_STATE)
+        << "Replicated log has an unhandled participant type.";
     std::abort();
   }
 } catch (basics::Exception const& ex) {
@@ -163,13 +180,13 @@ auto ReplicatedState<S>::GuardedData::rebuild(
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runFollower(
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction try {
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
   auto manager = std::make_shared<FollowerStateManager<S>>(
-      _self.shared_from_this(), logFollower, std::move(core), std::move(token),
-      _self.factory);
+      _self.shared_from_this(), std::move(logFollower), std::move(core),
+      std::move(token), _self.factory);
   currentManager = manager;
 
   return DeferredAction{[manager]() noexcept { manager->run(); }};
@@ -182,18 +199,38 @@ auto ReplicatedState<S>::GuardedData::runFollower(
 template<typename S>
 auto ReplicatedState<S>::GuardedData::runLeader(
     std::shared_ptr<replicated_log::ILogLeader> logLeader,
-    std::unique_ptr<ReplicatedStateCore> core,
-    std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction try {
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
   auto manager = std::make_shared<LeaderStateManager<S>>(
-      _self.shared_from_this(), logLeader, std::move(core), std::move(token),
-      _self.factory);
+      _self.shared_from_this(), std::move(logLeader), std::move(core),
+      std::move(token), _self.factory);
   currentManager = manager;
 
   return DeferredAction{[manager]() noexcept { manager->run(); }};
 } catch (std::exception const& e) {
   LOG_TOPIC("016f3", DEBUG, Logger::REPLICATED_STATE)
       << "run leader caught exception: " << e.what();
+  throw;
+}
+
+template<typename S>
+auto ReplicatedState<S>::GuardedData::runUnconfigured(
+    std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+        unconfiguredParticipant,
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    -> DeferredAction try {
+  LOG_TOPIC("5d7c6", DEBUG, Logger::REPLICATED_STATE)
+      << "create unconfigured state";
+  auto manager = std::make_shared<UnconfiguredStateManager<S>>(
+      _self.shared_from_this(), std::move(unconfiguredParticipant),
+      std::move(core), std::move(token));
+  currentManager = manager;
+
+  return DeferredAction{[manager]() noexcept { manager->run(); }};
+} catch (std::exception const& e) {
+  LOG_TOPIC("6f1eb", DEBUG, Logger::REPLICATED_STATE)
+      << "run unconfigured caught exception: " << e.what();
   throw;
 }
 

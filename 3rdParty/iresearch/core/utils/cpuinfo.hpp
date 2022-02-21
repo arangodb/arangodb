@@ -30,7 +30,7 @@
 
 namespace iresearch {
 
-class IRESEARCH_API cpuinfo {
+class cpuinfo {
  public:
   static bool support_popcnt();
  private:

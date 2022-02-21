@@ -49,7 +49,7 @@ void postings::get_sorted_postings(
   });
 }
 
-std::pair<posting*, bool> postings::emplace(const bytes_ref& term) {
+std::pair<posting*, bool> postings::emplace(bytes_ref term) {
   REGISTER_TIMER_DETAILED();
   auto& parent = writer_.parent();
  

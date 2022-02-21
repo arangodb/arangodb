@@ -57,7 +57,7 @@ struct DeferredAction {
   template<typename F, typename Func = std::decay_t<F>,
            std::enable_if_t<std::is_nothrow_invocable_r_v<void, F>, int> = 0>
   explicit DeferredAction(F&& f) noexcept : invoke_func(call_action<F>) {
-    static_assert(sizeof(F) <= alloc_size);
+    static_assert(sizeof(F) <= alloc_size, "DeferredAction's size exceeded");
     static_assert(std::is_nothrow_move_constructible_v<Func>);
     new (&storage) Func(std::forward<F>(f));
   }
