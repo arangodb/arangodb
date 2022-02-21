@@ -62,7 +62,6 @@ if [ -s "$changed_files_filename" ]; then
   cat -n "$changed_files_filename.sorted"
   echo
 
-  exit 1
   docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.1 "format" "$changed_files_filename.sorted" 
 fi
 status=$?
