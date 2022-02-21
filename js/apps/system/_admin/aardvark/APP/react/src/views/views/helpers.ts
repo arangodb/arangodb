@@ -22,7 +22,7 @@ ajvErrors(ajv);
 
 export const validateAndFix = ajv.addSchema(linksSchema).compile(formSchema);
 
-export function useLinkState (formState: { [key: string]: any }, formField: string) {
+export function useLinkState(formState: { [key: string]: any }, formField: string) {
   const [field, setField] = useState('');
   const [addDisabled, setAddDisabled] = useState(true);
   const fields = useMemo(() => (formState[formField] || {}), [formField, formState]);
@@ -36,12 +36,21 @@ export function useLinkState (formState: { [key: string]: any }, formField: stri
   return [field, setField, addDisabled, fields];
 }
 
-export function useView (name: string) {
+export const useCollection = () => {
+  const { data, error } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) => getApiRouteForCurrentDB().get(path, qs));
+  if (data) {
+    return { res: data.body.result };
+  } else {
+    return error;
+  }
+}
+
+export function useView(name: string) {
   const [view, setView] = useState<object>({ name });
   const { data } = useSWR(`/view/${name}/properties`,
     path => getApiRouteForCurrentDB().get(path), {
-      revalidateOnFocus: false
-    });
+    revalidateOnFocus: false
+  });
 
   useEffect(() => {
     if (data) {

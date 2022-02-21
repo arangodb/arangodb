@@ -7,8 +7,9 @@ import {
 } from "../../utils/helpers";
 import { SaveButton } from "./Actions";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
-import { buildSubNav, postProcessor, useView } from "./helpers";
+import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
+import Tooltip from "../../components/arango/tooltip";
 
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
@@ -32,6 +33,12 @@ const ViewLinksReactView = ({ name }) => {
     });
   }, [view, name]);
 
+  const collections = useCollection();
+
+  useEffect(() => {
+    console.log(collections);
+  }, [collections]);
+
   useEffect(() => {
     const observer = buildSubNav(isAdminUser, name, "Links");
 
@@ -50,18 +57,21 @@ const ViewLinksReactView = ({ name }) => {
     {
       id: 0,
       name: "fooBar",
+      attr: "fooBar, foo",
       desc: "This is fooBar",
       action: "This is an action"
     },
     {
       id: 1,
       name: "airPort",
+      attr: "Foo",
       desc: "This is fooBar",
       action: "This is an action"
     },
     {
       id: 2,
       name: "route",
+      attr: "fooBar, foo",
       desc: "This is fooBar",
       action: "This is an action"
     }
@@ -71,22 +81,47 @@ const ViewLinksReactView = ({ name }) => {
     <div className={"centralContent"} id={"content"}>
       <ArangoTable className={"arango-table"}>
         <thead>
-          <tr>
+          <tr class="figuresHeader">
             <ArangoTH>ID</ArangoTH>
+            <ArangoTH>Attributes</ArangoTH>
             <ArangoTH>Name</ArangoTH>
-            <ArangoTH>Description</ArangoTH>
-            <ArangoTH>Actions</ArangoTH>
+            <ArangoTH>Options</ArangoTH>
+            <ArangoTH>
+              Action
+              <Tooltip
+                msg="Type of index to create.
+              Please note that for the RocksDB
+              engine the index types hash, skiplist and persistent are identical,
+              so that they are not offered seperately here."
+                placement="left"
+                icon="icon_arangodb_info"
+              />
+            </ArangoTH>
           </tr>
         </thead>
 
-        {mockData.map(c => (
+        {mockData.map((c, key) => (
           <tbody>
-            <ArangoTD>{c.id}</ArangoTD>
-            <ArangoTD>{c.name}</ArangoTD>
-            <ArangoTD>{c.desc}</ArangoTD>
-            <ArangoTD>{c.action}</ArangoTD>
+            <tr>
+              <ArangoTD key={key}>{c.id}</ArangoTD>
+              <ArangoTD key={key}>{c.attr}</ArangoTD>
+              <ArangoTD key={key}>{c.name}</ArangoTD>
+              <ArangoTD key={key}>{c.desc}</ArangoTD>
+              <ArangoTD key={key}>{c.action}</ArangoTD>
+            </tr>
           </tbody>
         ))}
+        <tfoot>
+          <tr>
+            <ArangoTD></ArangoTD>
+            <ArangoTD></ArangoTD>
+            <ArangoTD></ArangoTD>
+            <ArangoTD></ArangoTD>
+            <ArangoTD>
+              <i class="fa fa-plus-circle" id="addIndex"></i>
+            </ArangoTD>
+          </tr>
+        </tfoot>
       </ArangoTable>
       <div
         id={"modal-dialog"}
