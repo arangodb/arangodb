@@ -12,7 +12,7 @@ formatting.
 In this directory, we provide such commit hooks for:
 * [Linux](pre-commit-linux)
 * [Windows](pre-commit-windows) - work in progress
-* [macOS](pre-commit-macos) - work in progress
+* [macOS](pre-commit-macos) (symlink to pre-commit-linux)
 
 They can be installed by copying the pre-commit script to `.git/hooks/pre-commit`.
 Please note that there is also a seperate commit hook for the enterprise repository,
@@ -25,7 +25,7 @@ violation.
 To apply correct formatting, it is possible to run a script that we provide:
 * [clang-format-linux](../scripts/clang-format-linux.sh)
 * [clang-format-windows](../scripts/clang-format-windows.sh) - work in progress
-* [clang-format-macos](../scripts/clang-format-macos.sh) - work in progress
+* [clang-format-macos](../scripts/clang-format-macos.sh) - (symlink to clang-format-linux)
 
 After running this script, the code should be correctly formatted. It is then
 necessary to stage the formatting changes and commit again.

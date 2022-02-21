@@ -24,16 +24,21 @@ if [[ "$#" -gt 0 ]]
 then
   # arguments given
   for file in $@
-  do 
-    echo "$file" >> $changed_files_filename
+  do
+    if [ -d "$file" ] 
+    then
+      find "$file" -type f -name "*.ipp" -o -name "*.tpp" -o -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.c" -o -name "*.h" >> "$changed_files_filename"
+    else
+      echo "$file" >> "$changed_files_filename"
+    fi
   done
 else
   # no arguments given
   # now get a list of all locally modified files
   # add unstaged changes
-  git diff --diff-filter=ACMRT --name-only -- arangod/ lib/ arangosh/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+  git diff --diff-filter=ACMRT --name-only -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
   # add staged changes
-  git diff --diff-filter=ACMRT --name-only HEAD -- arangod/ lib/ arangosh/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+  git diff --diff-filter=ACMRT --name-only HEAD -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
 
   ent_dir="enterprise"
   if [ -d "$ent_dir" ]
@@ -50,7 +55,7 @@ else
 fi
 
 if [ -s "$changed_files_filename" ]; then
-  sort "$changed_files_filename" | uniq > "$changed_files_filename.sorted"
+  sort "$changed_files_filename" | grep -E "\.\(ipp|tpp|cpp|hpp|cc|c|h\)$" | uniq > "$changed_files_filename.sorted"
 
   echo 
   echo "About to run formatting on the following files:"
