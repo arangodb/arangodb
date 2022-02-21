@@ -27,12 +27,12 @@
 #include "Cluster/ClusterTypes.h"
 
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
+#include "velocypack/velocypack-common.h"
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 using namespace arangodb::replication2::agency;
@@ -43,52 +43,51 @@ using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
 // Check whether a log has been added to target
-auto checkLogAdded(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action>;
+auto checkLogAdded(Log const &log, ParticipantsHealth const &health) -> Action;
 
 //
-auto checkLeaderPresent(LogPlanSpecification const& plan,
-                        LogCurrent const& current,
-                        ParticipantsHealth const& health)
+auto checkLeaderPresent(LogPlanSpecification const &plan,
+                        LogCurrent const &current,
+                        ParticipantsHealth const &health)
     -> std::unique_ptr<Action>;
 
-auto checkLeaderHealth(LogPlanSpecification const& plan,
-                       ParticipantsHealth const& health)
+auto checkLeaderHealth(LogPlanSpecification const &plan,
+                       ParticipantsHealth const &health)
     -> std::unique_ptr<Action>;
 
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
+auto computeReason(LogCurrentLocalState const &status, bool healthy,
                    bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
 
-auto runElectionCampaign(LogCurrentLocalStates const& states,
-                         ParticipantsConfig const& participantsConfig,
-                         ParticipantsHealth const& health, LogTerm term)
+auto runElectionCampaign(LogCurrentLocalStates const &states,
+                         ParticipantsConfig const &participantsConfig,
+                         ParticipantsHealth const &health, LogTerm term)
     -> LogCurrentSupervisionElection;
 
-auto tryLeadershipElection(LogPlanSpecification const& plan,
-                           LogCurrent const& current,
-                           ParticipantsHealth const& health)
+auto tryLeadershipElection(LogPlanSpecification const &plan,
+                           LogCurrent const &current,
+                           ParticipantsHealth const &health)
     -> std::unique_ptr<Action>;
 
-auto checkLogTargetParticipantFlags(LogTarget const& target,
-                                    LogPlanSpecification const& plan)
+auto checkLogTargetParticipantFlags(LogTarget const &target,
+                                    LogPlanSpecification const &plan)
     -> std::unique_ptr<Action>;
 
-auto checkLogTargetParticipantAdded(LogTarget const& target,
-                                    LogPlanSpecification const& plan)
+auto checkLogTargetParticipantAdded(LogTarget const &target,
+                                    LogPlanSpecification const &plan)
     -> std::unique_ptr<Action>;
 
-auto checkLogTargetParticipantRemoved(LogTarget const& target,
-                                      LogPlanSpecification const& plan)
+auto checkLogTargetParticipantRemoved(LogTarget const &target,
+                                      LogPlanSpecification const &plan)
     -> std::unique_ptr<Action>;
 
-auto checkLogTargetConfig(LogTarget const& target,
-                          LogPlanSpecification const& plan)
+auto checkLogTargetConfig(LogTarget const &target,
+                          LogPlanSpecification const &plan)
     -> std::unique_ptr<Action>;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
-auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action>;
+auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
+    -> Action;
 
-}  // namespace arangodb::replication2::replicated_log
+} // namespace arangodb::replication2::replicated_log

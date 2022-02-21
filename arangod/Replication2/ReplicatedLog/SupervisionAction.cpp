@@ -24,174 +24,83 @@
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
+#include "velocypack/velocypack-common.h"
 
 #include "Agency/AgencyPaths.h"
 
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::replication2::agency;
+using namespace arangodb::cluster::paths;
 namespace paths = arangodb::cluster::paths::aliases;
 
+// helper type for the visitor #4
+template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 namespace arangodb::replication2::replicated_log {
-auto to_string(Action::ActionType action) -> std::string_view {
-  switch (action) {
-    case Action::ActionType::EmptyAction: {
-      return "Empty";
-    } break;
-    case Action::ActionType::ErrorAction: {
-      return "Error";
-    } break;
-    case Action::ActionType::AddLogToPlanAction: {
-      return "AddLogToPlan";
-    } break;
-    case Action::ActionType::AddParticipantsToTargetAction: {
-      return "AddLogToPlan";
-    } break;
-    case Action::ActionType::LeaderElectionAction: {
-      return "LeaderElection";
-    } break;
-    case Action::ActionType::CreateInitialTermAction: {
-      return "CreateInitialTermAction";
-    } break;
-    case Action::ActionType::DictateLeaderAction: {
-      return "DictateLeaderAction";
-    } break;
-    case Action::ActionType::UpdateTermAction: {
-      return "UpdateTermAction";
-    } break;
-    case Action::ActionType::UpdateParticipantFlagsAction: {
-      return "UpdateParticipantFlags";
-    } break;
-    case Action::ActionType::AddParticipantToPlanAction: {
-      return "AddParticipantToPlanAction";
-    } break;
-    case Action::ActionType::RemoveParticipantFromPlanAction: {
-      return "RemoveParticipantFromPlan";
-    } break;
-    case Action::ActionType::UpdateLogConfigAction: {
-      return "UpdateLogConfig";
-    } break;
-    case Action::ActionType::EvictLeaderAction: {
-      return "EvictLeaderAction";
-    } break;
-  }
-  return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
-         "is-a-bug";
+
+auto to_string(Action const &action) -> std::string_view {
+  return std::visit(overloaded{[](auto arg) { return arg.name; }}, action);
 }
 
-auto operator<<(std::ostream& os, Action::ActionType const& action)
-    -> std::ostream& {
-  return os << to_string(action);
-}
-auto to_string(Action const& action) -> std::string {
-  VPackBuilder bb;
-  action.toVelocyPack(bb);
-  return bb.toString();
-}
-
-auto operator<<(std::ostream& os, Action const& action) -> std::ostream& {
-  return os << to_string(action);
-}
-
-/*
- * EmptyAction
- */
-void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
+auto toVelocyPack(Action const &action, VPackBuilder &builder) {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
-
-  builder.add(VPackValue("message"));
-  builder.add(VPackValue(_message));
+  builder.add(VPackValue(to_string(action)));
 }
 
-void ErrorAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
+struct Context {
+  explicit Context(LogId const &id, std::string const &dbName)
+      : id{id}, dbName{dbName},
+        targetRootPath{
+            paths::target()->replicatedLogs()->database(dbName)->log(id)},
+        planRootPath{
+            paths::plan()->replicatedLogs()->database(dbname)->log(id)},
+        currentRootPath{
+            paths::current()->replicatedLogs()->database(dbname)->log(id)} {};
+  LogId const &id;
+  std::string const &dbName;
 
-  builder.add(VPackValue("error"));
-  ::toVelocyPack(_error, builder);
-}
+  std::shared_ptr<Path> const &targetRootPath;
+  std::shared_ptr<Path> const &planRootPath;
+  std::shared_ptr<Path> const &currentRootPath;
+};
 
-auto ErrorAction::execute(std::string dbName,
-                          arangodb::agency::envelope envelope)
+auto execute(AddLogToPlanAction const &action, Context const &ctx,
+             arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
-  auto current_path = paths::current()
-                          ->replicatedLogs()
-                          ->database(dbName)
-                          ->log(_id)
-                          ->supervision()
-                          ->error()
-                          ->str();
-  return envelope.write()
-      .emplace_object(
-          current_path,
-          [&](VPackBuilder& builder) { ::toVelocyPack(_error, builder); })
-      .inc(paths::current()->version()->str())
-      .precs()
-      .end();
-}
 
-/*
- * AddLogToPlanAction
- */
-void AddLogToPlanAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
-}
-
-auto AddLogToPlanAction::execute(std::string dbName,
-                                 arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto path =
-      paths::plan()->replicatedLogs()->database(dbName)->log(_spec.id)->str();
+  auto const path = ctx.planRootPath->str();
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { _spec.toVelocyPack(builder); })
+          path,
+          [&](VPackBuilder &builder) { action._spec.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
       .precs()
       .isEmpty(path)
       .end();
 };
 
-/*
- * AddLogToPlanAction
- */
-void AddParticipantsToTargetAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
-}
-
-auto AddParticipantsToTargetAction::execute(std::string dbName,
-                                            arangodb::agency::envelope envelope)
+auto execute(AddParticipantsToTargetAction const &action,
+             AgencyPath const &logRoot, arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
   auto path =
       paths::target()->replicatedLogs()->database(dbName)->log(_spec.id)->str();
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { _spec.toVelocyPack(builder); })
+          path, [&](VPackBuilder &builder) { _spec.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
       .precs()
       //      .isEmpty(path)
       .end();
 };
 
-/*
- * CreateInitialTermAction
- */
-void CreateInitialTermAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
-}
-
+#if 0
 auto CreateInitialTermAction::execute(std::string dbName,
                                       arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
@@ -204,19 +113,11 @@ auto CreateInitialTermAction::execute(std::string dbName,
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { _term.toVelocyPack(builder); })
+          path, [&](VPackBuilder &builder) { _term.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
       .precs()
       .isEmpty(path)
       .end();
-}
-
-void DictateLeaderAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
-  builder.add(VPackValue("newTerm"));
-  _term.toVelocyPack(builder);
 }
 
 auto DictateLeaderAction::execute(std::string dbName,
@@ -231,7 +132,7 @@ auto DictateLeaderAction::execute(std::string dbName,
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { _term.toVelocyPack(builder); })
+          path, [&](VPackBuilder &builder) { _term.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
 
       /* TODO: previous term should still be there
@@ -243,24 +144,30 @@ auto DictateLeaderAction::execute(std::string dbName,
   return envelope;
 }
 
-void EvictLeaderAction::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(type())));
+// These are really two atomic operations:
+// update a participant's flags and cretae a new term.
+auto makeEvictLeaderAction(ParticipantFlags flags, LogTerm term)
+    -> EvictLeaderAction {
+  flags.excluded = true;
+  term.term = LogTerm{term.term.value + 1};
+  term.leader.reset();
+  // TODO: generation isn't handled but has to be
+
+  return EvictLeaderAction{flags, term};
 }
 
-auto EvictLeaderAction::execute(std::string dbName,
-                                arangodb::agency::envelope envelope)
+auto execute(EvictLeaderAction, std::string dbName,
+             arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
   auto path = paths::plan()->replicatedLogs()->database(dbName)->log(_id);
 
   return envelope.write()
       .emplace_object(
           path->participantsConfig()->participants()->server(_leader)->str(),
-          [&](VPackBuilder& builder) { _flags.toVelocyPack(builder); })
+          [&](VPackBuilder &builder) { _flags.toVelocyPack(builder); })
       .emplace_object(
           path->currentTerm()->str(),
-          [&](VPackBuilder& builder) { _newTerm.toVelocyPack(builder); })
+          [&](VPackBuilder &builder) { _newTerm.toVelocyPack(builder); })
       .inc(path->participantsConfig()->generation()->str())
       .inc(paths::plan()->version()->str())
       .precs()
@@ -271,7 +178,7 @@ auto EvictLeaderAction::execute(std::string dbName,
 /*
  * UpdateTermAction
  */
-void UpdateTermAction::toVelocyPack(VPackBuilder& builder) const {
+void UpdateTermAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -292,7 +199,7 @@ auto UpdateTermAction::execute(std::string dbName,
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { _newTerm.toVelocyPack(builder); })
+          path, [&](VPackBuilder &builder) { _newTerm.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
       .end();
 }
@@ -300,7 +207,7 @@ auto UpdateTermAction::execute(std::string dbName,
 /*
  * LeaderElectionAction
  */
-void LeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
+void LeaderElectionAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -336,11 +243,11 @@ auto LeaderElectionAction::execute(std::string dbName,
     return envelope.write()
         .emplace_object(
             plan_path,
-            [&](VPackBuilder& builder) { _newTerm->toVelocyPack(builder); })
+            [&](VPackBuilder &builder) { _newTerm->toVelocyPack(builder); })
         .inc(paths::plan()->version()->str())
         .emplace_object(
             current_path,
-            [&](VPackBuilder& builder) { _election.toVelocyPack(builder); })
+            [&](VPackBuilder &builder) { _election.toVelocyPack(builder); })
         .inc(paths::current()->version()->str())
         .precs()
         .end();
@@ -348,7 +255,7 @@ auto LeaderElectionAction::execute(std::string dbName,
     return envelope.write()
         .emplace_object(
             current_path,
-            [&](VPackBuilder& builder) { _election.toVelocyPack(builder); })
+            [&](VPackBuilder &builder) { _election.toVelocyPack(builder); })
         .inc(paths::current()->version()->str())
         .precs()
         .end();
@@ -358,7 +265,7 @@ auto LeaderElectionAction::execute(std::string dbName,
 /*
  * UpdateParticipantFlagsAction
  */
-void UpdateParticipantFlagsAction::toVelocyPack(VPackBuilder& builder) const {
+void UpdateParticipantFlagsAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -379,7 +286,7 @@ auto UpdateParticipantFlagsAction::execute(std::string dbName,
   return envelope.write()
       .emplace_object(
           path->participants()->server(_participant)->str(),
-          [&](VPackBuilder& builder) { _flags.toVelocyPack(builder); })
+          [&](VPackBuilder &builder) { _flags.toVelocyPack(builder); })
       .inc(path->generation()->str())
       .inc(paths::plan()->version()->str())
       .precs()
@@ -390,7 +297,7 @@ auto UpdateParticipantFlagsAction::execute(std::string dbName,
 /*
  * AddParticipantToPlanAction
  */
-void AddParticipantToPlanAction::toVelocyPack(VPackBuilder& builder) const {
+void AddParticipantToPlanAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -407,7 +314,7 @@ auto AddParticipantToPlanAction::execute(std::string dbName,
   return envelope.write()
       .emplace_object(
           path->participants()->server(_participant)->str(),
-          [&](VPackBuilder& builder) { _flags.toVelocyPack(builder); })
+          [&](VPackBuilder &builder) { _flags.toVelocyPack(builder); })
       .inc(path->generation()->str())
       .inc(paths::plan()->version()->str())
       .precs()
@@ -420,7 +327,7 @@ auto AddParticipantToPlanAction::execute(std::string dbName,
  * RemoveParticipantFromPlanAction
  */
 void RemoveParticipantFromPlanAction::toVelocyPack(
-    VPackBuilder& builder) const {
+    VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -448,7 +355,7 @@ auto RemoveParticipantFromPlanAction::execute(
 /*
  * UpdateLogConfigAction
  */
-void UpdateLogConfigAction::toVelocyPack(VPackBuilder& builder) const {
+void UpdateLogConfigAction::toVelocyPack(VPackBuilder &builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -461,5 +368,6 @@ auto UpdateLogConfigAction::execute(std::string dbName,
   TRI_ASSERT(false);
   return envelope;
 }
+#endif
 
-}  // namespace arangodb::replication2::replicated_log
+} // namespace arangodb::replication2::replicated_log

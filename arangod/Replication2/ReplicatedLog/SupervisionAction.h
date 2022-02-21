@@ -23,276 +23,131 @@
 #pragma once
 
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
+#include "velocypack/velocypack-common.h"
 
 #include "Agency/TransactionBuilder.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-struct Action {
-  enum class ActionType {
-    EmptyAction,
-    ErrorAction,
-    AddLogToPlanAction,
-    AddParticipantsToTargetAction,
-    CreateInitialTermAction,
-    UpdateTermAction,
-    DictateLeaderAction,
-    EvictLeaderAction,
-    LeaderElectionAction,
-    UpdateParticipantFlagsAction,
-    AddParticipantToPlanAction,
-    RemoveParticipantFromPlanAction,
-    UpdateLogConfigAction,
-  };
-  virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope = 0;
-
-  virtual ActionType type() const = 0;
-  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
-  virtual ~Action() = default;
+struct EmptyAction {
+  static constexpr std::string_view name = "EmptyAction";
 };
 
-auto to_string(Action::ActionType action) -> std::string_view;
-auto operator<<(std::ostream& os, Action::ActionType const& action)
-    -> std::ostream&;
-auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
-
-// Empty Action
-// TODO: we currently use a mix of nullptr and EmptyAction; should only use one
-// of them.
-struct EmptyAction : Action {
-  EmptyAction() : _message(""){};
-  EmptyAction(std::string_view message) : _message(message){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override {
-    return envelope;
-  };
-  ActionType type() const override { return Action::ActionType::EmptyAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
+struct ErrorAction {
+  static constexpr std::string_view name = "ErrorAction";
   std::string _message;
 };
-auto to_string(EmptyAction action) -> std::string;
-auto operator<<(std::ostream& os, EmptyAction const& action) -> std::ostream&;
 
-struct ErrorAction : Action {
-  ErrorAction(LogId const& id, LogCurrentSupervisionError const& error)
-      : _id{id}, _error{error} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override { return Action::ActionType::ErrorAction; };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct AddLogToPlanAction {
+  static constexpr std::string_view name = "AddLogToPlanAction";
 
-  LogId _id;
-  LogCurrentSupervisionError _error;
+  LogTarget::Participants const _participants;
 };
-auto to_string(ErrorAction action) -> std::string;
-auto operator<<(std::ostream& os, ErrorAction const& action) -> std::ostream&;
 
-// AddLogToPlanAction
-struct AddLogToPlanAction : Action {
-  AddLogToPlanAction(LogPlanSpecification const& spec) : _spec(spec){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::AddLogToPlanAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogPlanSpecification const _spec;
+struct AddParticipantsToTargetAction {
+  static constexpr std::string_view name = "AddParticipantstoTargetAction";
+  LogTarget::Participants const _participants;
 };
-auto to_string(AddLogToPlanAction const& action) -> std::string;
-auto operator<<(std::ostream& os, AddLogToPlanAction const& action)
-    -> std::ostream&;
 
-// AddParticipantsToTarget
-struct AddParticipantsToTargetAction : Action {
-  AddParticipantsToTargetAction(LogTarget const& spec) : _spec(spec){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::AddParticipantsToTargetAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct CreateInitialTermAction {
+  static constexpr std::string_view name = "CreateInitialTermAction";
 
-  LogTarget const _spec;
-};
-auto to_string(AddParticipantsToTargetAction const& action) -> std::string;
-auto operator<<(std::ostream& os, AddParticipantsToTargetAction const& action)
-    -> std::ostream&;
-
-struct CreateInitialTermAction : Action {
-  CreateInitialTermAction(LogId id, LogPlanTermSpecification const& term)
-      : _id(id), _term(term){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::CreateInitialTermAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
   LogPlanTermSpecification const _term;
 };
 
-struct DictateLeaderAction : Action {
-  DictateLeaderAction(LogId const& id, LogPlanTermSpecification const& newTerm)
-      : _id(id), _term{newTerm} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::DictateLeaderAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct UpdateTermAction {
+  static constexpr std::string_view name = "UpdateTermAction";
 
-  LogId const _id;
+  LogPlanTermSpecification _newTerm;
+};
+
+struct DictateLeaderAction {
+  static constexpr std::string_view name = "DictateLeaderAction";
+
   LogPlanTermSpecification _term;
 };
 
-struct EvictLeaderAction : Action {
-  EvictLeaderAction(LogId const& id, ParticipantId const& leader,
-                    ParticipantFlags const& flags,
-                    LogPlanTermSpecification const& newTerm,
-                    std::size_t generation)
-      : _id(id),
-        _leader{leader},
-        _flags{flags},
-        _newTerm{newTerm},
-        _generation{generation} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::EvictLeaderAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct EvictLeaderAction {
+  static constexpr std::string_view name = "EvictLeaderAction";
 
-  LogId const _id;
   ParticipantId _leader;
   ParticipantFlags _flags;
   LogPlanTermSpecification _newTerm;
   std::size_t _generation;
 };
 
-struct UpdateTermAction : Action {
-  UpdateTermAction(LogId const& id, LogPlanTermSpecification const& newTerm)
-      : _id{id}, _newTerm(newTerm){};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::UpdateTermAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
+struct LeaderElectionAction {
+  static constexpr std::string_view name = "LeaderElectionAction";
 
-  LogId const _id;
-  LogPlanTermSpecification _newTerm;
-};
-
-auto to_string(UpdateTermAction action) -> std::string;
-auto operator<<(std::ostream& os, UpdateTermAction const& action)
-    -> std::ostream&;
-
-struct LeaderElectionAction : Action {
-  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election)
-      : _id(id), _election{election}, _newTerm{std::nullopt} {};
-  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election,
-                       LogPlanTermSpecification newTerm)
-      : _id(id), _election{election}, _newTerm{newTerm} {};
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  ActionType type() const override {
-    return Action::ActionType::LeaderElectionAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
   LogCurrentSupervisionElection _election;
   std::optional<LogPlanTermSpecification> _newTerm;
 };
-auto to_string(LeaderElectionAction action) -> std::string;
-auto operator<<(std::ostream& os, LeaderElectionAction const& action)
-    -> std::ostream&;
 
-struct UpdateParticipantFlagsAction : Action {
-  UpdateParticipantFlagsAction(LogId id, ParticipantId const& participant,
-                               ParticipantFlags const& flags,
-                               std::size_t generation)
-      : _id(id),
-        _participant(participant),
-        _flags(flags),
-        _generation{generation} {};
-  ActionType type() const override {
-    return Action::ActionType::UpdateParticipantFlagsAction;
-  };
+struct UpdateParticipantFlagsAction {
+  static constexpr std::string_view name = "UpdateParticipantFlagsAction";
 
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
   std::size_t _generation;
 };
 
-struct AddParticipantToPlanAction : Action {
-  AddParticipantToPlanAction(LogId id, ParticipantId const& participant,
-                             ParticipantFlags const& flags,
-                             std::size_t generation)
-      : _id{id},
-        _participant(participant),
-        _flags(flags),
-        _generation{generation} {};
-  ActionType type() const override {
-    return Action::ActionType::AddParticipantToPlanAction;
-  };
+struct AddParticipantToPlanAction {
+  static constexpr std::string_view name = "AddParticipantToPlanAction";
 
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
   std::size_t _generation;
 };
 
-struct RemoveParticipantFromPlanAction : Action {
-  RemoveParticipantFromPlanAction(LogId const& id,
-                                  ParticipantId const& participant,
-                                  std::size_t generation)
-      : _id{id}, _participant(participant), _generation{generation} {};
-  ActionType type() const override {
-    return Action::ActionType::RemoveParticipantFromPlanAction;
-  };
-
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
+struct RemoveParticipantFromPlanAction {
+  static constexpr std::string_view name = "RemoveParticipantFromPlanAction";
   ParticipantId _participant;
   std::size_t _generation;
 };
 
-struct UpdateLogConfigAction : Action {
-  UpdateLogConfigAction(LogId const& id, LogConfig const& config)
-      : _id(id), _config(config){};
-  ActionType type() const override {
-    return Action::ActionType::UpdateLogConfigAction;
-  };
-
-  auto execute(std::string dbName, arangodb::agency::envelope envelope)
-      -> arangodb::agency::envelope override;
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogId const _id;
+struct UpdateLogConfigAction {
+  static constexpr std::string_view name = "UpdateLogConfigAction";
   LogConfig _config;
 };
 
-}  // namespace arangodb::replication2::replicated_log
+struct ConvergedToGenerationAction {
+  static constexpr std::string_view name = "ConvergedToGenerationAction";
+  std::size_t _generation;
+};
+
+using Action =
+    std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
+                 AddParticipantsToTargetAction, CreateInitialTermAction,
+                 UpdateTermAction, DictateLeaderAction, EvictLeaderAction,
+                 LeaderElectionAction, UpdateParticipantFlagsAction,
+                 AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
+                 UpdateLogConfigAction>;
+
+// using Trace = std::vector<std::string>;
+
+/*
+struct CheckReplicatedLog {
+  Target const &target;
+  Plan const &plan;
+  Current const &current;
+
+  std::optional<Action> action{std::nullopt};
+  Trace trace;
+
+  auto check(std::function f) && -> CheckReplicatedLog {
+    if (action) {
+      return check;
+    } else {
+      auto [action, trace] = f(target, plan, current);
+      return CheckReplicatedLog{action, trace++ check.trace};
+    }
+  };
+};
+ */
+
+} // namespace arangodb::replication2::replicated_log
