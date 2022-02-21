@@ -2921,7 +2921,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         serverIds.emplace_back(sid);
         allServers.emplace(sid);
       }
-      shardServers.try_emplace(shardID, serverIds);
+      shardServers.try_emplace(std::move(shardID), std::move(serverIds));
     }
 
     // Counts the elements of result in nrDone and checks that they match
