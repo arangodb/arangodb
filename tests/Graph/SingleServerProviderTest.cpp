@@ -31,7 +31,6 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
 
 using namespace arangodb;

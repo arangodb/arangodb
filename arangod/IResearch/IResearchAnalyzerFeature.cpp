@@ -28,8 +28,6 @@
 #include "date/date.h"
 #endif
 
-#include "velocypack/velocypack-aliases.h"
-
 #include "analysis/analyzers.hpp"
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/collation_token_stream.hpp"

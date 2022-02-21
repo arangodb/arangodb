@@ -37,7 +37,6 @@
 #include <s2/s2metrics.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 #include <cmath>
 
 #ifdef _WIN32
