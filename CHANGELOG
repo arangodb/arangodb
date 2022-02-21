@@ -21,6 +21,8 @@ devel
 
 * Support JSON schema objects for documenting Foxx endpoints.
 
+* Internal refactoring of IndexIterator APIs.
+
 * Sorted out various geo problems:
 
   - No more special detection of "latitude-longitude rectangles" is done,
