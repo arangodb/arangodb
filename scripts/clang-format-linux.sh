@@ -24,8 +24,13 @@ if [[ "$#" -gt 0 ]]
 then
   # arguments given
   for file in $@
-  do 
-    echo "$file" >> $changed_files_filename
+  do
+    if [ -d "$file" ] 
+    then
+      find "$file" -type f -name "*.ipp" -o -name "*.tpp" -o -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.c" -o -name "*.h" >> "$changed_files_filename"
+    else
+      echo "$file" >> "$changed_files_filename"
+    fi
   done
 else
   # no arguments given
@@ -50,13 +55,14 @@ else
 fi
 
 if [ -s "$changed_files_filename" ]; then
-  sort "$changed_files_filename" | uniq > "$changed_files_filename.sorted"
+  sort "$changed_files_filename" | grep -E "\.\(ipp|tpp|cpp|hpp|cc|c|h\)$" | uniq > "$changed_files_filename.sorted"
 
   echo 
   echo "About to run formatting on the following files:"
   cat -n "$changed_files_filename.sorted"
   echo
 
+  exit 1
   docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.1 "format" "$changed_files_filename.sorted" 
 fi
 status=$?
