@@ -64,7 +64,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <cstring>
 

@@ -27,7 +27,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -55,6 +54,7 @@ struct BackupMeta {
   bool _potentiallyInconsistent;
   bool _isAvailable;
   unsigned int _nrPiecesPresent;
+  bool _countIncludesFilesOnly;
 
   static constexpr const char *ID = "id";
   static constexpr const char *VERSION = "version";
@@ -68,6 +68,8 @@ struct BackupMeta {
       "potentiallyInconsistent";
   static constexpr const char *AVAILABLE = "available";
   static constexpr const char *NRPIECESPRESENT = "nrPiecesPresent";
+  static constexpr const char *COUNTINCLUDESFILESONLY =
+      "countIncludesFilesOnly";
 
   void toVelocyPack(VPackBuilder &builder) const {
     {
@@ -95,6 +97,7 @@ struct BackupMeta {
       }
       builder.add(POTENTIALLYINCONSISTENT,
                   VPackValue(_potentiallyInconsistent));
+      builder.add(COUNTINCLUDESFILESONLY, VPackValue(_countIncludesFilesOnly));
     }
   }
 
@@ -129,6 +132,8 @@ struct BackupMeta {
       meta._nrPiecesPresent =
           basics::VelocyPackHelper::getNumericValue<unsigned int>(
               slice, NRPIECESPRESENT, 1);
+      meta._countIncludesFilesOnly = basics::VelocyPackHelper::getBooleanValue(
+          slice, COUNTINCLUDESFILESONLY, false);
       return meta;
     } catch (std::exception const &e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
@@ -150,7 +155,8 @@ struct BackupMeta {
         _serverId(serverId),
         _potentiallyInconsistent(potentiallyInconsistent),
         _isAvailable(true),
-        _nrPiecesPresent(1) {}
+        _nrPiecesPresent(1),
+        _countIncludesFilesOnly(true) {}
 
  private:
   BackupMeta() {}

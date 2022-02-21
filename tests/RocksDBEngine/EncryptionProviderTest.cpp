@@ -33,8 +33,6 @@
 #include <memory>
 #include <string>
 
-#include <velocypack/velocypack-aliases.h>
-
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/EncryptionProvider.h"
 #endif

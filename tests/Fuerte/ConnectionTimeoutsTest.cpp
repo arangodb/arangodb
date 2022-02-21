@@ -22,7 +22,6 @@
 
 #include <fuerte/fuerte.h>
 #include <fuerte/requests.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "gtest/gtest.h"
 #include "common.h"

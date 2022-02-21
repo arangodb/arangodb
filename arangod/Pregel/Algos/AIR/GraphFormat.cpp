@@ -32,7 +32,6 @@
 #include "Basics/overload.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 

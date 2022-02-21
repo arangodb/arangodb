@@ -29,7 +29,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::iresearch;

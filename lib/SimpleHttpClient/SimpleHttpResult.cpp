@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <string_view>
 

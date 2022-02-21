@@ -56,7 +56,6 @@
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <memory>
 
