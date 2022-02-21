@@ -41,6 +41,8 @@ class Utils {
   // strings
   static constexpr auto vertexCollNames = "vertexCollNames";
   static constexpr auto edgeCollNames = "edgeCollNames";
+  static constexpr auto vertexPropertiesNames = "vertexPropertiesNames";
+  static constexpr auto edgePropertiesNames = "edgePropertiesNames";
   static constexpr auto wrongGraphSpecErrMsg =
       "The graph specification is either the graph name or an object "
       "containing a list of vertex collection names and a list of edge "

@@ -60,6 +60,8 @@ struct GraphSpecification {
   };
 
   std::variant<GraphName, GraphSpecificationByCollections> _graphSpec;
+  std::optional<std::vector<std::string>> vertexPropertiesNames;
+  std::optional<std::vector<std::string>> edgePropertiesNames;
   explicit GraphSpecification(GraphName graphName) : _graphSpec(graphName) {}
   explicit GraphSpecification(
       GraphSpecificationByCollections&& graphSpecByCollections)

@@ -38,7 +38,7 @@ auto GraphSpecification::fromVelocyPack(VPackSlice slice)
     return GraphSpecification("");
   } else {
     // slice is an object
-    if (slice.length() != 2) {
+    if (slice.length() > 4) {
       // todo: trow an appropriate error with Utils::wrongGraphSpecErrMsg
       //  + "(It is an object of length " + slice.length() + ".)"
     }
@@ -87,9 +87,34 @@ auto GraphSpecification::fromVelocyPack(VPackSlice slice)
       gSBC.edgeCollectionNames.emplace_back(eCollName.copyString());
     }
 
+    if (slice.hasKey(Utils::vertexPropertiesNames)) {
+      VPackSlice vertexPropertiesNames =
+          slice.get((Utils::vertexPropertiesNames));
+      if (!vertexPropertiesNames.isArray()) {
+        // error: vertexPropertiesNames should be a an array
+      }
+      for (auto const vertexPropertyName :
+           VPackArrayIterator(vertexPropertiesNames)) {
+        gSBC.vertexCollectionNames.emplace_back(
+            vertexPropertyName.copyString());
+      }
+    }
+
+    if (slice.hasKey(Utils::edgePropertiesNames)) {
+      VPackSlice edgePropertiesNames = slice.get((Utils::edgePropertiesNames));
+      if (!edgePropertiesNames.isArray()) {
+        // error: edgePropertiesNames should be a an array
+      }
+      for (auto const edgePropertyName :
+           VPackArrayIterator(edgePropertiesNames)) {
+        gSBC.vertexCollectionNames.emplace_back(edgePropertyName.copyString());
+      }
+    }
+
     return GraphSpecification(std::move(gSBC));
   }
 }
+
 void GraphSpecification::toVelocyPack(VPackBuilder& builder) {
   if (std::holds_alternative<GraphName>(_graphSpec)) {
     builder.add(Utils::graphName,
