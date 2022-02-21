@@ -115,7 +115,7 @@ DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
   checkFieldFeatures(meta, checkFieldFeatures);
 }
 
-constexpr std::string_view kSearchStats = "search_stats";
+constexpr std::string_view kSearchStats = "arangodb_search_link_stats";
 
 template<typename T>
 T getMetric(IResearchLink const& link) {

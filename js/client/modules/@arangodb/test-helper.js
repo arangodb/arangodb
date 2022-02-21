@@ -160,11 +160,11 @@ exports.getChecksum = function (endpoint, name) {
     reconnectRetry(primaryEndpoint, "_system", "root", "");
   }
 };
-exports.getMetricRaw = function (endpoint) {
+exports.getMetricRaw = function (endpoint, tags) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW('/_admin/metrics/v2');
+    let res = arango.GET_RAW('/_admin/metrics' + tags);
     if (res.code !== 200) {
       throw "error fetching metric";
     }

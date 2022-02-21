@@ -156,15 +156,19 @@ void MetricsFeature::toPrometheus(std::string& result) const {
     cm.toPrometheus(result, _globals);
   }
 }
+constexpr auto kCoordinatorBatch = frozen::make_unordered_set<frozen::string>({
+    "arangodb_search_link_stats",
+});
+
 constexpr auto kCoordinatorMetrics =
     frozen::make_unordered_set<frozen::string>({
-        "arangosearch_link_stats",
-        "arangosearch_num_failed_commits",
-        "arangosearch_num_failed_cleanups",
-        "arangosearch_num_failed_consolidations",
-        "arangosearch_commit_time",
-        "arangosearch_cleanup_time",
-        "arangosearch_consolidation_time",
+        "arangodb_search_link_stats",
+        "arangodb_search_num_failed_commits",
+        "arangodb_search_num_failed_cleanups",
+        "arangodb_search_num_failed_consolidations",
+        "arangodb_search_commit_time",
+        "arangodb_search_cleanup_time",
+        "arangodb_search_consolidation_time",
     });
 
 void MetricsFeature::toVPack(velocypack::Builder& builder) const {
@@ -173,14 +177,15 @@ void MetricsFeature::toVPack(velocypack::Builder& builder) const {
   for (auto const& i : _registry) {
     TRI_ASSERT(i.second);
     auto const name = i.second->name();
-    if (!kCoordinatorMetrics.count(name)) {
-      continue;
+    if (kCoordinatorMetrics.count(name)) {
+      i.second->toVPack(builder, server());
     }
-    i.second->toVPack(builder, server());
   }
-  for (auto const& [_, batch] : _batch) {
+  for (auto const& [name, batch] : _batch) {
     TRI_ASSERT(batch);
-    batch->toVPack(builder, server());
+    if (kCoordinatorBatch.count(name)) {
+      batch->toVPack(builder, server());
+    }
   }
   lock.unlock();
   builder.close();
