@@ -1181,9 +1181,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
-
       /*
-       * TODO [GraphRefactor]: In which state and why this section is being reached?
+       * TODO [GraphRefactor]: In which state and why this section is being
+       * reached?
        */
       auto executorInfos = TraversalExecutorInfos(
           std::move(traverser), outputRegisterMapping, getStartVertex(),
