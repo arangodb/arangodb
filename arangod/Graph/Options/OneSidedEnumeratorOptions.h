@@ -42,7 +42,8 @@ struct OneSidedEnumeratorOptions {
   [[nodiscard]] size_t getMaxDepth() const;
   [[nodiscard]] bool isDisjoint() const { return _isDisjoint; }
   [[nodiscard]] bool isSatelliteLeader() const { return _isSatelliteLeader; }
-  // TODO [GraphRefactor]: _isDisjoint && _isSatelliteLeader only relevant together. One boolean is enough here.
+  // TODO [GraphRefactor]: _isDisjoint && _isSatelliteLeader only relevant
+  // together. One boolean is enough here.
 
  private:
   size_t _minDepth;
