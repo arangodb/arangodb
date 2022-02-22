@@ -402,6 +402,7 @@ const G6JsGraph = () => {
         ...currentEdges
       ]
     };
+    console.log("...........newGraphData (newNode): ", newGraphData);
     setGraphData(newGraphData);
   }
 
@@ -839,7 +840,12 @@ const G6JsGraph = () => {
           }}
           nodeKey={'Munich'}
           nodeCollection={'germanCity'}
-          onNodeCreation={(newNode) => updateGraphDataWithNode(newNode)}
+          onNodeCreation={(newNode) => {
+            console.log("newNode in G6JsGraph: ", newNode);
+            updateGraphDataWithNode(newNode)
+          }}
+          graphName={graphName}
+          graphData={graphData}
         >
           <strong>Add node</strong>
         </AddNodeModal2>
