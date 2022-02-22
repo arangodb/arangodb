@@ -100,9 +100,11 @@ class Utf8Helper {
   /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   /// @param icuDataPointer data file to be loaded by the application
+  /// @param isOldLanguage is language should support old style of collation?
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer);
+  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer,
+                           bool isOldLanguage);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language

@@ -95,7 +95,7 @@ Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
 Utf8Helper::Utf8Helper(std::string const& lang, void* icuDataPtr)
     : _coll(nullptr) {
-  setCollatorLanguage(lang, icuDataPtr);
+  setCollatorLanguage(lang, icuDataPtr, false);
 }
 
 Utf8Helper::Utf8Helper(void* icuDataPtr) : Utf8Helper("", icuDataPtr) {}
@@ -145,7 +145,7 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
 }
 
 bool Utf8Helper::setCollatorLanguage(std::string const& lang,
-                                     void* icuDataPointer) {
+                                     void* icuDataPointer, bool isOldLanguage) {
   if (icuDataPointer == nullptr) {
     return false;
   }
@@ -192,20 +192,23 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang,
     return false;
   }
 
-  // set the default attributes for sorting:
-  coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
-  coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF,
-                     status);  // no normalization
-  coll->setAttribute(
-      UCOL_STRENGTH, UCOL_IDENTICAL,
-      status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
+  if (isOldLanguage) {
+    // set the default attributes for sorting:
+    coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
+    coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF,
+                       status);  // no normalization
+    coll->setAttribute(
+        UCOL_STRENGTH, UCOL_IDENTICAL,
+        status);  // UCOL_IDENTICAL, UCOL_PRIMARY, UCOL_SECONDARY, UCOL_TERTIARY
 
-  if (U_FAILURE(status)) {
-    LOG_TOPIC("f0757", ERR, arangodb::Logger::FIXME)
-        << "error in Collator::setAttribute(...): " << u_errorName(status);
-    delete coll;
-    return false;
+    if (U_FAILURE(status)) {
+      LOG_TOPIC("f0757", ERR, arangodb::Logger::FIXME)
+          << "error in Collator::setAttribute(...): " << u_errorName(status);
+      delete coll;
+      return false;
+    }
   }
+
 
   if (_coll) {
     delete _coll;
