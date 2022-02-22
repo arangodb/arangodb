@@ -914,8 +914,8 @@ void ClusterFeature::allocateMembers() {
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
 }
 
-void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases,
-                              bool callNotify) {
+void ClusterFeature::addDirty(
+    containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
     for (auto const& database : databases) {
@@ -931,7 +931,7 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases,
 }
 
 void ClusterFeature::addDirty(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         databases) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
@@ -959,9 +959,9 @@ void ClusterFeature::addDirty(std::string const& database) {
   notify();
 }
 
-std::unordered_set<std::string> ClusterFeature::dirty() {
+containers::FlatHashSet<std::string> ClusterFeature::dirty() {
   MUTEX_LOCKER(guard, _dirtyLock);
-  std::unordered_set<std::string> ret;
+  containers::FlatHashSet<std::string> ret;
   ret.swap(_dirtyDatabases);
   return ret;
 }

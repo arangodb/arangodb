@@ -48,7 +48,7 @@ TEST_F(ClusterInfoTest, testServerExists) {
 
   // populate some servers
   {
-    std::unordered_map<ServerID, std::string> servers;
+    containers::FlatHashMap<ServerID, std::string> servers;
     servers.emplace("PRMR-012345-678", "testi");
     servers.emplace("PRMR-012345-123", "testmann");
     ci.setServers(std::move(servers));
@@ -92,7 +92,7 @@ TEST_F(ClusterInfoTest, testServerAliasExists) {
 
   // populate some aliases
   {
-    std::unordered_map<ServerID, std::string> aliases;
+    containers::FlatHashMap<ServerID, std::string> aliases;
     aliases.emplace("DBServer0001", "PRMR-012345-678");
     aliases.emplace("DBServer0002", "PRMR-9999-666");
     ci.setServerAliases(std::move(aliases));

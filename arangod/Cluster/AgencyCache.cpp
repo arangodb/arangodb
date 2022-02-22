@@ -720,7 +720,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
        AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;
-  std::unordered_map<std::string, query_t> db_res;
+  databases_t db_res;
   query_t rest_res = nullptr;
 
   std::vector<std::string> const& goodies =
