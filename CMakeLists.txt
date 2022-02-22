@@ -731,12 +731,10 @@ if (NOT WINDOWS)
 
   include(VcMacros)
 
-  if (NOT BUILDING_FOR_ARM64)
-    # Detect target architecture properties. This honors
-    # any target architecture set via -DTARGET_ARCHITECTURE=...
-    include(OptimizeForArchitecture)
-    OptimizeForArchitecture()
-  endif()
+  # Detect target architecture properties. This honors
+  # any target architecture set via -DTARGET_ARCHITECTURE=...
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
 
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
