@@ -715,7 +715,7 @@ endif ()
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
-if (NOT WINDOWS AND NOT BUILDING_FOR_ARM64)
+if (NOT WINDOWS)
   include(TargetArch)
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
@@ -731,10 +731,12 @@ if (NOT WINDOWS AND NOT BUILDING_FOR_ARM64)
 
   include(VcMacros)
 
-  # Detect target architecture properties. This honors
-  # any target architecture set via -DTARGET_ARCHITECTURE=...
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
+  if (NOT BUILDING_FOR_ARM64)
+    # Detect target architecture properties. This honors
+    # any target architecture set via -DTARGET_ARCHITECTURE=...
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
+  endif()
 
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
