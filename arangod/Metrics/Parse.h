@@ -18,24 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include <velocypack/Buffer.h>
 
-namespace arangodb {
+#include <memory>
+#include <vector>
 
-class RestMetricsHandler : public arangodb::RestBaseHandler {
- public:
-  RestMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+namespace arangodb::metrics {
 
-  char const* name() const final { return "RestMetricsHandler"; }
-  /// @brief must be on fast lane so that metrics can always be retrieved,
-  /// even from otherwise totally busy servers
-  RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() final;
-};
+using Raw = std::shared_ptr<velocypack::Buffer<uint8_t>>;
+using RawDBServers = std::vector<Raw>;
 
-}  // namespace arangodb
+}  // namespace arangodb::metrics
