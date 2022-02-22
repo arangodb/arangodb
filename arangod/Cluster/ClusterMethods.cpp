@@ -762,7 +762,7 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
     std::string shardId = "s" + StringUtils::itoa(id + i);
     auto it = otherShardsMap->find(otherShards.at(i));
     if (it == otherShardsMap->end()) {
-      throw std::runtime_error{""};
+      throw std::runtime_error{"Unknown shards"};
     }
     result->try_emplace(std::move(shardId), it->second);
   }
@@ -3534,7 +3534,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
       auto it1 = postServersKnown.find(dbs);
       auto it2 = preServersKnown.find(dbs);
       if (it1 == postServersKnown.end() || it2 == preServersKnown.end()) {
-        throw std::runtime_error{""};
+        throw std::runtime_error{"Not found dbs in ServersKnown"};
       }
       if (it1->second != it2->second) {
         ++good;

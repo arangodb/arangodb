@@ -255,7 +255,7 @@ class CollectionInfoCurrent {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  [[nodiscard]] bool getFlag(std::string const& name,
+  [[nodiscard]] bool getFlag(std::string_view name,
                              std::string_view shardID) const {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
@@ -270,7 +270,7 @@ class CollectionInfoCurrent {
   //////////////////////////////////////////////////////////////////////////////
 
   [[nodiscard]] containers::FlatHashMap<ShardID, bool> getFlag(
-      std::string const& name) const {
+      std::string_view name) const {
     containers::FlatHashMap<ShardID, bool> m;
     for (auto const& it : _vpacks) {
       auto vpack = it.second;
@@ -374,7 +374,7 @@ class ClusterInfo final {
     void beginShutdown() override;
     void run() override;
     bool start();
-    bool notify(velocypack::Slice const&);
+    bool notify();
 
    private:
     std::mutex _m;
@@ -411,9 +411,6 @@ class ClusterInfo final {
      private:
       RebootId _rebootId;
     };
-
-    [[nodiscard]] containers::FlatHashMap<ServerID, KnownServer> const&
-    serversKnown() const noexcept;
 
     [[nodiscard]] containers::FlatHashMap<ServerID, RebootId> rebootIds() const;
 

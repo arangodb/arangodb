@@ -913,7 +913,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       auto planLogsInDatabase = ReplicatedLogSpecMap{};
       auto it = plan.find(dbname);
       if (it == plan.end()) {
-        throw std::runtime_error{""};
+        throw std::runtime_error{"Not found dbname in plan"};
       }
       auto planLogInDatabaseSlice =
           it->second->slice()[0].get(cluster::paths::aliases::plan()
@@ -940,7 +940,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       auto it1 = plan.find(dbname);
       auto it2 = current.find(dbname);
       if (it1 == plan.end() || it2 == current.end()) {
-        throw std::runtime_error{""};
+        throw std::runtime_error{"Not found dbname in plan or current"};
       }
       auto planStatesInDatabaseSlice =
           it1->second->slice()[0].get(cluster::paths::aliases::plan()

@@ -220,7 +220,8 @@ inline arangodb::AgencyOperation IncreaseVersion() {
 
 inline std::string collectionPath(std::string_view dbName,
                                   std::string_view collection) {
-  return "Plan/Collections/" + std::string{dbName} + "/" + collection.data();
+  return "Plan/Collections/" + std::string{dbName} + "/" +
+         std::string{collection};
 }
 
 inline std::string analyzersPath(std::string_view dbName) {
@@ -5364,7 +5365,7 @@ void ClusterInfo::loadCurrentMappings() {
               mapObject.get("TransactionID").getNumericValue<ServerShortID>();
           constexpr std::string_view kExpectedPrefix{"Coordinator"};
           if (shortName.size() > kExpectedPrefix.size() &&
-              shortName.substr(0, kExpectedPrefix.size()) == kExpectedPrefix) {
+              shortName.starts_with(kExpectedPrefix)) {
             newCoordinatorIdMap.try_emplace(shortId, std::move(fullId));
           }
         }
@@ -5821,7 +5822,7 @@ bool ClusterInfo::serverExists(std::string_view serverId) const noexcept {
 
 bool ClusterInfo::serverAliasExists(std::string_view alias) const noexcept {
   READ_LOCKER(readLocker, _serversProt.lock);
-  return _serverAliases.find(alias) != _serverAliases.end();
+  return _serverAliases.contains(alias);
 }
 
 containers::FlatHashMap<ServerID, std::string> ClusterInfo::getServers() {
@@ -6292,11 +6293,6 @@ ClusterInfo::ServersKnown::ServersKnown(
   }
 }
 
-containers::FlatHashMap<ServerID, ClusterInfo::ServersKnown::KnownServer> const&
-ClusterInfo::ServersKnown::serversKnown() const noexcept {
-  return _serversKnown;
-}
-
 containers::FlatHashMap<ServerID, RebootId>
 ClusterInfo::ServersKnown::rebootIds() const {
   containers::FlatHashMap<ServerID, RebootId> rebootIds;
@@ -6423,7 +6419,7 @@ ClusterInfo::SyncerThread::SyncerThread(Server& server,
 
 ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 
-bool ClusterInfo::SyncerThread::notify(velocypack::Slice const&) {
+bool ClusterInfo::SyncerThread::notify() {
   std::lock_guard<std::mutex> lck(_m);
   _news = true;
   _cv.notify_one();
@@ -6460,7 +6456,7 @@ void ClusterInfo::SyncerThread::run() {
               << "Plan Version is not a number! " << result.toJson();
           return false;
         }
-        return notify(result);
+        return notify();
       };
 
   auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
