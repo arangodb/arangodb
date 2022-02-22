@@ -118,7 +118,8 @@ class GraphProviderTest : public ::testing::Test {
 
       std::vector<IndexAccessor> usedIndexes{};
       usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0,
-                                             nullptr, std::nullopt, 0});
+                                             nullptr, std::nullopt, 0,
+                                             TRI_EDGE_OUT});
 
       _expressionContext =
           std::make_unique<arangodb::aql::FixedVarExpressionContext>(
@@ -173,7 +174,8 @@ class GraphProviderTest : public ::testing::Test {
             ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         fromCondition->addMember(cond);
         opts.addLookupInfo(fakeQuery->plan(), "s9880",
-                           StaticStrings::FromString, fromCondition);
+                           StaticStrings::FromString, fromCondition,
+                           /*onlyEdgeIndexes*/ false, TRI_EDGE_OUT);
 
         auto const* revAccess =
             ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString);
@@ -183,7 +185,8 @@ class GraphProviderTest : public ::testing::Test {
             ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         toCondition->addMember(revCond);
         opts.addReverseLookupInfo(fakeQuery->plan(), "s9880",
-                                  StaticStrings::FromString, toCondition);
+                                  StaticStrings::ToString, toCondition,
+                                  /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
 
         std::tie(preparedResponses, engineId) =
             graph.simulateApi(server, expectedVerticesEdgesBundleToFetch, opts);

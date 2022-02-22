@@ -240,7 +240,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           auto selectIndexIfPossible =
               [&picked,
                &projections](std::shared_ptr<Index> const& idx) -> bool {
-            if (!idx->hasCoveringIterator() || !idx->covers(projections)) {
+            if (!idx->covers(projections)) {
               // index doesn't cover the projection
               return false;
             }
