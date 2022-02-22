@@ -26,7 +26,6 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
@@ -117,6 +116,15 @@ class GraphNode : public ExecutionNode {
 
  public:
   ~GraphNode() override = default;
+
+  // QueryPlan decided that we use this graph as a satellite
+  bool isUsedAsSatellite() const;
+  // Defines whether a GraphNode can fully be pushed down to a DBServer
+  bool isLocalGraphNode() const;
+  // Will wait as soon as any of our collections is a satellite (in sync)
+  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
+  // Can be fully pushed down to a DBServer and is available on all DBServers
+  bool isEligibleAsSatelliteTraversal() const;
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;

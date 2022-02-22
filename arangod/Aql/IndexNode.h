@@ -128,7 +128,7 @@ class IndexNode : public ExecutionNode,
   }
 
   bool canApplyLateDocumentMaterializationRule() const {
-    return isProduceResult() && !_projections.supportsCoveringIndex();
+    return isProduceResult() && !_projections.usesCoveringIndex();
   }
 
   bool isDeterministic() override final {
@@ -173,7 +173,9 @@ class IndexNode : public ExecutionNode,
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
- private:
+  // prepare projections for usage with an index
+  void prepareProjections();
+
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
