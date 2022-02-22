@@ -9,7 +9,7 @@ import { SaveButton } from "./Actions";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
-import Tooltip from "../../components/arango/tooltip";
+import CollectionList from "./Components/LinkList";
 
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
@@ -79,46 +79,37 @@ const ViewLinksReactView = ({ name }) => {
 
   return (
     <div className={"centralContent"} id={"content"}>
-      <ArangoTable className={"arango-table"}>
+      <CollectionList />
+      <ArangoTable className={"edit-index-table arango-table"}>
         <thead>
           <tr class="figuresHeader">
             <ArangoTH>ID</ArangoTH>
             <ArangoTH>Attributes</ArangoTH>
             <ArangoTH>Name</ArangoTH>
             <ArangoTH>Options</ArangoTH>
-            <ArangoTH>
-              Action
-              <Tooltip
-                msg="Type of index to create.
-              Please note that for the RocksDB
-              engine the index types hash, skiplist and persistent are identical,
-              so that they are not offered seperately here."
-                placement="left"
-                icon="icon_arangodb_info"
-              />
-            </ArangoTH>
+            <ArangoTH>Action</ArangoTH>
           </tr>
         </thead>
 
-        {mockData.map((c, key) => (
-          <tbody>
+        <tbody>
+          {mockData.map((c, key) => (
             <tr>
-              <ArangoTD key={key}>{c.id}</ArangoTD>
+              <ArangoTD key={key}>{key}</ArangoTD>
               <ArangoTD key={key}>{c.attr}</ArangoTD>
               <ArangoTD key={key}>{c.name}</ArangoTD>
               <ArangoTD key={key}>{c.desc}</ArangoTD>
               <ArangoTD key={key}>{c.action}</ArangoTD>
             </tr>
-          </tbody>
-        ))}
+          ))}
+        </tbody>
         <tfoot>
           <tr>
-            <ArangoTD></ArangoTD>
-            <ArangoTD></ArangoTD>
-            <ArangoTD></ArangoTD>
-            <ArangoTD></ArangoTD>
+            <ArangoTD> </ArangoTD>
+            <ArangoTD> </ArangoTD>
+            <ArangoTD> </ArangoTD>
+            <ArangoTD> </ArangoTD>
             <ArangoTD>
-              <i class="fa fa-plus-circle" id="addIndex"></i>
+              <i className="fa fa-plus-circle"></i>
             </ArangoTD>
           </tr>
         </tfoot>
