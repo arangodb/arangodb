@@ -27,7 +27,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
-#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
@@ -148,10 +147,6 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ReplicationFeature& replicationFeature =
       server().getFeature<ReplicationFeature>();
   replicationFeature.disableReplicationApplier();
-
-  cluster::FailureOracleFeature& failureOracleFeature =
-      server().getFeature<cluster::FailureOracleFeature>();
-  failureOracleFeature.forceDisable();
 
   DatabaseFeature& database = server().getFeature<DatabaseFeature>();
   database.enableUpgrade();

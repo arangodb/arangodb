@@ -215,7 +215,7 @@ void FailureOracleFeature::prepare() {
 void FailureOracleFeature::start() {
   TRI_ASSERT(_cache == nullptr);
   _cache = std::make_shared<FailureOracleImpl>(
-      server().getFeature<ClusterFeature>());
+      server().getEnabledFeature<ClusterFeature>());
   _cache->createAgencyCallback(server());
   _cache->start();
 
