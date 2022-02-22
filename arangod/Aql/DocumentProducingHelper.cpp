@@ -138,7 +138,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 
   if (!context.getProjections().empty()) {
     // return a projection
-    TRI_ASSERT(!context.getProjections().supportsCoveringIndex() ||
+    TRI_ASSERT(!context.getProjections().usesCoveringIndex() ||
                !context.getAllowCoveringIndexOptimization());
     // projections from a "real" document
     return getCallback<checkUniqueness, skip>(

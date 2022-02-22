@@ -276,6 +276,11 @@ class StaticStrings {
   static std::string const FullFromPrefix;
   static std::string const FullToPrefix;
 
+  // Graph directions
+  static std::string const GraphDirection;
+  static std::string const GraphDirectionInbound;
+  static std::string const GraphDirectionOutbound;
+
   // Pregel Section Start
 
   // Pregel Accumulator Attributes

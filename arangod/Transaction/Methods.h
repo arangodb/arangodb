@@ -45,6 +45,8 @@
 
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 #ifdef USE_ENTERPRISE
 #define ENTERPRISE_VIRT virtual
 #else
@@ -378,15 +380,18 @@ class Methods {
   CollectionNameResolver const* resolver() const;
 
 #ifndef USE_ENTERPRISE
-  bool skipInaccessible() const { return false; }
-  bool isInaccessibleCollection(DataSourceId /*cid*/) const { return false; }
-  bool isInaccessibleCollection(std::string const& /*cname*/) const {
+  [[nodiscard]] bool skipInaccessible() const { return false; }
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const {
+    return false;
+  }
+  [[nodiscard]] bool isInaccessibleCollection(
+      std::string_view /*cname*/) const {
     return false;
   }
 #else
-  bool skipInaccessible() const;
-  bool isInaccessibleCollection(DataSourceId /*cid*/) const;
-  bool isInaccessibleCollection(std::string const& /*cname*/) const;
+  [[nodiscard]] bool skipInaccessible() const;
+  [[nodiscard]] bool isInaccessibleCollection(DataSourceId /*cid*/) const;
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view /*cname*/) const;
 #endif
 
   static ErrorCode validateSmartJoinAttribute(
