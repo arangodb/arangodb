@@ -21,18 +21,18 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "IResearchLink.h"
+
 #include <index/column_info.hpp>
 #include <utils/singleton.hpp>
 
-#include "IResearchDocument.h"
-#include "IResearchLink.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/DownCast.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "IResearchDocument.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
 #endif
@@ -40,13 +40,14 @@
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Metrics/Batch.h"
-#include "Metrics/Guard.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/Guard.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -114,7 +115,7 @@ DECLARE_GAUGE(arangodb_search_consolidation_time, uint64_t,
   checkFieldFeatures(meta, checkFieldFeatures);
 }
 
-constexpr std::string_view kSearchStats = "search_stats";
+constexpr std::string_view kSearchStats = "arangodb_search_link_stats";
 
 template<typename T>
 T getMetric(IResearchLink const& link) {

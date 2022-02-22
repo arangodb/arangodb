@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
@@ -43,7 +44,7 @@ namespace arangodb {
 
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
-typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
+using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 class FollowerInfo;
 class Index;
