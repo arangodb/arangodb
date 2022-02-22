@@ -24,6 +24,8 @@
 
 #pragma once
 
+// for endianess detection
+#include <bit>
 #include <cstdint>
 // for size_t:
 #include <cstring>
@@ -47,7 +49,7 @@
 
 #ifdef VELOCYPACK_DEBUG
 #include <cassert>
-#define VELOCYPACK_ASSERT(x) assert(x)
+#define VELOCYPACK_ASSERT(x) assert((x))
 
 #else
 
@@ -117,41 +119,7 @@ static constexpr uint64_t _wyp[4] = {0xa0761d6478bd642full, 0xe7037ed1a0b428dbul
 
 #define VELOCYPACK_HASH_WYHASH(mem, size, seed) wyhash(mem, size, seed, _wyp)
 
-#ifdef __APPLE__
-#include <libkern/OSByteOrder.h>
-#include <machine/endian.h>
-#elif _WIN32
-#include <stdlib.h>
-#elif __linux__
-#include <endian.h>
-#else
-#pragma messsage("unsupported os or compiler")
-#endif
-
 namespace arangodb::velocypack {
-
-#ifdef __APPLE__
-#define bswap_16(x) OSSwapInt16(x)
-#define bswap_32(x) OSSwapInt32(x)
-#define bswap_64(x) OSSwapInt64(x)
-#if BYTE_ORDER == LITTLE_ENDIAN
-static constexpr bool isLittleEndian() { return true; }
-#elif BYTE_ORDER == BIG_ENDIAN
-static constexpr bool isLittleEndian() { return false; }
-#include <libkern/OSByteOrder.h>
-#endif
-#elif _WIN32
-static constexpr bool isLittleEndian() { return true; }
-#elif __linux__
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-static constexpr bool isLittleEndian() { return true; }
-#elif __BYTE_ORDER == __BIG_ENDIAN
-static constexpr bool isLittleEndian() { return false; }
-#endif
-#else
-#pragma messsage("unsupported os or compiler")
-#endif
-
 
 template<typename T>
 VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
@@ -163,7 +131,7 @@ VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
 #elif __linux__
     return htole64(in);
 #elif _WIN32
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       return _byteswap_uint64(in);
     }
 #endif
@@ -174,7 +142,7 @@ VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
 #elif __linux__
     return htole32(in);
 #elif _WIN32
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       return _byteswap_ulong(in);
     }
 #endif
@@ -185,7 +153,7 @@ VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
 #elif __linux__
     return htole16(in);
 #elif _WIN32
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       return _byteswap_ushort(in);
     }
 #endif
@@ -203,7 +171,7 @@ VELOCYPACK_FORCE_INLINE T littleToHost(T in) noexcept {
 #elif __linux__
     return le64toh(in);
 #elif _WIN32
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       return _byteswap_uint64(in);
     }
 #endif
@@ -214,7 +182,7 @@ VELOCYPACK_FORCE_INLINE T littleToHost(T in) noexcept {
 #elif __linux__
     return le32toh(in);
 #elif _WIN32
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       return _byteswap_ulong(in);
     }
 #endif
@@ -225,7 +193,7 @@ VELOCYPACK_FORCE_INLINE T littleToHost(T in) noexcept {
 #elif __linux__
     return le16toh(in);
 #elif _WIN32
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       return _byteswap_ushort(in);
     }
 #endif
@@ -362,7 +330,7 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
     return readIntFixedHelper<T, length>(start); // for big-endian we leave shifts as this saves some cpu cyles on byteswapping
   }
   if constexpr(length >= 5 && length < 8) {
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       return readIntFixedHelper<T, length>(start);
     } else {
       T v{};
@@ -373,7 +341,7 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   if constexpr (length == 8) {
     T v;
     memcpy(&v, start, 8);
-    if constexpr (!isLittleEndian()) {
+    if constexpr (std::endian::native != std::endian::little) {
       v = littleToHost(v);
     }
     return v;
@@ -416,7 +384,7 @@ static inline uint64_t readUInt64(uint8_t const* start) noexcept {
 }
 
 static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
-  if constexpr (!isLittleEndian()) {
+  if constexpr (std::endian::native != std::endian::little) {
     value = hostToLittle(value);
   }
   memcpy(start, &value, sizeof(value));

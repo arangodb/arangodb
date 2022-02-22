@@ -29,7 +29,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <memory>
 
 #include "Agency/AgencyComm.h"
@@ -117,9 +116,7 @@ class CollectionInfoCurrent {
   bool add(ShardID const& shardID, VPackSlice slice) {
     auto it = _vpacks.find(shardID);
     if (it == _vpacks.end()) {
-      auto builder = std::make_shared<VPackBuilder>();
-      builder->add(slice);
-      _vpacks.insert(std::make_pair(shardID, builder));
+      _vpacks.emplace(shardID, std::make_shared<VPackBuilder>(slice));
       return true;
     }
     return false;
@@ -223,7 +220,7 @@ class CollectionInfoCurrent {
         for (VPackSlice server : VPackArrayIterator(servers)) {
           TRI_ASSERT(server.isString());
           if (server.isString()) {
-            v.push_back(server.copyString());
+            v.emplace_back(server.copyString());
           }
         }
       }

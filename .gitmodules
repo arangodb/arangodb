@@ -1,0 +1,3 @@
+[submodule "iresearch"]
+	path = 3rdParty/iresearch
+	url = https://github.com/iresearch-toolkit/iresearch.git

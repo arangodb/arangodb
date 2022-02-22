@@ -34,7 +34,6 @@
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 

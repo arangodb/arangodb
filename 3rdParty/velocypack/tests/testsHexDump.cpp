@@ -107,6 +107,19 @@ TEST(HexDumpTest, TestArray) {
       HexDump(b->slice()).toString());
 }
 
+TEST(HexDumpTest, TestFromBytes) {
+  uint8_t data[] = {0x01, 0x02, 0xff, 0x40, 0x00, 0xab, 0xcd, 0xde};
+  std::ostringstream out;
+  out << HexDump(data, sizeof(data), 4, " ");
+
+  ASSERT_EQ(
+      "0x01 0x02 0xff 0x40 \n0x00 0xab 0xcd 0xde",
+      out.str());
+  ASSERT_EQ(
+      "0x01 0x02 0xff 0x40 \n0x00 0xab 0xcd 0xde",
+      HexDump(data, sizeof(data), 4, " ").toString());
+}
+
 TEST(HexDumpTest, TestValuesPerLine) {
   std::shared_ptr<Builder> b = Parser::fromJson("[1,2,3,4,5,6,7,8,9,10]");
   std::ostringstream out;

@@ -35,7 +35,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "../IResearch/common.h"
 #include "gtest/gtest.h"

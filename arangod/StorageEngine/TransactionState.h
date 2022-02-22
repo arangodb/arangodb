@@ -38,6 +38,7 @@
 #include "VocBase/voc-types.h"
 
 #include <map>
+#include <string_view>
 #include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -96,23 +97,27 @@ class TransactionState {
   /// @return the previously associated cookie, if any
   Cookie::ptr cookie(void const* key, Cookie::ptr&& cookie);
 
-  [[nodiscard]] bool isRunningInCluster() const {
+  [[nodiscard]] bool isRunningInCluster() const noexcept {
     return ServerState::isRunningInCluster(_serverRole);
   }
-  [[nodiscard]] bool isDBServer() const {
+  [[nodiscard]] bool isDBServer() const noexcept {
     return ServerState::isDBServer(_serverRole);
   }
-  [[nodiscard]] bool isCoordinator() const {
+  [[nodiscard]] bool isCoordinator() const noexcept {
     return ServerState::isCoordinator(_serverRole);
   }
-  [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
+  [[nodiscard]] ServerState::RoleEnum serverRole() const noexcept {
+    return _serverRole;
+  }
 
-  [[nodiscard]] transaction::Options& options() { return _options; }
-  [[nodiscard]] transaction::Options const& options() const { return _options; }
-  [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
-  [[nodiscard]] TransactionId id() const { return _id; }
+  [[nodiscard]] transaction::Options& options() noexcept { return _options; }
+  [[nodiscard]] transaction::Options const& options() const noexcept {
+    return _options;
+  }
+  [[nodiscard]] TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  [[nodiscard]] TransactionId id() const noexcept { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _status; }
-  [[nodiscard]] bool isRunning() const {
+  [[nodiscard]] bool isRunning() const noexcept {
     return _status == transaction::Status::RUNNING;
   }
   void setRegistered() noexcept { _registeredTransaction = true; }
@@ -262,7 +267,7 @@ class TransactionState {
 #ifdef USE_ENTERPRISE
   void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
   [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid);
-  [[nodiscard]] bool isInaccessibleCollection(std::string const& cname);
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view cname);
 #endif
 
   /// @brief roll a new transaction ID on the coordintor. Use this method

@@ -275,7 +275,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(30900);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

@@ -24,7 +24,6 @@
 #pragma once
 
 #include <velocypack/Buffer.h>
-#include <velocypack/velocypack-aliases.h>
 #include <chrono>
 #include <utility>
 

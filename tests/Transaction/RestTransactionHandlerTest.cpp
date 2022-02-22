@@ -36,7 +36,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "gtest/gtest.h"
 
