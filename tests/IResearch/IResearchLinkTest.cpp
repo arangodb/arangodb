@@ -2310,7 +2310,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   void getPrometheusStr(std::string& result) {
     auto& f = _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>();
-    auto [lock, batch] = f.getBatch("search_stats");
+    auto [lock, batch] = f.getBatch("arangodb_search_link_stats");
     EXPECT_TRUE(batch != nullptr);
     batch->toPrometheus(result, "");
   }
