@@ -383,7 +383,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           [&attempts](Result const& res) -> bool {
             return res.is(TRI_ERROR_LOCK_TIMEOUT) && ++attempts <= 10;
           });
-      if (!inserter.status.fail()) {
+      if (inserter.status.fail()) {
         LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
             << "Failed to cache: " << fromTo;
       }

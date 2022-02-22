@@ -159,8 +159,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   std::unique_ptr<IndexIterator> buildIteratorFromBounds(
       transaction::Methods* trx, bool reverse, ReadOwnWrites readOwnWrites,
-      RocksDBKeyBounds&& bounds,
-      RocksDBVPackIndexSearchValueFormat format) const;
+      RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
+      bool useCache) const;
 
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
