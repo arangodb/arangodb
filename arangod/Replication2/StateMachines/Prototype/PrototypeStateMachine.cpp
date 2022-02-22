@@ -235,11 +235,13 @@ operator()(
     prototype::PrototypeLogEntry const& e, velocypack::Builder& b) const {
   std::visit(overload{
                  [&b](PrototypeLogEntry::InsertOperation const& op) {
+                   VPackObjectBuilder ob(&b);
                    b.add("type", VPackValue("insert"));
                    b.add("key", VPackValue(op.key));
                    b.add("value", VPackValue(op.value));
                  },
                  [&b](PrototypeLogEntry::DeleteOperation const& op) {
+                   VPackObjectBuilder ob(&b);
                    b.add("type", VPackValue("delete"));
                    b.add("key", VPackValue(op.key));
                  },
