@@ -47,7 +47,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 

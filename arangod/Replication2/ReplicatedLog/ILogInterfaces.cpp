@@ -28,7 +28,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 
 #include <Basics/StaticStrings.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;

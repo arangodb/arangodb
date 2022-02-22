@@ -40,7 +40,6 @@
 
 #include <regex>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "utils/string_utils.hpp"
 

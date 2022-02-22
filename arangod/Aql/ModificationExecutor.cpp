@@ -34,7 +34,6 @@
 #include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 
 using namespace arangodb;

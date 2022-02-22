@@ -5117,20 +5117,39 @@ function unusedVariableSuite() {
     },
 
     testCountSubquery: function () {
-      const queries = [
-        [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
-      ];
+      let queries = [];
+      if (isCluster) {
+        // [GraphRefactor] Note: Related to #GORDO-1360
+        queries = [
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)`, 1000],
+        ];
+      } else {
+        queries = [
+          [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
+        ]; 
+      }
 
       queries.forEach(function (query) {
         const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});

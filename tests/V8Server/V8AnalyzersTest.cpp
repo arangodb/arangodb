@@ -39,7 +39,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
