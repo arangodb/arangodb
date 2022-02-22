@@ -474,6 +474,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/WindowExecutor.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Aql/ExecutionPlan/VerifyClusterExecution.cpp
 )
 
 set(LIB_ARANGO_VOCBASE_SOURCES
