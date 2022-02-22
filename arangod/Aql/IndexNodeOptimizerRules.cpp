@@ -127,8 +127,9 @@ void arangodb::aql::lateDocumentMaterializationRule(
         continue;  // several indexes are not supported
       }
       auto& index = indexes.front();
-      if (!index->hasCoveringIterator()) {
-        continue;  // index must be covering
+      if (index->coveredFields().empty()) {
+        // index does not cover any fields
+        continue;
       }
       auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeExpressionWithAttrs> nodesToChange;

@@ -61,10 +61,6 @@ struct IResearchInvertedIndexMeta {
             bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
-  bool hasExtra() const noexcept;
-
-  size_t extraFieldsIdx() const noexcept;
-
   struct FieldRecord {
     FieldRecord(std::vector<basics::AttributeName> const& path,
                 FieldMeta::Analyzer&& a);
