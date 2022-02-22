@@ -1,6 +1,9 @@
 devel
 -----
 
+* Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
+  objects to about 200.
+
 * Optimize further RocksDB throttle to allow for no change on any
   given calculation cycle.
 
