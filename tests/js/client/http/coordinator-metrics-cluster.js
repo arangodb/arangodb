@@ -76,6 +76,7 @@ function CoordinatorMetricsTestSuite() {
       db.foo3.save(foo3_values);
       db._createView("foov", "arangosearch", {
         "consolidationIntervalMsec": 0,
+        "cleanupIntervalStep": 0,
         "links": {
           "foo1": {"includeAllFields": true},
           "foo2": {"includeAllFields": true},
