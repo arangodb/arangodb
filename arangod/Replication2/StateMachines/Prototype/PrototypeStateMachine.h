@@ -27,6 +27,8 @@
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Basics/UnshackledMutex.h"
 
+#include <immer/map.hpp>
+
 #include <optional>
 #include <string>
 #include <variant>
@@ -59,6 +61,11 @@ struct PrototypeLogEntry {
   struct InsertOperation {
     std::string key, value;
   };
+  /*
+  struct InsertBulkOperation {
+    std::unordered_map<std::string, std::string> map;
+  };
+   */
   struct DeleteOperation {
     std::string key;
   };
@@ -67,7 +74,7 @@ struct PrototypeLogEntry {
 };
 
 struct PrototypeCore {
-  using StorageType = std::unordered_map<std::string, std::string>;
+  using StorageType = ::immer::map<std::string, std::string>;
   StorageType store;
 
   template<typename EntryIterator>

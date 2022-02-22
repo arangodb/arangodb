@@ -38,10 +38,10 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
     PrototypeLogEntry const& logEntry = entry->second;
     std::visit(overload{
                    [&](PrototypeLogEntry::InsertOperation const& op) {
-                     store[op.key] = op.value;
+                     store = store.set(op.key, op.value);
                    },
                    [&](PrototypeLogEntry::DeleteOperation const& op) {
-                     store.erase(op.key);
+                     store = store.erase(op.key);
                    },
                },
                logEntry.operation);
@@ -72,9 +72,10 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
 auto PrototypeLeaderState::set(std::string key, std::string value)
     -> futures::Future<Result> {
-  auto stream = getStream();
   PrototypeLogEntry entry{
       PrototypeLogEntry::InsertOperation{.key = key, .value = value}};
+
+  auto stream = getStream();
   auto idx = stream->insert(entry);
 
   return stream->waitFor(idx).thenValue(
@@ -86,7 +87,7 @@ auto PrototypeLeaderState::set(std::string key, std::string value)
               if (!core) {
                 return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
               }
-              core->store[std::move(key)] = std::move(value);
+              core->store = core->store.set(std::move(key), std::move(value));
               return Result{TRI_ERROR_NO_ERROR};
             });
       });
@@ -126,7 +127,7 @@ auto PrototypeLeaderState::remove(std::string key) -> futures::Future<Result> {
               if (!core) {
                 return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
               }
-              core->store.erase(key);
+              core->store = core->store.erase(key);
               return Result{TRI_ERROR_NO_ERROR};
             });
       });
@@ -138,8 +139,8 @@ auto PrototypeLeaderState::get(std::string key) -> std::optional<std::string> {
         if (!core) {
           return std::nullopt;
         }
-        if (auto it = core->store.find(key); it != std::end(core->store)) {
-          return it->first;
+        if (auto it = core->store.find(key); it != nullptr) {
+          return *it;
         }
         return std::nullopt;
       });
@@ -155,8 +156,8 @@ auto PrototypeLeaderState::get(Iterator const& begin, Iterator const& end)
       return result;
     }
     for (auto it{begin}; it != end; ++it) {
-      if (auto found = core->store.find(*it); found != std::end(core->store)) {
-        result[found->first] = found->second;
+      if (auto found = core->store.find(*it); found != nullptr) {
+        result = result.set(*it, *found);
       }
     }
     return result;
