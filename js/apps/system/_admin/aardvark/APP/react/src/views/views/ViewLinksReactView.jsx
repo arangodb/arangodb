@@ -80,40 +80,6 @@ const ViewLinksReactView = ({ name }) => {
   return (
     <div className={"centralContent"} id={"content"}>
       <CollectionList links={mockData} />
-      <ArangoTable className={"edit-index-table arango-table"}>
-        <thead>
-          <tr class="figuresHeader">
-            <ArangoTH>ID</ArangoTH>
-            <ArangoTH>Attributes</ArangoTH>
-            <ArangoTH>Name</ArangoTH>
-            <ArangoTH>Options</ArangoTH>
-            <ArangoTH>Action</ArangoTH>
-          </tr>
-        </thead>
-
-        <tbody>
-          {mockData.map((c, key) => (
-            <tr>
-              <ArangoTD key={key}>{key}</ArangoTD>
-              <ArangoTD key={key}>{c.attr}</ArangoTD>
-              <ArangoTD key={key}>{c.name}</ArangoTD>
-              <ArangoTD key={key}>{c.desc}</ArangoTD>
-              <ArangoTD key={key}>{c.action}</ArangoTD>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <ArangoTD> </ArangoTD>
-            <ArangoTD> </ArangoTD>
-            <ArangoTD> </ArangoTD>
-            <ArangoTD> </ArangoTD>
-            <ArangoTD>
-              <i className="fa fa-plus-circle"></i>
-            </ArangoTD>
-          </tr>
-        </tfoot>
-      </ArangoTable>
       <div
         id={"modal-dialog"}
         className={"createModalDialog"}
