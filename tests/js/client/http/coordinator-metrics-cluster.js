@@ -168,7 +168,7 @@ function CoordinatorMetricsTestSuite() {
             metrics[entry.name][entry2.labels.collection] = entry2.value;
           });
         });
-        checkMetrics(metrics)
+        checkMetrics(metrics);
       }
     }
   };
