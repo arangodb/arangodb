@@ -8,7 +8,7 @@ add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-unused-const-v
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
-set(ARANGO_S2GEOMETRY_VERSION "dfefe0c")
+set(ARANGO_S2GEOMETRY_VERSION "0e7b146184fbf119e60ceaf176c2b580c9d2cef4")
 set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 set(CMAKE_USE_LIBSSH2 OFF CACHE BOOL "Use libssh2")
