@@ -19,10 +19,14 @@
 
 #include <memory>
 #include <string>
+
+#include <gtest/gtest.h>
+
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+
 #include "s2/base/casts.h"
 #include "s2/base/integral_types.h"
-#include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2text_format.h"
 
@@ -30,7 +34,7 @@ using absl::make_unique;
 using s2builderutil::IndexedS2PointVectorLayer;
 using s2builderutil::S2PointVectorLayer;
 using s2textformat::MakePointOrDie;
-using std::unique_ptr;
+using std::string;
 using std::vector;
 
 using EdgeType = S2Builder::EdgeType;
@@ -40,10 +44,10 @@ namespace {
 void VerifyS2PointVectorLayerResults(
     const S2PointVectorLayer::LabelSetIds& label_set_ids,
     const IdSetLexicon& label_set_lexicon, const vector<S2Point>& output,
-    const string& str_expected_points,
+    absl::string_view str_expected_points,
     const vector<vector<int32>>& expected_labels) {
   vector<S2Point> expected_points =
-      s2textformat::ParsePoints(str_expected_points);
+      s2textformat::ParsePointsOrDie(str_expected_points);
 
   ASSERT_EQ(expected_labels.size(), label_set_ids.size());
   for (int i = 0; i < output.size(); ++i) {

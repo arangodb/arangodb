@@ -36,7 +36,7 @@ static bool GetReferencePointAtVertex(
     const S2Shape& shape, const S2Point& vtest, ReferencePoint* result) {
   // Let P be an unbalanced vertex.  Vertex P is defined to be inside the
   // region if the region contains a particular direction vector starting from
-  // P, namely the direction S2::Ortho(P).  This can be calculated using
+  // P, namely the direction S2::RefDir(P).  This can be calculated using
   // S2ContainsVertexQuery.
   S2ContainsVertexQuery contains_query(vtest);
   int n = shape.num_edges();

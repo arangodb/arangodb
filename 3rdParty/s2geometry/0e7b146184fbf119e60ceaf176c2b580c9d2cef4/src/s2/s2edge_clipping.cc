@@ -23,6 +23,7 @@
 #include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/s2coords.h"
+#include "s2/s2edge_crossings.h"
 #include "s2/s2pointutil.h"
 #include "s2/util/math/vector.h"
 
@@ -353,12 +354,6 @@ bool ClipToPaddedFace(const S2Point& a_xyz, const S2Point& b_xyz, int face,
   S2PointUVW scaled_n(scale_uv * n[0], scale_uv * n[1], n[2]);
   if (!IntersectsFace(scaled_n)) return false;
 
-  // TODO(ericv): This is a temporary hack until I rewrite S2::RobustCrossProd;
-  // it avoids loss of precision in Normalize() when the vector is so small
-  // that it underflows.
-  if (max(fabs(n[0]), max(fabs(n[1]), fabs(n[2]))) < ldexp(1, -511)) {
-    n *= ldexp(1, 563);
-  }  // END OF HACK
   n = n.Normalize();
   S2PointUVW a_tangent = n.CrossProd(a);
   S2PointUVW b_tangent = b.CrossProd(n);

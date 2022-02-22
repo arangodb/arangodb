@@ -50,24 +50,24 @@ template <int dim> class Metric {
   // particular metric.
   double GetValue(int level) const { return ldexp(deriv_, - dim * level); }
 
-  // Return the level at which the metric has approximately the given
-  // value.  For example, S2::kAvgEdge.GetClosestLevel(0.1) returns the
-  // level at which the average cell edge length is approximately 0.1.
-  // The return value is always a valid level.
+  // Return the level at which the metric has approximately the given value.
+  // For example, S2::kAvgEdge.GetClosestLevel(0.1) returns the level at which
+  // the average cell edge length is approximately 0.1. The return value is
+  // always a valid level.
   int GetClosestLevel(double value) const;
 
-  // Return the minimum level such that the metric is at most the given
-  // value, or S2CellId::kMaxLevel if there is no such level.  For example,
+  // Return the minimum level such that the metric is at most the given value,
+  // or S2CellId::kMaxLevel if there is no such level. For example,
   // S2::kMaxDiag.GetLevelForMaxValue(0.1) returns the minimum level such
   // that all cell diagonal lengths are 0.1 or smaller.  The return value
   // is always a valid level.
   int GetLevelForMaxValue(double value) const;
 
-  // Return the maximum level such that the metric is at least the given
-  // value, or zero if there is no such level.  For example,
-  // S2::kMinWidth.GetLevelForMinValue(0.1) returns the maximum level such
-  // that all cells have a minimum width of 0.1 or larger.  The return value
-  // is always a valid level.
+  // Return the maximum level such that the metric is at least the given value,
+  // or 0 if there is no such level.  For example,
+  // S2::kMinWidth.GetLevelForMinValue(0.1) returns the maximum level such that
+  // all cells have a minimum width of 0.1 or larger.  The return value is
+  // always a valid level.
   int GetLevelForMinValue(double value) const;
 
  private:
@@ -166,9 +166,9 @@ template <int dim>
 int S2::Metric<dim>::GetLevelForMaxValue(double value) const {
   if (value <= 0) return S2::kMaxCellLevel;
 
-  // This code is equivalent to computing a floating-point "level"
-  // value and rounding up.  ilogb() returns the exponent corresponding to a
-  // fraction in the range [1,2).
+  // This code is equivalent to computing a floating-point "level" value and
+  // rounding up.  ilogb() returns the exponent corresponding to a fraction in
+  // the range [1,2).
   int level = ilogb(value / deriv_);
   level = std::max(0, std::min(S2::kMaxCellLevel, -(level >> (dim - 1))));
   S2_DCHECK(level == S2::kMaxCellLevel || GetValue(level) <= value);
@@ -180,8 +180,8 @@ template <int dim>
 int S2::Metric<dim>::GetLevelForMinValue(double value) const {
   if (value <= 0) return S2::kMaxCellLevel;
 
-  // This code is equivalent to computing a floating-point "level"
-  // value and rounding down.
+  // This code is equivalent to computing a floating-point "level" value and
+  // rounding down.
   int level = ilogb(deriv_ / value);
   level = std::max(0, std::min(S2::kMaxCellLevel, level >> (dim - 1)));
   S2_DCHECK(level == 0 || GetValue(level) >= value);

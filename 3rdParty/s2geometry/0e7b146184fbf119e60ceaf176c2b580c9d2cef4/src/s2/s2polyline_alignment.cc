@@ -15,7 +15,6 @@
 
 
 #include "s2/s2polyline_alignment.h"
-#include "s2/s2polyline_alignment_internal.h"
 
 #include <algorithm>
 #include <numeric>
@@ -25,8 +24,11 @@
 #include <vector>
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
+#include "s2/s2polyline_alignment_internal.h"
 #include "s2/util/math/mathutil.h"
+
+using std::string;
 
 namespace s2polyline_alignment {
 

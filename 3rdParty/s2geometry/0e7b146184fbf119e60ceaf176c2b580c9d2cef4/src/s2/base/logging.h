@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 
 #define S2_LOG LOG
 #define S2_LOG_IF LOG_IF
+#define S2_DLOG DLOG
 #define S2_DLOG_IF DLOG_IF
 
 #define S2_CHECK CHECK
@@ -51,9 +52,8 @@
 
 #include <iostream>
 
+#include "absl/base/attributes.h"
 #include "s2/base/log_severity.h"
-#include "s2/third_party/absl/base/attributes.h"
-#include "s2/third_party/absl/base/log_severity.h"
 
 class S2LogMessage {
  public:
@@ -136,11 +136,14 @@ struct S2LogMessageVoidify {
 
 #ifndef NDEBUG
 
+#define S2_DLOG S2_LOG
 #define S2_DLOG_IF S2_LOG_IF
 #define S2_DCHECK S2_CHECK
 
 #else  // defined(NDEBUG)
 
+#define S2_DLOG(severity) \
+  while (false) S2NullStream()
 #define S2_DLOG_IF(severity, condition) \
     while (false && (condition)) S2NullStream()
 #define S2_DCHECK(condition) \

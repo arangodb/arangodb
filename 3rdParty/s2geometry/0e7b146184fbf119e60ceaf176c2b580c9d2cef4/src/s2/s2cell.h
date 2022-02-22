@@ -85,7 +85,9 @@ class S2Cell final : public S2Region {
   // plane).  The points returned by GetVertexRaw are not normalized.
   // For convenience, the argument is reduced modulo 4 to the range [0..3].
   S2Point GetVertex(int k) const { return GetVertexRaw(k).Normalize(); }
-  S2Point GetVertexRaw(int k) const;
+  S2Point GetVertexRaw(int k) const {
+    return S2::FaceUVtoXYZ(face_, uv_.GetVertex(k));
+  }
 
   // Returns the inward-facing normal of the great circle passing through the
   // edge from vertex k to vertex k+1 (mod 4).  The normals returned by

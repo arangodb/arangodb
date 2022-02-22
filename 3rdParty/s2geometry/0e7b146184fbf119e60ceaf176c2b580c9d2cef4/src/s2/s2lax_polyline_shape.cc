@@ -18,14 +18,28 @@
 #include "s2/s2lax_polyline_shape.h"
 
 #include <algorithm>
+#include <memory>
+#include <utility>
+
 #include "s2/base/logging.h"
+#include "absl/utility/utility.h"
 #include "s2/s2polyline.h"
 
 using absl::make_unique;
 using absl::MakeSpan;
-using std::vector;
+using absl::Span;
 
-S2LaxPolylineShape::S2LaxPolylineShape(const vector<S2Point>& vertices) {
+S2LaxPolylineShape::S2LaxPolylineShape(S2LaxPolylineShape&& other) :
+  num_vertices_(absl::exchange(other.num_vertices_, 0)),
+  vertices_(std::move(other.vertices_)) {}
+
+S2LaxPolylineShape& S2LaxPolylineShape::operator=(S2LaxPolylineShape&& other) {
+  num_vertices_ = absl::exchange(other.num_vertices_, 0);
+  vertices_ = std::move(other.vertices_);
+  return *this;
+}
+
+S2LaxPolylineShape::S2LaxPolylineShape(Span<const S2Point> vertices) {
   Init(vertices);
 }
 
@@ -33,11 +47,11 @@ S2LaxPolylineShape::S2LaxPolylineShape(const S2Polyline& polyline) {
   Init(polyline);
 }
 
-void S2LaxPolylineShape::Init(const vector<S2Point>& vertices) {
+void S2LaxPolylineShape::Init(Span<const S2Point> vertices) {
   num_vertices_ = vertices.size();
   S2_LOG_IF(WARNING, num_vertices_ == 1)
       << "s2shapeutil::S2LaxPolylineShape with one vertex has no edges";
-  vertices_.reset(new S2Point[num_vertices_]);
+  vertices_ = make_unique<S2Point[]>(num_vertices_);
   std::copy(vertices.begin(), vertices.end(), vertices_.get());
 }
 
@@ -45,7 +59,7 @@ void S2LaxPolylineShape::Init(const S2Polyline& polyline) {
   num_vertices_ = polyline.num_vertices();
   S2_LOG_IF(WARNING, num_vertices_ == 1)
       << "s2shapeutil::S2LaxPolylineShape with one vertex has no edges";
-  vertices_.reset(new S2Point[num_vertices_]);
+  vertices_ = make_unique<S2Point[]>(num_vertices_);
   std::copy(&polyline.vertex(0), &polyline.vertex(0) + num_vertices_,
             vertices_.get());
 }
@@ -92,6 +106,12 @@ S2Shape::ChainPosition S2LaxPolylineShape::chain_position(int e) const {
 
 bool EncodedS2LaxPolylineShape::Init(Decoder* decoder) {
   return vertices_.Init(decoder);
+}
+
+// The encoding must be identical to S2LaxPolylineShape::Encode().
+void EncodedS2LaxPolylineShape::Encode(Encoder* encoder,
+                                       s2coding::CodingHint) const {
+  vertices_.Encode(encoder);
 }
 
 S2Shape::Edge EncodedS2LaxPolylineShape::edge(int e) const {

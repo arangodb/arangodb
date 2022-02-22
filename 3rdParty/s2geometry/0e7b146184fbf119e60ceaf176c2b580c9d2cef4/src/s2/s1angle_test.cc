@@ -19,6 +19,8 @@
 
 #include <gtest/gtest.h>
 
+#include "absl/flags/flag.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
 #include "s2/s2latlng.h"
@@ -94,6 +96,7 @@ TEST(S1Angle, NormalizeCorrectlyCanonicalizesAngles) {
 
 TEST(S1Angle, ArithmeticOperationsOnAngles) {
   EXPECT_DOUBLE_EQ(0.3, S1Angle::Radians(-0.3).abs().radians());
+  EXPECT_DOUBLE_EQ(0.3, abs(S1Angle::Radians(-0.3)).radians());
   EXPECT_DOUBLE_EQ(-0.1, (-S1Angle::Radians(0.1)).radians());
   EXPECT_DOUBLE_EQ(0.4,
                    (S1Angle::Radians(0.1) + S1Angle::Radians(0.3)).radians());
@@ -157,7 +160,7 @@ TEST(S1Angle, DegreesVsE7) {
 // The current implementation guarantees exact conversions between
 // E6() and E7() when the E6() argument is an integer.
 TEST(S1Angle, E6VsE7) {
-  S2Testing::rnd.Reset(FLAGS_s2_random_seed);
+  S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed));
   for (int iter = 0; iter < 1000; ++iter) {
     int i = S2Testing::rnd.Uniform(180000000);
     EXPECT_EQ(S1Angle::E6(i), S1Angle::E7(10 * i));

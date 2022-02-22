@@ -21,10 +21,11 @@
 #include <memory>
 #include <vector>
 
+#include "absl/base/macros.h"
+
 #include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s2region.h"
-#include "s2/third_party/absl/base/macros.h"
 
 class Decoder;
 class Encoder;
@@ -59,6 +60,7 @@ class S2RegionUnion final : public S2Region {
   // Accessor methods.
   int num_regions() const { return regions_.size(); }
   const S2Region* region(int i) const { return regions_[i].get(); }
+  S2Region* mutable_region(int i) { return regions_[i].get(); }
 
   ////////////////////////////////////////////////////////////////////////
   // S2Region interface (see s2region.h for details):

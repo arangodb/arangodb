@@ -351,7 +351,8 @@ bool VisitCrossingEdgePairs(const S2ShapeIndex& a_index,
 
 // Helper function that formats a loop error message.  If the loop belongs to
 // a multi-loop polygon, adds a prefix indicating which loop is affected.
-static void InitLoopError(S2Error::Code code, const char* format,
+static void InitLoopError(S2Error::Code code,
+                          const absl::FormatSpec<int, int>& format,
                           ChainPosition ap, ChainPosition bp,
                           bool is_polygon, S2Error* error) {
   error->Init(code, format, ap.offset, bp.offset);

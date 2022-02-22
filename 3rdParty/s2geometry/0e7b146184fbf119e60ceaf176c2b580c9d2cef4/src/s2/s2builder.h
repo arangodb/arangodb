@@ -21,19 +21,26 @@
 #ifndef S2_S2BUILDER_H_
 #define S2_S2BUILDER_H_
 
+#include <algorithm>
+#include <functional>
 #include <memory>
 #include <utility>
 #include <vector>
+
+#include "absl/base/macros.h"
+
 #include "s2/base/integral_types.h"
-#include "s2/third_party/absl/base/macros.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/id_set_lexicon.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2cell_id.h"
+#include "s2/s2edge_distances.h"
 #include "s2/s2error.h"
+#include "s2/s2memory_tracker.h"
 #include "s2/s2point_index.h"
+#include "s2/s2point_span.h"
 #include "s2/s2shape_index.h"
 #include "s2/util/gtl/compact_array.h"
 
@@ -155,7 +162,7 @@ class S2Builder {
   // holes, the outer loops ("shells") should be directed counter-clockwise
   // while the inner loops ("holes") should be directed clockwise.  Note that
   // S2Builder::AddPolygon() follows this convention automatically.
-  enum class EdgeType { DIRECTED, UNDIRECTED };
+  enum class EdgeType : uint8 { DIRECTED, UNDIRECTED };
 
   // A SnapFunction restricts the locations of the output vertices.  For
   // example, there are predefined snap functions that require vertices to be
@@ -172,19 +179,19 @@ class S2Builder {
   //    snapped.  The snap_radius must be at least as large as the maximum
   //    distance between P and SnapPoint(P) for any point P.
   //
-  // 3. "max_edge_deviation", the maximum distance that edges can move when
-  //    snapped.  It is slightly larger than "snap_radius" because when a
-  //    geodesic edge is snapped, the center of the edge moves further than
-  //    its endpoints.  This value is computed automatically by S2Builder.
+  //    Note that the maximum distance that edge interiors can move when
+  //    snapped is slightly larger than "snap_radius", and is returned by the
+  //    function S2Builder::Options::max_edge_deviation() (see there for
+  //    details).
   //
-  // 4. "min_vertex_separation", the guaranteed minimum distance between
+  // 3. "min_vertex_separation", the guaranteed minimum distance between
   //    vertices in the output.  This is generally a fraction of
   //    "snap_radius" where the fraction depends on the snap function.
   //
-  // 5. A "min_edge_vertex_separation", the guaranteed minimum distance
-  //    between edges and non-incident vertices in the output.  This is
-  //    generally a fraction of "snap_radius" where the fraction depends on
-  //    the snap function.
+  // 4. "min_edge_vertex_separation", the guaranteed minimum distance between
+  //    edges and non-incident vertices in the output.  This is generally a
+  //    fraction of "snap_radius" where the fraction depends on the snap
+  //    function.
   //
   // It is important to note that SnapPoint() does not define the actual
   // mapping from input vertices to output vertices, since the points it
@@ -221,23 +228,19 @@ class S2Builder {
    public:
     virtual ~SnapFunction() {}
 
-    // The maximum distance that vertices can move when snapped.
+    // The maximum distance that vertices can move when snapped.  The snap
+    // radius can be any value between zero and SnapFunction::kMaxSnapRadius().
     //
     // If the snap radius is zero, then vertices are snapped together only if
     // they are identical.  Edges will not be snapped to any vertices other
     // than their endpoints, even if there are vertices whose distance to the
-    // edge is zero, unless split_crossing_edges() is true.
+    // edge is zero, unless split_crossing_edges() is true (see below).
     //
     // REQUIRES: snap_radius() <= kMaxSnapRadius
     virtual S1Angle snap_radius() const = 0;
 
     // The maximum supported snap radius (equivalent to about 7800km).
     static S1Angle kMaxSnapRadius();
-
-    // The maximum distance that the center of an edge can move when snapped.
-    // This is slightly larger than "snap_radius" because when a geodesic edge
-    // is snapped, the center of the edge moves further than its endpoints.
-    S1Angle max_edge_deviation() const;
 
     // The guaranteed minimum distance between vertices in the output.
     // This is generally some fraction of "snap_radius".
@@ -281,13 +284,30 @@ class S2Builder {
     const SnapFunction& snap_function() const;
     void set_snap_function(const SnapFunction& snap_function);
 
+    // The maximum distance from snapped edge vertices to the original edge.
+    // This is the same as snap_function().snap_radius() except when
+    // split_crossing_edges() is true (see below), in which case the edge snap
+    // radius is increased by S2::kIntersectionError.
+    S1Angle edge_snap_radius() const;
+
+    // The maximum distance that any point along an edge can move when snapped.
+    // It is slightly larger than edge_snap_radius() because when a geodesic
+    // edge is snapped, the edge center moves further than its endpoints.
+    // S2Builder ensures that this distance is at most 10% larger than
+    // edge_snap_radius().
+    S1Angle max_edge_deviation() const;
+
     // If true, then detect all pairs of crossing edges and eliminate them by
-    // adding a new vertex at their intersection point.
+    // adding a new vertex at their intersection point.  See also the
+    // AddIntersection() method which allows intersection points to be added
+    // selectively.
     //
-    // When this option is true, the effective snap_radius() for edges is
-    // increased by S2::kIntersectionError to take into account the
-    // additional error when computing intersection points.  In other words,
-    // edges may move by up to snap_radius() + S2::kIntersectionError.
+    // When this option if true, intersection_tolerance() is automatically set
+    // to a minimum of S2::kIntersectionError (see intersection_tolerance()
+    // for why this is necessary).  Note that this means that edges can move
+    // by up to S2::kIntersectionError even when the specified snap radius is
+    // zero.  The exact distance that edges can move is always given by
+    // max_edge_deviation() defined above.
     //
     // Undirected edges should always be used when the output is a polygon,
     // since splitting a directed loop at a self-intersection converts it into
@@ -300,11 +320,58 @@ class S2Builder {
     // projection.  You can minimize this problem by subdividing the input
     // edges so that the S2 edges (which are geodesics) stay close to the
     // original projected edges (which are curves on the sphere).  This can
-    // be done using s2builderutil::EdgeSplitter(), for example.
+    // be done using S2EdgeTessellator, for example.
     //
     // DEFAULT: false
     bool split_crossing_edges() const;
     void set_split_crossing_edges(bool split_crossing_edges);
+
+    // Specifes the maximum allowable distance between a vertex added by
+    // AddIntersection() and the edge(s) that it is intended to snap to.  This
+    // method must be called before AddIntersection() can be used.  It has the
+    // effect of increasing the snap radius for edges (but not vertices) by
+    // the given distance.
+    //
+    // The intersection tolerance should be set to the maximum error in the
+    // intersection calculation used.  For example, if S2::GetIntersection()
+    // is used then the error should be set to S2::kIntersectionError.  If
+    // S2::GetPointOnLine() is used then the error should be set to
+    // S2::kGetPointOnLineError.  If S2::Project() is used then the error
+    // should be set to S2::kProjectPerpendicularError.  If more than one
+    // method is used then the intersection tolerance should be set to the
+    // maximum such error.
+    //
+    // The reason this option is necessary is that computed intersection
+    // points are not exact.  For example, S2::GetIntersection(a, b, c, d)
+    // returns a point up to S2::kIntersectionError away from the true
+    // mathematical intersection of the edges AB and CD.  Furthermore such
+    // intersection points are subject to further snapping in order to ensure
+    // that no pair of vertices is closer than the specified snap radius.  For
+    // example, suppose the computed intersection point X of edges AB and CD
+    // is 1 nanonmeter away from both edges, and the snap radius is 1 meter.
+    // In that case X might snap to another vertex Y exactly 1 meter away,
+    // which would leave us with a vertex Y that could be up to 1.000000001
+    // meters from the edges AB and/or CD.  This means that AB and/or CD might
+    // not snap to Y leaving us with two edges that still cross each other.
+    //
+    // However if the intersection tolerance is set to 1 nanometer then the
+    // snap radius for edges is increased to 1.000000001 meters ensuring that
+    // both edges snap to a common vertex even in this worst case.  (Tthis
+    // technique does not work if the vertex snap radius is increased as well;
+    // it requires edges and vertices to be handled differently.)
+    //
+    // Note that this option allows edges to move by up to the given
+    // intersection tolerance even when the snap radius is zero.  The exact
+    // distance that edges can move is always given by max_edge_deviation()
+    // defined above.
+    //
+    // When split_crossing_edges() is true, the intersection tolerance is
+    // automatically set to a minimum of S2::kIntersectionError.  A larger
+    // value can be specified by calling this method explicitly.
+    //
+    // DEFAULT: S1Angle::Zero()
+    S1Angle intersection_tolerance() const;
+    void set_intersection_tolerance(S1Angle intersection_tolerance);
 
     // If true, then simplify the output geometry by replacing nearly straight
     // chains of short edges with a single long edge.
@@ -369,6 +436,35 @@ class S2Builder {
     bool idempotent() const;
     void set_idempotent(bool idempotent);
 
+    // Specifies that internal memory usage should be tracked using the given
+    // S2MemoryTracker.  If a memory limit is specified and more more memory
+    // than this is required then an error will be returned.  Example usage:
+    //
+    //   S2MemoryTracker tracker;
+    //   tracker.set_limit(500 << 20);  // 500 MB
+    //   S2Builder::Options options;
+    //   options.set_memory_tracker(&tracker);
+    //   S2Builder builder{options};
+    //   ...
+    //   S2Error error;
+    //   if (!builder.Build(&error)) {
+    //     if (error.code() == S2Error::RESOURCE_EXHAUSTED) {
+    //       S2_LOG(ERROR) << error;  // Memory limit exceeded
+    //     }
+    //   }
+    //
+    // CAVEATS:
+    //
+    //  - Memory allocated by the output S2Builder layers is not tracked.
+    //
+    //  - While memory tracking is reasonably complete and accurate, it does
+    //    not account for every last byte.  It is intended only for the
+    //    purpose of preventing clients from running out of memory.
+    //
+    // DEFAULT: nullptr (memory tracking disabled)
+    S2MemoryTracker* memory_tracker() const;
+    void set_memory_tracker(S2MemoryTracker* tracker);
+
     // Options may be assigned and copied.
     Options(const Options& options);
     Options& operator=(const Options& options);
@@ -376,8 +472,10 @@ class S2Builder {
    private:
     std::unique_ptr<SnapFunction> snap_function_;
     bool split_crossing_edges_ = false;
+    S1Angle intersection_tolerance_ = S1Angle::Zero();
     bool simplify_edge_chains_ = false;
     bool idempotent_ = true;
+    S2MemoryTracker* memory_tracker_ = nullptr;
   };
 
   // The following classes are only needed by Layer implementations.
@@ -453,14 +551,18 @@ class S2Builder {
   // Adds the given edge to the current layer.
   void AddEdge(const S2Point& v0, const S2Point& v1);
 
-  // Adds the edges in the given polyline.  (Note that if the polyline
-  // consists of 0 or 1 vertices, this method does nothing.)
+  // Adds the edges in the given polyline.  Note that polylines with 0 or 1
+  // vertices are defined to have no edges.
+  void AddPolyline(S2PointSpan polyline);
   void AddPolyline(const S2Polyline& polyline);
 
-  // Adds the edges in the given loop.  If the sign() of the loop is negative
-  // (i.e. this loop represents a hole within a polygon), the edge directions
-  // are automatically reversed to ensure that the polygon interior is always
-  // to the left of every edge.
+  // Adds the edges in the given loop.  Note that a loop consisting of one
+  // vertex adds a single degenerate edge.
+  //
+  // If the sign() of an S2Loop is negative (i.e. the loop represents a hole
+  // within a polygon), the edge directions are automatically reversed to
+  // ensure that the polygon interior is always to the left of every edge.
+  void AddLoop(S2PointLoopSpan loop);
   void AddLoop(const S2Loop& loop);
 
   // Adds the loops in the given polygon.  Loops representing holes have their
@@ -471,6 +573,32 @@ class S2Builder {
 
   // Adds the edges of the given shape to the current layer.
   void AddShape(const S2Shape& shape);
+
+  // If "vertex" is the intersection point of two edges AB and CD (as computed
+  // by S2::GetIntersection()), this method ensures that AB and CD snap to a
+  // common vertex.  (Note that the common vertex may be different than
+  // "vertex" in order to ensure that no pair of vertices is closer than the
+  // given snap radius.)  Unlike Options::split_crossing_edges(), this method
+  // may be used to split crossing edge pairs selectively.
+  //
+  // This method can also be used to tessellate edges using S2::GetPointOnLine()
+  // or S2::Project() provided that a suitable intersection tolerance is
+  // specified (see intersection_tolerance() for details).
+  //
+  // This method implicitly overrides the idempotent() option, since adding an
+  // intersection point implies a desire to have nearby edges snapped to it
+  // even if these edges already satsify the S2Builder output guarantees.
+  // (Otherwise for example edges would never be snapped to nearby
+  // intersection points when the snap radius is zero.)
+  //
+  // Note that unlike ForceVertex(), this method maintains all S2Builder
+  // guarantees regarding minimum vertex-vertex separation, minimum
+  // edge-vertex separation, and edge chain simplification.
+  //
+  // REQUIRES: options().intersection_tolerance() > S1Angle::Zero()
+  // REQUIRES: "vertex" was computed by S2::GetIntersection() (in order to
+  //           guarantee that both edges snap to a common vertex)
+  void AddIntersection(const S2Point& vertex);
 
   // For layers that are assembled into polygons, this method specifies a
   // predicate that is called when the output consists entirely of degenerate
@@ -510,15 +638,30 @@ class S2Builder {
 
   // Forces a vertex to be located at the given position.  This can be used to
   // prevent certain input vertices from moving.  However if you are trying to
-  // preserve part of the input boundary, be aware that this option does not
-  // prevent edges from being split by new vertices.
+  // preserve input edges, be aware that this option does not prevent edges from
+  // being split by new vertices.
   //
-  // Forced vertices are never snapped; if this is desired then you need to
-  // call options().snap_function().SnapPoint() explicitly.  Forced vertices
-  // are also never simplified away (if simplify_edge_chains() is used).
+  // Forced vertices are subject to the following limitations:
   //
-  // Caveat: Since this method can place vertices arbitrarily close together,
-  // S2Builder makes no minimum separation guaranteees with forced vertices.
+  //  - Forced vertices are never snapped.  This is true even when the given
+  //    position is not allowed by the given snap function (e.g. you can force
+  //    a vertex at a non-S2CellId center when using S2CellIdSnapFunction).
+  //    If you want to ensure that forced vertices obey the snap function
+  //    restrictions, you must call snap_function().SnapPoint() explicitly.
+  //
+  //  - There is no guaranteed minimum separation between pairs of forced
+  //    vertices, i.e. snap_function().min_vertex_separation() does not apply.
+  //    (This must be true because forced vertices can be placed arbitrarily.)
+  //
+  //  - There is no guaranteed minimum separation between forced vertices and
+  //    non-incident edges, i.e. snap_function().min_edge_vertex_separation()
+  //    does not apply.
+  //
+  //  - Forced vertices are never simplified away (i.e. when simplification is
+  //    requested using options().simplify_edge_chains()).
+  //
+  // All other guarantees continue to hold, e.g. the input topology will always
+  // be preserved.
   void ForceVertex(const S2Point& vertex);
 
   // Every edge can have a set of non-negative integer labels attached to it.
@@ -568,6 +711,18 @@ class S2Builder {
   // specified are preserved.
   void Reset();
 
+  ///////////////////////////////////////////////////////////////////////////
+  // The following methods may be called at any time, including from
+  // S2Builder::Layer implementations.
+
+  // Returns the number of input edges.
+  int num_input_edges() const;
+
+  // Returns the endpoints of the given input edge.
+  //
+  // REQUIRES: 0 <= input_edge_id < num_input_edges()
+  S2Shape::Edge input_edge(int input_edge_id) const;
+
  private:
   //////////////////////  Input Types  /////////////////////////
   // All types associated with the S2Builder inputs are prefixed with "Input".
@@ -606,11 +761,61 @@ class S2Builder {
   // Identifies an output edge in a particular layer.
   using LayerEdgeId = std::pair<int, EdgeId>;
 
+  //////////////////////  Internal Types  /////////////////////////
   class EdgeChainSimplifier;
+
+  // MemoryTracker is a helper class to measure S2Builder memory usage.  It is
+  // based on a detailed analysis of the data structures used.  This approach
+  // is fragile because the memory tracking code needs to be updated whenever
+  // S2Builder is modified, however S2Builder has been quite stable and this
+  // approach allows the memory usage to be measured quite accurately.
+  //
+  // CAVEATS:
+  //
+  //  - Does not track memory used by edge labels.  (It is tricky to do this
+  //    accurately because they are stored in an IdSetLexicon, and labels
+  //    are typically a tiny fraction of the total space used.)
+  //
+  //  - Does not track memory used to represent layers internally.  (The
+  //    number of layers is typically small compared to the numbers of
+  //    vertices and edges, and the amount of memory used by the Layer and
+  //    IsFullPolygonPredicate objects is difficult to measure.)
+  //
+  //  - Does not track memory used by the output layer Build() methods.  (This
+  //    includes both temporary space, e.g. due to calling S2Builder::Graph
+  //    methods, and also any geometric objects created by these layers.)
+  class MemoryTracker : public S2MemoryTracker::Client {
+   public:
+    bool TallyEdgeSites(const gtl::compact_array<SiteId>& sites);
+    bool ReserveEdgeSite(gtl::compact_array<SiteId>* sites);
+    bool ClearEdgeSites(std::vector<gtl::compact_array<SiteId>>* edge_sites);
+
+    bool TallyIndexedSite();
+    bool FixSiteIndexTally(const S2PointIndex<SiteId>& index);
+    bool DoneSiteIndex(const S2PointIndex<SiteId>& index);
+
+    bool TallySimplifyEdgeChains(
+        const std::vector<gtl::compact_array<InputVertexId>>& site_vertices,
+        const std::vector<std::vector<Edge>>& layer_edges);
+
+    bool TallyFilterVertices(int num_sites,
+                             const std::vector<std::vector<Edge>>& layer_edges);
+    bool DoneFilterVertices();
+
+   private:
+    // The amount of non-inline memory used to store edge sites.
+    int64 edge_sites_bytes_ = 0;
+
+    // The amount of memory used by the S2PointIndex for sites.
+    int64 site_index_bytes_ = 0;
+
+    // The amount of temporary memory used by Graph::FilterVertices().
+    int64 filter_vertices_bytes_ = 0;
+  };
 
   InputVertexId AddVertex(const S2Point& v);
   void ChooseSites();
-  void CopyInputEdges();
+  void ChooseAllVerticesAsSites();
   std::vector<InputVertexKey> SortInputVertices();
   void AddEdgeCrossings(const MutableS2ShapeIndex& input_edge_index);
   void AddForcedSites(S2PointIndex<SiteId>* site_index);
@@ -620,16 +825,16 @@ class S2Builder {
   void CollectSiteEdges(const S2PointIndex<SiteId>& site_index);
   void SortSitesByDistance(const S2Point& x,
                            gtl::compact_array<SiteId>* sites) const;
+  void InsertSiteByDistance(SiteId new_site_id, const S2Point& x,
+                            gtl::compact_array<SiteId>* sites);
   void AddExtraSites(const MutableS2ShapeIndex& input_edge_index);
   void MaybeAddExtraSites(InputEdgeId edge_id,
-                          InputEdgeId max_edge_id,
                           const std::vector<SiteId>& chain,
                           const MutableS2ShapeIndex& input_edge_index,
-                          std::vector<InputEdgeId>* snap_queue);
+                          gtl::dense_hash_set<InputEdgeId>* edges_to_resnap);
   void AddExtraSite(const S2Point& new_site,
-                    InputEdgeId max_edge_id,
                     const MutableS2ShapeIndex& input_edge_index,
-                    std::vector<InputEdgeId>* snap_queue);
+                    gtl::dense_hash_set<InputEdgeId>* edges_to_resnap);
   S2Point GetSeparationSite(const S2Point& site_to_avoid,
                             const S2Point& v0, const S2Point& v1,
                             InputEdgeId input_edge_id) const;
@@ -646,7 +851,7 @@ class S2Builder {
       InputEdgeId begin, InputEdgeId end, const GraphOptions& options,
       std::vector<Edge>* edges, std::vector<InputEdgeIdSetId>* input_edge_ids,
       IdSetLexicon* input_edge_id_set_lexicon,
-      std::vector<gtl::compact_array<InputVertexId>>* site_vertices) const;
+      std::vector<gtl::compact_array<InputVertexId>>* site_vertices);
   void MaybeAddInputVertex(
       InputVertexId v, SiteId id,
       std::vector<gtl::compact_array<InputVertexId>>* site_vertices) const;
@@ -657,7 +862,7 @@ class S2Builder {
       const std::vector<gtl::compact_array<InputVertexId>>& site_vertices,
       std::vector<std::vector<Edge>>* layer_edges,
       std::vector<std::vector<InputEdgeIdSetId>>* layer_input_edge_ids,
-      IdSetLexicon* input_edge_id_set_lexicon) const;
+      IdSetLexicon* input_edge_id_set_lexicon);
   void MergeLayerEdges(
       const std::vector<std::vector<Edge>>& layer_edges,
       const std::vector<std::vector<InputEdgeIdSetId>>& layer_input_edge_ids,
@@ -680,6 +885,15 @@ class S2Builder {
   // snap site.  It can be slightly larger than the site snap radius when
   // edges are being split at crossings.
   S1ChordAngle edge_snap_radius_ca_;
+
+  // True if we need to check that snapping has not changed the input topology
+  // around any vertex (i.e. Voronoi site).  Normally this is only necessary for
+  // forced vertices, but if the snap radius is very small (e.g., zero) and
+  // split_crossing_edges() is true then we need to do this for all vertices.
+  // In all other situations, any snapped edge that crosses a vertex will also
+  // be closer than min_edge_vertex_separation() to that vertex, which will
+  // cause us to add a separation site anyway.
+  bool check_all_site_crossings_;
 
   S1Angle max_edge_deviation_;
   S1ChordAngle edge_site_query_radius_ca_;
@@ -761,6 +975,9 @@ class S2Builder {
   // the "sites to avoid" (needed for simplification).
   std::vector<gtl::compact_array<SiteId>> edge_sites_;
 
+  // An object to track the memory usage of this class.
+  MemoryTracker tracker_;
+
   S2Builder(const S2Builder&) = delete;
   S2Builder& operator=(const S2Builder&) = delete;
 };
@@ -775,9 +992,9 @@ class S2Builder {
 class S2Builder::GraphOptions {
  public:
   using EdgeType = S2Builder::EdgeType;
-  enum class DegenerateEdges;
-  enum class DuplicateEdges;
-  enum class SiblingPairs;
+  enum class DegenerateEdges : uint8;
+  enum class DuplicateEdges : uint8;
+  enum class SiblingPairs : uint8;
 
   // All S2Builder::Layer subtypes should specify GraphOptions explicitly
   // using this constructor, rather than relying on default values.
@@ -800,10 +1017,13 @@ class S2Builder::GraphOptions {
 
   // Specifies whether the S2Builder input edges should be treated as
   // undirected.  If true, then all input edges are duplicated into pairs
-  // consisting of an edge and a sibling (reverse) edge.  The layer
-  // implementation is responsible for ensuring that exactly one edge from
-  // each pair is used in the output, i.e. *only half* of the graph edges will
-  // be used.  (Note that some values of the sibling_pairs() option
+  // consisting of an edge and a sibling (reverse) edge.  Note that the
+  // automatically created sibling edge has an empty set of labels and does
+  // not have an associated InputEdgeId.
+  //
+  // The layer implementation is responsible for ensuring that exactly one
+  // edge from each pair is used in the output, i.e. *only half* of the graph
+  // edges will be used.  (Note that some values of the sibling_pairs() option
   // automatically take care of this issue by removing half of the edges and
   // changing edge_type() to DIRECTED.)
   //
@@ -820,10 +1040,10 @@ class S2Builder::GraphOptions {
   //          do not support degeneracies, such as S2PolygonLayer.
   //
   // DISCARD_EXCESS: Discards all degenerate edges that are connected to
-  //                 non-degenerate edges.  (Any remaining duplicate edges can
-  //                 be merged using DuplicateEdges::MERGE.)  This is useful
-  //                 for simplifying polygons while ensuring that loops that
-  //                 collapse to a single point do not disappear.
+  //                 non-degenerate edges and merges any remaining duplicate
+  //                 degenerate edges.  This is useful for simplifying
+  //                 polygons while ensuring that loops that collapse to a
+  //                 single point do not disappear.
   //
   // KEEP: Keeps all degenerate edges.  Be aware that this may create many
   //       redundant edges when simplifying geometry (e.g., a polyline of the
@@ -831,7 +1051,7 @@ class S2Builder::GraphOptions {
   //       for algorithms that require an output edge for every input edge.
   //
   // DEFAULT: DegenerateEdges::KEEP
-  enum class DegenerateEdges { DISCARD, DISCARD_EXCESS, KEEP };
+  enum class DegenerateEdges : uint8 { DISCARD, DISCARD_EXCESS, KEEP };
   DegenerateEdges degenerate_edges() const;
   void set_degenerate_edges(DegenerateEdges degenerate_edges);
 
@@ -842,7 +1062,7 @@ class S2Builder::GraphOptions {
   // input edge ids.
   //
   // DEFAULT: DuplicateEdges::KEEP
-  enum class DuplicateEdges { MERGE, KEEP };
+  enum class DuplicateEdges : uint8 { MERGE, KEEP };
   DuplicateEdges duplicate_edges() const;
   void set_duplicate_edges(DuplicateEdges duplicate_edges);
 
@@ -870,8 +1090,8 @@ class S2Builder::GraphOptions {
   //
   // CREATE: Ensures that all edges have a sibling edge by creating them if
   //         necessary.  This is useful with polygon meshes where the input
-  //         polygons do not cover the entire sphere.  Such edges always
-  //         have an empty set of labels.
+  //         polygons do not cover the entire sphere.  Such edges always have
+  //         an empty set of labels and do not have an associated InputEdgeId.
   //
   // If edge_type() is EdgeType::UNDIRECTED, a sibling edge pair is considered
   // to consist of four edges (two duplicate edges and their siblings), since
@@ -895,17 +1115,21 @@ class S2Builder::GraphOptions {
   // when duplicate edges are present, all of the corresponding edge labels
   // are merged together and assigned to the remaining edges.  (This avoids
   // the problem of having to decide which edges are discarded.)  Note that
-  // this merging takes place even when all copies of an edge are kept, and
-  // that even labels attached to duplicate degenerate edges are merged.  For
-  // example, consider the graph {AB1, AB2, BA3, CD4, CD5} (where XYn denotes
-  // an edge from X to Y with label "n").  With SiblingPairs::DISCARD, we need
-  // to discard one of the copies of AB.  But which one?  Rather than choosing
-  // arbitrarily, instead we merge the labels of all duplicate edges (even
-  // ones where no sibling pairs were discarded), yielding {AB12, CD45, CD45}
-  // (assuming that duplicate edges are being kept).
+  // this merging takes place even when all copies of an edge are kept.  For
+  // example, consider the graph {AB1, AB2, AB3, BA4, CD5, CD6} (where XYn
+  // denotes an edge from X to Y with label "n").  With SiblingPairs::DISCARD,
+  // we need to discard one of the copies of AB.  But which one?  Rather than
+  // choosing arbitrarily, instead we merge the labels of all duplicate edges
+  // (even ones where no sibling pairs were discarded), yielding {AB123,
+  // AB123, CD45, CD45} (assuming that duplicate edges are being kept).
+  // Notice that the labels of duplicate edges are merged even if no siblings
+  // were discarded (such as CD5, CD6 in this example), and that this would
+  // happen even with duplicate degenerate edges (e.g. the edges EE7, EE8).
   //
   // DEFAULT: SiblingPairs::KEEP
-  enum class SiblingPairs { DISCARD, DISCARD_EXCESS, KEEP, REQUIRE, CREATE };
+  enum class SiblingPairs : uint8 {
+    DISCARD, DISCARD_EXCESS, KEEP, REQUIRE, CREATE
+  };
   SiblingPairs sibling_pairs() const;
   void set_sibling_pairs(SiblingPairs sibling_pairs);
 
@@ -974,6 +1198,17 @@ inline void S2Builder::Options::set_split_crossing_edges(
   split_crossing_edges_ = split_crossing_edges;
 }
 
+inline S1Angle S2Builder::Options::intersection_tolerance() const {
+  if (!split_crossing_edges()) return intersection_tolerance_;
+  return std::max(intersection_tolerance_, S2::kIntersectionError);
+}
+
+inline void S2Builder::Options::set_intersection_tolerance(
+    S1Angle intersection_tolerance) {
+  S2_DCHECK_GE(intersection_tolerance, S1Angle::Zero());
+  intersection_tolerance_ = intersection_tolerance;
+}
+
 inline bool S2Builder::Options::simplify_edge_chains() const {
   return simplify_edge_chains_;
 }
@@ -996,6 +1231,15 @@ inline bool S2Builder::Options::idempotent() const {
 
 inline void S2Builder::Options::set_idempotent(bool idempotent) {
   idempotent_ = idempotent;
+}
+
+inline S2MemoryTracker* S2Builder::Options::memory_tracker() const {
+  return memory_tracker_;
+}
+
+inline void S2Builder::Options::set_memory_tracker(
+    S2MemoryTracker* tracker) {
+  memory_tracker_ = tracker;
 }
 
 inline S2Builder::GraphOptions::EdgeType
@@ -1052,6 +1296,16 @@ inline bool S2Builder::is_forced(SiteId v) const {
 
 inline void S2Builder::AddPoint(const S2Point& v) {
   AddEdge(v, v);
+}
+
+inline int S2Builder::num_input_edges() const {
+  return input_edges_.size();
+}
+
+inline S2Shape::Edge S2Builder::input_edge(int input_edge_id) const {
+  const InputEdge& edge = input_edges_[input_edge_id];
+  return S2Shape::Edge(input_vertices_[edge.first],
+                       input_vertices_[edge.second]);
 }
 
 #endif  // S2_S2BUILDER_H_

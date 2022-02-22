@@ -17,24 +17,28 @@
 
 #include "s2/sequence_lexicon.h"
 
+#include <algorithm>
 #include <array>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "s2/base/logging.h"
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
 
 using absl::make_unique;
+using std::min;
+using std::vector;
 
 template <class T>
-void ExpectSequence(const std::vector<T>& expected,
+void ExpectSequence(const vector<T>& expected,
                     const typename SequenceLexicon<T>::Sequence& actual) {
   EXPECT_EQ(expected.size(), actual.size());
   EXPECT_TRUE(std::equal(expected.begin(), expected.end(), actual.begin()));
 }
 
-using Seq = std::vector<int64>;
+using Seq = vector<int64>;
 
 TEST(SequenceLexicon, int64) {
   SequenceLexicon<int64> lex;

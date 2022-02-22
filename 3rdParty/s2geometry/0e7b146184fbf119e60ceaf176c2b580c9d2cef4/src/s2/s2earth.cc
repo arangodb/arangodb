@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 #include "s2/s2earth.h"
 
 #include <cmath>
+
 #include <algorithm>
 
 namespace {
@@ -31,11 +32,11 @@ double Haversine(const double radians) {
 
 }  // namespace
 
-double S2Earth::ToLongitudeRadians(const util::units::Meters& distance,
-                                   double latitude_radians) {
+double S2Earth::MetersToLongitudeRadians(double meters,
+                                         double latitude_radians) {
   double scalar = cos(latitude_radians);
   if (scalar == 0) return M_PI * 2;
-  return std::min(ToRadians(distance) / scalar, M_PI * 2);
+  return std::min(MetersToRadians(meters) / scalar, M_PI * 2);
 }
 
 // Sourced from http://www.movable-type.co.uk/scripts/latlong.html.

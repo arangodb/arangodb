@@ -16,6 +16,8 @@
 
 #include "s2/s2region_intersection.h"
 
+#include <utility>
+
 #include "s2/s2cap.h"
 #include "s2/s2latlng_rect.h"
 

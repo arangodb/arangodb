@@ -21,6 +21,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "s2/s2builder.h"
 #include "s2/s2builder_graph.h"
 #include "s2/s2builder_layer.h"
@@ -36,15 +37,40 @@
 // these objects, except that polygon interiors must be disjoint from all
 // other geometry (including other polygon interiors).  If the input geometry
 // for a region does not meet this condition, it can be normalized by
-// computing its union first.  Note that points or polylines are allowed to
-// coincide with the boundaries of polygons.
+// computing its union first.  Duplicate polygon edges are not allowed (even
+// among different polygons), however polylines may have duplicate edges and
+// may even be self-intersecting.  Note that points or polylines are allowed
+// to coincide with the boundaries of polygons.
 //
-// Degeneracies are supported.  A polygon loop or polyline may consist of a
-// single edge from a vertex to itself, and polygons may contain "sibling
-// pairs" consisting of an edge and its corresponding reverse edge.  Polygons
-// must not have any duplicate edges (due to the requirement that polygon
-// interiors are disjoint), but polylines may have duplicate edges or can even
-// be self-intersecting.
+// Degeneracies are fully supported.  Supported degeneracy types include the
+// following:
+//
+//  - Point polylines consisting of a single degenerate edge AA.
+//
+//  - Point loops consisting of a single vertex A.  Such loops may represent
+//    either shells or holes according to whether the loop adds to or
+//    subtracts from the surrounding region of the polygon.
+//
+//  - Sibling edge pairs of the form {AB, BA}.  Such sibling pairs may
+//    represent either shells or holes according to whether they add to or
+//    subtract from the surrounding region.  The edges of a sibling pair may
+//    belong to the same polygon loop (e.g. a loop AB) or to different polygon
+//    loops or polygons (e.g. the polygons {ABC, CBD}).
+//
+// A big advantage of degeneracy support is that geometry may be simplified
+// without completely losing small details.  For example, if a polygon
+// representing a land area with many lakes and rivers is simplified using a
+// tolerance of 1 kilometer, every water feature in the input is guaranteed to
+// be within 1 kilometer of some water feature in the input (even if some
+// lakes and rivers are merged and/or reduced to degenerate point or sibling
+// edge pair holes).  Mathematically speaking, degeneracy support allows
+// geometry to be simplified while guaranteeing that the Hausdorff distance
+// betweeen the boundaries of the original and simplified geometries is at
+// most the simplification tolerance.  It also allows geometry to be
+// simplified without changing its dimension, thus preserving boundary
+// semantics.  (Note that the boundary of a polyline ABCD is {A,D}, whereas
+// the boundary of a degenerate shell ABCDCB is its entire set of vertices and
+// edges.)
 //
 // Points and polyline edges are treated as multisets: if the same point or
 // polyline edge appears multiple times in the input, it will appear multiple
@@ -53,8 +79,14 @@
 // sets of points or polylines as a single region while maintaining their
 // distinct identities, even when the points or polylines intersect each
 // other.  It is also useful for reconstructing polylines that loop back on
-// themselves.  If duplicate geometry is not desired, it can be merged by
-// GraphOptions::DuplicateEdges::MERGE in the S2Builder output layer.
+// themselves (e.g., time series such as GPS tracks).  If duplicate geometry
+// is not desired, it can easily be removed by choosing the appropriate
+// S2Builder output layer options.
+//
+// Self-intersecting polylines can be manipulated without materializing new
+// vertices at the self-intersection points.  This feature is important when
+// processing polylines with large numbers of self-intersections such as GPS
+// tracks (e.g., consider the path of a race car in the Indy 500).
 //
 // Polylines are always considered to be directed.  Polyline edges between the
 // same pair of vertices are defined to intersect even if the two edges are in
@@ -190,7 +222,7 @@
 class S2BooleanOperation {
  public:
   // The supported operation types.
-  enum class OpType {
+  enum class OpType : uint8 {
     UNION,                // Contained by either region.
     INTERSECTION,         // Contained by both regions.
     DIFFERENCE,           // Contained by the first region but not the second.
@@ -201,11 +233,17 @@ class S2BooleanOperation {
 
   // Defines whether polygons are considered to contain their vertices and/or
   // edges (see definitions above).
-  enum class PolygonModel { OPEN, SEMI_OPEN, CLOSED };
+  enum class PolygonModel : uint8 { OPEN, SEMI_OPEN, CLOSED };
+
+  // Translates PolygonModel to one of the strings above.
+  static const char* PolygonModelToString(PolygonModel model);
 
   // Defines whether polylines are considered to contain their endpoints
   // (see definitions above).
-  enum class PolylineModel { OPEN, SEMI_OPEN, CLOSED };
+  enum class PolylineModel : uint8 { OPEN, SEMI_OPEN, CLOSED };
+
+  // Translates PolylineModel to one of the strings above.
+  static const char* PolylineModelToString(PolylineModel model);
 
   // With Precision::EXACT, the operation is evaluated using the exact input
   // geometry.  Predicates that use this option will produce exact results;
@@ -228,7 +266,7 @@ class S2BooleanOperation {
   // Conceptually, the difference between these two options is that with
   // Precision::SNAPPED, the inputs are snap rounded (together), whereas with
   // Precision::EXACT only the result is snap rounded.
-  enum class Precision { EXACT, SNAPPED };
+  enum class Precision : uint8 { EXACT, SNAPPED };
 
   // SourceId identifies an edge from one of the two input S2ShapeIndexes.
   // It consists of a region id (0 or 1), a shape id within that region's
@@ -261,9 +299,9 @@ class S2BooleanOperation {
     // Specifies the function to be used for snap rounding.
     //
     // DEFAULT: s2builderutil::IdentitySnapFunction(S1Angle::Zero())
-    // [This does no snapping and preserves all input vertices exactly unless
-    //  there are crossing edges, in which case the snap radius is increased
-    //  to the maximum intersection point error (S2::kIntersectionError.]
+    //  - This does no snapping and preserves all input vertices exactly unless
+    //    there are crossing edges, in which case the snap radius is increased
+    //    to the maximum intersection point error (S2::kIntersectionError).
     const S2Builder::SnapFunction& snap_function() const;
     void set_snap_function(const S2Builder::SnapFunction& snap_function);
 
@@ -307,6 +345,18 @@ class S2BooleanOperation {
     // DEFAULT: true
     bool polyline_loops_have_boundaries() const;
     void set_polyline_loops_have_boundaries(bool value);
+
+    // Specifies that a new vertex should be added whenever a polyline edge
+    // crosses another polyline edge.  Note that this can cause the size of
+    // polylines with many self-intersections to increase quadratically.
+    //
+    // If false, new vertices are added only when a polyline from one input
+    // region cross a polyline from the other input region.  This allows
+    // self-intersecting input polylines to be modified as little as possible.
+    //
+    // DEFAULT: false
+    bool split_all_crossing_polyline_edges() const;
+    void set_split_all_crossing_polyline_edges(bool value);
 
     // Specifies whether the operation should use the exact input geometry
     // (Precision::EXACT), or whether the two input regions should be snapped
@@ -367,20 +417,56 @@ class S2BooleanOperation {
     ValueLexicon<SourceId>* source_id_lexicon() const;
     // void set_source_id_lexicon(ValueLexicon<SourceId>* source_id_lexicon);
 
+    // Specifies that internal memory usage should be tracked using the given
+    // S2MemoryTracker.  If a memory limit is specified and more more memory
+    // than this is required then an error will be returned.  Example usage:
+    //
+    //   S2MemoryTracker tracker;
+    //   tracker.set_limit(500 << 20);  // 500 MB
+    //   S2BooleanOperation::Options options;
+    //   options.set_memory_tracker(&tracker);
+    //   S2BooleanOperation op(..., options);
+    //   ...
+    //   S2Error error;
+    //   if (!op.Build(..., &error)) {
+    //     if (error.code() == S2Error::RESOURCE_EXHAUSTED) {
+    //       S2_LOG(ERROR) << error;  // Memory limit exceeded
+    //     }
+    //   }
+    //
+    // CAVEATS:
+    //
+    //  - Memory used by the input S2ShapeIndexes and the output S2Builder
+    //    layers is not counted towards the total.
+    //
+    //  - While memory tracking is reasonably complete and accurate, it does
+    //    not account for every last byte.  It is intended only for the
+    //    purpose of preventing clients from running out of memory.
+    //
+    // DEFAULT: nullptr (memory tracking disabled)
+    S2MemoryTracker* memory_tracker() const;
+    void set_memory_tracker(S2MemoryTracker* tracker);
+
     // Options may be assigned and copied.
     Options(const Options& options);
     Options& operator=(const Options& options);
 
    private:
     std::unique_ptr<S2Builder::SnapFunction> snap_function_;
-    PolygonModel polygon_model_ = PolygonModel::SEMI_OPEN;;
+    PolygonModel polygon_model_ = PolygonModel::SEMI_OPEN;
     PolylineModel polyline_model_ = PolylineModel::CLOSED;
     bool polyline_loops_have_boundaries_ = true;
+    bool split_all_crossing_polyline_edges_ = false;
     Precision precision_ = Precision::EXACT;
     bool conservative_output_ = false;
     ValueLexicon<SourceId>* source_id_lexicon_ = nullptr;
+    S2MemoryTracker* memory_tracker_ = nullptr;
   };
 
+  // Specifies that the output boundary edges should be sent to a single
+  // S2Builder layer.  This version can be used when the dimension of the
+  // output geometry is known (e.g., intersecting two polygons to yield a
+  // third polygon).
   S2BooleanOperation(OpType op_type,
                      std::unique_ptr<S2Builder::Layer> layer,
                      const Options& options = Options());
@@ -408,6 +494,7 @@ class S2BooleanOperation {
                      const Options& options = Options());
 
   OpType op_type() const { return op_type_; }
+  const Options& options() const { return options_; }
 
   // Executes the given operation.  Returns true on success, and otherwise
   // sets "error" appropriately.  (This class does not generate any errors
@@ -449,13 +536,13 @@ class S2BooleanOperation {
   S2BooleanOperation(OpType op_type, const Options& options);
 
   // Specifies that "result_empty" should be set to indicate whether the exact
-  // result of the operation is empty (contains no edges).  This constructor
-  // is used to efficiently test boolean relationships (see IsEmpty above).
+  // result of the operation is empty.  This constructor is used to efficiently
+  // test boolean relationships (see IsEmpty above).
   S2BooleanOperation(OpType op_type, bool* result_empty,
                      const Options& options = Options());
 
-  OpType op_type_;
   Options options_;
+  OpType op_type_;
 
   // The input regions.
   const S2ShapeIndex* regions_[2];

@@ -20,8 +20,20 @@
 
 #include <tuple>
 #include <type_traits>
+
+#include "absl/container/btree_map.h"
+
 #include "s2/s2cell_id.h"
-#include "s2/util/gtl/btree_map.h"
+
+namespace s2internal {
+// Hack to expose bytes_used.
+template <typename Key, typename Value>
+class BTreeMultimap : public absl::btree_multimap<Key, Value> {
+ public:
+  size_t bytes_used() const { return this->tree_.bytes_used(); }
+};
+}  // namespace s2internal
+
 
 // S2PointIndex maintains an index of points sorted by leaf S2CellId.  Each
 // point can optionally store auxiliary data such as an integer or pointer.
@@ -138,9 +150,12 @@ class S2PointIndex {
   // Resets the index to its original empty state.  Invalidates all iterators.
   void Clear();
 
+  // Returns the number of bytes currently occupied by the index.
+  size_t SpaceUsed() const;
+
  private:
   // Defined here because the Iterator class below uses it.
-  using Map = gtl::btree_multimap<S2CellId, PointData>;
+  using Map = s2internal::BTreeMultimap<S2CellId, PointData>;
 
  public:
   class Iterator {
@@ -264,6 +279,11 @@ void S2PointIndex<Data>::Remove(const S2Point& point) {
 template <class Data>
 void S2PointIndex<Data>::Clear() {
   map_.clear();
+}
+
+template <class Data>
+size_t S2PointIndex<Data>::SpaceUsed() const {
+  return sizeof(*this) - sizeof(map_) + map_.bytes_used();
 }
 
 template <class Data>

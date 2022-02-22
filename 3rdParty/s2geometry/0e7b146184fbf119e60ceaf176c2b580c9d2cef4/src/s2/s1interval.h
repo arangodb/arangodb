@@ -21,6 +21,7 @@
 #include <cmath>
 #include <iosfwd>
 #include <iostream>
+#include <ostream>
 
 #include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
@@ -180,6 +181,9 @@ class S1Interval {
   // Return true if two intervals contains the same set of points.
   bool operator==(const S1Interval& y) const;
 
+  // Return true if two intervals do not contain the same set of points.
+  bool operator!=(const S1Interval& y) const;
+
   // Return true if this interval can be transformed into the given interval by
   // moving each endpoint by at most "max_error" (and without the endpoints
   // crossing, which would invert the interval).  Empty and full intervals are
@@ -247,6 +251,10 @@ inline bool S1Interval::is_valid() const {
 
 inline bool S1Interval::operator==(const S1Interval& y) const {
   return lo() == y.lo() && hi() == y.hi();
+}
+
+inline bool S1Interval::operator!=(const S1Interval& y) const {
+  return !operator==(y);
 }
 
 inline void S1Interval::set_lo(double p) {

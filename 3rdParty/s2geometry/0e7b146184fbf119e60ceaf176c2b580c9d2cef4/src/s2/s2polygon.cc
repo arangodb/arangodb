@@ -21,11 +21,15 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <set>
 #include <stack>
 #include <utility>
 #include <vector>
 
+#include "absl/container/fixed_array.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/container/inlined_vector.h"
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
 
 #include "s2/base/casts.h"
 #include "s2/base/commandlineflags.h"
@@ -64,27 +68,22 @@
 #include "s2/s2shape_index.h"
 #include "s2/s2shape_index_region.h"
 #include "s2/s2shapeutil_visit_crossing_edge_pairs.h"
-#include "s2/third_party/absl/container/fixed_array.h"
-#include "s2/third_party/absl/container/inlined_vector.h"
-#include "s2/third_party/absl/memory/memory.h"
 #include "s2/util/coding/coder.h"
 
+using absl::flat_hash_set;
 using absl::make_unique;
 using s2builderutil::IdentitySnapFunction;
+using s2builderutil::S2CellIdSnapFunction;
 using s2builderutil::S2PolygonLayer;
 using s2builderutil::S2PolylineLayer;
 using s2builderutil::S2PolylineVectorLayer;
-using s2builderutil::S2CellIdSnapFunction;
 using std::fabs;
-using std::max;
-using std::min;
 using std::pair;
-using std::set;
 using std::sqrt;
 using std::unique_ptr;
 using std::vector;
 
-DEFINE_bool(
+S2_DEFINE_bool(
     s2polygon_lazy_indexing, true,
     "Build the S2ShapeIndex only when it is first needed.  This can save "
     "significant amounts of memory and time when geometry is constructed but "
@@ -92,7 +91,7 @@ DEFINE_bool(
 
 // The maximum number of loops we'll allow when decoding a polygon.
 // The default value of 10 million is 200x bigger than the number of
-DEFINE_int32(
+S2_DEFINE_int32(
     s2polygon_decode_max_num_loops, 10000000,
     "The upper limit on the number of loops that are allowed by the "
     "S2Polygon::Decode method.");
@@ -132,18 +131,18 @@ S2Debug S2Polygon::s2debug_override() const {
   return s2debug_override_;
 }
 
-void S2Polygon::Copy(const S2Polygon* src) {
+void S2Polygon::Copy(const S2Polygon& src) {
   ClearLoops();
-  for (int i = 0; i < src->num_loops(); ++i) {
-    loops_.emplace_back(src->loop(i)->Clone());
+  for (int i = 0; i < src.num_loops(); ++i) {
+    loops_.emplace_back(src.loop(i)->Clone());
   }
-  s2debug_override_ = src->s2debug_override_;
+  s2debug_override_ = src.s2debug_override_;
   // Don't copy error_inconsistent_loop_orientations_, since this is not a
   // property of the polygon but only of the way the polygon was constructed.
-  num_vertices_ = src->num_vertices();
+  num_vertices_ = src.num_vertices();
   unindexed_contains_calls_.store(0, std::memory_order_relaxed);
-  bound_ = src->bound_;
-  subregion_bound_ = src->subregion_bound_;
+  bound_ = src.bound_;
+  subregion_bound_ = src.subregion_bound_;
   InitIndex();  // TODO(ericv): Copy the index efficiently.
 }
 
@@ -177,7 +176,7 @@ S2Polygon::~S2Polygon() {
 bool S2Polygon::IsValid() const {
   S2Error error;
   if (FindValidationError(&error)) {
-    S2_LOG_IF(ERROR, FLAGS_s2debug) << error;
+    S2_LOG_IF(ERROR, absl::GetFlag(FLAGS_s2debug)) << error;
     return false;
   }
   return true;
@@ -268,7 +267,7 @@ void S2Polygon::InsertLoop(S2Loop* new_loop, S2Loop* parent,
   // Some of the children of the parent loop may now be children of
   // the new loop.
   vector<S2Loop*>* new_children = &(*loop_map)[new_loop];
-  for (int i = 0; i < children->size();) {
+  for (int i = 0; i < children->size(); ) {
     S2Loop* child = (*children)[i];
     if (new_loop->ContainsNested(child)) {
       new_children->push_back(child);
@@ -303,10 +302,10 @@ void S2Polygon::InitLoops(LoopMap* loop_map) {
 void S2Polygon::InitIndex() {
   S2_DCHECK_EQ(0, index_.num_shape_ids());
   index_.Add(make_unique<Shape>(this));
-  if (!FLAGS_s2polygon_lazy_indexing) {
+  if (!absl::GetFlag(FLAGS_s2polygon_lazy_indexing)) {
     index_.ForceBuild();
   }
-  if (FLAGS_s2debug && s2debug_override_ == S2Debug::ALLOW) {
+  if (absl::GetFlag(FLAGS_s2debug) && s2debug_override_ == S2Debug::ALLOW) {
     // Note that FLAGS_s2debug is false in optimized builds (by default).
     S2_CHECK(IsValid());
   }
@@ -402,7 +401,7 @@ void S2Polygon::InitOriented(vector<unique_ptr<S2Loop>> loops) {
   //    necessary if the polygon requires at least one non-normalized loop to
   //    represent it.
 
-  set<const S2Loop*> contained_origin;
+  flat_hash_set<const S2Loop*> contained_origin;
   for (int i = 0; i < loops.size(); ++i) {
     S2Loop* loop = loops[i].get();
     if (loop->contains_origin()) {
@@ -441,7 +440,7 @@ void S2Polygon::InitOriented(vector<unique_ptr<S2Loop>> loops) {
       // property of the entire set of loops.  In general there is no way to
       // determine which ones are incorrect.
       error_inconsistent_loop_orientations_ = true;
-      if (FLAGS_s2debug && s2debug_override_ == S2Debug::ALLOW) {
+      if (absl::GetFlag(FLAGS_s2debug) && s2debug_override_ == S2Debug::ALLOW) {
         // The FLAGS_s2debug validity checking usually happens in InitIndex(),
         // but this error is detected too late for that.
         S2_CHECK(IsValid());  // Always fails.
@@ -528,12 +527,12 @@ S1Angle S2Polygon::GetDistanceToBoundary(const S2Point& x) const {
 }
 
 /*static*/ pair<double, double> S2Polygon::GetOverlapFractions(
-    const S2Polygon* a, const S2Polygon* b) {
+    const S2Polygon& a, const S2Polygon& b) {
   S2Polygon intersection;
   intersection.InitToIntersection(a, b);
   double intersection_area = intersection.GetArea();
-  double a_area = a->GetArea();
-  double b_area = b->GetArea();
+  double a_area = a.GetArea();
+  double b_area = b.GetArea();
   return std::make_pair(
       intersection_area >= a_area ? 1 : intersection_area / a_area,
       intersection_area >= b_area ? 1 : intersection_area / b_area);
@@ -553,11 +552,11 @@ S2Point S2Polygon::ProjectToBoundary(const S2Point& x) const {
   return q.Project(x, edge);
 }
 
-bool S2Polygon::Contains(const S2Polygon* b) const {
+bool S2Polygon::Contains(const S2Polygon& b) const {
   // It's worth checking bounding rectangles, since they are precomputed.
   // Note that the first bound has been expanded to account for possible
   // numerical errors in the second bound.
-  if (!subregion_bound_.Contains(b->bound_)) {
+  if (!subregion_bound_.Contains(b.bound_)) {
     // It is possible that A contains B even though Bound(A) does not contain
     // Bound(B).  This can only happen when polygon B has at least two outer
     // shells and the union of the two bounds spans all longitudes.  For
@@ -568,7 +567,7 @@ bool S2Polygon::Contains(const S2Polygon* b) const {
     //
     // For convenience we just check whether B has at least two loops rather
     // than two outer shells.
-    if (b->num_loops() == 1 || !bound_.lng().Union(b->bound_.lng()).is_full()) {
+    if (b.num_loops() == 1 || !bound_.lng().Union(b.bound_.lng()).is_full()) {
       return false;
     }
   }
@@ -576,21 +575,21 @@ bool S2Polygon::Contains(const S2Polygon* b) const {
   // The following case is not handled by S2BooleanOperation because it only
   // determines whether the boundary of the result is empty (which does not
   // distinguish between the full and empty polygons).
-  if (is_empty() && b->is_full()) return false;
+  if (is_empty() && b.is_full()) return false;
 
-  return S2BooleanOperation::Contains(index_, b->index_);
+  return S2BooleanOperation::Contains(index_, b.index_);
 }
 
-bool S2Polygon::Intersects(const S2Polygon* b) const {
+bool S2Polygon::Intersects(const S2Polygon& b) const {
   // It's worth checking bounding rectangles, since they are precomputed.
-  if (!bound_.Intersects(b->bound_)) return false;
+  if (!bound_.Intersects(b.bound_)) return false;
 
   // The following case is not handled by S2BooleanOperation because it only
   // determines whether the boundary of the result is empty (which does not
   // distinguish between the full and empty polygons).
-  if (is_full() && b->is_full()) return true;
+  if (is_full() && b.is_full()) return true;
 
-  return S2BooleanOperation::Intersects(index_, b->index_);
+  return S2BooleanOperation::Intersects(index_, b.index_);
 }
 
 S2Cap S2Polygon::GetCapBound() const {
@@ -605,26 +604,27 @@ bool S2Polygon::Contains(const S2Cell& target) const {
   return MakeS2ShapeIndexRegion(&index_).Contains(target);
 }
 
-bool S2Polygon::ApproxContains(const S2Polygon* b, S1Angle tolerance) const {
+bool S2Polygon::ApproxContains(const S2Polygon& b, S1Angle tolerance) const {
   S2Polygon difference;
-  difference.InitToApproxDifference(b, this, tolerance);
+  difference.InitToDifference(b, *this, IdentitySnapFunction(tolerance));
   return difference.is_empty();
 }
 
-bool S2Polygon::ApproxDisjoint(const S2Polygon* b, S1Angle tolerance) const {
+bool S2Polygon::ApproxDisjoint(const S2Polygon& b, S1Angle tolerance) const {
   S2Polygon intersection;
-  intersection.InitToApproxIntersection(b, this, tolerance);
+  intersection.InitToIntersection(b, *this, IdentitySnapFunction(tolerance));
   return intersection.is_empty();
 }
 
-bool S2Polygon::ApproxEquals(const S2Polygon* b, S1Angle tolerance) const {
+bool S2Polygon::ApproxEquals(const S2Polygon& b, S1Angle tolerance) const {
   // TODO(ericv): This can be implemented more cheaply with S2Builder, by
   // simply adding all the edges from one polygon, adding the reversed edge
   // from the other polygon, and turning on the options to split edges and
   // discard sibling pairs.  Then the polygons are approximately equal if the
   // output graph has no edges.
   S2Polygon symmetric_difference;
-  symmetric_difference.InitToApproxSymmetricDifference(b, this, tolerance);
+  symmetric_difference.InitToSymmetricDifference(
+      b, *this, IdentitySnapFunction(tolerance));
   return symmetric_difference.is_empty();
 }
 
@@ -759,7 +759,8 @@ bool S2Polygon::DecodeUncompressed(Decoder* const decoder, bool within_scope) {
   // Polygons with no loops are explicitly allowed here: a newly created
   // polygon has zero loops and such polygons encode and decode properly.
   const uint32 num_loops = decoder->get32();
-  if (num_loops > FLAGS_s2polygon_decode_max_num_loops) return false;
+  if (num_loops > absl::GetFlag(FLAGS_s2polygon_decode_max_num_loops))
+    return false;
   loops_.reserve(num_loops);
   num_vertices_ = 0;
   for (int i = 0; i < num_loops; ++i) {
@@ -781,17 +782,17 @@ bool S2Polygon::DecodeUncompressed(Decoder* const decoder, bool within_scope) {
 // TODO(ericv): Consider adding this to the S2Loop API.  (May also want an
 // undirected version (CompareDirected vs CompareUndirected); should they
 // return a sign, or have separate "<" and "==" methods?)
-int S2Polygon::CompareLoops(const S2Loop* a, const S2Loop* b) {
-  if (a->num_vertices() != b->num_vertices()) {
-    return a->num_vertices() - b->num_vertices();
+int S2Polygon::CompareLoops(const S2Loop& a, const S2Loop& b) {
+  if (a.num_vertices() != b.num_vertices()) {
+    return a.num_vertices() - b.num_vertices();
   }
-  S2::LoopOrder ao = a->GetCanonicalLoopOrder();
-  S2::LoopOrder bo = b->GetCanonicalLoopOrder();
+  S2::LoopOrder ao = a.GetCanonicalLoopOrder();
+  S2::LoopOrder bo = b.GetCanonicalLoopOrder();
   if (ao.dir != bo.dir) return ao.dir - bo.dir;
-  for (int n = a->num_vertices(), ai = ao.first, bi = bo.first;
-       --n >= 0; ai += ao.dir, bi += bo.dir) {
-    if (a->vertex(ai) < b->vertex(bi)) return -1;
-    if (a->vertex(ai) > b->vertex(bi)) return 1;
+  for (int n = a.num_vertices(), ai = ao.first, bi = bo.first; --n >= 0;
+       ai += ao.dir, bi += bo.dir) {
+    if (a.vertex(ai) < b.vertex(bi)) return -1;
+    if (a.vertex(ai) > b.vertex(bi)) return 1;
   }
   return 0;
 }
@@ -858,148 +859,96 @@ void S2Polygon::Invert() {
   InitLoopProperties();
 }
 
-void S2Polygon::InitToComplement(const S2Polygon* a) {
+void S2Polygon::InitToComplement(const S2Polygon& a) {
   Copy(a);
   Invert();
 }
 
 bool S2Polygon::InitToOperation(S2BooleanOperation::OpType op_type,
                                 const S2Builder::SnapFunction& snap_function,
-                                const S2Polygon& a, const S2Polygon& b) {
+                                const S2Polygon& a, const S2Polygon& b,
+                                S2Error* error) {
   S2BooleanOperation::Options options;
   options.set_snap_function(snap_function);
   S2BooleanOperation op(op_type, make_unique<S2PolygonLayer>(this),
                          options);
+  return op.Build(a.index_, b.index_, error);
+}
+
+void S2Polygon::InitToOperation(S2BooleanOperation::OpType op_type,
+                                const S2Builder::SnapFunction& snap_function,
+                                const S2Polygon& a, const S2Polygon& b) {
   S2Error error;
-  if (!op.Build(a.index_, b.index_, &error)) {
+  if (!InitToOperation(op_type, snap_function, a, b, &error)) {
     S2_LOG(DFATAL) << S2BooleanOperation::OpTypeToString(op_type)
                 << " operation failed: " << error;
-    return false;
   }
-  return true;
 }
 
-void S2Polygon::InitToIntersection(const S2Polygon* a, const S2Polygon* b) {
-  InitToApproxIntersection(a, b, S2::kIntersectionMergeRadius);
-}
-
-void S2Polygon::InitToApproxIntersection(const S2Polygon* a, const S2Polygon* b,
-                                         S1Angle snap_radius) {
-  InitToIntersection(*a, *b, IdentitySnapFunction(snap_radius));
+void S2Polygon::InitToIntersection(const S2Polygon& a, const S2Polygon& b) {
+  InitToIntersection(a, b, IdentitySnapFunction(S2::kIntersectionMergeRadius));
 }
 
 void S2Polygon::InitToIntersection(
     const S2Polygon& a, const S2Polygon& b,
     const S2Builder::SnapFunction& snap_function) {
-  if (!a.bound_.Intersects(b.bound_)) return;
+  if (!a.bound_.Intersects(b.bound_)) {
+    InitNested({});
+    return;
+  }
   InitToOperation(S2BooleanOperation::OpType::INTERSECTION,
                   snap_function, a, b);
+}
 
-  // If the boundary is empty then there are two possible results: the empty
-  // polygon or the full polygon.  Note that the (approximate) intersection of
-  // two non-full polygons may be full, because one or both polygons may have
-  // tiny cracks or holes that are eliminated by snapping.  Similarly, the
-  // (approximate) intersection of two polygons that contain a common point
-  // may be empty, since the point might be contained by tiny loops that are
-  // snapped away.
-  //
-  // So instead we fall back to heuristics.  First we compute the minimum and
-  // maximum intersection area based on the areas of the two input polygons.
-  // If only one of {0, 4*Pi} is possible then we return that result.  If
-  // neither is possible (before snapping) then we return the one that is
-  // closest to being possible.  (It never true that both are possible.)
-  if (num_loops() == 0) {
-    // We know that both polygons are non-empty due to the initial bounds
-    // check.  By far the most common case is that the intersection is empty,
-    // so we want to make that case fast.  The intersection area satisfies:
-    //
-    //   max(0, A + B - 4*Pi) <= Intersection(A, B) <= min(A, B)
-    //
-    // where A, B can refer to a polygon or its area.  Note that if either A
-    // or B is at most 2*Pi, the result must be empty.  We can use the
-    // bounding rectangle areas as upper bounds on the polygon areas.
-    if (a.bound_.Area() <= 2 * M_PI || b.bound_.Area() <= 2 * M_PI) return;
-    double a_area = a.GetArea(), b_area = b.GetArea();
-    double min_area = max(0.0, a_area + b_area - 4 * M_PI);
-    double max_area = min(a_area, b_area);
-    if (min_area > 4 * M_PI - max_area) {
-      Invert();
-    }
+bool S2Polygon::InitToIntersection(
+    const S2Polygon& a, const S2Polygon& b,
+    const S2Builder::SnapFunction& snap_function, S2Error* error) {
+  if (!a.bound_.Intersects(b.bound_))  {
+    InitNested({});
+    return true;  // Success.
   }
+  return InitToOperation(S2BooleanOperation::OpType::INTERSECTION,
+                         snap_function, a, b, error);
 }
 
-void S2Polygon::InitToUnion(const S2Polygon* a, const S2Polygon* b) {
-  InitToApproxUnion(a, b, S2::kIntersectionMergeRadius);
-}
-
-void S2Polygon::InitToApproxUnion(const S2Polygon* a, const S2Polygon* b,
-                                  S1Angle snap_radius) {
-  InitToUnion(*a, *b, IdentitySnapFunction(snap_radius));
+void S2Polygon::InitToUnion(const S2Polygon& a, const S2Polygon& b) {
+  InitToUnion(a, b, IdentitySnapFunction(S2::kIntersectionMergeRadius));
 }
 
 void S2Polygon::InitToUnion(
     const S2Polygon& a, const S2Polygon& b,
     const S2Builder::SnapFunction& snap_function) {
   InitToOperation(S2BooleanOperation::OpType::UNION, snap_function, a, b);
-  if (num_loops() == 0) {
-    // See comments in InitToApproxIntersection().  In this case, the union
-    // area satisfies:
-    //
-    //   max(A, B) <= Union(A, B) <= min(4*Pi, A + B)
-    //
-    // where A, B can refer to a polygon or its area.  The most common case is
-    // that neither input polygon is empty, but the union is empty due to
-    // snapping.
-    if (a.bound_.Area() + b.bound_.Area() <= 2 * M_PI) return;
-    double a_area = a.GetArea(), b_area = b.GetArea();
-    double min_area = max(a_area, b_area);
-    double max_area = min(4 * M_PI, a_area + b_area);
-    if (min_area > 4 * M_PI - max_area) {
-      Invert();
-    }
-  }
 }
 
-void S2Polygon::InitToDifference(const S2Polygon* a, const S2Polygon* b) {
-  InitToApproxDifference(a, b, S2::kIntersectionMergeRadius);
+bool S2Polygon::InitToUnion(
+    const S2Polygon& a, const S2Polygon& b,
+    const S2Builder::SnapFunction& snap_function, S2Error* error) {
+  return InitToOperation(S2BooleanOperation::OpType::UNION,
+                         snap_function, a, b, error);
 }
 
-void S2Polygon::InitToApproxDifference(const S2Polygon* a, const S2Polygon* b,
-                                       S1Angle snap_radius) {
-  InitToDifference(*a, *b, IdentitySnapFunction(snap_radius));
+void S2Polygon::InitToDifference(const S2Polygon& a, const S2Polygon& b) {
+  InitToDifference(a, b, IdentitySnapFunction(S2::kIntersectionMergeRadius));
 }
 
 void S2Polygon::InitToDifference(
     const S2Polygon& a, const S2Polygon& b,
     const S2Builder::SnapFunction& snap_function) {
   InitToOperation(S2BooleanOperation::OpType::DIFFERENCE, snap_function, a, b);
-  if (num_loops() == 0) {
-    // See comments in InitToApproxIntersection().  In this case, the
-    // difference area satisfies:
-    //
-    //   max(0, A - B) <= Difference(A, B) <= min(A, 4*Pi - B)
-    //
-    // where A, B can refer to a polygon or its area.  By far the most common
-    // case is that result is empty.
-    if (a.bound_.Area() <= 2 * M_PI || b.bound_.Area() >= 2 * M_PI) return;
-    double a_area = a.GetArea(), b_area = b.GetArea();
-    double min_area = max(0.0, a_area - b_area);
-    double max_area = min(a_area, 4 * M_PI - b_area);
-    if (min_area > 4 * M_PI - max_area) {
-      Invert();
-    }
-  }
 }
 
-void S2Polygon::InitToSymmetricDifference(const S2Polygon* a,
-                                          const S2Polygon* b) {
-  InitToApproxSymmetricDifference(a, b, S2::kIntersectionMergeRadius);
+bool S2Polygon::InitToDifference(
+    const S2Polygon& a, const S2Polygon& b,
+    const S2Builder::SnapFunction& snap_function, S2Error* error) {
+  return InitToOperation(S2BooleanOperation::OpType::DIFFERENCE,
+                         snap_function, a, b, error);
 }
 
-void S2Polygon::InitToApproxSymmetricDifference(const S2Polygon* a,
-                                                const S2Polygon* b,
-                                                S1Angle snap_radius) {
-  InitToSymmetricDifference(*a, *b, IdentitySnapFunction(snap_radius));
+void S2Polygon::InitToSymmetricDifference(const S2Polygon& a,
+                                          const S2Polygon& b) {
+  InitToSymmetricDifference(a, b,
+                            IdentitySnapFunction(S2::kIntersectionMergeRadius));
 }
 
 void S2Polygon::InitToSymmetricDifference(
@@ -1007,27 +956,13 @@ void S2Polygon::InitToSymmetricDifference(
     const S2Builder::SnapFunction& snap_function) {
   InitToOperation(S2BooleanOperation::OpType::SYMMETRIC_DIFFERENCE,
                   snap_function, a, b);
-  if (num_loops() == 0) {
-    // See comments in InitToApproxIntersection().  In this case, the
-    // difference area satisfies:
-    //
-    //   |A - B| <= SymmetricDifference(A, B) <= 4*Pi - |4*Pi - (A + B)|
-    //
-    // where A, B can refer to a polygon or its area.  By far the most common
-    // case is that result is empty.
-    if (a.bound_.Area() + b.bound_.Area() <= 2 * M_PI) return;
-    double a_area = a.GetArea(), b_area = b.GetArea();
-    double min_area = fabs(a_area - b_area);
-    double max_area = 4 * M_PI - fabs(4 * M_PI - (a_area + b_area));
-    // If both input polygons have area 2*Pi, the result could be either empty
-    // or full.  We explicitly want to choose "empty" in this case since it is
-    // much more likely that the user is computing the difference between two
-    // nearly identical polygons.  Hence the bias below.
-    static constexpr double kBiasTowardsEmpty = 1e-14;
-    if (min_area - kBiasTowardsEmpty > 4 * M_PI - max_area) {
-      Invert();
-    }
-  }
+}
+
+bool S2Polygon::InitToSymmetricDifference(
+    const S2Polygon& a, const S2Polygon& b,
+    const S2Builder::SnapFunction& snap_function, S2Error* error) {
+  return InitToOperation(S2BooleanOperation::OpType::SYMMETRIC_DIFFERENCE,
+                         snap_function, a, b, error);
 }
 
 void S2Polygon::InitFromBuilder(const S2Polygon& a, S2Builder* builder) {
@@ -1038,15 +973,20 @@ void S2Polygon::InitFromBuilder(const S2Polygon& a, S2Builder* builder) {
     S2_LOG(DFATAL) << "Could not build polygon: " << error;
   }
   // If there are no loops, check whether the result should be the full
-  // polygon rather than the empty one.  (See InitToApproxIntersection.)
+  // polygon rather than the empty one.  (See InitToIntersection.)
   if (num_loops() == 0) {
     if (a.bound_.Area() > 2 * M_PI && a.GetArea() > 2 * M_PI) Invert();
   }
 }
 
-void S2Polygon::InitToSnapped(const S2Polygon* a, int snap_level) {
-  S2Builder builder{S2Builder::Options(S2CellIdSnapFunction(snap_level))};
-  InitFromBuilder(*a, &builder);
+void S2Polygon::InitToSnapped(const S2Polygon& polygon,
+                              const S2Builder::SnapFunction& snap_function) {
+  S2Builder builder{S2Builder::Options(snap_function)};
+  InitFromBuilder(polygon, &builder);
+}
+
+void S2Polygon::InitToSnapped(const S2Polygon& polygon, int snap_level) {
+  InitToSnapped(polygon, S2CellIdSnapFunction(snap_level));
 }
 
 void S2Polygon::InitToSimplified(const S2Polygon& a,
@@ -1068,7 +1008,8 @@ uint8 GetCellEdgeIncidenceMask(const S2Cell& cell, const S2Point& p,
   R2Point uv;
   if (S2::FaceXYZtoUV(cell.face(), p, &uv)) {
     R2Rect bound = cell.GetBoundUV();
-    if (FLAGS_s2debug) S2_DCHECK(bound.Expanded(tolerance_uv).Contains(uv));
+    if (absl::GetFlag(FLAGS_s2debug))
+      S2_DCHECK(bound.Expanded(tolerance_uv).Contains(uv));
     if (fabs(uv[1] - bound[1][0]) <= tolerance_uv) mask |= 1;
     if (fabs(uv[0] - bound[0][1]) <= tolerance_uv) mask |= 2;
     if (fabs(uv[1] - bound[1][1]) <= tolerance_uv) mask |= 4;
@@ -1077,9 +1018,9 @@ uint8 GetCellEdgeIncidenceMask(const S2Cell& cell, const S2Point& p,
   return mask;
 }
 
-void S2Polygon::InitToSimplifiedInCell(
-    const S2Polygon* a, const S2Cell& cell,
-    S1Angle snap_radius, S1Angle boundary_tolerance) {
+void S2Polygon::InitToSimplifiedInCell(const S2Polygon& a, const S2Cell& cell,
+                                       S1Angle snap_radius,
+                                       S1Angle boundary_tolerance) {
   // The polygon to be simplified consists of "boundary edges" that follow the
   // cell boundary and "interior edges" that do not.  We want to simplify the
   // interior edges while leaving the boundary edges unchanged.  It's not
@@ -1129,8 +1070,8 @@ void S2Polygon::InitToSimplifiedInCell(
 
   // The first pass yields a collection of simplified polylines that preserve
   // the original cyclic vertex order.
-  auto polylines = SimplifyEdgesInCell(*a, cell, boundary_tolerance_uv,
-                                       snap_radius);
+  auto polylines =
+      SimplifyEdgesInCell(a, cell, boundary_tolerance_uv, snap_radius);
 
   // The second pass eliminates any intersections between interior edges and
   // boundary edges, and then assembles the edges into a polygon.
@@ -1148,9 +1089,9 @@ void S2Polygon::InitToSimplifiedInCell(
     return;
   }
   // If there are no loops, check whether the result should be the full
-  // polygon rather than the empty one.  (See InitToApproxIntersection.)
+  // polygon rather than the empty one.  (See InitToIntersection.)
   if (num_loops() == 0) {
-    if (a->bound_.Area() > 2 * M_PI && a->GetArea() > 2 * M_PI) Invert();
+    if (a.bound_.Area() > 2 * M_PI && a.GetArea() > 2 * M_PI) Invert();
   }
 }
 
@@ -1291,6 +1232,13 @@ unique_ptr<S2Polygon> S2Polygon::DestructiveUnion(
 
 unique_ptr<S2Polygon> S2Polygon::DestructiveApproxUnion(
     vector<unique_ptr<S2Polygon>> polygons, S1Angle snap_radius) {
+  return DestructiveUnion(std::move(polygons),
+                          IdentitySnapFunction(snap_radius));
+}
+
+unique_ptr<S2Polygon> S2Polygon::DestructiveUnion(
+    vector<std::unique_ptr<S2Polygon>> polygons,
+    const S2Builder::SnapFunction& snap_function) {
   // Effectively create a priority queue of polygons in order of number of
   // vertices.  Repeatedly union the two smallest polygons and add the result
   // to the queue until we have a single polygon to return.
@@ -1312,8 +1260,7 @@ unique_ptr<S2Polygon> S2Polygon::DestructiveApproxUnion(
 
     // Union and add result back to queue.
     auto union_polygon = make_unique<S2Polygon>();
-    union_polygon->InitToApproxUnion(a_polygon.get(), b_polygon.get(),
-                                     snap_radius);
+    union_polygon->InitToUnion(*a_polygon, *b_polygon, snap_function);
     queue.insert(std::make_pair(a_size + b_size, std::move(union_polygon)));
     // We assume that the number of vertices in the union polygon is the
     // sum of the number of vertices in the original polygons, which is not
@@ -1362,7 +1309,7 @@ bool S2Polygon::IsNormalized() const {
   // most one vertex with their parent loop.  Example: suppose loop A has
   // children B, C, D, and the following pairs are connected: AB, BC, CD, DA.
   // Then the polygon is not normalized.
-  set<S2Point> vertices;
+  flat_hash_set<S2Point> vertices;
   const S2Loop* last_parent = nullptr;
   for (int i = 0; i < num_loops(); ++i) {
     const S2Loop* child = loop(i);
@@ -1384,11 +1331,11 @@ bool S2Polygon::IsNormalized() const {
   return true;
 }
 
-bool S2Polygon::Equals(const S2Polygon* b) const {
-  if (num_loops() != b->num_loops()) return false;
+bool S2Polygon::Equals(const S2Polygon& b) const {
+  if (num_loops() != b.num_loops()) return false;
   for (int i = 0; i < num_loops(); ++i) {
     const S2Loop* a_loop = loop(i);
-    const S2Loop* b_loop = b->loop(i);
+    const S2Loop* b_loop = b.loop(i);
     if ((b_loop->depth() != a_loop->depth()) || !b_loop->Equals(a_loop)) {
       return false;
     }
@@ -1396,14 +1343,14 @@ bool S2Polygon::Equals(const S2Polygon* b) const {
   return true;
 }
 
-bool S2Polygon::BoundaryEquals(const S2Polygon* b) const {
-  if (num_loops() != b->num_loops()) return false;
+bool S2Polygon::BoundaryEquals(const S2Polygon& b) const {
+  if (num_loops() != b.num_loops()) return false;
 
   for (int i = 0; i < num_loops(); ++i) {
     const S2Loop* a_loop = loop(i);
     bool success = false;
     for (int j = 0; j < num_loops(); ++j) {
-      const S2Loop* b_loop = b->loop(j);
+      const S2Loop* b_loop = b.loop(j);
       if ((b_loop->depth() == a_loop->depth()) &&
           b_loop->BoundaryEquals(a_loop)) {
         success = true;
@@ -1489,7 +1436,8 @@ bool S2Polygon::DecodeCompressed(Decoder* decoder) {
   // polygon has zero loops and such polygons encode and decode properly.
   uint32 num_loops;
   if (!decoder->get_varint32(&num_loops)) return false;
-  if (num_loops > FLAGS_s2polygon_decode_max_num_loops) return false;
+  if (num_loops > absl::GetFlag(FLAGS_s2polygon_decode_max_num_loops))
+    return false;
   loops_.reserve(num_loops);
   for (int i = 0; i < num_loops; ++i) {
     auto loop = make_unique<S2Loop>();
@@ -1504,58 +1452,42 @@ bool S2Polygon::DecodeCompressed(Decoder* decoder) {
 }
 
 S2Polygon::Shape::Shape(const S2Polygon* polygon)
-    : cumulative_edges_(nullptr) {
+    : loop_starts_(nullptr) {
   Init(polygon);
 }
 
 void S2Polygon::Shape::Init(const S2Polygon* polygon) {
   polygon_ = polygon;
-  delete[] cumulative_edges_;
-  cumulative_edges_ = nullptr;
-  num_edges_ = 0;
+  loop_starts_ = nullptr;
+  uint32 offset = 0;
   if (!polygon->is_full()) {
     const int kMaxLinearSearchLoops = 12;  // From benchmarks.
     int num_loops = polygon->num_loops();
     if (num_loops > kMaxLinearSearchLoops) {
-      cumulative_edges_ = new int[num_loops];
+      // Unlike make_unique<>, new T[] does not default-construct each element.
+      loop_starts_.reset(new uint32[num_loops + 1]);  // NOLINT
     }
     for (int i = 0; i < num_loops; ++i) {
-      if (cumulative_edges_) cumulative_edges_[i] = num_edges_;
-      num_edges_ += polygon->loop(i)->num_vertices();
+      if (loop_starts_) loop_starts_[i] = offset;
+      offset += polygon->loop(i)->num_vertices();
     }
+    if (loop_starts_) loop_starts_[num_loops] = offset;
   }
 }
 
 S2Polygon::Shape::~Shape() {
-  delete[] cumulative_edges_;
 }
 
 S2Shape::Edge S2Polygon::Shape::edge(int e) const {
-  S2_DCHECK_LT(e, num_edges());
-  const S2Polygon* p = polygon();
-  int i;
-  if (cumulative_edges_) {
-    // "upper_bound" finds the loop just beyond the one we want.
-    int* start = std::upper_bound(cumulative_edges_,
-                                  cumulative_edges_ + p->num_loops(), e) - 1;
-    i = start - cumulative_edges_;
-    e -= *start;
-  } else {
-    // When the number of loops is small, linear search is faster.  Most often
-    // there is exactly one loop and the code below executes zero times.
-    for (i = 0; e >= p->loop(i)->num_vertices(); ++i) {
-      e -= p->loop(i)->num_vertices();
-    }
-  }
-  return Edge(p->loop(i)->oriented_vertex(e),
-              p->loop(i)->oriented_vertex(e + 1));
+  // Method names are fully specified to enable inlining.
+  ChainPosition pos = S2Polygon::Shape::chain_position(e);
+  return S2Polygon::Shape::chain_edge(pos.chain_id, pos.offset);
 }
 
 S2Shape::ReferencePoint S2Polygon::Shape::GetReferencePoint() const {
-  const S2Polygon* p = polygon();
   bool contains_origin = false;
-  for (int i = 0; i < p->num_loops(); ++i) {
-    contains_origin ^= p->loop(i)->contains_origin();
+  for (int i = 0; i < polygon_->num_loops(); ++i) {
+    contains_origin ^= polygon_->loop(i)->contains_origin();
   }
   return ReferencePoint(S2::Origin(), contains_origin);
 }
@@ -1566,8 +1498,9 @@ int S2Polygon::Shape::num_chains() const {
 
 S2Shape::Chain S2Polygon::Shape::chain(int i) const {
   S2_DCHECK_LT(i, Shape::num_chains());
-  if (cumulative_edges_) {
-    return Chain(cumulative_edges_[i], polygon_->loop(i)->num_vertices());
+  if (loop_starts_) {
+    int start = loop_starts_[i];
+    return Chain(start, loop_starts_[i + 1] - start);
   } else {
     int e = 0;
     for (int j = 0; j < i; ++j) e += polygon_->loop(j)->num_vertices();
@@ -1576,34 +1509,6 @@ S2Shape::Chain S2Polygon::Shape::chain(int i) const {
     int num_vertices = polygon_->loop(i)->num_vertices();
     return Chain(e, (num_vertices == 1) ? 0 : num_vertices);
   }
-}
-
-S2Shape::Edge S2Polygon::Shape::chain_edge(int i, int j) const {
-  S2_DCHECK_LT(i, Shape::num_chains());
-  S2_DCHECK_LT(j, polygon_->loop(i)->num_vertices());
-  return Edge(polygon()->loop(i)->oriented_vertex(j),
-              polygon()->loop(i)->oriented_vertex(j + 1));
-}
-
-S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
-  // TODO(ericv): Make inline to remove code duplication with GetEdge.
-  S2_DCHECK_LT(e, num_edges());
-  const S2Polygon* p = polygon();
-  int i;
-  if (cumulative_edges_) {
-    // "upper_bound" finds the loop just beyond the one we want.
-    int* start = std::upper_bound(cumulative_edges_,
-                                  cumulative_edges_ + p->num_loops(), e) - 1;
-    i = start - cumulative_edges_;
-    e -= *start;
-  } else {
-    // When the number of loops is small, linear search is faster.  Most often
-    // there is exactly one loop and the code below executes zero times.
-    for (i = 0; e >= p->loop(i)->num_vertices(); ++i) {
-      e -= p->loop(i)->num_vertices();
-    }
-  }
-  return ChainPosition(i, e);
 }
 
 size_t S2Polygon::SpaceUsed() const {

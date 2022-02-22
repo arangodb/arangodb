@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <vector>
+
 #include "s2/s2metrics.h"
 #include "s2/s2shape_index_region.h"
 
@@ -77,6 +78,9 @@ void S2ShapeIndexBufferedRegion::GetCellUnionBound(vector<S2CellId> *cellids)
 }
 
 bool S2ShapeIndexBufferedRegion::Contains(const S2Cell& cell) const {
+  // Return true if the buffered region is guaranteed to cover whole globe.
+  if (radius_successor_ > S1ChordAngle::Straight()) return true;
+
   // To implement this method perfectly would require computing the directed
   // Hausdorff distance, which is expensive (and not currently implemented).
   // However the following heuristic is almost as good in practice and much

@@ -85,13 +85,15 @@
 #define S2_UTIL_UNITS_PHYSICAL_UNITS_H_
 
 #include <cmath>
+#include <cstdint>
 #include <iosfwd>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 
 #include "s2/base/integral_types.h"
-#include "s2/third_party/absl/base/macros.h"
+#include "absl/base/macros.h"
 
 namespace util {
 
@@ -103,10 +105,10 @@ namespace units {
 template <int ScaleNumerator, int ScaleDenominator,
           int OffsetNumerator = 0, int OffsetDenominator = 1>
 struct UnitConversion {
-  static const int SCALE_NUMERATOR = ScaleNumerator;
-  static const int SCALE_DENOMINATOR = ScaleDenominator;
-  static const int OFFSET_NUMERATOR = OffsetNumerator;
-  static const int OFFSET_DENOMINATOR = OffsetDenominator;
+  static constexpr int SCALE_NUMERATOR = ScaleNumerator;
+  static constexpr int SCALE_DENOMINATOR = ScaleDenominator;
+  static constexpr int OFFSET_NUMERATOR = OffsetNumerator;
+  static constexpr int OFFSET_DENOMINATOR = OffsetDenominator;
 };
 
 template <class FromUnit, class ToUnit, typename Float>
@@ -120,19 +122,21 @@ struct UnitConverter {
   constexpr static inline Float Convert(Float value) {
     // scaling and offset
     return static_cast<Float>(
-      (static_cast<double>(value *
-         (static_cast<double>(static_cast<uint64>(ToUnit::SCALE_NUMERATOR) *
-                              FromUnit::SCALE_DENOMINATOR) /
-          static_cast<double>(static_cast<uint64>(ToUnit::SCALE_DENOMINATOR) *
-                              FromUnit::SCALE_NUMERATOR)))) -
-      (static_cast<double>(static_cast<uint64>(ToUnit::SCALE_NUMERATOR) *
-                           FromUnit::SCALE_DENOMINATOR *
-                           FromUnit::OFFSET_NUMERATOR) /
-       static_cast<double>(static_cast<uint64>(ToUnit::SCALE_DENOMINATOR) *
-                           FromUnit::SCALE_NUMERATOR *
-                           FromUnit::OFFSET_DENOMINATOR)) +
-      (static_cast<double>(ToUnit::OFFSET_NUMERATOR) /
-       static_cast<double>(ToUnit::OFFSET_DENOMINATOR)));
+        (static_cast<double>(
+            value * (static_cast<double>(
+                         static_cast<uint64>(ToUnit::SCALE_NUMERATOR) *
+                         FromUnit::SCALE_DENOMINATOR) /
+                     static_cast<double>(
+                         static_cast<uint64>(ToUnit::SCALE_DENOMINATOR) *
+                         FromUnit::SCALE_NUMERATOR)))) -
+        (static_cast<double>(static_cast<uint64>(ToUnit::SCALE_NUMERATOR) *
+                             FromUnit::SCALE_DENOMINATOR *
+                             FromUnit::OFFSET_NUMERATOR) /
+         static_cast<double>(static_cast<uint64>(ToUnit::SCALE_DENOMINATOR) *
+                             FromUnit::SCALE_NUMERATOR *
+                             FromUnit::OFFSET_DENOMINATOR)) +
+        (static_cast<double>(ToUnit::OFFSET_NUMERATOR) /
+         static_cast<double>(ToUnit::OFFSET_DENOMINATOR)));
   }
 };
 
@@ -142,7 +146,7 @@ struct UnitConverter {
 // default unit transformations are assumed to be linear; see
 // temperature-units.h for an example of how to override this default.
 template <class Base>
-struct is_linear_unit_transformation : std::true_type { };
+struct is_linear_unit_transformation : std::true_type {};
 
 // Template class holding a single value with an associated physical
 // unit.  The unit and conversion parameters are statically defined
@@ -190,7 +194,7 @@ class PhysicalUnit {
 
   // Copy operation from other units of the same Base type.
   template <class Unit2>
-  Type operator = (PhysicalUnit<Float, Base, Unit2> other) {
+  Type& operator=(PhysicalUnit<Float, Base, Unit2> other) {
     value_ = UnitConverter<Unit2, Unit, Float>::Convert(other.value());
     return *this;
   }
@@ -206,36 +210,36 @@ class PhysicalUnit {
   constexpr Float value() const { return value_; }
 
   // Trivial arithematic operator wrapping.
-  Type operator - () const {
+  Type operator-() const {
     return Type(-value_);
   }
-  Type operator * (const Float scale) const {
+  Type operator*(const Float scale) const {
     return Type(value_ * scale);
   }
-  Type operator + (const Type other) const {
+  Type operator+(const Type other) const {
     static_assert(is_linear_unit_transformation<Base>::value,
                   "operation not defined");
     return Type(value_ + other.value());
   }
-  Type operator - (const Type other) const {
+  Type operator-(const Type other) const {
     static_assert(is_linear_unit_transformation<Base>::value,
                   "operation not defined");
     return Type(value_ - other.value());
   }
-  Float operator / (const Type other) const {
+  Float operator/(const Type other) const {
     return value_ / other.value();
   }
-  Type operator *= (const Float scale) {
+  Type operator*=(const Float scale) {
     value_ *= scale;
     return *this;
   }
-  Type operator += (const Type other) {
+  Type operator+=(const Type other) {
     static_assert(is_linear_unit_transformation<Base>::value,
                   "operation not defined");
     value_ += other.value();
     return *this;
   }
-  Type operator -= (const Type other) {
+  Type operator-=(const Type other) {
     static_assert(is_linear_unit_transformation<Base>::value,
                   "operation not defined");
     value_ -= other.value();
@@ -244,16 +248,16 @@ class PhysicalUnit {
 
   // Simple comparisons.  Overloaded equality is intentionally omitted;
   // use equals() instead.
-  bool operator < (const Type other) const {
+  bool operator<(const Type other) const {
     return value_ < other.value();
   }
-  bool operator > (const Type other) const {
+  bool operator>(const Type other) const {
     return value_ > other.value();
   }
-  bool operator <= (const Type other) const {
+  bool operator<=(const Type other) const {
     return value_ <= other.value();
   }
-  bool operator >= (const Type other) const {
+  bool operator>=(const Type other) const {
     return value_ >= other.value();
   }
 
@@ -306,8 +310,15 @@ std::ostream& operator<<(std::ostream& os,
             << Base::output_suffix << ")";
 }
 
-} // end namespace units
+template <typename Float, typename Base, typename Unit>
+std::string ToString(PhysicalUnit<Float, Base, Unit> value) {
+  std::ostringstream string_stream;
+  string_stream << value;
+  return string_stream.str();
+}
 
-} // end namespace util
+}  // end namespace units
+
+}  // end namespace util
 
 #endif  // S2_UTIL_UNITS_PHYSICAL_UNITS_H_

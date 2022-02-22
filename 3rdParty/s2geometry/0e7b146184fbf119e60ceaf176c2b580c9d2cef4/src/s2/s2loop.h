@@ -25,6 +25,9 @@
 #include <map>
 #include <vector>
 
+#include "absl/base/macros.h"
+#include "absl/types/span.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
@@ -37,7 +40,6 @@
 #include "s2/s2pointutil.h"
 #include "s2/s2region.h"
 #include "s2/s2shape_index.h"
-#include "s2/third_party/absl/base/macros.h"
 #include "s2/util/math/matrix3x3.h"
 #include "s2/util/math/vector.h"
 
@@ -89,7 +91,7 @@ class S2Loop final : public S2Region {
   S2Loop();
 
   // Convenience constructor that calls Init() with the given vertices.
-  explicit S2Loop(const std::vector<S2Point>& vertices);
+  explicit S2Loop(absl::Span<const S2Point> vertices);
 
   // Convenience constructor to disable the automatic validity checking
   // controlled by the --s2debug flag.  Example:
@@ -104,13 +106,13 @@ class S2Loop final : public S2Region {
   //
   // The main reason to use this constructor is if you intend to call
   // IsValid() explicitly.  See set_s2debug_override() for details.
-  S2Loop(const std::vector<S2Point>& vertices, S2Debug override);
+  S2Loop(absl::Span<const S2Point> vertices, S2Debug override);
 
   // Initialize a loop with given vertices.  The last vertex is implicitly
   // connected to the first.  All points should be unit length.  Loops must
   // have at least 3 vertices (except for the empty and full loops, see
   // kEmpty and kFull).  This method may be called multiple times.
-  void Init(const std::vector<S2Point>& vertices);
+  void Init(absl::Span<const S2Point> vertices);
 
   // A special vertex chain of length 1 that creates an empty loop (i.e., a
   // loop with no edges that contains no points).  Example usage:
@@ -194,6 +196,12 @@ class S2Loop final : public S2Region {
     if (j < 0) j = i;
     if (is_hole()) j = num_vertices() - 1 - j;
     return vertices_[j];
+  }
+
+  // Returns an S2PointLoopSpan containing the loop vertices, for use with the
+  // functions defined in s2loop_measures.h.
+  S2PointLoopSpan vertices_span() const {
+    return S2PointLoopSpan(vertices_, num_vertices());
   }
 
   // Returns true if this is the special empty loop that contains no points.
@@ -292,21 +300,21 @@ class S2Loop final : public S2Region {
 
   // Returns true if the region contained by this loop is a superset of the
   // region contained by the given other loop.
-  bool Contains(const S2Loop* b) const;
+  bool Contains(const S2Loop& b) const;
 
   // Returns true if the region contained by this loop intersects the region
   // contained by the given other loop.
-  bool Intersects(const S2Loop* b) const;
+  bool Intersects(const S2Loop& b) const;
 
   // Returns true if two loops have the same vertices in the same linear order
   // (i.e., cyclic rotations are not allowed).
-  bool Equals(const S2Loop* b) const;
+  bool Equals(const S2Loop& b) const;
 
   // Returns true if two loops have the same boundary.  This is true if and
   // only if the loops have the same vertices in the same cyclic order (i.e.,
   // the vertices may be cyclically rotated).  The empty and full loops are
   // considered to have different boundaries.
-  bool BoundaryEquals(const S2Loop* b) const;
+  bool BoundaryEquals(const S2Loop& b) const;
 
   // Returns true if two loops have the same boundary except for vertex
   // perturbations.  More precisely, the vertices in the two loops must be in
@@ -325,6 +333,17 @@ class S2Loop final : public S2Region {
   // within "max_error" of each other.
   bool BoundaryNear(const S2Loop& b,
                     S1Angle max_error = S1Angle::Radians(1e-15)) const;
+
+#ifndef SWIG
+  ABSL_DEPRECATED("Inline the implementation")
+  bool Contains(const S2Loop* b) const { return Contains(*b); }
+  ABSL_DEPRECATED("Inline the implementation")
+  bool Intersects(const S2Loop* b) const { return Intersects(*b); }
+  ABSL_DEPRECATED("Inline the implementation")
+  bool Equals(const S2Loop* b) const { return Equals(*b); }
+  ABSL_DEPRECATED("Inline the implementation")
+  bool BoundaryEquals(const S2Loop* b) const { return BoundaryEquals(*b); }
+#endif
 
   // This method computes the oriented surface integral of some quantity f(x)
   // over the loop interior, given a function f_tri(A,B,C) that returns the
@@ -369,7 +388,7 @@ class S2Loop final : public S2Region {
                                                  S1Angle radius,
                                                  int num_vertices);
 
-  // Returnss the total number of bytes used by the loop.
+  // Returns the total number of bytes used by the loop.
   size_t SpaceUsed() const;
 
   ////////////////////////////////////////////////////////////////////////
@@ -420,7 +439,7 @@ class S2Loop final : public S2Region {
   // The loops must meet all the S2Polygon requirements; for example this
   // implies that their boundaries may not cross or have any shared edges
   // (although they may have shared vertices).
-  bool ContainsNested(const S2Loop* b) const;
+  bool ContainsNested(const S2Loop& b) const;
 
   // Returns +1 if A contains the boundary of B, -1 if A excludes the boundary
   // of B, and 0 if the boundaries of A and B cross.  Shared edges are handled
@@ -437,7 +456,7 @@ class S2Loop final : public S2Region {
   //
   // REQUIRES: neither loop is empty.
   // REQUIRES: if b->is_full(), then !b->is_hole().
-  int CompareBoundary(const S2Loop* b) const;
+  int CompareBoundary(const S2Loop& b) const;
 
   // Given two loops whose boundaries do not cross (see CompareBoundary),
   // return true if A contains the boundary of B.  If "reverse_b" is true, the
@@ -447,7 +466,18 @@ class S2Loop final : public S2Region {
   //
   // REQUIRES: neither loop is empty.
   // REQUIRES: if b->is_full(), then reverse_b == false.
-  bool ContainsNonCrossingBoundary(const S2Loop* b, bool reverse_b) const;
+  bool ContainsNonCrossingBoundary(const S2Loop& b, bool reverse_b) const;
+
+#ifndef SWIG
+  ABSL_DEPRECATED("Inline the implementation")
+  bool ContainsNested(const S2Loop* b) const { return ContainsNested(*b); }
+  ABSL_DEPRECATED("Inline the implementation")
+  int CompareBoundary(const S2Loop* b) const { return CompareBoundary(*b); }
+  ABSL_DEPRECATED("Inline the implementation")
+  bool ContainsNonCrossingBoundary(const S2Loop* b, bool reverse_b) const {
+    return ContainsNonCrossingBoundary(*b, reverse_b);
+  }
+#endif
 
   // Wrapper class for indexing a loop (see S2ShapeIndex).  Once this object
   // is inserted into an S2ShapeIndex it is owned by that index, and will be
@@ -520,12 +550,6 @@ class S2Loop final : public S2Region {
   // Internal copy constructor used only by Clone() that makes a deep copy of
   // its argument.
   S2Loop(const S2Loop& src);
-
-  // Returns an S2PointLoopSpan containing the loop vertices, for use with the
-  // functions defined in s2loop_measures.h.
-  S2PointLoopSpan vertices_span() const {
-    return S2PointLoopSpan(vertices_, num_vertices());
-  }
 
   // Returns true if this loop contains S2::Origin().
   bool contains_origin() const { return origin_inside_; }

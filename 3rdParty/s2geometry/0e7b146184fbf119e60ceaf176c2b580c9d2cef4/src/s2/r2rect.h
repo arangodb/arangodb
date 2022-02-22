@@ -19,6 +19,7 @@
 #define S2_R2RECT_H_
 
 #include <iosfwd>
+#include <ostream>
 
 #include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
@@ -152,6 +153,9 @@ class R2Rect {
   // Return true if two rectangles contains the same set of points.
   bool operator==(const R2Rect& other) const;
 
+  // Return true if two rectangles do not contain the same set of points.
+  bool operator!=(const R2Rect& other) const;
+
   // Return true if the x- and y-intervals of the two rectangles are the same
   // up to the given tolerance (see r1interval.h for details).
   bool ApproxEquals(const R2Rect& other, double max_error = 1e-15) const;
@@ -179,6 +183,11 @@ inline R2Rect::R2Rect() {
 
 inline R2Rect R2Rect::Empty() {
   return R2Rect(R1Interval::Empty(), R1Interval::Empty());
+}
+
+inline R2Rect R2Rect::FromPointPair(const R2Point& p1, const R2Point& p2) {
+  return R2Rect(R1Interval::FromPointPair(p1.x(), p2.x()),
+                R1Interval::FromPointPair(p1.y(), p2.y()));
 }
 
 inline bool R2Rect::is_valid() const {
@@ -227,6 +236,10 @@ inline R2Rect R2Rect::Expanded(double margin) const {
 
 inline bool R2Rect::operator==(const R2Rect& other) const {
   return x() == other.x() && y() == other.y();
+}
+
+inline bool R2Rect::operator!=(const R2Rect& other) const {
+  return !operator==(other);
 }
 
 std::ostream& operator<<(std::ostream& os, const R2Rect& r);

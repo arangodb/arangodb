@@ -18,6 +18,7 @@
 #ifndef S2_S2CLOSEST_CELL_QUERY_H_
 #define S2_S2CLOSEST_CELL_QUERY_H_
 
+#include <utility>
 #include <vector>
 
 #include "s2/base/logging.h"

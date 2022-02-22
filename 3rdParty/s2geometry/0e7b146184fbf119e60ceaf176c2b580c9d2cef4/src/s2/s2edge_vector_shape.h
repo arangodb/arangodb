@@ -20,6 +20,7 @@
 
 #include <utility>
 #include <vector>
+
 #include "s2/s2shape.h"
 
 // S2EdgeVectorShape is an S2Shape representing an arbitrary set of edges.  It

@@ -25,13 +25,16 @@
 #include <mutex>
 #include <vector>
 
+#include "absl/base/call_once.h"
+#include "absl/base/casts.h"
+#include "absl/strings/str_cat.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
+#include "s2/util/bits/bits.h"
 #include "s2/r1interval.h"
 #include "s2/s2coords.h"
 #include "s2/s2latlng.h"
-#include "s2/third_party/absl/base/casts.h"
-#include "s2/third_party/absl/strings/str_cat.h"
 
 using absl::StrCat;
 using S2::internal::kSwapMask;
@@ -41,6 +44,7 @@ using S2::internal::kPosToOrientation;
 using std::fabs;
 using std::max;
 using std::min;
+using std::string;
 using std::vector;
 
 // The following lookup tables are used to convert efficiently between an
@@ -98,9 +102,9 @@ static void InitLookupCell(int level, int i, int j, int orig_orientation,
   }
 }
 
-static std::once_flag flag;
+static absl::once_flag flag;
 inline static void MaybeInit() {
-  std::call_once(flag, []{
+  absl::call_once(flag, []{
     InitLookupCell(0, 0, 0, 0, 0, 0);
     InitLookupCell(0, 0, 0, kSwapMask, 0, kSwapMask);
     InitLookupCell(0, 0, 0, kInvertMask, 0, kInvertMask);
@@ -219,10 +223,10 @@ string S2CellId::ToToken() const {
   return HexFormatString(id_ >> (4 * num_zero_digits), 16 - num_zero_digits);
 }
 
-S2CellId S2CellId::FromToken(const char* token, size_t length) {
-  if (length > 16) return S2CellId::None();
+S2CellId S2CellId::FromToken(const absl::string_view token) {
+  if (token.length() > 16) return S2CellId::None();
   uint64 id = 0;
-  for (int i = 0, pos = 60; i < length; ++i, pos -= 4) {
+  for (int i = 0, pos = 60; i < token.length(); ++i, pos -= 4) {
     uint64 d;
     if ('0' <= token[i] && token[i] <= '9') {
       d = token[i] - '0';
@@ -236,10 +240,6 @@ S2CellId S2CellId::FromToken(const char* token, size_t length) {
     id |= d << pos;
   }
   return S2CellId(id);
-}
-
-S2CellId S2CellId::FromToken(const string& token) {
-  return FromToken(token.data(), token.size());
 }
 
 void S2CellId::Encode(Encoder* const encoder) const {
@@ -434,8 +434,8 @@ R2Rect S2CellId::ExpandedByDistanceUV(const R2Rect& uv, S1Angle distance) {
   // points within the given distance of that side.  (The rectangle may be
   // expanded by a different amount in (u,v)-space on each side.)
   double u0 = uv[0][0], u1 = uv[0][1], v0 = uv[1][0], v1 = uv[1][1];
-  double max_u = std::max(fabs(u0), fabs(u1));
-  double max_v = std::max(fabs(v0), fabs(v1));
+  double max_u = max(fabs(u0), fabs(u1));
+  double max_v = max(fabs(v0), fabs(v1));
   double sin_dist = sin(distance);
   return R2Rect(R1Interval(ExpandEndpoint(u0, max_v, -sin_dist),
                            ExpandEndpoint(u1, max_v, sin_dist)),

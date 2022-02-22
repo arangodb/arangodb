@@ -89,13 +89,24 @@ TEST(S2, Metrics) {
   EXPECT_LE(S2::kMaxArea.deriv(),
             S2::kMaxWidth.deriv() * S2::kMaxEdge.deriv() + 1e-15);
 
+  // The minimum level for which the minimum or maximum width of a cell is at
+  // most 0 is kMaxCellLevel, because no cell at any level has width less than
+  // or equal to zero.
+  EXPECT_EQ(S2::kMinWidth.GetLevelForMaxValue(0), S2::kMaxCellLevel);
+  EXPECT_EQ(S2::kMaxWidth.GetLevelForMaxValue(0), S2::kMaxCellLevel);
+
+  // The maximum level for which the minimum or maximum width of a cell is at
+  // least 4 is 0, because no cell at any level has width greater than 4.
+  EXPECT_EQ(S2::kMinWidth.GetLevelForMinValue(4), 0);
+  EXPECT_EQ(S2::kMaxWidth.GetLevelForMinValue(4), 0);
+
   // GetLevelForMaxValue() and friends have built-in assertions, we just need
   // to call these functions to test them.
   //
   // We don't actually check that the metrics are correct here, e.g. that
-  // GetMinWidth(10) is a lower bound on the width of cells at level 10.
-  // It is easier to check these properties in s2cell_test, since
-  // S2Cell has methods to compute the cell vertices, etc.
+  // GetLevelForMaxValue(1) is a lower bound on the level of cells with width 1.
+  // It is easier to check these properties in s2cell_test, since S2Cell has
+  // methods to compute the cell vertices, etc.
 
   for (int level = -2; level <= S2::kMaxCellLevel + 3; ++level) {
     double width = S2::kMinWidth.deriv() * pow(2, -level);

@@ -20,7 +20,7 @@
 #include <iostream>
 #include <memory>
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell_union.h"
@@ -34,6 +34,7 @@ using absl::make_unique;
 using s2textformat::MakeIndexOrDie;
 using s2textformat::MakePointOrDie;
 using std::cout;
+using std::string;
 
 TEST(S2ShapeIndexBufferedRegion, EmptyIndex) {
   // Test buffering an empty S2ShapeIndex.
@@ -159,4 +160,11 @@ TEST(S2ShapeIndexBufferedRegion, PolygonWithHole) {
   coverer.mutable_options()->set_max_cells(100);
   TestBufferIndex("# # 10:10, 10:100, 70:0; 11:11, 69:0, 11:99",
                   S1Angle::Degrees(2), &coverer);
+}
+
+TEST(S2ShapeIndexBufferedRegion, HugeBufferRadius) {
+  // Test buffering a set of points.
+  S2RegionCoverer coverer;
+  coverer.mutable_options()->set_max_cells(100);
+  TestBufferIndex("10:20 # #", S1Angle::Degrees(200), &coverer);
 }

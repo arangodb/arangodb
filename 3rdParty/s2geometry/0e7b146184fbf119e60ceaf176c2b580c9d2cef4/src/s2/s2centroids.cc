@@ -57,8 +57,8 @@ S2Point TrueCentroid(const S2Point& a, const S2Point& b, const S2Point& c) {
   // The result is the true centroid of the triangle multiplied by the
   // triangle's area.
   //
-  // TODO(ericv): This code still isn't as numerically stable as it could be.
-  // The biggest potential improvement is to compute B-A and C-A more
+  // TODO(b/205027737): This code still isn't as numerically stable as it could
+  // be.  The biggest potential improvement is to compute B-A and C-A more
   // accurately so that (B-A)x(C-A) is always inside triangle ABC.
   S2Point x(a.x(), b.x() - a.x(), c.x() - a.x());
   S2Point y(a.y(), b.y() - a.y(), c.y() - a.y());

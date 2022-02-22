@@ -18,7 +18,12 @@
 #include "s2/s2cell_union.h"
 
 #include <algorithm>
+#include <string>
+#include <utility>
 #include <vector>
+
+#include "absl/flags/flag.h"
+#include "absl/strings/str_cat.h"
 
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
@@ -33,10 +38,11 @@
 using std::is_sorted;
 using std::max;
 using std::min;
+using std::string;
 using std::vector;
 
-DEFINE_int32(s2cell_union_decode_max_num_cells, 1000000,
-             "The maximum number of cells allowed by S2CellUnion::Decode");
+S2_DEFINE_int32(s2cell_union_decode_max_num_cells, 1000000,
+                "The maximum number of cells allowed by S2CellUnion::Decode");
 
 static const unsigned char kCurrentLosslessEncodingVersionNumber = 1;
 
@@ -50,6 +56,12 @@ vector<S2CellId> S2CellUnion::ToS2CellIds(const vector<uint64>& ids) {
 S2CellUnion::S2CellUnion(const vector<uint64>& cell_ids)
     : cell_ids_(ToS2CellIds(cell_ids)) {
   Normalize();
+}
+
+S2CellUnion S2CellUnion::WholeSphere() {
+  return S2CellUnion({S2CellId::FromFace(0), S2CellId::FromFace(1),
+                      S2CellId::FromFace(2), S2CellId::FromFace(3),
+                      S2CellId::FromFace(4), S2CellId::FromFace(5)});
 }
 
 S2CellUnion S2CellUnion::FromMinMax(S2CellId min_id, S2CellId max_id) {
@@ -70,13 +82,16 @@ void S2CellUnion::Init(const vector<uint64>& cell_ids) {
 }
 
 void S2CellUnion::InitFromMinMax(S2CellId min_id, S2CellId max_id) {
-  S2_DCHECK(max_id.is_valid());
+  S2_DCHECK(max_id.is_valid()) << max_id;
   InitFromBeginEnd(min_id, max_id.next());
 }
 
 void S2CellUnion::InitFromBeginEnd(S2CellId begin, S2CellId end) {
-  S2_DCHECK(begin.is_leaf());
-  S2_DCHECK(end.is_leaf());
+  S2_DCHECK(begin.is_leaf()) << begin;
+  S2_DCHECK(end.is_leaf()) << end;
+  const S2CellId kLeafEnd = S2CellId::End(S2CellId::kMaxLevel);
+  S2_DCHECK(begin.is_valid() || begin == kLeafEnd) << begin;
+  S2_DCHECK(end.is_valid() || end == kLeafEnd) << end;
   S2_DCHECK_LE(begin, end);
 
   // We repeatedly add the largest cell we can.
@@ -141,17 +156,18 @@ bool S2CellUnion::IsNormalized() const {
   return true;
 }
 
-bool S2CellUnion::Normalize() {
-  return Normalize(&cell_ids_);
+void S2CellUnion::Normalize() {
+  Normalize(&cell_ids_);
 }
 
-/*static*/ bool S2CellUnion::Normalize(vector<S2CellId>* ids) {
+/*static*/ void S2CellUnion::Normalize(vector<S2CellId>* ids) {
   // Optimize the representation by discarding cells contained by other cells,
   // and looking for cases where all subcells of a parent cell are present.
 
   std::sort(ids->begin(), ids->end());
   int out = 0;
   for (S2CellId id : *ids) {
+    S2_DCHECK(id.is_valid()) << id;
     // Check whether this cell is contained by the previous cell.
     if (out > 0 && (*ids)[out-1].contains(id)) continue;
 
@@ -168,9 +184,8 @@ bool S2CellUnion::Normalize() {
     }
     (*ids)[out++] = id;
   }
-  if (ids->size() == out) return false;
-  ids->resize(out);
-  return true;
+  if (ids->size() != out)
+    ids->resize(out);
 }
 
 void S2CellUnion::Denormalize(int min_level, int level_mod,
@@ -243,45 +258,74 @@ S2LatLngRect S2CellUnion::GetRectBound() const {
   return bound;
 }
 
+// Returns true if "a" lies entirely before "b" on the Hilbert curve.  Note that
+// this is not even a weak ordering, since incomparability is not transitive.
+// Nevertheless, given a sorted vector of disjoint S2CellIds it can be used be
+// used to find the first element that might intersect a given target S2CellId:
+//
+//   auto it = std::lower_bound(v.begin(), v.end(), target, EntirelyPrecedes);
+//
+// This works because std::lower_bound() only requires that the elements are
+// partitioned with respect to the given predicate (which is true as long as the
+// S2CellIds are sorted and disjoint).
+static inline bool EntirelyPrecedes(S2CellId a, S2CellId b) {
+  return a.range_max() < b.range_min();
+}
+
 bool S2CellUnion::Contains(S2CellId id) const {
   // This is an exact test.  Each cell occupies a linear span of the S2
   // space-filling curve, and the cell id is simply the position at the center
   // of this span.  The cell union ids are sorted in increasing order along
-  // the space-filling curve.  So we simply find the pair of cell ids that
-  // surround the given cell id (using binary search).  There is containment
-  // if and only if one of these two cell ids contains this cell.
+  // the space-filling curve.  So we simply find the first cell that might
+  // intersect (is not entirely before) the target (using binary search).
+  // There is containment if and only if this cell id contains the target id.
+  S2_DCHECK(id.is_valid()) << id;
 
-  vector<S2CellId>::const_iterator i =
-      std::lower_bound(cell_ids_.begin(), cell_ids_.end(), id);
-  if (i != cell_ids_.end() && i->range_min() <= id) return true;
-  return i != cell_ids_.begin() && (--i)->range_max() >= id;
+  const auto i = std::lower_bound(begin(), end(), id, EntirelyPrecedes);
+  return i != end() && i->contains(id);
 }
 
 bool S2CellUnion::Intersects(S2CellId id) const {
   // This is an exact test; see the comments for Contains() above.
+  S2_DCHECK(id.is_valid()) << id;
 
-  vector<S2CellId>::const_iterator i =
-      std::lower_bound(cell_ids_.begin(), cell_ids_.end(), id);
-  if (i != cell_ids_.end() && i->range_min() <= id.range_max()) return true;
-  return i != cell_ids_.begin() && (--i)->range_max() >= id.range_min();
+  const auto i = std::lower_bound(begin(), end(), id, EntirelyPrecedes);
+  return i != end() && i->intersects(id);
 }
 
 bool S2CellUnion::Contains(const S2CellUnion& y) const {
-  // TODO(ericv): A divide-and-conquer or alternating-skip-search
-  // approach may be sigificantly faster in both the average and worst case.
-
+  if (y.empty()) return true;
+  if (empty()) return false;
+  auto i = begin();
   for (S2CellId y_id : y) {
-    if (!Contains(y_id)) return false;
+    // If our first cell ends before the one we need to contain, advance
+    // where we start searching.
+    if (EntirelyPrecedes(*i, y_id)) {
+      i = std::lower_bound(i + 1, end(), y_id, EntirelyPrecedes);
+      // If we're at the end, we don't contain the current y_id.
+      if (i == end()) return false;
+    }
+    if (!i->contains(y_id)) return false;
   }
   return true;
 }
 
 bool S2CellUnion::Intersects(const S2CellUnion& y) const {
-  // TODO(ericv): A divide-and-conquer or alternating-skip-search
-  // approach may be sigificantly faster in both the average and worst case.
-
-  for (S2CellId y_id : y) {
-    if (Intersects(y_id)) return true;
+  // Walk along the two sorted vectors, looking for overlap.
+  for (auto i = begin(), j = y.begin(); i != end() && j != y.end(); ) {
+    if (EntirelyPrecedes(*i, *j)) {
+      // Advance "i" to the first cell that might overlap *j.
+      i = std::lower_bound(i + 1, end(), *j, EntirelyPrecedes);
+      continue;
+    }
+    if (EntirelyPrecedes(*j, *i)) {
+      // Advance "j" to the first cell that might overlap *i.
+      j = std::lower_bound(j + 1, y.end(), *i, EntirelyPrecedes);
+      continue;
+    }
+    // Neither cell is to the left of the other, so they must intersect.
+    S2_DCHECK(i->intersects(*j));
+    return true;
   }
   return false;
 }
@@ -295,6 +339,7 @@ S2CellUnion S2CellUnion::Union(const S2CellUnion& y) const {
 }
 
 S2CellUnion S2CellUnion::Intersection(S2CellId id) const {
+  S2_DCHECK(id.is_valid()) << id;
   S2CellUnion result;
   if (Contains(id)) {
     result.cell_ids_.push_back(id);
@@ -312,8 +357,8 @@ S2CellUnion S2CellUnion::Intersection(S2CellId id) const {
 S2CellUnion S2CellUnion::Intersection(const S2CellUnion& y) const {
   S2CellUnion result;
   GetIntersection(cell_ids_, y.cell_ids_, &result.cell_ids_);
-  // The output is normalized as long as at least one input is normalized.
-  S2_DCHECK(result.IsNormalized() || (!IsNormalized() && !y.IsNormalized()));
+  // The output is normalized as long as both inputs are normalized.
+  S2_DCHECK(result.IsNormalized() || !IsNormalized() || !y.IsNormalized());
   return result;
 }
 
@@ -340,18 +385,15 @@ S2CellUnion S2CellUnion::Intersection(const S2CellUnion& y) const {
       if (*i <= j->range_max()) {
         out->push_back(*i++);
       } else {
-        // Advance "j" to the first cell possibly contained by *i.
-        j = std::lower_bound(j + 1, y.end(), imin);
-        // The previous cell *(j-1) may now contain *i.
-        if (*i <= (j - 1)->range_max()) --j;
+        // Advance "j" to the first cell that might overlap *i.
+        j = std::lower_bound(j + 1, y.end(), *i, EntirelyPrecedes);
       }
     } else if (jmin > imin) {
       // Identical to the code above with "i" and "j" reversed.
       if (*j <= i->range_max()) {
         out->push_back(*j++);
       } else {
-        i = std::lower_bound(i + 1, x.end(), jmin);
-        if (*j <= (i - 1)->range_max()) --i;
+        i = std::lower_bound(i + 1, x.end(), *j, EntirelyPrecedes);
       }
     } else {
       // "i" and "j" have the same range_min(), so one contains the other.
@@ -492,7 +534,7 @@ bool S2CellUnion::Decode(Decoder* const decoder) {
   if (version > kCurrentLosslessEncodingVersionNumber) return false;
 
   uint64 num_cells = decoder->get64();
-  if (num_cells > FLAGS_s2cell_union_decode_max_num_cells) {
+  if (num_cells > absl::GetFlag(FLAGS_s2cell_union_decode_max_num_cells)) {
     return false;
   }
 
@@ -506,4 +548,15 @@ bool S2CellUnion::Decode(Decoder* const decoder) {
 
 bool S2CellUnion::Contains(const S2Point& p) const {
   return Contains(S2CellId(p));
+}
+
+std::string S2CellUnion::ToString() const {
+  static const size_t kMaxCount = 500;
+  string output = absl::StrCat("Size:", size(), " S2CellIds:");
+  for (int i = 0, limit = min(kMaxCount, size()); i < limit; ++i) {
+    if (i > 0) output += ",";
+    output += cell_id(i).ToToken();
+  }
+  if (size() > kMaxCount) output += ",...";
+  return output;
 }

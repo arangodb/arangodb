@@ -18,13 +18,16 @@
 #include "s2/s2latlng_rect_bounder.h"
 
 #include <cfloat>
-#include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/strings/str_cat.h"
+
+#include "absl/strings/str_cat.h"
+
+#include "s2/s2edge_crossings.h"
 #include "s2/s2edge_distances.h"
 #include "s2/s2pointutil.h"
+#include "s2/s2predicates.h"
 #include "s2/s2testing.h"
 
 using absl::StrCat;
@@ -128,12 +131,12 @@ S2Point PerturbATowardsB(const S2Point& a, const S2Point& b) {
   }
   if (choice < 0.5) {
     // Return a point such that the distance squared to A will underflow.
-    return S2::InterpolateAtDistance(S1Angle::Radians(1e-300), a, b);
+    return S2::GetPointOnLine(a, b, S1Angle::Radians(1e-300));
   }
   // Otherwise return a point whose distance from A is near DBL_EPSILON such
   // that the log of the pdf is uniformly distributed.
   double distance = DBL_EPSILON * 1e-5 * pow(1e6, rnd->RandDouble());
-  return S2::InterpolateAtDistance(S1Angle::Radians(distance), a, b);
+  return S2::GetPointOnLine(a, b, S1Angle::Radians(distance));
 }
 
 S2Point RandomPole() {
@@ -302,5 +305,28 @@ TEST(RectBounder, ExpandForSubregions) {
   EXPECT_TRUE(GetSubregionBound(M_PI_2 - 1e-15, 0, M_PI_2 - 1e-15, 0).
               ApproxEquals(S2LatLngRect(R1Interval(M_PI_2 - 1e-15, M_PI_2),
                                         S1Interval::Full()), kRectError));
+}
+
+TEST(RectBounder, AccuracyBug) {
+  S2Point a(-0.99999999999998446, -1.2247195409833338e-16,
+            1.756190424895897e-07);
+  S2Point b(7.9020571389665525e-08, -6.6407120842906012e-10,
+            0.99999999999999689);
+  S2Point c(0.9999999999999768, -1.2246467991472876e-16,
+            2.1496584824676253e-07);
+  S2Point z(0, 0, 1);
+
+  // The edge AC is closer to the north pole Z than AB or BC.
+  ASSERT_EQ(s2pred::Sign(a, b, c), 1);
+  ASSERT_EQ(s2pred::Sign(a, c, z), 1);
+
+  // And therefore the maximum latitude of AC is greater than the maximum
+  // latitude of ABC (after expanding to account for errors).
+  S2LatLngRect ac = GetEdgeBound(a, c);
+  S2LatLngRect ab = GetEdgeBound(a, b);
+  S2LatLngRect bc = GetEdgeBound(b, c);
+  S2LatLngRect ac_expanded = S2LatLngRectBounder::ExpandForSubregions(ac);
+  EXPECT_GE(ac_expanded.lat().hi(), ab.lat().hi());
+  EXPECT_GE(ac_expanded.lat().hi(), ac.lat().hi());
 }
 

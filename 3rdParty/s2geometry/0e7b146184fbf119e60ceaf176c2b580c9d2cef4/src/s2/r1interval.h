@@ -22,6 +22,7 @@
 #include <cmath>
 #include <iosfwd>
 #include <iostream>
+#include <ostream>
 
 #include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
@@ -66,8 +67,9 @@ class R1Interval {
     }
   }
 
-  // Accessors methods.
+  // The low bound of the interval.
   double lo() const { return bounds_[0]; }
+  // The high bound of the interval.
   double hi() const { return bounds_[1]; }
 
   // Methods to modify one endpoint of an existing R1Interval.  Do not use
@@ -97,10 +99,12 @@ class R1Interval {
   // is negative.
   double GetLength() const { return hi() - lo(); }
 
+  // Returns true if the given point is in the closed interval [lo, hi].
   bool Contains(double p) const {
     return p >= lo() && p <= hi();
   }
 
+  // Returns true if the given point is in the open interval (lo, hi).
   bool InteriorContains(double p) const {
     return p > lo() && p < hi();
   }
@@ -145,9 +149,14 @@ class R1Interval {
 
   // Expand the interval so that it contains the given point "p".
   void AddPoint(double p) {
-    if (is_empty()) { set_lo(p); set_hi(p); }
-    else if (p < lo()) { set_lo(p); }  // NOLINT
-    else if (p > hi()) { set_hi(p); }  // NOLINT
+    if (is_empty()) {
+      set_lo(p);
+      set_hi(p);
+    } else if (p < lo()) {
+      set_lo(p);
+    } else if (p > hi()) {
+      set_hi(p);
+    }
   }
 
   // Expand the interval so that it contains the given interval "y".

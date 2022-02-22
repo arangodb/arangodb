@@ -46,7 +46,8 @@ void DeinterleaveUint32(uint64 code, uint32 *val0, uint32 *val1);
 uint32 InterleaveUint8(uint8 val0, uint8 val1, uint8 val2);
 
 // These functions will decode the interleaved values.
-void DeinterleaveUint8(uint32 code, uint8 *val0, uint8* val1, uint8* val2);
+void DeinterleaveUint8(uint32 code, uint8 *val0, uint8 *val1,
+                       uint8 *val2);
 
 }  // namespace util_bits
 

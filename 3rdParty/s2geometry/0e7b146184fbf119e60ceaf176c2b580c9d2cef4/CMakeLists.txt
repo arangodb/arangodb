@@ -1,10 +1,28 @@
-cmake_minimum_required(VERSION 3.1)
-project(s2-geometry)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+cmake_minimum_required(VERSION 3.12)
+
+project(s2-geometry
+	VERSION 0.10.0)
+
 include(CMakeDependentOption)
 include(CheckCXXCompilerFlag)
 include(FeatureSummary)
 include(FindPackageHandleStandardArgs)
+include(GNUInstallDirs)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# Avoid "Policy CMP0042 is not set" warning on macOS.
+if (APPLE)
+    set(CMAKE_MACOSX_RPATH TRUE)
+endif()
+
+# s2geometry needs to use the same C++ standard that absl used to avoid
+# undefined symbol errors since ABSL_HAVE_STD_STRING_VIEW etc will
+# end up defined differently.  There is probably a better way to achieve
+# this than assuming what absl used.
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# No compiler-specific extensions, i.e. -std=c++11, not -std=gnu++11.
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/third_party/cmake")
 
@@ -22,6 +40,9 @@ add_feature_info(SHARED_LIBS BUILD_SHARED_LIBS
                  "builds shared libraries instead of static.")
 
 option(BUILD_EXAMPLES "Build s2 documentation examples." ON)
+
+option(WITH_PYTHON "Add python interface" OFF)
+add_feature_info(PYTHON WITH_PYTHON "provides python interface to S2")
 
 feature_summary(WHAT ALL)
 
@@ -46,22 +67,19 @@ if (WITH_GFLAGS)
     add_definitions(-DS2_USE_GFLAGS)
 endif()
 
+find_package(absl REQUIRED)
 find_package(OpenSSL REQUIRED)
 # pthreads isn't used directly, but this is still required for std::thread.
 find_package(Threads REQUIRED)
-find_package(SWIG)
-find_package(PythonInterp)
-find_package(PythonLibs)
 
-# Avoid "Policy CMP0042 is not set" warning on macOS.
-if (APPLE)
-    set(CMAKE_MACOSX_RPATH TRUE)
+if (WITH_PYTHON)
+    # Should be easy to make it work with swig3, but some args to %pythonprepend
+    # seem to be different and were changed.
+    find_package(SWIG 4.0)
+    # Use Python3_ROOT_DIR to help find python3, if the correct location is not
+    # being found by default.
+    find_package(Python3 COMPONENTS Interpreter Development)
 endif()
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# No compiler-specific extensions, i.e. -std=c++11, not -std=gnu++11.
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (MSVC)
     # Use unsigned characters
@@ -79,9 +97,19 @@ else()
     add_definitions(-Wno-deprecated-declarations)
 endif()
 
+# If OpenSSL is installed in a non-standard location, configure with
+# something like:
+# OPENSSL_ROOT_DIR=/usr/local/opt/openssl cmake ..
+include_directories(
+    ${GFLAGS_INCLUDE_DIRS} ${GLOG_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR})
+
+if (WITH_PYTHON)
+    include_directories(${Python3_INCLUDE_DIRS})
+endif()
+
+include_directories(src)
+
 add_library(s2
-            src/s2/base/stringprintf.cc
-            src/s2/base/strtoint.cc
             src/s2/encoded_s2cell_id_vector.cc
             src/s2/encoded_s2point_vector.cc
             src/s2/encoded_s2shape_index.cc
@@ -93,10 +121,14 @@ add_library(s2
             src/s2/s1chord_angle.cc
             src/s2/s1interval.cc
             src/s2/s2boolean_operation.cc
+            src/s2/s2buffer_operation.cc
             src/s2/s2builder.cc
             src/s2/s2builder_graph.cc
             src/s2/s2builderutil_closed_set_normalizer.cc
             src/s2/s2builderutil_find_polygon_degeneracies.cc
+            src/s2/s2builderutil_get_snapped_winding_delta.cc
+            src/s2/s2builderutil_lax_polygon_layer.cc
+            src/s2/s2builderutil_lax_polyline_layer.cc
             src/s2/s2builderutil_s2point_vector_layer.cc
             src/s2/s2builderutil_s2polygon_layer.cc
             src/s2/s2builderutil_s2polyline_layer.cc
@@ -122,7 +154,6 @@ add_library(s2
             src/s2/s2edge_crossings.cc
             src/s2/s2edge_distances.cc
             src/s2/s2edge_tessellator.cc
-            src/s2/s2error.cc
             src/s2/s2furthest_edge_query.cc
             src/s2/s2latlng.cc
             src/s2/s2latlng_rect.cc
@@ -133,6 +164,7 @@ add_library(s2
             src/s2/s2loop.cc
             src/s2/s2loop_measures.cc
             src/s2/s2measures.cc
+            src/s2/s2memory_tracker.cc
             src/s2/s2metrics.cc
             src/s2/s2max_distance_targets.cc
             src/s2/s2min_distance_targets.cc
@@ -160,26 +192,15 @@ add_library(s2
             src/s2/s2shapeutil_build_polygon_boundaries.cc
             src/s2/s2shapeutil_coding.cc
             src/s2/s2shapeutil_contains_brute_force.cc
+            src/s2/s2shapeutil_conversion.cc
             src/s2/s2shapeutil_edge_iterator.cc
             src/s2/s2shapeutil_get_reference_point.cc
             src/s2/s2shapeutil_range_iterator.cc
             src/s2/s2shapeutil_visit_crossing_edge_pairs.cc
             src/s2/s2text_format.cc
             src/s2/s2wedge_relations.cc
-            src/s2/strings/ostringstream.cc
+            src/s2/s2winding_operation.cc
             src/s2/strings/serialize.cc
-            src/s2/third_party/absl/base/dynamic_annotations.cc
-            src/s2/third_party/absl/base/internal/raw_logging.cc
-            src/s2/third_party/absl/base/internal/throw_delegate.cc
-            src/s2/third_party/absl/numeric/int128.cc
-            src/s2/third_party/absl/strings/ascii.cc
-            src/s2/third_party/absl/strings/match.cc
-            src/s2/third_party/absl/strings/numbers.cc
-            src/s2/third_party/absl/strings/str_cat.cc
-            src/s2/third_party/absl/strings/str_split.cc
-            src/s2/third_party/absl/strings/string_view.cc
-            src/s2/third_party/absl/strings/strip.cc
-            src/s2/third_party/absl/strings/internal/memutil.cc
             src/s2/util/bits/bit-interleave.cc
             src/s2/util/bits/bits.cc
             src/s2/util/coding/coder.cc
@@ -187,30 +208,51 @@ add_library(s2
             src/s2/util/math/exactfloat/exactfloat.cc
             src/s2/util/math/mathutil.cc
             src/s2/util/units/length-units.cc)
-#add_library(s2testing STATIC
-#            src/s2/s2builderutil_testing.cc
-#            src/s2/s2shapeutil_testing.cc
-#            src/s2/s2testing.cc)
+add_library(s2testing STATIC
+            src/s2/s2builderutil_testing.cc
+            src/s2/s2shapeutil_testing.cc
+            src/s2/s2testing.cc
+            src/s2/thread_testing.cc)
 target_link_libraries(
     s2
     ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES} ${OPENSSL_LIBRARIES}
+    absl::base
+    absl::btree
+    absl::config
+    absl::core_headers
+    absl::dynamic_annotations
+    absl::endian
+    absl::fixed_array
+    absl::flat_hash_map
+    absl::flat_hash_set
+    absl::hash
+    absl::inlined_vector
+    absl::int128
+    absl::log_severity
+    absl::memory
+    absl::span
+    absl::str_format
+    absl::strings
+    absl::type_traits
+    absl::utility
     ${CMAKE_THREAD_LIBS_INIT})
-
-# If OpenSSL is installed in a non-standard location, configure with
-# something like:
-# OPENSSL_ROOT_DIR=/usr/local/opt/openssl cmake ..
-target_include_directories(s2 PRIVATE
-  ${GFLAGS_INCLUDE_DIRS} ${GLOG_INCLUDE_DIRS} ${OPENSSL_INCLUDE_DIR}
-  ${PYTHON_INCLUDE_DIRS})
-target_include_directories(s2 PRIVATE src)
+target_link_libraries(
+    s2testing
+    ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES}
+    absl::memory
+    absl::strings)
 
 # Allow other CMake projects to use this one with:
 # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
 # add_subdirectory(<path_to_s2geometry_dir> s2geometry)
 # target_link_libraries(<target_name> s2)
-target_include_directories(s2 SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-if (INSTALL_HEADERS)
+# Add version information to the target
+set_target_properties(s2 PROPERTIES
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    VERSION ${PROJECT_VERSION})
+
 # We don't need to install all headers, only those
 # transitively included by s2 headers we are exporting.
 install(FILES src/s2/_fp_contract_off.h
@@ -228,11 +270,16 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s1chord_angle.h
               src/s2/s1interval.h
               src/s2/s2boolean_operation.h
+              src/s2/s2buffer_operation.h
               src/s2/s2builder.h
               src/s2/s2builder_graph.h
               src/s2/s2builder_layer.h
               src/s2/s2builderutil_closed_set_normalizer.h
               src/s2/s2builderutil_find_polygon_degeneracies.h
+              src/s2/s2builderutil_get_snapped_winding_delta.h
+              src/s2/s2builderutil_graph_shape.h
+              src/s2/s2builderutil_lax_polygon_layer.h
+              src/s2/s2builderutil_lax_polyline_layer.h
               src/s2/s2builderutil_s2point_vector_layer.h
               src/s2/s2builderutil_s2polygon_layer.h
               src/s2/s2builderutil_s2polyline_layer.h
@@ -263,6 +310,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2edge_clipping.h
               src/s2/s2edge_crosser.h
               src/s2/s2edge_crossings.h
+              src/s2/s2edge_crossings_internal.h
               src/s2/s2edge_distances.h
               src/s2/s2edge_tessellator.h
               src/s2/s2edge_vector_shape.h
@@ -277,6 +325,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2loop.h
               src/s2/s2loop_measures.h
               src/s2/s2measures.h
+              src/s2/s2memory_tracker.h
               src/s2/s2metrics.h
               src/s2/s2max_distance_targets.h
               src/s2/s2min_distance_targets.h
@@ -294,6 +343,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2polyline_measures.h
               src/s2/s2polyline_simplifier.h
               src/s2/s2predicates.h
+              src/s2/s2predicates_internal.h
               src/s2/s2projections.h
               src/s2/s2r2rect.h
               src/s2/s2region.h
@@ -309,6 +359,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2shapeutil_build_polygon_boundaries.h
               src/s2/s2shapeutil_coding.h
               src/s2/s2shapeutil_contains_brute_force.h
+              src/s2/s2shapeutil_conversion.h
               src/s2/s2shapeutil_count_edges.h
               src/s2/s2shapeutil_edge_iterator.h
               src/s2/s2shapeutil_get_reference_point.h
@@ -320,92 +371,48 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2testing.h
               src/s2/s2text_format.h
               src/s2/s2wedge_relations.h
+              src/s2/s2winding_operation.h
+              src/s2/s2wrapped_shape.h
               src/s2/sequence_lexicon.h
+              src/s2/thread_testing.h
               src/s2/value_lexicon.h
-        DESTINATION include/s2)
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2")
 install(FILES src/s2/base/casts.h
               src/s2/base/commandlineflags.h
               src/s2/base/integral_types.h
               src/s2/base/log_severity.h
               src/s2/base/logging.h
-              src/s2/base/mutex.h
               src/s2/base/port.h
               src/s2/base/spinlock.h
-        DESTINATION include/s2/base)
-install(FILES src/s2/strings/ostringstream.h
-        DESTINATION include/s2/strings)
-install(FILES src/s2/third_party/absl/algorithm/algorithm.h
-        DESTINATION include/s2/third_party/absl/algorithm)
-install(FILES src/s2/third_party/absl/base/attributes.h
-              src/s2/third_party/absl/base/casts.h
-              src/s2/third_party/absl/base/config.h
-              src/s2/third_party/absl/base/dynamic_annotations.h
-              src/s2/third_party/absl/base/log_severity.h
-              src/s2/third_party/absl/base/macros.h
-              src/s2/third_party/absl/base/optimization.h
-              src/s2/third_party/absl/base/policy_checks.h
-              src/s2/third_party/absl/base/port.h
-              src/s2/third_party/absl/base/thread_annotations.h
-        DESTINATION include/s2/third_party/absl/base)
-install(FILES src/s2/third_party/absl/base/internal/identity.h
-              src/s2/third_party/absl/base/internal/inline_variable.h
-              src/s2/third_party/absl/base/internal/invoke.h
-              src/s2/third_party/absl/base/internal/throw_delegate.h
-              src/s2/third_party/absl/base/internal/unaligned_access.h
-        DESTINATION include/s2/third_party/absl/base/internal)
-install(FILES src/s2/third_party/absl/container/inlined_vector.h
-        DESTINATION include/s2/third_party/absl/container)
-install(FILES src/s2/third_party/absl/container/internal/compressed_tuple.h
-              src/s2/third_party/absl/container/internal/container_memory.h
-              src/s2/third_party/absl/container/internal/layout.h
-        DESTINATION include/s2/third_party/absl/container/internal)
-install(FILES src/s2/third_party/absl/memory/memory.h
-        DESTINATION include/s2/third_party/absl/memory)
-install(FILES src/s2/third_party/absl/meta/type_traits.h
-        DESTINATION include/s2/third_party/absl/meta)
-install(FILES src/s2/third_party/absl/numeric/int128.h
-              src/s2/third_party/absl/numeric/int128_have_intrinsic.inc
-              src/s2/third_party/absl/numeric/int128_no_intrinsic.inc
-        DESTINATION include/s2/third_party/absl/numeric)
-install(FILES src/s2/third_party/absl/strings/numbers.h
-              src/s2/third_party/absl/strings/str_cat.h
-              src/s2/third_party/absl/strings/string_view.h
-        DESTINATION include/s2/third_party/absl/strings)
-install(FILES src/s2/third_party/absl/types/span.h
-        DESTINATION include/s2/third_party/absl/types)
-install(FILES src/s2/third_party/absl/utility/utility.h
-        DESTINATION include/s2/third_party/absl/utility)
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/base")
 install(FILES src/s2/util/bits/bits.h
-        DESTINATION include/s2/util/bits)
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/bits")
 install(FILES src/s2/util/coding/coder.h
               src/s2/util/coding/varint.h
-        DESTINATION include/s2/util/coding)
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/coding")
 install(FILES src/s2/util/endian/endian.h
-        DESTINATION include/s2/util/endian)
-install(FILES src/s2/util/gtl/btree.h
-              src/s2/util/gtl/btree_container.h
-              src/s2/util/gtl/btree_map.h
-              src/s2/util/gtl/btree_set.h
-              src/s2/util/gtl/compact_array.h
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/endian")
+install(FILES src/s2/util/gtl/compact_array.h
               src/s2/util/gtl/container_logging.h
               src/s2/util/gtl/dense_hash_set.h
               src/s2/util/gtl/densehashtable.h
               src/s2/util/gtl/hashtable_common.h
-              src/s2/util/gtl/layout.h
-              src/s2/util/gtl/libc_allocator_with_realloc.h
-        DESTINATION include/s2/util/gtl)
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/gtl")
 install(FILES src/s2/util/hash/mix.h
-        DESTINATION include/s2/util/hash)
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/hash")
 install(FILES src/s2/util/math/mathutil.h
               src/s2/util/math/matrix3x3.h
               src/s2/util/math/vector.h
-              src/s2/util/math/vector3_hash.h
-        DESTINATION include/s2/util/math)
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/math")
+install(FILES src/s2/util/math/exactfloat/exactfloat.h
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/math/exactfloat")
 install(FILES src/s2/util/units/length-units.h
               src/s2/util/units/physical-units.h
-        DESTINATION include/s2/util/units)
-install(TARGETS s2 s2testing DESTINATION lib)
-endif()
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/units")
+install(TARGETS s2 s2testing
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
 message("GTEST_ROOT: ${GTEST_ROOT}")
 if (GTEST_ROOT)
@@ -426,10 +433,14 @@ if (GTEST_ROOT)
       src/s2/s1chord_angle_test.cc
       src/s2/s1interval_test.cc
       src/s2/s2boolean_operation_test.cc
+      src/s2/s2buffer_operation_test.cc
       src/s2/s2builder_graph_test.cc
       src/s2/s2builder_test.cc
       src/s2/s2builderutil_closed_set_normalizer_test.cc
       src/s2/s2builderutil_find_polygon_degeneracies_test.cc
+      src/s2/s2builderutil_get_snapped_winding_delta_test.cc
+      src/s2/s2builderutil_lax_polygon_layer_test.cc
+      src/s2/s2builderutil_lax_polyline_layer_test.cc
       src/s2/s2builderutil_s2point_vector_layer_test.cc
       src/s2/s2builderutil_s2polygon_layer_test.cc
       src/s2/s2builderutil_s2polyline_layer_test.cc
@@ -471,6 +482,7 @@ if (GTEST_ROOT)
       src/s2/s2loop_measures_test.cc
       src/s2/s2loop_test.cc
       src/s2/s2measures_test.cc
+      src/s2/s2memory_tracker_test.cc
       src/s2/s2metrics_test.cc
       src/s2/s2max_distance_targets_test.cc
       src/s2/s2min_distance_targets_test.cc
@@ -501,6 +513,7 @@ if (GTEST_ROOT)
       src/s2/s2shapeutil_build_polygon_boundaries_test.cc
       src/s2/s2shapeutil_coding_test.cc
       src/s2/s2shapeutil_contains_brute_force_test.cc
+      src/s2/s2shapeutil_conversion_test.cc
       src/s2/s2shapeutil_count_edges_test.cc
       src/s2/s2shapeutil_edge_iterator_test.cc
       src/s2/s2shapeutil_get_reference_point_test.cc
@@ -509,6 +522,8 @@ if (GTEST_ROOT)
       src/s2/s2testing_test.cc
       src/s2/s2text_format_test.cc
       src/s2/s2wedge_relations_test.cc
+      src/s2/s2winding_operation_test.cc
+      src/s2/s2wrapped_shape_test.cc
       src/s2/sequence_lexicon_test.cc
       src/s2/value_lexicon_test.cc)
 
@@ -519,7 +534,16 @@ if (GTEST_ROOT)
     add_executable(${test} ${test_cc})
     target_link_libraries(
         ${test}
-        s2testing s2 gtest_main)
+        s2testing s2
+        absl::base
+        absl::btree
+        absl::core_headers
+        absl::flags_reflection
+        absl::memory
+        absl::span
+        absl::strings
+        absl::synchronization
+        gtest_main)
     add_test(${test} ${test})
   endforeach()
 endif()
@@ -528,6 +552,6 @@ if (BUILD_EXAMPLES)
   add_subdirectory("doc/examples" examples)
 endif()
 
-if (${SWIG_FOUND} AND ${PYTHONLIBS_FOUND})
+if (${SWIG_FOUND} AND ${Python3_FOUND})
   add_subdirectory("src/python" python)
 endif()

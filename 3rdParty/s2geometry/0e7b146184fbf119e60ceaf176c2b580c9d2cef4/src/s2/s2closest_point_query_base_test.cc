@@ -51,7 +51,7 @@ TEST(S2ClosestPointQueryBase, MaxDistance) {
   FurthestPointQuery<int> query(&index);
   FurthestPointQuery<int>::Options options;
   options.set_max_results(1);
-  FurthestPointTarget target(s2textformat::MakePoint("4:0"));
+  FurthestPointTarget target(s2textformat::MakePointOrDie("4:0"));
   auto results = query.FindClosestPoints(&target, options);
   ASSERT_EQ(1, results.size());
   EXPECT_EQ(points[0], results[0].point());

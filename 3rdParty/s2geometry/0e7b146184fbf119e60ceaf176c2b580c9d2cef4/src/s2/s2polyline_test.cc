@@ -20,35 +20,44 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "s2/base/commandlineflags.h"
 #include <gtest/gtest.h>
 
+#include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+
+#include "s2/base/commandlineflags.h"
 #include "s2/s1angle.h"
+#include "s2/s2builderutil_snap_functions.h"
 #include "s2/s2cell.h"
+#include "s2/s2coords.h"
 #include "s2/s2debug.h"
 #include "s2/s2latlng.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/third_party/absl/strings/str_cat.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
 #include "s2/util/coding/coder.h"
 
-using absl::StrCat;
 using absl::make_unique;
+using absl::StrCat;
+using s2builderutil::S2CellIdSnapFunction;
 using std::fabs;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
 namespace {
 
-// Wraps s2textformat::MakePolyline in order to test Encode/Decode.
-unique_ptr<S2Polyline> MakePolyline(const string& str,
+// Wraps s2textformat::MakePolylineOrDie in order to test Encode/Decode.
+unique_ptr<S2Polyline> MakePolyline(absl::string_view str,
                                     S2Debug debug_override = S2Debug::ALLOW) {
   unique_ptr<S2Polyline> polyline =
-      s2textformat::MakePolyline(str, debug_override);
+      s2textformat::MakePolylineOrDie(str, debug_override);
   Encoder encoder;
   polyline->Encode(&encoder);
   Decoder decoder(encoder.base(), encoder.length());
@@ -73,6 +82,23 @@ TEST(S2Polyline, Basic) {
                                S2Point(0, 1, 0)));
   semi_equator.Reverse();
   EXPECT_EQ(S2Point(1, 0, 0), semi_equator.vertex(2));
+  ASSERT_EQ(3, semi_equator.vertices_span().size());
+  EXPECT_EQ(S2Point(1, 0, 0), semi_equator.vertices_span()[2]);
+}
+
+TEST(S2Polyline, NoData) {
+  S2Polyline poly;
+
+  EXPECT_EQ(S1Angle::Zero(), poly.GetLength());
+  EXPECT_EQ(S2Point(), poly.GetCentroid());
+
+  poly.Reverse();  // Can be reversed
+}
+
+TEST(S2Polyline, NoDataClone) {
+  S2Polyline poly;
+  const auto cloned_poly = absl::WrapUnique(poly.Clone());
+  ASSERT_NE(cloned_poly, nullptr);
 }
 
 TEST(S2Polyline, MoveConstruct) {
@@ -116,6 +142,28 @@ TEST(S2Polyline, GetLengthAndCentroid) {
     S2Point centroid = line.GetCentroid();
     EXPECT_LE(centroid.Norm(), 2e-14);
   }
+}
+
+TEST(S2Polyline, GetSnapLevel) {
+  // Points snapped to the same level.
+  EXPECT_EQ(
+      S2Polyline({S2CellId(S2LatLng::FromDegrees(10, 10)).parent(20).ToPoint(),
+                  S2CellId(S2LatLng::FromDegrees(20, 20)).parent(20).ToPoint()})
+          .GetSnapLevel(),
+      20);
+
+  // Points snapped to different levels.
+  EXPECT_EQ(
+      S2Polyline({S2CellId(S2LatLng::FromDegrees(10, 10)).parent(20).ToPoint(),
+                  S2CellId(S2LatLng::FromDegrees(20, 20)).parent(22).ToPoint()})
+          .GetSnapLevel(),
+      -1);
+
+  // Unsnapped polyline.
+  EXPECT_EQ(
+      S2Polyline({S2LatLng::FromDegrees(10, 10), S2LatLng::FromDegrees(20, 20)})
+          .GetSnapLevel(),
+      -1);
 }
 
 TEST(S2Polyline, MayIntersect) {
@@ -219,6 +267,19 @@ TEST(S2Polyline, Project) {
                                    &next_vertex),
                                S2LatLng::FromDegrees(1, 2).ToPoint()));
   EXPECT_EQ(4, next_vertex);
+
+  // Polyline with 1 vertex should project all points to that vertex.
+  S2Polyline single_vertex_polyline({S2LatLng::FromDegrees(1, 1)});
+  EXPECT_TRUE(S2::ApproxEquals(single_vertex_polyline.Project(
+                                   S2LatLng::FromDegrees(2, 2).ToPoint(),
+                                   &next_vertex),
+                               S2LatLng::FromDegrees(1, 1).ToPoint()));
+  EXPECT_EQ(1, next_vertex);
+  EXPECT_TRUE(S2::ApproxEquals(single_vertex_polyline.Project(
+                                   S2LatLng::FromDegrees(-1, 0).ToPoint(),
+                                   &next_vertex),
+                               S2LatLng::FromDegrees(1, 1).ToPoint()));
+  EXPECT_EQ(1, next_vertex);
 }
 
 TEST(S2Polyline, IsOnRight) {
@@ -377,6 +438,29 @@ TEST(S2Polyline, SubsampleVerticesGuarantees) {
   CheckSubsample("10:10, 12:12, 9:9, 10:20, 10:30", 5.0, "0,4");
 }
 
+TEST(S2Polyline, InitToSnapped) {
+  auto original = MakePolyline("10:10, 10:20, 10:30, 10:15, 10:40");
+  S2Polyline snapped;
+  snapped.InitToSnapped(*original);
+  EXPECT_TRUE(snapped.ApproxEquals(*original, S1Angle::E7(1)));
+  EXPECT_EQ(snapped.GetSnapLevel(), S2CellId::kMaxLevel);
+
+  // Snap to a very small level and ensure that vertices are deduplicated.
+  snapped.InitToSnapped(*original, 2);
+  EXPECT_LT(snapped.num_vertices(), original->num_vertices());
+  EXPECT_FALSE(snapped.ApproxEquals(*original, S1Angle::E7(1)));
+  EXPECT_EQ(snapped.GetSnapLevel(), 2);
+}
+
+TEST(S2Polyline, InitToSimplified) {
+  auto original = MakePolyline("10:10, 20:20, 20:30, 10:40");
+  S2Polyline snapped;
+  snapped.InitToSimplified(*original,
+                           S2CellIdSnapFunction(S2CellId::kMaxLevel));
+  EXPECT_EQ(snapped.num_vertices(), original->num_vertices());
+  EXPECT_TRUE(snapped.ApproxEquals(*original, S1Angle::E7(1)));
+  EXPECT_EQ(snapped.GetSnapLevel(), S2CellId::kMaxLevel);
+}
 
 static bool TestEquals(const char* a_str,
                        const char* b_str,
@@ -416,6 +500,70 @@ TEST(S2Polyline, EncodeDecode) {
   EXPECT_TRUE(decoded_polyline.ApproxEquals(*polyline, S1Angle::Zero()));
 }
 
+TEST(S2Polyline, EncodeDecodeCompressed) {
+  unique_ptr<S2Polyline> polyline(MakePolyline("0:0, 0:10, 10:20, 20:30"));
+  Encoder compact_encoder;
+  Encoder uncompressed_encoder;
+  polyline->EncodeMostCompact(&compact_encoder);
+  polyline->EncodeUncompressed(&uncompressed_encoder);
+  EXPECT_LT(compact_encoder.length(), uncompressed_encoder.length());
+  Decoder decoder(compact_encoder.base(), compact_encoder.length());
+  S2Polyline decoded_polyline;
+  EXPECT_TRUE(decoded_polyline.Decode(&decoder));
+  EXPECT_TRUE(decoded_polyline.ApproxEquals(*polyline, S1Angle::E7(1)));
+}
+
+TEST(S2Polyline, EncodeMostCompactEmpty) {
+  S2Polyline polyline;
+  Encoder encoder;
+  polyline.EncodeMostCompact(&encoder);
+  Decoder decoder(encoder.base(), encoder.length());
+  S2Polyline decoded_polyline;
+  EXPECT_TRUE(decoded_polyline.Decode(&decoder));
+  EXPECT_EQ(decoded_polyline.num_vertices(), 0);
+}
+
+TEST(S2Polyline, EncodeUncompressedEmpty) {
+  S2Polyline polyline;
+  Encoder encoder;
+  polyline.EncodeUncompressed(&encoder);
+  Decoder decoder(encoder.base(), encoder.length());
+  S2Polyline decoded_polyline;
+  EXPECT_TRUE(decoded_polyline.Decode(&decoder));
+  EXPECT_EQ(decoded_polyline.num_vertices(), 0);
+}
+
+TEST(S2Polyline, DecodeCompressedBadData) {
+  string data = "bad data";
+  Decoder decoder(data.data(), data.length());
+  S2Polyline decoded_polyline;
+  EXPECT_FALSE(decoded_polyline.Decode(&decoder));
+}
+
+TEST(S2Polyline, DecodeCompressedMaxCellLevel) {
+  Encoder encoder;
+  encoder.Ensure(6);
+  encoder.put8(2);  // kCurrentCompressedEncodingVersionNumber
+  encoder.put8(S2::kMaxCellLevel);
+  encoder.put32(0);
+  Decoder decoder(encoder.base(), encoder.length());
+
+  S2Polyline polyline;
+  EXPECT_TRUE(polyline.Decode(&decoder));
+}
+
+TEST(S2Polyline, DecodeCompressedCellLevelTooHigh) {
+  Encoder encoder;
+  encoder.Ensure(6);
+  encoder.put8(2);  // kCurrentCompressedEncodingVersionNumber
+  encoder.put8(S2::kMaxCellLevel + 1);
+  encoder.put32(0);
+  Decoder decoder(encoder.base(), encoder.length());
+
+  S2Polyline polyline;
+  EXPECT_FALSE(polyline.Decode(&decoder));
+}
+
 TEST(S2PolylineShape, Basic) {
   unique_ptr<S2Polyline> polyline(MakePolyline("0:0, 1:0, 1:1, 2:1"));
   S2Polyline::Shape shape(polyline.get());
@@ -450,7 +598,7 @@ TEST(S2PolylineOwningShape, Ownership) {
   S2Polyline::OwningShape shape(std::move(polyline));
 }
 
-void TestNearlyCovers(const string& a_str, const string& b_str,
+void TestNearlyCovers(absl::string_view a_str, absl::string_view b_str,
                       double max_error_degrees, bool expect_b_covers_a,
                       bool expect_a_covers_b,
                       S2Debug debug_override = S2Debug::ALLOW) {

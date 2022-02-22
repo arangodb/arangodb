@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
 #include "s2/s2max_distance_targets.h"
 
 #include <memory>
-#include "s2/third_party/absl/memory/memory.h"
+
+#include "absl/memory/memory.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
@@ -196,9 +197,7 @@ bool S2MaxDistanceShapeIndexTarget::UpdateMinDistance(
   query_->mutable_options()->set_min_distance(S1ChordAngle(*min_dist));
   S2FurthestEdgeQuery::PointTarget target(p);
   S2FurthestEdgeQuery::Result r = query_->FindFurthestEdge(&target);
-  if (r.shape_id() < 0) {
-    return false;
-  }
+  if (r.is_empty()) return false;
   *min_dist = S2MaxDistance(r.distance());
   return true;
 }
@@ -208,7 +207,7 @@ bool S2MaxDistanceShapeIndexTarget::UpdateMinDistance(
   query_->mutable_options()->set_min_distance(S1ChordAngle(*min_dist));
   S2FurthestEdgeQuery::EdgeTarget target(v0, v1);
   S2FurthestEdgeQuery::Result r = query_->FindFurthestEdge(&target);
-  if (r.shape_id() < 0) return false;
+  if (r.is_empty()) return false;
   *min_dist = S2MaxDistance(r.distance());
   return true;
 }
@@ -218,7 +217,7 @@ bool S2MaxDistanceShapeIndexTarget::UpdateMinDistance(
   query_->mutable_options()->set_min_distance(S1ChordAngle(*min_dist));
   S2FurthestEdgeQuery::CellTarget target(cell);
   S2FurthestEdgeQuery::Result r = query_->FindFurthestEdge(&target);
-  if (r.shape_id() < 0) return false;
+  if (r.is_empty()) return false;
   *min_dist = S2MaxDistance(r.distance());
   return true;
 }

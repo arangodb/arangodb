@@ -18,8 +18,10 @@
 #include "s2/encoded_s2cell_id_vector.h"
 
 #include <vector>
+
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
+#include "s2/s2cell_id.h"
 #include "s2/s2loop.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2shape_index.h"
@@ -31,6 +33,7 @@ using s2textformat::MakeCellIdOrDie;
 using std::vector;
 
 namespace s2coding {
+namespace {
 
 // Encodes the given vector and returns the corresponding
 // EncodedS2CellIdVector (which points into the Encoder's data buffer).
@@ -139,6 +142,30 @@ TEST(EncodedS2CellIdVector, OneByteRangeWithBaseValue) {
       0x0100500000000000, 0x0100330000000000}, 9);
 }
 
+TEST(EncodedS2CellIdVector, MaxShiftRange) {
+  const std::vector<uint8> bytes = {
+      (31 << 3)  // 31 -> add 29 to bytes[1].
+          + 1,   // Number of encoded cell IDs.
+      27,        // 27+29 is the maximum supported shift.
+      1, 0       // Encoded cell ID. Not important.
+  };
+  Decoder decoder(bytes.data(), bytes.size());
+  EncodedS2CellIdVector cell_ids;
+  EXPECT_TRUE(cell_ids.Init(&decoder));
+}
+
+TEST(EncodedS2CellIdVector, ShiftOutOfRange) {
+  const std::vector<uint8> bytes = {
+      (31 << 3)  // 31 -> add 29 to bytes[1].
+          + 1,   // Number of encoded cell IDs.
+      28,        // 28+29 is greater than the maximum supported shift of 56.
+      1, 0       // Encoded cell ID. Not important.
+  };
+  Decoder decoder(bytes.data(), bytes.size());
+  EncodedS2CellIdVector cell_ids;
+  EXPECT_FALSE(cell_ids.Init(&decoder));
+}
+
 TEST(EncodedS2CellIdVector, SixFaceCells) {
   vector<S2CellId> ids;
   for (int face = 0; face < 6; ++face) {
@@ -229,4 +256,5 @@ TEST(EncodedS2CellIdVector, LowerBoundLimits) {
   EXPECT_EQ(2, cell_ids.lower_bound(S2CellId::Sentinel()));
 }
 
+}  // namespace
 }  // namespace s2coding

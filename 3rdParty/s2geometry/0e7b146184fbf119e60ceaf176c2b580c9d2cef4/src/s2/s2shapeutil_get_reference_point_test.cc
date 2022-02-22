@@ -42,19 +42,17 @@ TEST(GetReferencePoint, FullPolygon) {
 
 TEST(GetReferencePoint, DegenerateLoops) {
   vector<S2LaxPolygonShape::Loop> loops = {
-    s2textformat::ParsePoints("1:1, 1:2, 2:2, 1:2, 1:3, 1:2, 1:1"),
-    s2textformat::ParsePoints("0:0, 0:3, 0:6, 0:9, 0:6, 0:3, 0:0"),
-    s2textformat::ParsePoints("5:5, 6:6")
-  };
+      s2textformat::ParsePointsOrDie("1:1, 1:2, 2:2, 1:2, 1:3, 1:2, 1:1"),
+      s2textformat::ParsePointsOrDie("0:0, 0:3, 0:6, 0:9, 0:6, 0:3, 0:0"),
+      s2textformat::ParsePointsOrDie("5:5, 6:6")};
   S2LaxPolygonShape shape(loops);
   EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
 TEST(GetReferencePoint, InvertedLoops) {
   vector<S2LaxPolygonShape::Loop> loops = {
-    s2textformat::ParsePoints("1:2, 1:1, 2:2"),
-    s2textformat::ParsePoints("3:4, 3:3, 4:4")
-  };
+      s2textformat::ParsePointsOrDie("1:2, 1:1, 2:2"),
+      s2textformat::ParsePointsOrDie("3:4, 3:3, 4:4")};
   S2LaxPolygonShape shape(loops);
   EXPECT_TRUE(s2shapeutil::ContainsBruteForce(shape, S2::Origin()));
 }

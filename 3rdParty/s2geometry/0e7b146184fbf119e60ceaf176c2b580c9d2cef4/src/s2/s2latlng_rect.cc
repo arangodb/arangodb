@@ -23,6 +23,7 @@
 #include <iostream>
 
 #include "s2/base/logging.h"
+#include "absl/flags/flag.h"
 #include "s2/util/coding/coder.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
@@ -297,15 +298,17 @@ S2Cap S2LatLngRect::GetCapBound() const {
     pole_z = 1;
     pole_angle = M_PI_2 - lat_.lo();
   }
-  S2Cap pole_cap(S2Point(0, 0, pole_z), S1Angle::Radians(pole_angle));
+  // Ensure that the bounding cap is conservative taking into account errors
+  // in the arithmetic above and the S1Angle/S1ChordAngle conversion.
+  S2Cap pole_cap(S2Point(0, 0, pole_z),
+                 S1Angle::Radians((1 + 2 * DBL_EPSILON) * pole_angle));
 
   // For bounding rectangles that span 180 degrees or less in longitude, the
   // maximum cap size is achieved at one of the rectangle vertices.  For
   // rectangles that are larger than 180 degrees, we punt and always return a
   // bounding cap centered at one of the two poles.
-  double lng_span = lng_.hi() - lng_.lo();
-  if (remainder(lng_span, 2 * M_PI) >= 0 && lng_span < 2 * M_PI) {
-    S2Cap mid_cap(GetCenter().ToPoint(), S1Angle::Radians(0));
+  if (lng_.GetLength() < 2 * M_PI) {
+    S2Cap mid_cap(GetCenter().ToPoint(), S1Angle::Zero());
     for (int k = 0; k < 4; ++k) {
       mid_cap.AddPoint(GetVertex(k).ToPoint());
     }
@@ -363,7 +366,7 @@ bool S2LatLngRect::Decode(Decoder* decoder) {
   lng_ = S1Interval(lng_lo, lng_hi);
 
   if (!is_valid()) {
-    S2_DLOG_IF(ERROR, FLAGS_s2debug)
+    S2_DLOG_IF(ERROR, absl::GetFlag(FLAGS_s2debug))
         << "Invalid result in S2LatLngRect::Decode: " << *this;
     return false;
   }

@@ -43,11 +43,11 @@ class FurthestPointTarget final : public S2MaxDistancePointTarget {
 };
 
 TEST(S2ClosestEdgeQueryBase, MaxDistance) {
-  auto index = s2textformat::MakeIndex("0:0 | 1:0 | 2:0 | 3:0 # #");
+  auto index = s2textformat::MakeIndexOrDie("0:0 | 1:0 | 2:0 | 3:0 # #");
   FurthestEdgeQuery query(index.get());
   FurthestEdgeQuery::Options options;
   options.set_max_results(1);
-  FurthestPointTarget target(s2textformat::MakePoint("4:0"));
+  FurthestPointTarget target(s2textformat::MakePointOrDie("4:0"));
   auto results = query.FindClosestEdges(&target, options);
   ASSERT_EQ(1, results.size());
   EXPECT_EQ(0, results[0].shape_id());

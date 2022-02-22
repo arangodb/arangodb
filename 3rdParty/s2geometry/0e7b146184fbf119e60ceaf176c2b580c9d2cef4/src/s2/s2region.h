@@ -40,6 +40,9 @@ class S2LatLngRect;
 // is restricted to methods that are useful for computing approximations.
 class S2Region {
  public:
+  S2Region() = default;
+  S2Region(const S2Region& other) = default;
+  S2Region& operator=(const S2Region&) = default;
   virtual ~S2Region() {}
 
   // Returns a deep copy of the region.

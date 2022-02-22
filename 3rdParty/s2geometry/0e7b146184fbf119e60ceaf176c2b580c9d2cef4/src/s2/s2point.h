@@ -18,9 +18,9 @@
 #ifndef S2_S2POINT_H_
 #define S2_S2POINT_H_
 
+#include "absl/hash/hash.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/util/math/vector.h"  // IWYU pragma: export
-#include "s2/util/math/vector3_hash.h"
 
 // An S2Point represents a point on the unit sphere as a 3D vector.  Usually
 // points are normalized to be unit length, but some methods do not require
@@ -33,6 +33,6 @@ using S2Point = Vector3_d;
 // nonstandard extensions (e.g., hash_map).  It is defined such that if two
 // S2Points compare equal to each other, they have the same hash.  (This
 // requires that positive and negative zero hash to the same value.)
-using S2PointHash = GoodFastHash<S2Point>;
+using S2PointHash = absl::Hash<S2Point>;
 
 #endif  // S2_S2POINT_H_

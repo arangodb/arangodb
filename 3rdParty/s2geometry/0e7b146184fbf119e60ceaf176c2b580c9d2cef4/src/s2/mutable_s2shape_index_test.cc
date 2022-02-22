@@ -17,18 +17,25 @@
 
 #include "s2/mutable_s2shape_index.h"
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <numeric>
-#include <string>
 #include <thread>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "absl/flags/reflection.h"
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/str_format.h"
+
 #include "s2/base/commandlineflags.h"
 #include "s2/base/logging.h"
-#include "s2/base/mutex.h"
+#include "s2/base/log_severity.h"
 #include "s2/r2.h"
 #include "s2/r2rect.h"
 #include "s2/s1angle.h"
@@ -39,9 +46,12 @@
 #include "s2/s2debug.h"
 #include "s2/s2edge_clipping.h"
 #include "s2/s2edge_crosser.h"
+#include "s2/s2edge_distances.h"
 #include "s2/s2edge_vector_shape.h"
 #include "s2/s2error.h"
+#include "s2/s2lax_polygon_shape.h"
 #include "s2/s2loop.h"
+#include "s2/s2point_vector_shape.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2polygon.h"
 #include "s2/s2shapeutil_coding.h"
@@ -50,18 +60,21 @@
 #include "s2/s2shapeutil_visit_crossing_edge_pairs.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
-#include "s2/third_party/absl/memory/memory.h"
+#include "s2/thread_testing.h"
 
-using absl::WrapUnique;
 using absl::make_unique;
-using s2textformat::MakePolyline;
+using absl::WrapUnique;
+using s2textformat::MakePolylineOrDie;
+using std::string;
 using std::unique_ptr;
 using std::vector;
+
+S2_DECLARE_double(s2shape_index_min_short_edge_fraction);
+S2_DECLARE_double(s2shape_index_cell_size_to_long_edge_ratio);
 
 class MutableS2ShapeIndexTest : public ::testing::Test {
  protected:
   // This test harness owns a MutableS2ShapeIndex for convenience.
-
   MutableS2ShapeIndex index_;
 
   // Verifies that that every cell of the index contains the correct edges, and
@@ -81,6 +94,18 @@ class MutableS2ShapeIndexTest : public ::testing::Test {
 
   // Verifies that the index can be encoded and decoded without change.
   void TestEncodeDecode();
+
+  using BatchDescriptor = MutableS2ShapeIndex::BatchDescriptor;
+
+  // Converts the given vector of batches to a human-readable form.
+  static string ToString(const vector<BatchDescriptor>& batches);
+
+  // Verifies that removing and adding the given combination of shapes with
+  // the given memory budget yields the expected vector of batches.
+  void TestBatchGenerator(
+      int num_edges_removed, const vector<int>& shape_edges_added,
+      int64 tmp_memory_budget, int shape_id_begin,
+      const vector<BatchDescriptor>& expected_batches);
 };
 
 void MutableS2ShapeIndexTest::QuadraticValidate() {
@@ -106,7 +131,9 @@ void MutableS2ShapeIndexTest::QuadraticValidate() {
     }
     // Iterate through all the shapes, simultaneously validating the current
     // index cell and all the skipped cells.
-    int short_edges = 0;  // number of edges counted toward subdivision
+    int num_edges = 0;              // all edges in the cell
+    int num_short_edges = 0;        // "short" edges
+    int num_containing_shapes = 0;  // shapes containing cell's entry vertex
     for (int id = 0; id < index_.num_shape_ids(); ++id) {
       const S2Shape* shape = index_.shape(id);
       const S2ClippedShape* clipped = nullptr;
@@ -119,6 +146,11 @@ void MutableS2ShapeIndexTest::QuadraticValidate() {
       if (!it.done()) {
         bool contains_center = clipped && clipped->contains_center();
         ValidateInterior(shape, it.id(), contains_center);
+        S2PaddedCell pcell(it.id(), MutableS2ShapeIndex::kCellPadding);
+        if (shape != nullptr) {
+          num_containing_shapes +=
+              s2shapeutil::ContainsBruteForce(*shape, pcell.GetEntryVertex());
+        }
       }
       // If this shape has been released, it should not be present at all.
       if (shape == nullptr) {
@@ -135,13 +167,22 @@ void MutableS2ShapeIndexTest::QuadraticValidate() {
           bool has_edge = clipped && clipped->ContainsEdge(e);
           ValidateEdge(edge.v0, edge.v1, it.id(), has_edge);
           int max_level = index_.GetEdgeMaxLevel(edge);
-          if (has_edge && it.id().level() < max_level) {
-            ++short_edges;
+          if (has_edge) {
+            ++num_edges;
+            if (it.id().level() < max_level) ++num_short_edges;
           }
         }
       }
     }
-    EXPECT_LE(short_edges, index_.options().max_edges_per_cell());
+    // This mirrors the calculation in MutableS2ShapeIndex::MakeIndexCell().
+    // It is designed to ensure that the index size is always linear in the
+    // number of indexed edges.
+    int max_short_edges = std::max(
+        index_.options().max_edges_per_cell(),
+        static_cast<int>(
+            absl::GetFlag(FLAGS_s2shape_index_min_short_edge_fraction) *
+            (num_edges + num_containing_shapes)));
+    EXPECT_LE(num_short_edges, max_short_edges);
     if (it.done()) break;
   }
 }
@@ -178,6 +219,37 @@ void MutableS2ShapeIndexTest::TestEncodeDecode() {
   MutableS2ShapeIndex index2;
   ASSERT_TRUE(index2.Init(&decoder, s2shapeutil::WrappedShapeFactory(&index_)));
   s2testing::ExpectEqual(index_, index2);
+}
+
+/*static*/ string MutableS2ShapeIndexTest::ToString(
+    const vector<BatchDescriptor>& batches) {
+  string result;
+  for (const auto& batch : batches) {
+    if (!result.empty()) result += ", ";
+    absl::StrAppendFormat(&result, "(%d:%d, %d:%d, %d)",
+                          batch.begin.shape_id, batch.begin.edge_id,
+                          batch.end.shape_id, batch.end.edge_id,
+                          batch.num_edges);
+  }
+  return result;
+}
+
+void MutableS2ShapeIndexTest::TestBatchGenerator(
+    int num_edges_removed, const vector<int>& shape_edges_added,
+    int64 tmp_memory_budget, int shape_id_begin,
+    const vector<BatchDescriptor>& expected_batches) {
+  absl::FlagSaver fs;
+  absl::SetFlag(&FLAGS_s2shape_index_tmp_memory_budget, tmp_memory_budget);
+
+  int num_edges_added = 0;
+  for (auto n : shape_edges_added) num_edges_added += n;
+  MutableS2ShapeIndex::BatchGenerator bgen(num_edges_removed, num_edges_added,
+                                           shape_id_begin);
+  for (int i = 0; i < shape_edges_added.size(); ++i) {
+    bgen.AddShape(shape_id_begin + i, shape_edges_added[i]);
+  }
+  auto actual_batches = bgen.Finish();
+  EXPECT_EQ(ToString(actual_batches), ToString(expected_batches));
 }
 
 namespace {
@@ -232,6 +304,119 @@ void TestIteratorMethods(const MutableS2ShapeIndex& index) {
     ids.push_back(cellid);
     min_cellid = cellid.range_max().next();
   }
+}
+
+// NOTE(ericv): The tests below are all somewhat fragile since they depend on
+// the internal BatchGenerator heuristics; if these heuristics change
+// (including constants) then the tests below may need to change as well.
+
+TEST_F(MutableS2ShapeIndexTest, RemoveFullPolygonBatch) {
+  TestBatchGenerator(0, {}, 100 /*bytes*/, 7,
+                     {{{7, 0}, {7, 0}, 0}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, AddFullPolygonBatch) {
+  TestBatchGenerator(0, {0}, 100 /*bytes*/, 7,
+                     {{{7, 0}, {8, 0}, 0}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, RemoveManyEdgesInOneBatch) {
+  // Test removing more edges than would normally fit in a batch.  For good
+  // measure we also add two full polygons in the same batch.
+  TestBatchGenerator(1000, {0, 0}, 100 /*bytes*/, 7,
+                     {{{7, 0}, {9, 0}, 1000}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, RemoveAndAddEdgesInOneBatch) {
+  // Test removing and adding edges in one batch.
+  TestBatchGenerator(3, {4, 5}, 10000 /*bytes*/, 7,
+                     {{{7, 0}, {9, 0}, 12}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, RemoveAndAddEdgesInTwoBatches) {
+  // Test removing many edges and then adding a few.
+  TestBatchGenerator(1000, {3}, 1000 /*bytes*/, 7,
+                     {{{7, 0}, {7, 0}, 1000},
+                      {{7, 0}, {8, 0}, 3}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, RemoveAndAddEdgesAndFullPolygonsInTwoBatches) {
+  // Like the above, but also add two full polygons such that one polygon is
+  // processed in each batch.
+  TestBatchGenerator(1000, {0, 3, 0}, 1000 /*bytes*/, 7,
+                     {{{7, 0}, {8, 0}, 1000},
+                      {{8, 0}, {10, 0}, 3}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, SeveralShapesInOneBatch) {
+  // Test adding several shapes in one batch.
+  TestBatchGenerator(0, {3, 4, 5}, 10000 /*bytes*/, 7,
+                     {{{7, 0}, {10, 0}, 12}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, GroupSmallShapesIntoBatches) {
+  // Test adding several small shapes that must be split into batches.
+  // 10000 bytes ~= temporary space to process 48 edges.
+  TestBatchGenerator(0, {20, 20, 20, 20, 20}, 10000 /*bytes*/, 7,
+                     {{{7, 0}, {9, 0}, 40},
+                      {{9, 0}, {11, 0}, 40},
+                      {{11, 0}, {12, 0}, 20}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, AvoidPartialShapeInBatch) {
+  // Test adding a small shape followed by a large shape that won't fit in the
+  // same batch as the small shape, but will fit in its own separate batch.
+  // 10000 bytes ~= temporary space to process 48 edges.
+  TestBatchGenerator(0, {20, 40, 20}, 10000 /*bytes*/, 7,
+                     {{{7, 0}, {8, 0}, 20},
+                      {{8, 0}, {9, 0}, 40},
+                      {{9, 0}, {10, 0}, 20}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, SplitShapeIntoTwoBatches) {
+  // Test adding a few small shapes, then a large shape that can be split
+  // across the remainder of the first batch plus the next batch.  The first
+  // two batches should have the same amount of remaining space relative to
+  // their maximum size.  (For 10000 bytes of temporary space, the ideal batch
+  // sizes are 48, 46, 45.)
+  //
+  // Note that we need a separate batch for the full polygon at the end, even
+  // though it has no edges, because partial shapes must always be the last
+  // shape in their batch.
+  TestBatchGenerator(0, {20, 60, 0}, 10000 /*bytes*/, 7,
+                     {{{7, 0}, {8, 21}, 41},
+                      {{8, 21}, {9, 0}, 39},
+                      {{9, 0}, {10, 0}, 0}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, RemoveEdgesAndAddPartialShapeInSameBatch) {
+  // Test a batch that consists of removing some edges and then adding a
+  // partial shape.  We also check that the small shape at the end is put into
+  // its own batch, since partial shapes must be the last shape in their batch.
+  TestBatchGenerator(20, {60, 5}, 10000 /*bytes*/, 7,
+                     {{{7, 0}, {7, 21}, 41},
+                      {{7, 21}, {8, 0}, 39},
+                      {{8, 0}, {9, 0}, 5}});
+}
+
+TEST_F(MutableS2ShapeIndexTest, SplitShapeIntoManyBatches) {
+  // Like the above except that the shape is split into 10 batches.  With
+  // 10000 bytes of temporary space, the ideal batch sizes are 63, 61, 59, 57,
+  // 55, 53, 51, 49, 48, 46.  The first 8 batches are as full as possible,
+  // while the last two batches have the same amount of remaining space
+  // relative to their ideal size.  There is also a small batch at the end.
+  TestBatchGenerator(0, {20, 500, 5}, 10000 /*bytes*/, 7,
+                     {{{7, 0}, {8, 43}, 63},
+                      {{8, 43}, {8, 104}, 61},
+                      {{8, 104}, {8, 163}, 59},
+                      {{8, 163}, {8, 220}, 57},
+                      {{8, 220}, {8, 275}, 55},
+                      {{8, 275}, {8, 328}, 53},
+                      {{8, 328}, {8, 379}, 51},
+                      {{8, 379}, {8, 428}, 49},
+                      {{8, 428}, {8, 465}, 37},
+                      {{8, 465}, {9, 0}, 35},
+                      {{9, 0}, {10, 0}, 5}});
 }
 
 TEST_F(MutableS2ShapeIndexTest, SpaceUsed) {
@@ -365,22 +550,29 @@ TEST_F(MutableS2ShapeIndexTest, SimpleUpdates) {
   }
   for (int id = 0; id < polygon.num_loops(); ++id) {
     index_.Release(id);
+    EXPECT_EQ(index_.shape(id), nullptr);
     QuadraticValidate();
     TestEncodeDecode();
   }
 }
 
 TEST_F(MutableS2ShapeIndexTest, RandomUpdates) {
+  // Set the temporary memory budget such that at least one shape needs to be
+  // split into multiple update batches (namely, the "5 concentric rings"
+  // polygon below which needs ~25KB of temporary space).
+  absl::FlagSaver fs;
+  absl::SetFlag(&FLAGS_s2shape_index_tmp_memory_budget, 10000);
+
   // Allow the seed to be varied from the command line.
-  S2Testing::rnd.Reset(FLAGS_s2_random_seed);
+  S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed));
 
   // A few polylines.
   index_.Add(make_unique<S2Polyline::OwningShape>(
-      MakePolyline("0:0, 2:1, 0:2, 2:3, 0:4, 2:5, 0:6")));
+      MakePolylineOrDie("0:0, 2:1, 0:2, 2:3, 0:4, 2:5, 0:6")));
   index_.Add(make_unique<S2Polyline::OwningShape>(
-      MakePolyline("1:0, 3:1, 1:2, 3:3, 1:4, 3:5, 1:6")));
+      MakePolylineOrDie("1:0, 3:1, 1:2, 3:3, 1:4, 3:5, 1:6")));
   index_.Add(make_unique<S2Polyline::OwningShape>(
-      MakePolyline("2:0, 4:1, 2:2, 4:3, 2:4, 4:5, 2:6")));
+      MakePolylineOrDie("2:0, 4:1, 2:2, 4:3, 2:4, 4:5, 2:6")));
 
   // A loop that used to trigger an indexing bug.
   index_.Add(make_unique<S2Loop::OwningShape>(S2Loop::MakeRegularLoop(
@@ -446,101 +638,40 @@ TEST_F(MutableS2ShapeIndexTest, RandomUpdates) {
 // Note that we only test concurrent read access, since MutableS2ShapeIndex
 // requires all updates to be single-threaded and not concurrent with any
 // reads.
-class LazyUpdatesTest : public ::testing::Test {
+class LazyUpdatesTest : public s2testing::ReaderWriterTest {
  public:
-  LazyUpdatesTest() : num_updates_(0), num_readers_left_(0) {
-  }
+  LazyUpdatesTest() {}
 
-  // The function executed by each reader thread.
-  void ReaderThread();
-
- protected:
-  class ReaderThreadPool {
-   public:
-    ReaderThreadPool(LazyUpdatesTest* test, int num_threads)
-        : threads_(make_unique<std::thread[]>(num_threads)),
-          num_threads_(num_threads) {
-      for (int i = 0; i < num_threads_; ++i) {
-        threads_[i] = std::thread(&LazyUpdatesTest::ReaderThread, test);
-      }
-    }
-    ~ReaderThreadPool() {
-      for (int i = 0; i < num_threads_; ++i) threads_[i].join();
-    }
-
-   private:
-    unique_ptr<std::thread[]> threads_;
-    int num_threads_;
-  };
-
-  MutableS2ShapeIndex index_;
-  // The following fields are guarded by lock_.
-  absl::Mutex lock_;
-  int num_updates_;
-  int num_readers_left_;
-
-  // Signalled when a new update is ready to be processed.
-  absl::CondVar update_ready_;
-  // Signalled when all readers have processed the latest update.
-  absl::CondVar all_readers_done_;
-};
-
-void LazyUpdatesTest::ReaderThread() {
-  lock_.Lock();
-  for (int last_update = 0; ; last_update = num_updates_) {
-    while (num_updates_ == last_update) {
-      update_ready_.Wait(&lock_);
-    }
-    if (num_updates_ < 0) break;
-
-    // The index is built on demand the first time we attempt to use it.
-    // We intentionally release the lock so that many threads have a chance
-    // to access the MutableS2ShapeIndex in parallel.
-    lock_.Unlock();
-    for (MutableS2ShapeIndex::Iterator it(&index_, S2ShapeIndex::BEGIN);
-         !it.done(); it.Next()) {
-      continue;
-    }
-    lock_.Lock();
-    if (--num_readers_left_ == 0) {
-      all_readers_done_.Signal();
-    }
-  }
-  lock_.Unlock();
-}
-
-TEST_F(LazyUpdatesTest, ConstMethodsThreadSafe) {
-  // Ensure that lazy updates are thread-safe.  In other words, make sure that
-  // nothing bad happens when multiple threads call "const" methods that
-  // cause pending updates to be applied.
-
-  // The number of readers should be large enough so that it is likely that
-  // several readers will be running at once (with a multiple-core CPU).
-  const int kNumReaders = 8;
-  ReaderThreadPool pool(this, kNumReaders);
-  lock_.Lock();
-  const int kIters = 100;
-  for (int iter = 0; iter < kIters; ++iter) {
-    // Loop invariant: lock_ is held and num_readers_left_ == 0.
-    S2_DCHECK_EQ(0, num_readers_left_);
-    // Since there are no readers, it is safe to modify the index.
+  void WriteOp() override {
     index_.Clear();
     int num_vertices = 4 * S2Testing::rnd.Skewed(10);  // Up to 4K vertices
     unique_ptr<S2Loop> loop(S2Loop::MakeRegularLoop(
         S2Testing::RandomPoint(), S2Testing::KmToAngle(5), num_vertices));
-    index_.Add(make_unique<S2Loop::Shape>(loop.get()));
-    num_readers_left_ = kNumReaders;
-    ++num_updates_;
-    update_ready_.SignalAll();
-    while (num_readers_left_ > 0) {
-      all_readers_done_.Wait(&lock_);
+    index_.Add(make_unique<S2Loop::OwningShape>(std::move(loop)));
+  }
+
+  void ReadOp() override {
+    for (MutableS2ShapeIndex::Iterator it(&index_, S2ShapeIndex::BEGIN);
+         !it.done(); it.Next()) {
+      continue;  // NOLINT
     }
   }
-  // Signal the readers to exit.
-  num_updates_ = -1;
-  update_ready_.SignalAll();
-  lock_.Unlock();
-  // ReaderThreadPool destructor waits for all threads to complete.
+
+ protected:
+  MutableS2ShapeIndex index_;
+};
+
+TEST(MutableS2ShapeIndex, ConstMethodsThreadSafe) {
+  // Ensure that lazy updates are thread-safe.  In other words, make sure that
+  // nothing bad happens when multiple threads call "const" methods that
+  // cause pending updates to be applied.
+  LazyUpdatesTest test;
+
+  // The number of readers should be large enough so that it is likely that
+  // several readers will be running at once (with a multiple-core CPU).
+  const int kNumReaders = 8;
+  const int kIters = 100;
+  test.Run(kNumReaders, kIters);
 }
 
 TEST(MutableS2ShapeIndex, MixedGeometry) {
@@ -549,9 +680,9 @@ TEST(MutableS2ShapeIndex, MixedGeometry) {
   // acquire one.  This would cause extra S2ShapeIndex cells to be created
   // that are outside the bounds of the given geometry.
   vector<unique_ptr<S2Polyline>> polylines;
-  polylines.push_back(MakePolyline("0:0, 2:1, 0:2, 2:3, 0:4, 2:5, 0:6"));
-  polylines.push_back(MakePolyline("1:0, 3:1, 1:2, 3:3, 1:4, 3:5, 1:6"));
-  polylines.push_back(MakePolyline("2:0, 4:1, 2:2, 4:3, 2:4, 4:5, 2:6"));
+  polylines.push_back(MakePolylineOrDie("0:0, 2:1, 0:2, 2:3, 0:4, 2:5, 0:6"));
+  polylines.push_back(MakePolylineOrDie("1:0, 3:1, 1:2, 3:3, 1:4, 3:5, 1:6"));
+  polylines.push_back(MakePolylineOrDie("2:0, 4:1, 2:2, 4:3, 2:4, 4:5, 2:6"));
   MutableS2ShapeIndex index;
   for (auto& polyline : polylines) {
     index.Add(make_unique<S2Polyline::OwningShape>(std::move(polyline)));
@@ -561,6 +692,84 @@ TEST(MutableS2ShapeIndex, MixedGeometry) {
   MutableS2ShapeIndex::Iterator it(&index);
   // No geometry intersects face 1, so there should be no index cells there.
   EXPECT_EQ(S2ShapeIndex::DISJOINT, it.Locate(S2CellId::FromFace(1)));
+}
+
+TEST_F(MutableS2ShapeIndexTest, LinearSpace) {
+  // Build an index that requires FLAGS_s2shape_index_min_short_edge_fraction
+  // to be non-zero in order to use a non-quadratic amount of space.
+
+  // Uncomment the following line to check whether this test works properly.
+  // FLAGS_s2shape_index_min_short_edge_fraction = 0;
+
+  // Set the maximum number of "short" edges per cell to 1 so that we can
+  // implement this test using a smaller index.
+  MutableS2ShapeIndex::Options options;
+  options.set_max_edges_per_cell(1);
+  index_.Init(options);
+
+  // The idea is to create O(n) copies of a single long edge, along with O(n)
+  // clusters of (M + 1) points equally spaced along the long edge, where "M"
+  // is the max_edges_per_cell() parameter.  The edges are divided such that
+  // there are equal numbers of long and short edges; this maximizes the index
+  // size when FLAGS_s2shape_index_min_short_edge_fraction is set to zero.
+  const int kNumEdges = 100;  // Validation is quadratic
+  int edges_per_cluster = options.max_edges_per_cell() + 1;
+  int num_clusters = (kNumEdges / 2) / edges_per_cluster;
+
+  // Create the long edges.
+  S2Point a(1, 0, 0), b(0, 1, 0);
+  for (int i = 0; i < kNumEdges / 2; ++i) {
+    index_.Add(make_unique<S2EdgeVectorShape>(a, b));
+  }
+  // Create the clusters of short edges.
+  for (int k = 0; k < num_clusters; ++k) {
+    S2Point p = S2::Interpolate(a, b, k / (num_clusters - 1.0));
+    vector<S2Point> points(edges_per_cluster, p);
+    index_.Add(make_unique<S2PointVectorShape>(points));
+  }
+  QuadraticValidate();
+
+  // The number of index cells should not exceed the number of clusters.
+  int cell_count = 0;
+  for (MutableS2ShapeIndex::Iterator it(&index_, S2ShapeIndex::BEGIN);
+       !it.done(); it.Next()) {
+    ++cell_count;
+  }
+  EXPECT_LE(cell_count, num_clusters);
+}
+
+TEST_F(MutableS2ShapeIndexTest, LongIndexEntriesBound) {
+  // This test demonstrates that the c2 = 366 upper bound (using default
+  // parameter values) mentioned in the .cc file is achievable.
+
+  // Set the maximum number of "short" edges per cell to 1 so that we can test
+  // using a smaller index.
+  MutableS2ShapeIndex::Options options;
+  options.set_max_edges_per_cell(1);
+  index_.Init(options);
+
+  // This is a worst-case edge AB that touches as many cells as possible at
+  // level 30 while still being considered "short" at level 29.  We create an
+  // index consisting of two copies of this edge plus a full polygon.
+  S2Point a = S2::FaceSiTitoXYZ(0, 0, (1 << 30) + 0).Normalize();
+  S2Point b = S2::FaceSiTitoXYZ(0, 0, (1 << 30) + 6).Normalize();
+  for (int i = 0; i < 2; ++i) {
+    index_.Add(make_unique<S2EdgeVectorShape>(a, b));
+  }
+  index_.Add(make_unique<S2LaxPolygonShape>(vector<vector<S2Point>>{{}}));
+
+  // Count the number of index cells at each level.
+  vector<int> counts(S2CellId::kMaxLevel + 1);
+  for (MutableS2ShapeIndex::Iterator it(&index_, S2ShapeIndex::BEGIN);
+       !it.done(); it.Next()) {
+    ++counts[it.id().level()];
+  }
+  int sum = 0;
+  for (int i = 0; i < counts.size(); ++i) {
+    S2_LOG(INFO) << i << ": " << counts[i];
+    sum += counts[i];
+  }
+  EXPECT_EQ(sum, 366);
 }
 
 TEST(S2Shape, user_data) {

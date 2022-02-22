@@ -58,6 +58,7 @@ TEST(R2Rect, EmptyRectangles) {
   R2Rect empty = R2Rect::Empty();
   EXPECT_TRUE(empty.is_valid());
   EXPECT_TRUE(empty.is_empty());
+  EXPECT_EQ(empty, empty);
 }
 
 TEST(R2Rect, ConstructorsAndAccessors) {
@@ -85,8 +86,12 @@ TEST(R2Rect, ConstructorsAndAccessors) {
   EXPECT_EQ(R1Interval(3, 4), r[0]);
   EXPECT_EQ(R1Interval(5, 6), r[1]);
 
+  EXPECT_EQ(r, r);
+  EXPECT_NE(r, R2Rect::Empty());
+
   R2Rect r2;
   EXPECT_TRUE(r2.is_empty());
+  EXPECT_EQ(r2, R2Rect::Empty());
 }
 
 TEST(R2Rect, FromCenterSize) {

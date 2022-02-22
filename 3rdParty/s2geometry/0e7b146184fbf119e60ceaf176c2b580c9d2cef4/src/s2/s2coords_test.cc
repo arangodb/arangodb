@@ -145,7 +145,7 @@ TEST(S2, XYZToFaceSiTi) {
       // levels, or not at a valid level at all (for example, si == 0).
       int face_random = S2Testing::rnd.Uniform(S2CellId::kNumFaces);
       unsigned int si_random, ti_random;
-      unsigned int mask = -1 << (S2CellId::kMaxLevel - level);
+      unsigned int mask = ~0U << (S2CellId::kMaxLevel - level);
       do {
         si_random = S2Testing::rnd.Rand32() & mask;
         ti_random = S2Testing::rnd.Rand32() & mask;

@@ -18,18 +18,34 @@
 // Utilities for container logging.
 // TODO(user): Broaden the scope and rename to "stream_util.h"
 //
+//
+// The typical use looks like this:
+//
+//   S2_LOG(INFO) << gtl::LogContainer(container);
+//
+// By default, LogContainer() uses the LogShortUpTo100 policy: comma-space
+// separation, no newlines, and with limit of 100 items.
+//
+// Policies can be specified:
+//
+//   S2_LOG(INFO) << gtl::LogContainer(container, gtl::LogMultiline());
+//
+// The above example will print the container using newlines between
+// elements, enclosed in [] braces.
+//
+// See below for further details on policies.
 
 #ifndef S2_UTIL_GTL_CONTAINER_LOGGING_H_
 #define S2_UTIL_GTL_CONTAINER_LOGGING_H_
 
 #include <limits>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 
 #include "s2/base/integral_types.h"
 #include "s2/base/port.h"
-#include "s2/strings/ostringstream.h"
 
 namespace gtl {
 
@@ -162,7 +178,7 @@ inline void LogRangeToStream(std::ostream &out,  // NOLINT
                              IteratorT begin, IteratorT end,
                              const PolicyT &policy) {
   policy.LogOpening(out);
-  for (size_t i = 0; begin != end && i < policy.MaxElements(); ++i, ++begin) {
+  for (int64 i = 0; begin != end && i < policy.MaxElements(); ++i, ++begin) {
     if (i == 0) {
       policy.LogFirstSeparator(out);
     } else {
@@ -200,10 +216,10 @@ class RangeLogger {
 
   // operator<< above is generally recommended. However, some situations may
   // require a string, so a convenience str() method is provided as well.
-  string str() const {
-    string s;
-    ::strings::OStringStream(&s) << *this;
-    return s;
+  std::string str() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
   }
 
  private:

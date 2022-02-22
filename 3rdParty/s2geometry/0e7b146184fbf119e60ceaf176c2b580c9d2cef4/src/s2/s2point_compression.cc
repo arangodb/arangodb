@@ -19,14 +19,15 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/casts.h"
+#include "absl/base/macros.h"
+#include "absl/container/fixed_array.h"
+#include "absl/types/span.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2coords.h"
-#include "s2/third_party/absl/base/casts.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/container/fixed_array.h"
-#include "s2/third_party/absl/types/span.h"
 #include "s2/util/bits/bit-interleave.h"
 #include "s2/util/coding/coder.h"
 #include "s2/util/coding/nth-derivative.h"
@@ -344,6 +345,8 @@ void S2EncodePointsCompressed(Span<const S2XYZFaceSiTi> points,
 
 bool S2DecodePointsCompressed(Decoder* decoder, int level,
                               Span<S2Point> points) {
+  S2_DCHECK_LE(level, S2::kMaxCellLevel);
+
   Faces faces;
   if (!faces.Decode(points.size(), decoder)) {
     return false;

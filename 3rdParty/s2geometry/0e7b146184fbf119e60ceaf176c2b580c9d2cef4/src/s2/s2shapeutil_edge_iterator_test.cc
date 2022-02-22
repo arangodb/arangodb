@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,35 +52,35 @@ void Verify(const S2ShapeIndex* index) {
 }  // namespace
 
 TEST(S2ShapeutilEdgeIteratorTest, Empty) {
-  auto index = s2textformat::MakeIndex("##");
+  auto index = s2textformat::MakeIndexOrDie("##");
   Verify(index.get());
 }
 
 TEST(S2ShapeutilEdgeIteratorTest, Points) {
-  auto index = s2textformat::MakeIndex("0:0|1:1##");
+  auto index = s2textformat::MakeIndexOrDie("0:0|1:1##");
   Verify(index.get());
 }
 
 TEST(S2ShapeutilEdgeIteratorTest, Lines) {
-  auto index = s2textformat::MakeIndex("#0:0,10:10|5:5,5:10|1:2,2:1#");
+  auto index = s2textformat::MakeIndexOrDie("#0:0,10:10|5:5,5:10|1:2,2:1#");
   Verify(index.get());
 }
 
 TEST(S2ShapeutilEdgeIteratorTest, Polygons) {
   auto index =
-      s2textformat::MakeIndex("##10:10,10:0,0:0|-10:-10,-10:0,0:0,0:-10");
+      s2textformat::MakeIndexOrDie("##10:10,10:0,0:0|-10:-10,-10:0,0:0,0:-10");
   Verify(index.get());
 }
 
 TEST(S2ShapeutilEdgeIteratorTest, Collection) {
-  auto index = s2textformat::MakeIndex(
+  auto index = s2textformat::MakeIndexOrDie(
       "1:1|7:2#1:1,2:2,3:3|2:2,1:7#"
       "10:10,10:0,0:0;20:20,20:10,10:10|15:15,15:0,0:0");
   Verify(index.get());
 }
 
 TEST(S2ShapeutilEdgeIteratorTest, Remove) {
-  auto index = s2textformat::MakeIndex(
+  auto index = s2textformat::MakeIndexOrDie(
       "1:1|7:2#1:1,2:2,3:3|2:2,1:7#"
       "10:10,10:0,0:0;20:20,20:10,10:10|15:15,15:0,0:0");
   index->Release(0);
@@ -89,11 +89,11 @@ TEST(S2ShapeutilEdgeIteratorTest, Remove) {
 }
 
 TEST(S2ShapeutilEdgeIteratorTest, AssignmentAndEquality) {
-  auto index1 = s2textformat::MakeIndex(
+  auto index1 = s2textformat::MakeIndexOrDie(
       "1:1|7:2#1:1,2:2,3:3|2:2,1:7#"
       "10:10,10:0,0:0;20:20,20:10,10:10|15:15,15:0,0:0");
 
-  auto index2 = s2textformat::MakeIndex(
+  auto index2 = s2textformat::MakeIndexOrDie(
       "1:1|7:2#1:1,2:2,3:3|2:2,1:7#"
       "10:10,10:0,0:0;20:20,20:10,10:10|15:15,15:0,0:0");
 

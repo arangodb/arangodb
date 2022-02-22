@@ -117,6 +117,7 @@
 #define S2_UTIL_GTL_DENSE_HASH_SET_H_
 
 #include <cstdio>
+
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -124,9 +125,8 @@
 #include <vector>
 
 #include "s2/base/port.h"
-#include "s2/third_party/absl/base/macros.h"
+#include "absl/base/macros.h"
 #include "s2/util/gtl/densehashtable.h"  // IWYU pragma: export
-#include "s2/util/gtl/libc_allocator_with_realloc.h"
 
 // Some files test for this symbol.
 #define S2__DENSE_HASH_SET_H_
@@ -136,7 +136,7 @@ namespace gtl {
 template <class Value,
           class HashFcn = std::hash<Value>,
           class EqualKey = std::equal_to<Value>,
-          class Alloc = libc_allocator_with_realloc<Value> >
+          class Alloc = std::allocator<Value> >
 class dense_hash_set {
  private:
 
@@ -183,12 +183,12 @@ class dense_hash_set {
   // These come from tr1's unordered_set. For us, a bucket has 0 or 1 elements.
   ABSL_DEPRECATED(
       "This method is slated for removal.  Please migrate to "
-      "gtl::flat_hash_set.")
+      "absl::flat_hash_set.")
   local_iterator begin(size_type i) const { return rep.begin(i); }
 
   ABSL_DEPRECATED(
       "This method is slated for removal.  Please migrate to "
-      "gtl::flat_hash_set.")
+      "absl::flat_hash_set.")
   local_iterator end(size_type i) const   { return rep.end(i); }
 
 
@@ -239,17 +239,17 @@ class dense_hash_set {
 
   ABSL_DEPRECATED(
       "This method is slated for removal.  Please migrate to "
-      "gtl::flat_hash_set.")
+      "absl::flat_hash_set.")
   size_type max_bucket_count() const  { return rep.max_bucket_count(); }
 
   // These are tr1 methods.  bucket() is the bucket the key is or would be in.
   ABSL_DEPRECATED(
       "This method is slated for removal.  Please migrate to "
-      "gtl::flat_hash_set.")
+      "absl::flat_hash_set.")
   size_type bucket_size(size_type i) const    { return rep.bucket_size(i); }
   ABSL_DEPRECATED(
       "This method is slated for removal.  Please migrate to "
-      "gtl::flat_hash_set.")
+      "absl::flat_hash_set.")
   size_type bucket(const key_type& key) const { return rep.bucket(key); }
   float load_factor() const {
     return size() * 1.0f / bucket_count();
@@ -267,7 +267,7 @@ class dense_hash_set {
   // These aren't tr1 methods but perhaps ought to be.
   ABSL_DEPRECATED(
       "This method is slated for removal.  Please migrate to "
-      "gtl::flat_hash_set.")
+      "absl::flat_hash_set.")
   float min_load_factor() const {
     float shrink, grow;
     rep.get_resizing_parameters(&shrink, &grow);

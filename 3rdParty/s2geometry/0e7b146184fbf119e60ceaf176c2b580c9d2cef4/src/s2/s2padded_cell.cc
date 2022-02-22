@@ -156,7 +156,7 @@ S2CellId S2PaddedCell::ShrinkToFit(const R2Rect& rect) const {
   // if both pairs of endpoints are equal we choose kMaxLevel; if they differ
   // only at bit 0, we choose (kMaxLevel - 1), and so on.
   int level_msb = ((ij_xor[0] | ij_xor[1]) << 1) + 1;
-  int level = S2CellId::kMaxLevel - Bits::Log2FloorNonZero(level_msb);
+  int level = S2CellId::kMaxLevel - Bits::FindMSBSetNonZero(level_msb);
   if (level <= level_) return id();
   return S2CellId::FromFaceIJ(id().face(), ij_min[0], ij_min[1]).parent(level);
 }

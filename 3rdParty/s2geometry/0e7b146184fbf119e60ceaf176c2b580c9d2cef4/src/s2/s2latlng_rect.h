@@ -279,7 +279,7 @@ class S2LatLngRect final : public S2Region {
   //    include the full longitude range (because all longitudes are present
   //    at the poles).
   //
-  // Expansion and contraction are defined such that they are inverses whenver
+  // Expansion and contraction are defined such that they are inverses whenever
   // possible, i.e.
   //
   //   rect.ExpandedByDistance(x).ExpandedByDistance(-x) == rect

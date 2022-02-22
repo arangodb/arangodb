@@ -18,8 +18,11 @@
 #define S2_S2SHAPE_INDEX_REGION_H_
 
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
+#include "s2/s2cell_id.h"
 #include "s2/s2cell_union.h"
 #include "s2/s2contains_point_query.h"
 #include "s2/s2edge_clipping.h"
@@ -31,6 +34,10 @@
 // This class wraps an S2ShapeIndex object with the additional methods needed
 // to implement the S2Region API, in order to allow S2RegionCoverer to compute
 // S2CellId coverings of arbitrary collections of geometry.
+//
+// It also contains a method VisitIntersectingShapes() that may be used to
+// efficiently visit all shapes that intersect an arbitrary S2CellId (not
+// limited to cells in the index).
 //
 // These methods could conceivably be made part of S2ShapeIndex itself, but
 // there are several advantages to having a separate class:
@@ -97,6 +104,27 @@ class S2ShapeIndexRegion final : public S2Region {
   // error is less than 10 * DBL_EPSILON radians (or about 15 nanometers).
   bool MayIntersect(const S2Cell& target) const override;
 
+  // A function that is called with shapes that intersect a target S2Cell.
+  // "contains_target" means that the shape fully contains the target S2Cell.
+  // The function should return true to continue visiting intersecting shapes,
+  // or false to terminate the algorithm early.
+  //
+  // Note that the API allows non-const access to the visited shapes.
+  //
+  // ENSURES: shape != nullptr
+  using ShapeVisitor = std::function<bool (S2Shape* shape,
+                                           bool contains_target)>;
+
+  // Visits all shapes that intersect "target", terminating early if the
+  // "visitor" return false (in which case VisitIntersectingShapes returns
+  // false as well).  Each shape is visited at most once.
+  //
+  // This method can also be used to visit all shapes that fully contain
+  // "target" (VisitContainingShapes) by simply having the ShapeVisitor
+  // function immediately return true when "contains_target" is false.
+  bool VisitIntersectingShapes(const S2Cell& target,
+                               const ShapeVisitor& visitor);
+
   // Returns true if the given point is contained by any two-dimensional shape
   // (i.e., polygon).  Boundaries are treated as being semi-open (i.e., the
   // same rules as S2Polygon).  Zero and one-dimensional shapes are ignored by
@@ -112,9 +140,8 @@ class S2ShapeIndexRegion final : public S2Region {
   // Returns true if the indexed shape "clipped" in the indexed cell "id"
   // contains the point "p".
   //
-  // REQUIRES: id.contains(S2CellId(p))
-  bool Contains(S2CellId id, const S2ClippedShape& clipped,
-                const S2Point& p) const;
+  // REQUIRES: iter_.id() contains "p".
+  bool Contains(const S2ClippedShape& clipped, const S2Point& p) const;
 
   // Returns true if any edge of the indexed shape "clipped" intersects the
   // cell "target".  It may also return true if an edge is very close to
@@ -247,6 +274,12 @@ inline void S2ShapeIndexRegion<IndexType>::CoverRange(
 }
 
 template <class IndexType>
+inline bool S2ShapeIndexRegion<IndexType>::Contains(
+    const S2ClippedShape& clipped, const S2Point& p) const {
+  return contains_query_.ShapeContains(iter_.id(), clipped, p);
+}
+
+template <class IndexType>
 bool S2ShapeIndexRegion<IndexType>::Contains(const S2Cell& target) const {
   S2ShapeIndex::CellRelation relation = iter_.Locate(target.id());
 
@@ -269,7 +302,7 @@ bool S2ShapeIndexRegion<IndexType>::Contains(const S2Cell& target) const {
       // It is faster to call AnyEdgeIntersects() before Contains().
       if (index().shape(clipped.shape_id())->dimension() == 2 &&
           !AnyEdgeIntersects(clipped, target) &&
-          contains_query_.ShapeContains(iter_, clipped, target.GetCenter())) {
+          Contains(clipped, target.GetCenter())) {
         return true;
       }
     }
@@ -301,11 +334,66 @@ bool S2ShapeIndexRegion<IndexType>::MayIntersect(const S2Cell& target) const {
   for (int s = 0; s < cell.num_clipped(); ++s) {
     const S2ClippedShape& clipped = cell.clipped(s);
     if (AnyEdgeIntersects(clipped, target)) return true;
-    if (contains_query_.ShapeContains(iter_, clipped, target.GetCenter())) {
+    if (Contains(clipped, target.GetCenter())) return true;
+  }
+  return false;
+}
+
+template <class IndexType>
+bool S2ShapeIndexRegion<IndexType>::VisitIntersectingShapes(
+    const S2Cell& target, const ShapeVisitor& visitor) {
+  switch (iter_.Locate(target.id())) {
+    case S2ShapeIndex::DISJOINT:
+      return true;
+
+    case S2ShapeIndex::SUBDIVIDED: {
+      // A shape contains the target cell iff it appears in at least one cell,
+      // it contains the center of all cells, and it has no edges in any cell.
+      // It is easier to keep track of whether a shape does *not* contain the
+      // target cell because boolean values default to false.
+      absl::flat_hash_map<int, bool> shape_not_contains;
+      for (const S2CellId max = target.id().range_max();
+           !iter_.done() && iter_.id() <= max; iter_.Next()) {
+        const S2ShapeIndexCell& cell = iter_.cell();
+        for (int s = 0; s < cell.num_clipped(); ++s) {
+          const S2ClippedShape& clipped = cell.clipped(s);
+          shape_not_contains[clipped.shape_id()] |=
+              clipped.num_edges() > 0 || !clipped.contains_center();
+        }
+      }
+      // TODO(user,b/210097200): Use structured bindings when we require
+      // C++17 in opensource.
+      for (const auto& p : shape_not_contains) {
+        const int shape_id = p.first;
+        const bool not_contains = p.second;
+        if (!visitor(index().shape(shape_id), !not_contains)) return false;
+      }
+      return true;
+    }
+
+    case S2ShapeIndex::INDEXED: {
+      const S2ShapeIndexCell& cell = iter_.cell();
+      for (int s = 0; s < cell.num_clipped(); ++s) {
+        // The shape contains the target cell iff the shape contains the cell
+        // center and none of its edges intersects the (padded) cell interior.
+        const S2ClippedShape& clipped = cell.clipped(s);
+        bool contains = false;
+        if (iter_.id() == target.id()) {
+          contains = clipped.num_edges() == 0 && clipped.contains_center();
+        } else {
+          if (!AnyEdgeIntersects(clipped, target)) {
+            if (!Contains(clipped, target.GetCenter())) {
+              continue;  // Disjoint.
+            }
+            contains = true;
+          }
+        }
+        if (!visitor(index().shape(clipped.shape_id()), contains)) return false;
+      }
       return true;
     }
   }
-  return false;
+  S2_LOG(FATAL) << "Unhandled S2ShapeIndex::CellRelation";
 }
 
 template <class IndexType>
@@ -313,9 +401,7 @@ bool S2ShapeIndexRegion<IndexType>::Contains(const S2Point& p) const {
   if (iter_.Locate(p)) {
     const S2ShapeIndexCell& cell = iter_.cell();
     for (int s = 0; s < cell.num_clipped(); ++s) {
-      if (contains_query_.ShapeContains(iter_, cell.clipped(s), p)) {
-        return true;
-      }
+      if (Contains(cell.clipped(s), p)) return true;
     }
   }
   return false;

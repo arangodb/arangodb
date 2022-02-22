@@ -22,6 +22,8 @@
 
 #include <gtest/gtest.h>
 
+#include "absl/strings/str_cat.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/r1interval.h"
 #include "s2/s2cap.h"
@@ -30,9 +32,8 @@
 #include "s2/s2coords.h"
 #include "s2/s2latlng.h"
 #include "s2/s2latlng_rect.h"
-#include "s2/s2pointutil.h"
+#include "s2/s2predicates.h"
 #include "s2/s2testing.h"
-#include "s2/third_party/absl/strings/str_cat.h"
 
 using absl::StrCat;
 
@@ -91,6 +92,7 @@ TEST(S2R2Rect, EmptyRectangles) {
   S2R2Rect empty = S2R2Rect::Empty();
   EXPECT_TRUE(empty.is_valid());
   EXPECT_TRUE(empty.is_empty());
+  EXPECT_EQ(empty, empty);
 }
 
 TEST(S2R2Rect, ConstructorsAndAccessors) {
@@ -102,6 +104,8 @@ TEST(S2R2Rect, ConstructorsAndAccessors) {
   EXPECT_EQ(1.0, d1.y().hi());
   EXPECT_EQ(R1Interval(0.1, 0.25), d1.x());
   EXPECT_EQ(R1Interval(0, 1), d1.y());
+  EXPECT_EQ(d1, d1);
+  EXPECT_NE(d1, S2R2Rect::Empty());
 }
 
 TEST(S2R2Rect, FromCell) {
@@ -153,9 +157,9 @@ TEST(S2R2Rect, SimplePredicates) {
   // Make sure that GetVertex() returns vertices in CCW order.
   for (int k = 0; k < 4; ++k) {
     SCOPED_TRACE(StrCat("k=", k));
-    EXPECT_TRUE(S2::SimpleCCW(S2R2Rect::ToS2Point(r1.GetVertex(k - 1)),
-                              S2R2Rect::ToS2Point(r1.GetVertex(k)),
-                              S2R2Rect::ToS2Point(r1.GetVertex(k + 1))));
+    EXPECT_GT(s2pred::Sign(S2R2Rect::ToS2Point(r1.GetVertex(k - 1)),
+                           S2R2Rect::ToS2Point(r1.GetVertex(k)),
+                           S2R2Rect::ToS2Point(r1.GetVertex(k + 1))), 0);
   }
 }
 

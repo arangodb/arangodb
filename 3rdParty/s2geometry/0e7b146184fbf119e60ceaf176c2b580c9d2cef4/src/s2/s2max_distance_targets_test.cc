@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "absl/container/btree_set.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
@@ -29,7 +30,6 @@
 #include "s2/s2shape_index.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
-#include "s2/util/gtl/btree_set.h"
 
 using absl::make_unique;
 using s2textformat::MakeIndexOrDie;
@@ -95,7 +95,7 @@ TEST(PointTarget, UpdateMaxDistance) {
   auto edge = ParsePointsOrDie("0:-1, 0:1");
   EXPECT_TRUE(target.UpdateMinDistance(edge[0], edge[1], &dist0));
   EXPECT_NEAR(1.0, S1ChordAngle(dist0).degrees(), 1e-15);
-  EXPECT_FALSE(target.UpdateMinDistance(p, &dist10));
+  EXPECT_FALSE(target.UpdateMinDistance(edge[0], edge[1], &dist10));
 
   // Reset dist0 which was updated.
   dist0 = S2MaxDistance(S1ChordAngle::Degrees(0));
@@ -142,7 +142,7 @@ TEST(EdgeTarget, UpdateMaxDistance) {
   auto test_edge = ParsePointsOrDie("0:2, 0:3");
   EXPECT_TRUE(target.UpdateMinDistance(test_edge[0], test_edge[1], &dist0));
   EXPECT_NEAR(4.0, S1ChordAngle(dist0).degrees(), 1e-15);
-  EXPECT_FALSE(target.UpdateMinDistance(p, &dist10));
+  EXPECT_FALSE(target.UpdateMinDistance(test_edge[0], test_edge[1], &dist10));
 
   // Reset dist0 which was updated.
   dist0 = S2MaxDistance(S1ChordAngle::Degrees(0));
@@ -193,7 +193,7 @@ TEST(CellTarget, UpdateMaxDistance) {
   // Test for edges.
   auto test_edge = ParsePointsOrDie("0:2, 0:3");
   EXPECT_TRUE(target.UpdateMinDistance(test_edge[0], test_edge[1], &dist0));
-  EXPECT_FALSE(target.UpdateMinDistance(p, &dist10));
+  EXPECT_FALSE(target.UpdateMinDistance(test_edge[0], test_edge[1], &dist10));
 
   // Reset dist0 which was updated.
   dist0 = S2MaxDistance(S1ChordAngle::Degrees(0));
@@ -251,8 +251,8 @@ TEST(CellTarget, UpdateMaxDistanceToCellAntipodal) {
 
 vector<int> GetContainingShapes(S2MaxDistanceTarget* target,
                                 const S2ShapeIndex& index, int max_shapes) {
-  gtl::btree_set<int32> shape_ids;
-  (void) target->VisitContainingShapes(
+  absl::btree_set<int32> shape_ids;
+  (void)target->VisitContainingShapes(
       index, [&shape_ids, max_shapes](S2Shape* containing_shape,
                                       const S2Point& target_point) {
         shape_ids.insert(containing_shape->id());
@@ -273,7 +273,7 @@ TEST(PointTarget, VisitContainingShapes) {
 }
 
 TEST(EdgeTarget, VisitContainingShapes) {
-  // Only shapes 2 and 4 should contain the target point.
+  // Only shapes 2 and 4 should contain the target edge.
   auto index = MakeIndexOrDie(
       "1:1 # 1:1, 2:2 # 0:0, 0:3, 3:0 | 6:6, 6:9, 9:6 | 0:0, 0:4, 4:0");
   // Test against antipodal edge.

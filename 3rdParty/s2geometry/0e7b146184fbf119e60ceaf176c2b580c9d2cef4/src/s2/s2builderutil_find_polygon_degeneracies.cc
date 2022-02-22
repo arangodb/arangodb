@@ -17,13 +17,15 @@
 
 #include "s2/s2builderutil_find_polygon_degeneracies.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <utility>
 #include <vector>
 
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2builder_graph.h"
+#include "s2/s2builderutil_graph_shape.h"
 #include "s2/s2contains_vertex_query.h"
 #include "s2/s2crossing_edge_query.h"
 #include "s2/s2edge_crosser.h"
@@ -35,12 +37,16 @@ using std::make_pair;
 using std::pair;
 using std::vector;
 
+using EdgeType = S2Builder::EdgeType;
 using Graph = S2Builder::Graph;
 using GraphOptions = S2Builder::GraphOptions;
 
 using Edge = Graph::Edge;
 using EdgeId = Graph::EdgeId;
 using VertexId = Graph::VertexId;
+
+using DegenerateEdges = GraphOptions::DegenerateEdges;
+using SiblingPairs = GraphOptions::SiblingPairs;
 
 using ShapeEdgeId = s2shapeutil::ShapeEdgeId;
 
@@ -102,9 +108,7 @@ vector<PolygonDegeneracy> DegeneracyFinder::Run(S2Error* error) {
   // vector, and mark any vertices with unbalanced edges in the
   // "is_vertex_unbalanced_" vector.
   int num_degeneracies = ComputeDegeneracies();
-  if (num_degeneracies == 0) {
-    return vector<PolygonDegeneracy>();
-  }
+  if (num_degeneracies == 0) return {};
 
   // If all edges are degenerate, then use IsFullPolygon() to classify the
   // degeneracies (they are necessarily all the same type).
@@ -155,8 +159,8 @@ vector<PolygonDegeneracy> DegeneracyFinder::Run(S2Error* error) {
       known_vertex = FindUnbalancedVertex();
       known_vertex_sign = ContainsVertexSign(known_vertex);
     }
-    const int kMaxUnindexedContainsCalls = 20;  // Tuned using benchmarks.
-    if (num_unknown_signs <= kMaxUnindexedContainsCalls) {
+    const int kMaxUnindexedSignComputations = 25;  // Tuned using benchmarks.
+    if (num_unknown_signs <= kMaxUnindexedSignComputations) {
       ComputeUnknownSignsBruteForce(known_vertex, known_vertex_sign,
                                     &components);
     } else {
@@ -251,7 +255,7 @@ bool DegeneracyFinder::CrossingParity(VertexId v0, VertexId v1,
   int crossings = 0;
   S2Point p0 = g_.vertex(v0);
   S2Point p1 = g_.vertex(v1);
-  S2Point p0_ref = S2::Ortho(p0);
+  S2Point p0_ref = S2::RefDir(p0);
   for (const Edge& edge : out_.edges(v0)) {
     if (edge.second == v1) {
       if (include_same) ++crossings;
@@ -310,30 +314,6 @@ void DegeneracyFinder::ComputeUnknownSignsBruteForce(
   }
 }
 
-// An S2Shape representing the edges in an S2Builder::Graph.
-class GraphShape final : public S2Shape {
- public:
-  explicit GraphShape(const Graph* g) : g_(*g) {}
-  int num_edges() const override { return g_.num_edges(); }
-  Edge edge(int e) const override {
-    Graph::Edge g_edge = g_.edge(e);
-    return Edge(g_.vertex(g_edge.first), g_.vertex(g_edge.second));
-  }
-  int dimension() const override { return 1; }
-  ReferencePoint GetReferencePoint() const override {
-    return ReferencePoint::Contained(false);
-  }
-  int num_chains() const override { return g_.num_edges(); }
-  Chain chain(int i) const override { return Chain(i, 1); }
-  Edge chain_edge(int i, int j) const override { return edge(i); }
-  ChainPosition chain_position(int e) const override {
-    return ChainPosition(e, 0);
-  }
-
- private:
-  const Graph& g_;
-};
-
 // Like ComputeUnknownSignsBruteForce, except that this method uses an index
 // to find the set of edges that cross a given edge.
 void DegeneracyFinder::ComputeUnknownSignsIndexed(
@@ -377,18 +357,37 @@ vector<PolygonDegeneracy> DegeneracyFinder::MergeDegeneracies(
   return result;
 }
 
+void CheckGraphOptions(const Graph& g) {
+  S2_DCHECK(g.options().edge_type() == EdgeType::DIRECTED);
+  S2_DCHECK(g.options().degenerate_edges() == DegenerateEdges::DISCARD ||
+         g.options().degenerate_edges() == DegenerateEdges::DISCARD_EXCESS);
+  S2_DCHECK(g.options().sibling_pairs() == SiblingPairs::DISCARD ||
+         g.options().sibling_pairs() == SiblingPairs::DISCARD_EXCESS);
+}
+
 }  // namespace
 
-vector<PolygonDegeneracy> FindPolygonDegeneracies(const Graph& graph,
+vector<PolygonDegeneracy> FindPolygonDegeneracies(const Graph& g,
                                                   S2Error* error) {
-  using DegenerateEdges = GraphOptions::DegenerateEdges;
-  using SiblingPairs = GraphOptions::SiblingPairs;
-  S2_DCHECK(graph.options().degenerate_edges() == DegenerateEdges::DISCARD ||
-         graph.options().degenerate_edges() == DegenerateEdges::DISCARD_EXCESS);
-  S2_DCHECK(graph.options().sibling_pairs() == SiblingPairs::DISCARD ||
-         graph.options().sibling_pairs() == SiblingPairs::DISCARD_EXCESS);
+  CheckGraphOptions(g);
+  if (g.options().degenerate_edges() == DegenerateEdges::DISCARD &&
+      g.options().sibling_pairs() == SiblingPairs::DISCARD) {
+    return {};  // All degeneracies have already been discarded.
+  }
+  return DegeneracyFinder(&g).Run(error);
+}
 
-  return DegeneracyFinder(&graph).Run(error);
+bool IsFullyDegenerate(const S2Builder::Graph& g) {
+  CheckGraphOptions(g);
+  const vector<Edge>& edges = g.edges();
+  for (int e = 0; e < g.num_edges(); ++e) {
+    Edge edge = edges[e];
+    if (edge.first == edge.second) continue;
+    if (!std::binary_search(edges.begin(), edges.end(), Graph::reverse(edge))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace s2builderutil

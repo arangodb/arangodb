@@ -79,8 +79,7 @@ TEST(S2, Rotate) {
     double distance = M_PI * pow(1e-15, S2Testing::rnd.RandDouble());
     // Sometimes choose points near the far side of the axis.
     if (S2Testing::rnd.OneIn(5)) distance = M_PI - distance;
-    S2Point p = S2::InterpolateAtDistance(S1Angle::Radians(distance),
-                                                  axis, target);
+    S2Point p = S2::GetPointOnLine(axis, target, S1Angle::Radians(distance));
     // Choose the rotation angle.
     double angle = 2 * M_PI * pow(1e-15, S2Testing::rnd.RandDouble());
     if (S2Testing::rnd.OneIn(3)) angle = -angle;

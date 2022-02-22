@@ -18,9 +18,9 @@
 #ifndef S2_S2LATLNG_RECT_BOUNDER_H_
 #define S2_S2LATLNG_RECT_BOUNDER_H_
 
-#include "s2/s2point.h"
 #include "s2/s2latlng.h"
 #include "s2/s2latlng_rect.h"
+#include "s2/s2point.h"
 
 // This class computes a bounding rectangle that contains all edges defined
 // by a vertex chain v0, v1, v2, ...  All vertices must be unit length.

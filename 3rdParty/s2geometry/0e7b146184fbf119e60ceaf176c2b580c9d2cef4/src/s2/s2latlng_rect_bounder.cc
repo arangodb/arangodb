@@ -151,8 +151,17 @@ void S2LatLngRectBounder::AddInternal(const S2Point& b,
         // be spent getting from A to B; the remainder bounds the round-trip
         // distance (in latitude) from A or B to the min or max latitude
         // attained along the edge AB.
-        double lat_budget = 2 * asin(0.5 * (a_ - b).Norm() * sin(max_lat));
-        double max_delta = 0.5*(lat_budget - lat_ab.GetLength()) + DBL_EPSILON;
+        //
+        // There is a maximum relative error of 4.5 * DBL_EPSILON in computing
+        // the squared distance (a_ - b), which means a maximum error of (4.5
+        // / 2 + 0.5) == 2.75 * DBL_EPSILON in computing Norm().  The sin()
+        // and multiply each have a relative error of 0.5 * DBL_EPSILON which
+        // we round up to a total of 4 * DBL_EPSILON.
+        double lat_budget_z = 0.5 * (a_ - b).Norm() * sin(max_lat);
+        double lat_budget = 2 * asin(min((1 + 4 * DBL_EPSILON) * lat_budget_z,
+                                         1.0));
+        double max_delta = 0.5 * (lat_budget - lat_ab.GetLength()) +
+                           DBL_EPSILON;
 
         // Test whether AB passes through the point of maximum latitude or
         // minimum latitude.  If the dot product(s) are small enough then the
@@ -331,7 +340,7 @@ S2LatLngRect S2LatLngRectBounder::ExpandForSubregions(
 
 S2LatLng S2LatLngRectBounder::MaxErrorForTests() {
   // The maximum error in the latitude calculation is
-  //    3.84 * DBL_EPSILON   for the RobustCrossProd calculation
+  //    3.84 * DBL_EPSILON   for the cross product calculation (see above)
   //    0.96 * DBL_EPSILON   for the Latitude() calculation
   //    5    * DBL_EPSILON   added by AddPoint/GetBound to compensate for error
   //    ------------------

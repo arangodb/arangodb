@@ -74,12 +74,15 @@
 #include <iostream>
 #include <memory>
 #include <numeric>
-#include <string>
+#include <utility>
 #include <vector>
+
+#include "absl/cleanup/cleanup.h"
+#include "absl/memory/memory.h"
 
 #include "s2/base/casts.h"
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/memory/memory.h"
+#include "s2/base/log_severity.h"
 #include "s2/util/bits/bits.h"
 #include "s2/id_set_lexicon.h"
 #include "s2/mutable_s2shape_index.h"
@@ -102,9 +105,11 @@
 #include "s2/s2predicates.h"
 #include "s2/s2shapeutil_visit_crossing_edge_pairs.h"
 #include "s2/s2text_format.h"
+#include "s2/util/gtl/dense_hash_set.h"
 
 using absl::make_unique;
 using gtl::compact_array;
+using gtl::dense_hash_set;
 using std::max;
 using std::pair;
 using std::unique_ptr;
@@ -113,7 +118,39 @@ using std::vector;
 // Internal flag intended to be set from within a debugger.
 bool s2builder_verbose = false;
 
-S1Angle S2Builder::SnapFunction::max_edge_deviation() const {
+S2Builder::Options::Options()
+    : snap_function_(
+          make_unique<s2builderutil::IdentitySnapFunction>(S1Angle::Zero())) {
+}
+
+S2Builder::Options::Options(const SnapFunction& snap_function)
+    : snap_function_(snap_function.Clone()) {
+}
+
+S2Builder::Options::Options(const Options& options)
+    : snap_function_(options.snap_function_->Clone()),
+      split_crossing_edges_(options.split_crossing_edges_),
+      intersection_tolerance_(options.intersection_tolerance_),
+      simplify_edge_chains_(options.simplify_edge_chains_),
+      idempotent_(options.idempotent_),
+      memory_tracker_(options.memory_tracker_) {
+}
+
+S2Builder::Options& S2Builder::Options::operator=(const Options& options) {
+  snap_function_ = options.snap_function_->Clone();
+  split_crossing_edges_ = options.split_crossing_edges_;
+  intersection_tolerance_ = options.intersection_tolerance_;
+  simplify_edge_chains_ = options.simplify_edge_chains_;
+  idempotent_ = options.idempotent_;
+  memory_tracker_ = options.memory_tracker_;
+  return *this;
+}
+
+S1Angle S2Builder::Options::edge_snap_radius() const {
+  return snap_function().snap_radius() + intersection_tolerance();
+}
+
+S1Angle S2Builder::Options::max_edge_deviation() const {
   // We want max_edge_deviation() to be large enough compared to snap_radius()
   // such that edge splitting is rare.
   //
@@ -130,33 +167,9 @@ S1Angle S2Builder::SnapFunction::max_edge_deviation() const {
   // actual edge deviation exceeds the limit; in practice, splitting is rare
   // even with long edges.)  Note that it is always possible to split edges
   // when max_edge_deviation() is exceeded; see MaybeAddExtraSites().
-  S2_DCHECK_LE(snap_radius(), kMaxSnapRadius());
+  S2_DCHECK_LE(snap_function().snap_radius(), SnapFunction::kMaxSnapRadius());
   const double kMaxEdgeDeviationRatio = 1.1;
-  return kMaxEdgeDeviationRatio * snap_radius();
-}
-
-S2Builder::Options::Options()
-    : snap_function_(
-          make_unique<s2builderutil::IdentitySnapFunction>(S1Angle::Zero())) {
-}
-
-S2Builder::Options::Options(const SnapFunction& snap_function)
-    : snap_function_(snap_function.Clone()) {
-}
-
-S2Builder::Options::Options(const Options& options)
-    :  snap_function_(options.snap_function_->Clone()),
-       split_crossing_edges_(options.split_crossing_edges_),
-       simplify_edge_chains_(options.simplify_edge_chains_),
-       idempotent_(options.idempotent_) {
-}
-
-S2Builder::Options& S2Builder::Options::operator=(const Options& options) {
-  snap_function_ = options.snap_function_->Clone();
-  split_crossing_edges_ = options.split_crossing_edges_;
-  simplify_edge_chains_ = options.simplify_edge_chains_;
-  idempotent_ = options.idempotent_;
-  return *this;
+  return kMaxEdgeDeviationRatio * edge_snap_radius();
 }
 
 bool operator==(const S2Builder::GraphOptions& x,
@@ -200,49 +213,67 @@ void S2Builder::Init(const Options& options) {
   // radius" used when evaluating exact predicates (s2predicates.h).
   site_snap_radius_ca_ = S1ChordAngle(snap_radius);
 
-  // When split_crossing_edges() is true, we need to use a larger snap radius
-  // for edges than for vertices to ensure that both edges are snapped to the
-  // edge intersection location.  This is because the computed intersection
-  // point is not exact; it may be up to kIntersectionError away from its true
-  // position.  The computed intersection point might then be snapped to some
-  // other vertex up to snap_radius away.  So to ensure that both edges are
-  // snapped to a common vertex, we need to increase the snap radius for edges
-  // to at least the sum of these two values (calculated conservatively).
-  S1Angle edge_snap_radius = snap_radius;
-  if (!options.split_crossing_edges()) {
-    edge_snap_radius_ca_ = site_snap_radius_ca_;
-  } else {
-    edge_snap_radius += S2::kIntersectionError;
-    edge_snap_radius_ca_ = RoundUp(edge_snap_radius);
-  }
+  // When intersection_tolerance() is non-zero we need to use a larger snap
+  // radius for edges than for vertices to ensure that both edges are snapped
+  // to the edge intersection location.  This is because the computed
+  // intersection point is not exact; it may be up to intersection_tolerance()
+  // away from its true position.  The computed intersection point might then
+  // be snapped to some other vertex up to snap_radius away.  So to ensure
+  // that both edges are snapped to a common vertex, we need to increase the
+  // snap radius for edges to at least the sum of these two values (calculated
+  // conservatively).
+  S1Angle edge_snap_radius = options.edge_snap_radius();
+  edge_snap_radius_ca_ = RoundUp(edge_snap_radius);
   snapping_requested_ = (edge_snap_radius > S1Angle::Zero());
 
   // Compute the maximum distance that a vertex can be separated from an
   // edge while still affecting how that edge is snapped.
-  max_edge_deviation_ = snap_function.max_edge_deviation();
+  max_edge_deviation_ = options.max_edge_deviation();
   edge_site_query_radius_ca_ = S1ChordAngle(
       max_edge_deviation_ + snap_function.min_edge_vertex_separation());
 
   // Compute the maximum edge length such that even if both endpoints move by
-  // the maximum distance allowed (i.e., snap_radius), the center of the edge
-  // will still move by less than max_edge_deviation().  This saves us a lot
-  // of work since then we don't need to check the actual deviation.
-  min_edge_length_to_split_ca_ = S1ChordAngle::Radians(
-      2 * acos(sin(snap_radius) / sin(max_edge_deviation_)));
+  // the maximum distance allowed (i.e., edge_snap_radius), the center of the
+  // edge will still move by less than max_edge_deviation().  This saves us a
+  // lot of work since then we don't need to check the actual deviation.
+  if (!snapping_requested_) {
+    min_edge_length_to_split_ca_ = S1ChordAngle::Infinity();
+  } else {
+    // This value varies between 30 and 50 degrees depending on the snap radius.
+    min_edge_length_to_split_ca_ = S1ChordAngle::Radians(
+        2 * acos(sin(edge_snap_radius) / sin(max_edge_deviation_)));
+  }
 
-  // If the condition below is violated, then AddExtraSites() needs to be
-  // modified to check that snapped edges pass on the same side of each "site
-  // to avoid" as the input edge.  Currently it doesn't need to do this
-  // because the condition below guarantees that if the snapped edge passes on
-  // the wrong side of the site then it is also too close, which will cause a
-  // separation site to be added.
+  // In rare cases we may need to explicitly check that the input topology is
+  // preserved, i.e. that edges do not cross vertices when snapped.  This is
+  // only necessary (1) for vertices added using ForceVertex(), and (2) when the
+  // snap radius is smaller than intersection_tolerance() (which is typically
+  // either zero or S2::kIntersectionError, about 9e-16 radians).  This
+  // condition arises because when a geodesic edge is snapped, the edge center
+  // can move further than its endpoints.  This can cause an edge to pass on the
+  // wrong side of an input vertex.  (Note that this could not happen in a
+  // planar version of this algorithm.)  Usually we don't need to consider this
+  // possibility explicitly, because if the snapped edge passes on the wrong
+  // side of a vertex then it is also closer than min_edge_vertex_separation()
+  // to that vertex, which will cause a separation site to be added.
   //
-  // Currently max_edge_deviation() is at most 1.1 * snap_radius(), whereas
-  // min_edge_vertex_separation() is at least 0.219 * snap_radius() (based on
-  // S2CellIdSnapFunction, which is currently the worst case).
-  S2_DCHECK_LE(snap_function.max_edge_deviation(),
-            snap_function.snap_radius() +
-            snap_function.min_edge_vertex_separation());
+  // If the condition below is true then we need to check all sites (i.e.,
+  // snapped input vertices) for topology changes.  However this is almost never
+  // the case because
+  //
+  //            max_edge_deviation() == 1.1 * edge_snap_radius()
+  //      and   min_edge_vertex_separation() >= 0.219 * snap_radius()
+  //
+  // for all currently implemented snap functions.  The condition below is
+  // only true when intersection_tolerance() is non-zero (which causes
+  // edge_snap_radius() to exceed snap_radius() by S2::kIntersectionError) and
+  // snap_radius() is very small (at most S2::kIntersectionError / 1.19).
+  check_all_site_crossings_ = (options.max_edge_deviation() >
+                               options.edge_snap_radius() +
+                               snap_function.min_edge_vertex_separation());
+  if (options.intersection_tolerance() <= S1Angle::Zero()) {
+    S2_DCHECK(!check_all_site_crossings_);
+  }
 
   // To implement idempotency, we check whether the input geometry could
   // possibly be the output of a previous S2Builder invocation.  This involves
@@ -283,6 +314,8 @@ void S2Builder::Init(const Options& options) {
   // idempotency, and can also save work.  If we discover any reason that the
   // input geometry needs to be modified, snapping_needed_ is set to true.
   snapping_needed_ = false;
+
+  tracker_.Init(options.memory_tracker());
 }
 
 void S2Builder::clear_labels() {
@@ -340,20 +373,32 @@ S2Builder::InputVertexId S2Builder::AddVertex(const S2Point& v) {
   // vertices once they have all been added, remove duplicates, and update the
   // edges.
   if (input_vertices_.empty() || v != input_vertices_.back()) {
+    if (!tracker_.AddSpace(&input_vertices_, 1)) return -1;
     input_vertices_.push_back(v);
   }
   return input_vertices_.size() - 1;
 }
 
+void S2Builder::AddIntersection(const S2Point& vertex) {
+  // It is an error to call this method without first setting
+  // intersection_tolerance() to a non-zero value.
+  S2_DCHECK_GT(options_.intersection_tolerance(), S1Angle::Zero());
+
+  // Calling this method also overrides the idempotent() option.
+  snapping_needed_ = true;
+
+  AddVertex(vertex);
+}
+
 void S2Builder::AddEdge(const S2Point& v0, const S2Point& v1) {
   S2_DCHECK(!layers_.empty()) << "Call StartLayer before adding any edges";
-
   if (v0 == v1 && (layer_options_.back().degenerate_edges() ==
                    GraphOptions::DegenerateEdges::DISCARD)) {
     return;
   }
   InputVertexId j0 = AddVertex(v0);
   InputVertexId j1 = AddVertex(v1);
+  if (!tracker_.AddSpace(&input_edges_, 1)) return;
   input_edges_.push_back(InputEdge(j0, j1));
 
   // If there are any labels, then attach them to this input edge.
@@ -370,10 +415,22 @@ void S2Builder::AddEdge(const S2Point& v0, const S2Point& v1) {
   }
 }
 
+void S2Builder::AddPolyline(S2PointSpan polyline) {
+  for (int i = 1; i < polyline.size(); ++i) {
+    AddEdge(polyline[i - 1], polyline[i]);
+  }
+}
+
 void S2Builder::AddPolyline(const S2Polyline& polyline) {
   const int n = polyline.num_vertices();
   for (int i = 1; i < n; ++i) {
     AddEdge(polyline.vertex(i - 1), polyline.vertex(i));
+  }
+}
+
+void S2Builder::AddLoop(S2PointLoopSpan loop) {
+  for (int i = 0; i < loop.size(); ++i) {
+    AddEdge(loop[i], loop[i + 1]);
   }
 }
 
@@ -413,6 +470,7 @@ void S2Builder::AddIsFullPolygonPredicate(IsFullPolygonPredicate predicate) {
 }
 
 void S2Builder::ForceVertex(const S2Point& vertex) {
+  if (!tracker_.AddSpace(&sites_, 1)) return;
   sites_.push_back(vertex);
 }
 
@@ -460,8 +518,8 @@ bool S2Builder::Build(S2Error* error) {
   // by declaring a local "tmp_error", but it seems better to make clients
   // think about error handling.
   S2_CHECK(error != nullptr);
-  error->Clear();
   error_ = error;
+  error_->Clear();
 
   // Mark the end of the last layer.
   layer_begins_.push_back(input_edges_.size());
@@ -473,10 +531,12 @@ bool S2Builder::Build(S2Error* error) {
   ChooseSites();
   BuildLayers();
   Reset();
-  return error->ok();
+  if (!tracker_.ok()) *error_ = tracker_.error();
+  return error_->ok();
 }
 
 void S2Builder::Reset() {
+  // Note that these calls do not change vector capacities.
   input_vertices_.clear();
   input_edges_.clear();
   layers_.clear();
@@ -493,35 +553,47 @@ void S2Builder::Reset() {
 }
 
 void S2Builder::ChooseSites() {
-  if (input_vertices_.empty()) return;
+  if (!tracker_.ok() || input_vertices_.empty()) return;
 
+  // Note that although we always create an S2ShapeIndex, often it is not
+  // actually built (because this happens lazily).  Therefore we only test
+  // its memory usage at the places where it is used.
   MutableS2ShapeIndex input_edge_index;
-  input_edge_index.Add(make_unique<VertexIdEdgeVectorShape>(
-      input_edges_, input_vertices_));
+  input_edge_index.set_memory_tracker(tracker_.tracker());
+  input_edge_index.Add(make_unique<VertexIdEdgeVectorShape>(input_edges_,
+                                                            input_vertices_));
   if (options_.split_crossing_edges()) {
     AddEdgeCrossings(input_edge_index);
   }
+
   if (snapping_requested_) {
     S2PointIndex<SiteId> site_index;
+    auto _ = absl::MakeCleanup([&]() { tracker_.DoneSiteIndex(site_index); });
     AddForcedSites(&site_index);
     ChooseInitialSites(&site_index);
+    if (!tracker_.FixSiteIndexTally(site_index)) return;
     CollectSiteEdges(site_index);
   }
   if (snapping_needed_) {
     AddExtraSites(input_edge_index);
   } else {
-    CopyInputEdges();
+    ChooseAllVerticesAsSites();
   }
 }
 
-void S2Builder::CopyInputEdges() {
-  // Sort the input vertices, discard duplicates, and update the input edges
-  // to refer to the pruned vertex list.  (We sort in the same order used by
-  // ChooseInitialSites() to avoid inconsistencies in tests.)
+void S2Builder::ChooseAllVerticesAsSites() {
+  // Sort the input vertices, discard duplicates, and use the result as the
+  // list of sites.  (We sort in the same order used by ChooseInitialSites()
+  // to avoid inconsistencies in tests.)  We also copy the result back to
+  // input_vertices_ and update the input edges to use the new vertex
+  // numbering (so that InputVertexId == SiteId).  This simplifies the
+  // implementation of SnapEdge() for this case.
+  sites_.clear();
+  if (!tracker_.AddSpaceExact(&sites_, input_vertices_.size())) return;
+  const int64 kTempPerVertex = sizeof(InputVertexKey) + sizeof(InputVertexId);
+  if (!tracker_.TallyTemp(input_vertices_.size() * kTempPerVertex)) return;
   vector<InputVertexKey> sorted = SortInputVertices();
   vector<InputVertexId> vmap(input_vertices_.size());
-  sites_.clear();
-  sites_.reserve(input_vertices_.size());
   for (int in = 0; in < sorted.size(); ) {
     const S2Point& site = input_vertices_[sorted[in].second];
     vmap[sorted[in].second] = sites_.size();
@@ -530,7 +602,7 @@ void S2Builder::CopyInputEdges() {
     }
     sites_.push_back(site);
   }
-  input_vertices_ = sites_;
+  input_vertices_ = sites_;  // Does not change allocated size.
   for (InputEdge& e : input_edges_) {
     e.first = vmap[e.first];
     e.second = vmap[e.second];
@@ -608,21 +680,28 @@ vector<S2Builder::InputVertexKey> S2Builder::SortInputVertices() {
 // points to input_vertices_.  (The intersection points will be snapped and
 // merged with the other vertices during site selection.)
 void S2Builder::AddEdgeCrossings(const MutableS2ShapeIndex& input_edge_index) {
+  input_edge_index.ForceBuild();
+  if (!tracker_.ok()) return;
+
   // We need to build a list of intersections and add them afterwards so that
   // we don't reallocate vertices_ during the VisitCrossings() call.
   vector<S2Point> new_vertices;
+  auto _ = absl::MakeCleanup([&]() { tracker_.Untally(new_vertices); });
   s2shapeutil::VisitCrossingEdgePairs(
       input_edge_index, s2shapeutil::CrossingType::INTERIOR,
-      [&new_vertices](const s2shapeutil::ShapeEdge& a,
-                      const s2shapeutil::ShapeEdge& b, bool) {
+      [this, &new_vertices](const s2shapeutil::ShapeEdge& a,
+                            const s2shapeutil::ShapeEdge& b, bool) {
+        if (!tracker_.AddSpace(&new_vertices, 1)) return false;
         new_vertices.push_back(
             S2::GetIntersection(a.v0(), a.v1(), b.v0(), b.v1()));
-        return true;  // Continue visiting.
+        return true;
       });
-  if (!new_vertices.empty()) {
-    snapping_needed_ = true;
-    for (const auto& vertex : new_vertices) AddVertex(vertex);
-  }
+  if (new_vertices.empty()) return;
+
+  snapping_needed_ = true;
+  if (!tracker_.AddSpaceExact(&input_vertices_, new_vertices.size())) return;
+  input_vertices_.insert(input_vertices_.end(),
+                         new_vertices.begin(), new_vertices.end());
 }
 
 void S2Builder::AddForcedSites(S2PointIndex<SiteId>* site_index) {
@@ -631,13 +710,14 @@ void S2Builder::AddForcedSites(S2PointIndex<SiteId>* site_index) {
   sites_.erase(std::unique(sites_.begin(), sites_.end()), sites_.end());
   // Add the forced sites to the index.
   for (SiteId id = 0; id < sites_.size(); ++id) {
+    if (!tracker_.TallyIndexedSite()) return;
     site_index->Add(sites_[id], id);
   }
   num_forced_sites_ = sites_.size();
 }
 
 void S2Builder::ChooseInitialSites(S2PointIndex<SiteId>* site_index) {
-  // Find all points whose distance is <= min_site_separation_ca_.
+  // Prepare to find all points whose distance is <= min_site_separation_ca_.
   S2ClosestPointQueryOptions options;
   options.set_conservative_max_distance(min_site_separation_ca_);
   S2ClosestPointQuery<SiteId> site_query(site_index, options);
@@ -657,32 +737,43 @@ void S2Builder::ChooseInitialSites(S2PointIndex<SiteId>* site_index) {
   // "0:0, 0:0" rather than the expected "0:0, 0:1", because the snap radius
   // is approximately sqrt(2) degrees and therefore it is legal to snap both
   // input points to "0:0".  "Snap first" produces "0:0, 0:1" as expected.
-  for (const InputVertexKey& key : SortInputVertices()) {
+  //
+  // Track the memory used by SortInputVertices() before calling it.
+  if (!tracker_.Tally(input_vertices_.size() * sizeof(InputVertexKey))) return;
+  vector<InputVertexKey> sorted_keys = SortInputVertices();
+  auto _ = absl::MakeCleanup([&]() { tracker_.Untally(sorted_keys); });
+  for (const InputVertexKey& key : sorted_keys) {
     const S2Point& vertex = input_vertices_[key.second];
     S2Point site = SnapSite(vertex);
     // If any vertex moves when snapped, the output cannot be idempotent.
     snapping_needed_ = snapping_needed_ || site != vertex;
 
-    // FindClosestPoints() measures distances conservatively, so we need to
-    // recheck the distances using exact predicates.
-    //
-    // NOTE(ericv): When the snap radius is large compared to the average
-    // vertex spacing, we could possibly avoid the call the FindClosestPoints
-    // by checking whether sites_.back() is close enough.
-    S2ClosestPointQueryPointTarget target(site);
-    site_query.FindClosestPoints(&target, &results);
     bool add_site = true;
-    for (const auto& result : results) {
-      if (s2pred::CompareDistance(site, result.point(),
-                                  min_site_separation_ca_) <= 0) {
-        add_site = false;
-        // This pair of sites is too close.  If the sites are distinct, then
-        // the output cannot be idempotent.
-        snapping_needed_ = snapping_needed_ || site != result.point();
+    if (site_snap_radius_ca_ == S1ChordAngle::Zero()) {
+      add_site = sites_.empty() || site != sites_.back();
+    } else {
+      // FindClosestPoints() measures distances conservatively, so we need to
+      // recheck the distances using exact predicates.
+      //
+      // NOTE(ericv): When the snap radius is large compared to the average
+      // vertex spacing, we could possibly avoid the call the FindClosestPoints
+      // by checking whether sites_.back() is close enough.
+      S2ClosestPointQueryPointTarget target(site);
+      site_query.FindClosestPoints(&target, &results);
+      for (const auto& result : results) {
+        if (s2pred::CompareDistance(site, result.point(),
+                                    min_site_separation_ca_) <= 0) {
+          add_site = false;
+          // This pair of sites is too close.  If the sites are distinct, then
+          // the output cannot be idempotent.
+          snapping_needed_ = snapping_needed_ || site != result.point();
+        }
       }
     }
     if (add_site) {
+      if (!tracker_.TallyIndexedSite()) return;
       site_index->Add(site, sites_.size());
+      if (!tracker_.AddSpace(&sites_, 1)) return;
       sites_.push_back(site);
       site_query.ReInit();
     }
@@ -692,7 +783,7 @@ void S2Builder::ChooseInitialSites(S2PointIndex<SiteId>* site_index) {
 S2Point S2Builder::SnapSite(const S2Point& point) const {
   if (!snapping_requested_) return point;
   S2Point site = options_.snap_function().SnapPoint(point);
-S1ChordAngle dist_moved(site, point);
+  S1ChordAngle dist_moved(site, point);
   if (dist_moved > site_snap_radius_ca_) {
     error_->Init(S2Error::BUILDER_SNAP_RADIUS_TOO_SMALL,
                  "Snap function moved vertex (%.15g, %.15g, %.15g) "
@@ -704,17 +795,21 @@ S1ChordAngle dist_moved(site, point);
   return site;
 }
 
-// For each edge, find all sites within min_edge_site_query_radius_ca_ and
+// For each edge, find all sites within edge_site_query_radius_ca_ and
 // store them in edge_sites_.  Also, to implement idempotency this method also
 // checks whether the input vertices and edges may already satisfy the output
 // criteria.  If any problems are found then snapping_needed_ is set to true.
 void S2Builder::CollectSiteEdges(const S2PointIndex<SiteId>& site_index) {
   // Find all points whose distance is <= edge_site_query_radius_ca_.
+  //
+  // Memory used by S2ClosestPointQuery is not tracked, but it is temporary,
+  // typically insignificant, and does not affect the high water mark.
   S2ClosestPointQueryOptions options;
   options.set_conservative_max_distance(edge_site_query_radius_ca_);
   S2ClosestPointQuery<SiteId> site_query(&site_index, options);
   vector<S2ClosestPointQuery<SiteId>::Result> results;
-  edge_sites_.resize(input_edges_.size());
+  if (!tracker_.AddSpaceExact(&edge_sites_, input_edges_.size())) return;
+  edge_sites_.resize(input_edges_.size());  // Construct all elements.
   for (InputEdgeId e = 0; e < input_edges_.size(); ++e) {
     const InputEdge& edge = input_edges_[e];
     const S2Point& v0 = input_vertices_[edge.first];
@@ -738,20 +833,32 @@ void S2Builder::CollectSiteEdges(const S2PointIndex<SiteId>& site_index) {
       }
     }
     SortSitesByDistance(v0, sites);
+    if (!tracker_.TallyEdgeSites(*sites)) return;
   }
 }
 
+// Sorts the sites in increasing order of distance to X.
 void S2Builder::SortSitesByDistance(const S2Point& x,
                                     compact_array<SiteId>* sites) const {
-  // Sort sites in increasing order of distance to X.
   std::sort(sites->begin(), sites->end(),
             [&x, this](SiteId i, SiteId j) {
       return s2pred::CompareDistances(x, sites_[i], sites_[j]) < 0;
     });
 }
 
-// There are two situatons where we need to add extra Voronoi sites in order
-// to ensure that the snapped edges meet the output requirements:
+// Like the above, but inserts "new_site_id" into an already-sorted list.
+void S2Builder::InsertSiteByDistance(SiteId new_site_id, const S2Point& x,
+                                     compact_array<SiteId>* sites) {
+  if (!tracker_.ReserveEdgeSite(sites)) return;
+  sites->insert(std::lower_bound(
+      sites->begin(), sites->end(), new_site_id,
+      [&x, this](SiteId i, SiteId j) {
+        return s2pred::CompareDistances(x, sites_[i], sites_[j]) < 0;
+      }), new_site_id);
+}
+
+// There are two situatons where we need to add extra Voronoi sites in order to
+// ensure that the snapped edges meet the output requirements:
 //
 //  (1) If a snapped edge deviates from its input edge by more than
 //      max_edge_deviation(), we add a new site on the input edge near the
@@ -759,58 +866,99 @@ void S2Builder::SortSitesByDistance(const S2Point& x,
 //      into two pieces, so that it follows the input edge more closely.
 //
 //  (2) If a snapped edge is closer than min_edge_vertex_separation() to any
-//      nearby site (the "site to avoid"), then we add a new site (the
-//      "separation site") on the input edge near the site to avoid.  This
-//      causes the snapped edge to follow the input edge more closely and is
-//      guaranteed to increase the separation to the required distance.
+//      nearby site (the "site to avoid") or passes on the wrong side of it
+//      relative to the input edge, then we add a new site (the "separation
+//      site") along the input edge near the site to avoid.  This causes the
+//      snapped edge to follow the input edge more closely, so that it is
+//      guaranteed to pass on the correct side of the site to avoid with a
+//      separation of at least the required distance.
 //
 // We check these conditions by snapping all the input edges to a chain of
 // Voronoi sites and then testing each edge in the chain.  If a site needs to
 // be added, we mark all nearby edges for re-snapping.
 void S2Builder::AddExtraSites(const MutableS2ShapeIndex& input_edge_index) {
-  // When options_.split_crossing_edges() is true, this function may be called
-  // even when site_snap_radius_ca_ == 0 (because edge_snap_radius_ca_ > 0).
-  // However neither of the conditions above apply in that case.
-  if (site_snap_radius_ca_ == S1ChordAngle::Zero()) return;
+  // Note that we could save some work in AddSnappedEdges() by saving the
+  // snapped edge chains in a vector, but currently this is not worthwhile
+  // since SnapEdge() accounts for less than 5% of the runtime.
 
-  vector<SiteId> chain;  // Temporary
-  vector<InputEdgeId> snap_queue;
-  for (InputEdgeId max_e = 0; max_e < input_edges_.size(); ++max_e) {
-    snap_queue.push_back(max_e);
-    while (!snap_queue.empty()) {
-      InputEdgeId e = snap_queue.back();
-      snap_queue.pop_back();
+  // Note that we intentionally use dense_hash_set rather than flat_hash_set
+  // in order to ensure that iteration is deterministic when debugging.
+  dense_hash_set<InputEdgeId> edges_to_resnap(16 /*expected_max_elements*/);
+  edges_to_resnap.set_empty_key(-1);
+  edges_to_resnap.set_deleted_key(-2);
+
+  vector<SiteId> chain;  // Temporary storage.
+  int num_edges_after_snapping = 0;
+
+  // CheckEdge() defines the body of the loops below.
+  const auto CheckEdge = [&](InputEdgeId e) -> bool {
+      if (!tracker_.ok()) return false;
       SnapEdge(e, &chain);
-      // We could save the snapped chain here in a snapped_chains_ vector, to
-      // avoid resnapping it in AddSnappedEdges() below, however currently
-      // SnapEdge only accounts for less than 5% of the runtime.
-      MaybeAddExtraSites(e, max_e, chain, input_edge_index, &snap_queue);
+      edges_to_resnap.erase(e);
+      num_edges_after_snapping += chain.size();
+      MaybeAddExtraSites(e, chain, input_edge_index, &edges_to_resnap);
+      return true;
+    };
+
+  // The first pass is different because we snap every edge.  In the following
+  // passes we only snap edges that are near the extra sites that were added.
+  S2_VLOG(1) << "Before pass 0: sites=" << sites_.size();
+  for (InputEdgeId e = 0; e < input_edges_.size(); ++e) {
+    if (!CheckEdge(e)) return;
+  }
+  S2_VLOG(1) << "Pass 0: edges snapped=" << input_edges_.size()
+          << ", output edges=" << num_edges_after_snapping
+          << ", sites=" << sites_.size();
+
+  for (int num_passes = 1; !edges_to_resnap.empty(); ++num_passes) {
+    auto edges_to_snap = edges_to_resnap;
+    edges_to_resnap.clear();
+    num_edges_after_snapping = 0;
+    for (InputEdgeId e : edges_to_snap) {
+      if (!CheckEdge(e)) return;
     }
+    S2_VLOG(1) << "Pass " << num_passes
+            << ": edges snapped=" << edges_to_snap.size()
+            << ", output edges=" << num_edges_after_snapping
+            << ", sites=" << sites_.size();
   }
 }
 
-void S2Builder::MaybeAddExtraSites(InputEdgeId edge_id,
-                                   InputEdgeId max_edge_id,
-                                   const vector<SiteId>& chain,
-                                   const MutableS2ShapeIndex& input_edge_index,
-                                   vector<InputEdgeId>* snap_queue) {
-  // The snapped chain is always a *subsequence* of the nearby sites
+void S2Builder::MaybeAddExtraSites(
+    InputEdgeId edge_id, const vector<SiteId>& chain,
+    const MutableS2ShapeIndex& input_edge_index,
+    dense_hash_set<InputEdgeId>* edges_to_resnap) {
+  // If the memory tracker has a periodic callback function, tally an amount
+  // of memory proportional to the work being done so that the caller has an
+  // opportunity to cancel the operation if necessary.
+  if (!tracker_.TallyTemp(chain.size() * sizeof(chain[0]))) return;
+
+  // If the input includes NaN vertices, snapping can produce an empty chain.
+  if (chain.empty()) return;
+
+  // The snapped edge chain is always a subsequence of the nearby sites
   // (edge_sites_), so we walk through the two arrays in parallel looking for
-  // sites that weren't snapped.  We also keep track of the current snapped
-  // edge, since it is the only edge that can be too close.
-  int i = 0;
-  for (SiteId id : edge_sites_[edge_id]) {
+  // sites that weren't snapped.  These are the "sites to avoid".  We also keep
+  // track of the current snapped edge, since it is the only edge that can be
+  // too close or pass on the wrong side of a site to avoid.  Vertices beyond
+  // the chain endpoints in either direction can be ignored because only the
+  // interiors of chain edges can be too close to a site to avoid.
+  const InputEdge& edge = input_edges_[edge_id];
+  const S2Point& a0 = input_vertices_[edge.first];
+  const S2Point& a1 = input_vertices_[edge.second];
+  const auto& nearby_sites = edge_sites_[edge_id];
+  for (int i = 0, j = 0; j < nearby_sites.size(); ++j) {
+    SiteId id = nearby_sites[j];
     if (id == chain[i]) {
-      if (++i == chain.size()) break;
+      // This site is a vertex of the snapped edge chain.
+      if (++i == chain.size()) {
+        break;  // Sites beyond the end of the snapped chain can be ignored.
+      }
       // Check whether this snapped edge deviates too far from its original
       // position.  If so, we split the edge by adding an extra site.
       const S2Point& v0 = sites_[chain[i - 1]];
       const S2Point& v1 = sites_[chain[i]];
       if (S1ChordAngle(v0, v1) < min_edge_length_to_split_ca_) continue;
-
-      const InputEdge& edge = input_edges_[edge_id];
-      const S2Point& a0 = input_vertices_[edge.first];
-      const S2Point& a1 = input_vertices_[edge.second];
       if (!S2::IsEdgeBNearEdgeA(a0, a1, v0, v1, max_edge_deviation_)) {
         // Add a new site on the input edge, positioned so that it splits the
         // snapped edge into two approximately equal pieces.  Then we find all
@@ -824,57 +972,109 @@ void S2Builder::MaybeAddExtraSites(InputEdgeId edge_id,
         S2Point mid = (S2::Project(v0, a0, a1) +
                        S2::Project(v1, a0, a1)).Normalize();
         S2Point new_site = GetSeparationSite(mid, v0, v1, edge_id);
-        AddExtraSite(new_site, max_edge_id, input_edge_index, snap_queue);
+        AddExtraSite(new_site, input_edge_index, edges_to_resnap);
+
+        // In the case where the edge wrapped around the sphere the "wrong
+        // way", it is not safe to continue checking this edge.  It will be
+        // marked for resnapping and we will come back to it in the next pass.
         return;
       }
-    } else if (i > 0 && id >= num_forced_sites_) {
-      // Check whether this "site to avoid" is closer to the snapped edge than
-      // min_edge_vertex_separation().  Note that this is the only edge of the
-      // chain that can be too close because its vertices must span the point
-      // where "site_to_avoid" projects onto the input edge XY (this claim
-      // relies on the fact that all sites are separated by at least the snap
-      // radius).  We don't try to avoid sites added using ForceVertex()
-      // because we don't guarantee any minimum separation from such sites.
+    } else {
+      // This site is near the input edge but is not part of the snapped chain.
+      if (i == 0) {
+        continue;  // Sites before the start of the chain can be ignored.
+      }
+      // We need to ensure that non-forced sites are separated by at least
+      // min_edge_vertex_separation() from the snapped chain.  This happens
+      // automatically as part of the algorithm except where there are portions
+      // of the input edge that are not within edge_snap_radius() of any site.
+      // These portions of the original edge are called "coverage gaps".
+      // Therefore if we find that a site to avoid that is too close to the
+      // snapped edge chain, we can fix the problem by adding a new site (the
+      // "separation site") in the corresponding coverage gap located as closely
+      // as possible to the site to avoid.  This technique is is guaranteed to
+      // produce the required minimum separation, and the entire process of
+      // adding separation sites is guaranteed to terminate.
       const S2Point& site_to_avoid = sites_[id];
       const S2Point& v0 = sites_[chain[i - 1]];
       const S2Point& v1 = sites_[chain[i]];
-      if (s2pred::CompareEdgeDistance(
+      bool add_separation_site = false;
+      if (!is_forced(id) &&
+          min_edge_site_separation_ca_ > S1ChordAngle::Zero() &&
+          s2pred::CompareEdgeDistance(
               site_to_avoid, v0, v1, min_edge_site_separation_ca_) < 0) {
-        // A snapped edge can only approach a site too closely when there are
-        // no sites near the input edge near that point.  We fix that by
-        // adding a new site along the input edge (a "separation site"), then
-        // we find all the edges near the new site (including this one) and
+        add_separation_site = true;
+      }
+      // Similarly, we also add a separation site whenever a snapped edge passes
+      // on the wrong side of a site to avoid.  Normally we don't need to worry
+      // about this, since if an edge passes on the wrong side of a nearby site
+      // then it is also too close to it.  However if the snap radius is very
+      // small and intersection_tolerance() is non-zero then we need to check
+      // this condition explicitly (see the "check_all_site_crossings_" flag for
+      // details).  We also need to check this condition explicitly for forced
+      // vertices.  Again, we can solve this problem by adding a "separation
+      // site" in the corresponding coverage gap located as closely as possible
+      // to the site to avoid.
+      //
+      // It is possible to show that when all points are projected onto the
+      // great circle through (a0, a1), no improper crossing occurs unless the
+      // the site to avoid is located between a0 and a1, and also between v0
+      // and v1.  TODO(ericv): Verify whether all these checks are necessary.
+      if (!add_separation_site &&
+          (is_forced(id) || check_all_site_crossings_) &&
+          (s2pred::Sign(a0, a1, site_to_avoid) !=
+           s2pred::Sign(v0, v1, site_to_avoid))&&
+          s2pred::CompareEdgeDirections(a0, a1, a0, site_to_avoid) > 0 &&
+          s2pred::CompareEdgeDirections(a0, a1, site_to_avoid, a1) > 0 &&
+          s2pred::CompareEdgeDirections(a0, a1, v0, site_to_avoid) > 0 &&
+          s2pred::CompareEdgeDirections(a0, a1, site_to_avoid, v1) > 0) {
+        add_separation_site = true;
+      }
+      if (add_separation_site) {
+        // We add a new site (the separation site) in the coverage gap along the
+        // input edge, located as closely as possible to the site to avoid.
+        // Then we find all the edges near the new site (including this one) and
         // add them to the snap queue.
         S2Point new_site = GetSeparationSite(site_to_avoid, v0, v1, edge_id);
         S2_DCHECK_NE(site_to_avoid, new_site);
-        AddExtraSite(new_site, max_edge_id, input_edge_index, snap_queue);
-        return;
+        AddExtraSite(new_site, input_edge_index, edges_to_resnap);
+
+        // Skip the remaining sites near this chain edge, and then continue
+        // scanning this chain.  Note that this is safe even though the call
+        // to AddExtraSite() above added a new site to "nearby_sites".
+        for (; nearby_sites[j + 1] != chain[i]; ++j) {}
       }
     }
   }
 }
 
 // Adds a new site, then updates "edge_sites"_ for all edges near the new site
-// and adds them to "snap_queue" for resnapping (unless their edge id exceeds
-// "max_edge_id", since those edges have not been snapped the first time yet).
+// and adds them to "edges_to_resnap" for resnapping.
 void S2Builder::AddExtraSite(const S2Point& new_site,
-                             InputEdgeId max_edge_id,
                              const MutableS2ShapeIndex& input_edge_index,
-                             vector<InputEdgeId>* snap_queue) {
+                             dense_hash_set<InputEdgeId>* edges_to_resnap) {
+  if (!sites_.empty()) S2_DCHECK_NE(new_site, sites_.back());
+  if (!tracker_.AddSpace(&sites_, 1)) return;
   SiteId new_site_id = sites_.size();
   sites_.push_back(new_site);
+
   // Find all edges whose distance is <= edge_site_query_radius_ca_.
   S2ClosestEdgeQuery::Options options;
   options.set_conservative_max_distance(edge_site_query_radius_ca_);
   options.set_include_interiors(false);
+
+  if (!input_edge_index.is_fresh()) input_edge_index.ForceBuild();
+  if (!tracker_.ok()) return;
+
+  // Memory used by S2ClosestEdgeQuery is not tracked, but it is temporary,
+  // typically insignificant, and does not affect the high water mark.
   S2ClosestEdgeQuery query(&input_edge_index, options);
   S2ClosestEdgeQuery::PointTarget target(new_site);
   for (const auto& result : query.FindClosestEdges(&target)) {
     InputEdgeId e = result.edge_id();
-    auto* site_ids = &edge_sites_[e];
-    site_ids->push_back(new_site_id);
-    SortSitesByDistance(input_vertices_[input_edges_[e].first], site_ids);
-    if (e <= max_edge_id) snap_queue->push_back(e);
+    const S2Point& v0 = input_vertices_[input_edges_[e].first];
+    InsertSiteByDistance(new_site_id, v0, &edge_sites_[e]);
+    edges_to_resnap->insert(e);
   }
 }
 
@@ -955,6 +1155,8 @@ void S2Builder::SnapEdge(InputEdgeId e, vector<SiteId>* chain) const {
   chain->clear();
   const InputEdge& edge = input_edges_[e];
   if (!snapping_needed_) {
+    // Note that the input vertices have been renumbered such that
+    // InputVertexId and SiteId are the same (see ChooseAllVerticesAsSites).
     chain->push_back(edge.first);
     chain->push_back(edge.second);
     return;
@@ -1047,45 +1249,58 @@ void S2Builder::SnapEdge(InputEdgeId e, vector<SiteId>* chain) const {
 }
 
 void S2Builder::BuildLayers() {
+  if (!tracker_.ok()) return;
+
   // Each output edge has an "input edge id set id" (an int32) representing
   // the set of input edge ids that were snapped to this edge.  The actual
   // InputEdgeIds can be retrieved using "input_edge_id_set_lexicon".
   vector<vector<Edge>> layer_edges;
   vector<vector<InputEdgeIdSetId>> layer_input_edge_ids;
   IdSetLexicon input_edge_id_set_lexicon;
+  vector<vector<S2Point>> layer_vertices;
   BuildLayerEdges(&layer_edges, &layer_input_edge_ids,
                   &input_edge_id_set_lexicon);
-
-  // At this point we have no further need for the input geometry or nearby
-  // site data, so we clear those fields to save space.
-  vector<S2Point>().swap(input_vertices_);
-  vector<InputEdge>().swap(input_edges_);
-  vector<compact_array<SiteId>>().swap(edge_sites_);
+  auto _ = absl::MakeCleanup([&]() {
+      for (int i = 0; i < layers_.size(); ++i) {
+        tracker_.Untally(layer_edges[i]);
+        tracker_.Untally(layer_input_edge_ids[i]);
+        if (!layer_vertices.empty()) tracker_.Untally(layer_vertices[i]);
+      }
+    });
 
   // If there are a large number of layers, then we build a minimal subset of
   // vertices for each layer.  This ensures that layer types that iterate over
   // vertices will run in time proportional to the size of that layer rather
   // than the size of all layers combined.
-  vector<vector<S2Point>> layer_vertices;
   static const int kMinLayersForVertexFiltering = 10;
   if (layers_.size() >= kMinLayersForVertexFiltering) {
     // Disable vertex filtering if it is disallowed by any layer.  (This could
     // be optimized, but in current applications either all layers allow
     // filtering or none of them do.)
-    bool allow_vertex_filtering = false;
+    bool allow_vertex_filtering = true;
     for (const auto& options : layer_options_) {
       allow_vertex_filtering &= options.allow_vertex_filtering();
     }
     if (allow_vertex_filtering) {
-      vector<Graph::VertexId> filter_tmp;  // Temporary used by FilterVertices.
+      // Track the temporary memory used by FilterVertices().  Note that
+      // although vertex filtering can increase the number of vertices stored
+      // (i.e., if the same vertex is referred to by multiple layers), it
+      // never increases storage quadratically because there can be at most
+      // two filtered vertices per edge.
+      if (!tracker_.TallyFilterVertices(sites_.size(), layer_edges)) return;
+      auto _ = absl::MakeCleanup([this]() { tracker_.DoneFilterVertices(); });
       layer_vertices.resize(layers_.size());
+      vector<Graph::VertexId> filter_tmp;  // Temporary used by FilterVertices.
       for (int i = 0; i < layers_.size(); ++i) {
         layer_vertices[i] = Graph::FilterVertices(sites_, &layer_edges[i],
                                                   &filter_tmp);
+        if (!tracker_.Tally(layer_vertices[i])) return;
       }
-      vector<S2Point>().swap(sites_);  // Release memory
+      tracker_.Clear(&sites_);  // Releases memory.
     }
   }
+  if (!tracker_.ok()) return;
+
   for (int i = 0; i < layers_.size(); ++i) {
     const vector<S2Point>& vertices = (layer_vertices.empty() ?
                                        sites_ : layer_vertices[i]);
@@ -1122,7 +1337,8 @@ void S2Builder::BuildLayerEdges(
     IdSetLexicon* input_edge_id_set_lexicon) {
   // Edge chains are simplified only when a non-zero snap radius is specified.
   // If so, we build a map from each site to the set of input vertices that
-  // snapped to that site.
+  // snapped to that site.  (Note that site_vertices is relatively small and
+  // that its memory tracking is deferred until TallySimplifyEdgeChains.)
   vector<compact_array<InputVertexId>> site_vertices;
   bool simplify = snapping_needed_ && options_.simplify_edge_chains();
   if (simplify) site_vertices.resize(sites_.size());
@@ -1134,19 +1350,28 @@ void S2Builder::BuildLayerEdges(
                     &(*layer_edges)[i], &(*layer_input_edge_ids)[i],
                     input_edge_id_set_lexicon, &site_vertices);
   }
-  if (simplify) {
-    SimplifyEdgeChains(site_vertices, layer_edges, layer_input_edge_ids,
-                       input_edge_id_set_lexicon);
-  }
+
   // We simplify edge chains before processing the per-layer GraphOptions
   // because simplification can create duplicate edges and/or sibling edge
   // pairs which may need to be removed.
+  if (simplify) {
+    SimplifyEdgeChains(site_vertices, layer_edges, layer_input_edge_ids,
+                       input_edge_id_set_lexicon);
+    vector<compact_array<InputVertexId>>().swap(site_vertices);
+  }
+
+  // At this point we have no further need for nearby site data, so we clear
+  // it to save space.  We keep input_vertices_ and input_edges_ so that
+  // S2Builder::Layer implementations can access them if desired.  (This is
+  // useful for determining how snapping has changed the input geometry.)
+  tracker_.ClearEdgeSites(&edge_sites_);
   for (int i = 0; i < layers_.size(); ++i) {
     // The errors generated by ProcessEdges are really warnings, so we simply
     // record them and continue.
     Graph::ProcessEdges(&layer_options_[i], &(*layer_edges)[i],
                         &(*layer_input_edge_ids)[i],
-                        input_edge_id_set_lexicon, error_);
+                        input_edge_id_set_lexicon, error_, &tracker_);
+    if (!tracker_.ok()) return;
   }
 }
 
@@ -1158,13 +1383,17 @@ void S2Builder::AddSnappedEdges(
     InputEdgeId begin, InputEdgeId end, const GraphOptions& options,
     vector<Edge>* edges, vector<InputEdgeIdSetId>* input_edge_ids,
     IdSetLexicon* input_edge_id_set_lexicon,
-    vector<compact_array<InputVertexId>>* site_vertices) const {
+    vector<compact_array<InputVertexId>>* site_vertices) {
   bool discard_degenerate_edges = (options.degenerate_edges() ==
                                    GraphOptions::DegenerateEdges::DISCARD);
   vector<SiteId> chain;
   for (InputEdgeId e = begin; e < end; ++e) {
     InputEdgeIdSetId id = input_edge_id_set_lexicon->AddSingleton(e);
     SnapEdge(e, &chain);
+    int num_snapped_edges = max<int>(1, chain.size() - 1);
+    if (options.edge_type() == EdgeType::UNDIRECTED) num_snapped_edges *= 2;
+    if (!tracker_.AddSpace(edges, num_snapped_edges)) return;
+    if (!tracker_.AddSpace(input_edge_ids, num_snapped_edges)) return;
     MaybeAddInputVertex(input_edges_[e].first, chain[0], site_vertices);
     if (chain.size() == 1) {
       if (discard_degenerate_edges) continue;
@@ -1182,7 +1411,9 @@ void S2Builder::AddSnappedEdges(
 }
 
 // If "site_vertices" is non-empty, ensures that (*site_vertices)[id] contains
-// "v".  Duplicate entries are allowed.
+// "v".  Duplicate entries are allowed.  The purpose of this function is to
+// build a map so that SimplifyEdgeChains() can quickly find all the input
+// vertices that snapped to a particular site.
 inline void S2Builder::MaybeAddInputVertex(
     InputVertexId v, SiteId id,
     vector<compact_array<InputVertexId>>* site_vertices) const {
@@ -1193,6 +1424,7 @@ inline void S2Builder::MaybeAddInputVertex(
   // destination of one edge is the same as the source of the next edge.
   auto& vertices = (*site_vertices)[id];
   if (vertices.empty() || vertices.back() != v) {
+    // Memory tracking is deferred until SimplifyEdgeChains.
     vertices.push_back(v);
   }
 }
@@ -1206,6 +1438,8 @@ inline void S2Builder::AddSnappedEdge(
   input_edge_ids->push_back(id);
   if (edge_type == EdgeType::UNDIRECTED) {
     edges->push_back(Edge(dst, src));
+    // Automatically created edges do not have input edge ids or labels.  This
+    // can be used to distinguish the original direction of the undirected edge.
     input_edge_ids->push_back(IdSetLexicon::EmptySetId());
   }
 }
@@ -1242,17 +1476,19 @@ class S2Builder::EdgeChainSimplifier {
   void OutputAllEdges(VertexId v0, VertexId v1);
   bool TargetInputVertices(VertexId v, S2PolylineSimplifier* simplifier) const;
   bool AvoidSites(VertexId v0, VertexId v1, VertexId v2,
+                  dense_hash_set<VertexId>* used_vertices,
                   S2PolylineSimplifier* simplifier) const;
   void MergeChain(const vector<VertexId>& vertices);
   void AssignDegenerateEdges(
       const vector<InputEdgeId>& degenerate_ids,
-      vector<vector<InputEdgeId>>* merged_input_ids) const;
+      vector<vector<InputEdgeId>>* merged_ids) const;
 
+  // LINT.IfChange
   const S2Builder& builder_;
   const Graph& g_;
   Graph::VertexInMap in_;
   Graph::VertexOutMap out_;
-  vector<int> edge_layers_;
+  const vector<int>& edge_layers_;
   const vector<compact_array<InputVertexId>>& site_vertices_;
   vector<vector<Edge>>* layer_edges_;
   vector<vector<InputEdgeIdSetId>>* layer_input_edge_ids_;
@@ -1270,9 +1506,10 @@ class S2Builder::EdgeChainSimplifier {
   // used_[e] indicates that EdgeId "e" has already been processed.
   vector<bool> used_;
 
-  // Temporary vectors, declared here to avoid repeated allocation.
+  // Temporary objects declared here to avoid repeated allocation.
   vector<VertexId> tmp_vertices_;
   vector<EdgeId> tmp_edges_;
+  dense_hash_set<VertexId> tmp_vertex_set_;
 
   // The output edges after simplification.
   vector<Edge> new_edges_;
@@ -1285,8 +1522,9 @@ void S2Builder::SimplifyEdgeChains(
     const vector<compact_array<InputVertexId>>& site_vertices,
     vector<vector<Edge>>* layer_edges,
     vector<vector<InputEdgeIdSetId>>* layer_input_edge_ids,
-    IdSetLexicon* input_edge_id_set_lexicon) const {
+    IdSetLexicon* input_edge_id_set_lexicon) {
   if (layers_.empty()) return;
+  if (!tracker_.TallySimplifyEdgeChains(site_vertices, *layer_edges)) return;
 
   // Merge the edges from all layers (in order to build a single graph).
   vector<Edge> merged_edges;
@@ -1313,6 +1551,7 @@ void S2Builder::SimplifyEdgeChains(
       layer_edges, layer_input_edge_ids, input_edge_id_set_lexicon);
   simplifier.Run();
 }
+// LINT.ThenChange(:TallySimplifyEdgeChains)
 
 // Merges the edges from all layers and sorts them in lexicographic order so
 // that we can construct a single graph.  The sort is stable, which means that
@@ -1343,14 +1582,14 @@ void S2Builder::MergeLayerEdges(
   }
 }
 
-// A comparision function that allows stable sorting with std::sort (which is
+// A comparison function that allows stable sorting with std::sort (which is
 // fast but not stable).  It breaks ties between equal edges by comparing
 // their LayerEdgeIds.
 inline bool S2Builder::StableLessThan(
     const Edge& a, const Edge& b,
     const LayerEdgeId& ai, const LayerEdgeId& bi) {
   // The compiler doesn't optimize this as well as it should:
-  //   return make_pair(a, ai) < make_pair(b, bi);
+  //   return std::make_pair(a, ai) < std::make_pair(b, bi);
   if (a.first < b.first) return true;
   if (b.first < a.first) return false;
   if (a.second < b.second) return true;
@@ -1369,7 +1608,9 @@ S2Builder::EdgeChainSimplifier::EdgeChainSimplifier(
       layer_input_edge_ids_(layer_input_edge_ids),
       input_edge_id_set_lexicon_(input_edge_id_set_lexicon),
       layer_begins_(builder_.layer_begins_),
-      is_interior_(g.num_vertices()), used_(g.num_edges()) {
+      is_interior_(g.num_vertices()), used_(g.num_edges()),
+      tmp_vertex_set_(16) /*expected_max_elements*/ {
+  tmp_vertex_set_.set_empty_key(-1);
   new_edges_.reserve(g.num_edges());
   new_input_edge_ids_.reserve(g.num_edges());
   new_edge_layers_.reserve(g.num_edges());
@@ -1416,6 +1657,8 @@ void S2Builder::EdgeChainSimplifier::Run() {
       SimplifyChain(edge.first, edge.second);
     }
   }
+  // TODO(ericv): The graph is not needed past here, so we could save some
+  // memory by clearing the underlying Edge and InputEdgeIdSetId vectors.
 
   // Finally, copy the output edges into the appropriate layers.  They don't
   // need to be sorted because the input edges were also unsorted.
@@ -1524,7 +1767,7 @@ bool S2Builder::EdgeChainSimplifier::IsInterior(VertexId v) {
   // Check a few simple prerequisites.
   if (out_.degree(v) == 0) return false;
   if (out_.degree(v) != in_.degree(v)) return false;
-  if (v < builder_.num_forced_sites_) return false;  // Keep forced vertices.
+  if (builder_.is_forced(v)) return false;  // Keep forced vertices.
 
   // Sort the edges so that they are grouped by layer.
   vector<EdgeId>& edges = tmp_edges_;  // Avoid allocating each time.
@@ -1555,16 +1798,25 @@ bool S2Builder::EdgeChainSimplifier::IsInterior(VertexId v) {
 void S2Builder::EdgeChainSimplifier::SimplifyChain(VertexId v0, VertexId v1) {
   // Avoid allocating "chain" each time by reusing it.
   vector<VertexId>& chain = tmp_vertices_;
+  // Contains the set of vertices that have either been avoided or added to
+  // the chain so far.  This is necessary so that AvoidSites() doesn't try to
+  // avoid vertices that have already been added to the chain.
+  dense_hash_set<VertexId>& used_vertices = tmp_vertex_set_;
   S2PolylineSimplifier simplifier;
   VertexId vstart = v0;
   bool done = false;
   do {
-    // Simplify a subchain of edges starting (v0, v1).
-    simplifier.Init(g_.vertex(v0));
-    AvoidSites(v0, v0, v1, &simplifier);
+    // Simplify a subchain of edges starting with (v0, v1).
     chain.push_back(v0);
+    used_vertices.insert(v0);
+    simplifier.Init(g_.vertex(v0));
+    // Note that if the first edge (v0, v1) is longer than the maximum length
+    // allowed for simplification, then AvoidSites() will return false and we
+    // exit the loop below after the first iteration.
+    const bool simplify = AvoidSites(v0, v0, v1, &used_vertices, &simplifier);
     do {
       chain.push_back(v1);
+      used_vertices.insert(v1);
       done = !is_interior_[v1] || v1 == vstart;
       if (done) break;
 
@@ -1572,8 +1824,8 @@ void S2Builder::EdgeChainSimplifier::SimplifyChain(VertexId v0, VertexId v1) {
       VertexId vprev = v0;
       v0 = v1;
       v1 = FollowChain(vprev, v0);
-    } while (TargetInputVertices(v0, &simplifier) &&
-             AvoidSites(chain[0], v0, v1, &simplifier) &&
+    } while (simplify && TargetInputVertices(v0, &simplifier) &&
+             AvoidSites(chain[0], v0, v1, &used_vertices, &simplifier) &&
              simplifier.Extend(g_.vertex(v1)));
 
     if (chain.size() == 2) {
@@ -1584,6 +1836,7 @@ void S2Builder::EdgeChainSimplifier::SimplifyChain(VertexId v0, VertexId v1) {
     // Note that any degenerate edges that were not merged into a chain are
     // output by EdgeChainSimplifier::Run().
     chain.clear();
+    used_vertices.clear();
   } while (!done);
 }
 
@@ -1623,6 +1876,7 @@ bool S2Builder::EdgeChainSimplifier::TargetInputVertices(
 // near the edge (v1, v2) are avoided by at least min_edge_vertex_separation.
 bool S2Builder::EdgeChainSimplifier::AvoidSites(
     VertexId v0, VertexId v1, VertexId v2,
+    dense_hash_set<VertexId>* used_vertices,
     S2PolylineSimplifier* simplifier) const {
   const S2Point& p0 = g_.vertex(v0);
   const S2Point& p1 = g_.vertex(v1);
@@ -1666,15 +1920,16 @@ bool S2Builder::EdgeChainSimplifier::AvoidSites(
   S2_DCHECK_GE(best, 0);  // Because there is at least one outgoing edge.
 
   for (VertexId v : edge_sites[best]) {
-    // This test is optional since these sites are excluded below anyway.
-    if (v == v0 || v == v1 || v == v2) continue;
-
-    // We are only interested in sites whose distance from "p0" is in the
-    // range (r1, r2).  Sites closer than "r1" have already been processed,
-    // and sites further than "r2" aren't relevant yet.
+    // Sites whose distance from "p0" is at least "r2" are not relevant yet.
     const S2Point& p = g_.vertex(v);
     S1ChordAngle r(p0, p);
-    if (r <= r1 || r >= r2) continue;
+    if (r >= r2) continue;
+
+    // The following test prevents us from avoiding previous vertices of the
+    // edge chain that also happen to be nearby the current edge.  (It also
+    // happens to ensure that each vertex is avoided at most once, but this is
+    // just an optimization.)
+    if (!used_vertices->insert(v).second) continue;
 
     // We need to figure out whether this site is to the left or right of the
     // edge chain.  For the first edge this is easy.  Otherwise, since we are
@@ -1823,4 +2078,139 @@ void S2Builder::EdgeChainSimplifier::AssignDegenerateEdges(
     S2_DCHECK_EQ(layer, input_edge_layer((*merged_ids)[it[0]][0]));
     (*merged_ids)[it[0]].push_back(degenerate_id);
   }
+}
+
+
+/////////////////////// S2Builder::MemoryTracker /////////////////////////
+
+
+// Called to track memory used to store the set of sites near a given edge.
+bool S2Builder::MemoryTracker::TallyEdgeSites(
+    const compact_array<SiteId>& sites) {
+  int64 size = GetCompactArrayAllocBytes(sites);
+  edge_sites_bytes_ += size;
+  return Tally(size);
+}
+
+// Ensures that "sites" contains space for at least one more edge site.
+bool S2Builder::MemoryTracker::ReserveEdgeSite(compact_array<SiteId>* sites) {
+  int64 new_size = sites->size() + 1;
+  if (new_size <= sites->capacity()) return true;
+  int64 old_bytes = GetCompactArrayAllocBytes(*sites);
+  sites->reserve(new_size);
+  int64 added_bytes = GetCompactArrayAllocBytes(*sites) - old_bytes;
+  edge_sites_bytes_ += added_bytes;
+  return Tally(added_bytes);
+}
+
+// Releases and tracks the memory used to store nearby edge sites.
+bool S2Builder::MemoryTracker::ClearEdgeSites(
+    vector<compact_array<SiteId>>* edge_sites) {
+  Tally(-edge_sites_bytes_);
+  edge_sites_bytes_ = 0;
+  return Clear(edge_sites);
+}
+
+// Called when a site is added to the S2PointIndex.
+bool S2Builder::MemoryTracker::TallyIndexedSite() {
+  // S2PointIndex stores its data in a btree.  In general btree nodes are only
+  // guaranteed to be half full, but in our case all nodes are full except for
+  // the rightmost node at each btree level because the values are added in
+  // sorted order.
+  int64 delta_bytes = GetBtreeMinBytesPerEntry<
+      absl::btree_multimap<S2CellId, S2PointIndex<SiteId>::PointData>>();
+  site_index_bytes_ += delta_bytes;
+  return Tally(delta_bytes);
+}
+
+// Corrects the approximate S2PointIndex memory tracking done above.
+bool S2Builder::MemoryTracker::FixSiteIndexTally(
+    const S2PointIndex<SiteId>& index) {
+  int64 delta_bytes = index.SpaceUsed() - site_index_bytes_;
+  site_index_bytes_ += delta_bytes;
+  return Tally(delta_bytes);
+}
+
+// Tracks memory due to destroying the site index.
+bool S2Builder::MemoryTracker::DoneSiteIndex(
+    const S2PointIndex<SiteId>& index) {
+  Tally(-site_index_bytes_);
+  site_index_bytes_ = 0;
+  return ok();
+}
+
+// Called to indicate that edge simplification was requested.
+// LINT.IfChange(TallySimplifyEdgeChains)
+bool S2Builder::MemoryTracker::TallySimplifyEdgeChains(
+    const vector<compact_array<InputVertexId>>& site_vertices,
+    const vector<vector<Edge>>& layer_edges) {
+  if (!is_active()) return true;
+
+  // The simplify_edge_chains() option uses temporary memory per site
+  // (output vertex) and per output edge, as outlined below.
+  //
+  // Per site:
+  //  vector<compact_array<InputVertexId>> site_vertices;  // BuildLayerEdges
+  //   - compact_array non-inlined space is tallied separately
+  //  vector<bool> is_interior_;  // EdgeChainSimplifier
+  //  Graph::VertexInMap in_;     // EdgeChainSimplifier
+  //  Graph::VertexOutMap out_;   // EdgeChainSimplifier
+  const int64 kTempPerSite =
+      sizeof(compact_array<InputVertexId>) + sizeof(bool) + 2 * sizeof(EdgeId);
+
+  // Per output edge:
+  //  vector<bool> used_;                              // EdgeChainSimplifier
+  //  Graph::VertexInMap in_;                          // EdgeChainSimplifier
+  //  vector<Edge> merged_edges;                       // SimplifyEdgeChains
+  //  vector<InputEdgeIdSetId> merged_input_edge_ids;  // SimplifyEdgeChains
+  //  vector<int> merged_edge_layers;                  // SimplifyEdgeChains
+  //  vector<Edge> new_edges_;                         // EdgeChainSimplifier
+  //  vector<InputEdgeIdSetId> new_input_edge_ids_;    // EdgeChainSimplifier
+  //  vector<int> new_edge_layers_;                    // EdgeChainSimplifier
+  //
+  // Note that the temporary vector<LayerEdgeId> in MergeLayerEdges() does not
+  // affect peak usage.
+  const int64 kTempPerEdge =
+      sizeof(bool) + sizeof(EdgeId) + 2 * sizeof(Edge) +
+      2 * sizeof(InputEdgeIdSetId) + 2 * sizeof(int);
+  int64 simplify_bytes = site_vertices.size() * kTempPerSite;
+  for (const auto& array : site_vertices) {
+    simplify_bytes += GetCompactArrayAllocBytes(array);
+  }
+  for (const auto& edges : layer_edges) {
+    simplify_bytes += edges.size() * kTempPerEdge;
+  }
+  return TallyTemp(simplify_bytes);
+}
+// LINT.ThenChange()
+
+// Tracks the temporary memory used by Graph::FilterVertices.
+// LINT.IfChange(TallyFilterVertices)
+bool S2Builder::MemoryTracker::TallyFilterVertices(
+    int num_sites, const vector<vector<Edge>>& layer_edges) {
+  if (!is_active()) return true;
+
+  // Vertex filtering (see BuildLayers) uses temporary space of one VertexId
+  // per Voronoi site plus 2 VertexIds per layer edge, plus space for all the
+  // vertices after filtering.
+  //
+  //  vector<VertexId> *tmp;      // Graph::FilterVertices
+  //  vector<VertexId> used;      // Graph::FilterVertices
+  const int64 kTempPerSite = sizeof(Graph::VertexId);
+  const int64 kTempPerEdge = 2 * sizeof(Graph::VertexId);
+
+  size_t max_layer_edges = 0;
+  for (const auto& edges : layer_edges) {
+    max_layer_edges = max(max_layer_edges, edges.size());
+  }
+  filter_vertices_bytes_ = (num_sites * kTempPerSite +
+                            max_layer_edges * kTempPerEdge);
+  return Tally(filter_vertices_bytes_);
+}
+// LINT.ThenChange()
+
+bool S2Builder::MemoryTracker::DoneFilterVertices() {
+  Tally(-filter_vertices_bytes_);
+  filter_vertices_bytes_ = 0;
+  return ok();
 }

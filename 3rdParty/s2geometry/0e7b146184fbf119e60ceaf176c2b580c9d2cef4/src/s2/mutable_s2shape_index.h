@@ -25,33 +25,46 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/macros.h"
+#include "absl/base/thread_annotations.h"
+#include "absl/container/btree_map.h"
+#include "absl/memory/memory.h"
+#include "absl/synchronization/mutex.h"
 
+#include "s2/base/commandlineflags.h"
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
-#include "s2/base/mutex.h"
 #include "s2/base/spinlock.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s2cell_id.h"
+#include "s2/s2memory_tracker.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2shape.h"
 #include "s2/s2shape_index.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/base/thread_annotations.h"
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/util/gtl/btree_map.h"
+#include "s2/s2shapeutil_shape_edge_id.h"
+
+namespace s2internal {
+// Hack to expose bytes_used.
+template <typename Key, typename Value>
+class BTreeMap : public absl::btree_map<Key, Value> {
+ public:
+  size_t bytes_used() const { return this->tree_.bytes_used(); }
+};
+}  // namespace s2internal
 
 // MutableS2ShapeIndex is a class for in-memory indexing of polygonal geometry.
 // The objects in the index are known as "shapes", and may consist of points,
 // polylines, and/or polygons, possibly overlapping.  The index makes it very
 // fast to answer queries such as finding nearby shapes, measuring distances,
-// testing for intersection and containment, etc.
+// testing for intersection and containment, etc.  It is one of several
+// implementations of the S2ShapeIndex interface (see EncodedS2ShapeIndex).
 //
 // MutableS2ShapeIndex allows not only building an index, but also updating it
-// incrementally by adding or removing shapes (hence its name).  It is one of
-// several implementations of the S2ShapeIndex interface.  MutableS2ShapeIndex
-// is designed to be compact; usually it is smaller than the underlying
-// geometry being indexed.  It is capable of indexing up to hundreds of
-// millions of edges.  The index is also fast to construct.
+// incrementally by adding or removing shapes (hence its name).  It is designed
+// to be compact; usually the index is smaller than the underlying geometry.
+// It is capable of indexing up to hundreds of millions of edges.  The index is
+// also fast to construct.  The index size and construction time are guaranteed
+// to be linear in the number of input edges.
 //
 // There are a number of built-in classes that work with S2ShapeIndex objects.
 // Generally these classes accept any collection of geometry that can be
@@ -68,7 +81,8 @@
 // - S2BooleanOperation: computes boolean operations such as union,
 //                       and boolean predicates such as containment.
 //
-// - S2ShapeIndexRegion: computes approximations for a collection of geometry.
+// - S2ShapeIndexRegion: can be used together with S2RegionCoverer to
+//                       approximate geometry as a set of S2CellIds.
 //
 // - S2ShapeIndexBufferedRegion: computes approximations that have been
 //                               expanded by a given radius.
@@ -106,17 +120,17 @@
 // if one thread updates the index, you must ensure that no other thread is
 // reading or updating the index at the same time.
 //
-// TODO(ericv): MutableS2ShapeIndex has an Encode() method that allows the
-// index to be serialized.  An encoded S2ShapeIndex can be decoded either into
-// its original form (MutableS2ShapeIndex) or into an EncodedS2ShapeIndex.
-// The key property of EncodedS2ShapeIndex is that it can be constructed
+// MutableS2ShapeIndex has an Encode() method that allows the index to be
+// serialized.  An encoded S2ShapeIndex can be decoded either into its
+// original form (MutableS2ShapeIndex) or into an EncodedS2ShapeIndex.  The
+// key property of EncodedS2ShapeIndex is that it can be constructed
 // instantaneously, since the index is kept in its original encoded form.
 // Data is decoded only when an operation needs it.  For example, to determine
 // which shapes(s) contain a given query point only requires decoding the data
 // in the S2ShapeIndexCell that contains that point.
 class MutableS2ShapeIndex final : public S2ShapeIndex {
  private:
-  using CellMap = gtl::btree_map<S2CellId, S2ShapeIndexCell*>;
+  using CellMap = s2internal::BTreeMap<S2CellId, S2ShapeIndexCell*>;
 
  public:
   // Options that affect construction of the MutableS2ShapeIndex.
@@ -158,11 +172,60 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
   ~MutableS2ShapeIndex() override;
 
   // Initialize a MutableS2ShapeIndex with the given options.  This method may
-  // only be called when the index is empty (i.e. newly created or Reset() has
-  // just been called).
+  // only be called when the index is empty (i.e. newly created or Clear() has
+  // just been called).  May be called before or after set_memory_tracker().
   void Init(const Options& options);
 
   const Options& options() const { return options_; }
+
+  // Specifies that memory usage should be tracked and/or limited by the given
+  // S2MemoryTracker.  For example:
+  //
+  //   S2MemoryTracker tracker;
+  //   tracker.set_limit(500 << 20);  // 500 MB memory limit
+  //   MutableS2ShapeIndex index;
+  //   index.set_memory_tracker(&tracker);
+  //
+  // If the memory limit is exceeded, an appropriate status is returned in
+  // memory_tracker()->error() and any partially built index is discarded
+  // (equivalent to calling Minimize()).
+  //
+  // This method may be called multiple times in order to switch from one
+  // memory tracker to another or stop memory tracking altogether (by passing
+  // nullptr) in which case the memory usage due to this index is subtracted.
+  //
+  // REQUIRES: The lifetime of "tracker" must exceed the lifetime of the index
+  //           unless set_memory_tracker(nullptr) is called to stop memory
+  //           tracking before the index destructor is called.
+  //
+  //           This implies that the S2MemoryTracker must be declared *before*
+  //           the MutableS2ShapeIndex in the example above.
+  //
+  // CAVEATS:
+  //
+  //  - This method is not const and is therefore not thread-safe.
+  //
+  //  - Does not track memory used by the S2Shapes in the index.
+  //
+  //  - While the index representation itself is tracked very accurately,
+  //    the temporary data needed for index construction is tracked using
+  //    heuristics and may be underestimated or overestimated.
+  //
+  //  - Temporary memory usage is typically 10x larger than the final index
+  //    size, however it can be reduced by specifying a suitable value for
+  //    FLAGS_s2shape_index_tmp_memory_budget (the default is 100 MB).  If
+  //    more temporary memory than this is needed during construction, index
+  //    updates will be split into multiple batches in order to keep the
+  //    estimated temporary memory usage below this limit.
+  //
+  //  - S2MemoryTracker::limit() has no effect on how much temporary memory
+  //    MutableS2ShapeIndex will attempt to use during index construction; it
+  //    simply causes an error to be returned when the limit would otherwise
+  //    be exceeded.  If you set a memory limit smaller than 100MB and want to
+  //    reduce memory usage rather than simply generating an error then you
+  //    should also set FLAGS_s2shape_index_tmp_memory_budget appropriately.
+  void set_memory_tracker(S2MemoryTracker* tracker);
+  S2MemoryTracker* memory_tracker() const { return mem_tracker_.tracker(); }
 
   // The number of distinct shape ids that have been assigned.  This equals
   // the number of shapes in the index provided that no shapes have ever been
@@ -188,6 +251,18 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
   //
   //   s2shapeutil::CompactEncodeTaggedShapes(index, encoder);
   //   index.Encode(encoder);
+  //
+  // The encoded size is typically much smaller than the in-memory size.
+  // Here are a few examples:
+  //
+  //  Number of edges     In-memory space used     Encoded size  (%)
+  //  --------------------------------------------------------------
+  //                8                      192                8   4%
+  //              768                   18,264            2,021  11%
+  //        3,784,212               80,978,992       17,039,020  21%
+  //
+  // The encoded form also has the advantage of being a contiguous block of
+  // memory.
   //
   // REQUIRES: "encoder" uses the default constructor, so that its buffer
   //           can be enlarged as necessary by calling Ensure(int).
@@ -266,6 +341,9 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
   // assigns a unique id to the shape (shape->id()) and returns that id.
   // Shape ids are assigned sequentially starting from 0 in the order shapes
   // are added.  Invalidates all iterators and their associated data.
+  //
+  // Note that this method is not affected by S2MemoryTracker, i.e. shapes can
+  // continue to be added even once the specified limit has been reached.
   int Add(std::unique_ptr<S2Shape> shape);
 
   // Removes the given shape from the index and return ownership to the caller.
@@ -287,14 +365,27 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
   size_t SpaceUsed() const override;
 
   // Calls to Add() and Release() are normally queued and processed on the
-  // first subsequent query (in a thread-safe way).  This has many advantages,
-  // the most important of which is that sometimes there *is* no subsequent
-  // query, which lets us avoid building the index completely.
+  // first subsequent query (in a thread-safe way).  Building the index lazily
+  // in this way has several advantages, the most important of which is that
+  // sometimes there *is* no subsequent query and the index doesn't need to be
+  // built at all.
   //
-  // This method forces any pending updates to be applied immediately.
-  // Calling this method is rarely a good idea.  (One valid reason is to
-  // exclude the cost of building the index from benchmark results.)
-  void ForceBuild();
+  // In contrast, ForceBuild() causes any pending updates to be applied
+  // immediately.  It is thread-safe and may be called simultaneously with
+  // other "const" methods (see notes on thread safety above).  Similarly this
+  // method is "const" since it does not modify the visible index contents.
+  //
+  // ForceBuild() should not normally be called since it prevents lazy index
+  // construction (which is usually benficial).  Some reasons to use it
+  // include:
+  //
+  //  - To exclude the cost of building the index from benchmark results.
+  //  - To ensure that the first subsequent query is as fast as possible.
+  //  - To ensure that the index can be built successfully without exceeding a
+  //    specified S2MemoryTracker limit (see the constructor for details).
+  //
+  // Note that this method is thread-safe.
+  void ForceBuild() const;
 
   // Returns true if there are no pending updates that need to be applied.
   // This can be useful to avoid building the index unnecessarily, or for
@@ -317,37 +408,36 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
   friend class S2Stats;
 
   struct BatchDescriptor;
+  class BatchGenerator;
   struct ClippedEdge;
   class EdgeAllocator;
   struct FaceEdge;
   class InteriorTracker;
   struct RemovedShape;
 
+  using ShapeEdgeId = s2shapeutil::ShapeEdgeId;
   using ShapeIdSet = std::vector<int>;
 
   // When adding a new encoding, be aware that old binaries will not be able
   // to decode it.
-  static const unsigned char kCurrentEncodingVersionNumber = 0;
+  static constexpr unsigned char kCurrentEncodingVersionNumber = 0;
 
   // Internal methods are documented with their definitions.
-  bool is_first_update() const;
   bool is_shape_being_removed(int shape_id) const;
+  void MarkIndexStale();
   void MaybeApplyUpdates() const;
   void ApplyUpdatesThreadSafe();
   void ApplyUpdatesInternal();
-  void GetUpdateBatches(std::vector<BatchDescriptor>* batches) const;
-  static void GetBatchSizes(int num_items, int max_batches,
-                            double final_bytes_per_item,
-                            double high_water_bytes_per_item,
-                            double preferred_max_bytes_per_batch,
-                            std::vector<int>* batch_sizes);
+  std::vector<BatchDescriptor> GetUpdateBatches() const;
   void ReserveSpace(const BatchDescriptor& batch,
-                    std::vector<FaceEdge> all_edges[6]) const;
-  void AddShape(int id, std::vector<FaceEdge> all_edges[6],
+                    std::vector<FaceEdge> all_edges[6]);
+  void AddShape(const S2Shape* shape, int edges_begin, int edges_end,
+                std::vector<FaceEdge> all_edges[6],
                 InteriorTracker* tracker) const;
   void RemoveShape(const RemovedShape& removed,
                    std::vector<FaceEdge> all_edges[6],
                    InteriorTracker* tracker) const;
+  void FinishPartialShape(int shape_id);
   void AddFaceEdge(FaceEdge* edge, std::vector<FaceEdge> all_edges[6]) const;
   void UpdateFaceEdges(int face, const std::vector<FaceEdge>& face_edges,
                        InteriorTracker* tracker);
@@ -451,7 +541,7 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
     FRESH,     // There are no pending updates.
   };
   // Reads and writes to this field are guarded by "lock_".
-  std::atomic<IndexStatus> index_status_;
+  std::atomic<IndexStatus> index_status_{FRESH};
 
   // UpdateState holds temporary data related to thread synchronization.  It
   // is only allocated while updates are being applied.
@@ -476,18 +566,102 @@ class MutableS2ShapeIndex final : public S2ShapeIndex {
   };
   std::unique_ptr<UpdateState> update_state_;
 
+  S2MemoryTracker::Client mem_tracker_;
+
   // Documented in the .cc file.
-  void UnlockAndSignal()
-      UNLOCK_FUNCTION(lock_)
-      UNLOCK_FUNCTION(update_state_->wait_mutex);
+  void UnlockAndSignal() ABSL_UNLOCK_FUNCTION(lock_)
+      ABSL_UNLOCK_FUNCTION(update_state_->wait_mutex);
 
   MutableS2ShapeIndex(const MutableS2ShapeIndex&) = delete;
   void operator=(const MutableS2ShapeIndex&) = delete;
 };
 
+// The following flag can be used to limit the amount of temporary memory used
+// when building an S2ShapeIndex.  See the .cc file for details.
+//
+// DEFAULT: 100 MB
+S2_DECLARE_int64(s2shape_index_tmp_memory_budget);
+
 
 //////////////////   Implementation details follow   ////////////////////
 
+
+// A BatchDescriptor represents a set of pending updates that will be applied
+// at the same time.  The batch consists of all edges in (shape id, edge id)
+// order from "begin" (inclusive) to "end" (exclusive).  Note that the last
+// shape in a batch may have only some of its edges added.  The first batch
+// also implicitly includes all shapes being removed.  "num_edges" is the
+// total number of edges that will be added or removed in this batch.
+struct MutableS2ShapeIndex::BatchDescriptor {
+  // REQUIRES: If end.edge_id != 0, it must refer to a valid edge.
+  ShapeEdgeId begin, end;
+  int num_edges;
+};
+
+// The purpose of BatchGenerator is to divide large updates into batches such
+// that all batches use approximately the same amount of high-water memory.
+// This class is defined here so that it can be tested independently.
+class MutableS2ShapeIndex::BatchGenerator {
+ public:
+  // Given the total number of edges that will be removed and added, prepares
+  // to divide the edges into batches.  "shape_id_begin" identifies the first
+  // shape whose edges will be added.
+  BatchGenerator(int num_edges_removed, int num_edges_added,
+                 int shape_id_begin);
+
+  // Indicates that the given shape will be added to the index.  Shapes with
+  // few edges will be grouped together into a single batch, while shapes with
+  // many edges will be split over several batches if necessary.
+  void AddShape(int shape_id, int num_edges);
+
+  // Returns a vector describing each batch.  This method should be called
+  // once all shapes have been added.
+  std::vector<BatchDescriptor> Finish();
+
+ private:
+  // Returns a vector indicating the maximum number of edges in each batch.
+  // (The actual batch sizes are adjusted later in order to avoid splitting
+  // shapes between batches unnecessarily.)
+  static std::vector<int> GetMaxBatchSizes(int num_edges_removed,
+                                           int num_edges_added);
+
+  // Returns the maximum number of edges in the current batch.
+  int max_batch_size() const { return max_batch_sizes_[batch_index_]; }
+
+  // Returns the maximum number of edges in the next batch.
+  int next_max_batch_size() const { return max_batch_sizes_[batch_index_ + 1]; }
+
+  // Adds the given number of edges to the current batch.
+  void ExtendBatch(int num_edges) {
+    batch_size_ += num_edges;
+  }
+
+  // Adds the given number of edges to the current batch, ending with the edge
+  // just before "batch_end", and then starts a new batch.
+  void FinishBatch(int num_edges, ShapeEdgeId batch_end);
+
+  // A vector representing the ideal number of edges in each batch; the batch
+  // sizes gradually decrease to ensure that each batch uses approximately the
+  // same total amount of memory as the index grows.  The actual batch sizes
+  // are then adjusted based on how many edges each shape has in order to
+  // avoid splitting shapes between batches unnecessarily.
+  std::vector<int> max_batch_sizes_;
+
+  // The maximum size of the current batch is determined by how many edges
+  // have been added to the index so far.  For example if GetBatchSizes()
+  // returned {100, 70, 50, 30} and we have added 0 edges, the current batch
+  // size is 100.  But if we have already added 90 edges then the current
+  // batch size would be 70, and if have added 150 edges the batch size would
+  // be 50.  We keep track of (1) the current index into batch_sizes and (2)
+  // the number of edges remaining before we increment the batch index.
+  int batch_index_ = 0;
+  int batch_index_edges_left_ = 0;
+
+  ShapeEdgeId batch_begin_;  // The start of the current batch.
+  int shape_id_end_;         // One beyond the last shape to be added.
+  int batch_size_ = 0;       // The number of edges in the current batch.
+  std::vector<BatchDescriptor> batches_;  // The completed batches so far.
+};
 
 inline MutableS2ShapeIndex::Iterator::Iterator() : index_(nullptr) {
 }
@@ -564,15 +738,12 @@ MutableS2ShapeIndex::NewIterator(InitialPosition pos) const {
   return absl::make_unique<Iterator>(this, pos);
 }
 
-inline bool MutableS2ShapeIndex::is_fresh() const {
-  return index_status_.load(std::memory_order_relaxed) == FRESH;
+inline void MutableS2ShapeIndex::ForceBuild() const {
+  MaybeApplyUpdates();
 }
 
-// Return true if this is the first update to the index.
-inline bool MutableS2ShapeIndex::is_first_update() const {
-  // Note that it is not sufficient to check whether cell_map_ is empty, since
-  // entries are added during the update process.
-  return pending_additions_begin_ == 0;
+inline bool MutableS2ShapeIndex::is_fresh() const {
+  return index_status_.load(std::memory_order_relaxed) == FRESH;
 }
 
 // Given that the given shape is being updated, return true if it is being

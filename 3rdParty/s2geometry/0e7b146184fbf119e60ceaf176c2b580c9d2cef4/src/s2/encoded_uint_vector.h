@@ -20,9 +20,13 @@
 
 #include <type_traits>
 #include <vector>
-#include "s2/third_party/absl/base/internal/unaligned_access.h"
-#include "s2/third_party/absl/types/span.h"
+
+#include "absl/base/internal/unaligned_access.h"
+#include "absl/types/span.h"
+
+#include "s2/util/bits/bits.h"
 #include "s2/util/coding/coder.h"
+#include "s2/util/coding/varint.h"
 
 namespace s2coding {
 
@@ -85,7 +89,11 @@ class EncodedUintVector {
   // Decodes and returns the entire original vector.
   std::vector<T> Decode() const;
 
+  void Encode(Encoder* encoder) const;
+
  private:
+  template <int length> size_t lower_bound(T target) const;
+
   const char* data_;
   uint32 size_;
   uint8 len_;
@@ -184,7 +192,7 @@ inline T GetUintWithLength(const char* ptr, int length) {
 template <class T>
 bool DecodeUintWithLength(int length, Decoder* decoder, T* result) {
   if (decoder->avail() < length) return false;
-  const char* ptr = reinterpret_cast<const char*>(decoder->ptr());
+  const char* ptr = decoder->skip(0);
   *result = GetUintWithLength<T>(ptr, length);
   decoder->skip(length);
   return true;
@@ -202,7 +210,7 @@ void EncodeUintVector(absl::Span<const T> v, Encoder* encoder) {
 
   T one_bits = 1;  // Ensures len >= 1.
   for (auto x : v) one_bits |= x;
-  int len = (Bits::Log2FloorNonZero64(one_bits) >> 3) + 1;
+  int len = (Bits::FindMSBSetNonZero64(one_bits) >> 3) + 1;
   S2_DCHECK(len >= 1 && len <= 8);
 
   // Note that the multiplication is optimized into a bit shift.
@@ -223,7 +231,7 @@ bool EncodedUintVector<T>::Init(Decoder* decoder) {
   if (size_ > std::numeric_limits<size_t>::max() / sizeof(T)) return false;
   size_t bytes = size_ * len_;
   if (decoder->avail() < bytes) return false;
-  data_ = reinterpret_cast<const char*>(decoder->ptr());
+  data_ = decoder->skip(0);
   decoder->skip(bytes);
   return true;
 }
@@ -246,17 +254,35 @@ inline T EncodedUintVector<T>::operator[](int i) const {
 }
 
 template <class T>
-inline size_t EncodedUintVector<T>::lower_bound(T target) const {
+size_t EncodedUintVector<T>::lower_bound(T target) const {
+  static_assert(sizeof(T) & 0xe, "Unsupported integer length");
+  S2_DCHECK(len_ >= 1 && len_ <= sizeof(T));
+
   // TODO(ericv): Consider using the unused 28 bits of "len_" to store the
   // last result of lower_bound() to be used as a hint.  This should help in
   // common situation where the same element is looked up repeatedly.  This
   // would require declaring the new field (length_lower_bound_hint_) as
   // mutable std::atomic<uint32> (accessed using std::memory_order_relaxed)
   // with a custom copy constructor that resets the hint component to zero.
+  switch (len_) {
+    case 1: return lower_bound<1>(target);
+    case 2: return lower_bound<2>(target);
+    case 3: return lower_bound<3>(target);
+    case 4: return lower_bound<4>(target);
+    case 5: return lower_bound<5>(target);
+    case 6: return lower_bound<6>(target);
+    case 7: return lower_bound<7>(target);
+    default: return lower_bound<8>(target);
+  }
+}
+
+template <class T> template <int length>
+inline size_t EncodedUintVector<T>::lower_bound(T target) const {
   size_t lo = 0, hi = size_;
   while (lo < hi) {
     size_t mid = (lo + hi) >> 1;
-    if ((*this)[mid] < target) {
+    T value = GetUintWithLength<T>(data_ + mid * length, length);
+    if (value < target) {
       lo = mid + 1;
     } else {
       hi = mid;
@@ -272,6 +298,16 @@ std::vector<T> EncodedUintVector<T>::Decode() const {
     result[i] = (*this)[i];
   }
   return result;
+}
+
+template <class T>
+// The encoding must be identical to StringVectorEncoder::Encode().
+void EncodedUintVector<T>::Encode(Encoder* encoder) const {
+  uint64 size_len = (uint64{size_} * sizeof(T)) | (len_ - 1);
+
+  encoder->Ensure(Varint::kMax64 + size_len);
+  encoder->put_varint64(size_len);
+  encoder->putn(data_, size_ * len_);
 }
 
 }  // namespace s2coding

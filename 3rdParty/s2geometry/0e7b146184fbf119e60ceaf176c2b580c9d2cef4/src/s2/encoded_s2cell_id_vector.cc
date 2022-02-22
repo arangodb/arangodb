@@ -17,6 +17,10 @@
 
 #include "s2/encoded_s2cell_id_vector.h"
 
+#include <algorithm>
+
+#include "s2/util/bits/bits.h"
+
 using absl::Span;
 using std::max;
 using std::min;
@@ -39,10 +43,21 @@ void EncodeS2CellIdVector(Span<const S2CellId> v, Encoder* encoder) {
   //
   // "base" (3 bits) and "shift" (6 bits) are encoded in either one or two
   // bytes as follows:
+  //
   //   - if (shift <= 4 or shift is even), then 1 byte
   //   - otherwise 2 bytes
+  //
   // Note that (shift == 1) means that all S2CellIds are leaf cells, and
   // (shift == 2) means that all S2CellIds are at level 29.
+  //
+  // The full encoded format is as follows:
+  //
+  //  Byte 0, bits 0-2: base length (0-7 bytes)
+  //  Byte 0, bits 3-7: encoded shift (see below)
+  //  Byte 1: extended shift code (only needed for odd shifts >= 5)
+  //  Followed by 0-7 bytes of "base"
+  //  Followed by an EncodedUintVector of deltas.
+
   uint64 v_or = 0, v_and = ~0ULL, v_min = ~0ULL, v_max = 0;
   for (auto cellid : v) {
     v_or |= cellid.id();
@@ -126,7 +141,9 @@ bool EncodedS2CellIdVector::Init(Decoder* decoder) {
   int shift_code = code_plus_len >> 3;
   if (shift_code == 31) {
     shift_code = 29 + decoder->get8();
+    if (shift_code > 56) return false;  // Valid range 0..56
   }
+
   // Decode the "base_len" most-significant bytes of "base".
   int base_len = code_plus_len & 7;
   if (!DecodeUintWithLength(base_len, decoder, &base_)) return false;

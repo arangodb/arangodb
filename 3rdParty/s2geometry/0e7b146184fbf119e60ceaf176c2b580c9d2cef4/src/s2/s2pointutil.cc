@@ -35,6 +35,8 @@ bool IsUnitLength(const S2Point& p) {
 }
 
 bool ApproxEquals(const S2Point& a, const S2Point& b, S1Angle max_error) {
+  S2_DCHECK_NE(a, S2Point());
+  S2_DCHECK_NE(b, S2Point());
   return S1Angle(a, b) <= max_error;
 }
 
@@ -50,29 +52,6 @@ S2Point Ortho(const S2Point& a) {
   temp[k] = 1;
   return a.CrossProd(temp).Normalize();
 #endif
-}
-
-Vector3_d RobustCrossProd(const S2Point& a, const S2Point& b) {
-  // The direction of a.CrossProd(b) becomes unstable as (a + b) or (a - b)
-  // approaches zero.  This leads to situations where a.CrossProd(b) is not
-  // very orthogonal to "a" and/or "b".  We could fix this using Gram-Schmidt,
-  // but we also want b.RobustCrossProd(a) == -a.RobustCrossProd(b).
-  //
-  // The easiest fix is to just compute the cross product of (b+a) and (b-a).
-  // Mathematically, this cross product is exactly twice the cross product of
-  // "a" and "b", but it has the numerical advantage that (b+a) and (b-a)
-  // are always perpendicular (since "a" and "b" are unit length).  This
-  // yields a result that is nearly orthogonal to both "a" and "b" even if
-  // these two values differ only in the lowest bit of one component.
-
-  S2_DCHECK(IsUnitLength(a));
-  S2_DCHECK(IsUnitLength(b));
-  Vector3_d x = (b + a).CrossProd(b - a);
-  if (x != S2Point(0, 0, 0)) return x;
-
-  // The only result that makes sense mathematically is to return zero, but
-  // we find it more convenient to return an arbitrary orthogonal vector.
-  return Ortho(a);
 }
 
 S2Point Rotate(const S2Point& p, const S2Point& axis, S1Angle angle) {
@@ -111,19 +90,6 @@ S2Point ToFrame(const Matrix3x3_d& m, const S2Point& p) {
 
 S2Point FromFrame(const Matrix3x3_d& m, const S2Point& q) {
   return m * q;
-}
-
-bool SimpleCCW(const S2Point& a, const S2Point& b, const S2Point& c) {
-  // We compute the signed volume of the parallelepiped ABC.  The usual
-  // formula for this is (AxB).C, but we compute it here using (CxA).B
-  // in order to ensure that ABC and CBA are not both CCW.  This follows
-  // from the following identities (which are true numerically, not just
-  // mathematically):
-  //
-  //     (1) x.CrossProd(y) == -(y.CrossProd(x))
-  //     (2) (-x).DotProd(y) == -(x.DotProd(y))
-
-  return c.CrossProd(a).DotProd(b) > 0;
 }
 
 }  // namespace S2

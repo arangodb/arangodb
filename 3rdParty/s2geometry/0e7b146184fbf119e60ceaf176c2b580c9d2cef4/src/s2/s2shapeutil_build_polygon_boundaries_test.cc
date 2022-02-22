@@ -17,20 +17,23 @@
 
 #include "s2/s2shapeutil_build_polygon_boundaries.h"
 
+#include <algorithm>
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "absl/strings/string_view.h"
 #include "s2/s2lax_loop_shape.h"
 #include "s2/s2text_format.h"
 
+using std::string;
 using std::vector;
 
 namespace s2shapeutil {
 
 class TestLaxLoop : public S2LaxLoopShape {
  public:
-  explicit TestLaxLoop(const string& vertex_str) {
-    vector<S2Point> vertices = s2textformat::ParsePoints(vertex_str);
+  explicit TestLaxLoop(absl::string_view vertex_str) {
+    vector<S2Point> vertices = s2textformat::ParsePointsOrDie(vertex_str);
     Init(vertices);
   }
 };

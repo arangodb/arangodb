@@ -21,15 +21,19 @@
 #include <utility>
 #include <vector>
 
-#include "s2/base/casts.h"
 #include <gtest/gtest.h>
 
+#include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
+
+#include "s2/base/casts.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2coords.h"
+#include "s2/s2edge_clipping.h"
 #include "s2/s2edge_crossings.h"
 #include "s2/s2edge_distances.h"
 #include "s2/s2edge_vector_shape.h"
@@ -37,18 +41,16 @@
 #include "s2/s2polyline.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/third_party/absl/strings/str_cat.h"
 
-using absl::StrCat;
 using absl::make_unique;
+using absl::StrCat;
 using s2shapeutil::ShapeEdge;
 using s2shapeutil::ShapeEdgeId;
-using s2textformat::MakePoint;
-using s2textformat::MakePolyline;
+using s2textformat::MakePointOrDie;
+using s2textformat::MakePolylineOrDie;
 using std::is_sorted;
 using std::pair;
-using std::unique_ptr;
+using std::string;
 using std::vector;
 
 namespace {
@@ -58,7 +60,7 @@ using CrossingType = s2shapeutil::CrossingType;
 
 S2Point PerturbAtDistance(S1Angle distance, const S2Point& a0,
                           const S2Point& b0) {
-  S2Point x = S2::InterpolateAtDistance(distance, a0, b0);
+  S2Point x = S2::GetPointOnLine(a0, b0, distance);
   if (S2Testing::rnd.OneIn(2)) {
     for (int i = 0; i < 3; ++i) {
       x[i] = nextafter(x[i], S2Testing::rnd.OneIn(2) ? 1 : -1);
@@ -303,13 +305,13 @@ TEST(GetCrossings, PolylineCrossings) {
   MutableS2ShapeIndex index;
   // Three zig-zag lines near the equator.
   index.Add(make_unique<S2Polyline::OwningShape>(
-      MakePolyline("0:0, 2:1, 0:2, 2:3, 0:4, 2:5, 0:6")));
+      MakePolylineOrDie("0:0, 2:1, 0:2, 2:3, 0:4, 2:5, 0:6")));
   index.Add(make_unique<S2Polyline::OwningShape>(
-      MakePolyline("1:0, 3:1, 1:2, 3:3, 1:4, 3:5, 1:6")));
+      MakePolylineOrDie("1:0, 3:1, 1:2, 3:3, 1:4, 3:5, 1:6")));
   index.Add(make_unique<S2Polyline::OwningShape>(
-      MakePolyline("2:0, 4:1, 2:2, 4:3, 2:4, 4:5, 2:6")));
-  TestPolylineCrossings(index, MakePoint("1:0"), MakePoint("1:4"));
-  TestPolylineCrossings(index, MakePoint("5:5"), MakePoint("6:6"));
+      MakePolylineOrDie("2:0, 4:1, 2:2, 4:3, 2:4, 4:5, 2:6")));
+  TestPolylineCrossings(index, MakePointOrDie("1:0"), MakePointOrDie("1:4"));
+  TestPolylineCrossings(index, MakePointOrDie("5:5"), MakePointOrDie("6:6"));
 }
 
 TEST(GetCrossings, ShapeIdsAreCorrect) {
@@ -318,11 +320,65 @@ TEST(GetCrossings, ShapeIdsAreCorrect) {
   MutableS2ShapeIndex index;
   index.Add(make_unique<S2Polyline::OwningShape>(
       make_unique<S2Polyline>(S2Testing::MakeRegularPoints(
-          MakePoint("0:0"), S1Angle::Degrees(5), 100))));
+          MakePointOrDie("0:0"), S1Angle::Degrees(5), 100))));
   index.Add(make_unique<S2Polyline::OwningShape>(
       make_unique<S2Polyline>(S2Testing::MakeRegularPoints(
-          MakePoint("0:20"), S1Angle::Degrees(5), 100))));
-  TestPolylineCrossings(index, MakePoint("1:-10"), MakePoint("1:30"));
+          MakePointOrDie("0:20"), S1Angle::Degrees(5), 100))));
+  TestPolylineCrossings(index, MakePointOrDie("1:-10"), MakePointOrDie("1:30"));
+}
+
+// Verifies that when VisitCells() is called with a specified root cell and a
+// query edge that barely intersects that cell, that at least one cell is
+// visited.  (At one point this was not always true, because when the query edge
+// is clipped to the index cell boundary without using any padding then the
+// result is sometimes empty, i.e., the query edge appears not to intersect the
+// specifed root cell.  The code now uses an appropriate amount of padding,
+// i.e. S2::kFaceClipErrorUVCoord.)
+TEST(VisitCells, QueryEdgeOnFaceBoundary) {
+  S2Testing::Random* rnd = &S2Testing::rnd;
+  const int kIters = 100;
+  for (int iter = 0; iter < kIters; ++iter) {
+    SCOPED_TRACE(StrCat("Iteration ", iter));
+
+    // Choose an edge AB such that B is nearly on the edge between two S2 cube
+    // faces, and such that the result of clipping AB to the face that nominally
+    // contains B (according to S2::GetFace) is empty when no padding is used.
+    int a_face, b_face;
+    S2Point a, b;
+    R2Point a_uv, b_uv;
+    do {
+      a_face = rnd->Uniform(6);
+      a = S2::FaceUVtoXYZ(a_face, rnd->UniformDouble(-1, 1),
+                          rnd->UniformDouble(-1, 1)).Normalize();
+      b_face = S2::GetUVWFace(a_face, 0, 1);  // Towards positive u-axis
+      b = S2::FaceUVtoXYZ(b_face, 1 - rnd->Uniform(2) * 0.5 * DBL_EPSILON,
+                          rnd->UniformDouble(-1, 1)).Normalize();
+    } while (S2::GetFace(b) != b_face ||
+             S2::ClipToFace(a, b, b_face, &a_uv, &b_uv));
+
+    // Verify that the clipping result is non-empty when a padding of
+    // S2::kFaceClipErrorUVCoord is used instead.
+    EXPECT_TRUE(S2::ClipToPaddedFace(a, b, b_face, S2::kFaceClipErrorUVCoord,
+                                     &a_uv, &b_uv));
+
+    // Create an S2ShapeIndex containing a single edge BC, where C is on the
+    // same S2 cube face as B (which is different than the face containing A).
+    S2Point c = S2::FaceUVtoXYZ(b_face, rnd->UniformDouble(-1, 1),
+                                rnd->UniformDouble(-1, 1)).Normalize();
+    MutableS2ShapeIndex index;
+    index.Add(make_unique<S2Polyline::OwningShape>(
+        make_unique<S2Polyline>(vector<S2Point>{b, c})));
+
+    // Check that the intersection between AB and BC is detected when the face
+    // containing BC is specified as a root cell.  (Note that VisitCells()
+    // returns false only if the CellVisitor returns false, and otherwise
+    // returns true.)
+    S2CrossingEdgeQuery query(&index);
+    S2PaddedCell root(S2CellId::FromFace(b_face), 0);
+    EXPECT_FALSE(query.VisitCells(a, b, root, [](const S2ShapeIndexCell&) {
+        return false;
+      }));
+  }
 }
 
 }  // namespace

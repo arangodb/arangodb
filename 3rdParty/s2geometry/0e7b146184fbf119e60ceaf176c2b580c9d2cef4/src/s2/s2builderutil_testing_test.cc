@@ -20,8 +20,11 @@
 #include <memory>
 #include <vector>
 
-#include "s2/third_party/absl/memory/memory.h"
 #include <gtest/gtest.h>
+
+#include "absl/memory/memory.h"
+
+#include "s2/s2text_format.h"
 
 using absl::make_unique;
 using std::unique_ptr;
@@ -80,6 +83,46 @@ TEST(GraphAppendingLayer, AppendsTwoGraphs) {
   EXPECT_EQ(2, clones.size());
   EXPECT_EQ(v0, graphs[0].vertex(graphs[0].edge(0).first));
   EXPECT_EQ(v1, graphs[1].vertex(graphs[1].edge(0).first));
+}
+
+TEST(IndexMatchingLayer, SameResult) {
+  // Two indices with the same edges in different orders.
+  auto expected = s2textformat::MakeIndexOrDie(
+      "0:0 | 1:0 # 1:1, 2:2, 3:3 # 3:3, 3:4, 4:4");
+  auto actual = s2textformat::MakeIndexOrDie(
+      "1:0 | 0:0 # 2:2, 3:3 | 1:1, 2:2 # 3:4, 4:4, 3:3");
+  S2Builder builder{S2Builder::Options{}};
+  GraphOptions graph_options(EdgeType::DIRECTED, DegenerateEdges::KEEP,
+                             DuplicateEdges::KEEP, SiblingPairs::KEEP);
+  for (int dim = -1; dim < 3; ++dim) {
+    builder.StartLayer(make_unique<IndexMatchingLayer>(
+        graph_options, expected.get(), dim));
+    for (S2Shape* shape : *actual) {
+      if (dim < 0 || shape->dimension() == dim) builder.AddShape(*shape);
+    }
+    S2Error error;
+    EXPECT_TRUE(builder.Build(&error)) << error;
+  }
+}
+
+TEST(IndexMatchingLayer, DifferentResult) {
+  // Two indices where edges have different multiplicities.
+  auto expected = s2textformat::MakeIndexOrDie(
+      "0:0 | 0:0 # 1:1, 2:2, 3:3 | 1:1, 2:2 # 3:3, 3:4, 3:3, 3:4, 4:4");
+  auto actual = s2textformat::MakeIndexOrDie(
+      "0:0 | 1:0 # 1:1, 2:2, 3:3 # 3:3, 3:4, 4:4");
+  S2Builder builder{S2Builder::Options{}};
+  GraphOptions graph_options(EdgeType::DIRECTED, DegenerateEdges::KEEP,
+                             DuplicateEdges::KEEP, SiblingPairs::KEEP);
+  builder.StartLayer(make_unique<IndexMatchingLayer>(graph_options,
+                                                     expected.get()));
+  for (S2Shape* shape : *actual) builder.AddShape(*shape);
+  S2Error error;
+  EXPECT_FALSE(builder.Build(&error));
+  EXPECT_FALSE(error.ok());
+  EXPECT_EQ(error.text(),
+            "Missing edges: 3:4, 3:3; 3:3, 3:4; 1:1, 2:2; 0:0, 0:0 "
+            "Extra edges: 1:0, 1:0\n");
 }
 
 }  // namespace s2builderutil

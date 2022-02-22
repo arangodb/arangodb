@@ -80,6 +80,9 @@ class S2EdgeTessellator {
   static S1Angle kMinTolerance();
 
  private:
+  S1ChordAngle EstimateMaxError(const R2Point& pa, const S2Point& a,
+                                const R2Point& pb, const S2Point& b) const;
+
   void AppendUnprojected(const R2Point& pa, const S2Point& a,
                          const R2Point& pb, const S2Point& b,
                          std::vector<S2Point>* vertices) const;
@@ -88,11 +91,11 @@ class S2EdgeTessellator {
                        const R2Point& pb, const S2Point& b,
                        std::vector<R2Point>* vertices) const;
 
-  R2Point WrapDestination(const R2Point& pa, const R2Point& pb) const;
-
   const S2::Projection& proj_;
-  S1ChordAngle tolerance_;
-  R2Point wrap_distance_;  // Local copy
+
+  // The given tolerance scaled by a constant fraction so that it can be
+  // compared against the result returned by EstimateMaxError().
+  S1ChordAngle scaled_tolerance_;
 };
 
 #endif  // S2_S2EDGE_TESSELLATOR_H_

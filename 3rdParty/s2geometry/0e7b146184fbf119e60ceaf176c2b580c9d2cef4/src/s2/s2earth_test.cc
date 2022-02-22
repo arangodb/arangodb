@@ -23,70 +23,84 @@
 #include "s2/util/units/physical-units.h"
 
 TEST(S2EarthTest, TestAngleConversion) {
-  ASSERT_DOUBLE_EQ(S2Earth::ToAngle(S2Earth::Radius()).radians(), 1);
-  ASSERT_DOUBLE_EQ(S2Earth::ToChordAngle(S2Earth::Radius()).radians(), 1);
-  ASSERT_FLOAT_EQ(
-      util::units::Meters(S2Earth::ToDistance(S1Angle::Radians(2))).value(),
-      2 * S2Earth::RadiusMeters());
-  ASSERT_FLOAT_EQ(
-      util::units::Meters(S2Earth::ToDistance(S1ChordAngle::Radians(2)))
-          .value(),
-      2 * S2Earth::RadiusMeters());
-  ASSERT_DOUBLE_EQ(
-      S2Earth::ToRadians(util::units::Meters(S2Earth::RadiusMeters())), 1);
-  ASSERT_DOUBLE_EQ(S2Earth::ToMeters(S1Angle::Degrees(180)),
-                   S2Earth::RadiusMeters() * M_PI);
-  ASSERT_DOUBLE_EQ(S2Earth::ToMeters(S1ChordAngle::Degrees(180)),
-                   S2Earth::RadiusMeters() * M_PI);
-  ASSERT_DOUBLE_EQ(S2Earth::ToKm(S1Angle::Radians(0.5)),
-                   0.5 * S2Earth::RadiusKm());
-  ASSERT_DOUBLE_EQ(S2Earth::ToKm(S1ChordAngle::Radians(0.5)),
-                   0.5 * S2Earth::RadiusKm());
-  ASSERT_DOUBLE_EQ(S2Earth::KmToRadians(S2Earth::RadiusMeters() / 1000), 1);
-  ASSERT_DOUBLE_EQ(S2Earth::RadiansToKm(0.5), 0.5 * S2Earth::RadiusKm());
-  ASSERT_DOUBLE_EQ(S2Earth::MetersToRadians(S2Earth::RadiansToKm(0.3) * 1000),
+  // Functions that use meters:
+  EXPECT_DOUBLE_EQ(S2Earth::MetersToAngle(S2Earth::RadiusMeters()).radians(),
+                   1);
+  EXPECT_DOUBLE_EQ(
+      S2Earth::MetersToChordAngle(S2Earth::RadiusMeters()).radians(), 1);
+  EXPECT_DOUBLE_EQ(S2Earth::MetersToRadians(S2Earth::RadiansToKm(0.3) * 1000),
                    0.3);
-  ASSERT_DOUBLE_EQ(S2Earth::RadiansToMeters(S2Earth::KmToRadians(2.5)), 2500);
+  EXPECT_DOUBLE_EQ(S2Earth::ToMeters(S1Angle::Degrees(180)),
+                   S2Earth::RadiusMeters() * M_PI);
+  EXPECT_DOUBLE_EQ(S2Earth::ToMeters(S1ChordAngle::Degrees(180)),
+                   S2Earth::RadiusMeters() * M_PI);
+  EXPECT_DOUBLE_EQ(S2Earth::RadiansToMeters(S2Earth::KmToRadians(2.5)), 2500);
+
+  // Functions that use kilometers:
+  EXPECT_DOUBLE_EQ(S2Earth::KmToAngle(S2Earth::RadiusKm()).radians(), 1);
+  EXPECT_DOUBLE_EQ(S2Earth::KmToChordAngle(S2Earth::RadiusKm()).radians(), 1);
+  EXPECT_DOUBLE_EQ(S2Earth::KmToRadians(S2Earth::RadiusMeters() / 1000), 1);
+  EXPECT_DOUBLE_EQ(S2Earth::ToKm(S1Angle::Radians(0.5)),
+                   0.5 * S2Earth::RadiusKm());
+  EXPECT_DOUBLE_EQ(S2Earth::ToKm(S1ChordAngle::Radians(0.5)),
+                   0.5 * S2Earth::RadiusKm());
+  EXPECT_DOUBLE_EQ(S2Earth::RadiansToKm(0.5), 0.5 * S2Earth::RadiusKm());
+
+  // Functions that use util::units::Meters (which only has "float" precision,
+  // but fortunately S2Earth::Radius() is exactly representable as "float"):
+  EXPECT_DOUBLE_EQ(S2Earth::ToAngle(S2Earth::Radius()).radians(), 1);
+  EXPECT_DOUBLE_EQ(S2Earth::ToChordAngle(S2Earth::Radius()).radians(), 1);
+  EXPECT_DOUBLE_EQ(S2Earth::ToRadians(S2Earth::Radius()), 1);
+  EXPECT_FLOAT_EQ(S2Earth::ToDistance(S1Angle::Radians(2)).value(),
+                  2 * S2Earth::RadiusMeters());
+  EXPECT_FLOAT_EQ(S2Earth::ToDistance(S1ChordAngle::Radians(0.5)).value(),
+                  0.5 * S2Earth::RadiusMeters());
+  EXPECT_FLOAT_EQ(S2Earth::RadiansToDistance(1.5).value(),
+                  1.5 * S2Earth::RadiusMeters());
 }
 
 TEST(S2EarthTest, TestSolidAngleConversion) {
-  ASSERT_DOUBLE_EQ(1,
-                   S2Earth::SquareKmToSteradians(
-                       std::pow(S2Earth::RadiusMeters() / 1000, 2)));
-  ASSERT_DOUBLE_EQ(std::pow(0.5 * S2Earth::RadiusKm(), 2),
+  EXPECT_DOUBLE_EQ(1, S2Earth::SquareKmToSteradians(
+                          std::pow(S2Earth::RadiusMeters() / 1000, 2)));
+  EXPECT_DOUBLE_EQ(std::pow(0.5 * S2Earth::RadiusKm(), 2),
                    S2Earth::SteradiansToSquareKm(std::pow(0.5, 2)));
-  ASSERT_DOUBLE_EQ(std::pow(0.3, 2),
-                   S2Earth::SquareMetersToSteradians(
-                       std::pow(S2Earth::RadiansToKm(0.3) * 1000, 2)));
-  ASSERT_DOUBLE_EQ(std::pow(2500, 2),
+  EXPECT_DOUBLE_EQ(std::pow(0.3, 2), S2Earth::SquareMetersToSteradians(std::pow(
+                                         S2Earth::RadiansToKm(0.3) * 1000, 2)));
+  EXPECT_DOUBLE_EQ(std::pow(2500, 2),
                    S2Earth::SteradiansToSquareMeters(
                        std::pow(S2Earth::KmToRadians(2.5), 2)));
 }
 
 TEST(S2EarthTest, TestToLongitudeRadians) {
-  const util::units::Meters earth_radius =
-      util::units::Meters(S2Earth::RadiusMeters());
+  const util::units::Meters earth_radius = S2Earth::Radius();
 
   // At the equator, ToLongitudeRadians behaves exactly like ToRadians.
-  ASSERT_DOUBLE_EQ(S2Earth::ToLongitudeRadians(earth_radius, 0), 1);
+  EXPECT_DOUBLE_EQ(S2Earth::ToLongitudeRadians(earth_radius, 0), 1);
 
   // The closer we get to the poles, the more radians we need to go the same
   // distance.
-  ASSERT_GT(S2Earth::ToLongitudeRadians(earth_radius, 0.5),
+  EXPECT_GT(S2Earth::ToLongitudeRadians(earth_radius, 0.5),
             S2Earth::ToLongitudeRadians(earth_radius, 0.4));
 
   // At the poles, we should return 2PI radians instead of dividing by 0.
-  ASSERT_DOUBLE_EQ(S2Earth::ToLongitudeRadians(earth_radius, M_PI_2), M_PI * 2);
+  EXPECT_DOUBLE_EQ(S2Earth::ToLongitudeRadians(earth_radius, M_PI_2), M_PI * 2);
 
   // Within epsilon of the poles, we should still return 2PI radians instead
   // of directing the caller to take thousands of radians around.
-  ASSERT_DOUBLE_EQ(S2Earth::ToLongitudeRadians(earth_radius, M_PI_2 - 1e-4),
+  EXPECT_DOUBLE_EQ(S2Earth::ToLongitudeRadians(earth_radius, M_PI_2 - 1e-4),
                    M_PI * 2);
+
+  // Check that the "meters" and "kilometer" versions are compatible.
+  EXPECT_EQ(S2Earth::ToLongitudeRadians(earth_radius, 0.5),
+            S2Earth::MetersToLongitudeRadians(earth_radius.value(), 0.5));
+  EXPECT_DOUBLE_EQ(
+      S2Earth::ToLongitudeRadians(earth_radius, 0.5),
+      S2Earth::KmToLongitudeRadians(earth_radius.value() / 1000.0, 0.5));
 }
 
 TEST(S2EarthTest, TestGetInitialBearing) {
   struct TestConfig {
-    string description;
+    std::string description;
     S2LatLng a;
     S2LatLng b;
     S1Angle bearing;
@@ -123,24 +137,24 @@ TEST(S2EarthTest, TestGetDistance) {
   S2Point south(0, 0, -1);
   S2Point west(0, -1, 0);
 
-  ASSERT_FLOAT_EQ(
+  EXPECT_FLOAT_EQ(
       util::units::Miles(S2Earth::GetDistance(north, south)).value(),
       util::units::Miles(M_PI * S2Earth::Radius()).value());
-  ASSERT_DOUBLE_EQ(S2Earth::GetDistanceKm(west, west), 0);
-  ASSERT_DOUBLE_EQ(S2Earth::GetDistanceMeters(north, west),
+  EXPECT_DOUBLE_EQ(S2Earth::GetDistanceKm(west, west), 0);
+  EXPECT_DOUBLE_EQ(S2Earth::GetDistanceMeters(north, west),
                    M_PI_2 * S2Earth::RadiusMeters());
 
-  ASSERT_FLOAT_EQ(
+  EXPECT_FLOAT_EQ(
       util::units::Feet(S2Earth::GetDistance(S2LatLng::FromDegrees(0, -90),
                                              S2LatLng::FromDegrees(-90, -38)))
           .value(),
       util::units::Feet(S2Earth::GetDistance(west, south)).value());
 
-  ASSERT_DOUBLE_EQ(S2Earth::GetDistanceKm(S2LatLng::FromRadians(0, 0.6),
+  EXPECT_DOUBLE_EQ(S2Earth::GetDistanceKm(S2LatLng::FromRadians(0, 0.6),
                                           S2LatLng::FromRadians(0, -0.4)),
                    S2Earth::RadiusKm());
 
-  ASSERT_DOUBLE_EQ(S2Earth::GetDistanceMeters(S2LatLng::FromDegrees(80, 27),
+  EXPECT_DOUBLE_EQ(S2Earth::GetDistanceMeters(S2LatLng::FromDegrees(80, 27),
                                               S2LatLng::FromDegrees(55, -153)),
                    1000 * S2Earth::RadiusKm() * M_PI / 4);
 }

@@ -57,9 +57,9 @@ struct PolygonDegeneracy {
 // sibling pairs and classifies them as being either shells or holes.  The
 // result vector is sorted by edge id.
 //
-// REQUIRES: graph.options().edge_type() == DIRECTED
-// REQUIRES: graph.options().sibling_pairs() == DISCARD_EXCESS (or DISCARD)
-// REQUIRES: graph.options().degenerate_edges() == DISCARD_EXCESS (or DISCARD)
+// REQUIRES: g.options().edge_type() == DIRECTED
+// REQUIRES: g.options().sibling_pairs() == DISCARD_EXCESS (or DISCARD)
+// REQUIRES: g.options().degenerate_edges() == DISCARD_EXCESS (or DISCARD)
 //
 // Usually callers will want to specify SiblingPairs::DISCARD_EXCESS and
 // DegenerateEdges::DISCARD_EXCESS in order to remove all redundant
@@ -69,7 +69,17 @@ struct PolygonDegeneracy {
 // If the graph edges cannot be assembled into loops, the result is undefined.
 // (An error may or may not be returned.)
 std::vector<PolygonDegeneracy> FindPolygonDegeneracies(
-    const S2Builder::Graph& graph, S2Error* error);
+    const S2Builder::Graph& g, S2Error* error);
+
+// Given a graph representing a polygon, returns true the graph consists
+// entirely of degenerate edges and/or sibling pairs.  Such a graph represents
+// either the empty polygon together with a collection of degenerate shells,
+// or the full polygon together with a collection of degenerate holes.
+//
+// REQUIRES: g.options().edge_type() == DIRECTED
+// REQUIRES: g.options().sibling_pairs() == DISCARD_EXCESS (or DISCARD)
+// REQUIRES: g.options().degenerate_edges() == DISCARD_EXCESS (or DISCARD)
+bool IsFullyDegenerate(const S2Builder::Graph& g);
 
 }  // namespace s2builderutil
 

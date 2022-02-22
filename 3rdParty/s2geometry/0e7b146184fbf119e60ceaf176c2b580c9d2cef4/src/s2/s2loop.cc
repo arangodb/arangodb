@@ -26,9 +26,14 @@
 #include <utility>
 #include <vector>
 
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+#include "absl/types/span.h"
+
 #include "s2/base/commandlineflags.h"
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
+#include "s2/util/coding/coder.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/r1interval.h"
 #include "s2/s1angle.h"
@@ -53,22 +58,18 @@
 #include "s2/s2shape_index.h"
 #include "s2/s2shapeutil_visit_crossing_edge_pairs.h"
 #include "s2/s2wedge_relations.h"
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/third_party/absl/types/span.h"
 #include "s2/util/coding/coder.h"
 #include "s2/util/coding/coder.h"
 #include "s2/util/math/matrix3x3.h"
 
-using absl::MakeSpan;
 using absl::make_unique;
-using std::fabs;
-using std::max;
-using std::min;
+using absl::MakeSpan;
+using absl::Span;
 using std::pair;
 using std::set;
 using std::vector;
 
-DEFINE_bool(
+S2_DEFINE_bool(
     s2loop_lazy_indexing, true,
     "Build the S2ShapeIndex only when it is first needed.  This can save "
     "significant amounts of memory and time when geometry is constructed but "
@@ -77,7 +78,7 @@ DEFINE_bool(
 
 // The maximum number of vertices we'll allow when decoding a loop.
 // The default value of 50 million is about 30x bigger than the number of
-DEFINE_int32(
+S2_DEFINE_int32(
     s2polygon_decode_max_num_vertices, 50000000,
     "The upper limit on the number of loops that are allowed by the "
     "S2Polygon::Decode method.");
@@ -96,11 +97,10 @@ S2Loop::S2Loop() {
   // The loop is not valid until Init() is called.
 }
 
-S2Loop::S2Loop(const vector<S2Point>& vertices)
+S2Loop::S2Loop(Span<const S2Point> vertices)
   : S2Loop(vertices, S2Debug::ALLOW) {}
 
-S2Loop::S2Loop(const vector<S2Point>& vertices,
-               S2Debug override)
+S2Loop::S2Loop(Span<const S2Point> vertices, S2Debug override)
   : s2debug_override_(override) {
   Init(vertices);
 }
@@ -118,7 +118,7 @@ void S2Loop::ClearIndex() {
   index_.Clear();
 }
 
-void S2Loop::Init(const vector<S2Point>& vertices) {
+void S2Loop::Init(Span<const S2Point> vertices) {
   ClearIndex();
   if (owns_vertices_) delete[] vertices_;
   num_vertices_ = vertices.size();
@@ -131,7 +131,7 @@ void S2Loop::Init(const vector<S2Point>& vertices) {
 bool S2Loop::IsValid() const {
   S2Error error;
   if (FindValidationError(&error)) {
-    S2_LOG_IF(ERROR, FLAGS_s2debug) << error;
+    S2_LOG_IF(ERROR, absl::GetFlag(FLAGS_s2debug)) << error;
     return false;
   }
   return true;
@@ -200,28 +200,22 @@ void S2Loop::InitOriginAndBound() {
     // otherwise it is empty.
     origin_inside_ = (vertex(0).z() < 0);
   } else {
-    // Point containment testing is done by counting edge crossings starting
-    // at a fixed point on the sphere (S2::Origin()).  Historically this was
-    // important, but it is now no longer necessary, and it may be worthwhile
-    // experimenting with using a loop vertex as the reference point.  In any
-    // case, we need to know whether the reference point (S2::Origin) is
-    // inside or outside the loop before we can construct the S2ShapeIndex.
-    // We do this by first guessing that it is outside, and then seeing
-    // whether we get the correct containment result for vertex 1.  If the
-    // result is incorrect, the origin must be inside the loop.
+    // The brute force point containment algorithm works by counting edge
+    // crossings starting at a fixed reference point (chosen as S2::Origin()
+    // for historical reasons).  Loop initialization would be more efficient
+    // if we used a loop vertex such as vertex(0) as the reference point
+    // instead, however making this change would be a lot of work because
+    // origin_inside_ is currently part of the Encode() format.
     //
-    // A loop with consecutive vertices A,B,C contains vertex B if and only if
-    // the fixed vector R = S2::Ortho(B) is contained by the wedge ABC.  The
-    // wedge is closed at A and open at C, i.e. the point B is inside the loop
-    // if A=R but not if C=R.  This convention is required for compatibility
-    // with S2::VertexCrossing.  (Note that we can't use S2::Origin()
-    // as the fixed vector because of the possibility that B == S2::Origin().)
-    //
-    // TODO(ericv): Investigate using vertex(0) as the reference point.
-
+    // In any case, we initialize origin_inside_ by first guessing that it is
+    // outside, and then seeing whether we get the correct containment result
+    // for vertex 1.  If the result is incorrect, the origin must be inside
+    // the loop instead.  Note that the S2Loop is not necessarily valid and so
+    // we need to check the requirements of S2::AngleContainsVertex() first.
+    bool v1_inside = vertex(0) != vertex(1) && vertex(2) != vertex(1) &&
+                     S2::AngleContainsVertex(vertex(0), vertex(1), vertex(2));
     origin_inside_ = false;  // Initialize before calling Contains().
-    bool v1_inside = s2pred::OrderedCCW(S2::Ortho(vertex(1)), vertex(0),
-                                        vertex(2), vertex(1));
+
     // Note that Contains(S2Point) only does a bounds check once InitIndex()
     // has been called, so it doesn't matter that bound_ is undefined here.
     if (v1_inside != Contains(vertex(1))) {
@@ -279,10 +273,10 @@ void S2Loop::InitBound() {
 
 void S2Loop::InitIndex() {
   index_.Add(make_unique<Shape>(this));
-  if (!FLAGS_s2loop_lazy_indexing) {
+  if (!absl::GetFlag(FLAGS_s2loop_lazy_indexing)) {
     index_.ForceBuild();
   }
-  if (FLAGS_s2debug && s2debug_override_ == S2Debug::ALLOW) {
+  if (absl::GetFlag(FLAGS_s2debug) && s2debug_override_ == S2Debug::ALLOW) {
     // Note that FLAGS_s2debug is false in optimized builds (by default).
     S2_CHECK(IsValid());
   }
@@ -503,7 +497,7 @@ bool S2Loop::BoundaryApproxIntersects(const MutableS2ShapeIndex::Iterator& it,
     int ai = a_clipped.edge(i);
     R2Point v0, v1;
     if (S2::ClipToPaddedFace(vertex(ai), vertex(ai+1), target.face(),
-                                     kMaxError, &v0, &v1) &&
+                             kMaxError, &v0, &v1) &&
         S2::IntersectsRect(v0, v1, bound)) {
       return true;
     }
@@ -626,7 +620,7 @@ bool S2Loop::DecodeInternal(Decoder* const decoder,
   // and such loops encode and decode properly.
   if (decoder->avail() < sizeof(uint32)) return false;
   const uint32 num_vertices = decoder->get32();
-  if (num_vertices > FLAGS_s2polygon_decode_max_num_vertices) {
+  if (num_vertices > absl::GetFlag(FLAGS_s2polygon_decode_max_num_vertices)) {
     return false;
   }
   if (decoder->avail() < (num_vertices * sizeof(*vertices_) +
@@ -638,17 +632,19 @@ bool S2Loop::DecodeInternal(Decoder* const decoder,
   num_vertices_ = num_vertices;
 
   // x86 can do unaligned floating-point reads; however, many other
-  // platforms can not. Do not use the zero-copy version if we are on
+  // platforms cannot. Do not use the zero-copy version if we are on
   // an architecture that does not support unaligned reads, and the
   // pointer is not correctly aligned.
-#if defined(ARCH_PIII) || defined(ARCH_K8)
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386) || \
+    defined(_M_IX86)
   bool is_misaligned = false;
 #else
-  bool is_misaligned = ((intptr_t)decoder->ptr() % sizeof(double) != 0);
+  bool is_misaligned =
+      reinterpret_cast<intptr_t>(decoder->skip(0)) % sizeof(double) != 0;
 #endif
   if (within_scope && !is_misaligned) {
     vertices_ = const_cast<S2Point *>(reinterpret_cast<const S2Point*>(
-                    decoder->ptr()));
+                    decoder->skip(0)));
     decoder->skip(num_vertices_ * sizeof(*vertices_));
     owns_vertices_ = false;
   } else {
@@ -701,7 +697,7 @@ class LoopRelation {
   virtual int b_crossing_target() const = 0;
 
   // Given a vertex "ab1" that is shared between the two loops, return true if
-  // the two associated wedges (a0, ab1, b2) and (b0, ab1, b2) are equivalent
+  // the two associated wedges (a0, ab1, a2) and (b0, ab1, b2) are equivalent
   // to an edge crossing.  The loop relation is also allowed to maintain its
   // own internal state, and can return true if it observes any sequence of
   // wedges that are equivalent to an edge crossing.
@@ -1030,7 +1026,7 @@ class ContainsRelation : public LoopRelation {
   bool found_shared_vertex_;
 };
 
-bool S2Loop::Contains(const S2Loop* b) const {
+bool S2Loop::Contains(const S2Loop& b) const {
   // For this loop A to contains the given loop B, all of the following must
   // be true:
   //
@@ -1046,17 +1042,17 @@ bool S2Loop::Contains(const S2Loop* b) const {
   // The second part of (3) is necessary to detect the case of two loops whose
   // union is the entire sphere, i.e. two loops that contains each other's
   // boundaries but not each other's interiors.
-  if (!subregion_bound_.Contains(b->bound_)) return false;
+  if (!subregion_bound_.Contains(b.bound_)) return false;
 
   // Special cases to handle either loop being empty or full.
-  if (is_empty_or_full() || b->is_empty_or_full()) {
-    return is_full() || b->is_empty();
+  if (is_empty_or_full() || b.is_empty_or_full()) {
+    return is_full() || b.is_empty();
   }
 
   // Check whether there are any edge crossings, and also check the loop
   // relationship at any shared vertices.
   ContainsRelation relation;
-  if (HasCrossingRelation(*this, *b, &relation)) return false;
+  if (HasCrossingRelation(*this, b, &relation)) return false;
 
   // There are no crossings, and if there are any shared vertices then A
   // contains B locally at each shared vertex.
@@ -1065,17 +1061,17 @@ bool S2Loop::Contains(const S2Loop* b) const {
   // Since there are no edge intersections or shared vertices, we just need to
   // test condition (3) above.  We can skip this test if we discovered that A
   // contains at least one point of B while checking for edge crossings.
-  if (!Contains(b->vertex(0))) return false;
+  if (!Contains(b.vertex(0))) return false;
 
   // We still need to check whether (A union B) is the entire sphere.
   // Normally this check is very cheap due to the bounding box precondition.
-  if ((b->subregion_bound_.Contains(bound_) ||
-       b->bound_.Union(bound_).is_full()) && b->Contains(vertex(0))) {
+  if ((b.subregion_bound_.Contains(bound_) ||
+       b.bound_.Union(bound_).is_full()) &&
+      b.Contains(vertex(0))) {
     return false;
   }
   return true;
 }
-
 
 // Loop relation for Intersects().
 class IntersectsRelation : public LoopRelation {
@@ -1098,16 +1094,16 @@ class IntersectsRelation : public LoopRelation {
   bool found_shared_vertex_;
 };
 
-bool S2Loop::Intersects(const S2Loop* b) const {
+bool S2Loop::Intersects(const S2Loop& b) const {
   // a->Intersects(b) if and only if !a->Complement()->Contains(b).
   // This code is similar to Contains(), but is optimized for the case
   // where both loops enclose less than half of the sphere.
-  if (!bound_.Intersects(b->bound_)) return false;
+  if (!bound_.Intersects(b.bound_)) return false;
 
   // Check whether there are any edge crossings, and also check the loop
   // relationship at any shared vertices.
   IntersectsRelation relation;
-  if (HasCrossingRelation(*this, *b, &relation)) return true;
+  if (HasCrossingRelation(*this, b, &relation)) return true;
   if (relation.found_shared_vertex()) return false;
 
   // Since there are no edge intersections or shared vertices, the loops
@@ -1118,13 +1114,12 @@ bool S2Loop::Intersects(const S2Loop* b) const {
 
   // Check whether A contains B, or A and B contain each other's boundaries.
   // (Note that A contains all the vertices of B in either case.)
-  if (subregion_bound_.Contains(b->bound_) ||
-      bound_.Union(b->bound_).is_full()) {
-    if (Contains(b->vertex(0))) return true;
+  if (subregion_bound_.Contains(b.bound_) || bound_.Union(b.bound_).is_full()) {
+    if (Contains(b.vertex(0))) return true;
   }
   // Check whether B contains A.
-  if (b->subregion_bound_.Contains(bound_)) {
-    if (b->Contains(vertex(0))) return true;
+  if (b.subregion_bound_.Contains(bound_)) {
+    if (b.Contains(vertex(0))) return true;
   }
   return false;
 }
@@ -1188,96 +1183,96 @@ class CompareBoundaryRelation : public LoopRelation {
   bool excludes_edge_;        // True if any edge of B is excluded by A.
 };
 
-int S2Loop::CompareBoundary(const S2Loop* b) const {
-  S2_DCHECK(!is_empty() && !b->is_empty());
-  S2_DCHECK(!b->is_full() || !b->is_hole());
+int S2Loop::CompareBoundary(const S2Loop& b) const {
+  S2_DCHECK(!is_empty() && !b.is_empty());
+  S2_DCHECK(!b.is_full() || !b.is_hole());
 
   // The bounds must intersect for containment or crossing.
-  if (!bound_.Intersects(b->bound_)) return -1;
+  if (!bound_.Intersects(b.bound_)) return -1;
 
   // Full loops are handled as though the loop surrounded the entire sphere.
   if (is_full()) return 1;
-  if (b->is_full()) return -1;
+  if (b.is_full()) return -1;
 
   // Check whether there are any edge crossings, and also check the loop
   // relationship at any shared vertices.
-  CompareBoundaryRelation relation(b->is_hole());
-  if (HasCrossingRelation(*this, *b, &relation)) return 0;
+  CompareBoundaryRelation relation(b.is_hole());
+  if (HasCrossingRelation(*this, b, &relation)) return 0;
   if (relation.found_shared_vertex()) {
     return relation.contains_edge() ? 1 : -1;
   }
 
   // There are no edge intersections or shared vertices, so we can check
   // whether A contains an arbitrary vertex of B.
-  return Contains(b->vertex(0)) ? 1 : -1;
+  return Contains(b.vertex(0)) ? 1 : -1;
 }
 
-bool S2Loop::ContainsNonCrossingBoundary(const S2Loop* b, bool reverse_b)
-    const {
-  S2_DCHECK(!is_empty() && !b->is_empty());
-  S2_DCHECK(!b->is_full() || !reverse_b);
+bool S2Loop::ContainsNonCrossingBoundary(const S2Loop& b,
+                                         bool reverse_b) const {
+  S2_DCHECK(!is_empty() && !b.is_empty());
+  S2_DCHECK(!b.is_full() || !reverse_b);
 
   // The bounds must intersect for containment.
-  if (!bound_.Intersects(b->bound_)) return false;
+  if (!bound_.Intersects(b.bound_)) return false;
 
   // Full loops are handled as though the loop surrounded the entire sphere.
   if (is_full()) return true;
-  if (b->is_full()) return false;
+  if (b.is_full()) return false;
 
-  int m = FindVertex(b->vertex(0));
+  int m = FindVertex(b.vertex(0));
   if (m < 0) {
     // Since vertex b0 is not shared, we can check whether A contains it.
-    return Contains(b->vertex(0));
+    return Contains(b.vertex(0));
   }
   // Otherwise check whether the edge (b0, b1) is contained by A.
-  return WedgeContainsSemiwedge(vertex(m-1), vertex(m), vertex(m+1),
-                                b->vertex(1), reverse_b);
+  return WedgeContainsSemiwedge(vertex(m - 1), vertex(m), vertex(m + 1),
+                                b.vertex(1), reverse_b);
 }
 
-bool S2Loop::ContainsNested(const S2Loop* b) const {
-  if (!subregion_bound_.Contains(b->bound_)) return false;
+bool S2Loop::ContainsNested(const S2Loop& b) const {
+  if (!subregion_bound_.Contains(b.bound_)) return false;
 
   // Special cases to handle either loop being empty or full.  Also bail out
   // when B has no vertices to avoid heap overflow on the vertex(1) call
   // below.  (This method is called during polygon initialization before the
   // client has an opportunity to call IsValid().)
-  if (is_empty_or_full() || b->num_vertices() < 2) {
-    return is_full() || b->is_empty();
+  if (is_empty_or_full() || b.num_vertices() < 2) {
+    return is_full() || b.is_empty();
   }
 
   // We are given that A and B do not share any edges, and that either one
   // loop contains the other or they do not intersect.
-  int m = FindVertex(b->vertex(1));
+  int m = FindVertex(b.vertex(1));
   if (m < 0) {
-    // Since b->vertex(1) is not shared, we can check whether A contains it.
-    return Contains(b->vertex(1));
+    // Since b.vertex(1) is not shared, we can check whether A contains it.
+    return Contains(b.vertex(1));
   }
-  // Check whether the edge order around b->vertex(1) is compatible with
+  // Check whether the edge order around b.vertex(1) is compatible with
   // A containing B.
-  return S2::WedgeContains(vertex(m-1), vertex(m), vertex(m+1),
-                                   b->vertex(0), b->vertex(2));
+  return S2::WedgeContains(vertex(m - 1), vertex(m), vertex(m + 1), b.vertex(0),
+                           b.vertex(2));
 }
 
-bool S2Loop::Equals(const S2Loop* b) const {
-  if (num_vertices() != b->num_vertices()) return false;
+bool S2Loop::Equals(const S2Loop& b) const {
+  if (num_vertices() != b.num_vertices()) return false;
   for (int i = 0; i < num_vertices(); ++i) {
-    if (vertex(i) != b->vertex(i)) return false;
+    if (vertex(i) != b.vertex(i)) return false;
   }
   return true;
 }
 
-bool S2Loop::BoundaryEquals(const S2Loop* b) const {
-  if (num_vertices() != b->num_vertices()) return false;
+bool S2Loop::BoundaryEquals(const S2Loop& b) const {
+  if (num_vertices() != b.num_vertices()) return false;
 
   // Special case to handle empty or full loops.  Since they have the same
   // number of vertices, if one loop is empty/full then so is the other.
-  if (is_empty_or_full()) return is_empty() == b->is_empty();
+  if (is_empty_or_full()) return is_empty() == b.is_empty();
 
   for (int offset = 0; offset < num_vertices(); ++offset) {
-    if (vertex(offset) == b->vertex(0)) {
+    if (vertex(offset) == b.vertex(0)) {
       // There is at most one starting offset since loop vertices are unique.
       for (int i = 0; i < num_vertices(); ++i) {
-        if (vertex(i + offset) != b->vertex(i)) return false;
+        if (vertex(i + offset) != b.vertex(i)) return false;
       }
       return true;
     }
@@ -1405,7 +1400,8 @@ bool S2Loop::DecodeCompressed(Decoder* decoder, int snap_level) {
     return false;
   }
   if (unsigned_num_vertices == 0 ||
-      unsigned_num_vertices > FLAGS_s2polygon_decode_max_num_vertices) {
+      unsigned_num_vertices >
+          absl::GetFlag(FLAGS_s2polygon_decode_max_num_vertices)) {
     return false;
   }
   ClearIndex();
@@ -1467,9 +1463,7 @@ std::bitset<kNumProperties> S2Loop::GetCompressedEncodingProperties() const {
 std::unique_ptr<S2Loop> S2Loop::MakeRegularLoop(const S2Point& center,
                                                 S1Angle radius,
                                                 int num_vertices) {
-  Matrix3x3_d m;
-  S2::GetFrame(center, &m);  // TODO(ericv): Return by value
-  return MakeRegularLoop(m, radius, num_vertices);
+  return MakeRegularLoop(S2::GetFrame(center), radius, num_vertices);
 }
 
 /* static */

@@ -22,28 +22,28 @@
 #include "s2/s2lax_polyline_shape.h"
 #include "s2/s2text_format.h"
 
-using s2textformat::MakeLaxPolygon;
-using s2textformat::MakeLaxPolyline;
-using s2textformat::MakePoint;
+using s2textformat::MakeLaxPolygonOrDie;
+using s2textformat::MakeLaxPolylineOrDie;
+using s2textformat::MakePointOrDie;
 
 namespace s2shapeutil {
 
 TEST(ContainsBruteForce, NoInterior) {
   // Defines a polyline that almost entirely encloses the point 0:0.
-  auto polyline = MakeLaxPolyline("0:0, 0:1, 1:-1, -1:-1, -1e9:1");
-  EXPECT_FALSE(ContainsBruteForce(*polyline, MakePoint("0:0")));
+  auto polyline = MakeLaxPolylineOrDie("0:0, 0:1, 1:-1, -1:-1, -1e9:1");
+  EXPECT_FALSE(ContainsBruteForce(*polyline, MakePointOrDie("0:0")));
 }
 
 TEST(ContainsBruteForce, ContainsReferencePoint) {
   // Checks that ContainsBruteForce agrees with GetReferencePoint.
-  auto polygon = MakeLaxPolygon("0:0, 0:1, 1:-1, -1:-1, -1e9:1");
+  auto polygon = MakeLaxPolygonOrDie("0:0, 0:1, 1:-1, -1:-1, -1e9:1");
   auto ref = polygon->GetReferencePoint();
   EXPECT_EQ(ref.contained, ContainsBruteForce(*polygon, ref.point));
 }
 
 TEST(ContainsBruteForce, ConsistentWithS2Loop) {
   // Checks that ContainsBruteForce agrees with S2Loop::Contains().
-  auto loop = S2Loop::MakeRegularLoop(MakePoint("89:-179"),
+  auto loop = S2Loop::MakeRegularLoop(MakePointOrDie("89:-179"),
                                       S1Angle::Degrees(10), 100);
   S2Loop::Shape shape(loop.get());
   for (int i = 0; i < loop->num_vertices(); ++i) {

@@ -31,12 +31,12 @@
 #include <cstdio>
 #include <map>
 #include <set>
-#include <string>
 #include <utility>
 #include <vector>
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
 #include <gtest/gtest.h>
+#include "s2/base/log_severity.h"
 #include "s2/r2.h"
 #include "s2/s1angle.h"
 #include "s2/s2cell.h"
@@ -521,7 +521,7 @@ static double GetLatLngMinVertexSeparation(int64 old_scale, int64 scale,
   for (const auto& entry : scores) {
     if (--num_to_print >= 0) {
       printf("Scale %14" PRId64 ": min_vertex_sep_ratio = %.15f, %s\n",
-             int64_t{scale}, entry.first,
+             int64{scale}, entry.first,
              s2textformat::ToString(ToPoint(entry.second, scale)).c_str());
     }
     if (best_configs->insert(entry.second).second && --num_to_keep <= 0) break;
@@ -636,7 +636,7 @@ static double GetLatLngMinEdgeSeparation(
   best_configs->clear();
   int num_to_keep = google::DEBUG_MODE ? 50 : 200;
   int num_to_print = 3;
-  printf("Scale %" PRId64 ":\n", int64_t{scale});
+  printf("Scale %" PRId64 ":\n", int64{scale});
   for (const auto& entry : scores) {
     const LatLngConfig& config = entry.second;
     int64 scale = config.scale;

@@ -16,13 +16,15 @@
 // Author: ericv@google.com (Eric Veach)
 
 #include "s2/s2predicates.h"
-#include "s2/s2predicates_internal.h"
 
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <ostream>
+
 #include "s2/s1chord_angle.h"
+#include "s2/s2edge_crossings.h"
+#include "s2/s2predicates_internal.h"
 #include "s2/util/math/exactfloat/exactfloat.h"
 #include "s2/util/math/vector.h"
 
@@ -32,12 +34,6 @@ using std::min;
 using std::sqrt;
 
 namespace s2pred {
-
-// All error bounds in this file are expressed in terms of the maximum
-// rounding error for a floating-point type.  The rounding error is half of
-// the numeric_limits<T>::epsilon() value.
-constexpr double DBL_ERR = rounding_epsilon<double>();
-constexpr long double LD_ERR = rounding_epsilon<long double>();
 
 // A predefined S1ChordAngle representing (approximately) 45 degrees.
 static const S1ChordAngle k45Degrees = S1ChordAngle::FromLength2(2 - M_SQRT2);
@@ -95,6 +91,10 @@ int StableSign(const S2Point& a, const S2Point& b, const S2Point& c) {
     det = -(bc.CrossProd(ab).DotProd(b));
     max_error = kDetErrorMultiplier * sqrt(bc2 * ab2);
   }
+  // Errors smaller than this value may not be accurate due to underflow.
+  const double kMinNoUnderflowError = kDetErrorMultiplier * sqrt(DBL_MIN);
+  if (max_error < kMinNoUnderflowError) return 0;
+
   return (fabs(det) <= max_error) ? 0 : (det > 0) ? 1 : -1;
 }
 
@@ -236,9 +236,9 @@ int ExactSign(const S2Point& a, const S2Point& b, const S2Point& c,
 
   // Construct multiple-precision versions of the sorted points and compute
   // their exact 3x3 determinant.
-  Vector3_xf xa = Vector3_xf::Cast(*pa);
-  Vector3_xf xb = Vector3_xf::Cast(*pb);
-  Vector3_xf xc = Vector3_xf::Cast(*pc);
+  Vector3_xf xa = ToExact(*pa);
+  Vector3_xf xb = ToExact(*pb);
+  Vector3_xf xc = ToExact(*pc);
   Vector3_xf xb_cross_xc = xb.CrossProd(xc);
   ExactFloat det = xa.DotProd(xb_cross_xc);
 
@@ -269,8 +269,6 @@ int ExactSign(const S2Point& a, const S2Point& b, const S2Point& c,
 // supported an option based on MPFR, but that has an LGPL license and is
 // therefore not suited for some applications.)
 
-using Vector3_xf = Vector3<ExactFloat>;
-
 int ExpensiveSign(const S2Point& a, const S2Point& b, const S2Point& c,
                   bool perturb) {
   // Return zero if and only if two points are the same.  This ensures (1).
@@ -297,6 +295,8 @@ int ExpensiveSign(const S2Point& a, const S2Point& b, const S2Point& c,
 
 bool OrderedCCW(const S2Point& a, const S2Point& b, const S2Point& c,
                 const S2Point& o) {
+  S2_DCHECK(a != o && b != o && c != o);
+
   // The last inequality below is ">" rather than ">=" so that we return true
   // if A == B or B == C, and otherwise false if A == C.  Recall that
   // Sign(x,y,z) == -Sign(z,y,x) for all x,y,z.
@@ -433,8 +433,10 @@ int SymbolicCompareDistances(const S2Point& x,
 static int CompareSin2Distances(const S2Point& x,
                                 const S2Point& a, const S2Point& b) {
   int sign = TriageCompareSin2Distances(x, a, b);
-  if (sign != 0) return sign;
-  return TriageCompareSin2Distances(ToLD(x), ToLD(a), ToLD(b));
+  if (kHasLongDouble && sign == 0) {
+    sign = TriageCompareSin2Distances(ToLD(x), ToLD(a), ToLD(b));
+  }
+  return sign;
 }
 
 int CompareDistances(const S2Point& x, const S2Point& a, const S2Point& b) {
@@ -461,7 +463,7 @@ int CompareDistances(const S2Point& x, const S2Point& a, const S2Point& b) {
   } else if (cos_ax < -M_SQRT1_2) {
     // Angles > 135 degrees.  sin^2(angle) is decreasing in this range.
     sign = -CompareSin2Distances(x, a, b);
-  } else {
+  } else if (kHasLongDouble) {
     // We've already tried double precision, so continue with "long double".
     sign = TriageCompareCosDistances(ToLD(x), ToLD(a), ToLD(b));
   }
@@ -522,15 +524,19 @@ int CompareDistance(const S2Point& x, const S2Point& y, S1ChordAngle r) {
   int sign = TriageCompareCosDistance(x, y, r.length2());
   if (sign != 0) return sign;
 
+  // Optimization for (x == y) to avoid falling back to exact arithmetic.
+  if (r.length2() == 0 && x == y) return 0;
+
   // Unlike with CompareDistances(), it's not worth using the sin^2 method
   // when the distance limit is near 180 degrees because the S1ChordAngle
   // representation itself has has a rounding error of up to 2e-8 radians for
   // distances near 180 degrees.
   if (r < k45Degrees) {
     sign = TriageCompareSin2Distance(x, y, r.length2());
-    if (sign != 0) return sign;
-    sign = TriageCompareSin2Distance(ToLD(x), ToLD(y), ToLD(r.length2()));
-  } else {
+    if (kHasLongDouble && sign == 0) {
+      sign = TriageCompareSin2Distance(ToLD(x), ToLD(y), ToLD(r.length2()));
+    }
+  } else if (kHasLongDouble) {
     sign = TriageCompareCosDistance(ToLD(x), ToLD(y), ToLD(r.length2()));
   }
   if (sign != 0) return sign;
@@ -687,23 +693,22 @@ int TriageCompareEdgeDistance(const Vector3<T>& x, const Vector3<T>& a0,
   T n1_error = ((3.5 + 8 / sqrt(3)) * n1 + 32 * sqrt(3) * DBL_ERR) * T_ERR;
   T a0_sign_error = n1_error * a0_dir.Norm();
   T a1_sign_error = n1_error * a1_dir.Norm();
-  if (fabs(a0_sign) < a0_sign_error || fabs(a1_sign) < a1_sign_error) {
-    // It is uncertain whether minimum distance is to an edge vertex or to the
-    // edge interior.  We handle this by computing both distances and checking
-    // whether they yield the same result.
-    int vertex_sign = min(TriageCompareDistance(x, a0, r2),
-                          TriageCompareDistance(x, a1, r2));
-    int line_sign = TriageCompareLineDistance(x, a0, a1, r2, n, n1, n2);
-    return (vertex_sign == line_sign) ? line_sign : 0;
-  }
-  if (a0_sign >= 0 || a1_sign <= 0) {
-    // The minimum distance is to an edge endpoint.
-    return min(TriageCompareDistance(x, a0, r2),
-               TriageCompareDistance(x, a1, r2));
-  } else {
+  if (a0_sign < a0_sign_error && a1_sign > -a1_sign_error) {
+    if (a0_sign > -a0_sign_error || a1_sign < a1_sign_error) {
+      // It is uncertain whether minimum distance is to an edge vertex or to
+      // the edge interior.  We compute both distances and check whether they
+      // yield the same result; otherwise the result is uncertain.
+      int vertex_sign = min(TriageCompareDistance(x, a0, r2),
+                            TriageCompareDistance(x, a1, r2));
+      int line_sign = TriageCompareLineDistance(x, a0, a1, r2, n, n1, n2);
+      return (vertex_sign == line_sign) ? line_sign : 0;
+    }
     // The minimum distance is to the edge interior.
     return TriageCompareLineDistance(x, a0, a1, r2, n, n1, n2);
   }
+  // The minimum distance is to an edge endpoint.
+  return min(TriageCompareDistance(x, a0, r2),
+             TriageCompareDistance(x, a1, r2));
 }
 
 // REQUIRES: the closest point to "x" is in the interior of edge (a0, a1).
@@ -732,8 +737,10 @@ int ExactCompareEdgeDistance(const S2Point& x, const S2Point& a0,
   // "a0" and "a1", since it is virtually certain that the previous floating
   // point calculations failed in that case.
   //
-  // CompareEdgeDirections also checks that no edge has antipodal endpoints.
-  if (CompareEdgeDirections(a0, a1, a0, x) > 0 &&
+  // CompareEdgeDirections requires that no edge has antipodal endpoints,
+  // therefore we need to handle the cases a0 == -x, a1 == -x separately.
+  if (a0 != -x && a1 != -x &&
+      CompareEdgeDirections(a0, a1, a0, x) > 0 &&
       CompareEdgeDirections(a0, a1, x, a1) > 0) {
     // The closest point to "x" is along the interior of the edge.
     return ExactCompareLineDistance(ToExact(x), ToExact(a0), ToExact(a1),
@@ -755,11 +762,29 @@ int CompareEdgeDistance(const S2Point& x, const S2Point& a0, const S2Point& a1,
 
   // Optimization for the case where the edge is degenerate.
   if (a0 == a1) return CompareDistance(x, a0, r);
-
-  sign = TriageCompareEdgeDistance(ToLD(x), ToLD(a0), ToLD(a1),
-                                   ToLD(r.length2()));
-  if (sign != 0) return sign;
+  if (kHasLongDouble) {
+    sign = TriageCompareEdgeDistance(ToLD(x), ToLD(a0), ToLD(a1),
+                                     ToLD(r.length2()));
+    if (sign != 0) return sign;
+  }
   return ExactCompareEdgeDistance(x, a0, a1, r);
+}
+
+int CompareEdgePairDistance(const S2Point& a0, const S2Point& a1,
+                            const S2Point& b0, const S2Point& b1,
+                            S1ChordAngle r) {
+  // The following logic mimics S2::UpdateEdgePairMinDistance().
+
+  // If the edges cross or share an endpoint, the minimum distance is zero.
+  if (S2::CrossingSign(a0, a1, b0, b1) >= 0) {
+    return (r.length2() > 0) ? -1 : (r.length2() < 0) ? 1 : 0;
+  }
+  // Otherwise, the minimum distance is achieved at an endpoint of at least
+  // one of the two edges.
+  return min(min(CompareEdgeDistance(a0, b0, b1, r),
+                 CompareEdgeDistance(a1, b0, b1, r)),
+             min(CompareEdgeDistance(b0, a0, a1, r),
+                 CompareEdgeDistance(b1, a0, a1, r)));
 }
 
 template <class T>
@@ -777,8 +802,7 @@ int TriageCompareEdgeDirections(
 }
 
 bool ArePointsLinearlyDependent(const Vector3_xf& x, const Vector3_xf& y) {
-  Vector3_xf n = x.CrossProd(y);
-  return n[0].sgn() == 0 && n[1].sgn() == 0 && n[2].sgn() == 0;
+  return IsZero(x.CrossProd(y));
 }
 
 bool ArePointsAntipodal(const Vector3_xf& x, const Vector3_xf& y) {
@@ -804,9 +828,10 @@ int CompareEdgeDirections(const S2Point& a0, const S2Point& a1,
 
   // Optimization for the case where either edge is degenerate.
   if (a0 == a1 || b0 == b1) return 0;
-
-  sign = TriageCompareEdgeDirections(ToLD(a0), ToLD(a1), ToLD(b0), ToLD(b1));
-  if (sign != 0) return sign;
+  if (kHasLongDouble) {
+    sign = TriageCompareEdgeDirections(ToLD(a0), ToLD(a1), ToLD(b0), ToLD(b1));
+    if (sign != 0) return sign;
+  }
   return ExactCompareEdgeDirections(ToExact(a0), ToExact(a1),
                                     ToExact(b0), ToExact(b1));
 }
@@ -1068,10 +1093,11 @@ int EdgeCircumcenterSign(const S2Point& x0, const S2Point& x1,
   // Optimization for the cases that are going to return zero anyway, in order
   // to avoid falling back to exact arithmetic.
   if (x0 == x1 || a == b || b == c || c == a) return 0;
-
-  sign = TriageEdgeCircumcenterSign(
-      ToLD(x0), ToLD(x1), ToLD(a), ToLD(b), ToLD(c), abc_sign);
-  if (sign != 0) return sign;
+  if (kHasLongDouble) {
+    sign = TriageEdgeCircumcenterSign(
+        ToLD(x0), ToLD(x1), ToLD(a), ToLD(b), ToLD(c), abc_sign);
+    if (sign != 0) return sign;
+  }
   sign = ExactEdgeCircumcenterSign(
       ToExact(x0), ToExact(x1), ToExact(a), ToExact(b), ToExact(c), abc_sign);
   if (sign != 0) return sign;
@@ -1207,7 +1233,9 @@ Excluded TriageVoronoiSiteExclusion(const Vector3<T>& a, const Vector3<T>& b,
   // Includes the rb2 subtraction error above.
   T rb_error = 1.5 * T_ERR * rb + 0.5 * rb2_error / sqrt(min_rb2);
 
-  // The sign of LHS(3) determines which site may be excluded by the other.
+  // The sign of LHS(3) before taking the absolute value determines which site
+  // may be excluded by the other.  If it is positive then A may be excluded,
+  // and if it is negative then B may be excluded.
   T lhs3 = cos_r * (rb - ra);
   T abs_lhs3 = fabs(lhs3);
   T lhs3_error = cos_r * (ra_error + rb_error) + 3 * T_ERR * abs_lhs3;
@@ -1223,6 +1251,42 @@ Excluded TriageVoronoiSiteExclusion(const Vector3<T>& a, const Vector3<T>& b,
   T result = abs_lhs3 - sin_d;
   T result_error = lhs3_error + sin_d_error;
   if (result < -result_error) return Excluded::NEITHER;
+
+  // d < 0 means that when AB is projected onto the great circle through X0X1,
+  // it proceeds in the opposite direction as X0X1.  Normally we have d > 0
+  // since GetVoronoiSiteExclusion requires d(A,X0) < d(B,X0) (corresponding to
+  // the fact that sites are processed in order of increasing distance from X0).
+  //
+  // However when edge X is long and/or the snap radius "r" is large, there
+  // are two cases where where d < 0 can occur:
+  //
+  // 1. d(A,X0) > Pi/2 and d(B,X1) < Pi/2 or the symmetric case (swap < and >).
+  //    This can only happen when d(X0,X1) + r > Pi/2.  Note that {A,B} may
+  //    project to the interior of edge X or beyond its endpoints.  In this
+  //    case A is kept iff d(A,X0) < Pi/2, and B is kept otherwise.  Note that
+  //    the sign of (rb - ra) is not sufficient to determine which point is
+  //    kept in the situation where d(X0,X1) + r > Pi.
+  //
+  // 2. A is beyond endpoint X0, B is beyond endpoint X1, and AB wraps around
+  //    the sphere in the opposite direction from edge X.  This case can only
+  //    happen when d(X0,X1) + r > Pi.  Here each site is closest to one
+  //    endpoint of X and neither excludes the other.
+  //
+  // The algorithm that handles both cases is to keep A if d(A,X0) < Pi/2 and
+  // to keep B if d(B,X1) < Pi/2.  (One of these conditions is always true.)
+  if (sin_d < -sin_d_error) {
+    // Site A is kept if ca < 0 and excluded if ca > 0.
+    T r90 = S1ChordAngle::Right().length2();
+    int ca = TriageCompareCosDistance(a, x0, r90);
+    int cb = TriageCompareCosDistance(b, x1, r90);
+    if (ca < 0 && cb < 0) return Excluded::NEITHER;
+    if (ca <= 0 && cb <= 0) return Excluded::UNCERTAIN;  // One or both kept?
+    // Since either ca or cb is 1, we know the result even if the distance
+    // comparison for the other site was uncertain.
+    S2_DCHECK(ca <= 0 || cb <= 0);
+    return (ca > 0) ? Excluded::FIRST : Excluded::SECOND;
+  }
+  if (sin_d <= sin_d_error) return Excluded::UNCERTAIN;
 
   // Otherwise, before proceeding further we need to check that |d| <= Pi/2.
   // In fact, |d| < Pi/2 is enough because of the requirement that r < Pi/2.
@@ -1241,28 +1305,6 @@ Excluded TriageVoronoiSiteExclusion(const Vector3<T>& a, const Vector3<T>& b,
   // rare so it seems better to punt.
   if (cos_d < cos_d_error) return Excluded::UNCERTAIN;
 
-  // Normally we have d > 0 because the sites are sorted so that A is closer
-  // to X0 and B is closer to X1.  However if the edge X is longer than Pi/2,
-  // and the sites A and B are beyond its endpoints, then AB can wrap around
-  // the sphere in the opposite direction from X.  In this situation d < 0 but
-  // each site is closest to one endpoint of X, so neither excludes the other.
-  //
-  // It turns out that this can happen only when the site that is further away
-  // from edge X is less than 90 degrees away from whichever endpoint of X it
-  // is closer to.  It is provable that if this distance is less than 90
-  // degrees, then it is also less than r2, and therefore the Voronoi regions
-  // of both sites intersect the edge.
-  if (sin_d < -sin_d_error) {
-    T r90 = S1ChordAngle::Right().length2();
-    // "ca" is negative if Voronoi region A definitely intersects edge X.
-    int ca = (lhs3 < -lhs3_error) ? -1 : TriageCompareCosDistance(a, x0, r90);
-    int cb = (lhs3 > lhs3_error) ? -1 : TriageCompareCosDistance(b, x1, r90);
-    if (ca < 0 && cb < 0) return Excluded::NEITHER;
-    if (ca <= 0 && cb <= 0) return Excluded::UNCERTAIN;
-    if (abs_lhs3 <= lhs3_error) return Excluded::UNCERTAIN;
-  } else if (sin_d <= sin_d_error) {
-    return Excluded::UNCERTAIN;
-  }
   // Now we can finish checking the results of predicate (3).
   if (result <= result_error) return Excluded::UNCERTAIN;
   S2_DCHECK_GT(abs_lhs3, lhs3_error);
@@ -1294,11 +1336,26 @@ Excluded ExactVoronoiSiteExclusion(const Vector3_xf& a, const Vector3_xf& b,
   // eliminate all the square roots, which leads to a polynomial predicate of
   // degree 20 in the input arguments (i.e., degree 4 in each of "a", "b",
   // "x0", "x1", and "r2").
-  //
-  // Before squaring we need to check the sign of each side.  We also check
-  // the condition that cos(d) >= 0.  Given what else we need to compute, it
-  // is cheaper use the identity (aXn).(bXn) = (a.b) |n|^2 - (a.n)(b.n) .
+
+  // Before squaring we need to check the sign of each side.  If the RHS of
+  // (2) is negative (corresponding to sin(d) < 0), then we need to apply the
+  // logic in TriageVoronoiSiteExclusion.
   Vector3_xf n = x0.CrossProd(x1);
+  ExactFloat rhs2 = a.CrossProd(b).DotProd(n);
+  int rhs2_sgn = rhs2.sgn();
+  if (rhs2_sgn < 0) {
+    // This is the d < 0 case.  See comments in TriageVoronoiSiteExclusion.
+    ExactFloat r90 = S1ChordAngle::Right().length2();
+    int ca = ExactCompareDistance(a, x0, r90);
+    int cb = ExactCompareDistance(b, x1, r90);
+    if (ca < 0 && cb < 0) return Excluded::NEITHER;
+    S2_DCHECK(ca != 0 && cb != 0);  // This is guaranteed since d < 0.
+    S2_DCHECK(ca < 0 || cb < 0);    // At least one site must be kept.
+    return (ca > 0) ? Excluded::FIRST : Excluded::SECOND;
+  }
+
+  // We also check that cos(d) >= 0.  Given what else we need to compute, it
+  // is cheaper use the identity (aXn).(bXn) = (a.b) |n|^2 - (a.n)(b.n) .
   ExactFloat n2 = n.Norm2();
   ExactFloat aDn = a.DotProd(n);
   ExactFloat bDn = b.DotProd(n);
@@ -1318,20 +1375,6 @@ Excluded ExactVoronoiSiteExclusion(const Vector3_xf& a, const Vector3_xf& b,
   ExactFloat sb2 = a2 * (n2sin2_r * b2 - bDn * bDn);
   int lhs2_sgn = (sb2 - sa2).sgn();
 
-  // If the RHS of (2) is negative (corresponding to sin(d) < 0), then we need
-  // to consider the possibility that the edge AB wraps around the sphere in
-  // the opposite direction from edge X, with the result that neither site
-  // excludes the other (see TriageVoronoiSiteExclusion).
-  ExactFloat rhs2 = a.CrossProd(b).DotProd(n);
-  int rhs2_sgn = rhs2.sgn();
-  if (rhs2_sgn < 0) {
-    ExactFloat r90 = S1ChordAngle::Right().length2();
-    int ca = (lhs2_sgn < 0) ? -1 : ExactCompareDistance(a, x0, r90);
-    int cb = (lhs2_sgn > 0) ? -1 : ExactCompareDistance(b, x1, r90);
-    if (ca <= 0 && cb <= 0) return Excluded::NEITHER;
-    S2_DCHECK(ca != 1 || cb != 1);
-    return ca == 1 ? Excluded::FIRST : Excluded::SECOND;
-  }
   if (lhs2_sgn == 0) {
     // If the RHS of (2) is zero as well (i.e., d == 0) then both sites are
     // equidistant from every point on edge X.  This case requires symbolic
@@ -1405,11 +1448,11 @@ Excluded GetVoronoiSiteExclusion(const S2Point& a, const S2Point& b,
 
   Excluded result = TriageVoronoiSiteExclusion(a, b, x0, x1, r.length2());
   if (result != Excluded::UNCERTAIN) return result;
-
-  result = TriageVoronoiSiteExclusion(ToLD(a), ToLD(b), ToLD(x0), ToLD(x1),
-                                      ToLD(r.length2()));
-  if (result != Excluded::UNCERTAIN) return result;
-
+  if (kHasLongDouble) {
+    result = TriageVoronoiSiteExclusion(ToLD(a), ToLD(b), ToLD(x0), ToLD(x1),
+                                        ToLD(r.length2()));
+    if (result != Excluded::UNCERTAIN) return result;
+  }
   return ExactVoronoiSiteExclusion(ToExact(a), ToExact(b), ToExact(x0),
                                    ToExact(x1), r.length2());
 }

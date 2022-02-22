@@ -17,20 +17,23 @@
 #include "s2/s2point_compression.h"
 
 #include <cstddef>
-#include <string>
 #include <vector>
 
 #include "s2/base/commandlineflags.h"
 #include "s2/base/logging.h"
+
 #include <gtest/gtest.h>
 
+#include "absl/container/fixed_array.h"
+#include "absl/flags/flag.h"
+#include "absl/types/span.h"
+
+#include "s2/util/coding/coder.h"
 #include "s2/s1angle.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2coords.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
-#include "s2/third_party/absl/container/fixed_array.h"
-#include "s2/third_party/absl/types/span.h"
 #include "s2/util/coding/coder.h"
 
 using absl::FixedArray;
@@ -38,12 +41,17 @@ using absl::MakeSpan;
 using absl::Span;
 using std::vector;
 
-DEFINE_int32(s2point_compression_bm_level, 30,
+S2_DEFINE_int32(s2point_compression_bm_level, 30,
              "Level to encode at for benchmarks.");
-DEFINE_double(s2point_compression_bm_radius_km, 1000.0,
+S2_DEFINE_double(s2point_compression_bm_radius_km, 1000.0,
               "Radius to use for loop for benchmarks.");
 
 namespace {
+
+using ::absl::FixedArray;
+using ::absl::MakeSpan;
+using ::absl::Span;
+using ::std::vector;
 
 S2Point SnapPointToLevel(const S2Point& point, int level) {
   return S2CellId(point).parent(level).ToPoint();

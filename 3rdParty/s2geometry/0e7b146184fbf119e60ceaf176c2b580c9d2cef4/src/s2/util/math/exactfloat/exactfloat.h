@@ -15,24 +15,24 @@
 
 // Author: ericv@google.com (Eric Veach)
 //
-// ExactFloat is a multiple-precision floating point type based on the OpenSSL
-// Bignum library.  It has the same interface as the built-in "float" and
-// "double" types, but only supports the subset of operators and intrinsics
-// where it is possible to compute the result exactly.  So for example,
-// ExactFloat supports addition and multiplication but not division (since in
-// general, the quotient of two floating-point numbers cannot be represented
-// exactly).  Exact arithmetic is useful for geometric algorithms, especially
-// for disambiguating cases where ordinary double-precision arithmetic yields
-// an uncertain result.
+// ExactFloat is a multiple-precision floating point type that uses the OpenSSL
+// Bignum library for numerical calculations.  It has the same interface as the
+// built-in "float" and "double" types, but only supports the subset of
+// operators and intrinsics where it is possible to compute the result exactly.
+// So for example, ExactFloat supports addition and multiplication but not
+// division (since in general, the quotient of two floating-point numbers cannot
+// be represented exactly).  Exact arithmetic is useful for geometric
+// algorithms, especially for disambiguating cases where ordinary
+// double-precision arithmetic yields an uncertain result.
 //
-// ExactFloat is a subset of the faster and more capable MPFloat class (which
-// is based on the GNU MPFR library).  The main reason to use this class
-// rather than MPFloat is that it is subject to a BSD-style license rather
-// than the much more restrictive LGPL license.
+// ExactFloat is a subset of the now-retired MPFloat class, which used the GNU
+// MPFR library for numerical calculations.  The main reason for the switch to
+// ExactFloat is that OpenSSL has a BSD-style license whereas MPFR has a much
+// more restrictive LGPL license.
 //
-// It has the following features:
+// ExactFloat has the following features:
 //
-//  - ExactFloat uses the same syntax as the built-in "float" and "double"
+//  - It uses the same syntax as the built-in "float" and "double"
 //    types, for example: x += 4 + fabs(2*y*y - z*z).  There are a few
 //    differences (see below), but the syntax is compatible enough so that
 //    ExactFloat can be used as a template argument to templatized classes
@@ -112,7 +112,9 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <string>
 
@@ -128,16 +130,16 @@ class ExactFloat {
 
   // The maximum exponent supported.  If a value has an exponent larger than
   // this, it is replaced by infinity (with the appropriate sign).
-  static const int kMaxExp = 200*1000*1000;  // About 10**(60 million)
+  static constexpr int kMaxExp = 200 * 1000 * 1000;  // About 10**(60 million)
 
   // The minimum exponent supported.  If a value has an exponent less than
   // this, it is replaced by zero (with the appropriate sign).
-  static const int kMinExp = -kMaxExp;   // About 10**(-60 million)
+  static constexpr int kMinExp = -kMaxExp;  // About 10**(-60 million)
 
   // The maximum number of mantissa bits supported.  If a value has more
   // mantissa bits than this, it is replaced with NaN.  (It is expected that
   // users of this class will never want this much precision.)
-  static const int kMaxPrec = 64 << 20;  // About 20 million digits
+  static constexpr int kMaxPrec = 64 << 20;  // About 20 million digits
 
   // Rounding modes.  kRoundTiesToEven and kRoundTiesAwayFromZero both round
   // to the nearest representable value unless two values are equally close.
@@ -299,17 +301,17 @@ class ExactFloat {
   // Note that if two values have different precisions, they may have the same
   // ToString() value even though their values are slightly different.  If you
   // need to distinguish such values, use ToUniqueString() intead.
-  string ToString() const;
+  std::string ToString() const;
 
   // Return a string formatted according to printf("%Ng") where N is the given
   // maximum number of significant digits.
-  string ToStringWithMaxDigits(int max_digits) const;
+  std::string ToStringWithMaxDigits(int max_digits) const;
 
   // Return a human-readable string such that if two ExactFloats have different
   // values, then their string representations are always different.  This
   // method is useful for debugging.  The string has the form "value<prec>",
   // where "prec" is the actual precision of the ExactFloat (e.g., "0.215<50>").
-  string ToUniqueString() const;
+  std::string ToUniqueString() const;
 
   // Return an upper bound on the number of significant digits required to
   // distinguish any two floating-point numbers with the given precision when
@@ -536,9 +538,9 @@ class ExactFloat {
   // mantissa of zero.  Do not change these values; methods such as
   // is_normal() make assumptions about their ordering.  Non-normal numbers
   // can have either a positive or negative sign (including zero and NaN).
-  static const int32 kExpNaN = INT_MAX;
-  static const int32 kExpInfinity = INT_MAX - 1;
-  static const int32 kExpZero = INT_MAX - 2;
+  static constexpr int32 kExpNaN = INT_MAX;
+  static constexpr int32 kExpInfinity = INT_MAX - 1;
+  static constexpr int32 kExpZero = INT_MAX - 2;
 
   // Normal numbers are represented as (sign_ * bn_ * (2 ** bn_exp_)), where:
   //  - sign_ is either +1 or -1
@@ -550,7 +552,7 @@ class ExactFloat {
 
   // A standard IEEE "double" has a 53-bit mantissa consisting of a 52-bit
   // fraction plus an implicit leading "1" bit.
-  static const int kDoubleMantissaBits = 53;
+  static constexpr int kDoubleMantissaBits = 53;
 
   // Convert an ExactFloat with no more than 53 bits in its mantissa to a
   // "double".  This method handles non-normal values (NaN, etc).
@@ -563,7 +565,7 @@ class ExactFloat {
   // Convert the ExactFloat to a decimal value of the form 0.ddd * (10 ** x),
   // with at most "max_digits" significant digits (trailing zeros are removed).
   // Set (*digits) to the ASCII digits and return the decimal exponent "x".
-  int GetDecimalDigits(int max_digits, string* digits) const;
+  int GetDecimalDigits(int max_digits, std::string* digits) const;
 
   // Return a_sign * fabs(a) + b_sign * fabs(b).  Used to implement addition
   // and subtraction.

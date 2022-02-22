@@ -24,13 +24,14 @@
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
 
+using s2textformat::MakePointOrDie;
 using std::fabs;
 using std::unique_ptr;
 using std::vector;
 
 namespace {
 
-TEST(S2ConvexHullQueryTest, NoPoints) {
+TEST(S2ConvexHullQuery, NoPoints) {
   S2ConvexHullQuery query;
   unique_ptr<S2Loop> result(query.GetConvexHull());
   EXPECT_TRUE(result->is_empty());
@@ -43,7 +44,7 @@ static bool LoopHasVertex(const S2Loop& loop, const S2Point& p) {
   return false;
 }
 
-TEST(S2ConvexHullQueryTest, OnePoint) {
+TEST(S2ConvexHullQuery, OnePoint) {
   S2ConvexHullQuery query;
   S2Point p(0, 0, 1);
   query.AddPoint(p);
@@ -58,7 +59,7 @@ TEST(S2ConvexHullQueryTest, OnePoint) {
   EXPECT_TRUE(result2->Equals(result.get()));
 }
 
-TEST(S2ConvexHullQueryTest, TwoPoints) {
+TEST(S2ConvexHullQuery, TwoPoints) {
   S2ConvexHullQuery query;
   S2Point p(0, 0, 1);
   S2Point q(0, 1, 0);
@@ -77,7 +78,15 @@ TEST(S2ConvexHullQueryTest, TwoPoints) {
   EXPECT_TRUE(result2->Equals(result.get()));
 }
 
-TEST(S2ConvexHullQueryTest, EmptyLoop) {
+TEST(S2ConvexHullQuery, TwoAntipodalPoints) {
+  S2ConvexHullQuery query;
+  query.AddPoint(S2Point(0, 0, 1));
+  query.AddPoint(S2Point(0, 0, -1));
+  unique_ptr<S2Loop> result = query.GetConvexHull();
+  EXPECT_TRUE(result->is_full());
+}
+
+TEST(S2ConvexHullQuery, EmptyLoop) {
   S2ConvexHullQuery query;
   S2Loop empty(S2Loop::kEmpty());
   query.AddLoop(empty);
@@ -85,7 +94,7 @@ TEST(S2ConvexHullQueryTest, EmptyLoop) {
   EXPECT_TRUE(result->is_empty());
 }
 
-TEST(S2ConvexHullQueryTest, FullLoop) {
+TEST(S2ConvexHullQuery, FullLoop) {
   S2ConvexHullQuery query;
   S2Loop full(S2Loop::kFull());
   query.AddLoop(full);
@@ -93,7 +102,7 @@ TEST(S2ConvexHullQueryTest, FullLoop) {
   EXPECT_TRUE(result->is_full());
 }
 
-TEST(S2ConvexHullQueryTest, EmptyPolygon) {
+TEST(S2ConvexHullQuery, EmptyPolygon) {
   S2ConvexHullQuery query;
   vector<unique_ptr<S2Loop>> loops;
   S2Polygon empty(std::move(loops));
@@ -102,7 +111,7 @@ TEST(S2ConvexHullQueryTest, EmptyPolygon) {
   EXPECT_TRUE(result->is_empty());
 }
 
-TEST(S2ConvexHullQueryTest, NonConvexPoints) {
+TEST(S2ConvexHullQuery, NonConvexPoints) {
   // Generate a point set such that the only convex region containing them is
   // the entire sphere.  In other words, you can generate any point on the
   // sphere by repeatedly linearly interpolating between the points.  (The
@@ -115,17 +124,30 @@ TEST(S2ConvexHullQueryTest, NonConvexPoints) {
   EXPECT_TRUE(result->is_full());
 }
 
-TEST(S2ConvexHullQueryTest, SimplePolyline) {
+TEST(S2ConvexHullQuery, SimplePolyline) {
   // A polyline is handling identically to a point set, so there is no need
   // for special testing other than code coverage.
-  unique_ptr<S2Polyline> polyline(s2textformat::MakePolyline(
+  unique_ptr<S2Polyline> polyline(s2textformat::MakePolylineOrDie(
       "0:1, 0:9, 1:6, 2:6, 3:10, 4:10, 5:5, 4:0, 3:0, 2:5, 1:5"));
   S2ConvexHullQuery query;
   query.AddPolyline(*polyline);
   unique_ptr<S2Loop> result(query.GetConvexHull());
   unique_ptr<S2Loop> expected_result(
-      s2textformat::MakeLoop("0:1, 0:9, 3:10, 4:10, 5:5, 4:0, 3:0"));
+      s2textformat::MakeLoopOrDie("0:1, 0:9, 3:10, 4:10, 5:5, 4:0, 3:0"));
   EXPECT_TRUE(result->BoundaryEquals(expected_result.get()));
+}
+
+TEST(S2ConvexHullQuery, CapBoundExpandedToHemisphere) {
+  // The following 3 points yield an S2Cap bound that is slightly smaller than
+  // a hemisphere.  Here we test that the cap is expanded using a conservative
+  // error bound to yield a hemisphere, which causes the convex hull algorithm
+  // to return the full sphere.
+  S2ConvexHullQuery query;
+  query.AddPoint(MakePointOrDie("0:0"));
+  query.AddPoint(MakePointOrDie("0:45"));
+  query.AddPoint(MakePointOrDie("0:-135"));
+  unique_ptr<S2Loop> result = query.GetConvexHull();
+  EXPECT_TRUE(result->is_full());
 }
 
 void TestNorthPoleLoop(S1Angle radius, int num_vertices) {
@@ -145,8 +167,7 @@ void TestNorthPoleLoop(S1Angle radius, int num_vertices) {
   }
 }
 
-
-TEST(S2ConvexHullQueryTest, LoopsAroundNorthPole) {
+TEST(S2ConvexHullQuery, LoopsAroundNorthPole) {
   // Test loops of various sizes around the north pole.
   TestNorthPoleLoop(S1Angle::Degrees(1), 3);
   TestNorthPoleLoop(S1Angle::Degrees(89), 3);
@@ -159,7 +180,7 @@ TEST(S2ConvexHullQueryTest, LoopsAroundNorthPole) {
   TestNorthPoleLoop(S1Angle::Degrees(89), 1000);
 }
 
-TEST(S2ConvexHullQueryTest, PointsInsideHull) {
+TEST(S2ConvexHullQuery, PointsInsideHull) {
   // Repeatedly build the convex hull of a set of points, then add more points
   // inside that loop and build the convex hull again.  The result should
   // always be the same.
@@ -186,9 +207,10 @@ TEST(S2ConvexHullQueryTest, PointsInsideHull) {
     // test pass reliably it means that we need to reject convex hulls whose
     // bounding cap (when computed from a bounding rectangle) is not convex.
     //
-    // TODO(ericv): This test can still fail (about 1 iteration in 500,000)
-    // because the S2LatLngRect::GetCapBound implementation does not guarantee
-    // that A.Contains(B) implies A.GetCapBound().Contains(B.GetCapBound()).
+    // TODO(b/203702905): This test can still fail (about 1 iteration in
+    // 500,000) because the S2LatLngRect::GetCapBound implementation does not
+    // guarantee that A.Contains(B) implies
+    // A.GetCapBound().Contains(B.GetCapBound()).
     if (hull->GetCapBound().height() >= 1) continue;
 
     // Otherwise, add more points inside the convex hull.

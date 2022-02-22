@@ -60,10 +60,6 @@ S2Cell::S2Cell(S2CellId id) {
   uv_ = S2CellId::IJLevelToBoundUV(ij, level_);
 }
 
-S2Point S2Cell::GetVertexRaw(int k) const {
-  return S2::FaceUVtoXYZ(face_, uv_.GetVertex(k));
-}
-
 S2Point S2Cell::GetEdgeRaw(int k) const {
   switch (k & 3) {
     case 0:  return S2::GetVNorm(face_, uv_[1][0]);   // Bottom

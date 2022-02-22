@@ -18,12 +18,13 @@
 #ifndef S2_S2POINT_REGION_H_
 #define S2_S2POINT_REGION_H_
 
+#include "absl/base/macros.h"
+
 #include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2region.h"
-#include "s2/third_party/absl/base/macros.h"
 
 class Decoder;
 class Encoder;

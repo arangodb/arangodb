@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,18 +27,34 @@ class SpinLock {
   SpinLock& operator=(SpinLock const&) = delete;
 
   inline void Lock() {
-    while (flag_.test_and_set(std::memory_order_acquire)) {
+    while (locked_.exchange(true, std::memory_order_acquire)) {
       // Spin.
       continue;
     }
   }
 
   inline void Unlock() {
-    flag_.clear(std::memory_order_release);
+    locked_.store(false, std::memory_order_release);
+  }
+
+  inline bool IsHeld() const {
+    return locked_.load(std::memory_order_relaxed);
   }
 
  private:
-  std::atomic_flag flag_ = ATOMIC_FLAG_INIT;
+  std::atomic_bool locked_{false};
+};
+
+class SpinLockHolder {
+ public:
+  inline explicit SpinLockHolder(SpinLock* l) : lock_(l) { lock_->Lock(); }
+  inline ~SpinLockHolder() { lock_->Unlock(); }
+
+  SpinLockHolder(const SpinLockHolder&) = delete;
+  SpinLockHolder& operator=(const SpinLockHolder&) = delete;
+
+ private:
+  SpinLock* lock_;
 };
 
 #endif  // S2_BASE_SPINLOCK_H_

@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,22 @@
 //
 
 #include "s2/s2polyline_alignment.h"
-#include "s2/s2polyline_alignment_internal.h"
 
 #include <vector>
 
 #include <gtest/gtest.h>
 
-#include "s2/base/stringprintf.h"
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/third_party/absl/strings/str_cat.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
+
 #include "s2/s2cap.h"
 #include "s2/s2loop.h"
+#include "s2/s2polyline_alignment_internal.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
+
+using std::string;
 
 namespace s2polyline_alignment {
 

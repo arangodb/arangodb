@@ -24,6 +24,7 @@
 
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
+#include "absl/flags/flag.h"
 #include "s2/r1interval.h"
 #include "s2/s1interval.h"
 #include "s2/s2cell.h"
@@ -37,7 +38,6 @@
 
 using std::fabs;
 using std::max;
-using std::min;
 using std::vector;
 
 double S2Cap::GetArea() const {
@@ -98,7 +98,7 @@ void S2Cap::AddPoint(const S2Point& p) {
 void S2Cap::AddCap(const S2Cap& other) {
   if (is_empty()) {
     *this = other;
-  } else {
+  } else if (!other.is_empty()) {
     // We round up the distance to ensure that the cap is actually contained.
     // TODO(ericv): Do some error analysis in order to guarantee this.
     S1ChordAngle dist = S1ChordAngle(center_, other.center_) + other.radius_;
@@ -127,10 +127,9 @@ S2Cap S2Cap::Union(const S2Cap& other) const {
     return *this;
   } else {
     S1Angle result_radius = 0.5 * (distance + this_radius + other_radius);
-    S2Point result_center = S2::InterpolateAtDistance(
-        0.5 * (distance - this_radius + other_radius),
-        center(),
-        other.center());
+    S2Point result_center =
+        S2::GetPointOnLine(center(), other.center(),
+                           0.5 * (distance - this_radius + other_radius));
     return S2Cap(result_center, result_radius);
   }
 }
@@ -341,8 +340,8 @@ bool S2Cap::Decode(Decoder* decoder) {
   center_ = S2Point(x, y, z);
   radius_ = S1ChordAngle::FromLength2(decoder->getdouble());
 
-  if (FLAGS_s2debug) {
-     S2_CHECK(is_valid()) << "Invalid S2Cap: " << *this;
+  if (absl::GetFlag(FLAGS_s2debug)) {
+    S2_CHECK(is_valid()) << "Invalid S2Cap: " << *this;
   }
   return true;
 }

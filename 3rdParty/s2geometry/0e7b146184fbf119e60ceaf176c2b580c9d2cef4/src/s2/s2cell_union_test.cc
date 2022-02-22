@@ -20,9 +20,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
+
+#include "absl/flags/flag.h"
+#include "absl/strings/str_cat.h"
 
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
@@ -34,8 +39,9 @@
 #include "s2/s2metrics.h"
 #include "s2/s2region_coverer.h"
 #include "s2/s2testing.h"
-#include "s2/third_party/absl/strings/str_cat.h"
 #include "s2/util/coding/coder.h"
+
+S2_DECLARE_bool(s2debug);
 
 using absl::StrCat;
 using std::max;
@@ -63,6 +69,13 @@ TEST(S2CellUnion, S2CellIdConstructor) {
   EXPECT_EQ(face1_id, face1_union.cell_id(0));
 }
 
+TEST(S2CellUnion, WholeSphere) {
+  S2CellUnion whole_sphere = S2CellUnion::WholeSphere();
+  EXPECT_EQ(whole_sphere.LeafCellsCovered(), 6 * (uint64{1} << 60));
+  whole_sphere.Expand(0);
+  EXPECT_EQ(whole_sphere, S2CellUnion::WholeSphere());
+}
+
 TEST(S2CellUnion, DuplicateCellsNotValid) {
   S2CellId id = S2CellId(S2Point(1, 0, 0));
   auto cell_union = S2CellUnionTestPeer::FromVerbatimNoChecks(
@@ -82,6 +95,17 @@ TEST(S2CellUnion, InvalidCellIdNotValid) {
   auto cell_union =
       S2CellUnionTestPeer::FromVerbatimNoChecks({S2CellId::None()});
   EXPECT_FALSE(cell_union.IsValid());
+}
+
+TEST(S2CellUnion, InvalidCellIdNotValidWithDebugFlag) {
+  // Manually save and restore flag, to preserve test state in opensource
+  // without gflags.
+  const bool saved_s2debug = absl::GetFlag(FLAGS_s2debug);
+  absl::SetFlag(&FLAGS_s2debug, false);
+  ASSERT_FALSE(S2CellId::None().is_valid());
+  auto cell_union = S2CellUnion::FromVerbatim({S2CellId::None()});
+  EXPECT_FALSE(cell_union.IsValid());
+  absl::SetFlag(&FLAGS_s2debug, saved_s2debug);
 }
 
 TEST(S2CellUnion, IsNormalized) {
@@ -443,9 +467,8 @@ TEST(S2CellUnion, FromBeginEnd) {
   }
 }
 
-TEST(S2CellUnion, Empty) {
+TEST(S2CellUnion, EmptyMutableOps) {
   S2CellUnion empty_cell_union;
-  S2CellId face1_id = S2CellId::FromFace(1);
 
   // Normalize()
   empty_cell_union.Normalize();
@@ -458,34 +481,62 @@ TEST(S2CellUnion, Empty) {
 
   // Pack(...)
   empty_cell_union.Pack();
-
-  // Contains(...)
-  EXPECT_FALSE(empty_cell_union.Contains(face1_id));
-  EXPECT_TRUE(empty_cell_union.Contains(empty_cell_union));
-
-  // Intersects(...)
-  EXPECT_FALSE(empty_cell_union.Intersects(face1_id));
-  EXPECT_FALSE(empty_cell_union.Intersects(empty_cell_union));
-
-  // Union(...)
-  S2CellUnion cell_union = empty_cell_union.Union(empty_cell_union);
-  EXPECT_TRUE(cell_union.empty());
-
-  // Intersection(...)
-  S2CellUnion intersection = empty_cell_union.Intersection(face1_id);
-  EXPECT_TRUE(intersection.empty());
-  intersection = empty_cell_union.Intersection(empty_cell_union);
-  EXPECT_TRUE(intersection.empty());
-
-  // Difference(...)
-  S2CellUnion difference = empty_cell_union.Difference(empty_cell_union);
-  EXPECT_EQ(0, difference.num_cells());
+  EXPECT_TRUE(empty_cell_union.empty());
 
   // Expand(...)
   empty_cell_union.Expand(S1Angle::Radians(1), 20);
   EXPECT_TRUE(empty_cell_union.empty());
   empty_cell_union.Expand(10);
   EXPECT_TRUE(empty_cell_union.empty());
+}
+
+TEST(S2CellUnion, EmptyAndNonEmptyBooleanOps) {
+  const S2CellUnion empty_cell_union;
+  const S2CellId face1_id = S2CellId::FromFace(1);
+  const S2CellUnion non_empty_cell_union({face1_id});
+
+  // Contains(...)
+  EXPECT_FALSE(empty_cell_union.Contains(face1_id));
+  EXPECT_TRUE(non_empty_cell_union.Contains(face1_id));
+  EXPECT_TRUE(empty_cell_union.Contains(empty_cell_union));
+  EXPECT_TRUE(non_empty_cell_union.Contains(empty_cell_union));
+  EXPECT_FALSE(empty_cell_union.Contains(non_empty_cell_union));
+  EXPECT_TRUE(non_empty_cell_union.Contains(non_empty_cell_union));
+
+  // Intersects(...)
+  EXPECT_FALSE(empty_cell_union.Intersects(face1_id));
+  EXPECT_TRUE(non_empty_cell_union.Intersects(face1_id));
+  EXPECT_FALSE(empty_cell_union.Intersects(empty_cell_union));
+  EXPECT_FALSE(non_empty_cell_union.Intersects(empty_cell_union));
+  EXPECT_FALSE(empty_cell_union.Intersects(non_empty_cell_union));
+  EXPECT_TRUE(non_empty_cell_union.Intersects(non_empty_cell_union));
+
+  // Union(...)
+  EXPECT_EQ(empty_cell_union, empty_cell_union.Union(empty_cell_union));
+  EXPECT_EQ(non_empty_cell_union, non_empty_cell_union.Union(empty_cell_union));
+  EXPECT_EQ(non_empty_cell_union, empty_cell_union.Union(non_empty_cell_union));
+  EXPECT_EQ(non_empty_cell_union,
+            non_empty_cell_union.Union(non_empty_cell_union));
+
+  // Intersection(...)
+  EXPECT_EQ(empty_cell_union, empty_cell_union.Intersection(face1_id));
+  EXPECT_EQ(non_empty_cell_union, non_empty_cell_union.Intersection(face1_id));
+  EXPECT_EQ(empty_cell_union, empty_cell_union.Intersection(empty_cell_union));
+  EXPECT_EQ(empty_cell_union,
+            non_empty_cell_union.Intersection(empty_cell_union));
+  EXPECT_EQ(empty_cell_union,
+            empty_cell_union.Intersection(non_empty_cell_union));
+  EXPECT_EQ(non_empty_cell_union,
+            non_empty_cell_union.Intersection(non_empty_cell_union));
+
+  // Difference(...)
+  EXPECT_EQ(empty_cell_union, empty_cell_union.Difference(empty_cell_union));
+  EXPECT_EQ(non_empty_cell_union,
+            non_empty_cell_union.Difference(empty_cell_union));
+  EXPECT_EQ(empty_cell_union,
+            empty_cell_union.Difference(non_empty_cell_union));
+  EXPECT_EQ(S2CellUnion(),
+            non_empty_cell_union.Difference(non_empty_cell_union));
 }
 
 TEST(S2CellUnion, Clear) {
@@ -505,7 +556,8 @@ TEST(S2CellUnion, Clear) {
 TEST(S2CellUnion, RefuseToDecode) {
   std::vector<S2CellId> cellids;
   S2CellId id = S2CellId::Begin(S2CellId::kMaxLevel);
-  for (int i = 0; i <= FLAGS_s2cell_union_decode_max_num_cells; ++i) {
+  for (int i = 0; i <= absl::GetFlag(FLAGS_s2cell_union_decode_max_num_cells);
+       ++i) {
     cellids.push_back(id);
     id = id.next();
   }
@@ -537,18 +589,18 @@ TEST(S2CellUnion, LeafCellsCovered) {
   // One leaf cell on face 0.
   ids.push_back(S2CellId::FromFace(0).child_begin(S2CellId::kMaxLevel));
   cell_union.Init(ids);
-  EXPECT_EQ(1ULL, cell_union.LeafCellsCovered());
+  EXPECT_EQ(uint64{1}, cell_union.LeafCellsCovered());
 
   // Face 0 itself (which includes the previous leaf cell).
   ids.push_back(S2CellId::FromFace(0));
   cell_union.Init(ids);
-  EXPECT_EQ(1ULL << 60, cell_union.LeafCellsCovered());
+  EXPECT_EQ(uint64{1} << 60, cell_union.LeafCellsCovered());
   // Five faces.
   cell_union.Expand(0);
-  EXPECT_EQ(5ULL << 60, cell_union.LeafCellsCovered());
+  EXPECT_EQ(uint64{5} << 60, cell_union.LeafCellsCovered());
   // Whole world.
   cell_union.Expand(0);
-  EXPECT_EQ(6ULL << 60, cell_union.LeafCellsCovered());
+  EXPECT_EQ(uint64{6} << 60, cell_union.LeafCellsCovered());
 
   // Add some disjoint cells.
   ids.push_back(S2CellId::FromFace(1).child_begin(1));
@@ -574,5 +626,37 @@ TEST(S2CellUnion, WorksInContainers) {
   union_vector.push_back(std::move(cell_union0));
 
   EXPECT_EQ(ids, union_vector.back().cell_ids());
+}
+
+TEST(S2CellUnion, ToStringEmpty) {
+  EXPECT_EQ(S2CellUnion().ToString(), "Size:0 S2CellIds:");
+}
+
+TEST(S2CellUnion, ToStringOneCell) {
+  EXPECT_EQ(S2CellUnion({S2CellId::FromFace(1)}).ToString(),
+            "Size:1 S2CellIds:3");
+}
+
+TEST(S2CellUnion, ToStringTwoCells) {
+  EXPECT_EQ(
+      S2CellUnion({S2CellId::FromFace(1), S2CellId::FromFace(2)}).ToString(),
+      "Size:2 S2CellIds:3,5");
+}
+
+TEST(S2CellUnion, ToStringOver500Cells) {
+  vector<S2CellId> ids;
+  S2CellUnion({S2CellId::FromFace(1)}).Denormalize(6, 1, &ids);  // 4096 cells
+  std::string result = S2CellUnion::FromVerbatim(ids).ToString();
+  EXPECT_EQ(std::count(result.begin(), result.end(), ','), 500);
+  EXPECT_EQ(result.substr(result.size() - 4), ",...");
+}
+
+TEST(S2CellUnion, IntersectionOneInputNormalized) {
+  S2CellId id = S2CellId::FromFace(3);  // arbitrary
+  S2CellUnion parent({id});
+  S2CellUnion children = S2CellUnion::FromVerbatim(
+      {id.child(0), id.child(1), id.child(2), id.child(3)});
+  S2CellUnion intersection = parent.Intersection(children);
+  EXPECT_EQ(intersection, children);
 }
 

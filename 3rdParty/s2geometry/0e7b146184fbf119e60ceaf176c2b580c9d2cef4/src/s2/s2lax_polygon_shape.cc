@@ -17,6 +17,10 @@
 
 #include "s2/s2lax_polygon_shape.h"
 
+#include "absl/memory/memory.h"
+#include "absl/meta/type_traits.h"
+
+#include "s2/util/coding/varint.h"
 #include "s2/s2shapeutil_get_reference_point.h"
 
 using absl::make_unique;
@@ -24,6 +28,16 @@ using absl::MakeSpan;
 using absl::Span;
 using std::vector;
 using ChainPosition = S2Shape::ChainPosition;
+
+namespace {
+template <typename T>
+std::unique_ptr<T> make_unique_for_overwrite(size_t n) {
+  // We only need to support this one variant.
+  static_assert(std::is_array<T>::value);
+  return std::unique_ptr<T>(new typename absl::remove_extent_t<T>[n]);
+}
+}  // namespace
+
 
 // When adding a new encoding, be aware that old binaries will not be able
 // to decode it.
@@ -34,12 +48,17 @@ S2LaxPolygonShape::S2LaxPolygonShape(
   Init(loops);
 }
 
+S2LaxPolygonShape::S2LaxPolygonShape(Span<const Span<const S2Point>> loops) {
+  Init(loops);
+}
+
 S2LaxPolygonShape::S2LaxPolygonShape(const S2Polygon& polygon) {
   Init(polygon);
 }
 
 void S2LaxPolygonShape::Init(const vector<S2LaxPolygonShape::Loop>& loops) {
   vector<Span<const S2Point>> spans;
+  spans.reserve(loops.size());
   for (const S2LaxPolygonShape::Loop& loop : loops) {
     spans.emplace_back(loop);
   }
@@ -62,49 +81,46 @@ void S2LaxPolygonShape::Init(const S2Polygon& polygon) {
   // to reverse the orientation of any loops representing holes.
   for (int i = 0; i < polygon.num_loops(); ++i) {
     if (polygon.loop(i)->is_hole()) {
-      S2Point* v0 = &vertices_[cumulative_vertices_[i]];
+      S2Point* v0 = &vertices_[loop_starts_[i]];
       std::reverse(v0, v0 + num_loop_vertices(i));
     }
   }
 }
 
-void S2LaxPolygonShape::Init(const vector<Span<const S2Point>>& loops) {
+void S2LaxPolygonShape::Init(Span<const Span<const S2Point>> loops) {
   num_loops_ = loops.size();
   if (num_loops_ == 0) {
     num_vertices_ = 0;
-    vertices_ = nullptr;
   } else if (num_loops_ == 1) {
     num_vertices_ = loops[0].size();
-    vertices_.reset(new S2Point[num_vertices_]);
+    // TODO(ericv): Use std::allocator to obtain uninitialized memory instead.
+    // This would avoid default-constructing all the elements before we
+    // overwrite them, and it would also save 8 bytes of memory allocation
+    // since "new T[]" stores its own copy of the array size.
+    //
+    // Note that even absl::make_unique_for_overwrite<> and c++20's
+    // std::make_unique_for_overwrite<T[]> default-construct all elements when
+    // T is a class type.
+    vertices_ = make_unique<S2Point[]>(num_vertices_);
     std::copy(loops[0].begin(), loops[0].end(), vertices_.get());
   } else {
-    cumulative_vertices_ = new uint32[num_loops_ + 1];
-    int32 num_vertices = 0;
+    // Don't use make_unique<> here in order to avoid zero initialization.
+    loop_starts_ = make_unique_for_overwrite<uint32[]>(num_loops_ + 1);
+    num_vertices_ = 0;
     for (int i = 0; i < num_loops_; ++i) {
-      cumulative_vertices_[i] = num_vertices;
-      num_vertices += loops[i].size();
+      loop_starts_[i] = num_vertices_;
+      num_vertices_ += loops[i].size();
     }
-    cumulative_vertices_[num_loops_] = num_vertices;
-    vertices_.reset(new S2Point[num_vertices]);
+    loop_starts_[num_loops_] = num_vertices_;
+    vertices_ = make_unique<S2Point[]>(num_vertices_);  // TODO(see above)
     for (int i = 0; i < num_loops_; ++i) {
       std::copy(loops[i].begin(), loops[i].end(),
-                vertices_.get() + cumulative_vertices_[i]);
+                vertices_.get() + loop_starts_[i]);
     }
   }
 }
 
 S2LaxPolygonShape::~S2LaxPolygonShape() {
-  if (num_loops() > 1) {
-    delete[] cumulative_vertices_;
-  }
-}
-
-int S2LaxPolygonShape::num_vertices() const {
-  if (num_loops() <= 1) {
-    return num_vertices_;
-  } else {
-    return cumulative_vertices_[num_loops()];
-  }
 }
 
 int S2LaxPolygonShape::num_loop_vertices(int i) const {
@@ -112,17 +128,17 @@ int S2LaxPolygonShape::num_loop_vertices(int i) const {
   if (num_loops() == 1) {
     return num_vertices_;
   } else {
-    return cumulative_vertices_[i + 1] - cumulative_vertices_[i];
+    return loop_starts_[i + 1] - loop_starts_[i];
   }
 }
 
 const S2Point& S2LaxPolygonShape::loop_vertex(int i, int j) const {
   S2_DCHECK_LT(i, num_loops());
   S2_DCHECK_LT(j, num_loop_vertices(i));
-  if (num_loops() == 1) {
+  if (i == 0) {
     return vertices_[j];
   } else {
-    return vertices_[cumulative_vertices_[i] + j];
+    return vertices_[loop_starts_[i] + j];
   }
 }
 
@@ -130,12 +146,12 @@ void S2LaxPolygonShape::Encode(Encoder* encoder,
                                s2coding::CodingHint hint) const {
   encoder->Ensure(1 + Varint::kMax32);
   encoder->put8(kCurrentEncodingVersionNumber);
-  encoder->put_varint32(num_loops_);
+  encoder->put_varint32(num_loops());
   s2coding::EncodeS2PointVector(MakeSpan(vertices_.get(), num_vertices()),
                                 hint, encoder);
   if (num_loops() > 1) {
-    s2coding::EncodeUintVector<uint32>(MakeSpan(cumulative_vertices_,
-                                                num_loops() + 1), encoder);
+    s2coding::EncodeUintVector<uint32>(
+        MakeSpan(loop_starts_.get(), num_loops() + 1), encoder);
   }
 }
 
@@ -152,44 +168,28 @@ bool S2LaxPolygonShape::Init(Decoder* decoder) {
 
   if (num_loops_ == 0) {
     num_vertices_ = 0;
-    vertices_ = nullptr;
   } else {
-    vertices_ = make_unique<S2Point[]>(vertices.size());
-    for (int i = 0; i < vertices.size(); ++i) {
+    num_vertices_ = vertices.size();
+    vertices_ = make_unique<S2Point[]>(num_vertices_);  // TODO(see above)
+    for (int i = 0; i < num_vertices_; ++i) {
       vertices_[i] = vertices[i];
     }
-    if (num_loops_ == 1) {
-      num_vertices_ = vertices.size();
-    } else {
-      s2coding::EncodedUintVector<uint32> cumulative_vertices;
-      if (!cumulative_vertices.Init(decoder)) return false;
-      cumulative_vertices_ = new uint32[cumulative_vertices.size()];
-      for (int i = 0; i < cumulative_vertices.size(); ++i) {
-        cumulative_vertices_[i] = cumulative_vertices[i];
+    if (num_loops_ > 1) {
+      s2coding::EncodedUintVector<uint32> loop_starts;
+      if (!loop_starts.Init(decoder)) return false;
+      loop_starts_ = make_unique_for_overwrite<uint32[]>(loop_starts.size());
+      for (int i = 0; i < loop_starts.size(); ++i) {
+        loop_starts_[i] = loop_starts[i];
       }
     }
   }
   return true;
 }
 
-S2Shape::Edge S2LaxPolygonShape::edge(int e0) const {
-  S2_DCHECK_LT(e0, num_edges());
-  int e1 = e0 + 1;
-  if (num_loops() == 1) {
-    if (e1 == num_vertices_) { e1 = 0; }
-  } else {
-    // Find the index of the first vertex of the loop following this one.
-    const int kMaxLinearSearchLoops = 12;  // From benchmarks.
-    uint32* next = cumulative_vertices_ + 1;
-    if (num_loops() <= kMaxLinearSearchLoops) {
-      while (*next <= e0) ++next;
-    } else {
-      next = std::lower_bound(next, next + num_loops(), e1);
-    }
-    // Wrap around to the first vertex of the loop if necessary.
-    if (e1 == *next) { e1 = next[-1]; }
-  }
-  return Edge(vertices_[e0], vertices_[e1]);
+S2Shape::Edge S2LaxPolygonShape::edge(int e) const {
+  // Method names are fully specified to enable inlining.
+  ChainPosition pos = S2LaxPolygonShape::chain_position(e);
+  return S2LaxPolygonShape::chain_edge(pos.chain_id, pos.offset);
 }
 
 S2Shape::ReferencePoint S2LaxPolygonShape::GetReferencePoint() const {
@@ -201,38 +201,8 @@ S2Shape::Chain S2LaxPolygonShape::chain(int i) const {
   if (num_loops() == 1) {
     return Chain(0, num_vertices_);
   } else {
-    int start = cumulative_vertices_[i];
-    return Chain(start, cumulative_vertices_[i + 1] - start);
-  }
-}
-
-S2Shape::Edge S2LaxPolygonShape::chain_edge(int i, int j) const {
-  S2_DCHECK_LT(i, num_loops());
-  S2_DCHECK_LT(j, num_loop_vertices(i));
-  int n = num_loop_vertices(i);
-  int k = (j + 1 == n) ? 0 : j + 1;
-  if (num_loops() == 1) {
-    return Edge(vertices_[j], vertices_[k]);
-  } else {
-    int base = cumulative_vertices_[i];
-    return Edge(vertices_[base + j], vertices_[base + k]);
-  }
-}
-
-S2Shape::ChainPosition S2LaxPolygonShape::chain_position(int e) const {
-  S2_DCHECK_LT(e, num_edges());
-  const int kMaxLinearSearchLoops = 12;  // From benchmarks.
-  if (num_loops() == 1) {
-    return ChainPosition(0, e);
-  } else {
-    // Find the index of the first vertex of the loop following this one.
-    uint32* next = cumulative_vertices_ + 1;
-    if (num_loops() <= kMaxLinearSearchLoops) {
-      while (*next <= e) ++next;
-    } else {
-      next = std::lower_bound(next, next + num_loops(), e + 1);
-    }
-    return ChainPosition(next - (cumulative_vertices_ + 1), e - next[-1]);
+    int start = loop_starts_[i];
+    return Chain(start, loop_starts_[i + 1] - start);
   }
 }
 
@@ -248,16 +218,28 @@ bool EncodedS2LaxPolygonShape::Init(Decoder* decoder) {
   if (!vertices_.Init(decoder)) return false;
 
   if (num_loops_ > 1) {
-    if (!cumulative_vertices_.Init(decoder)) return false;
+    if (!loop_starts_.Init(decoder)) return false;
   }
   return true;
+}
+
+// The encoding must be identical to S2LaxPolygonShape::Encode().
+void EncodedS2LaxPolygonShape::Encode(Encoder* encoder,
+                                      s2coding::CodingHint) const {
+  encoder->Ensure(1 + Varint::kMax32);
+  encoder->put8(kCurrentEncodingVersionNumber);
+  encoder->put_varint32(num_loops_);
+  vertices_.Encode(encoder);
+  if (num_loops_ > 1) {
+    loop_starts_.Encode(encoder);
+  }
 }
 
 int EncodedS2LaxPolygonShape::num_vertices() const {
   if (num_loops() <= 1) {
     return vertices_.size();
   } else {
-    return cumulative_vertices_[num_loops()];
+    return loop_starts_[num_loops()];
   }
 }
 
@@ -266,7 +248,7 @@ int EncodedS2LaxPolygonShape::num_loop_vertices(int i) const {
   if (num_loops() == 1) {
     return vertices_.size();
   } else {
-    return cumulative_vertices_[i + 1] - cumulative_vertices_[i];
+    return loop_starts_[i + 1] - loop_starts_[i];
   }
 }
 
@@ -276,7 +258,7 @@ S2Point EncodedS2LaxPolygonShape::loop_vertex(int i, int j) const {
   if (num_loops() == 1) {
     return vertices_[j];
   } else {
-    return vertices_[cumulative_vertices_[i] + j];
+    return vertices_[loop_starts_[i] + j];
   }
 }
 
@@ -285,21 +267,12 @@ S2Shape::Edge EncodedS2LaxPolygonShape::edge(int e) const {
   int e1 = e + 1;
   if (num_loops() == 1) {
     if (e1 == vertices_.size()) { e1 = 0; }
+    return Edge(vertices_[e], vertices_[e1]);
   } else {
-    // Find the index of the first vertex of the loop following this one.
-    const int kMaxLinearSearchLoops = 12;  // From benchmarks.
-    int next = 1;
-    if (num_loops() <= kMaxLinearSearchLoops) {
-      while (cumulative_vertices_[next] <= e) ++next;
-    } else {
-      next = cumulative_vertices_.lower_bound(e1);
-    }
-    // Wrap around to the first vertex of the loop if necessary.
-    if (e1 == cumulative_vertices_[next]) {
-      e1 = cumulative_vertices_[next - 1];
-    }
+    // Method names are fully specified to enable inlining.
+    ChainPosition pos = EncodedS2LaxPolygonShape::chain_position(e);
+    return EncodedS2LaxPolygonShape::chain_edge(pos.chain_id, pos.offset);
   }
-  return Edge(vertices_[e], vertices_[e1]);
 }
 
 S2Shape::ReferencePoint EncodedS2LaxPolygonShape::GetReferencePoint() const {
@@ -311,37 +284,7 @@ S2Shape::Chain EncodedS2LaxPolygonShape::chain(int i) const {
   if (num_loops() == 1) {
     return Chain(0, vertices_.size());
   } else {
-    int start = cumulative_vertices_[i];
-    return Chain(start, cumulative_vertices_[i + 1] - start);
-  }
-}
-
-S2Shape::Edge EncodedS2LaxPolygonShape::chain_edge(int i, int j) const {
-  S2_DCHECK_LT(i, num_loops());
-  S2_DCHECK_LT(j, num_loop_vertices(i));
-  int n = num_loop_vertices(i);
-  int k = (j + 1 == n) ? 0 : j + 1;
-  if (num_loops() == 1) {
-    return Edge(vertices_[j], vertices_[k]);
-  } else {
-    int base = cumulative_vertices_[i];
-    return Edge(vertices_[base + j], vertices_[base + k]);
-  }
-}
-
-S2Shape::ChainPosition EncodedS2LaxPolygonShape::chain_position(int e) const {
-  S2_DCHECK_LT(e, num_edges());
-  const int kMaxLinearSearchLoops = 12;  // From benchmarks.
-  if (num_loops() == 1) {
-    return ChainPosition(0, e);
-  } else {
-    // Find the index of the first vertex of the loop following this one.
-    int next = 1;
-    if (num_loops() <= kMaxLinearSearchLoops) {
-      while (cumulative_vertices_[next] <= e) ++next;
-    } else {
-      next = cumulative_vertices_.lower_bound(e + 1);
-    }
-    return ChainPosition(next - 1, e - cumulative_vertices_[next - 1]);
+    int start = loop_starts_[i];
+    return Chain(start, loop_starts_[i + 1] - start);
   }
 }

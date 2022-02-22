@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -148,6 +148,22 @@ TEST(S1ChordAngle, Arithmetic) {
   EXPECT_EQ(180, (degree180 + degree180).degrees());
 }
 
+TEST(S1ChordAngle, ArithmeticPrecision) {
+  // Verifies that S1ChordAngle is capable of adding and subtracting angles
+  // extremely accurately up to Pi/2 radians.  (Accuracy continues to be good
+  // well beyond this value but degrades as angles approach Pi.)
+  S1ChordAngle kEps = S1ChordAngle::Radians(1e-15);
+  S1ChordAngle k90 = S1ChordAngle::Right();
+  S1ChordAngle k90MinusEps = k90 - kEps;
+  S1ChordAngle k90PlusEps = k90 + kEps;
+  double kMaxError = 2 * DBL_EPSILON;
+  EXPECT_NEAR(k90MinusEps.radians(), M_PI_2 - kEps.radians(), kMaxError);
+  EXPECT_NEAR(k90PlusEps.radians(), M_PI_2 + kEps.radians(), kMaxError);
+  EXPECT_NEAR((k90 - k90MinusEps).radians(), kEps.radians(), kMaxError);
+  EXPECT_NEAR((k90PlusEps - k90).radians(), kEps.radians(), kMaxError);
+  EXPECT_NEAR((k90MinusEps + kEps).radians(), M_PI_2, kMaxError);
+}
+
 TEST(S1ChordAngle, Trigonometry) {
   static const int kIters = 20;
   for (int iter = 0; iter <= kIters; ++iter) {
@@ -194,7 +210,7 @@ TEST(S1ChordAngle, GetS2PointConstructorMaxError) {
     if (rnd.OneIn(10)) {
       // Occasionally test a point pair that is nearly identical or antipodal.
       S1Angle r = S1Angle::Radians(1e-15 * rnd.RandDouble());
-      y = S2::InterpolateAtDistance(r, x, y);
+      y = S2::GetPointOnLine(x, y, r);
       if (rnd.OneIn(2)) y = -y;
     }
     S1ChordAngle dist = S1ChordAngle(x, y);

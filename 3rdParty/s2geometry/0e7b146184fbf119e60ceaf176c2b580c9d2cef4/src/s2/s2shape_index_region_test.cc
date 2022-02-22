@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,15 +16,30 @@
 #include "s2/s2shape_index_region.h"
 
 #include <algorithm>
+#include <memory>
+#include <utility>
+
 #include <gtest/gtest.h>
+
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2lax_loop_shape.h"
+#include "s2/s2lax_polyline_shape.h"
+#include "s2/s2point_vector_shape.h"
+#include "s2/s2testing.h"
+#include "s2/s2wrapped_shape.h"
 
+using absl::make_unique;
+using std::map;
+using std::string;
+using std::unique_ptr;
 using std::vector;
 
 namespace {
 
-S2CellId MakeCellId(const string& str) {
+S2CellId MakeCellId(absl::string_view str) {
   return S2CellId::FromDebugString(str);
 }
 
@@ -40,7 +55,7 @@ std::unique_ptr<S2Shape> NewPaddedCell(S2CellId id, double padding_uv) {
   for (int i = 0; i < 4; ++i) {
     vertices[i] = S2::FaceUVtoXYZ(face, uv.GetVertex(i)).Normalize();
   }
-  return absl::make_unique<S2LaxLoopShape>(vertices);
+  return make_unique<S2LaxLoopShape>(vertices);
 }
 
 TEST(S2ShapeIndexRegion, GetCapBound) {
@@ -156,6 +171,124 @@ TEST(S2ShapeIndexRegion, IntersectsExactCell) {
   for (S2CellId id : ids) {
     EXPECT_TRUE(region.MayIntersect(S2Cell(id)));
   }
+}
+
+// Tests that VisitIntersectingShapes() produces results that are consistent
+// with MayIntersect() and Contains() for the given S2ShapeIndex.  It tests
+// all cells in the given index, all ancestors of those cells, and a randomly
+// chosen subset of descendants of those cells.
+class VisitIntersectingShapesTest {
+ public:
+  explicit VisitIntersectingShapesTest(const S2ShapeIndex* index)
+      : index_(index), iter_(index), region_(index) {
+    // Create an S2ShapeIndex for each shape in the original index, so that we
+    // can use MayIntersect() and Contains() to determine the status of
+    // individual shapes.
+    for (int s = 0; s < index_->num_shape_ids(); ++s) {
+      auto shape_index = make_unique<MutableS2ShapeIndex>();
+      shape_index->Add(make_unique<S2WrappedShape>(index_->shape(s)));
+      shape_indexes_.push_back(std::move(shape_index));
+    }
+  }
+
+  void Run() {
+    for (S2CellId id = S2CellId::Begin(0);
+         id != S2CellId::End(0); id = id.next()) {
+      TestCell(S2Cell(id));
+    }
+  }
+
+ private:
+  void TestCell(const S2Cell& target) {
+    // Indicates whether each shape that intersects "target" also contains it.
+    map<int, bool> shape_contains;
+    EXPECT_TRUE(region_.VisitIntersectingShapes(
+        target, [&](S2Shape* shape, bool contains_target) {
+            // Verify that each shape is visited at most once.
+            EXPECT_EQ(shape_contains.count(shape->id()), 0);
+            shape_contains[shape->id()] = contains_target;
+            return true;
+          }));
+    for (int s = 0; s < index_->num_shape_ids(); ++s) {
+      auto shape_region = MakeS2ShapeIndexRegion(shape_indexes_[s].get());
+      if (!shape_region.MayIntersect(target)) {
+        EXPECT_EQ(shape_contains.count(s), 0);
+      } else {
+        EXPECT_EQ(shape_contains[s], shape_region.Contains(target));
+      }
+    }
+    switch (iter_.Locate(target.id())) {
+      case S2ShapeIndex::DISJOINT:
+        return;
+
+      case S2ShapeIndex::SUBDIVIDED: {
+        S2Cell children[4];
+        EXPECT_TRUE(target.Subdivide(children));
+        for (const auto& child : children) {
+          TestCell(child);
+        }
+        return;
+      }
+
+      case S2ShapeIndex::INDEXED: {
+        // We check a few random descendant cells by continuing randomly down
+        // one branch of the tree for a few levels.
+        if (target.is_leaf() || S2Testing::rnd.OneIn(3)) return;
+        TestCell(S2Cell(target.id().child(S2Testing::rnd.Uniform(4))));
+        return;
+      }
+    }
+  }
+
+  const S2ShapeIndex* index_;
+  S2ShapeIndex::Iterator iter_;
+  S2ShapeIndexRegion<S2ShapeIndex> region_;
+  vector<unique_ptr<MutableS2ShapeIndex>> shape_indexes_;
+};
+
+TEST(VisitIntersectingShapes, Points) {
+  vector<S2Point> vertices;
+  for (int i = 0; i < 100; ++i) {
+    vertices.push_back(S2Testing::RandomPoint());
+  }
+  MutableS2ShapeIndex index;
+  index.Add(make_unique<S2PointVectorShape>(vertices));
+  VisitIntersectingShapesTest(&index).Run();
+}
+
+TEST(VisitIntersectingShapes, Polylines) {
+  MutableS2ShapeIndex index;
+  S2Cap center_cap(S2Point(1, 0, 0), S1Angle::Radians(0.5));
+  for (int i = 0; i < 50; ++i) {
+    S2Point center = S2Testing::SamplePoint(center_cap);
+    vector<S2Point> vertices;
+    if (S2Testing::rnd.OneIn(10)) {
+      vertices = {center, center};  // Try a few degenerate polylines.
+    } else {
+      vertices = S2Testing::MakeRegularPoints(
+          center, S1Angle::Radians(S2Testing::rnd.RandDouble()),
+          S2Testing::rnd.Uniform(20) + 3);
+    }
+    index.Add(make_unique<S2LaxPolylineShape>(vertices));
+  }
+  VisitIntersectingShapesTest(&index).Run();
+}
+
+TEST(VisitIntersectingShapes, Polygons) {
+  MutableS2ShapeIndex index;
+  S2Cap center_cap(S2Point(1, 0, 0), S1Angle::Radians(0.5));
+  S2Testing::Fractal fractal;
+  for (int i = 0; i < 10; ++i) {
+    fractal.SetLevelForApproxMaxEdges(3 * 64);
+    S2Point center = S2Testing::SamplePoint(center_cap);
+    index.Add(make_unique<S2Loop::OwningShape>(
+        fractal.MakeLoop(S2Testing::GetRandomFrameAt(center),
+                         S1Angle::Radians(S2Testing::rnd.RandDouble()))));
+  }
+  // Also add a big polygon containing most of the polygons above to ensure
+  // that we test containment of cells that are ancestors of index cells.
+  index.Add(NewPaddedCell(S2CellId::FromFace(0), 0));
+  VisitIntersectingShapesTest(&index).Run();
 }
 
 }  // namespace

@@ -13,7 +13,6 @@
 // limitations under the License.
 //
 
-
 //
 // Various Google-specific casting templates.
 //
@@ -25,12 +24,13 @@
 #ifndef S2_BASE_CASTS_H_
 #define S2_BASE_CASTS_H_
 
-#include <cassert>         // for use with down_cast<>
-#include <climits>         // for enumeration casts and tests
+#include <cassert>  // for use with down_cast<>
+#include <climits>  // for enumeration casts and tests
+
 #include <type_traits>
 
-#include "s2/third_party/absl/base/casts.h"
-#include "s2/third_party/absl/base/macros.h"
+#include "s2/base/logging.h"
+#include "absl/base/casts.h"  // IWYU pragma: keep
 
 // An "upcast", i.e. a conversion from a pointer to an object to a pointer to a
 // base subobject, always succeeds if the base is unambiguous and accessible,
@@ -56,11 +56,10 @@
 //    if (auto* p = dynamic_cast<Subclass2*>(foo)) HandleASubclass2Object(p);
 // You should design the code some other way not to need this.
 
-template<typename To, typename From>     // use like this: down_cast<T*>(foo);
-inline To down_cast(From* f) {           // so we only accept pointers
-  static_assert(
-      (std::is_base_of<From, typename std::remove_pointer<To>::type>::value),
-      "target type not derived from source type");
+template <typename To, typename From>  // use like this: down_cast<T*>(foo);
+inline To down_cast(From* f) {         // so we only accept pointers
+  static_assert((std::is_base_of<From, absl::remove_pointer_t<To>>::value),
+                "target type not derived from source type");
 
   // We skip the assert and hence the dynamic_cast if RTTI is disabled.
 #if !defined(__GNUC__) || defined(__GXX_RTTI)
@@ -79,19 +78,17 @@ inline To down_cast(From* f) {           // so we only accept pointers
 // There's no need for a special const overload either for the pointer
 // or the reference form. If you call down_cast with a const T&, the
 // compiler will just bind From to const T.
-template<typename To, typename From>
+template <typename To, typename From>
 inline To down_cast(From& f) {
-  static_assert(
-      std::is_lvalue_reference<To>::value, "target type not a reference");
-  static_assert(
-      (std::is_base_of<From, typename std::remove_reference<To>::type>::value),
-      "target type not derived from source type");
+  static_assert(std::is_lvalue_reference<To>::value,
+                "target type not a reference");
+  static_assert((std::is_base_of<From, absl::remove_reference_t<To>>::value),
+                "target type not derived from source type");
 
   // We skip the assert and hence the dynamic_cast if RTTI is disabled.
 #if !defined(__GNUC__) || defined(__GXX_RTTI)
   // RTTI: debug mode only
-  assert(dynamic_cast<typename std::remove_reference<To>::type*>(&f) !=
-         nullptr);
+  assert(dynamic_cast<absl::remove_reference_t<To>*>(&f) != nullptr);
 #endif  // !defined(__GNUC__) || defined(__GXX_RTTI)
 
   return static_cast<To>(f);
@@ -111,7 +108,7 @@ inline To down_cast(From& f) {
 //   enum A { A_min = -18, A_max = 33 };
 //   MAKE_ENUM_LIMITS(A, A_min, A_max)
 //
-// Convert an int to an enum in one of two ways.  The prefered way is a
+// Convert an int to an enum in one of two ways.  The preferred way is a
 // tight conversion, which ensures that A_min <= value <= A_max.
 //
 //   A var = tight_enum_cast<A>(3);
@@ -159,25 +156,25 @@ inline To down_cast(From& f) {
 template <typename Enum>
 class enum_limits {
  public:
-  static const Enum min_enumerator = 0;
-  static const Enum max_enumerator = 0;
-  static const bool is_specialized = false;
+  static constexpr Enum min_enumerator = 0;
+  static constexpr Enum max_enumerator = 0;
+  static constexpr bool is_specialized = false;
 };
 
 // Now we define the macro to define the specialization for enum_limits.
 // The specialization checks that the enumerators fit within an int.
 // This checking relies on integral promotion.
 
-#define MAKE_ENUM_LIMITS(ENUM_TYPE, ENUM_MIN, ENUM_MAX) \
-template <> \
-class enum_limits<ENUM_TYPE> { \
-public: \
-  static const ENUM_TYPE min_enumerator = ENUM_MIN; \
-  static const ENUM_TYPE max_enumerator = ENUM_MAX; \
-  static const bool is_specialized = true; \
-  static_assert(ENUM_MIN >= INT_MIN, "enumerator too negative for int"); \
-  static_assert(ENUM_MAX <= INT_MAX, "enumerator too positive for int"); \
-};
+#define MAKE_ENUM_LIMITS(ENUM_TYPE, ENUM_MIN, ENUM_MAX)                    \
+  template <>                                                              \
+  class enum_limits<ENUM_TYPE> {                                           \
+   public:                                                                 \
+    static const ENUM_TYPE min_enumerator = ENUM_MIN;                      \
+    static const ENUM_TYPE max_enumerator = ENUM_MAX;                      \
+    static const bool is_specialized = true;                               \
+    static_assert(ENUM_MIN >= INT_MIN, "enumerator too negative for int"); \
+    static_assert(ENUM_MAX <= INT_MAX, "enumerator too positive for int"); \
+  };
 
 // The loose enum test/cast is actually the more complicated one,
 // because of the problem of finding the bounds.
@@ -217,7 +214,7 @@ inline bool loose_enum_test(int e_val) {
   // Find the unary bounding negative number of e_max.
   // This would be b_min = e_max < 0 ? e_max : ~e_max,
   // but we want to avoid branches to help the compiler.
-  int e_max_sign = e_max >> (sizeof(e_val)*8 - 1);
+  int e_max_sign = e_max >> (sizeof(e_val) * 8 - 1);
   int b_min = ~e_max_sign ^ e_max;
 
   // Find the binary bounding negative of both e_min and e_max.
@@ -241,7 +238,7 @@ inline bool loose_enum_test(int e_val) {
 
   // Find the binary bounding positive number of that
   // and the unary bounding positive number of e_min.
-  int e_min_sign = e_min >> (sizeof(e_val)*8 - 1);
+  int e_min_sign = e_min >> (sizeof(e_val) * 8 - 1);
   b_max |= e_min_sign ^ e_min;
 
   // Now set all bits right of the most significant set bit,
@@ -270,39 +267,27 @@ inline bool tight_enum_test(int e_val) {
 template <typename Enum>
 inline bool loose_enum_test_cast(int e_val, Enum* e_var) {
   if (loose_enum_test<Enum>(e_val)) {
-     *e_var = static_cast<Enum>(e_val);
-     return true;
+    *e_var = static_cast<Enum>(e_val);
+    return true;
   } else {
-     return false;
+    return false;
   }
 }
 
 template <typename Enum>
 inline bool tight_enum_test_cast(int e_val, Enum* e_var) {
   if (tight_enum_test<Enum>(e_val)) {
-     *e_var = static_cast<Enum>(e_val);
-     return true;
+    *e_var = static_cast<Enum>(e_val);
+    return true;
   } else {
-     return false;
+    return false;
   }
 }
-
-// The plain casts require logging, and we get header recursion if
-// it is done directly.  So, we do it indirectly.
-// The following function is defined in logging.cc.
-
-namespace base {
-namespace internal {
-
-void WarnEnumCastError(int value_of_int);
-
-}  // namespace internal
-}  // namespace base
 
 template <typename Enum>
 inline Enum loose_enum_cast(int e_val) {
   if (!loose_enum_test<Enum>(e_val)) {
-    base::internal::WarnEnumCastError(e_val);
+    S2_LOG(DFATAL) << "enum_cast error for value " << e_val;
   }
   return static_cast<Enum>(e_val);
 }
@@ -310,7 +295,7 @@ inline Enum loose_enum_cast(int e_val) {
 template <typename Enum>
 inline Enum tight_enum_cast(int e_val) {
   if (!tight_enum_test<Enum>(e_val)) {
-    base::internal::WarnEnumCastError(e_val);
+    S2_LOG(DFATAL) << "enum_cast error for value " << e_val;
   }
   return static_cast<Enum>(e_val);
 }

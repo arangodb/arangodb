@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ class EdgeIterator {
 
   bool operator!=(const EdgeIterator& other) const { return !(*this == other); }
 
-  string DebugString() const;
+  std::string DebugString() const;
 
  private:
   const S2ShapeIndex* index_;

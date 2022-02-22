@@ -25,7 +25,7 @@ namespace s2shapeutil {
 
 TEST(RangeIterator, Next) {
   // Create an index with one point each on S2CellId faces 0, 1, and 2.
-  auto index = s2textformat::MakeIndex("0:0 | 0:90 | 90:0 # #");
+  auto index = s2textformat::MakeIndexOrDie("0:0 | 0:90 | 90:0 # #");
   RangeIterator it(*index);
   EXPECT_EQ(0, it.id().face());
   it.Next();
@@ -38,8 +38,8 @@ TEST(RangeIterator, Next) {
 }
 
 TEST(RangeIterator, EmptyIndex) {
-  auto empty = s2textformat::MakeIndex("# #");
-  auto non_empty = s2textformat::MakeIndex("0:0 # #");
+  auto empty = s2textformat::MakeIndexOrDie("# #");
+  auto non_empty = s2textformat::MakeIndexOrDie("0:0 # #");
   RangeIterator empty_it(*empty);
   RangeIterator non_empty_it(*non_empty);
   EXPECT_FALSE(non_empty_it.done());

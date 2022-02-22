@@ -27,7 +27,13 @@
 
 #include <gtest/gtest.h>
 
+#include "absl/base/macros.h"
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
+
 #include "s2/base/logging.h"
+#include "s2/base/log_severity.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/r2.h"
 #include "s2/r2rect.h"
@@ -46,19 +52,14 @@
 #include "s2/s2pointutil.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/third_party/absl/strings/str_cat.h"
 
 using absl::StrCat;
-using absl::make_unique;
 using S2::internal::kSwapMask;
 using s2textformat::MakePointOrDie;
 using std::fabs;
 using std::map;
 using std::max;
 using std::min;
-using std::pair;
 using std::pow;
 using std::vector;
 
@@ -439,7 +440,7 @@ TEST(S2Cell, RectBoundIsLargeEnough) {
     S2Point v1 = cell.GetVertex(i);
     S2Point v2 = S2Testing::SamplePoint(
         S2Cap(cell.GetVertex(i + 1), S1Angle::Radians(1e-15)));
-    S2Point p = S2::Interpolate(S2Testing::rnd.RandDouble(), v1, v2);
+    S2Point p = S2::Interpolate(v1, v2, S2Testing::rnd.RandDouble());
     if (S2Loop(cell).Contains(p)) {
       EXPECT_TRUE(cell.GetRectBound().Contains(S2LatLng(p)));
       ++iter;
@@ -457,7 +458,7 @@ TEST(S2Cell, ConsistentWithS2CellIdFromPoint) {
     S2Point v1 = cell.GetVertex(i);
     S2Point v2 = S2Testing::SamplePoint(
         S2Cap(cell.GetVertex(i + 1), S1Angle::Radians(1e-15)));
-    S2Point p = S2::Interpolate(S2Testing::rnd.RandDouble(), v1, v2);
+    S2Point p = S2::Interpolate(v1, v2, S2Testing::rnd.RandDouble());
     EXPECT_TRUE(S2Cell(S2CellId(p)).Contains(p));
   }
 }
@@ -505,7 +506,7 @@ static S1ChordAngle GetMaxDistanceToPointBruteForce(const S2Cell& cell,
 }
 
 TEST(S2Cell, GetDistanceToPoint) {
-  S2Testing::rnd.Reset(FLAGS_s2_random_seed);
+  S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed));
   for (int iter = 0; iter < 1000; ++iter) {
     SCOPED_TRACE(StrCat("Iteration ", iter));
     S2Cell cell(S2Testing::GetRandomCellId());
@@ -605,7 +606,7 @@ static S1ChordAngle GetMaxDistanceToEdgeBruteForce(
 }
 
 TEST(S2Cell, GetDistanceToEdge) {
-  S2Testing::rnd.Reset(FLAGS_s2_random_seed);
+  S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed));
   for (int iter = 0; iter < 1000; ++iter) {
     SCOPED_TRACE(StrCat("Iteration ", iter));
     S2Cell cell(S2Testing::GetRandomCellId());
@@ -638,8 +639,8 @@ TEST(S2Cell, GetMaxDistanceToEdge) {
   // Test an edge for which its antipode crosses the cell. Validates both the
   // standard and brute force implementations for this case.
   S2Cell cell = S2Cell::FromFacePosLevel(0, 0, 20);
-  S2Point a = -S2::Interpolate(2.0, cell.GetCenter(), cell.GetVertex(0));
-  S2Point b = -S2::Interpolate(2.0, cell.GetCenter(), cell.GetVertex(2));
+  S2Point a = -S2::Interpolate(cell.GetCenter(), cell.GetVertex(0), 2.0);
+  S2Point b = -S2::Interpolate(cell.GetCenter(), cell.GetVertex(2), 2.0);
 
   S1ChordAngle actual = cell.GetMaxDistance(a, b);
   S1ChordAngle expected = GetMaxDistanceToEdgeBruteForce(cell, a, b);

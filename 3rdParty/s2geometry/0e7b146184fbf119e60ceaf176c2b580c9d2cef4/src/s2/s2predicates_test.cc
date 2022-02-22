@@ -16,29 +16,36 @@
 // Author: ericv@google.com (Eric Veach)
 
 #include "s2/s2predicates.h"
-#include "s2/s2predicates_internal.h"
 
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
-#include "s2/base/commandlineflags.h"
-#include "s2/base/stringprintf.h"
+
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/base/casts.h"
+
+#include "absl/base/casts.h"
+#include "absl/flags/flag.h"
+#include "absl/strings/str_format.h"
+
+#include "s2/base/commandlineflags.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
+#include "s2/s2edge_crossings.h"
 #include "s2/s2edge_distances.h"
 #include "s2/s2pointutil.h"
+#include "s2/s2predicates_internal.h"
 #include "s2/s2testing.h"
 #include "s2/util/math/exactfloat/exactfloat.h"
 #include "s2/util/math/vector.h"
 
-DEFINE_int32(consistency_iters, 5000,
+S2_DEFINE_int32(consistency_iters, 5000,
              "Number of iterations for precision consistency tests");
 
+using std::back_inserter;
 using std::min;
 using std::numeric_limits;
 using std::pow;
+using std::string;
 using std::vector;
 
 namespace s2pred {
@@ -109,6 +116,18 @@ TEST(Sign, CollinearPoints) {
   EXPECT_NE(0, Sign(y1, y2, -y1));
   EXPECT_EQ(Sign(y1, y2, -y1), Sign(y2, -y1, y1));
   EXPECT_EQ(Sign(y1, y2, -y1), -Sign(-y1, y2, y1));
+}
+
+TEST(Sign, StableSignUnderflow) {
+  // Verify that StableSign returns zero (indicating that the result is
+  // uncertain) when its error calculation underflows.
+  S2Point a(1, 1.9535722048627587e-90, 7.4882501322554515e-80);
+  S2Point b(1, 9.6702373087191359e-127, 3.706704857169321e-116);
+  S2Point c(1, 3.8163353663361477e-142, 1.4628419538608985e-131);
+
+  EXPECT_EQ(StableSign(a, b, c), 0);
+  EXPECT_EQ(ExactSign(a, b, c, true), 1);
+  EXPECT_EQ(Sign(a, b, c), 1);
 }
 
 // This test repeatedly constructs some number of points that are on or nearly
@@ -314,7 +333,7 @@ class SignTest : public testing::Test {
 
 TEST_F(SignTest, StressTest) {
   // The run time of this test is *cubic* in the parameter below.
-  static const int kNumPointsPerCircle = 20;
+  static const int kNumPointsPerCircle = 17;
 
   // This test is randomized, so it is beneficial to run it several times.
   for (int iter = 0; iter < 3; ++iter) {
@@ -488,10 +507,10 @@ string PrecisionStats::ToString() {
   string result;
   int total = 0;
   for (int i = 0; i < NUM_PRECISIONS; ++i) {
-    StringAppendF(&result, "%s=%6d, ", kPrecisionNames[i], counts_[i]);
+    absl::StrAppendFormat(&result, "%s=%6d, ", kPrecisionNames[i], counts_[i]);
     total += counts_[i];
   }
-  StringAppendF(&result, "total=%6d", total);
+  absl::StrAppendFormat(&result, "total=%6d", total);
   return result;
 }
 
@@ -677,15 +696,15 @@ TEST(CompareDistances, Consistency) {
       S2Point(1, 0, 0), S2Point(0, -1, 0), S2Point(0, 1, 0));
   auto& rnd = S2Testing::rnd;
   PrecisionStats sin2_stats, cos_stats, minus_sin2_stats;
-  for (int iter = 0; iter < FLAGS_consistency_iters; ++iter) {
+  for (int iter = 0; iter < absl::GetFlag(FLAGS_consistency_iters); ++iter) {
     rnd.Reset(iter + 1);  // Easier to reproduce a specific case.
     S2Point x = ChoosePoint();
     S2Point dir = ChoosePoint();
     S1Angle r = S1Angle::Radians(M_PI_2 * pow(1e-30, rnd.RandDouble()));
     if (rnd.OneIn(2)) r = S1Angle::Radians(M_PI_2) - r;
     if (rnd.OneIn(2)) r = S1Angle::Radians(M_PI_2) + r;
-    S2Point a = S2::InterpolateAtDistance(r, x, dir);
-    S2Point b = S2::InterpolateAtDistance(r, x, -dir);
+    S2Point a = S2::GetPointOnLine(x, dir, r);
+    S2Point b = S2::GetPointOnLine(x, -dir, r);
     Precision prec = TestCompareDistancesConsistency<CosDistances>(x, a, b);
     if (r.degrees() >= 45 && r.degrees() <= 135) cos_stats.Tally(prec);
     // The Sin2 method is only valid if both distances are less than 90
@@ -828,14 +847,14 @@ TEST(CompareDistance, Consistency) {
   // comments in the CompareDistances consistency test.
   auto& rnd = S2Testing::rnd;
   PrecisionStats sin2_stats, cos_stats;
-  for (int iter = 0; iter < FLAGS_consistency_iters; ++iter) {
+  for (int iter = 0; iter < absl::GetFlag(FLAGS_consistency_iters); ++iter) {
     rnd.Reset(iter + 1);  // Easier to reproduce a specific case.
     S2Point x = ChoosePoint();
     S2Point dir = ChoosePoint();
     S1Angle r = S1Angle::Radians(M_PI_2 * pow(1e-30, rnd.RandDouble()));
     if (rnd.OneIn(2)) r = S1Angle::Radians(M_PI_2) - r;
     if (rnd.OneIn(5)) r = S1Angle::Radians(M_PI_2) + r;
-    S2Point y = S2::InterpolateAtDistance(r, x, dir);
+    S2Point y = S2::GetPointOnLine(x, dir, r);
     Precision prec = TestCompareDistanceConsistency<CosDistance>(
         x, y, S1ChordAngle(r));
     if (r.degrees() >= 45) cos_stats.Tally(prec);
@@ -913,6 +932,9 @@ TEST(CompareEdgeDistance, Coverage) {
       S2Point(1e-15, -1, 0), S2Point(1, 0, 0), S2Point(1, 1, 0),
       S1ChordAngle::Right(), -1, DOUBLE);
   TestCompareEdgeDistance(
+      S2Point(-1, -1, 1), S2Point(1, 0, 0), S2Point(1, 1, 0),
+      S1ChordAngle::Right(), 1, DOUBLE);
+  TestCompareEdgeDistance(
       S2Point(1e-18, -1, 0), S2Point(1, 0, 0), S2Point(1, 1, 0),
       S1ChordAngle::Right(), -1, LONG_DOUBLE);
   TestCompareEdgeDistance(
@@ -920,6 +942,20 @@ TEST(CompareEdgeDistance, Coverage) {
       S1ChordAngle::Right(), -1, EXACT);
   TestCompareEdgeDistance(
       S2Point(0, -1, 0), S2Point(1, 0, 0), S2Point(1, 1, 0),
+      S1ChordAngle::Right(), 0, EXACT);
+
+  // Test cases where x == -a0 or x == -a1.
+  TestCompareEdgeDistance(
+      S2Point(-1, 0, 0), S2Point(1, 0, 0), S2Point(1, 1, 0),
+      S1ChordAngle::Right(), 1, DOUBLE);
+  TestCompareEdgeDistance(
+      S2Point(-1, 0, 0), S2Point(1, 0, 0), S2Point(1e-18, 1, 0),
+      S1ChordAngle::Right(), 1, LONG_DOUBLE);
+  TestCompareEdgeDistance(
+      S2Point(-1, 0, 0), S2Point(1, 0, 0), S2Point(1e-100, 1, 0),
+      S1ChordAngle::Right(), 1, EXACT);
+  TestCompareEdgeDistance(
+      S2Point(0, -1, 0), S2Point(1, 0, 0), S2Point(0, 1, 0),
       S1ChordAngle::Right(), 0, EXACT);
 }
 
@@ -946,11 +982,11 @@ TEST(CompareEdgeDistance, Consistency) {
   // See also the comments in the CompareDistances consistency test.
   auto& rnd = S2Testing::rnd;
   PrecisionStats stats;
-  for (int iter = 0; iter < FLAGS_consistency_iters; ++iter) {
+  for (int iter = 0; iter < absl::GetFlag(FLAGS_consistency_iters); ++iter) {
     rnd.Reset(iter + 1);  // Easier to reproduce a specific case.
     S2Point a0 = ChoosePoint();
     S1Angle len = S1Angle::Radians(M_PI * pow(1e-20, rnd.RandDouble()));
-    S2Point a1 = S2::InterpolateAtDistance(len, a0, ChoosePoint());
+    S2Point a1 = S2::GetPointOnLine(a0, ChoosePoint(), len);
     if (rnd.OneIn(2)) a1 = -a1;
     if (a0 == -a1) continue;  // Not allowed by API.
     S2Point n = S2::RobustCrossProd(a0, a1).Normalize();
@@ -958,7 +994,7 @@ TEST(CompareEdgeDistance, Consistency) {
     S2Point a = ((1 - f) * a0 + f * a1).Normalize();
     S1Angle r = S1Angle::Radians(M_PI_2 * pow(1e-20, rnd.RandDouble()));
     if (rnd.OneIn(2)) r = S1Angle::Radians(M_PI_2) - r;
-    S2Point x = S2::InterpolateAtDistance(r, a, n);
+    S2Point x = S2::GetPointOnLine(a, n, r);
     if (rnd.OneIn(5)) {
       // Replace "x" with a random point that is closest to an edge endpoint.
       do {
@@ -972,6 +1008,47 @@ TEST(CompareEdgeDistance, Consistency) {
     stats.Tally(prec);
   }
   S2_LOG(ERROR) << stats.ToString();
+}
+
+TEST(CompareEdgePairDistance, Coverage) {
+  // Since CompareEdgePairDistance() is implemented using other predicates, we
+  // only test to verify that those predicates are being used correctly.
+  S2Point x(1, 0, 0), y(0, 1, 0), z(0, 0, 1);
+  S2Point a(1, 1e-100, 1e-99), b(1, 1e-100, -1e-99);
+
+  // Test cases where the edges have an interior crossing.
+  EXPECT_EQ(CompareEdgePairDistance(x, y, a, b, S1ChordAngle::Zero()), 0);
+  EXPECT_EQ(CompareEdgePairDistance(x, y, a, b, S1ChordAngle::Radians(1)), -1);
+  EXPECT_EQ(CompareEdgePairDistance(x, y, a, b, S1ChordAngle::Radians(-1)), 1);
+
+  // Test cases where the edges share an endpoint.
+  EXPECT_EQ(CompareEdgePairDistance(x, y, x, z, S1ChordAngle::Radians(0)), 0);
+  EXPECT_EQ(CompareEdgePairDistance(x, y, z, x, S1ChordAngle::Radians(0)), 0);
+  EXPECT_EQ(CompareEdgePairDistance(y, x, x, z, S1ChordAngle::Radians(0)), 0);
+  EXPECT_EQ(CompareEdgePairDistance(y, x, z, x, S1ChordAngle::Radians(0)), 0);
+
+  // Test cases where one edge is degenerate.
+  EXPECT_EQ(CompareEdgePairDistance(x, x, x, y, S1ChordAngle::Radians(0)), 0);
+  EXPECT_EQ(CompareEdgePairDistance(x, y, x, x, S1ChordAngle::Radians(0)), 0);
+  EXPECT_EQ(CompareEdgePairDistance(x, x, y, z, S1ChordAngle::Radians(1)), 1);
+  EXPECT_EQ(CompareEdgePairDistance(y, z, x, x, S1ChordAngle::Radians(1)), 1);
+
+  // Test cases where both edges are degenerate.
+  EXPECT_EQ(CompareEdgePairDistance(x, x, x, x, S1ChordAngle::Radians(0)), 0);
+  EXPECT_EQ(CompareEdgePairDistance(x, x, y, y, S1ChordAngle::Radians(1)), 1);
+
+  // Test cases where the minimum distance is non-zero and is achieved at each
+  // of the four edge endpoints.
+  S1ChordAngle kHi = S1ChordAngle::Radians(1e-100 + 1e-115);
+  S1ChordAngle kLo = S1ChordAngle::Radians(1e-100 - 1e-115);
+  EXPECT_EQ(CompareEdgePairDistance(a, y, x, z, kHi), -1);
+  EXPECT_EQ(CompareEdgePairDistance(a, y, x, z, kLo), 1);
+  EXPECT_EQ(CompareEdgePairDistance(y, a, x, z, kHi), -1);
+  EXPECT_EQ(CompareEdgePairDistance(y, a, x, z, kLo), 1);
+  EXPECT_EQ(CompareEdgePairDistance(x, z, a, y, kHi), -1);
+  EXPECT_EQ(CompareEdgePairDistance(x, z, a, y, kLo), 1);
+  EXPECT_EQ(CompareEdgePairDistance(x, z, y, a, kHi), -1);
+  EXPECT_EQ(CompareEdgePairDistance(x, z, y, a, kLo), 1);
 }
 
 // Verifies that CompareEdgeDirections(a0, a1, b0, b1) == expected_sign, and
@@ -1057,15 +1134,15 @@ TEST(CompareEdgeDirections, Consistency) {
   // precision.  See also the comments in the CompareDistances test.
   auto& rnd = S2Testing::rnd;
   PrecisionStats stats;
-  for (int iter = 0; iter < FLAGS_consistency_iters; ++iter) {
+  for (int iter = 0; iter < absl::GetFlag(FLAGS_consistency_iters); ++iter) {
     rnd.Reset(iter + 1);  // Easier to reproduce a specific case.
     S2Point a0 = ChoosePoint();
     S1Angle a_len = S1Angle::Radians(M_PI * pow(1e-20, rnd.RandDouble()));
-    S2Point a1 = S2::InterpolateAtDistance(a_len, a0, ChoosePoint());
+    S2Point a1 = S2::GetPointOnLine(a0, ChoosePoint(), a_len);
     S2Point a_norm = S2::RobustCrossProd(a0, a1).Normalize();
     S2Point b0 = ChoosePoint();
     S1Angle b_len = S1Angle::Radians(M_PI * pow(1e-20, rnd.RandDouble()));
-    S2Point b1 = S2::InterpolateAtDistance(b_len, b0, a_norm);
+    S2Point b1 = S2::GetPointOnLine(b0, a_norm, b_len);
     if (a0 == -a1 || b0 == -b1) continue;  // Not allowed by API.
     Precision prec = TestCompareEdgeDirectionsConsistency(a0, a1, b0, b1);
     // Don't skew the statistics by recording degenerate inputs.
@@ -1203,7 +1280,7 @@ TEST(EdgeCircumcenterSign, Consistency) {
   // at the next higher level of precision.
   auto& rnd = S2Testing::rnd;
   PrecisionStats stats;
-  for (int iter = 0; iter < FLAGS_consistency_iters; ++iter) {
+  for (int iter = 0; iter < absl::GetFlag(FLAGS_consistency_iters); ++iter) {
     rnd.Reset(iter + 1);  // Easier to reproduce a specific case.
     S2Point x0 = ChoosePoint();
     S2Point x1 = ChoosePoint();
@@ -1212,9 +1289,9 @@ TEST(EdgeCircumcenterSign, Consistency) {
     double c1 = (rnd.OneIn(2) ? -1 : 1) * pow(1e-20, rnd.RandDouble());
     S2Point z = (c0 * x0 + c1 * x1).Normalize();
     S1Angle r = S1Angle::Radians(M_PI * pow(1e-30, rnd.RandDouble()));
-    S2Point a = S2::InterpolateAtDistance(r, z, ChoosePoint());
-    S2Point b = S2::InterpolateAtDistance(r, z, ChoosePoint());
-    S2Point c = S2::InterpolateAtDistance(r, z, ChoosePoint());
+    S2Point a = S2::GetPointOnLine(z, ChoosePoint(), r);
+    S2Point b = S2::GetPointOnLine(z, ChoosePoint(), r);
+    S2Point c = S2::GetPointOnLine(z, ChoosePoint(), r);
     Precision prec = TestEdgeCircumcenterSignConsistency(x0, x1, a, b, c);
     // Don't skew the statistics by recording degenerate inputs.
     if (x0 == x1) {
@@ -1338,6 +1415,62 @@ TEST(VoronoiSiteExclusion, Coverage) {
       S2Point(1, -1, 0), S2Point(1, 1, 0), S1ChordAngle::Radians(1.005e-30),
       Excluded::FIRST, EXACT);
 
+  // Test cases for the (d < 0) portion of the algorithm (see .cc file).  In
+  // all of these cases A is closer to X0, B is closer to X1, and AB goes in
+  // the opposite direction as edge X when projected onto it (since this is
+  // what d < 0 means).
+
+  // 1. Cases that require Pi/2 < d(X0,X1) + r < Pi.  Only one site is kept.
+  //
+  //    - A and B project to the interior of X.
+  TestVoronoiSiteExclusion(
+      S2Point(1, -1e-5, 1e-4), S2Point(1, -1.00000001e-5, 0),
+      S2Point(-1, -1, 0), S2Point(1, 0, 0), S1ChordAngle::Radians(1),
+      Excluded::FIRST, DOUBLE);
+  //    - A and B project to opposite sides of X1.
+  TestVoronoiSiteExclusion(
+      S2Point(1, 1e-10, 0.1), S2Point(1, -1e-10, 1e-8),
+      S2Point(-1, -1, 0), S2Point(1, 0, 0), S1ChordAngle::Radians(1),
+      Excluded::FIRST, DOUBLE);
+  //    - A and B both project to points past X1, and B is closer to the great
+  //      circle through edge X.
+  TestVoronoiSiteExclusion(
+      S2Point(1, 2e-10, 0.1), S2Point(1, 1e-10, 0),
+      S2Point(-1, -1, 0), S2Point(1, 0, 0), S1ChordAngle::Radians(1),
+      Excluded::FIRST, DOUBLE);
+  //    - Like the test above, but A is closer to the great circle through X.
+  TestVoronoiSiteExclusion(
+      S2Point(1, 1.1, 0), S2Point(1, 1.01, 0.01),
+      S2Point(-1, -1, 0), S2Point(1, 0, 0), S1ChordAngle::Radians(1),
+      Excluded::FIRST, DOUBLE);
+
+  // 2. Cases that require d(X0,X1) + r > Pi and where only one site is kept.
+  //
+  //    - B is closer to edge X (in fact it's right on the edge), but when A
+  //      and B are projected onto the great circle through X they are more
+  //      than 90 degrees apart.  This case requires that the sin(d) < 0 case
+  //      in the algorithm is handled *before* the cos(d) < 0 case.
+  TestVoronoiSiteExclusion(
+      S2Point(1, 1.1, 0), S2Point(1, -1, 0),
+      S2Point(-1, 0, 0), S2Point(1, -1e-10, 0), S1ChordAngle::Degrees(70),
+      Excluded::FIRST, DOUBLE);
+
+  // 3. Cases that require d(X0,X1) + r > Pi and where both sites are kept.
+  //
+  //    - A projects to a point past X0, B projects to a point past X1,
+  //      neither site should be excluded, and A is closer to the great circle
+  //      through edge X.
+  TestVoronoiSiteExclusion(
+      S2Point(-1, 0.1, 0.001), S2Point(1, 1.1, 0),
+      S2Point(-1, -1, 0), S2Point(1, 0, 0), S1ChordAngle::Radians(1),
+      Excluded::NEITHER, DOUBLE);
+  //    - Like the above, but B is closer to the great circle through edge X.
+  TestVoronoiSiteExclusion(
+      S2Point(-1, 0.1, 0), S2Point(1, 1.1, 0.001),
+      S2Point(-1, -1, 0), S2Point(1, 0, 0), S1ChordAngle::Radians(1),
+      Excluded::NEITHER, DOUBLE);
+
+
   // These two sites are exactly 60 degrees away from the point (1, 1, 0),
   // which is the midpoint of edge X.  This case requires symbolic
   // perturbations to resolve correctly.  Site A is closer to every point in
@@ -1396,7 +1529,7 @@ TEST(VoronoiSiteExclusion, Consistency) {
   // is consistent with the answer given at higher levels of precision.
   auto& rnd = S2Testing::rnd;
   PrecisionStats stats;
-  for (int iter = 0; iter < FLAGS_consistency_iters; ++iter) {
+  for (int iter = 0; iter < absl::GetFlag(FLAGS_consistency_iters); ++iter) {
     rnd.Reset(iter + 1);  // Easier to reproduce a specific case.
     S2Point x0 = ChoosePoint();
     S2Point x1 = ChoosePoint();
@@ -1404,8 +1537,8 @@ TEST(VoronoiSiteExclusion, Consistency) {
     double f = pow(1e-20, rnd.RandDouble());
     S2Point p = ((1 - f) * x0 + f * x1).Normalize();
     S1Angle r1 = S1Angle::Radians(M_PI_2 * pow(1e-20, rnd.RandDouble()));
-    S2Point a = S2::InterpolateAtDistance(r1, p, ChoosePoint());
-    S2Point b = S2::InterpolateAtDistance(r1, p, ChoosePoint());
+    S2Point a = S2::GetPointOnLine(p, ChoosePoint(), r1);
+    S2Point b = S2::GetPointOnLine(p, ChoosePoint(), r1);
     // Check that the other API requirements are met.
     S1ChordAngle r(r1);
     if (s2pred::CompareEdgeDistance(a, x0, x1, r) > 0) continue;

@@ -18,23 +18,22 @@
 #ifndef S2_ENCODED_S2POINT_VECTOR_H_
 #define S2_ENCODED_S2POINT_VECTOR_H_
 
-#include "s2/third_party/absl/types/span.h"
+#include <atomic>
+
+#include "absl/types/span.h"
+#include "s2/encoded_string_vector.h"
 #include "s2/encoded_uint_vector.h"
 #include "s2/s2point.h"
+#include "s2/s2shape.h"
 
 namespace s2coding {
-
-// Controls whether to optimize for speed or size when encoding points.  (Note
-// that encoding is always lossless, and that currently compact encodings are
-// only possible when points have been snapped to S2CellId centers.)
-enum CodingHint { FAST, COMPACT };
 
 // Encodes a vector of S2Points in a format that can later be decoded as an
 // EncodedS2PointVector.
 //
 // REQUIRES: "encoder" uses the default constructor, so that its buffer
 //           can be enlarged as necessary by calling Ensure(int).
-void EncodeS2PointVector(absl::Span<const S2Point> v, CodingHint hint,
+void EncodeS2PointVector(absl::Span<const S2Point> points, CodingHint hint,
                          Encoder* encoder);
 
 // This class represents an encoded vector of S2Points.  Values are decoded
@@ -66,7 +65,23 @@ class EncodedS2PointVector {
   // Decodes and returns the entire original vector.
   std::vector<S2Point> Decode() const;
 
+  // Copy the encoded data to the encoder. This allows for "reserialization" of
+  // encoded shapes created through lazy decoding.
+  void Encode(Encoder* encoder) const;
+
+  // TODO(ericv): Consider adding a method that returns an adjacent pair of
+  // points.  This would save some decoding overhead.
+
  private:
+  friend void EncodeS2PointVector(absl::Span<const S2Point>, CodingHint,
+                                  Encoder*);
+  friend void EncodeS2PointVectorFast(absl::Span<const S2Point>, Encoder*);
+  friend void EncodeS2PointVectorCompact(absl::Span<const S2Point>, Encoder*);
+
+  bool InitUncompressedFormat(Decoder* decoder);
+  bool InitCellIdsFormat(Decoder* decoder);
+  S2Point DecodeCellIdsFormat(int i) const;
+
   // We use a tagged union to represent multiple formats, as opposed to an
   // abstract base class or templating.  This represents the best compromise
   // between performance, space, and convenience.  Note that the overhead of
@@ -78,7 +93,7 @@ class EncodedS2PointVector {
   // better or worse performance than the current approach.
   enum Format : uint8 {
     UNCOMPRESSED = 0,
-    CELL_ID = 1,
+    CELL_IDS = 1,
   };
   Format format_;
   uint32 size_;
@@ -87,11 +102,16 @@ class EncodedS2PointVector {
       const S2Point* points;
     } uncompressed_;
     struct {
-      // TODO(ericv): Implement.
-    } cell_id_;
+      EncodedStringVector blocks;
+      uint64 base;
+      uint8 level;
+      bool have_exceptions;
+
+      // TODO(ericv): Use std::atomic_flag to cache the last point decoded in
+      // a thread-safe way.  This reduces benchmark times for actual polygon
+      // operations (e.g. S2ClosestEdgeQuery) by about 15%.
+    } cell_ids_;
   };
-  friend void EncodeS2PointVector(absl::Span<const S2Point>, CodingHint,
-                                  Encoder*);
 };
 
 
@@ -104,11 +124,14 @@ inline size_t EncodedS2PointVector::size() const {
 
 inline S2Point EncodedS2PointVector::operator[](int i) const {
   switch (format_) {
-    case UNCOMPRESSED:
+    case Format::UNCOMPRESSED:
       return uncompressed_.points[i];
 
-    case CELL_ID:
-      S2_LOG(FATAL) << "Not implemented yet";
+    case Format::CELL_IDS:
+      return DecodeCellIdsFormat(i);
+
+    default:
+      S2_DLOG(FATAL) << "Unrecognized format";
       return S2Point();
   }
 }

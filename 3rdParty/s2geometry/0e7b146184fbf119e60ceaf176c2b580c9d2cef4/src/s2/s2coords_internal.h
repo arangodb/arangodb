@@ -13,9 +13,10 @@
 // limitations under the License.
 //
 
+// Author: ericv@google.com (Eric Veach)
+
 #ifndef S2_S2COORDS_INTERNAL_H_
 #define S2_S2COORDS_INTERNAL_H_
-// Author: ericv@google.com (Eric Veach)
 
 namespace S2 {
 namespace internal {

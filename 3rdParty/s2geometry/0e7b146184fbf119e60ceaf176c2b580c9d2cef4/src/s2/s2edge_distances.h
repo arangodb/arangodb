@@ -21,11 +21,17 @@
 #ifndef S2_S2EDGE_DISTANCES_H_
 #define S2_S2EDGE_DISTANCES_H_
 
+#include <cfloat>
 #include <utility>
 
+#include "s2/base/logging.h"
+#include "absl/base/macros.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
+#include "s2/s2edge_crossings.h"
 #include "s2/s2point.h"
+#include "s2/s2pointutil.h"
+#include "s2/s2predicates_internal.h"
 
 namespace S2 {
 
@@ -64,8 +70,8 @@ bool IsDistanceLess(const S2Point& x, const S2Point& a, const S2Point& b,
 bool UpdateMinDistance(const S2Point& x, const S2Point& a, const S2Point& b,
                        S1ChordAngle* min_dist);
 
-// If the distance from X to the edge AB is greater than "max_dist", this
-// method updates "max_dist" and returns true.  Otherwise it returns false.
+// If the maximum distance from X to the edge AB is greater than "max_dist",
+// this method updates "max_dist" and returns true.  Otherwise it returns false.
 // The case A == B is handled correctly.
 bool UpdateMaxDistance(const S2Point& x, const S2Point& a, const S2Point& b,
                        S1ChordAngle* max_dist);
@@ -83,11 +89,6 @@ bool UpdateMaxDistance(const S2Point& x, const S2Point& a, const S2Point& b,
 // this error drops rapidly as the points move away from antipodality
 // (approximately 1 millimeter for points that are 50 meters from antipodal,
 // and 1 micrometer for points that are 50km from antipodal).
-//
-// TODO(ericv): Currently the error bound does not hold for edges whose
-// endpoints are antipodal to within about 1e-15 radians (less than 1 micron).
-// This could be fixed by extending S2::RobustCrossProd to use higher
-// precision when necessary.
 double GetUpdateMinDistanceMaxError(S1ChordAngle dist);
 
 // Returns true if the minimum distance from X to the edge AB is attained at
@@ -117,28 +118,99 @@ S2Point Project(const S2Point& x, const S2Point& a, const S2Point& b);
 S2Point Project(const S2Point& x, const S2Point& a, const S2Point& b,
                 const Vector3_d& a_cross_b);
 
+// kProjectPerpendicularError is an upper bound on the distance from the point
+// returned by Project() to the edge AB.  Note that it only bounds the error
+// perpendicular to the edge, not the error parallel to it.
+constexpr S1Angle kProjectPerpendicularError = S1Angle::Radians(
+    (2 + (2 / s2pred::kSqrt3)) * s2pred::DBL_ERR) + S2::kRobustCrossProdError;
 
 /////////////////////////////////////////////////////////////////////////////
 ///////////////         (point along edge) functions          ///////////////
 
-
 // Given a point X and an edge AB, returns the distance ratio AX / (AX + BX).
 // If X happens to be on the line segment AB, this is the fraction "t" such
-// that X == Interpolate(t, A, B).  Requires that A and B are distinct.
+// that X == Interpolate(A, B, t).  Requires that A and B are distinct.
 double GetDistanceFraction(const S2Point& x,
                            const S2Point& a, const S2Point& b);
 
 // Returns the point X along the line segment AB whose distance from A is the
-// given fraction "t" of the distance AB.  Does NOT require that "t" be
-// between 0 and 1.  Note that all distances are measured on the surface of
-// the sphere, so this is more complicated than just computing (1-t)*a + t*b
-// and normalizing the result.
-S2Point Interpolate(double t, const S2Point& a, const S2Point& b);
+// given fraction "t" of the distance AB (where "t" is not necessarily in the
+// range [0, 1]).  Note that all distances are measured on the surface of the
+// sphere, so this is more complicated than just computing (1-t)*a + t*b and
+// normalizing the result.
+//
+// Note that the line AB has a well-defined direction even when A and B are
+// antipodal or nearly so (see S2::RobustCrossProd).
+S2Point Interpolate(const S2Point& a, const S2Point& b, double t);
 
-// Like Interpolate(), except that the parameter "ax" represents the desired
-// distance from A to the result X rather than a fraction between 0 and 1.
-S2Point InterpolateAtDistance(S1Angle ax, const S2Point& a, const S2Point& b);
+// Returns the point at distance "r" from A along the line AB.
+//
+// Note that the line AB has a well-defined direction even when A and B are
+// antipodal or nearly so.  If A == B then an arbitrary direction is chosen.
+S2Point GetPointOnLine(const S2Point& a, const S2Point& b, S1Angle r);
 
+// Faster than the function above, but cannot accurately represent distances
+// near 180 degrees due to the limitations of S1ChordAngle.
+S2Point GetPointOnLine(const S2Point& a, const S2Point& b, S1ChordAngle r);
+
+// Returns S2Point to the left of the edge from `a` to `b` which
+// is distance 'r' away from `a` orthogonal to the specified edge.
+//   c (result)
+//   |
+//   |
+//   a --------> b
+S2Point GetPointToLeft(const S2Point& a, const S2Point& b, S1Angle r);
+
+// Faster than the function above due to the use of S1ChordAngle.
+S2Point GetPointToLeft(const S2Point& a, const S2Point& b, S1ChordAngle r);
+
+// Returns S2Point to the right of the edge from `a` to `b` which
+// is distance 'r' away from `a` orthogonal to the specified edge.
+//  a --------> b
+//  |
+//  |
+//  c (result)
+S2Point GetPointToRight(const S2Point& a, const S2Point& b, S1Angle r);
+
+// Faster than the function above due to the use of S1ChordAngle.
+S2Point GetPointToRight(const S2Point& a, const S2Point& b, S1ChordAngle r);
+
+// kGetPointOnLineError is an upper bound on the distance between the point
+// returned by GetPointOnLine() and the corresponding true infinite-precision
+// result.
+constexpr S1Angle kGetPointOnLineError = S1Angle::Radians(
+    (4 + (2 / s2pred::kSqrt3)) * s2pred::DBL_ERR) + S2::kRobustCrossProdError;
+
+// Returns the point at distance "r" along the ray with the given origin and
+// direction.  "dir" is required to be perpendicular to "origin" (since this
+// is how directions on the sphere are represented).
+//
+// This function is similar to S2::GetPointOnLine() except that (1) the first
+// two arguments are required to be perpendicular and (2) it is much faster.
+// It can be used as an alternative to repeatedly calling GetPointOnLine() by
+// computing "dir" as
+//
+//   S2Point dir = S2::RobustCrossProd(a, b).CrossProd(a).Normalize();
+//
+// REQUIRES: "origin" and "dir" are perpendicular to within the tolerance
+//           of the calculation above.
+S2Point GetPointOnRay(const S2Point& origin, const S2Point& dir, S1Angle r);
+
+// Faster than the function above, but cannot accurately represent distances
+// near 180 degrees due to the limitations of S1ChordAngle.
+S2Point GetPointOnRay(const S2Point& origin, const S2Point& dir,
+                      S1ChordAngle r);
+
+// kGetPointOnRayPerpendicularError is an upper bound on the distance from the
+// point returned by GetPointOnRay() to the ray itself.  Note that it only
+// bounds the error perpendicular to the ray, not the error parallel to it.
+constexpr S1Angle kGetPointOnRayPerpendicularError = S1Angle::Radians(
+    3 * s2pred::DBL_ERR);
+
+ABSL_DEPRECATED("Inline the implementation")
+inline S2Point Interpolate(double t, const S2Point& a, const S2Point& b) {
+  return Interpolate(a, b, t);
+}
 
 /////////////////////////////////////////////////////////////////////////////
 ///////////////            (edge, edge) functions             ///////////////
@@ -185,6 +257,35 @@ inline bool IsDistanceLess(const S2Point& x, const S2Point& a,
 inline bool IsInteriorDistanceLess(const S2Point& x, const S2Point& a,
                                    const S2Point& b, S1ChordAngle limit) {
   return UpdateMinInteriorDistance(x, a, b, &limit);
+}
+
+inline S2Point GetPointOnRay(const S2Point& origin, const S2Point& dir,
+                             S1ChordAngle r) {
+  S2_DCHECK(S2::IsUnitLength(origin));
+  S2_DCHECK(S2::IsUnitLength(dir));
+  // The error bound below includes the error in computing the dot product.
+  S2_DCHECK_LE(origin.DotProd(dir),
+            S2::kRobustCrossProdError.radians() + 0.75 * DBL_EPSILON);
+
+  // Mathematically the result should already be unit length, but we normalize
+  // it anyway to ensure that the error is within acceptable bounds.
+  // (Otherwise errors can build up when the result of one interpolation is
+  // fed into another interpolation.)
+  //
+  // Note that it is much cheaper to compute the sine and cosine of an
+  // S1ChordAngle than an S1Angle.
+  return (cos(r) * origin + sin(r) * dir).Normalize();
+}
+
+inline S2Point GetPointOnRay(const S2Point& origin, const S2Point& dir,
+                             S1Angle r) {
+  // See comments above.
+  S2_DCHECK(S2::IsUnitLength(origin));
+  S2_DCHECK(S2::IsUnitLength(dir));
+  S2_DCHECK_LE(origin.DotProd(dir),
+            S2::kRobustCrossProdError.radians() + 0.75 * DBL_EPSILON);
+
+  return (cos(r) * origin + sin(r) * dir).Normalize();
 }
 
 }  // namespace S2

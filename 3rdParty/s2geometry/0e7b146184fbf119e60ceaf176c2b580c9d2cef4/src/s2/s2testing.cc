@@ -25,6 +25,10 @@
 #include <utility>
 #include <vector>
 
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/str_split.h"
+
 #include "s2/base/commandlineflags.h"
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
@@ -36,6 +40,8 @@
 #include "s2/s2cell_union.h"
 #include "s2/s2latlng.h"
 #include "s2/s2latlng_rect.h"
+#include "s2/s2lax_polygon_shape.h"
+#include "s2/s2lax_polyline_shape.h"
 #include "s2/s2loop.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2polygon.h"
@@ -43,16 +49,15 @@
 #include "s2/s2region.h"
 #include "s2/s2text_format.h"
 #include "s2/strings/serialize.h"
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/third_party/absl/strings/str_split.h"
 #include "s2/util/math/matrix3x3.h"
 
 using absl::make_unique;
 using std::max;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
-DEFINE_int32(s2_random_seed, 1,
+S2_DEFINE_int32(s2_random_seed, 1,
              "Seed value that can be passed to S2Testing::rnd.Reset()");
 
 const double S2Testing::kEarthRadiusKm = 6371.01;
@@ -148,6 +153,7 @@ vector<S2Point> S2Testing::MakeRegularPoints(const S2Point& center,
   unique_ptr<S2Loop> loop(
       S2Loop::MakeRegularLoop(center, radius, num_vertices));
   vector<S2Point> points;
+  points.reserve(loop->num_vertices());
   for (int i = 0; i < loop->num_vertices(); i++) {
     points.push_back(loop->vertex(i));
   }
@@ -170,9 +176,16 @@ double S2Testing::AreaToKm2(double steradians) {
   return steradians * kEarthRadiusKm * kEarthRadiusKm;
 }
 
-// The overloaded Dump() function is for use within a debugger.
+// The Dump*() functions are for use within a debugger.  They are similar to
+// the corresponding s2textformat::ToString() functions except that they
+// prefix their output with a label and they don't require default arguments
+// or constructing absl::Span objects (which gdb doesn't know how to do).
 void Dump(const S2Point& p) {
   std::cout << "S2Point: " << s2textformat::ToString(p) << std::endl;
+}
+
+void Dump(const vector<S2Point>& points) {
+  std::cout << "S2Polygon: " << s2textformat::ToString(points) << std::endl;
 }
 
 void Dump(const S2Loop& loop) {
@@ -185,6 +198,34 @@ void Dump(const S2Polyline& polyline) {
 
 void Dump(const S2Polygon& polygon) {
   std::cout << "S2Polygon: " << s2textformat::ToString(polygon) << std::endl;
+}
+
+void Dump(const S2LaxPolylineShape& polyline) {
+  std::cout << "S2Polyline: " << s2textformat::ToString(polyline) << std::endl;
+}
+
+void Dump(const S2LaxPolygonShape& polygon) {
+  std::cout << "S2Polygon: " << s2textformat::ToString(polygon) << std::endl;
+}
+
+// Outputs the contents of an S2ShapeIndex in human-readable form.
+void Dump(const S2ShapeIndex& index) {
+  std::cout << "S2ShapeIndex: " << &index << std::endl;
+  std::cout << "  " << s2textformat::ToString(index) << std::endl;
+  for (S2ShapeIndex::Iterator it(&index, S2ShapeIndex::BEGIN);
+       !it.done(); it.Next()) {
+    std::cout << "  id: " << it.id().ToString() << std::endl;
+    const S2ShapeIndexCell& cell = it.cell();
+    for (int s = 0; s < cell.num_clipped(); ++s) {
+      const S2ClippedShape& clipped = cell.clipped(s);
+      std::cout << "    shape_id " << clipped.shape_id() << ": ";
+      for (int e = 0; e < clipped.num_edges(); ++e) {
+        if (e > 0) std::cout << ", ";
+        std::cout << clipped.edge(e);
+      }
+      std::cout << std::endl;
+    }
+  }
 }
 
 S2Point S2Testing::RandomPoint() {

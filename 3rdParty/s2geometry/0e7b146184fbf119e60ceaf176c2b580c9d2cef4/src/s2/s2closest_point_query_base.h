@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/container/inlined_vector.h"
+#include "absl/container/inlined_vector.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell_id.h"
@@ -139,7 +139,7 @@ class S2ClosestPointQueryBaseOptions {
 // The Distance template argument is used to represent distances.  Usually it
 // is a thin wrapper around S1ChordAngle, but another distance type may be
 // used as long as it implements the Distance concept described in
-// s2distance_targets.h.  For example this can be used to measure maximum
+// s2distance_target.h.  For example this can be used to measure maximum
 // distances, to get more accuracy, or to measure non-spheroidal distances.
 template <class Distance, class Data>
 class S2ClosestPointQueryBase {
@@ -574,6 +574,7 @@ void S2ClosestPointQueryBase<Distance, Data>::InitQueue() {
   // that disc and intersect it with the covering for the index.  This can
   // save a lot of work when the search region is small.
   S2Cap cap = target_->GetCapBound();
+  if (cap.is_empty()) return;  // Empty target.
   if (options().max_results() == 1) {
     // If the user is searching for just the closest point, we can compute an
     // upper bound on search radius by seeking to the center of the target's

@@ -82,6 +82,13 @@ class Projection {
   //
   // If a given axis does not wrap, its wrap_distance should be set to zero.
   virtual R2Point wrap_distance() const = 0;
+
+  // Helper function that wraps the coordinates of B if necessary in order to
+  // obtain the shortest edge AB.  For example, suppose that A = [170, 20],
+  // B = [-170, 20], and the projection wraps so that [x, y] == [x + 360, y].
+  // Then this function would return [190, 20] for point B (reducing the edge
+  // length in the "x" direction from 340 to 20).
+  R2Point WrapDestination(const R2Point& a, const R2Point& b) const;
 };
 
 // PlateCarreeProjection defines the "plate carree" (square plate) projection,

@@ -19,7 +19,7 @@
 #define S2_S2POINT_SPAN_H_
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/types/span.h"
+#include "absl/types/span.h"
 #include "s2/s2point.h"
 
 // S2PointSpan represents a view of an S2Point array.  It is used to pass
@@ -49,7 +49,7 @@ class S2PointLoopSpan : public S2PointSpan {
   reference operator[](int i) const noexcept {
     S2_DCHECK_GE(i, 0);
     S2_DCHECK_LT(i, 2 * size());
-    int j = i - size();
+    int j = i - static_cast<int>(size());
     return S2PointSpan::operator[](j < 0 ? i : j);
   }
 };

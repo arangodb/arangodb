@@ -23,7 +23,9 @@
 #include <vector>
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/container/inlined_vector.h"
+#include "absl/container/btree_set.h"
+#include "absl/container/inlined_vector.h"
+#include "absl/hash/hash.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell_id.h"
@@ -31,9 +33,7 @@
 #include "s2/s2cell_union.h"
 #include "s2/s2distance_target.h"
 #include "s2/s2region_coverer.h"
-#include "s2/util/gtl/btree_set.h"
 #include "s2/util/gtl/dense_hash_set.h"
-#include "s2/util/hash/mix.h"
 
 // S2ClosestCellQueryBase is a templatized class for finding the closest
 // (cell_id, label) pairs in an S2CellIndex to a given target.  It is not
@@ -55,7 +55,7 @@
 // The Distance template argument is used to represent distances.  Usually it
 // is a thin wrapper around S1ChordAngle, but another distance type may be
 // used as long as it implements the Distance concept described in
-// s2distance_targets.h.  For example this can be used to measure maximum
+// s2distance_target.h.  For example this can be used to measure maximum
 // distances, to get more accuracy, or to measure non-spheroidal distances.
 template <class Distance>
 class S2ClosestCellQueryBase {
@@ -201,7 +201,7 @@ class S2ClosestCellQueryBase {
 
     // Indicates that linear rather than binary search should be used when this
     // type is used as the key in gtl::btree data structures.
-    using goog_btree_prefer_linear_node_search = std::true_type;
+    using absl_btree_prefer_linear_node_search = std::true_type;
 
    private:
     Distance distance_;
@@ -308,7 +308,7 @@ class S2ClosestCellQueryBase {
   // when result_set_ is used so that we could use a priority queue instead.
   Result result_singleton_;
   std::vector<Result> result_vector_;
-  gtl::btree_set<Result> result_set_;
+  absl::btree_set<Result> result_set_;
 
   // When the results are stored in a btree_set (see above), usually
   // duplicates can be removed simply by inserting candidate cells in the
@@ -330,9 +330,7 @@ class S2ClosestCellQueryBase {
   bool avoid_duplicates_;
   struct LabelledCellHash {
     size_t operator()(LabelledCell x) const {
-      HashMix mix(x.cell_id.id());
-      mix.Mix(x.label);
-      return mix.get();
+      return absl::HashOf(x.cell_id.id(), x.label);
     }
   };
   gtl::dense_hash_set<LabelledCell, LabelledCellHash> tested_cells_;
@@ -369,7 +367,6 @@ class S2ClosestCellQueryBase {
 
   std::vector<S2CellId> max_distance_covering_;
   std::vector<S2CellId> intersection_with_max_distance_;
-  const LabelledCell* tmp_range_data_[kMinRangesToEnqueue - 1];
 };
 
 
@@ -621,6 +618,7 @@ void S2ClosestCellQueryBase<Distance>::InitQueue() {
   // that disc and intersect it with the covering for the index.  This can
   // save a lot of work when the search region is small.
   S2Cap cap = target_->GetCapBound();
+  if (cap.is_empty()) return;  // Empty target.
   if (options().max_results() == 1) {
     // If the user is searching for just the closest cell, we can compute an
     // upper bound on search radius by seeking to the center of the target's

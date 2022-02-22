@@ -18,7 +18,7 @@
 #ifndef S2_ENCODED_S2CELL_ID_VECTOR_H_
 #define S2_ENCODED_S2CELL_ID_VECTOR_H_
 
-#include "s2/third_party/absl/types/span.h"
+#include "absl/types/span.h"
 #include "s2/encoded_uint_vector.h"
 #include "s2/s2cell_id.h"
 
@@ -102,7 +102,7 @@ inline size_t EncodedS2CellIdVector::lower_bound(S2CellId target) const {
   if (target.id() <= base_) return 0;
   if (target >= S2CellId::End(S2CellId::kMaxLevel)) return size();
   return deltas_.lower_bound(
-      (target.id() - base_ + (1ULL << shift_) - 1) >> shift_);
+      (target.id() - base_ + (uint64{1} << shift_) - 1) >> shift_);
 }
 
 }  // namespace s2coding

@@ -18,9 +18,15 @@
 #include "s2/s2builderutil_closed_set_normalizer.h"
 
 #include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
-#include "s2/third_party/absl/memory/memory.h"
+#include <gtest/gtest.h>
+
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2boolean_operation.h"
 #include "s2/s2builder.h"
@@ -31,9 +37,9 @@
 #include "s2/s2builderutil_s2polyline_vector_layer.h"
 #include "s2/s2builderutil_testing.h"
 #include "s2/s2text_format.h"
-#include <gtest/gtest.h>
 
 using absl::make_unique;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
@@ -79,7 +85,8 @@ class NormalizeTest : public testing::Test {
 
  private:
   static string ToString(const Graph& g);
-  void AddLayers(const string& str, const vector<GraphOptions>& graph_options,
+  void AddLayers(absl::string_view str,
+                 const vector<GraphOptions>& graph_options,
                  vector<Graph>* graphs_out, S2Builder* builder);
 
   vector<unique_ptr<GraphClone>> graph_clones_;
@@ -106,10 +113,10 @@ void NormalizeTest::Run(const string& input_str,
   }
 }
 
-void NormalizeTest::AddLayers(
-    const string& str, const vector<GraphOptions>& graph_options,
-    vector<Graph>* graphs_out, S2Builder* builder) {
-  auto index = s2textformat::MakeIndex(str);
+void NormalizeTest::AddLayers(absl::string_view str,
+                              const vector<GraphOptions>& graph_options,
+                              vector<Graph>* graphs_out, S2Builder* builder) {
+  auto index = s2textformat::MakeIndexOrDie(str);
   for (int dim = 0; dim < 3; ++dim) {
     builder->StartLayer(make_unique<GraphAppendingLayer>(
         graph_options[dim], graphs_out, &graph_clones_));
@@ -241,11 +248,11 @@ TEST(ComputeUnion, MixedGeometry) {
   //  - Degenerate polygon holes are removed
   //  - Points coincident with polyline or polygon edges are removed
   //  - Polyline edges coincident with polygon edges are removed
-  auto a = s2textformat::MakeIndex(
+  auto a = s2textformat::MakeIndexOrDie(
       "0:0 | 10:10 | 20:20 # "
       "0:0, 0:10 | 0:0, 10:0 | 15:15, 16:16 # "
       "0:0, 0:10, 10:10, 10:0; 0:0, 1:1; 2:2; 10:10, 11:11; 12:12");
-  auto b = s2textformat::MakeIndex(
+  auto b = s2textformat::MakeIndexOrDie(
       "0:10 | 10:0 | 3:3 | 16:16 # "
       "10:10, 0:10 | 10:10, 10:0 | 5:5, 6:6 # "
       "19:19, 19:21, 21:21, 21:19");

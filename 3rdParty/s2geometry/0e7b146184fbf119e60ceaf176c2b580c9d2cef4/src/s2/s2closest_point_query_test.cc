@@ -21,7 +21,10 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
+
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell_id.h"
@@ -58,6 +61,20 @@ TEST(S2ClosestPointQuery, ManyDuplicatePoints) {
   S2ClosestPointQueryPointTarget target(kTestPoint);
   const auto results = query.FindClosestPoints(&target);
   EXPECT_EQ(kNumPoints, results.size());
+}
+
+TEST(S2ClosestPointQuery, EmptyTargetOptimized) {
+  // Ensure that the optimized algorithm handles empty targets when a distance
+  // limit is specified.
+  TestIndex index;
+  for (int i = 0; i < 1000; ++i) {
+    index.Add(S2Testing::RandomPoint(), i);
+  }
+  TestQuery query(&index);
+  query.mutable_options()->set_max_distance(S1Angle::Radians(1e-5));
+  MutableS2ShapeIndex target_index;
+  S2ClosestPointQueryShapeIndexTarget target(&target_index);
+  EXPECT_EQ(0, query.FindClosestPoints(&target).size());
 }
 
 // An abstract class that adds points to an S2PointIndex for benchmarking.
@@ -191,13 +208,13 @@ static void TestWithIndexFactory(const PointIndexFactory& factory,
   vector<S2Cap> index_caps;
   vector<unique_ptr<TestIndex>> indexes;
   for (int i = 0; i < num_indexes; ++i) {
-    S2Testing::rnd.Reset(FLAGS_s2_random_seed + i);
+    S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed) + i);
     index_caps.push_back(S2Cap(S2Testing::RandomPoint(), kTestCapRadius));
     indexes.push_back(make_unique<TestIndex>());
     factory.AddPoints(index_caps.back(), num_points, indexes.back().get());
   }
   for (int i = 0; i < num_queries; ++i) {
-    S2Testing::rnd.Reset(FLAGS_s2_random_seed + i);
+    S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed) + i);
     int i_index = S2Testing::rnd.Uniform(num_indexes);
     const S2Cap& index_cap = index_caps[i_index];
 
@@ -284,15 +301,15 @@ TEST(S2ClosestPointQueryTest, GridPoints) {
 }
 
 TEST(S2ClosestPointQueryTest, ConservativeCellDistanceIsUsed) {
-  const int saved_seed = FLAGS_s2_random_seed;
+  const int saved_seed = absl::GetFlag(FLAGS_s2_random_seed);
   // These specific test cases happen to fail if max_error() is not properly
   // taken into account when measuring distances to S2PointIndex cells.  They
   // all involve S2ShapeIndexTarget, which takes advantage of max_error() to
   // optimize its distance calculation.
   for (int seed : {16, 586, 589, 822, 1959, 2298, 3155, 3490, 3723, 4953}) {
-    FLAGS_s2_random_seed = seed;
+    absl::SetFlag(&FLAGS_s2_random_seed, seed);
     TestWithIndexFactory(FractalPointIndexFactory(), 5, 100, 10);
   }
-  FLAGS_s2_random_seed = saved_seed;
+  absl::SetFlag(&FLAGS_s2_random_seed, saved_seed);
 }
 

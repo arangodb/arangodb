@@ -23,6 +23,8 @@
 #include <ostream>
 #include <string>
 
+#include "absl/hash/hash.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/r2.h"
@@ -130,8 +132,7 @@ class S2LatLng {
 
   // Exports the latitude and longitude in degrees, separated by a comma.
   // e.g. "94.518000,150.300000"
-  string ToStringInDegrees() const;
-  void ToStringInDegrees(string* s) const;
+  std::string ToStringInDegrees() const;
 
  private:
   // Internal constructor.
@@ -145,12 +146,19 @@ class S2LatLng {
 };
 
 // Hasher for S2LatLng.
-// Example use: std::unordered_map<S2LatLng, int, S2LatLngHash>.
-struct S2LatLngHash {
-  size_t operator()(const S2LatLng& lat_lng) const {
-    return GoodFastHash<R2Point>()(lat_lng.coords());
-  }
-};
+// Does *not* need to be specified explicitly; this will be used by default for
+// absl::flat_hash_map/set.
+template <typename H>
+H AbslHashValue(H h, const S2LatLng& lat_lng) {
+  return H::combine(std::move(h), lat_lng.coords().x(), lat_lng.coords().y());
+}
+
+// Legacy hash functor for S2LatLng. This only exists for backwards
+// compatibility with old hash types like std::unordered_map that don't use
+// absl::Hash natively.
+#ifndef SWIG
+using S2LatLngHash = absl::Hash<S2LatLng>;
+#endif
 
 //////////////////   Implementation details follow   ////////////////////
 
@@ -196,12 +204,18 @@ inline S2LatLng S2LatLng::Invalid() {
 inline S1Angle S2LatLng::Latitude(const S2Point& p) {
   // We use atan2 rather than asin because the input vector is not necessarily
   // unit length, and atan2 is much more accurate than asin near the poles.
-  return S1Angle::Radians(atan2(p[2], sqrt(p[0]*p[0] + p[1]*p[1])));
+  // The "+ 0.0" is to ensure that points with coordinates of -0.0 and +0.0
+  // (which compare equal) are converted to identical S2LatLng values, since
+  // even though -0.0 == +0.0 they can be formatted differently.
+  return S1Angle::Radians(atan2(p[2] + 0.0, sqrt(p[0]*p[0] + p[1]*p[1])));
 }
 
 inline S1Angle S2LatLng::Longitude(const S2Point& p) {
-  // Note that atan2(0, 0) is defined to be zero.
-  return S1Angle::Radians(atan2(p[1], p[0]));
+  // The "+ 0.0" is to ensure that points with coordinates of -0.0 and +0.0
+  // (which compare equal) are converted to identical S2LatLng values, since
+  // even though -0.0 == +0.0 and -180 == 180 degrees, they can be formatted
+  // differently.  Also note that atan2(0, 0) is defined to be zero.
+  return S1Angle::Radians(atan2(p[1] + 0.0, p[0] + 0.0));
 }
 
 inline bool S2LatLng::is_valid() const {

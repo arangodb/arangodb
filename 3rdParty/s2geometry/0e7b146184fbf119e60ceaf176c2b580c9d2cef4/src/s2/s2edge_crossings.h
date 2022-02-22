@@ -32,8 +32,8 @@
 #include <cmath>
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/container/inlined_vector.h"
+#include "absl/base/macros.h"
+#include "absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/r2.h"
 #include "s2/r2rect.h"
@@ -44,9 +44,45 @@
 #include "s2/s2latlng_rect.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2predicates.h"
+#include "s2/s2predicates_internal.h"
 #include "s2/util/math/vector.h"
 
 namespace S2 {
+
+// Returns a vector whose direction is guaranteed to be very close to the exact
+// mathematical cross product of the given unit-length vectors "a" and "b", but
+// whose magnitude is arbitrary.  Unlike a.CrossProd(b), this statement is true
+// even when "a" and "b" are very nearly parallel (i.e., a ~= b or a ~= -b).
+// Specifically, the direction of the result vector differs from the exact cross
+// product by at most kRobustCrossProdError radians (see below).
+//
+// When a == -b exactly, the result is consistent with the symbolic perturbation
+// model used by S2::Sign (see s2predicates.h).  In other words, even antipodal
+// point pairs have a consistent and well-defined edge between them.  (In fact
+// this is true for any pair of distinct points whose vectors are parallel.)
+//
+// When a == b exactly, an arbitrary vector orthogonal to "a" is returned.
+// [From a strict mathematical viewpoint it would be better to return (0, 0, 0),
+// but this behavior helps to avoid special cases in client code.]
+//
+// This function has the following properties (RCP == RobustCrossProd):
+//
+//   (1) RCP(a, b) != 0 for all a, b
+//   (2) RCP(b, a) == -RCP(a, b) unless a == b
+//   (3) RCP(-a, b) == -RCP(a, b) unless a and b are exactly proportional
+//   (4) RCP(a, -b) == -RCP(a, b) unless a and b are exactly proportional
+//
+// Note that if you want the result to be unit-length, you must call Normalize()
+// explicitly.  (The result is always scaled such that Normalize() can be called
+// without precision loss due to floating-point underflow.)
+S2Point RobustCrossProd(const S2Point& a, const S2Point& b);
+
+// kRobustCrossProdError is an upper bound on the angle between the vector
+// returned by RobustCrossProd(a, b) and the true cross product of "a" and "b".
+// Note that cases where "a" and "b" are exactly proportional but not equal
+// (e.g. a = -b or a = (1+epsilon)*b) are handled using symbolic perturbations
+// in order to ensure that the result is non-zero and consistent with S2::Sign.
+constexpr S1Angle kRobustCrossProdError = S1Angle::Radians(6 * s2pred::DBL_ERR);
 
 // This function determines whether the edge AB intersects the edge CD.
 // Returns +1 if AB crosses CD at a point that is interior to both edges.
@@ -75,12 +111,37 @@ namespace S2 {
 int CrossingSign(const S2Point& a, const S2Point& b,
                  const S2Point& c, const S2Point& d);
 
+// Returns true if the angle ABC contains its vertex B.  Containment is
+// defined such that if several polygons tile the region around a vertex, then
+// exactly one of those polygons contains that vertex.  Returns false for
+// degenerate angles of the form ABA.
+//
+// Note that this method is not sufficient to determine vertex containment in
+// polygons with duplicate vertices (such as the polygon ABCADE).  Use
+// S2ContainsVertexQuery for such polygons.  S2::AngleContainsVertex(a, b, c)
+// is equivalent to using S2ContainsVertexQuery as follows:
+//
+//    S2ContainsVertexQuery query(b);
+//    query.AddEdge(a, -1);  // incoming
+//    query.AddEdge(c, 1);   // outgoing
+//    return query.ContainsSign() > 0;
+//
+// Useful properties of AngleContainsVertex:
+//
+//  (1) AngleContainsVertex(a,b,a) == false
+//  (2) AngleContainsVertex(a,b,c) == !AngleContainsVertex(c,b,a) unless a == c
+//  (3) Given vertices v_1 ... v_k ordered cyclically CCW around vertex b,
+//      AngleContainsVertex(v_{i+1}, b, v_i) is true for exactly one value of i.
+//
+// REQUIRES: a != b && b != c
+bool AngleContainsVertex(const S2Point& a, const S2Point& b, const S2Point& c);
+
 // Given two edges AB and CD where at least two vertices are identical
 // (i.e. CrossingSign(a,b,c,d) == 0), this function defines whether the
-// two edges "cross" in a such a way that point-in-polygon containment tests
-// can be implemented by counting the number of edge crossings.  The basic
-// rule is that a "crossing" occurs if AB is encountered after CD during a
-// CCW sweep around the shared vertex starting from a fixed reference point.
+// two edges "cross" in such a way that point-in-polygon containment tests can
+// be implemented by counting the number of edge crossings.  The basic rule is
+// that a "crossing" occurs if AB is encountered after CD during a CCW sweep
+// around the shared vertex starting from a fixed reference point.
 //
 // Note that according to this rule, if AB crosses CD then in general CD
 // does not cross AB.  However, this leads to the correct result when
@@ -100,6 +161,28 @@ int CrossingSign(const S2Point& a, const S2Point& b,
 // It is an error to call this method with 4 distinct vertices.
 bool VertexCrossing(const S2Point& a, const S2Point& b,
                     const S2Point& c, const S2Point& d);
+
+// Like VertexCrossing() but returns -1 if AB crosses CD from left to right,
+// +1 if AB crosses CD from right to left, and 0 otherwise.  This implies that
+// if CD bounds some region according to the "interior is on the left" rule,
+// this function returns -1 when AB exits the region and +1 when AB enters.
+//
+// This is a helper method that allows computing the change in winding number
+// from point A to point B by summing the signed edge crossings of AB with the
+// edges of the loop(s) used to define the winding number.
+//
+// Useful properties of SignedVertexCrossing (SVC):
+//
+//  (1) SVC(a,a,c,d) == SVC(a,b,c,c) == 0
+//  (2) SVC(a,b,a,b) == +1
+//  (3) SVC(a,b,b,a) == -1
+//  (6) SVC(a,b,c,d) == -SVC(a,b,d,c) == -SVC(b,a,c,d) == SVC(b,a,d,c)
+//  (3) If exactly one of a,b equals one of c,d, then exactly one of
+//      SVC(a,b,c,d) and SVC(c,d,a,b) is non-zero
+//
+// It is an error to call this method with 4 distinct vertices.
+int SignedVertexCrossing(const S2Point& a, const S2Point& b,
+                         const S2Point& c, const S2Point& d);
 
 // A convenience function that calls CrossingSign() to handle cases
 // where all four vertices are distinct, and VertexCrossing() to handle
@@ -123,7 +206,7 @@ S2Point GetIntersection(const S2Point& a, const S2Point& b,
 
 // kIntersectionError is an upper bound on the distance from the intersection
 // point returned by GetIntersection() to the true intersection point.
-extern const S1Angle kIntersectionError;
+constexpr S1Angle kIntersectionError = S1Angle::Radians(8 * s2pred::DBL_ERR);
 
 // This value can be used as the S2Builder snap_radius() to ensure that edges
 // that have been displaced by up to kIntersectionError are merged back
@@ -131,7 +214,25 @@ extern const S1Angle kIntersectionError;
 // with a set of tiles and then unioned.  It is equal to twice the
 // intersection error because input edges might have been displaced in
 // opposite directions.
-extern const S1Angle kIntersectionMergeRadius;  // 2 * kIntersectionError
+constexpr S1Angle kIntersectionMergeRadius = 2 * kIntersectionError;
+
+
+//////////////////   Implementation details follow   ////////////////////
+
+
+inline bool AngleContainsVertex(const S2Point& a, const S2Point& b,
+                                const S2Point& c) {
+  // A loop with consecutive vertices A, B, C contains vertex B if and only if
+  // the fixed vector R = S2::RefDir(B) is contained by the wedge ABC.  The
+  // wedge is closed at A and open at C, i.e. the point B is inside the loop
+  // if A = R but not if C = R.
+  //
+  // Note that the test below is written so as to get correct results when the
+  // angle ABC is degenerate.  If A = C or C = R it returns false, and
+  // otherwise if A = R it returns true.
+  S2_DCHECK(a != b && b != c);
+  return !s2pred::OrderedCCW(S2::RefDir(b), c, a, b);
+}
 
 }  // namespace S2
 

@@ -23,7 +23,7 @@
 #include <memory>
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2latlng.h"
 #include "s2/s2metrics.h"
@@ -62,7 +62,7 @@ S1Angle IdentitySnapFunction::min_vertex_separation() const {
 }
 
 S1Angle IdentitySnapFunction::min_edge_vertex_separation() const {
-  // In the worst case configuration, the edge separation is half of the
+  // In the worst case configuration, the edge-vertex separation is half of the
   // vertex separation.
   return 0.5 * snap_radius_;
 }
@@ -154,7 +154,7 @@ S1Angle S2CellIdSnapFunction::min_edge_vertex_separation() const {
   // Similar to min_vertex_separation(), in this case we have four bounds: a
   // constant bound that holds only at the minimum snap radius, a constant
   // bound that holds for any snap radius, a bound that is proportional to
-  // snap_radius, and a bound that is equal to snap_radius minus a constant.
+  // snap_radius, and a bound that approaches 0.5 * snap_radius asymptotically.
   //
   // 1. Constant bounds:
   //
@@ -311,8 +311,8 @@ S1Angle IntLatLngSnapFunction::min_vertex_separation() const {
 
 S1Angle IntLatLngSnapFunction::min_edge_vertex_separation() const {
   // Similar to min_vertex_separation(), in this case we have three bounds:
-  // one is a constant bound, one is proportional to snap_radius, and one is
-  // equal to snap_radius minus a constant.
+  // one is a constant bound, one is proportional to snap_radius, and one
+  // approaches 0.5 * snap_radius asymptotically.
   //
   // 1. Constant bound: In the plane, the worst-case configuration has an
   //    edge-vertex separation of ((1 / sqrt(13)) * to_degrees_) degrees.

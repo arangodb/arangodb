@@ -17,8 +17,11 @@
 #include "s2/s2region.h"
 
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/container/fixed_array.h"
-#include "s2/third_party/absl/memory/memory.h"
+
+#include "absl/container/fixed_array.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
 #include "s2/s2cell_id.h"
@@ -37,8 +40,9 @@
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
 
-using absl::make_unique;
+using std::string;
 using std::unique_ptr;
+using std::string;
 using std::vector;
 
 namespace {
@@ -57,20 +61,6 @@ const char kEncodedCapFromPoint[] =
 const char kEncodedCapFromCenterHeight[] =
     "00000000000000000000000000000000000000000000F03F0000000000001040";
 
-// S2CellId.
-// S2CellId from Face 0.
-const char kEncodedCellIDFace0[] = "0000000000000010";
-// S2CellId from Face 5.
-const char kEncodedCellIDFace5[] = "00000000000000B0";
-// S2CellId from Face 0 in the last S2Cell at kMaxLevel.
-const char kEncodedCellIDFace0MaxLevel[] = "0100000000000020";
-// S2CellId from Face 5 in the last S2Cell at kMaxLevel.
-const char kEncodedCellIDFace5MaxLevel[] = "01000000000000C0";
-// S2CellId FromFacePosLevel(3, 0x12345678, S2CellId::kMaxLevel - 4)
-const char kEncodedCellIDFacePosLevel[] = "0057341200000060";
-// S2CellId from the 0 value.
-const char kEncodedCellIDInvalid[] = "0000000000000000";
-
 // S2Cell.
 // S2Cell from S2Point(1, 2, 3)
 const char kEncodedCellFromPoint[] = "F51392E0F35DCC43";
@@ -82,7 +72,7 @@ const char kEncodedCellFromFacePosLevel[] = "0057341200000060";
 const char kEncodedCellFace0[] = "0000000000000010";
 
 // S2CellUnion.
-// An unitialized empty S2CellUnion.
+// An uninitialized empty S2CellUnion.
 const char kEncodedCellUnionEmpty[] = "010000000000000000";
 // S2CellUnion from an S2CellId from Face 1.
 const char kEncodedCellUnionFace1[] = "0101000000000000000000000000000030";
@@ -115,20 +105,6 @@ const char kEncodedLoopCross[] =
     "3FB4825F3C81FDEF3F27DCF7C958DE91BF1EDD892B0BDF91BFD44A8442C3F9EF3F7EDA2AB3"
     "41DC91BF27DCF7C958DEA1BF0000000000013EFC10E8F8DFA1BF3EFC10E8F8DFA13F389D52"
     "A246DF91BF389D52A246DF913F";
-// S2Loop encoded using EncodeCompressed from snapped points.
-// vector<S2Point> snapped_loop_a_vertices = {
-//       S2CellId(s2textformat::MakePoint("0:178")).ToPoint(),
-//       S2CellId(s2textformat::MakePoint("-1:180")).ToPoint(),
-//       S2CellId(s2textformat::MakePoint("0:-179")).ToPoint(),
-//       S2CellId(s2textformat::MakePoint("1:-180")).ToPoint()};
-// snapped_loop = make_unique<S2Loop>(snapped_loop_a_vertices));
-// absl::FixedArray<S2XYZFaceSiTi> points(loop.num_vertices());
-// loop.GetXYZFaceSiTiVertices(points.data());
-// loop.EncodeCompressed(encoder, points.data(), level);
-//
-const char kEncodedLoopCompressed[] =
-    "041B02222082A222A806A0C7A991DE86D905D7C3A691F2DEE40383908880A095880500000"
-    "3";
 
 // S2PointRegion
 // The difference between an S2PointRegion and an S2Point being encoded is the
@@ -143,10 +119,10 @@ const char kEncodedPointTesting[] =
     "0109AD578332DBCA3FBC9FDB9BB4E4EE3FE67E7C2CA7CEC33F";
 
 // S2Polygon
-// S2Polygon from s2textformat::MakePolygon("").
+// S2Polygon from s2textformat::MakePolygonOrDie("").
 // This is encoded in compressed format v4.
 const char kEncodedPolygonEmpty[] = "041E00";
-// S2Polygon from s2textformat::MakePolygon("full").
+// S2Polygon from s2textformat::MakePolygonOrDie("full").
 // This is encoded in compressed format v4.
 const char kEncodedPolygonFull[] = "040001010B000100";
 // S2Polygon from the unit test value kCross1. Encoded in lossless format.
@@ -199,7 +175,7 @@ const char kEncodedPolyline3Segments[] =
 //////////////////////////////////////////////////////////////
 
 // HexEncodeStr returns the data in str in hex encoded form.
-const string HexEncodeStr(const string& str) {
+const string HexEncodeStr(absl::string_view str) {
   static const char* const lut = "0123456789ABCDEF";
 
   string result;
@@ -217,7 +193,8 @@ class S2RegionEncodeDecodeTest : public testing::Test {
   // TestEncodeDecode tests that the input encodes to match the expected
   // golden data, and then returns the decode of the data into dst.
   template <class Region>
-  void TestEncodeDecode(const string& golden, const Region& src, Region* dst) {
+  void TestEncodeDecode(absl::string_view golden, const Region& src,
+                        Region* dst) {
     Encoder encoder;
     src.Encode(&encoder);
 
@@ -304,7 +281,7 @@ TEST_F(S2RegionEncodeDecodeTest, S2Loop) {
   S2Loop loop;
   S2Loop loop_empty(S2Loop::kEmpty());
   S2Loop loop_full(S2Loop::kFull());
-  unique_ptr<S2Loop> loop_cross = s2textformat::MakeLoop(kCross1);
+  unique_ptr<S2Loop> loop_cross = s2textformat::MakeLoopOrDie(kCross1);
 
   TestEncodeDecode(kEncodedLoopEmpty, loop_empty, &loop);
   EXPECT_TRUE(loop_empty.Equals(&loop));
@@ -329,12 +306,12 @@ TEST_F(S2RegionEncodeDecodeTest, S2Polygon) {
   const string kCrossCenterHole = "-0.5:0.5, 0.5:0.5, 0.5:-0.5, -0.5:-0.5;";
 
   S2Polygon polygon;
-  unique_ptr<S2Polygon> polygon_empty = s2textformat::MakePolygon("");
+  unique_ptr<S2Polygon> polygon_empty = s2textformat::MakePolygonOrDie("");
   unique_ptr<S2Polygon> polygon_full =
-      s2textformat::MakeVerbatimPolygon("full");
-  unique_ptr<S2Polygon> polygon_cross = s2textformat::MakePolygon(kCross1);
+      s2textformat::MakeVerbatimPolygonOrDie("full");
+  unique_ptr<S2Polygon> polygon_cross = s2textformat::MakePolygonOrDie(kCross1);
   unique_ptr<S2Polygon> polygon_cross_hole =
-      s2textformat::MakePolygon(kCross1 + ";" + kCrossCenterHole);
+      s2textformat::MakePolygonOrDie(kCross1 + ";" + kCrossCenterHole);
 
   TestEncodeDecode(kEncodedPolygonEmpty, *polygon_empty, &polygon);
   EXPECT_TRUE(polygon_empty->Equals(&polygon));
@@ -355,7 +332,7 @@ TEST_F(S2RegionEncodeDecodeTest, S2Polyline) {
                               S2LatLng::FromDegrees(0, 180)};
   S2Polyline polyline_semi(latlngs);
   unique_ptr<S2Polyline> polyline_3segments =
-      s2textformat::MakePolyline("0:0, 0:10, 10:20, 20:30");
+      s2textformat::MakePolylineOrDie("0:0, 0:10, 10:20, 20:30");
 
   TestEncodeDecode(kEncodedPolylineEmpty, polyline_empty, &polyline);
   EXPECT_TRUE(polyline_empty.Equals(&polyline));

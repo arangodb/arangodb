@@ -20,10 +20,13 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <utility>
 
 #include "s2/base/casts.h"
 #include "s2/base/commandlineflags.h"
 #include "s2/base/spinlock.h"
+#include "absl/base/attributes.h"
+#include "absl/flags/flag.h"
 #include "s2/encoded_s2cell_id_vector.h"
 #include "s2/encoded_string_vector.h"
 #include "s2/r1interval.h"
@@ -38,26 +41,28 @@
 #include "s2/s2padded_cell.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2shapeutil_contains_brute_force.h"
+#include "s2/util/math/mathutil.h"
 
 using std::fabs;
+using std::make_pair;
 using std::max;
+using std::min;
 using std::unique_ptr;
 using std::vector;
 
 // FLAGS_s2shape_index_default_max_edges_per_cell
 //
-// The default maximum number of edges per cell (not counting "long" edges).
+// The default maximum number of edges per cell (not counting 'long' edges).
 // If a cell has more than this many edges, and it is not a leaf cell, then it
 // is subdivided.  This flag can be overridden via MutableS2ShapeIndex::Options.
 // Reasonable values range from 10 to about 50 or so.
-DEFINE_int32(
+S2_DEFINE_int32(
     s2shape_index_default_max_edges_per_cell, 10,
-    "Default maximum number of edges (not counting 'long' edges) per cell; "
+    "Default maximum number of edges per cell (not counting 'long' edges); "
     "reasonable values range from 10 to 50.  Small values makes queries "
-    "faster, while large values make construction faster and use less "
-    "memory.");
+    "faster, while large values make construction faster and use less memory.");
 
-// FLAGS_s2shape_index_tmp_memory_budget_mb
+// FLAGS_s2shape_index_tmp_memory_budget
 //
 // Attempt to limit the amount of temporary memory allocated while building or
 // updating a MutableS2ShapeIndex to at most this value.  This is achieved by
@@ -70,32 +75,87 @@ DEFINE_int32(
 //      with huge numbers of edges may exceed the budget;
 //  (3) shapes being removed are always processed in a single batch.  (This
 //      could be fixed, but it seems better to keep the code simpler for now.)
-DEFINE_int32(
-    s2shape_index_tmp_memory_budget_mb, 100,
+S2_DEFINE_int64(
+    s2shape_index_tmp_memory_budget, int64{100} << 20 /*100 MB*/,
     "Attempts to limit the amount of temporary memory used by "
-    "MutableS2ShapeIndex when creating or updating very large indexes "
-    "to at most this value.  If more memory than this is needed, updates "
+    "MutableS2ShapeIndex when creating or updating very large indexes to at "
+    "most this number of bytes.  If more memory than this is needed, updates "
     "will automatically be split into batches internally.");
 
 // FLAGS_s2shape_index_cell_size_to_long_edge_ratio
 //
-// The cell size relative to the length of an edge at which it is first
-// considered to be "long".  Long edges do not contribute toward the decision
-// to subdivide a cell further.  For example, a value of 2.0 means that the
-// cell must be at least twice the size of the edge in order for that edge to
-// be counted.  There are two reasons for not counting long edges: (1) such
-// edges typically need to be propagated to several children, which increases
-// time and memory costs without much benefit, and (2) in pathological cases,
-// many long edges close together could force subdivision to continue all the
-// way to the leaf cell level.
-DEFINE_double(
+// The maximum cell size, relative to an edge's length, for which that edge is
+// considered 'long'.  Cell size is defined as the average edge length of all
+// cells at a given level.  For example, a value of 2.0 means that an edge E
+// is long at cell level k iff the average edge length at level k is at most
+// twice the length of E.  Long edges edges are not counted towards the
+// max_edges_per_cell() limit because such edges typically need to be
+// propagated to several children, which increases time and memory costs
+// without commensurate benefits.
+S2_DEFINE_double(
     s2shape_index_cell_size_to_long_edge_ratio, 1.0,
-    "The cell size relative to the length of an edge at which it is first "
-    "considered to be 'long'.  Long edges do not contribute to the decision "
-    "to subdivide a cell further.  The size and speed of the index are "
+    "The maximum cell size, relative to an edge's length, for which that "
+    "edge is considered 'long'.  Long edges are not counted towards the "
+    "max_edges_per_cell() limit.  The size and speed of the index are "
     "typically not very sensitive to this parameter.  Reasonable values range "
     "from 0.1 to 10, with smaller values causing more aggressive subdivision "
     "of long edges grouped closely together.");
+
+// FLAGS_s2shape_index_min_short_edge_fraction
+//
+// The minimum fraction of 'short' edges that must be present in a cell in
+// order for it to be subdivided.  If this parameter is non-zero then the
+// total index size and construction time are guaranteed to be linear in the
+// number of input edges; this prevents the worst-case quadratic space and
+// time usage that can otherwise occur with certain input configurations.
+// Specifically, the maximum index size is
+//
+//     O((c1 + c2 * (1 - f) / f) * n)
+//
+// where n is the number of input edges, f is this parameter value, and
+// constant c2 is roughly 20 times larger than constant c1.  (The exact values
+// of c1 and c2 depend on the cell_size_to_long_edge_ratio and
+// max_edges_per_cell parameters and certain properties of the input geometry
+// such as whether it consists of O(1) shapes, whether it includes polygons,
+// and whether the polygon interiors are disjoint.)
+//
+// Reasonable parameter values range from 0.1 up to perhaps 0.95.  The main
+// factors to consider when choosing this parameter are:
+//
+//  - For pathological geometry, larger values result in indexes that are
+//    smaller and faster to construct but have worse query performance (due to
+//    having more edges per cell).  However note that even a setting of 0.1
+//    reduces the worst case by 100x compared with a setting of 0.001.
+//
+//  - For normal geometry, values up to about 0.8 result in indexes that are
+//    virtually unchanged except for a slight increase in index construction
+//    time (proportional to the parameter value f) for very large inputs.
+//    With millions of edges, indexing time increases by about (15% * f),
+//    e.g. a parameter value of 0.5 slows down indexing for very large inputs
+//    by about 7.5%.  (Indexing time for small inputs is not affected.)
+//
+//  - Values larger than about 0.8 start to affect index construction even for
+//    normal geometry, resulting in smaller indexes and faster construction
+//    times but gradually worse query performance.
+//
+// Essentially this parameter provides control over a space-time tradeoff that
+// largely affects only pathological geometry.  The default value of 0.2 was
+// chosen to make index construction as fast as possible while still
+// protecting against possible quadratic space usage.
+S2_DEFINE_double(
+    s2shape_index_min_short_edge_fraction, 0.2,
+    "The minimum fraction of 'short' edges that must be present in a cell in "
+    "order for it to be subdivided.  If this parameter is non-zero then the "
+    "total index size and construction time are guaranteed to be linear in the "
+    "number of input edges, where the constant of proportionality has the "
+    "form (c1 + c2 * (1 - f) / f).  Reasonable values range from 0.1 to "
+    "perhaps 0.95.  Values up to about 0.8 have almost no effect on 'normal' "
+    "geometry except for a small increase in index construction time "
+    "(proportional to f) for very large inputs.  For worst-case geometry, "
+    "larger parameter values result in indexes that are smaller and faster "
+    "to construct but have worse query performance (due to having more edges "
+    "per cell).  Essentially this parameter provides control over a space-time "
+    "tradeoff that largely affects only pathological geometry.");
 
 // The total error when clipping an edge comes from two sources:
 // (1) Clipping the original spherical edge to a cube face (the "face edge").
@@ -109,8 +169,8 @@ const double MutableS2ShapeIndex::kCellPadding =
     2 * (S2::kFaceClipErrorUVCoord + S2::kEdgeClipErrorUVCoord);
 
 MutableS2ShapeIndex::Options::Options()
-    : max_edges_per_cell_(FLAGS_s2shape_index_default_max_edges_per_cell) {
-}
+    : max_edges_per_cell_(
+          absl::GetFlag(FLAGS_s2shape_index_default_max_edges_per_cell)) {}
 
 void MutableS2ShapeIndex::Options::set_max_edges_per_cell(
     int max_edges_per_cell) {
@@ -138,98 +198,6 @@ MutableS2ShapeIndex::Iterator::Clone() const {
 
 void MutableS2ShapeIndex::Iterator::Copy(const IteratorBase& other)  {
   *this = *down_cast<const Iterator*>(&other);
-}
-
-// Defines the initial focus point of MutableS2ShapeIndex::InteriorTracker
-// (the start of the S2CellId space-filling curve).
-//
-// TODO(ericv): Move InteriorTracker here to avoid the need for this method.
-static S2Point kInteriorTrackerOrigin() {
-  return S2::FaceUVtoXYZ(0, -1, -1).Normalize();
-}
-
-MutableS2ShapeIndex::MutableS2ShapeIndex()
-    : index_status_(FRESH) {
-}
-
-MutableS2ShapeIndex::MutableS2ShapeIndex(const Options& options)
-    : options_(options),
-      index_status_(FRESH) {
-}
-
-void MutableS2ShapeIndex::Init(const Options& options) {
-  S2_DCHECK(shapes_.empty());
-  options_ = options;
-}
-
-MutableS2ShapeIndex::~MutableS2ShapeIndex() {
-  Clear();
-}
-
-void MutableS2ShapeIndex::Minimize() {
-  // TODO(ericv): Implement.  In theory we should be able to discard the
-  // entire index and rebuild it the next time it is needed.
-}
-
-int MutableS2ShapeIndex::Add(unique_ptr<S2Shape> shape) {
-  // Additions are processed lazily by ApplyUpdates().
-  const int id = shapes_.size();
-  shape->id_ = id;
-  shapes_.push_back(std::move(shape));
-  index_status_.store(STALE, std::memory_order_relaxed);
-  return id;
-}
-
-unique_ptr<S2Shape> MutableS2ShapeIndex::Release(int shape_id) {
-  // This class updates itself lazily, because it is much more efficient to
-  // process additions and removals in batches.  However this means that when
-  // a shape is removed, we need to make a copy of all its edges, since the
-  // client is free to delete "shape" once this call is finished.
-
-  S2_DCHECK(shapes_[shape_id] != nullptr);
-  auto shape = std::move(shapes_[shape_id]);
-  if (shape_id >= pending_additions_begin_) {
-    // We are removing a shape that has not yet been added to the index,
-    // so there is nothing else to do.
-  } else {
-    if (!pending_removals_) {
-      pending_removals_.reset(new vector<RemovedShape>);
-    }
-    // We build the new RemovedShape in place, since it includes a potentially
-    // large vector of edges that might be expensive to copy.
-    pending_removals_->push_back(RemovedShape());
-    RemovedShape* removed = &pending_removals_->back();
-    removed->shape_id = shape->id();
-    removed->has_interior = (shape->dimension() == 2);
-    removed->contains_tracker_origin =
-        s2shapeutil::ContainsBruteForce(*shape, kInteriorTrackerOrigin());
-    int num_edges = shape->num_edges();
-    removed->edges.reserve(num_edges);
-    for (int e = 0; e < num_edges; ++e) {
-      removed->edges.push_back(shape->edge(e));
-    }
-  }
-  index_status_.store(STALE, std::memory_order_relaxed);
-  return shape;
-}
-
-vector<unique_ptr<S2Shape>> MutableS2ShapeIndex::ReleaseAll() {
-  Iterator it;
-  for (it.InitStale(this, S2ShapeIndex::BEGIN); !it.done(); it.Next()) {
-    delete &it.cell();
-  }
-  cell_map_.clear();
-  pending_additions_begin_ = 0;
-  pending_removals_.reset();
-  S2_DCHECK(update_state_ == nullptr);
-  index_status_.store(FRESH, std::memory_order_relaxed);
-  vector<unique_ptr<S2Shape>> result;
-  result.swap(shapes_);
-  return result;
-}
-
-void MutableS2ShapeIndex::Clear() {
-  ReleaseAll();
 }
 
 // FaceEdge and ClippedEdge store temporary edge data while the index is being
@@ -299,15 +267,15 @@ class MutableS2ShapeIndex::InteriorTracker {
   // Returns true if any shapes are being tracked.
   bool is_active() const { return is_active_; }
 
-  // Adds a shape whose interior should be tracked.  "is_inside" indicates
-  // whether the current focus point is inside the shape.  Alternatively, if
-  // the focus point is in the process of being moved (via MoveTo/DrawTo), you
-  // can also specify "is_inside" at the old focus point and call TestEdge()
+  // Adds a shape whose interior should be tracked.  "contains_focus" indicates
+  // whether the current focus point is inside the shape.  Alternatively, if the
+  // focus point is in the process of being moved (via MoveTo/DrawTo), you can
+  // also specify "contains_focus" at the old focus point and call TestEdge()
   // for every edge of the shape that might cross the current DrawTo() line.
   // This updates the state to correspond to the new focus point.
   //
   // REQUIRES: shape->dimension() == 2
-  void AddShape(int32 shape_id, bool is_inside);
+  void AddShape(int32 shape_id, bool contains_focus);
 
   // Moves the focus to the given point.  This method should only be used when
   // it is known that there are no edge crossings between the old and new
@@ -353,6 +321,11 @@ class MutableS2ShapeIndex::InteriorTracker {
   // only affects the state for shape_ids below "limit_shape_id".
   void RestoreStateBefore(int32 limit_shape_id);
 
+  // Indicates that only some edges of the given shape are being added, and
+  // therefore its interior should not be processed yet.
+  int partial_shape_id() const { return partial_shape_id_; }
+  void set_partial_shape_id(int shape_id) { partial_shape_id_ = shape_id; }
+
  private:
   // Removes "shape_id" from shape_ids_ if it exists, otherwise insert it.
   void ToggleShape(int shape_id);
@@ -360,7 +333,7 @@ class MutableS2ShapeIndex::InteriorTracker {
   // Returns a pointer to the first entry "x" where x >= shape_id.
   ShapeIdSet::iterator lower_bound(int32 shape_id);
 
-  bool is_active_;
+  bool is_active_ = false;
   S2Point a_, b_;
   S2CellId next_cellid_;
   S2EdgeCrosser crosser_;
@@ -369,14 +342,22 @@ class MutableS2ShapeIndex::InteriorTracker {
   // Shape ids saved by SaveAndClearStateBefore().  The state is never saved
   // recursively so we don't need to worry about maintaining a stack.
   ShapeIdSet saved_ids_;
+
+  // As an optimization, we also save is_active_ so that RestoreStateBefore()
+  // can deactivate the tracker again in the case where the shapes being added
+  // and removed do not have an interior, but some existing shapes do.
+  bool saved_is_active_;
+
+  // If non-negative, indicates that only some edges of the given shape are
+  // being added and therefore its interior should not be tracked yet.
+  int partial_shape_id_ = -1;
 };
 
 // As shapes are added, we compute which ones contain the start of the
 // S2CellId space-filling curve by drawing an edge from S2::Origin() to this
 // point and counting how many shape edges cross this edge.
 MutableS2ShapeIndex::InteriorTracker::InteriorTracker()
-    : is_active_(false), b_(Origin()),
-      next_cellid_(S2CellId::Begin(S2CellId::kMaxLevel)) {
+    : b_(Origin()), next_cellid_(S2CellId::Begin(S2CellId::kMaxLevel)) {
 }
 
 S2Point MutableS2ShapeIndex::InteriorTracker::Origin() {
@@ -422,6 +403,7 @@ void MutableS2ShapeIndex::InteriorTracker::DrawTo(const S2Point& b) {
   crosser_.Init(&a_, &b_);
 }
 
+ABSL_ATTRIBUTE_ALWAYS_INLINE  // ~1% faster
 inline void MutableS2ShapeIndex::InteriorTracker::TestEdge(
     int32 shape_id, const S2Shape::Edge& edge) {
   if (crosser_.EdgeOrVertexCrossing(&edge.v0, &edge.v1)) {
@@ -445,6 +427,7 @@ void MutableS2ShapeIndex::InteriorTracker::SaveAndClearStateBefore(
   ShapeIdSet::iterator limit = lower_bound(limit_shape_id);
   saved_ids_.assign(shape_ids_.begin(), limit);
   shape_ids_.erase(shape_ids_.begin(), limit);
+  saved_is_active_ = is_active_;
 }
 
 void MutableS2ShapeIndex::InteriorTracker::RestoreStateBefore(
@@ -452,6 +435,117 @@ void MutableS2ShapeIndex::InteriorTracker::RestoreStateBefore(
   shape_ids_.erase(shape_ids_.begin(), lower_bound(limit_shape_id));
   shape_ids_.insert(shape_ids_.begin(), saved_ids_.begin(), saved_ids_.end());
   saved_ids_.clear();
+  is_active_ = saved_is_active_;
+}
+
+MutableS2ShapeIndex::MutableS2ShapeIndex() {
+}
+
+MutableS2ShapeIndex::MutableS2ShapeIndex(const Options& options) {
+  Init(options);
+}
+
+void MutableS2ShapeIndex::Init(const Options& options) {
+  S2_DCHECK(shapes_.empty());
+  options_ = options;
+  // Memory tracking is not affected by this method.
+}
+
+MutableS2ShapeIndex::~MutableS2ShapeIndex() {
+  Clear();
+}
+
+void MutableS2ShapeIndex::set_memory_tracker(S2MemoryTracker* tracker) {
+  mem_tracker_.Tally(-mem_tracker_.client_usage_bytes());
+  mem_tracker_.Init(tracker);
+  if (mem_tracker_.is_active()) mem_tracker_.Tally(SpaceUsed());
+}
+
+// Called to set the index status when the index needs to be rebuilt.
+void MutableS2ShapeIndex::MarkIndexStale() {
+  // The UPDATING status can only be changed in ApplyUpdatesThreadSafe().
+  if (index_status_.load(std::memory_order_relaxed) == UPDATING) return;
+
+  // If a memory tracking error has occurred we set the index status to FRESH
+  // in order to prevent us from attempting to rebuild it.
+  IndexStatus status = (shapes_.empty() || !mem_tracker_.ok()) ? FRESH : STALE;
+  index_status_.store(status, std::memory_order_relaxed);
+}
+
+void MutableS2ShapeIndex::Minimize() {
+  mem_tracker_.Tally(-mem_tracker_.client_usage_bytes());
+  Iterator it;
+  for (it.InitStale(this, S2ShapeIndex::BEGIN); !it.done(); it.Next()) {
+    delete &it.cell();
+  }
+  cell_map_.clear();
+  pending_removals_.reset();
+  pending_additions_begin_ = 0;
+  MarkIndexStale();
+  if (mem_tracker_.is_active()) mem_tracker_.Tally(SpaceUsed());
+}
+
+int MutableS2ShapeIndex::Add(unique_ptr<S2Shape> shape) {
+  // Additions are processed lazily by ApplyUpdates().  Note that in order to
+  // avoid unexpected client behavior, this method continues to add shapes
+  // even once the specified S2MemoryTracker limit has been exceeded.
+  const int id = shapes_.size();
+  shape->id_ = id;
+  mem_tracker_.AddSpace(&shapes_, 1);
+  shapes_.push_back(std::move(shape));
+  MarkIndexStale();
+  return id;
+}
+
+unique_ptr<S2Shape> MutableS2ShapeIndex::Release(int shape_id) {
+  // This class updates itself lazily, because it is much more efficient to
+  // process additions and removals in batches.  However this means that when
+  // a shape is removed we need to make a copy of all its edges, since the
+  // client is free to delete "shape" once this call is finished.
+
+  S2_DCHECK(shapes_[shape_id] != nullptr);
+  auto shape = std::move(shapes_[shape_id]);
+  if (shape_id >= pending_additions_begin_) {
+    // We are removing a shape that has not yet been added to the index,
+    // so there is nothing else to do.
+  } else {
+    if (!pending_removals_) {
+      if (!mem_tracker_.Tally(sizeof(*pending_removals_))) {
+        Minimize();
+        return shape;
+      }
+      pending_removals_ = absl::make_unique<vector<RemovedShape>>();
+    }
+    RemovedShape removed;
+    removed.shape_id = shape->id();
+    removed.has_interior = (shape->dimension() == 2);
+    removed.contains_tracker_origin =
+        s2shapeutil::ContainsBruteForce(*shape, InteriorTracker::Origin());
+    int num_edges = shape->num_edges();
+    if (!mem_tracker_.AddSpace(&removed.edges, num_edges) ||
+        !mem_tracker_.AddSpace(pending_removals_.get(), 1)) {
+      Minimize();
+      return shape;
+    }
+    for (int e = 0; e < num_edges; ++e) {
+      removed.edges.push_back(shape->edge(e));
+    }
+    pending_removals_->push_back(std::move(removed));
+  }
+  MarkIndexStale();
+  return shape;
+}
+
+vector<unique_ptr<S2Shape>> MutableS2ShapeIndex::ReleaseAll() {
+  S2_DCHECK(update_state_ == nullptr);
+  vector<unique_ptr<S2Shape>> result;
+  result.swap(shapes_);
+  Minimize();
+  return result;
+}
+
+void MutableS2ShapeIndex::Clear() {
+  ReleaseAll();
 }
 
 // Apply any pending updates in a thread-safe way.
@@ -479,7 +573,7 @@ void MutableS2ShapeIndex::ApplyUpdatesThreadSafe() {
     // and this saves an extra lock and unlock step; (3) even in the rare case
     // where there is contention, the main side effect is that some other
     // thread will burn a few CPU cycles rather than sleeping.
-    update_state_.reset(new UpdateState);
+    update_state_ = absl::make_unique<UpdateState>();
     // lock_.Lock wait_mutex *before* calling Unlock() to ensure that all other
     // threads will block on it.
     update_state_->wait_mutex.Lock();
@@ -516,44 +610,21 @@ inline void MutableS2ShapeIndex::UnlockAndSignal() {
   }
 }
 
-void MutableS2ShapeIndex::ForceBuild() {
-  // No locks required because this is not a const method.  It is the client's
-  // responsibility to ensure correct thread synchronization.
-  if (index_status_.load(std::memory_order_relaxed) != FRESH) {
-    ApplyUpdatesInternal();
-    index_status_.store(FRESH, std::memory_order_relaxed);
-  }
-}
-
-// A BatchDescriptor represents a set of pending updates that will be applied
-// at the same time.  The batch consists of all updates with shape ids between
-// the current value of "ShapeIndex::pending_additions_begin_" (inclusive) and
-// "additions_end" (exclusive).  The first batch to be processed also
-// implicitly includes all shapes being removed.  "num_edges" is the total
-// number of edges that will be added or removed in this batch.
-struct MutableS2ShapeIndex::BatchDescriptor {
-  BatchDescriptor(int _additions_end, int _num_edges)
-      : additions_end(_additions_end), num_edges(_num_edges) {
-  }
-  int additions_end;
-  int num_edges;
-};
-
 // This method updates the index by applying all pending additions and
 // removals.  It does *not* update index_status_ (see ApplyUpdatesThreadSafe).
 void MutableS2ShapeIndex::ApplyUpdatesInternal() {
   // Check whether we have so many edges to process that we should process
   // them in multiple batches to save memory.  Building the index can use up
   // to 20x as much memory (per edge) as the final index size.
-  vector<BatchDescriptor> batches;
-  GetUpdateBatches(&batches);
-  int i = 0;
+  vector<BatchDescriptor> batches = GetUpdateBatches();
   for (const BatchDescriptor& batch : batches) {
+    if (mem_tracker_.is_active()) {
+      S2_DCHECK_EQ(mem_tracker_.client_usage_bytes(), SpaceUsed());  // Invariant.
+    }
     vector<FaceEdge> all_edges[6];
-    S2_VLOG(1) << "Batch " << i++ << ": shape_limit=" << batch.additions_end
-               << ", edges=" << batch.num_edges;
-
     ReserveSpace(batch, all_edges);
+    if (!mem_tracker_.ok()) return Minimize();
+
     InteriorTracker tracker;
     if (pending_removals_) {
       // The first batch implicitly includes all shapes being removed.
@@ -562,24 +633,41 @@ void MutableS2ShapeIndex::ApplyUpdatesInternal() {
       }
       pending_removals_.reset(nullptr);
     }
-    for (int id = pending_additions_begin_; id < batch.additions_end; ++id) {
-      AddShape(id, all_edges, &tracker);
+    // A batch consists of zero or more full shapes followed by zero or one
+    // partial shapes.  The loop below handles all such cases.
+    for (auto begin = batch.begin; begin < batch.end;
+         ++begin.shape_id, begin.edge_id = 0) {
+      const S2Shape* shape = this->shape(begin.shape_id);
+      if (shape == nullptr) continue;  // Already removed.
+      int edges_end = begin.shape_id == batch.end.shape_id ? batch.end.edge_id
+                                                           : shape->num_edges();
+      AddShape(shape, begin.edge_id, edges_end, all_edges, &tracker);
     }
     for (int face = 0; face < 6; ++face) {
       UpdateFaceEdges(face, all_edges[face], &tracker);
       // Save memory by clearing vectors after we are done with them.
       vector<FaceEdge>().swap(all_edges[face]);
     }
-    pending_additions_begin_ = batch.additions_end;
+    pending_additions_begin_ = batch.end.shape_id;
+    if (batch.begin.edge_id > 0 && batch.end.edge_id == 0) {
+      // We have just finished adding the edges of shape that was split over
+      // multiple batches.  Now we need to mark the interior of the shape, if
+      // any, by setting contains_center() on the appropriate index cells.
+      FinishPartialShape(tracker.partial_shape_id());
+    }
+    if (mem_tracker_.is_active()) {
+      mem_tracker_.Tally(-mem_tracker_.client_usage_bytes());
+      if (!mem_tracker_.Tally(SpaceUsed())) return Minimize();
+    }
   }
   // It is the caller's responsibility to update index_status_.
 }
 
 // Count the number of edges being updated, and break them into several
 // batches if necessary to reduce the amount of memory needed.  (See the
-// documentation for FLAGS_s2shape_index_tmp_memory_budget_mb.)
-void MutableS2ShapeIndex::GetUpdateBatches(vector<BatchDescriptor>* batches)
-    const {
+// documentation for FLAGS_s2shape_index_tmp_memory_budget.)
+vector<MutableS2ShapeIndex::BatchDescriptor>
+MutableS2ShapeIndex::GetUpdateBatches() const {
   // Count the edges being removed and added.
   int num_edges_removed = 0;
   if (pending_removals_) {
@@ -590,123 +678,186 @@ void MutableS2ShapeIndex::GetUpdateBatches(vector<BatchDescriptor>* batches)
   int num_edges_added = 0;
   for (int id = pending_additions_begin_; id < shapes_.size(); ++id) {
     const S2Shape* shape = this->shape(id);
-    if (shape == nullptr) continue;
-    num_edges_added += shape->num_edges();
+    if (shape) num_edges_added += shape->num_edges();
   }
-  int num_edges = num_edges_removed + num_edges_added;
-
-  // The following memory estimates are based on heap profiling.
-  //
-  // The final size of a MutableS2ShapeIndex depends mainly on how finely the
-  // index is subdivided, as controlled by Options::max_edges_per_cell() and
-  // --s2shape_index_default_max_edges_per_cell. For realistic values of
-  // max_edges_per_cell() and shapes with moderate numbers of edges, it is
-  // difficult to get much below 8 bytes per edge.  [The minimum possible size
-  // is 4 bytes per edge (to store a 32-bit edge id in an S2ClippedShape) plus
-  // 24 bytes per shape (for the S2ClippedShape itself plus a pointer in the
-  // shapes_ vector.]
-  //
-  // The temporary memory consists mainly of the FaceEdge and ClippedEdge
-  // structures plus a ClippedEdge pointer for every level of recursive
-  // subdivision.  For very large indexes this can be 200 bytes per edge.
-  const size_t kFinalBytesPerEdge = 8;
-  const size_t kTmpBytesPerEdge = 200;
-  const size_t kTmpMemoryBudgetBytes =
-      static_cast<size_t>(FLAGS_s2shape_index_tmp_memory_budget_mb) << 20;
-
-  // We arbitrarily limit the number of batches just as a safety measure.
-  // With the current default memory budget of 100 MB, this limit is not
-  // reached even when building an index of 350 million edges.
-  const int kMaxUpdateBatches = 100;
-
-  if (num_edges * kTmpBytesPerEdge <= kTmpMemoryBudgetBytes) {
-    // We can update all edges at once without exceeding kTmpMemoryBudgetBytes.
-    batches->push_back(BatchDescriptor(shapes_.size(), num_edges));
-    return;
-  }
-  // Otherwise, break the updates into up to several batches, where the size
-  // of each batch is chosen so that all batches use approximately the same
-  // high-water memory.  GetBatchSizes() returns the recommended number of
-  // edges in each batch.
-  vector<int> batch_sizes;
-  GetBatchSizes(num_edges, kMaxUpdateBatches, kFinalBytesPerEdge,
-                kTmpBytesPerEdge, kTmpMemoryBudgetBytes, &batch_sizes);
-
-  // We always process removed edges in a single batch, since (1) they already
-  // take up a lot of memory because we have copied all their edges, and (2)
-  // AbsorbIndexCell() uses (shapes_[id] == nullptr) to detect when a shape is
-  // being removed, so in order to split the removals into batches we would
-  // need a different approach (e.g., temporarily add fake entries to shapes_
-  // and restore them back to nullptr as shapes are actually removed).
-  num_edges = 0;
-  if (pending_removals_) {
-    num_edges += num_edges_removed;
-    if (num_edges >= batch_sizes[0]) {
-      batches->push_back(BatchDescriptor(pending_additions_begin_, num_edges));
-      num_edges = 0;
-    }
-  }
-  // Keep adding shapes to each batch until the recommended number of edges
-  // for that batch is reached, then move on to the next batch.
+  BatchGenerator batch_gen(num_edges_removed, num_edges_added,
+                           pending_additions_begin_);
   for (int id = pending_additions_begin_; id < shapes_.size(); ++id) {
     const S2Shape* shape = this->shape(id);
-    if (shape == nullptr) continue;
-    num_edges += shape->num_edges();
-    if (num_edges >= batch_sizes[batches->size()]) {
-      batches->push_back(BatchDescriptor(id + 1, num_edges));
-      num_edges = 0;
-    }
+    if (shape) batch_gen.AddShape(id, shape->num_edges());
   }
-  // Some shapes have no edges.  If a shape with no edges is the last shape to
-  // be added or removed, then the final batch may not include it, so we fix
-  // that problem here.
-  batches->back().additions_end = shapes_.size();
-  S2_DCHECK_LE(batches->size(), kMaxUpdateBatches);
+  return batch_gen.Finish();
 }
 
-// Given "num_items" items, each of which uses "tmp_bytes_per_item" while it
-// is being updated but only "final_bytes_per_item" in the end, divide the
-// items into batches that have approximately the same *total* memory usage
-// consisting of the temporary memory needed for the items in the current
-// batch plus the final size of all the items that have already been
-// processed.  Use the fewest number of batches (but never more than
-// "max_batches") such that the total memory usage does not exceed the
-// combined final size of all the items plus "tmp_memory_budget_bytes".
+// The following memory estimates are based on heap profiling.
+
+// The batch sizes during a given update gradually decrease as the space
+// occupied by the index itself grows.  In order to do this, we need a
+// conserative lower bound on how much the index grows per edge.
+//
+// The final size of a MutableS2ShapeIndex depends mainly on how finely the
+// index is subdivided, as controlled by Options::max_edges_per_cell() and
+// --s2shape_index_default_max_edges_per_cell.  For realistic values of
+// max_edges_per_cell() and shapes with moderate numbers of edges, it is
+// difficult to get much below 8 bytes per edge.  *The minimum possible size
+// is 4 bytes per edge (to store a 32-bit edge id in an S2ClippedShape) plus
+// 24 bytes per shape (for the S2ClippedShape itself plus a pointer in the
+// shapes_ vector.)  Note that this value is a lower bound; a typical final
+// index size is closer to 24 bytes per edge.
+static constexpr size_t kFinalBytesPerEdge = 8;
+
+// The temporary memory consists mainly of the FaceEdge and ClippedEdge
+// structures plus a ClippedEdge pointer for every level of recursive
+// subdivision.  This can be more than 220 bytes per edge even for typical
+// geometry.  (The pathological worst case is higher, but we don't use this to
+// determine the batch sizes.)
+static constexpr size_t kTmpBytesPerEdge = 226;
+
+// We arbitrarily limit the number of batches as a safety measure.  With the
+// current default memory budget of 100 MB, this limit is not reached even
+// when building an index of 350 million edges.
+static constexpr int kMaxBatches = 100;
+
+MutableS2ShapeIndex::BatchGenerator::BatchGenerator(int num_edges_removed,
+                                                    int num_edges_added,
+                                                    int shape_id_begin)
+    : max_batch_sizes_(GetMaxBatchSizes(num_edges_removed, num_edges_added)),
+      batch_begin_(shape_id_begin, 0),
+      shape_id_end_(shape_id_begin) {
+  if (max_batch_sizes_.size() > 1) {
+    S2_VLOG(1) << "Removing " << num_edges_removed << ", adding "
+            << num_edges_added << " edges in " << max_batch_sizes_.size()
+            << " batches";
+  }
+  // Duplicate the last entry to simplify next_max_batch_size().
+  max_batch_sizes_.push_back(max_batch_sizes_.back());
+
+  // We process edge removals before additions, and edges are always removed
+  // in a single batch.  The reasons for this include: (1) removed edges use
+  // quite a bit of memory (about 50 bytes each) and this space can be freed
+  // immediately when we process them in one batch; (2) removed shapes are
+  // expected to be small fraction of the index size in typical use cases
+  // (e.g. incremental updates of large indexes), and (3) AbsorbIndexCell()
+  // uses (shape(id) == nullptr) to detect when a shape is being removed, so
+  // in order to split the removed shapes into multiple batches we would need
+  // a different approach (e.g., temporarily adding fake entries to shapes_
+  // and restoring them back to nullptr as shapes are removed).  Removing
+  // individual shapes over multiple batches would be even more work.
+  batch_size_ = num_edges_removed;
+}
+
+void MutableS2ShapeIndex::BatchGenerator::AddShape(int shape_id,
+                                                   int num_edges) {
+  int batch_remaining = max_batch_size() - batch_size_;
+  if (num_edges <= batch_remaining) {
+    ExtendBatch(num_edges);
+  } else if (num_edges <= next_max_batch_size()) {
+    // Avoid splitting shapes across batches unnecessarily.
+    FinishBatch(0, ShapeEdgeId(shape_id, 0));
+    ExtendBatch(num_edges);
+  } else {
+    // This shape must be split across at least two batches.  We simply fill
+    // each batch until the remaining edges will fit in two batches, and then
+    // divide those edges such that both batches have the same amount of
+    // remaining space relative to their maximum size.
+    int e_begin = 0;
+    while (batch_remaining + next_max_batch_size() < num_edges) {
+      e_begin += batch_remaining;
+      FinishBatch(batch_remaining, ShapeEdgeId(shape_id, e_begin));
+      num_edges -= batch_remaining;
+      batch_remaining = max_batch_size();
+    }
+    // Figure out how many edges to add to the current batch so that it will
+    // have the same amount of remaining space as the next batch.
+    int n = (num_edges + batch_remaining - next_max_batch_size()) / 2;
+    FinishBatch(n, ShapeEdgeId(shape_id, e_begin + n));
+    FinishBatch(num_edges - n, ShapeEdgeId(shape_id + 1, 0));
+  }
+  shape_id_end_ = shape_id + 1;
+}
+
+vector<MutableS2ShapeIndex::BatchDescriptor>
+MutableS2ShapeIndex::BatchGenerator::Finish() {
+  // We must generate at least one batch even when num_edges_removed ==
+  // num_edges_added == 0, because some shapes have an interior but no edges.
+  // (Specifically, the full polygon has this property.)
+  if (batches_.empty() || shape_id_end_ != batch_begin_.shape_id) {
+    FinishBatch(0, ShapeEdgeId(shape_id_end_, 0));
+  }
+  return std::move(batches_);
+}
+
+void MutableS2ShapeIndex::BatchGenerator::FinishBatch(int num_edges,
+                                                      ShapeEdgeId batch_end) {
+  ExtendBatch(num_edges);
+  batches_.push_back(BatchDescriptor{batch_begin_, batch_end, batch_size_});
+  batch_begin_ = batch_end;
+  batch_index_edges_left_ -= batch_size_;
+  while (batch_index_edges_left_ < 0) {
+    batch_index_edges_left_ += max_batch_size();
+    batch_index_ += 1;
+  }
+  batch_size_ = 0;
+}
+
+// Divides "num_edges" edges into batches where each batch needs about the
+// same total amount of memory.  (The total memory needed by a batch consists
+// of the temporary memory needed to process the edges in that batch plus the
+// final representations of the edges that have already been indexed.)  It
+// uses the fewest number of batches (up to kMaxBatches) such that the total
+// memory usage does not exceed the combined final size of all the edges plus
+// FLAGS_s2shape_index_tmp_memory_budget.  Returns a vector of sizes
+// indicating the desired number of edges in each batch.
 /* static */
-void MutableS2ShapeIndex::GetBatchSizes(int num_items, int max_batches,
-                                        double final_bytes_per_item,
-                                        double tmp_bytes_per_item,
-                                        double tmp_memory_budget_bytes,
-                                        vector<int>* batch_sizes) {
-  // This code tries to fit all the data into the same memory space
-  // ("total_budget_bytes") at every iteration.  The data consists of some
-  // number of processed items (at "final_bytes_per_item" each), plus some
-  // number being updated (at "tmp_bytes_per_item" each).  The space occupied
-  // by the items being updated is the "free space".  At each iteration, the
-  // free space is multiplied by (1 - final_bytes_per_item/tmp_bytes_per_item)
-  // as the items are converted into their final form.
-  double final_bytes = num_items * final_bytes_per_item;
-  double final_bytes_ratio = final_bytes_per_item / tmp_bytes_per_item;
-  double free_space_multiplier = 1 - final_bytes_ratio;
+vector<int> MutableS2ShapeIndex::BatchGenerator::GetMaxBatchSizes(
+    int num_edges_removed, int num_edges_added) {
+  // Check whether we can update all the edges at once.
+  int num_edges_total = num_edges_removed + num_edges_added;
+  const double tmp_memory_budget_bytes =
+      absl::GetFlag(FLAGS_s2shape_index_tmp_memory_budget);
+  if (num_edges_total * kTmpBytesPerEdge <= tmp_memory_budget_bytes) {
+    return vector<int>{num_edges_total};
+  }
+
+  // Each batch is allowed to use up to "total_budget_bytes".  The memory
+  // usage consists of some number of edges already added by previous batches
+  // (at kFinalBytesPerEdge each), plus some number being updated in the
+  // current batch (at kTmpBytesPerEdge each).  The available free space is
+  // multiplied by (1 - kFinalBytesPerEdge / kTmpBytesPerEdge) after each
+  // batch is processed as edges are converted into their final form.
+  const double final_bytes = num_edges_added * kFinalBytesPerEdge;
+  constexpr double kFinalBytesRatio = 1.0 * kFinalBytesPerEdge /
+                                      kTmpBytesPerEdge;
+  constexpr double kTmpSpaceMultiplier = 1 - kFinalBytesRatio;
 
   // The total memory budget is the greater of the final size plus the allowed
   // temporary memory, or the minimum amount of memory required to limit the
-  // number of batches to "max_batches".
-  double total_budget_bytes = max(
+  // number of batches to "kMaxBatches".
+  const double total_budget_bytes = max(
       final_bytes + tmp_memory_budget_bytes,
-      final_bytes / (1 - pow(free_space_multiplier, max_batches)));
+      final_bytes / (1 - MathUtil::IPow(kTmpSpaceMultiplier, kMaxBatches - 1)));
 
-  // "max_batch_items" is the number of items in the current batch.
-  double max_batch_items = total_budget_bytes / tmp_bytes_per_item;
-  batch_sizes->clear();
-  for (int i = 0; i + 1 < max_batches && num_items > 0; ++i) {
-    int batch_items =
-        std::min(num_items, static_cast<int>(max_batch_items + 1));
-    batch_sizes->push_back(batch_items);
-    num_items -= batch_items;
-    max_batch_items *= free_space_multiplier;
+  // "ideal_batch_size" is the number of edges in the current batch before
+  // rounding to an integer.
+  double ideal_batch_size = total_budget_bytes / kTmpBytesPerEdge;
+
+  // Removed edges are always processed in the first batch, even if this might
+  // use more memory than requested (see the BatchGenerator constructor).
+  vector<int> batch_sizes;
+  int num_edges_left = num_edges_added;
+  if (num_edges_removed > ideal_batch_size) {
+    batch_sizes.push_back(num_edges_removed);
+  } else {
+    num_edges_left += num_edges_removed;
   }
-  S2_DCHECK_LE(batch_sizes->size(), max_batches);
+  for (int i = 0; num_edges_left > 0; ++i) {
+    int batch_size = static_cast<int>(ideal_batch_size + 1);
+    batch_sizes.push_back(batch_size);
+    num_edges_left -= batch_size;
+    ideal_batch_size *= kTmpSpaceMultiplier;
+  }
+  S2_DCHECK_LE(batch_sizes.size(), kMaxBatches);
+  return batch_sizes;
 }
 
 // Reserve an appropriate amount of space for the top-level face edges in the
@@ -714,17 +865,27 @@ void MutableS2ShapeIndex::GetBatchSizes(int num_items, int max_batches,
 // needed during index construction.  Furthermore, if the arrays are grown via
 // push_back() then up to 10% of the total run time consists of copying data
 // as these arrays grow, so it is worthwhile to preallocate space for them.
-void MutableS2ShapeIndex::ReserveSpace(const BatchDescriptor& batch,
-                                       vector<FaceEdge> all_edges[6]) const {
+void MutableS2ShapeIndex::ReserveSpace(
+    const BatchDescriptor& batch, vector<FaceEdge> all_edges[6]) {
+  // The following accounts for the temporary space needed for everything
+  // except the FaceEdge vectors (which are allocated separately below).
+  int64 other_usage = batch.num_edges * (kTmpBytesPerEdge - sizeof(FaceEdge));
+
   // If the number of edges is relatively small, then the fastest approach is
   // to simply reserve space on every face for the maximum possible number of
-  // edges.  We use a different threshold for this calculation than for
-  // deciding when to break updates into batches, because the cost/benefit
-  // ratio is different.  (Here the only extra expense is that we need to
-  // sample the edges to estimate how many edges per face there are.)
-  const size_t kMaxCheapBytes = 30 << 20;  // 30 MB
-  const int kMaxCheapEdges = kMaxCheapBytes / (6 * sizeof(FaceEdge));
-  if (batch.num_edges <= kMaxCheapEdges) {
+  // edges.  (We use a different threshold for this calculation than for
+  // deciding when to break updates into batches because the cost/benefit
+  // ratio is different.  Here the only extra expense is that we need to
+  // sample the edges to estimate how many edges per face there are, and
+  // therefore we generally use a lower threshold.)
+  const size_t kMaxCheapBytes =
+      min(absl::GetFlag(FLAGS_s2shape_index_tmp_memory_budget) / 2,
+          int64{30} << 20 /*30 MB*/);
+  int64 face_edge_usage = batch.num_edges * (6 * sizeof(FaceEdge));
+  if (face_edge_usage <= kMaxCheapBytes) {
+    if (!mem_tracker_.TallyTemp(face_edge_usage + other_usage)) {
+      return;
+    }
     for (int face = 0; face < 6; ++face) {
       all_edges[face].reserve(batch.num_edges);
     }
@@ -758,16 +919,19 @@ void MutableS2ShapeIndex::ReserveSpace(const BatchDescriptor& batch,
       }
     }
   }
-  for (int id = pending_additions_begin_; id < batch.additions_end; ++id) {
-    const S2Shape* shape = this->shape(id);
-    if (shape == nullptr) continue;
-    edge_id += shape->num_edges();
+  for (auto begin = batch.begin; begin < batch.end;
+       ++begin.shape_id, begin.edge_id = 0) {
+    const S2Shape* shape = this->shape(begin.shape_id);
+    if (shape == nullptr) continue;  // Already removed.
+    int edges_end = begin.shape_id == batch.end.shape_id ? batch.end.edge_id
+                                                         : shape->num_edges();
+    edge_id += edges_end - begin.edge_id;
     while (edge_id >= sample_interval) {
       edge_id -= sample_interval;
       // For speed, we only count the face containing one endpoint of the
       // edge.  In general the edge could span all 6 faces (with padding), but
       // it's not worth the expense to compute this more accurately.
-      face_count[S2::GetFace(shape->edge(edge_id).v0)] += 1;
+      face_count[S2::GetFace(shape->edge(edge_id + begin.edge_id).v0)] += 1;
     }
   }
   // Now given the raw face counts, compute a confidence interval such that we
@@ -783,11 +947,22 @@ void MutableS2ShapeIndex::ReserveSpace(const BatchDescriptor& batch,
   //    It is quite likely that such faces are truly empty, so we save time
   //    and memory this way.  If the face does contain some edges, there will
   //    only be a few so it is fine to let the vector grow automatically.
-  // On average, we reserve 2% extra space for each face that has geometry.
+  // On average, we reserve 2% extra space for each face that has geometry
+  // (which could be up to 12% extra space overall, but typically 2%).
 
   // kMaxSemiWidth is the maximum semi-width over all probabilities p of a
   // 4-sigma binomial confidence interval with a sample size of 10,000.
   const double kMaxSemiWidth = 0.02;
+
+  // First estimate the total amount of memory we are about to allocate.
+  double multiplier = 1.0;
+  for (int face = 0; face < 6; ++face) {
+    if (face_count[face] != 0) multiplier += kMaxSemiWidth;
+  }
+  face_edge_usage = multiplier * batch.num_edges * sizeof(FaceEdge);
+  if (!mem_tracker_.TallyTemp(face_edge_usage + other_usage)) {
+    return;
+  }
   const double sample_ratio = 1.0 / actual_sample_size;
   for (int face = 0; face < 6; ++face) {
     if (face_count[face] == 0) continue;
@@ -796,24 +971,30 @@ void MutableS2ShapeIndex::ReserveSpace(const BatchDescriptor& batch,
   }
 }
 
-// Clip all edges of the given shape to the six cube faces, add the clipped
+// Clips the edges of the given shape to the six cube faces, add the clipped
 // edges to "all_edges", and start tracking its interior if necessary.
-void MutableS2ShapeIndex::AddShape(int id, vector<FaceEdge> all_edges[6],
-                                   InteriorTracker* tracker) const {
-  const S2Shape* shape = this->shape(id);
-  if (shape == nullptr) {
-    return;  // This shape has already been removed.
-  }
+void MutableS2ShapeIndex::AddShape(
+    const S2Shape* shape, int edges_begin, int edges_end,
+    vector<FaceEdge> all_edges[6], InteriorTracker* tracker) const {
   // Construct a template for the edges to be added.
   FaceEdge edge;
-  edge.shape_id = id;
-  edge.has_interior = (shape->dimension() == 2);
-  if (edge.has_interior) {
-    tracker->AddShape(id, s2shapeutil::ContainsBruteForce(*shape,
-                                                          tracker->focus()));
+  edge.shape_id = shape->id();
+  edge.has_interior = false;
+  if (shape->dimension() == 2) {
+    // To add a single shape with an interior over multiple batches, we first
+    // add all the edges without tracking the interior.  After all edges have
+    // been added, the interior is updated in a separate step by setting the
+    // contains_center() flags appropriately.
+    if (edges_begin > 0 || edges_end < shape->num_edges()) {
+      tracker->set_partial_shape_id(edge.shape_id);
+    } else {
+      edge.has_interior = true;
+      tracker->AddShape(
+          edge.shape_id,
+          s2shapeutil::ContainsBruteForce(*shape, tracker->focus()));
+    }
   }
-  int num_edges = shape->num_edges();
-  for (int e = 0; e < num_edges; ++e) {
+  for (int e = edges_begin; e < edges_end; ++e) {
     edge.edge_id = e;
     edge.edge = shape->edge(e);
     edge.max_level = GetEdgeMaxLevel(edge.edge);
@@ -838,6 +1019,108 @@ void MutableS2ShapeIndex::RemoveShape(const RemovedShape& removed,
   }
 }
 
+void MutableS2ShapeIndex::FinishPartialShape(int shape_id) {
+  if (shape_id < 0) return;  // The partial shape did not have an interior.
+  const S2Shape* shape = this->shape(shape_id);
+
+  // Filling in the interior of a partial shape can grow the cell_map_
+  // significantly, however the new cells have just one shape and no edges.
+  // The following is a rough estimate of how much extra memory is needed
+  // based on experiments.  It assumes that one new cell is required for every
+  // 10 shape edges, and that the cell map uses 50% more space than necessary
+  // for the new entries because they are inserted between existing entries
+  // (which means that the btree nodes are not full).
+  if (mem_tracker_.is_active()) {
+    const int64 new_usage =
+        SpaceUsed() - mem_tracker_.client_usage_bytes() +
+        0.1 * shape->num_edges() * (1.5 * sizeof(CellMap::value_type) +
+                                    sizeof(S2ShapeIndexCell) +
+                                    sizeof(S2ClippedShape));
+    if (!mem_tracker_.TallyTemp(new_usage)) return;
+  }
+
+  // All the edges of the partial shape have already been indexed, now we just
+  // need to set the contains_center() flags appropriately.  We use a fresh
+  // InteriorTracker for this purpose since we don't want to continue tracking
+  // the interior state of any other shapes in this batch.
+  //
+  // We have implemented this below in the simplest way possible, namely by
+  // scanning through the entire index.  In theory it would be more efficient
+  // to keep track of the set of index cells that were modified when the
+  // partial shape's edges were added, and then visit only those cells.
+  // However in practice any shape that is added over multiple batches is
+  // likely to occupy most or all of the index anyway, so it is faster and
+  // simpler to just iterate through the entire index.
+  //
+  // "tmp_edges" below speeds up large polygon index construction by 3-12%.
+  vector<S2Shape::Edge> tmp_edges;  // Temporary storage.
+  InteriorTracker tracker;
+  tracker.AddShape(shape_id,
+                   s2shapeutil::ContainsBruteForce(*shape, tracker.focus()));
+  S2CellId begin = S2CellId::Begin(S2CellId::kMaxLevel);
+  for (CellMap::iterator index_it = cell_map_.begin(); ; ++index_it) {
+    if (!tracker.shape_ids().empty()) {
+      // Check whether we need to add new cells that are entirely contained by
+      // the partial shape.
+      S2CellId fill_end =
+          (index_it != cell_map_.end()) ? index_it->first.range_min()
+                                        : S2CellId::End(S2CellId::kMaxLevel);
+      if (begin != fill_end) {
+        for (S2CellId cellid : S2CellUnion::FromBeginEnd(begin, fill_end)) {
+          S2ShapeIndexCell* cell = new S2ShapeIndexCell;
+          S2ClippedShape* clipped = cell->add_shapes(1);
+          clipped->Init(shape_id, 0);
+          clipped->set_contains_center(true);
+          index_it = cell_map_.insert(index_it, make_pair(cellid, cell));
+          ++index_it;
+        }
+      }
+    }
+    if (index_it == cell_map_.end()) break;
+
+    // Now check whether the current index cell needs to be updated.
+    S2CellId cellid = index_it->first;
+    S2ShapeIndexCell* cell = index_it->second;
+    int n = cell->shapes_.size();
+    if (n > 0 && cell->shapes_[n - 1].shape_id() == shape_id) {
+      // This cell contains edges of the partial shape.  If the partial shape
+      // contains the center of this cell, we must update the index.
+      S2PaddedCell pcell(cellid, kCellPadding);
+      if (!tracker.at_cellid(cellid)) {
+        tracker.MoveTo(pcell.GetEntryVertex());
+      }
+      tracker.DrawTo(pcell.GetCenter());
+      S2ClippedShape* clipped = &cell->shapes_[n - 1];
+      int num_edges = clipped->num_edges();
+      S2_DCHECK_GT(num_edges, 0);
+      for (int i = 0; i < num_edges; ++i) {
+        tmp_edges.push_back(shape->edge(clipped->edge(i)));
+      }
+      for (const auto& edge : tmp_edges) {
+        tracker.TestEdge(shape_id, edge);
+      }
+      if (!tracker.shape_ids().empty()) {
+        // The partial shape contains the center of this index cell.
+        clipped->set_contains_center(true);
+      }
+      tracker.DrawTo(pcell.GetExitVertex());
+      for (const auto& edge : tmp_edges) {
+        tracker.TestEdge(shape_id, edge);
+      }
+      tracker.set_next_cellid(cellid.next());
+      tmp_edges.clear();
+
+    } else if (!tracker.shape_ids().empty()) {
+      // The partial shape contains the center of an existing index cell that
+      // does not intersect any of its edges.
+      S2ClippedShape* clipped = cell->add_shapes(1);
+      clipped->Init(shape_id, 0);
+      clipped->set_contains_center(true);
+    }
+    begin = cellid.range_max().next();
+  }
+}
+
 inline void MutableS2ShapeIndex::AddFaceEdge(
     FaceEdge* edge, vector<FaceEdge> all_edges[6]) const {
   // Fast path: both endpoints are on the same face, and are far enough from
@@ -856,23 +1139,25 @@ inline void MutableS2ShapeIndex::AddFaceEdge(
   // Otherwise we simply clip the edge to all six faces.
   for (int face = 0; face < 6; ++face) {
     if (S2::ClipToPaddedFace(edge->edge.v0, edge->edge.v1, face,
-                                     kCellPadding, &edge->a, &edge->b)) {
+                             kCellPadding, &edge->a, &edge->b)) {
       all_edges[face].push_back(*edge);
     }
   }
 }
 
-// Return the first level at which the edge will *not* contribute towards
-// the decision to subdivide.
+// Returns the first level for which the given edge will be considered "long",
+// i.e. it will not count towards the max_edges_per_cell() limit.
 int MutableS2ShapeIndex::GetEdgeMaxLevel(const S2Shape::Edge& edge) const {
-  // Compute the maximum cell size for which this edge is considered "long".
-  // The calculation does not need to be perfectly accurate, so we use Norm()
-  // rather than Angle() for speed.
-  double cell_size = ((edge.v0 - edge.v1).Norm() *
-                      FLAGS_s2shape_index_cell_size_to_long_edge_ratio);
+  // Compute the maximum cell edge length for which this edge is considered
+  // "long".  The calculation does not need to be perfectly accurate, so we
+  // use Norm() rather than Angle() for speed.
+  double max_cell_edge =
+      ((edge.v0 - edge.v1).Norm() *
+       absl::GetFlag(FLAGS_s2shape_index_cell_size_to_long_edge_ratio));
+
   // Now return the first level encountered during subdivision where the
-  // average cell size is at most "cell_size".
-  return S2::kAvgEdge.GetLevelForMaxValue(cell_size);
+  // average cell edge length at that level is at most "max_cell_edge".
+  return S2::kAvgEdge.GetLevelForMaxValue(max_cell_edge);
 }
 
 // EdgeAllocator provides temporary storage for new ClippedEdges that are
@@ -953,8 +1238,13 @@ void MutableS2ShapeIndex::UpdateFaceEdges(int face,
   S2PaddedCell pcell(face_id, kCellPadding);
 
   // "disjoint_from_index" means that the current cell being processed (and
-  // all its descendants) are not already present in the index.
-  bool disjoint_from_index = is_first_update();
+  // all its descendants) are not already present in the index.  It is set to
+  // true during the recursion whenever we detect that the current cell is
+  // disjoint from the index.  We could save a tiny bit of work by setting
+  // this flag to true here on the very first update, however currently there
+  // is no easy way to check that.  (It's not sufficient to test whether
+  // cell_map_.empty() or pending_additions_begin_ == 0.)
+  bool disjoint_from_index = false;
   if (num_edges > 0) {
     S2CellId shrunk_id = ShrinkToFit(pcell, bound);
     if (shrunk_id != pcell.id()) {
@@ -975,13 +1265,13 @@ void MutableS2ShapeIndex::UpdateFaceEdges(int face,
   UpdateEdges(pcell, &clipped_edges, tracker, &alloc, disjoint_from_index);
 }
 
-inline S2CellId MutableS2ShapeIndex::ShrinkToFit(const S2PaddedCell& pcell,
-                                                 const R2Rect& bound) const {
+S2CellId MutableS2ShapeIndex::ShrinkToFit(const S2PaddedCell& pcell,
+                                          const R2Rect& bound) const {
   S2CellId shrunk_id = pcell.ShrinkToFit(bound);
-  if (!is_first_update() && shrunk_id != pcell.id()) {
+  if (shrunk_id != pcell.id()) {
     // Don't shrink any smaller than the existing index cells, since we need
-    // to combine the new edges with those cells.
-    // Use InitStale() to avoid applying updated recursively.
+    // to combine the new edges with those cells.  Use InitStale() to avoid
+    // applying updates recursively.
     Iterator iter;
     iter.InitStale(this);
     CellRelation r = iter.Locate(shrunk_id);
@@ -1005,6 +1295,28 @@ void MutableS2ShapeIndex::SkipCellRange(S2CellId begin, S2CellId end,
     vector<const ClippedEdge*> clipped_edges;
     UpdateEdges(S2PaddedCell(skipped_id, kCellPadding),
                 &clipped_edges, tracker, alloc, disjoint_from_index);
+  }
+}
+
+// Given an edge and an interval "middle" along the v-axis, clip the edge
+// against the boundaries of "middle" and add the edge to the corresponding
+// children.
+/* static */ ABSL_ATTRIBUTE_ALWAYS_INLINE  // ~8% faster
+inline void MutableS2ShapeIndex::ClipVAxis(
+    const ClippedEdge* edge,
+    const R1Interval& middle,
+    vector<const ClippedEdge*> child_edges[2],
+    EdgeAllocator* alloc) {
+  if (edge->bound[1].hi() <= middle.lo()) {
+    // Edge is entirely contained in the lower child.
+    child_edges[0].push_back(edge);
+  } else if (edge->bound[1].lo() >= middle.hi()) {
+    // Edge is entirely contained in the upper child.
+    child_edges[1].push_back(edge);
+  } else {
+    // The edge bound spans both children.
+    child_edges[0].push_back(ClipVBound(edge, 1, middle.hi(), alloc));
+    child_edges[1].push_back(ClipVBound(edge, 0, middle.lo(), alloc));
   }
 }
 
@@ -1047,8 +1359,8 @@ void MutableS2ShapeIndex::UpdateEdges(const S2PaddedCell& pcell,
   if (!disjoint_from_index) {
     // There may be existing index cells contained inside "pcell".  If we
     // encounter such a cell, we need to combine the edges being updated with
-    // the existing cell contents by "absorbing" the cell.
-    // Use InitStale() to avoid applying updated recursively.
+    // the existing cell contents by "absorbing" the cell.  We use InitStale()
+    // to avoid applying updates recursively.
     Iterator iter;
     iter.InitStale(this);
     CellRelation r = iter.Locate(pcell.id());
@@ -1152,28 +1464,6 @@ void MutableS2ShapeIndex::UpdateEdges(const S2PaddedCell& pcell,
   }
 }
 
-// Given an edge and an interval "middle" along the v-axis, clip the edge
-// against the boundaries of "middle" and add the edge to the corresponding
-// children.
-/* static */
-inline void MutableS2ShapeIndex::ClipVAxis(
-    const ClippedEdge* edge,
-    const R1Interval& middle,
-    vector<const ClippedEdge*> child_edges[2],
-    EdgeAllocator* alloc) {
-  if (edge->bound[1].hi() <= middle.lo()) {
-    // Edge is entirely contained in the lower child.
-    child_edges[0].push_back(edge);
-  } else if (edge->bound[1].lo() >= middle.hi()) {
-    // Edge is entirely contained in the upper child.
-    child_edges[1].push_back(edge);
-  } else {
-    // The edge bound spans both children.
-    child_edges[0].push_back(ClipVBound(edge, 1, middle.hi(), alloc));
-    child_edges[1].push_back(ClipVBound(edge, 0, middle.lo(), alloc));
-  }
-}
-
 // Given an edge, clip the given endpoint (lo=0, hi=1) of the u-axis so that
 // it does not extend past the given value.
 /* static */
@@ -1264,7 +1554,8 @@ void MutableS2ShapeIndex::AbsorbIndexCell(const S2PaddedCell& pcell,
   // Here we first update the InteriorTracker state for removed edges to
   // correspond to the exit vertex of this cell, and then save the
   // InteriorTracker state.  This state will be restored by UpdateEdges when
-  // it is finished processing the contents of this cell.
+  // it is finished processing the contents of this cell.  (Note in the test
+  // below that removed edges are always sorted before added edges.)
   if (tracker->is_active() && !edges->empty() &&
       is_shape_being_removed((*edges)[0]->face_edge->shape_id)) {
     // We probably need to update the InteriorTracker.  ("Probably" because
@@ -1284,11 +1575,12 @@ void MutableS2ShapeIndex::AbsorbIndexCell(const S2PaddedCell& pcell,
       }
     }
   }
-  // Save the state of the edges being removed, so that it can be restored
-  // when we are finished processing this cell and its children.  We don't
-  // need to save the state of the edges being added because they aren't being
-  // removed from "edges" and will therefore be updated normally as we visit
-  // this cell and its children.
+  // Save the state of the edges being removed so that it can be restored when
+  // we are finished processing this cell and its children.  Below we not only
+  // remove those edges but also add new edges whose state only needs to be
+  // tracked within this subtree.  We don't need to save the state of the
+  // edges being added because they aren't being removed from "edges" and will
+  // therefore be updated normally as we visit this cell and its children.
   tracker->SaveAndClearStateBefore(pending_additions_begin_);
 
   // Create a FaceEdge for each edge in this cell that isn't being removed.
@@ -1309,8 +1601,9 @@ void MutableS2ShapeIndex::AbsorbIndexCell(const S2PaddedCell& pcell,
     // cell is inside the shape, so we need to test all the edges against the
     // line segment from the cell center to the entry vertex.
     FaceEdge edge;
-    edge.shape_id = shape->id();
-    edge.has_interior = (shape->dimension() == 2);
+    edge.shape_id = shape_id;
+    edge.has_interior = (shape->dimension() == 2 &&
+                         shape_id != tracker->partial_shape_id());
     if (edge.has_interior) {
       tracker->AddShape(shape_id, clipped.contains_center());
       // There might not be any edges in this entire cell (i.e., it might be
@@ -1329,9 +1622,8 @@ void MutableS2ShapeIndex::AbsorbIndexCell(const S2PaddedCell& pcell,
       edge.edge = shape->edge(e);
       edge.max_level = GetEdgeMaxLevel(edge.edge);
       if (edge.has_interior) tracker->TestEdge(shape_id, edge.edge);
-      if (!S2::ClipToPaddedFace(edge.edge.v0, edge.edge.v1,
-                                        pcell.id().face(), kCellPadding,
-                                        &edge.a, &edge.b)) {
+      if (!S2::ClipToPaddedFace(edge.edge.v0, edge.edge.v1, pcell.id().face(),
+                                kCellPadding, &edge.a, &edge.b)) {
         S2_LOG(DFATAL) << "Invariant failure in MutableS2ShapeIndex";
       }
       face_edges->push_back(edge);
@@ -1373,13 +1665,120 @@ bool MutableS2ShapeIndex::MakeIndexCell(const S2PaddedCell& pcell,
     return true;
   }
 
-  // Count the number of edges that have not reached their maximum level yet.
-  // Return false if there are too many such edges.
-  int count = 0;
-  for (const ClippedEdge* edge : edges) {
-    count += (pcell.level() < edge->face_edge->max_level);
-    if (count > options_.max_edges_per_cell())
-      return false;
+  // We can show using amortized analysis that the total index size is
+  //
+  //     O(c1 * n + c2 * (1 - f) / f * n)
+  //
+  // where n is the number of input edges (and where we also count an "edge"
+  // for each shape with an interior but no edges), f is the value of
+  // FLAGS_s2shape_index_min_short_edge_fraction, and c1 and c2 are constants
+  // where c2 is about 20 times larger than c1.
+  //
+  // First observe that the space used by a MutableS2ShapeIndex is
+  // proportional to the space used by all of its index cells, and the space
+  // used by an S2ShapeIndexCell is proportional to the number of edges that
+  // intersect that cell plus the number of shapes that contain the entire
+  // cell ("containing shapes").  Define an "index entry" as an intersecting
+  // edge or containing shape stored by an index cell.  Our goal is then to
+  // bound the number of index entries.
+  //
+  // We divide the index entries into two groups.  An index entry is "short"
+  // if it represents an edge that was considered short in that index cell's
+  // parent, and "long" otherwise.  (Note that the long index entries also
+  // include the containing shapes mentioned above.)  We then bound the
+  // maximum number of both types of index entries by associating them with
+  // edges that were considered short in those index cells' parents.
+  //
+  // First consider the short index entries for a given edge E.  Let S be the
+  // set of index cells that intersect E and where E was considered short in
+  // those index cells' parents.  Since E was short in each parent cell, the
+  // width of those parent cells is at least some fraction "g" of E's length
+  // (as controlled by FLAGS_s2shape_index_cell_size_to_long_edge_ratio).
+  // Therefore the minimum width of each cell in S is also at least some
+  // fraction of E's length (i.e., g / 2).  This implies that there are at most
+  // a constant number c1 of such cells, since they all intersect E and do not
+  // overlap, which means that there are at most (c1 * n) short entries in
+  // total.
+  //
+  // With index_cell_size_to_long_edge_ratio = 1.0 (the default value), it can
+  // be shown that c1 = 10.  In other words, it is not possible for a given
+  // edge to intersect more than 10 index cells where it was considered short
+  // in those cells' parents.  The value of c1 can be reduced as low c1 = 4 by
+  // increasing index_cell_size_to_long_edge_ratio to about 3.1.  (The reason
+  // the minimum value is 3.1 rather than 2.0 is that this ratio is defined in
+  // terms of the average edge length of cells at a given level, rather than
+  // their minimum width, and 2 * (S2::kAvgEdge / S2::kMinWidth) ~= 3.1.)
+  //
+  // Next we consider the long index entries.  Let c2 be the maximum number of
+  // index cells where a given edge E was considered short in those cells'
+  // parents.  (Unlike the case above, we do not require that these cells
+  // intersect E.)  Because the minimum width of each parent cell is at least
+  // some fraction of E's length and the parent cells at a given level do not
+  // overlap, there can be at most a small constant number of index cells at
+  // each level where E is considered short in those cells' parents.  For
+  // example, consider a very short edge E that intersects the midpoint of a
+  // cell edge at level 0.  There are 16 cells at level 30 where E was
+  // considered short in the parent cell, 12 cells at each of levels 29..2, and
+  // 4 cells at levels 1 and 0 (pretending that all 6 face cells share a common
+  // "parent").  This yields a total of c2 = 360 index cells.  This is actually
+  // the worst case for index_cell_size_to_long_edge_ratio >= 3.1; with the
+  // default value of 1.0 it is possible to have a few more index cells at
+  // levels 29 and 30, for a maximum of c2 = 366 index cells.
+  //
+  // The code below subdivides a given cell only if
+  //
+  //     s > f * (s + l)
+  //
+  // where "f" is the min_short_edge_fraction parameter, "s" is the number of
+  // short edges that intersect the cell, and "l" is the number of long edges
+  // that intersect the cell plus an upper bound on the number of shapes that
+  // contain the entire cell.  (It is an upper bound rather than an exact count
+  // because we use the number of shapes that contain an arbitrary vertex of
+  // the cell.)  Note that the number of long index entries in each child of
+  // this cell is at most "l" because no child intersects more edges than its
+  // parent or is entirely contained by more shapes than its parent.
+  //
+  // The inequality above can be rearranged to give
+  //
+  //    l < s * (1 - f) / f
+  //
+  // This says that each long index entry in a child cell can be associated
+  // with at most (1 - f) / f edges that were considered short when the parent
+  // cell was subdivided.  Furthermore we know that there are at most c2 index
+  // cells where a given edge was considered short in the parent cell.  Since
+  // there are only n edges in total, this means that the maximum number of
+  // long index entries is at most
+  //
+  //    c2 * (1 - f) / f * n
+  //
+  // and putting this together with the result for short index entries gives
+  // the desired bound.
+  //
+  // There are a variety of ways to make this bound tighter, e.g. when "n" is
+  // relatively small.  For example when the indexed geometry satisfies the
+  // requirements of S2BooleanOperation (i.e., shape interiors are disjoint)
+  // and the min_short_edge_fraction parameter is not too large, then the
+  // constant c2 above is only about half as big (i.e., c2 ~= 180).  This is
+  // because the worst case under these circumstances requires having many
+  // shapes whose interiors overlap.
+
+  // Continue subdividing if the proposed index cell would contain too many
+  // edges that are "short" relative to its size (as controlled by the
+  // FLAGS_s2shape_index_cell_size_to_long_edge_ratio parameter).  Usually "too
+  // many" means more than options_.max_edges_per_cell(), but this value might
+  // be increased if the cell has a lot of long edges and/or containing shapes.
+  // This strategy ensures that the total index size is linear (see above).
+  if (edges.size() > options_.max_edges_per_cell()) {
+    int max_short_edges =
+        max(options_.max_edges_per_cell(),
+            static_cast<int>(
+                absl::GetFlag(FLAGS_s2shape_index_min_short_edge_fraction) *
+                (edges.size() + tracker->shape_ids().size())));
+    int count = 0;
+    for (const ClippedEdge* edge : edges) {
+      count += (pcell.level() < edge->face_edge->max_level);
+      if (count > max_short_edges) return false;
+    }
   }
 
   // Possible optimization: Continue subdividing as long as exactly one child
@@ -1463,7 +1862,7 @@ bool MutableS2ShapeIndex::MakeIndexCell(const S2PaddedCell& pcell,
   // is much faster to give an insertion hint in this case.  Otherwise the
   // hint doesn't do much harm.  With more effort we could provide a hint even
   // during incremental updates, but this is probably not worth the effort.
-  cell_map_.insert(cell_map_.end(), std::make_pair(pcell.id(), cell));
+  cell_map_.insert(cell_map_.end(), make_pair(pcell.id(), cell));
 
   // Shift the InteriorTracker focus point to the exit vertex of this cell.
   if (tracker->is_active() && !edges.empty()) {
@@ -1513,7 +1912,7 @@ int MutableS2ShapeIndex::CountShapes(const vector<const ClippedEdge*>& edges,
 
 size_t MutableS2ShapeIndex::SpaceUsed() const {
   size_t size = sizeof(*this);
-  size += shapes_.capacity() * sizeof(std::unique_ptr<S2Shape>);
+  size += shapes_.capacity() * sizeof(unique_ptr<S2Shape>);
   // cell_map_ itself is already included in sizeof(*this).
   size += cell_map_.bytes_used() - sizeof(cell_map_);
   size += cell_map_.size() * sizeof(S2ShapeIndexCell);
@@ -1529,9 +1928,12 @@ size_t MutableS2ShapeIndex::SpaceUsed() const {
     }
   }
   if (pending_removals_ != nullptr) {
+    size += sizeof(*pending_removals_);
     size += pending_removals_->capacity() * sizeof(RemovedShape);
+    for (const RemovedShape& removed : *pending_removals_) {
+      size += removed.edges.capacity() * sizeof(S2Shape::Edge);
+    }
   }
-
   return size;
 }
 
@@ -1543,6 +1945,9 @@ void MutableS2ShapeIndex::Encode(Encoder* encoder) const {
   uint64 max_edges = options_.max_edges_per_cell();
   encoder->put_varint64(max_edges << 2 | kCurrentEncodingVersionNumber);
 
+  // The index will be built anyway when we iterate through it, but building
+  // it in advance lets us size the cell_ids vector correctly.
+  ForceBuild();
   vector<S2CellId> cell_ids;
   cell_ids.reserve(cell_map_.size());
   s2coding::StringVectorEncoder encoded_cells;
@@ -1580,7 +1985,7 @@ bool MutableS2ShapeIndex::Init(Decoder* decoder,
     S2ShapeIndexCell* cell = new S2ShapeIndexCell;
     Decoder decoder = encoded_cells.GetDecoder(i);
     if (!cell->Decode(num_shapes, &decoder)) return false;
-    cell_map_.insert(cell_map_.end(), std::make_pair(id, cell));
+    cell_map_.insert(cell_map_.end(), make_pair(id, cell));
   }
   return true;
 }

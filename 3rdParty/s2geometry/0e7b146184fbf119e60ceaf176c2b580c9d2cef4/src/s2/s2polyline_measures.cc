@@ -18,6 +18,7 @@
 #include "s2/s2polyline_measures.h"
 
 #include <cmath>
+
 #include "s2/base/logging.h"
 #include "s2/s2centroids.h"
 

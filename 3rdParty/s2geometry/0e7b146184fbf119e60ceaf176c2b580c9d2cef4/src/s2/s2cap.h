@@ -205,6 +205,9 @@ class S2Cap final : public S2Region {
   // Return true if two caps are identical.
   bool operator==(const S2Cap& other) const;
 
+  // Return true if two caps are not identical.
+  bool operator!=(const S2Cap& other) const;
+
   // Return true if the cap center and height differ by at most "max_error"
   // from the given cap "other".
   bool ApproxEquals(const S2Cap& other,
@@ -281,6 +284,10 @@ inline bool S2Cap::is_empty() const {
 
 inline bool S2Cap::is_full() const {
   return radius_.length2() == 4;
+}
+
+inline bool S2Cap::operator!=(const S2Cap& other) const {
+  return !operator==(other);
 }
 
 #endif  // S2_S2CAP_H_

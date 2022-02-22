@@ -21,7 +21,7 @@
 #include <memory>
 #include <vector>
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
 #include "s2/id_set_lexicon.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2builder.h"
@@ -38,12 +38,10 @@ namespace s2builderutil {
 //
 // Duplicate edges are handled correctly (e.g., if a polyline backtracks on
 // itself, or loops around and retraces some of its previous edges.)  The
-// implementation attempts to preserve the order of directed input edges
-// whenever possible, so that if the input is a polyline and it is not
-// modified by S2Builder, then the output will be the same polyline (even if
-// the polyline backtracks on itself or forms a loop).  With undirected edges,
-// there are no such guarantees; for example, even if the input consists of a
-// single undirected edge, then either directed edge may be returned.
+// implementation attempts to preserve the order of input edges whenever
+// possible, so that if the input is a polyline and it is not modified by
+// S2Builder, then the output will be the same polyline (even if the polyline
+// backtracks on itself or forms a loop).
 //
 // S2PolylineLayer does not support options such as discarding sibling pairs
 // or merging duplicate edges because these options can split the polyline

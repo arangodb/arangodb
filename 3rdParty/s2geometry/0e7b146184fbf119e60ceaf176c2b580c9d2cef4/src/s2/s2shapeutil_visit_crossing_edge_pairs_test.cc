@@ -21,7 +21,10 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
+
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2edge_crossings.h"
 #include "s2/s2edge_vector_shape.h"
@@ -33,6 +36,7 @@
 #include "s2/s2text_format.h"
 
 using absl::make_unique;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
@@ -162,7 +166,7 @@ void TestHasCrossingPermutations(vector<unique_ptr<S2Loop>>* loops, int i,
 // polygon has any self-intersections or loop crossings, verify that all
 // HasSelfIntersection returns the expected result for all possible cyclic
 // permutations of the loop vertices.
-void TestHasCrossing(const string& polygon_str, bool has_crossing) {
+void TestHasCrossing(absl::string_view polygon_str, bool has_crossing) {
   // Set S2Debug::DISABLE to allow invalid polygons.
   unique_ptr<S2Polygon> polygon =
       s2textformat::MakePolygonOrDie(polygon_str, S2Debug::DISABLE);

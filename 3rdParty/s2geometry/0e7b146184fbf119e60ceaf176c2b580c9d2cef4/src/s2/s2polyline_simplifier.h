@@ -57,6 +57,8 @@
 #ifndef S2_S2POLYLINE_SIMPLIFIER_H_
 #define S2_S2POLYLINE_SIMPLIFIER_H_
 
+#include <vector>
+
 #include "s2/_fp_contract_off.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s1interval.h"
@@ -80,30 +82,56 @@ class S2PolylineSimplifier {
   bool TargetDisc(const S2Point& point, S1ChordAngle radius);
 
   // Requires that the output edge must avoid the given disc.  "disc_on_left"
-  // specifies whether the disc must be to the left or right of the edge.
-  // (This feature allows the simplified edge to preserve the topology of the
-  // original polyline with respect to other nearby points.)
+  // specifies whether the disc must be to the left or right of the output
+  // edge AB.  (This feature allows the simplified edge to preserve the
+  // topology of the original polyline with respect to other nearby points.)
+  //
+  // More precisely, let AB be the output edge, P be the center of the disc,
+  // and r be its radius.  Then this method ensures that
+  //
+  //   (1) Distance(AB, P) > r, and
+  //   (2) if DotProd(AB, AP) > 0, then Sign(ABP) > 0 iff disc_on_left is true.
+  //
+  // The second condition says that "disc_on_left" has an effect if and only
+  // if P is not behind the source vertex A with respect to the direction AB.
   //
   // If your input is a polyline, you can compute "disc_on_left" as follows.
   // Let the polyline be ABCDE and assume that it already avoids a set of
-  // points X_i.  Suppose that you have aleady added ABC to the simplifer, and
+  // points X_i.  Suppose that you have aleady added ABC to the simplifier, and
   // now want to extend the edge chain to D.  First find the X_i that are near
   // the edge CD, then discard the ones such that AX_i <= AC or AX_i >= AD
   // (since these points have either already been considered or aren't
   // relevant yet).  Now X_i is to the left of the polyline if and only if
-  // s2pred::OrderedCCW(A, D, X, C) (in other words, if X_i is to the left of
-  // the angle wedge ACD).
-  bool AvoidDisc(const S2Point& point, S1ChordAngle radius,
-                 bool disc_on_left);
+  // s2pred::OrderedCCW(A, D, X_i, C) (in other words, if X_i is to the left of
+  // the angle wedge ACD).  Note that simply testing s2pred::Sign(C, D, X_i)
+  // or s2pred::Sign(A, D, X_i) does not handle all cases correctly.
+  bool AvoidDisc(const S2Point& point, S1ChordAngle radius, bool disc_on_left);
 
  private:
-  double GetAngle(const S2Point& p) const;
+  // Unfortunately, the discs to avoid cannot be processed until the direction
+  // of the output edge is constrained to lie within an S1Interval of at most
+  // 180 degrees.  This happens only when the first target disc is added that
+  // does not contain the source vertex.  Until that time we simply store all
+  // the discs as ranges of directions to avoid.
+  struct RangeToAvoid {
+    S1Interval interval;  // Range of directions to avoid.
+    bool on_left;         // Is this disc to the left of the output edge?
+  };
+
+  double GetDirection(const S2Point& p) const;
   double GetSemiwidth(const S2Point& p, S1ChordAngle r,
                       int round_direction) const;
+  void AvoidRange(const S1Interval& avoid_interval, bool disc_on_left);
 
-  S2Point src_;
-  S2Point x_dir_, y_dir_;
-  S1Interval window_;
+  S2Point src_;             // Output edge source vertex.
+  S2Point x_dir_, y_dir_;   // Orthonormal frame for mapping vectors to angles.
+  S1Interval window_;       // Allowable range of angles for the output edge.
+
+  // We store the discs to avoid individually until TargetDisc() is first
+  // called with a disc that does not contain the source vertex.  At that time
+  // all such discs are processed by using them to constrain "window_", and
+  // this vector is cleared.
+  std::vector<RangeToAvoid> ranges_to_avoid_;
 };
 
 #endif  // S2_S2POLYLINE_SIMPLIFIER_H_

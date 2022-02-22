@@ -21,8 +21,24 @@
 // precision or even exact arithmetic when the result is uncertain.  Such
 // predicates are useful in implementing robust algorithms.
 //
-// See also S2EdgeCrosser, which implements various exact
-// edge-crossing predicates more efficiently than can be done here.
+// s2edge_crossings.h contains the following exact predicates that test for
+// edge crossings.  (Note that usually you should use S2EdgeCrosser, which
+// implements them in a much more efficient way.)
+//
+//   int CrossingSign(const S2Point& a0, const S2Point& a1,
+//                    const S2Point& b0, const S2Point& b1);
+//
+//   bool EdgeOrVertexCrossing(const S2Point& a0, const S2Point& a1,
+//                             const S2Point& b0, const S2Point& b1);
+//
+// It also contains the following functions, which compute their result to
+// within a guaranteed tolerance and are consistent with the predicates
+// defined here (including using symbolic perturbations when necessary):
+//
+//   S2Point RobustCrossProd(const S2Point& a, const S2Point& b);
+//
+//   S2Point GetIntersection(const S2Point& a, const S2Point& b,
+//                           const S2Point& c, const S2Point& d);
 //
 // TODO(ericv): Add InCircleSign() (the Voronoi/Delaunay predicate).
 // (This is trickier than the usual textbook implementations because we want
@@ -33,23 +49,15 @@
 
 #include <cfloat>
 #include <iosfwd>
+#include <ostream>
 
+#include "absl/flags/flag.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2debug.h"
 #include "s2/s2pointutil.h"
 
 namespace s2pred {
-
-// S2EdgeUtil contains the following exact predicates that test for edge
-// crossings.  (Usually you will want to use S2EdgeCrosser, which
-// implements them much more efficiently.)
-//
-// int CrossingSign(const S2Point& a0, const S2Point& a1,
-//                  const S2Point& b0, const S2Point& b1);
-//
-// bool EdgeOrVertexCrossing(const S2Point& a0, const S2Point& a1,
-//                           const S2Point& b0, const S2Point& b1);
 
 // Returns +1 if the points A, B, C are counterclockwise, -1 if the points
 // are clockwise, and 0 if any two points are the same.  This function is
@@ -87,6 +95,8 @@ int Sign(const S2Point& a, const S2Point& b, const S2Point& c);
 //  (3) If OrderedCCW(a,b,c,o) && OrderedCCW(c,b,a,o), then a == b == c
 //  (4) If a == b or b == c, then OrderedCCW(a,b,c,o) is true
 //  (5) Otherwise if a == c, then OrderedCCW(a,b,c,o) is false
+//
+// REQUIRES: a != o && b != o && c != o
 bool OrderedCCW(const S2Point& a, const S2Point& b, const S2Point& c,
                 const S2Point& o);
 
@@ -121,6 +131,17 @@ int CompareDistance(const S2Point& x, const S2Point& y, S1ChordAngle r);
 int CompareEdgeDistance(const S2Point& x, const S2Point& a0, const S2Point& a1,
                         S1ChordAngle r);
 
+// Returns -1, 0, or +1 according to whether the distance from edge A edge B
+// is less than, equal to, or greater than "r" respectively.  Distances are
+// measured with respect the positions of all points as though they were
+// projected to lie exactly on the surface of the unit sphere.
+//
+// REQUIRES: A0 and A1 do not project to antipodal points (e.g., A0 == -A1).
+// REQUIRES: B0 and B1 do not project to antipodal points (e.g., B0 == -B1).
+int CompareEdgePairDistance(const S2Point& a0, const S2Point& a1,
+                            const S2Point& b0, const S2Point& b1,
+                            S1ChordAngle r);
+
 // Returns -1, 0, or +1 according to whether the normal of edge A has
 // negative, zero, or positive dot product with the normal of edge B.  This
 // essentially measures whether the edges A and B are closer to proceeding in
@@ -141,7 +162,7 @@ int CompareEdgeDirections(const S2Point& a0, const S2Point& a1,
                           const S2Point& b0, const S2Point& b1);
 
 // Returns Sign(X0, X1, Z) where Z is the circumcenter of triangle ABC.
-// The return value is -1 if Z is to the left of edge X, and +1 if Z is to the
+// The return value is +1 if Z is to the left of edge X, and -1 if Z is to the
 // right of edge X.  The return value is zero if A == B, B == C, or C == A
 // (exactly), and also if X0 and X1 project to identical points on the sphere
 // (e.g., X0 == X1).
@@ -200,7 +221,10 @@ Excluded GetVoronoiSiteExclusion(const S2Point& a, const S2Point& b,
 
 // A more efficient version of Sign that allows the precomputed
 // cross-product of A and B to be specified.  (Unlike the 3 argument
-// version this method is also inlined.)
+// version this method is also inlined.)  Note that "a_cross_b" must be
+// computed using CrossProd rather than S2::RobustCrossProd.
+//
+// REQUIRES: a_cross_b == a.CrossProd(b)
 inline int Sign(const S2Point& a, const S2Point& b, const S2Point& c,
                 const Vector3_d& a_cross_b);
 
@@ -211,6 +235,8 @@ inline int Sign(const S2Point& a, const S2Point& b, const S2Point& c,
 //
 // The purpose of this method is to allow additional cheap tests to be done,
 // where possible, in order to avoid calling ExpensiveSign unnecessarily.
+//
+// REQUIRES: a_cross_b == a.CrossProd(b)
 inline int TriageSign(const S2Point& a, const S2Point& b,
                       const S2Point& c, const Vector3_d& a_cross_b);
 
@@ -264,11 +290,11 @@ inline int TriageSign(const S2Point& a, const S2Point& b,
   S2_DCHECK(S2::IsUnitLength(a));
   S2_DCHECK(S2::IsUnitLength(b));
   S2_DCHECK(S2::IsUnitLength(c));
+  S2_DCHECK_EQ(a_cross_b, a.CrossProd(b));
   double det = a_cross_b.DotProd(c);
 
   // Double-check borderline cases in debug mode.
-  S2_DCHECK(!FLAGS_s2debug ||
-         std::fabs(det) <= kMaxDetError ||
+  S2_DCHECK(!absl::GetFlag(FLAGS_s2debug) || std::fabs(det) <= kMaxDetError ||
          std::fabs(det) >= 100 * kMaxDetError ||
          det * ExpensiveSign(a, b, c) > 0);
 

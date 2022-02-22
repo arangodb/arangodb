@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "absl/container/btree_set.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
@@ -27,7 +28,6 @@
 #include "s2/s2edge_distances.h"
 #include "s2/s2shape_index.h"
 #include "s2/s2text_format.h"
-#include "s2/util/gtl/btree_set.h"
 
 using s2textformat::MakeIndexOrDie;
 using s2textformat::MakePointOrDie;
@@ -124,7 +124,7 @@ TEST(ShapeIndexTarget, UpdateMinDistanceToCellWhenEqual) {
 
 vector<int> GetContainingShapes(S2MinDistanceTarget* target,
                                 const S2ShapeIndex& index, int max_shapes) {
-  gtl::btree_set<int32> shape_ids;
+  absl::btree_set<int32> shape_ids;
   (void) target->VisitContainingShapes(
       index, [&shape_ids, max_shapes](S2Shape* containing_shape,
                                       const S2Point& target_point) {

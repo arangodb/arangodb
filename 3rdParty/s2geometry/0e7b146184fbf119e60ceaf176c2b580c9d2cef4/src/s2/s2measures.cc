@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "s2/s2edge_crossings.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2predicates.h"
 

@@ -41,7 +41,8 @@ TEST(S2LaxLoopShape, EmptyLoop) {
 
 TEST(S2LaxLoopShape, NonEmptyLoop) {
   // Test vector<S2Point> constructor.
-  vector<S2Point> vertices = s2textformat::ParsePoints("0:0, 0:1, 1:1, 1:0");
+  vector<S2Point> vertices =
+      s2textformat::ParsePointsOrDie("0:0, 0:1, 1:1, 1:0");
   S2LaxLoopShape shape(vertices);
   EXPECT_EQ(vertices.size(), shape.num_vertices());
   EXPECT_EQ(vertices.size(), shape.num_edges());
@@ -61,7 +62,8 @@ TEST(S2LaxLoopShape, NonEmptyLoop) {
 }
 
 TEST(S2LaxClosedPolylineShape, NoInterior) {
-  vector<S2Point> vertices = s2textformat::ParsePoints("0:0, 0:1, 1:1, 1:0");
+  vector<S2Point> vertices =
+      s2textformat::ParsePointsOrDie("0:0, 0:1, 1:1, 1:0");
   S2LaxClosedPolylineShape shape(vertices);
   EXPECT_EQ(1, shape.dimension());
   EXPECT_FALSE(shape.is_empty());
@@ -82,7 +84,7 @@ TEST(S2VertexIdLaxLoopShape, EmptyLoop) {
 
 TEST(S2VertexIdLaxLoopShape, InvertedLoop) {
   vector<S2Point> vertex_array =
-      s2textformat::ParsePoints("0:0, 0:1, 1:1, 1:0");
+      s2textformat::ParsePointsOrDie("0:0, 0:1, 1:1, 1:0");
   vector<int32> vertex_ids { 0, 3, 2, 1 };  // Inverted.
   S2VertexIdLaxLoopShape shape(vertex_ids, &vertex_array[0]);
   EXPECT_EQ(4, shape.num_edges());

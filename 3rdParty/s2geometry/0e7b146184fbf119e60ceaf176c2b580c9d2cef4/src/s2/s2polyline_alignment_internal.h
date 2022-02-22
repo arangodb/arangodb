@@ -17,16 +17,15 @@
 #ifndef S2_S2POLYLINE_ALIGNMENT_INTERNAL_H_
 #define S2_S2POLYLINE_ALIGNMENT_INTERNAL_H_
 
-#include "s2/s2polyline_alignment.h"
-
 #include <limits>
 #include <vector>
 
 #include "s2/s2polyline.h"
+#include "s2/s2polyline_alignment.h"
 
 namespace s2polyline_alignment {
 
-static constexpr double DOUBLE_MAX = std::numeric_limits<double>::max();
+constexpr double DOUBLE_MAX = std::numeric_limits<double>::max();
 
 // Alias for a 2d Dynamic Programming table.
 typedef std::vector<std::vector<double>> CostTable;
@@ -137,7 +136,7 @@ class Window {
   Window Dilate(const int radius) const;
 
   // Return a string representation of this window.
-  string DebugString() const;
+  std::string DebugString() const;
 
  private:
   int rows_;

@@ -30,11 +30,6 @@ R2Rect R2Rect::FromCenterSize(const R2Point& center, const R2Point& size) {
                            center.y() + 0.5 * size.y()));
 }
 
-R2Rect R2Rect::FromPointPair(const R2Point& p1, const R2Point& p2) {
-  return R2Rect(R1Interval::FromPointPair(p1.x(), p2.x()),
-                R1Interval::FromPointPair(p1.y(), p2.y()));
-}
-
 bool R2Rect::Contains(const R2Rect& other) const {
   return x().Contains(other.x()) && y().Contains(other.y());
 }

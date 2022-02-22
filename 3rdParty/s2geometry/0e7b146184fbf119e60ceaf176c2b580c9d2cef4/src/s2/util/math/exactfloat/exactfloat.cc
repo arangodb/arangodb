@@ -20,20 +20,24 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 #include <openssl/bn.h>
 #include <openssl/crypto.h>  // for OPENSSL_free
 
+#include "absl/base/macros.h"
+#include "absl/container/fixed_array.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/container/fixed_array.h"
 
 using std::max;
 using std::min;
+using std::string;
 
 // Define storage for constants.
 const int ExactFloat::kMinExp;
@@ -93,6 +97,8 @@ inline static void BN_ext_set_uint64(BIGNUM* bn, uint64 v) {
 #endif
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+
 // Return the absolute value of a BIGNUM as a 64-bit unsigned integer.
 // Requires that BIGNUM fits into 64 bits.
 inline static uint64 BN_ext_get_uint64(const BIGNUM* bn) {
@@ -107,8 +113,6 @@ inline static uint64 BN_ext_get_uint64(const BIGNUM* bn) {
   return (static_cast<uint64>(bn->d[1]) << 32) + bn->d[0];
 #endif
 }
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
 
 // Count the number of low-order zero bits in the given BIGNUM (ignoring its
 // sign).  Returns 0 if the argument is zero.
@@ -129,6 +133,22 @@ static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
 }
 
 #else  // OPENSSL_VERSION_NUMBER >= 0x10100000L
+
+// Return the absolute value of a BIGNUM as a 64-bit unsigned integer.
+// Requires that BIGNUM fits into 64 bits.
+inline static uint64 BN_ext_get_uint64(const BIGNUM* bn) {
+  uint64 r;
+#ifdef IS_LITTLE_ENDIAN
+  S2_CHECK_EQ(BN_bn2lebinpad(bn, reinterpret_cast<unsigned char*>(&r),
+              sizeof(r)), sizeof(r));
+#elif IS_BIG_ENDIAN
+  S2_CHECK_EQ(BN_bn2binpad(bn, reinterpret_cast<unsigned char*>(&r),
+              sizeof(r)), sizeof(r));
+#else
+#error one of IS_LITTLE_ENDIAN or IS_BIG_ENDIAN should be defined!
+#endif
+  return r;
+}
 
 static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
   // In OpenSSL >= 1.1, BIGNUM is an opaque type, so d and top
@@ -252,8 +272,10 @@ double ExactFloat::ToDoubleHelper() const {
   S2_DCHECK_LE(BN_num_bits(bn_.get()), kDoubleMantissaBits);
   if (!is_normal()) {
     if (is_zero()) return copysign(0, sign_);
-    if (is_inf()) return copysign(INFINITY, sign_);
-    return copysign(NAN, sign_);
+    if (is_inf()) {
+      return std::copysign(std::numeric_limits<double>::infinity(), sign_);
+    }
+    return std::copysign(std::numeric_limits<double>::quiet_NaN(), sign_);
   }
   uint64 d_mantissa = BN_ext_get_uint64(bn_.get());
   // We rely on ldexp() to handle overflow and underflow.  (It will return a
@@ -358,22 +380,22 @@ int ExactFloat::NumSignificantDigitsForPrec(int prec) {
 // (e.g. 1/512 == 0.001953125 formatted as 0.002).
 static const int kMinSignificantDigits = 10;
 
-string ExactFloat::ToString() const {
+std::string ExactFloat::ToString() const {
   int max_digits = max(kMinSignificantDigits,
                        NumSignificantDigitsForPrec(prec()));
   return ToStringWithMaxDigits(max_digits);
 }
 
-string ExactFloat::ToStringWithMaxDigits(int max_digits) const {
+std::string ExactFloat::ToStringWithMaxDigits(int max_digits) const {
   S2_DCHECK_GT(max_digits, 0);
   if (!is_normal()) {
     if (is_nan()) return "nan";
     if (is_zero()) return (sign_ < 0) ? "-0" : "0";
     return (sign_ < 0) ? "-inf" : "inf";
   }
-  string digits;
+  std::string digits;
   int exp10 = GetDecimalDigits(max_digits, &digits);
-  string str;
+  std::string str;
   if (sign_ < 0) str.push_back('-');
 
   // We use the standard '%g' formatting rules.  If the exponent is less than
@@ -397,7 +419,7 @@ string ExactFloat::ToStringWithMaxDigits(int max_digits) const {
     // Use fixed format.  We split this into two cases depending on whether
     // the integer portion is non-zero or not.
     if (exp10 > 0) {
-      if (exp10 >= digits.size()) {
+      if (static_cast<size_t>(exp10) >= digits.size()) {
         str += digits;
         for (int i = exp10 - digits.size(); i > 0; --i) {
           str.push_back('0');
@@ -419,8 +441,8 @@ string ExactFloat::ToStringWithMaxDigits(int max_digits) const {
 }
 
 // Increment an unsigned integer represented as a string of ASCII digits.
-static void IncrementDecimalDigits(string* digits) {
-  string::iterator pos = digits->end();
+static void IncrementDecimalDigits(std::string* digits) {
+  std::string::iterator pos = digits->end();
   while (--pos >= digits->begin()) {
     if (*pos < '9') { ++*pos; return; }
     *pos = '0';
@@ -428,7 +450,7 @@ static void IncrementDecimalDigits(string* digits) {
   digits->insert(0, "1");
 }
 
-int ExactFloat::GetDecimalDigits(int max_digits, string* digits) const {
+int ExactFloat::GetDecimalDigits(int max_digits, std::string* digits) const {
   S2_DCHECK(is_normal());
   // Convert the value to the form (bn * (10 ** bn_exp10)) where "bn" is a
   // positive integer (BIGNUM).
@@ -479,7 +501,7 @@ int ExactFloat::GetDecimalDigits(int max_digits, string* digits) const {
 
   // Now strip any trailing zeros.
   S2_DCHECK_NE((*digits)[0], '0');
-  string::iterator pos = digits->end();
+  std::string::iterator pos = digits->end();
   while (pos[-1] == '0') --pos;
   if (pos < digits->end()) {
     bn_exp10 += digits->end() - pos;
@@ -492,7 +514,7 @@ int ExactFloat::GetDecimalDigits(int max_digits, string* digits) const {
   return bn_exp10 + digits->size();
 }
 
-string ExactFloat::ToUniqueString() const {
+std::string ExactFloat::ToUniqueString() const {
   char prec_buf[20];
   sprintf(prec_buf, "<%d>", prec());
   return ToString() + prec_buf;

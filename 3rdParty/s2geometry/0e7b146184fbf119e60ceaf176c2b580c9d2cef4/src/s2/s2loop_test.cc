@@ -27,10 +27,15 @@
 #include <utility>
 #include <vector>
 
-#include "s2/base/commandlineflags.h"
-#include "s2/base/logging.h"
 #include <gtest/gtest.h>
 
+#include "absl/container/fixed_array.h"
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include "s2/util/coding/coder.h"
 #include "s2/r1interval.h"
 #include "s2/s1angle.h"
@@ -49,17 +54,17 @@
 #include "s2/s2predicates.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
-#include "s2/third_party/absl/container/fixed_array.h"
-#include "s2/third_party/absl/memory/memory.h"
 #include "s2/util/math/matrix3x3.h"
 #include "s2/util/math/vector.h"
 
 using absl::make_unique;
+using ::s2textformat::MakeLoopOrDie;
 using std::fabs;
 using std::map;
 using std::max;
 using std::min;
 using std::set;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
@@ -100,8 +105,8 @@ class S2LoopTestBase : public testing::Test {
   unique_ptr<const S2Loop> snapped_loop_a_;
 
  private:
-  unique_ptr<const S2Loop> AddLoop(const string& str) {
-    return AddLoop(s2textformat::MakeLoop(str));
+  unique_ptr<const S2Loop> AddLoop(absl::string_view str) {
+    return AddLoop(MakeLoopOrDie(str));
   }
 
   unique_ptr<const S2Loop> AddLoop(std::unique_ptr<const S2Loop> loop) {
@@ -217,10 +222,10 @@ class S2LoopTestBase : public testing::Test {
       loop_i_(AddLoop("10:34, 0:34, -10:34, -10:36, 0:36, 10:36")) {
     // Like loop_a, but the vertices are at leaf cell centers.
     vector<S2Point> snapped_loop_a_vertices = {
-        S2CellId(s2textformat::MakePoint("0:178")).ToPoint(),
-        S2CellId(s2textformat::MakePoint("-1:180")).ToPoint(),
-        S2CellId(s2textformat::MakePoint("0:-179")).ToPoint(),
-        S2CellId(s2textformat::MakePoint("1:-180")).ToPoint()};
+        S2CellId(s2textformat::MakePointOrDie("0:178")).ToPoint(),
+        S2CellId(s2textformat::MakePointOrDie("-1:180")).ToPoint(),
+        S2CellId(s2textformat::MakePointOrDie("0:-179")).ToPoint(),
+        S2CellId(s2textformat::MakePointOrDie("1:-180")).ToPoint()};
     snapped_loop_a_ = AddLoop(make_unique<S2Loop>(snapped_loop_a_vertices));
   }
 
@@ -275,7 +280,7 @@ static void Rotate(unique_ptr<S2Loop>* ptr) {
   for (int i = 1; i <= loop->num_vertices(); ++i) {
     vertices.push_back(loop->vertex(i));
   }
-  ptr->reset(new S2Loop(vertices));
+  *ptr = make_unique<S2Loop>(vertices);
 }
 
 TEST_F(S2LoopTestBase, AreaConsistentWithCurvature) {
@@ -324,7 +329,7 @@ TEST_F(S2LoopTestBase, GetAreaConsistentWithSign) {
 }
 
 TEST_F(S2LoopTestBase, GetAreaAccuracy) {
-  // TODO(ericv): Test that GetArea() has an accuracy significantly better
+  // TODO(b/200091211): Test that GetArea() has an accuracy significantly better
   // than 1e-15 on loops whose area is small.
 }
 
@@ -445,7 +450,7 @@ TEST_F(S2LoopTestBase, GetCurvature) {
 // Checks that if a loop is normalized, it doesn't contain a
 // point outside of it, and vice versa.
 static void CheckNormalizeAndContains(const S2Loop& loop) {
-  S2Point p = s2textformat::MakePoint("40:40");
+  S2Point p = s2textformat::MakePointOrDie("40:40");
 
   unique_ptr<S2Loop> flip(loop.Clone());
   flip->Invert();
@@ -913,8 +918,8 @@ TEST(S2Loop, BoundsForLoopContainment) {
     // below B (i.e., ABC is CCW).
     S2Point b = (S2Testing::RandomPoint() + S2Point(0, 0, 1)).Normalize();
     S2Point v = b.CrossProd(S2Point(0, 0, 1)).Normalize();
-    S2Point a = S2::Interpolate(rnd->RandDouble(), -v, b);
-    S2Point c = S2::Interpolate(rnd->RandDouble(), b, v);
+    S2Point a = S2::Interpolate(-v, b, rnd->RandDouble());
+    S2Point c = S2::Interpolate(b, v, rnd->RandDouble());
     if (s2pred::Sign(a, b, c) < 0) {
       --iter; continue;
     }
@@ -935,59 +940,10 @@ TEST(S2Loop, BoundsForLoopContainment) {
   }
 }
 
-void DebugDumpCrossings(const S2Loop& loop) {
-  // This function is useful for debugging.
-
-  S2_LOG(INFO) << "Ortho(v1): " << S2::Ortho(loop.vertex(1));
-  printf("Contains(kOrigin): %d\n", loop.Contains(S2::Origin()));
-  for (int i = 1; i <= loop.num_vertices(); ++i) {
-    S2Point a = S2::Ortho(loop.vertex(i));
-    S2Point b = loop.vertex(i-1);
-    S2Point c = loop.vertex(i+1);
-    S2Point o = loop.vertex(i);
-    printf("Vertex %d: [%.17g, %.17g, %.17g], "
-           "%d%dR=%d, %d%d%d=%d, R%d%d=%d, inside: %d\n",
-           i, loop.vertex(i).x(), loop.vertex(i).y(), loop.vertex(i).z(),
-           i - 1, i, s2pred::Sign(b, o, a),
-           i + 1, i, i - 1, s2pred::Sign(c, o, b),
-           i, i + 1, s2pred::Sign(a, o, c),
-           s2pred::OrderedCCW(a, b, c, o));
-  }
-  for (int i = 0; i < loop.num_vertices() + 2; ++i) {
-    S2Point orig = S2::Origin();
-    S2Point dest;
-    if (i < loop.num_vertices()) {
-      dest = loop.vertex(i);
-      printf("Origin->%d crosses:", i);
-    } else {
-      dest = S2Point(0, 0, 1);
-      if (i == loop.num_vertices() + 1) orig = loop.vertex(1);
-      printf("Case %d:", i);
-    }
-    for (int j = 0; j < loop.num_vertices(); ++j) {
-      printf(" %d", S2::EdgeOrVertexCrossing(
-                 orig, dest, loop.vertex(j), loop.vertex(j+1)));
-    }
-    printf("\n");
-  }
-  for (int i = 0; i <= 2; i += 2) {
-    printf("Origin->v1 crossing v%d->v1: ", i);
-    S2Point a = S2::Ortho(loop.vertex(1));
-    S2Point b = loop.vertex(i);
-    S2Point c = S2::Origin();
-    S2Point o = loop.vertex(1);
-    printf("%d1R=%d, M1%d=%d, R1M=%d, crosses: %d\n",
-           i, s2pred::Sign(b, o, a),
-           i, s2pred::Sign(c, o, b),
-           s2pred::Sign(a, o, c),
-           S2::EdgeOrVertexCrossing(c, o, b, a));
-  }
-}
-
 static void TestNear(const char* a_str, const char* b_str,
                      S1Angle max_error, bool expected) {
-  unique_ptr<S2Loop> a(s2textformat::MakeLoop(a_str));
-  unique_ptr<S2Loop> b(s2textformat::MakeLoop(b_str));
+  unique_ptr<S2Loop> a(MakeLoopOrDie(a_str));
+  unique_ptr<S2Loop> b(MakeLoopOrDie(b_str));
   EXPECT_EQ(a->BoundaryNear(*b, max_error), expected);
   EXPECT_EQ(b->BoundaryNear(*a, max_error), expected);
 }
@@ -1042,7 +998,7 @@ static void TestEncodeDecode(const S2Loop& loop) {
 }
 
 TEST(S2Loop, EncodeDecode) {
-  unique_ptr<S2Loop> l(s2textformat::MakeLoop("30:20, 40:20, 39:43, 33:35"));
+  unique_ptr<S2Loop> l(MakeLoopOrDie("30:20, 40:20, 39:43, 33:35"));
   l->set_depth(3);
   TestEncodeDecode(*l);
 
@@ -1093,7 +1049,7 @@ TEST(S2Loop, EmptyFullLossyConversions) {
 }
 
 TEST(S2Loop, EncodeDecodeWithinScope) {
-  unique_ptr<S2Loop> l(s2textformat::MakeLoop("30:20, 40:20, 39:43, 33:35"));
+  unique_ptr<S2Loop> l(MakeLoopOrDie("30:20, 40:20, 39:43, 33:35"));
   l->set_depth(3);
   Encoder encoder;
   l->Encode(&encoder);
@@ -1121,7 +1077,7 @@ TEST(S2Loop, EncodeDecodeWithinScope) {
 
   // Initialize loop2 using Decode with a decoder on different data.
   // Check that the original memory is not deallocated or overwritten.
-  unique_ptr<S2Loop> l2(s2textformat::MakeLoop("30:40, 40:75, 39:43, 80:35"));
+  unique_ptr<S2Loop> l2(MakeLoopOrDie("30:40, 40:75, 39:43, 80:35"));
   l2->set_depth(2);
   Encoder encoder2;
   l2->Encode(&encoder2);
@@ -1182,10 +1138,10 @@ TEST(S2Loop, S2CellConstructorAndContains) {
   EXPECT_FALSE(loop_copy.GetRectBound().Contains(cell.GetRectBound()));
 }
 
-// Construct a loop using s2textformat::MakeLoop(str) and check that it
+// Construct a loop using MakeLoopOrDie(str) and check that it
 // produces a validation error that includes "snippet".
 static void CheckLoopIsInvalid(const string& str, const string& snippet) {
-  unique_ptr<S2Loop> loop(s2textformat::MakeLoop(str, S2Debug::DISABLE));
+  unique_ptr<S2Loop> loop(MakeLoopOrDie(str, S2Debug::DISABLE));
   S2Error error;
   EXPECT_TRUE(loop->FindValidationError(&error));
   EXPECT_NE(string::npos, error.text().find(snippet));
@@ -1264,7 +1220,7 @@ TEST_F(S2LoopTestBase, DistanceMethods) {
   // latitude are curved on the sphere, it is not straightforward to project
   // points onto any edge except along the equator.  (The equator is the only
   // line of latitude that is also a geodesic.)
-  unique_ptr<S2Loop> square(s2textformat::MakeLoop("-1:-1, -1:1, 1:1, 1:-1"));
+  unique_ptr<S2Loop> square(MakeLoopOrDie("-1:-1, -1:1, 1:1, 1:-1"));
   EXPECT_TRUE(square->IsNormalized());
 
   // A vertex.
@@ -1327,7 +1283,7 @@ TEST_F(S2LoopTestBase, MakeRegularLoop) {
 }
 
 TEST(S2LoopShape, Basic) {
-  unique_ptr<S2Loop> loop = s2textformat::MakeLoop("0:0, 0:1, 1:0");
+  unique_ptr<S2Loop> loop = MakeLoopOrDie("0:0, 0:1, 1:0");
   S2Loop::Shape shape(loop.get());
   EXPECT_EQ(loop.get(), shape.loop());
   EXPECT_EQ(3, shape.num_edges());

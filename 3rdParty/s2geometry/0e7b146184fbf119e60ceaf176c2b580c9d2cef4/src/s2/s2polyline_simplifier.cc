@@ -25,6 +25,7 @@
 void S2PolylineSimplifier::Init(const S2Point& src) {
   src_ = src;
   window_ = S1Interval::Full();
+  ranges_to_avoid_.clear();
 
   // Precompute basis vectors for the tangent space at "src".  This is similar
   // to GetFrame() except that we don't normalize the vectors.  As it turns
@@ -60,7 +61,14 @@ bool S2PolylineSimplifier::Extend(const S2Point& dst) const {
   if (S1ChordAngle(src_, dst) > S1ChordAngle::Right()) return false;
 
   // Otherwise check whether this vertex is in the acceptable angle range.
-  return window_.Contains(GetAngle(dst));
+  double dir = GetDirection(dst);
+  if (!window_.Contains(dir)) return false;
+
+  // Also check any angles ranges to avoid that have not been processed yet.
+  for (const auto& range : ranges_to_avoid_) {
+    if (range.interval.Contains(dir)) return false;
+  }
+  return true;
 }
 
 bool S2PolylineSimplifier::TargetDisc(const S2Point& p, S1ChordAngle r) {
@@ -77,9 +85,16 @@ bool S2PolylineSimplifier::TargetDisc(const S2Point& p, S1ChordAngle r) {
   }
   // Otherwise compute the angle interval corresponding to the target disc and
   // intersect it with the current window.
-  double center = GetAngle(p);
+  double center = GetDirection(p);
   S1Interval target = S1Interval::FromPoint(center).Expanded(semiwidth);
   window_ = window_.Intersection(target);
+
+  // If there are any angle ranges to avoid, they can be processed now.
+  for (const auto& range : ranges_to_avoid_) {
+    AvoidRange(range.interval, range.on_left);
+  }
+  ranges_to_avoid_.clear();
+
   return !window_.is_empty();
 }
 
@@ -89,22 +104,63 @@ bool S2PolylineSimplifier::AvoidDisc(const S2Point& p, S1ChordAngle r,
   // guarantees that the final output edge will avoid the given disc.
   double semiwidth = GetSemiwidth(p, r, 1 /*round up*/);
   if (semiwidth >= M_PI) {
-    // The avoidance disc contains "src", so it is impossible to avoid.
+    // The disc to avoid contains "src", so it can't be avoided.
     window_ = S1Interval::Empty();
     return false;
   }
-  double center = GetAngle(p);
-  double opposite = (center > 0) ? center - M_PI : center + M_PI;
-  S1Interval target = (disc_on_left ? S1Interval(opposite, center) :
-                       S1Interval(center, opposite));
-  window_ = window_.Intersection(target.Expanded(-semiwidth));
+  // Compute the disallowed range of angles: the angle subtended by the disc
+  // on one side, and 90 degrees on the other (to satisfy "disc_on_left").
+  double center = GetDirection(p);
+  double dleft = disc_on_left ? M_PI_2 : semiwidth;
+  double dright = disc_on_left ? semiwidth : M_PI_2;
+  S1Interval avoid_interval(remainder(center - dright, 2 * M_PI),
+                            remainder(center + dleft, 2 * M_PI));
+
+  if (window_.is_full()) {
+    // Discs to avoid can't be processed until window_ is reduced to at most
+    // 180 degrees by a call to TargetDisc().  Save it for later.
+    ranges_to_avoid_.push_back(RangeToAvoid{avoid_interval, disc_on_left});
+    return true;
+  }
+  AvoidRange(avoid_interval, disc_on_left);
   return !window_.is_empty();
 }
 
-double S2PolylineSimplifier::GetAngle(const S2Point& p) const {
+void S2PolylineSimplifier::AvoidRange(const S1Interval& avoid_interval,
+                                      bool disc_on_left) {
+  // If "avoid_interval" is a proper subset of "window_", then in theory the
+  // result should be two intervals.  One interval points towards the given
+  // disc and pass on the correct side of it, while the other interval points
+  // away from the disc.  However the latter interval never contains an
+  // acceptable output edge direction (as long as this class is being used
+  // correctly) and can be safely ignored.  This is true because (1) "window_"
+  // is not full, which means that it contains at least one vertex of the input
+  // polyline and is at most 180 degrees in length, and (2) "disc_on_left" is
+  // computed with respect to the next edge of the input polyline, which means
+  // that the next input vertex is either inside "avoid_interval" or somewhere
+  // in the 180 degrees to its right/left according to "disc_on_left", which
+  // means that it cannot be contained by the subinterval that we ignore.
+  S2_DCHECK(!window_.is_full());
+  if (window_.Contains(avoid_interval)) {
+    if (disc_on_left) {
+      window_ = S1Interval(window_.lo(), avoid_interval.lo());
+    } else {
+      window_ = S1Interval(avoid_interval.hi(), window_.hi());
+    }
+  } else {
+    window_ = window_.Intersection(avoid_interval.Complement());
+  }
+}
+
+double S2PolylineSimplifier::GetDirection(const S2Point& p) const {
   return atan2(p.DotProd(y_dir_), p.DotProd(x_dir_));
 }
 
+// Computes half the angle in radians subtended from the source vertex by a
+// disc of radius "r" centered at "p", rounding the result conservatively up
+// or down according to whether round_direction is +1 or -1.  (So for example,
+// if round_direction == +1 then the return value is an upper bound on the
+// true result.)
 double S2PolylineSimplifier::GetSemiwidth(const S2Point& p, S1ChordAngle r,
                                           int round_direction) const {
   double constexpr DBL_ERR = 0.5 * DBL_EPSILON;
@@ -140,11 +196,11 @@ double S2PolylineSimplifier::GetSemiwidth(const S2Point& p, S1ChordAngle r,
   // We compute bounds on the errors from all sources:
   //
   //   - The call to GetSemiwidth (this call).
-  //   - The call to GetAngle that computes the center of the interval.
-  //   - The call to GetAngle in Extend that tests whether a given point
+  //   - The call to GetDirection that computes the center of the interval.
+  //   - The call to GetDirection in Extend that tests whether a given point
   //     is an acceptable destination vertex.
   //
-  // Summary of the errors in GetAngle:
+  // Summary of the errors in GetDirection:
   //
   // y_dir_ has no error.
   //

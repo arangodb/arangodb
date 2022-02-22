@@ -26,6 +26,13 @@ TEST(S2Error, Basic) {
   // Prepend additional context to the message.
   error.Init(error.code(),
              "Loop %d: %s", 5, error.text().c_str());
-  EXPECT_EQ(S2Error::DUPLICATE_VERTICES, error.code());
-  EXPECT_EQ("Loop 5: Vertex 23 is the same as vertex 47", error.text());
+  EXPECT_EQ(error.code(), S2Error::DUPLICATE_VERTICES);
+  EXPECT_EQ(error.text(), "Loop 5: Vertex 23 is the same as vertex 47");
+}
+
+TEST(S2Error, Constructor) {
+  S2Error error(S2Error::RESOURCE_EXHAUSTED,
+                "Memory limit exceeded (%d vs %d)", 100, 50);
+  EXPECT_EQ(error.code(), S2Error::RESOURCE_EXHAUSTED);
+  EXPECT_EQ(error.text(), "Memory limit exceeded (100 vs 50)");
 }

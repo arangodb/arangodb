@@ -21,13 +21,15 @@
 #include <limits>
 #include <memory>
 #include <numeric>
+#include <utility>
 #include <vector>
+
 #include "s2/base/logging.h"
+#include "absl/container/btree_map.h"
 #include "s2/id_set_lexicon.h"
 #include "s2/s2builder.h"
 #include "s2/s2error.h"
 #include "s2/s2predicates.h"
-#include "s2/util/gtl/btree_map.h"
 
 using std::make_pair;
 using std::max;
@@ -56,6 +58,7 @@ Graph::Graph(const GraphOptions& options,
       label_set_lexicon_(label_set_lexicon),
       is_full_polygon_predicate_(std::move(is_full_polygon_predicate)) {
   S2_DCHECK(std::is_sorted(edges->begin(), edges->end()));
+  S2_DCHECK_EQ(edges->size(), input_edge_id_set_ids->size());
 }
 
 vector<Graph::EdgeId> Graph::GetInEdgeIds() const {
@@ -99,40 +102,42 @@ void Graph::MakeSiblingMap(vector<Graph::EdgeId>* in_edge_ids) const {
   }
 }
 
-Graph::VertexOutMap::VertexOutMap(const Graph& g)
-    : edges_(g.edges()), edge_begins_(g.num_vertices() + 1) {
+void Graph::VertexOutMap::Init(const Graph& g) {
+  edges_ = &g.edges();
+  edge_begins_.reserve(g.num_vertices() + 1);
   EdgeId e = 0;
   for (VertexId v = 0; v <= g.num_vertices(); ++v) {
     while (e < g.num_edges() && g.edge(e).first < v) ++e;
-    edge_begins_[v] = e;
+    edge_begins_.push_back(e);
   }
 }
 
-Graph::VertexInMap::VertexInMap(const Graph& g)
-    : in_edge_ids_(g.GetInEdgeIds()),
-      in_edge_begins_(g.num_vertices() + 1) {
+void Graph::VertexInMap::Init(const Graph& g) {
+  in_edge_ids_ = g.GetInEdgeIds();
+  in_edge_begins_.reserve(g.num_vertices() + 1);
   EdgeId e = 0;
   for (VertexId v = 0; v <= g.num_vertices(); ++v) {
     while (e < g.num_edges() && g.edge(in_edge_ids_[e]).second < v) ++e;
-    in_edge_begins_[v] = e;
+    in_edge_begins_.push_back(e);
   }
 }
 
-Graph::LabelFetcher::LabelFetcher(const Graph& g, S2Builder::EdgeType edge_type)
-    : g_(g), edge_type_(edge_type) {
+void Graph::LabelFetcher::Init(const Graph& g, S2Builder::EdgeType edge_type) {
+  g_ = &g;
+  edge_type_ = edge_type;
   if (edge_type == EdgeType::UNDIRECTED) sibling_map_ = g.GetSiblingMap();
 }
 
 void Graph::LabelFetcher::Fetch(EdgeId e, vector<S2Builder::Label>* labels) {
   labels->clear();
-  for (InputEdgeId input_edge_id : g_.input_edge_ids(e)) {
-    for (Label label : g_.labels(input_edge_id)) {
+  for (InputEdgeId input_edge_id : g_->input_edge_ids(e)) {
+    for (Label label : g_->labels(input_edge_id)) {
       labels->push_back(label);
     }
   }
   if (edge_type_ == EdgeType::UNDIRECTED) {
-    for (InputEdgeId input_edge_id : g_.input_edge_ids(sibling_map_[e])) {
-      for (Label label : g_.labels(input_edge_id)) {
+    for (InputEdgeId input_edge_id : g_->input_edge_ids(sibling_map_[e])) {
+      for (Label label : g_->labels(input_edge_id)) {
         labels->push_back(label);
       }
     }
@@ -343,9 +348,10 @@ void Graph::CanonicalizeVectorOrder(const vector<InputEdgeId>& min_input_ids,
                                     vector<vector<EdgeId>>* chains) {
   std::sort(chains->begin(), chains->end(),
     [&min_input_ids](const vector<EdgeId>& a, const vector<EdgeId>& b) {
-      return min_input_ids[a[0]] < min_input_ids[b[0]];
-    });
-}
+      // Comparison function ensures sort is stable.
+      return make_pair(min_input_ids[a[0]], a[0]) <
+             make_pair(min_input_ids[b[0]], b[0]);
+    });}
 
 bool Graph::GetDirectedLoops(LoopType loop_type, vector<EdgeLoop>* loops,
                              S2Error* error) const {
@@ -411,10 +417,9 @@ bool Graph::GetDirectedComponents(
          options_.sibling_pairs() == SiblingPairs::CREATE);
   S2_DCHECK(options_.edge_type() == EdgeType::DIRECTED);  // Implied by above.
 
-  vector<EdgeId> sibling_map = GetInEdgeIds();
+  vector<EdgeId> sibling_map = GetSiblingMap();
   vector<EdgeId> left_turn_map;
   if (!GetLeftTurnMap(sibling_map, &left_turn_map, error)) return false;
-  MakeSiblingMap(&sibling_map);
   vector<InputEdgeId> min_input_ids = GetMinInputEdgeIds();
   vector<EdgeId> frontier;  // Unexplored sibling edges.
 
@@ -424,24 +429,24 @@ bool Graph::GetDirectedComponents(
   if (degenerate_boundaries == DegenerateBoundaries::DISCARD) {
     path_index.assign(num_edges(), -1);
   }
-  for (EdgeId min_start = 0; min_start < num_edges(); ++min_start) {
-    if (left_turn_map[min_start] < 0) continue;  // Already used.
+  for (EdgeId start = 0; start < num_edges(); ++start) {
+    if (left_turn_map[start] < 0) continue;  // Already used.
 
     // Build a connected component by keeping a stack of unexplored siblings
     // of the edges used so far.
     DirectedComponent component;
-    frontier.push_back(min_start);
+    frontier.push_back(start);
     while (!frontier.empty()) {
-      EdgeId start = frontier.back();
+      EdgeId e = frontier.back();
       frontier.pop_back();
-      if (left_turn_map[start] < 0) continue;  // Already used.
+      if (left_turn_map[e] < 0) continue;  // Already used.
 
-      // Build a path by making left turns at each vertex until we return to
-      // "start".  Whenever we encounter an edge that is a sibling of an edge
+      // Build a path by making left turns at each vertex until we complete a
+      // loop.  Whenever we encounter an edge that is a sibling of an edge
       // that is already on the path, we "peel off" a loop consisting of any
       // edges that were between these two edges.
       vector<EdgeId> path;
-      for (EdgeId e = start, next; left_turn_map[e] >= 0; e = next) {
+      for (EdgeId next; left_turn_map[e] >= 0; e = next) {
         path.push_back(e);
         next = left_turn_map[e];
         left_turn_map[e] = -1;
@@ -613,7 +618,7 @@ class Graph::PolylineBuilder {
   int edges_left_;
   vector<bool> used_;
   // A map of (outdegree(v) - indegree(v)) considering used edges only.
-  gtl::btree_map<VertexId, int> excess_used_;
+  absl::btree_map<VertexId, int> excess_used_;
 };
 
 vector<Graph::EdgePolyline> Graph::GetPolylines(
@@ -863,14 +868,39 @@ class Graph::EdgeProcessor {
 void Graph::ProcessEdges(
     GraphOptions* options, std::vector<Edge>* edges,
     std::vector<InputEdgeIdSetId>* input_ids, IdSetLexicon* id_set_lexicon,
-    S2Error* error) {
-  EdgeProcessor processor(*options, edges, input_ids, id_set_lexicon);
-  processor.Run(error);
+    S2Error* error, S2MemoryTracker::Client* tracker) {
+  // Graph::EdgeProcessor uses 8 bytes per input edge (out_edges_ and
+  // in_edges_) plus 12 bytes per output edge (new_edges_, new_input_ids_).
+  // For simplicity we assume that num_input_edges == num_output_edges, since
+  // Graph:EdgeProcessor does not increase the number of edges except possibly
+  // in the case of SiblingPairs::CREATE (which we ignore).
+  //
+  //  vector<EdgeId> out_edges_;                 // Graph::EdgeProcessor
+  //  vector<EdgeId> in_edges_;                  // Graph::EdgeProcessor
+  //  vector<Edge> new_edges_;                   // Graph::EdgeProcessor
+  //  vector<InputEdgeIdSetId> new_input_ids_;   // Graph::EdgeProcessor
+  //
+  // EdgeProcessor discards the "edges" and "input_ids" vectors and replaces
+  // them with new vectors that could be larger or smaller.  To handle this
+  // correctly, we untally these vectors now and retally them at the end.
+  const int64 kFinalPerEdge = sizeof(Edge) + sizeof(InputEdgeIdSetId);
+  const int64 kTempPerEdge = kFinalPerEdge + 2 * sizeof(EdgeId);
+  if (tracker) {
+    tracker->TallyTemp(edges->size() * kTempPerEdge);
+    tracker->Tally(-edges->capacity() * kFinalPerEdge);
+  }
+  if (!tracker || tracker->ok()) {
+    EdgeProcessor processor(*options, edges, input_ids, id_set_lexicon);
+    processor.Run(error);
+  }
   // Certain values of sibling_pairs() discard half of the edges and change
   // the edge_type() to DIRECTED (see the description of GraphOptions).
   if (options->sibling_pairs() == SiblingPairs::REQUIRE ||
       options->sibling_pairs() == SiblingPairs::CREATE) {
     options->set_edge_type(EdgeType::DIRECTED);
+  }
+  if (tracker && !tracker->Tally(edges->capacity() * kFinalPerEdge)) {
+    *error = tracker->error();
   }
 }
 
@@ -956,6 +986,7 @@ void Graph::EdgeProcessor::Run(S2Error* error) {
     int n_out = out - out_begin;
     int n_in = in - in_begin;
     if (edge.first == edge.second) {
+      // This is a degenerate edge.
       S2_DCHECK_EQ(n_out, n_in);
       if (options_.degenerate_edges() == DegenerateEdges::DISCARD) {
         continue;
@@ -969,15 +1000,18 @@ void Graph::EdgeProcessor::Run(S2Error* error) {
            (in < num_edges && edges_[in_edges_[in]].second == edge.first))) {
         continue;  // There were non-degenerate incident edges, so discard.
       }
+      // DegenerateEdges::DISCARD_EXCESS also merges degenerate edges.
+      bool merge =
+          (options_.duplicate_edges() == DuplicateEdges::MERGE ||
+           options_.degenerate_edges() == DegenerateEdges::DISCARD_EXCESS);
       if (options_.edge_type() == EdgeType::UNDIRECTED &&
           (options_.sibling_pairs() == SiblingPairs::REQUIRE ||
            options_.sibling_pairs() == SiblingPairs::CREATE)) {
         // When we have undirected edges and are guaranteed to have siblings,
         // we cut the number of edges in half (see s2builder.h).
         S2_DCHECK_EQ(0, n_out & 1);  // Number of edges is always even.
-        AddEdges(options_.duplicate_edges() == DuplicateEdges::MERGE ?
-                 1 : (n_out / 2), edge, MergeInputIds(out_begin, out));
-      } else if (options_.duplicate_edges() == DuplicateEdges::MERGE) {
+        AddEdges(merge ? 1 : (n_out / 2), edge, MergeInputIds(out_begin, out));
+      } else if (merge) {
         AddEdges(options_.edge_type() == EdgeType::UNDIRECTED ? 2 : 1,
                  edge, MergeInputIds(out_begin, out));
       } else if (options_.sibling_pairs() == SiblingPairs::DISCARD ||
@@ -1031,21 +1065,25 @@ void Graph::EdgeProcessor::Run(S2Error* error) {
       if (options_.duplicate_edges() == DuplicateEdges::MERGE) {
         AddEdge(edge, MergeInputIds(out_begin, out));
       } else if (options_.edge_type() == EdgeType::UNDIRECTED) {
+        // Convert graph to use directed edges instead (see documentation of
+        // REQUIRE/CREATE for undirected edges).
         AddEdges((n_out + 1) / 2, edge, MergeInputIds(out_begin, out));
       } else {
         CopyEdges(out_begin, out);
         if (n_in > n_out) {
-          AddEdges(n_in - n_out, edge, MergeInputIds(out, out));
+          // Automatically created edges have no input edge ids or labels.
+          AddEdges(n_in - n_out, edge, IdSetLexicon::EmptySetId());
         }
       }
     }
   }
   edges_.swap(new_edges_);
-  edges_.shrink_to_fit();
   input_ids_.swap(new_input_ids_);
+  edges_.shrink_to_fit();
   input_ids_.shrink_to_fit();
 }
 
+// LINT.IfChange
 vector<S2Point> Graph::FilterVertices(const vector<S2Point>& vertices,
                                       std::vector<Edge>* edges,
                                       vector<VertexId>* tmp) {
@@ -1075,4 +1113,36 @@ vector<S2Point> Graph::FilterVertices(const vector<S2Point>& vertices,
     e.second = vmap[e.second];
   }
   return new_vertices;
+}
+// LINT.ThenChange(s2builder.cc:TallyFilterVertices)
+
+Graph Graph::MakeSubgraph(
+    GraphOptions new_options, vector<Edge>* new_edges,
+    vector<InputEdgeIdSetId>* new_input_edge_id_set_ids,
+    IdSetLexicon* new_input_edge_id_set_lexicon,
+    IsFullPolygonPredicate is_full_polygon_predicate,
+    S2Error* error, S2MemoryTracker::Client* tracker) const {
+  if (options().edge_type() == EdgeType::DIRECTED &&
+      new_options.edge_type() == EdgeType::UNDIRECTED) {
+    // Create a reversed edge for every edge.
+    int n = new_edges->size();
+    if (tracker == nullptr) {
+      new_edges->reserve(2 * n);
+      new_input_edge_id_set_ids->reserve(2 * n);
+    } else if (!tracker->AddSpaceExact(new_edges, n) ||
+               !tracker->AddSpaceExact(new_input_edge_id_set_ids, n)) {
+      *error = tracker->error();
+      return Graph();
+    }
+    for (int i = 0; i < n; ++i) {
+      new_edges->push_back(Graph::reverse((*new_edges)[i]));
+      new_input_edge_id_set_ids->push_back(IdSetLexicon::EmptySetId());
+    }
+  }
+  Graph::ProcessEdges(&new_options, new_edges, new_input_edge_id_set_ids,
+                      new_input_edge_id_set_lexicon, error, tracker);
+  if (tracker && !tracker->ok()) return Graph();  // Graph would be invalid.
+  return Graph(new_options, &vertices(), new_edges, new_input_edge_id_set_ids,
+               new_input_edge_id_set_lexicon, &label_set_ids(),
+               &label_set_lexicon(), std::move(is_full_polygon_predicate));
 }

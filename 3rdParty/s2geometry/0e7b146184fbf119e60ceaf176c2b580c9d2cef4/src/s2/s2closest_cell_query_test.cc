@@ -19,11 +19,15 @@
 
 #include <memory>
 #include <set>
+#include <utility>
 #include <vector>
 
-#include "s2/base/stringprintf.h"
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
+
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/str_format.h"
+
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
@@ -40,7 +44,6 @@ using absl::make_unique;
 using s2testing::FractalLoopShapeIndexFactory;
 using s2textformat::MakeCellIdOrDie;
 using s2textformat::MakePointOrDie;
-using std::min;
 using std::pair;
 using std::unique_ptr;
 using std::vector;
@@ -124,6 +127,21 @@ TEST(S2ClosestCellQuery, TargetPointInsideIndexedCell) {
   EXPECT_EQ(1, result.label());
 }
 
+TEST(S2ClosestCellQuery, EmptyTargetOptimized) {
+  // Ensure that the optimized algorithm handles empty targets when a distance
+  // limit is specified.
+  S2CellIndex index;
+  for (int i = 0; i < 1000; ++i) {
+    index.Add(S2Testing::GetRandomCellId(), i);
+  }
+  index.Build();
+  S2ClosestCellQuery query(&index);
+  query.mutable_options()->set_max_distance(S1Angle::Radians(1e-5));
+  MutableS2ShapeIndex target_index;
+  S2ClosestCellQuery::ShapeIndexTarget target(&target_index);
+  EXPECT_EQ(0, query.FindClosestCells(&target).size());
+}
+
 TEST(S2ClosestCellQuery, EmptyCellUnionTarget) {
   // Verifies that distances are measured correctly to empty S2CellUnion
   // targets.
@@ -204,18 +222,6 @@ static const S1Angle kTestCapRadius = S2Testing::KmToAngle(10);
 
 using TestingResult = pair<S2MinDistance, LabelledCell>;
 
-// Converts to the format required by CheckDistanceResults() in s2testing.h.
-vector<TestingResult> ConvertResults(
-    const vector<S2ClosestCellQuery::Result>& results) {
-  vector<TestingResult> testing_results;
-  for (const auto& result : results) {
-    testing_results.push_back(
-        TestingResult(result.distance(),
-                      LabelledCell(result.cell_id(), result.label())));
-  }
-  return testing_results;
-}
-
 // Use "query" to find the closest cell(s) to the given target, and extract
 // the query results into the given vector.  Also verify that the results
 // satisfy the search criteria.
@@ -284,7 +290,7 @@ static void TestWithIndexFactory(const CellIndexFactory& factory,
   vector<S2Cap> index_caps;
   vector<unique_ptr<S2CellIndex>> indexes;
   for (int i = 0; i < num_indexes; ++i) {
-    S2Testing::rnd.Reset(FLAGS_s2_random_seed + i);
+    S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed) + i);
     index_caps.push_back(S2Cap(S2Testing::RandomPoint(), kTestCapRadius));
     auto index = make_unique<S2CellIndex>();
     factory.AddCells(index_caps.back(), num_cells, index.get());
@@ -292,7 +298,7 @@ static void TestWithIndexFactory(const CellIndexFactory& factory,
     indexes.push_back(std::move(index));
   }
   for (int i = 0; i < num_queries; ++i) {
-    S2Testing::rnd.Reset(FLAGS_s2_random_seed + i);
+    S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed) + i);
     int i_index = S2Testing::rnd.Uniform(num_indexes);
     const S2Cap& index_cap = index_caps[i_index];
 
@@ -383,15 +389,15 @@ TEST(S2ClosestCellQuery, CapsCells) {
 }
 
 TEST(S2ClosestCellQuery, ConservativeCellDistanceIsUsed) {
-  // Don't use google::FlagSaver, so it works in opensource without gflags.
-  const int saved_seed = FLAGS_s2_random_seed;
+  // Don't use absl::FlagSaver, so it works in opensource without gflags.
+  const int saved_seed = absl::GetFlag(FLAGS_s2_random_seed);
   // These specific test cases happen to fail if max_error() is not properly
   // taken into account when measuring distances to S2ShapeIndex cells.
   for (int seed : {32, 109, 253, 342, 948, 1535, 1884, 1887, 2133}) {
-    FLAGS_s2_random_seed = seed;
+    absl::SetFlag(&FLAGS_s2_random_seed, seed);
     TestWithIndexFactory(PointCloudCellIndexFactory(), 5, 100, 10);
   }
-  FLAGS_s2_random_seed = saved_seed;
+  absl::SetFlag(&FLAGS_s2_random_seed, saved_seed);
 }
 
 }  // namespace

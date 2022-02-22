@@ -46,7 +46,7 @@
 #ifndef S2_S2POINT_COMPRESSION_H_
 #define S2_S2POINT_COMPRESSION_H_
 
-#include "s2/third_party/absl/types/span.h"
+#include "absl/types/span.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 

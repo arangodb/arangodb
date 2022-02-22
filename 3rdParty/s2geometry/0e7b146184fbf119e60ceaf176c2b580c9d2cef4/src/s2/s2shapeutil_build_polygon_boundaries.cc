@@ -17,12 +17,12 @@
 
 #include "s2/s2shapeutil_build_polygon_boundaries.h"
 
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/container/btree_map.h"
+#include "absl/memory/memory.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2contains_point_query.h"
 #include "s2/s2shape_index.h"
 #include "s2/s2shapeutil_contains_brute_force.h"
-#include "s2/util/gtl/btree_map.h"
 
 using absl::WrapUnique;
 using std::vector;
@@ -84,7 +84,7 @@ void BuildPolygonBoundaries(const vector<vector<S2Shape*>>& components,
   }
   // Assign each outer loop to the component whose depth is one less.
   // Components at depth 0 become a single face.
-  gtl::btree_map<S2Shape*, vector<S2Shape*>> children;
+  absl::btree_map<S2Shape*, vector<S2Shape*>> children;
   for (int i = 0; i < outer_loops.size(); ++i) {
     S2Shape* ancestor = nullptr;
     int depth = ancestors[i].size();

@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 
 #else  // !defined(S2_USE_GLOG)
 
-#include "s2/third_party/absl/base/log_severity.h"
+#include "absl/base/log_severity.h"
 
 // Stay compatible with glog.
 namespace google {

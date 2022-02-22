@@ -18,6 +18,7 @@
 #include "s2/s2projections.h"
 
 #include <limits>
+
 #include <gtest/gtest.h>
 #include "s2/s2latlng.h"
 #include "s2/s2pointutil.h"

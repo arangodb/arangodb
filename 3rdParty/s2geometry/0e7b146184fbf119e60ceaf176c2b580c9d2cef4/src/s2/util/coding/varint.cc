@@ -16,6 +16,7 @@
 
 #include "s2/util/coding/varint.h"
 
+#include <cstdint>
 #include <string>
 
 #include "s2/base/integral_types.h"
@@ -58,68 +59,106 @@ const char* Varint::Parse32Fallback(const char* ptr, uint32* OUTPUT) {
   return Parse32FallbackInline(ptr, OUTPUT);
 }
 
+#if defined(__x86_64__)
+
+std::pair<const char*, uint64> Varint::Parse64FallbackPair(const char* p,
+                                                             int64 res1) {
+  // The algorithm relies on sign extension to set all high bits when the varint
+  // continues. This way it can use "and" to aggregate in to the result.
+  auto ptr = reinterpret_cast<const int8*>(p);
+  // However this requires the low bits after shifting to be 1's as well. On
+  // x86_64 a shld from a single register filled with enough 1's in the high
+  // bits can accomplish all this in one instruction. It so happens that res1
+  // has 57 high bits of ones, which is enough for the largest shift done.
+  S2_DCHECK_EQ(res1 >> 7, -1);
+  uint64 ones = res1;  // save the useful high bit 1's in res1
+  uint64 byte;
+  int64 res2, res3;
+#define SHLD(n) byte = ((byte << (n * 7)) | (ones >> (64 - (n * 7))))
+  int sign_bit;
+  // Micro benchmarks show a substantial improvement to capture the sign
+  // of the result in the case of just assigning the result of the shift
+  // (ie first 2 steps).
+#ifdef __GCC_ASM_FLAG_OUTPUTS__
+#define SHLD_SIGN(n)                  \
+  asm("shldq %3, %2, %1"              \
+      : "=@ccs"(sign_bit), "+r"(byte) \
+      : "r"(ones), "i"(n * 7))
+#else
+#define SHLD_SIGN(n)                         \
+  do {                                       \
+    SHLD(n);                                 \
+    sign_bit = static_cast<int64>(byte) < 0; \
+  } while (0)
+#endif
+  byte = ptr[1];
+  SHLD_SIGN(1);
+  res2 = byte;
+  if (!sign_bit) goto done2;
+  byte = ptr[2];
+  SHLD_SIGN(2);
+  res3 = byte;
+  if (!sign_bit) goto done3;
+  byte = ptr[3];
+  SHLD(3);
+  res1 &= byte;
+  if (res1 >= 0) goto done4;
+  byte = ptr[4];
+  SHLD(4);
+  res2 &= byte;
+  if (res2 >= 0) goto done5;
+  byte = ptr[5];
+  SHLD(5);
+  res3 &= byte;
+  if (res3 >= 0) goto done6;
+  byte = ptr[6];
+  SHLD(6);
+  res1 &= byte;
+  if (res1 >= 0) goto done7;
+  byte = ptr[7];
+  SHLD(7);
+  res2 &= byte;
+  if (res2 >= 0) goto done8;
+  byte = ptr[8];
+  SHLD(8);
+  res3 &= byte;
+  if (res3 >= 0) goto done9;
+  byte = ptr[9];
+  // Last byte only contains 0 or 1 for valid 64bit varints. If it's 0 it's
+  // a denormalized varint that shouldn't happen. The continuation bit of byte
+  // 9 has already the right value hence just expect byte to be 1.
+  if (ABSL_PREDICT_TRUE(byte == 1)) goto done10;
+  if (byte == 0) {
+    res3 ^= static_cast<uint64>(1) << 63;
+    goto done10;
+  }
+
+  return {nullptr, 0};  // Value is too long to be a varint64
+
+#define DONE(n) done##n : return {p + n, res1 & res2 & res3};
+done2:
+  return {p + 2, res1 & res2};
+  DONE(3)
+  DONE(4)
+  DONE(5)
+  DONE(6)
+  DONE(7)
+  DONE(8)
+  DONE(9)
+  DONE(10)
+#undef DONE
+}
+
+#endif  // defined(__x86_64__)
+
 const char* Varint::Parse64Fallback(const char* p, uint64* OUTPUT) {
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
   assert(*ptr >= 128);
-#if defined(__x86_64__)
-  // This approach saves one redundant operation on the last byte (masking a
-  // byte that doesn't need it). This is conditional on x86 because:
-  // - PowerPC has specialized bit instructions that make masking and
-  //   shifting very efficient
-  // - x86 seems to be one of the few architectures that has a single
-  //   instruction to add 3 values.
-  //
-  // e.g.
-  // Input: 0xff, 0x40
-  // Mask & Or calculates: (0xff & 0x7f) | ((0x40 & 0x7f) << 7) = 0x207f
-  // Sub1 & Add calculates: 0xff         + ((0x40    - 1) << 7) = 0x207f
-  //
-  // The subtract one removes the bit set by the previous byte used to
-  // indicate that more bytes are present. It also has the potential to
-  // allow instructions like LEA to combine 2 adds into one instruction.
-  //
-  // E.g. on an x86 architecture, %rcx = %rax + (%rbx - 1) << 7 could be
-  // emitted as:
-  //   shlq $7, %rbx
-  //   leaq -0x80(%rax, %rbx), %rcx
-  //
   // Fast path: need to accumulate data in upto three result fragments
   //    res1    bits 0..27
   //    res2    bits 28..55
   //    res3    bits 56..63
-
-  uint64 byte, res1, res2 = 0, res3 = 0;
-  byte = *(ptr++); res1 = byte;
-  byte = *(ptr++); res1 += (byte - 1) <<  7; if (byte < 128) goto done1;
-  byte = *(ptr++); res1 += (byte - 1) << 14; if (byte < 128) goto done1;
-  byte = *(ptr++); res1 += (byte - 1) << 21; if (byte < 128) goto done1;
-
-  byte = *(ptr++); res2 = byte;              if (byte < 128) goto done2;
-  byte = *(ptr++); res2 += (byte - 1) <<  7; if (byte < 128) goto done2;
-  byte = *(ptr++); res2 += (byte - 1) << 14; if (byte < 128) goto done2;
-  byte = *(ptr++); res2 += (byte - 1) << 21; if (byte < 128) goto done2;
-
-  byte = *(ptr++); res3 = byte;              if (byte < 128) goto done3;
-  byte = *(ptr++); res3 += (byte - 1) <<  7; if (byte < 2) goto done3;
-
-  return nullptr;       // Value is too long to be a varint64
-
- done1:
-  assert(res2 == 0);
-  assert(res3 == 0);
-  *OUTPUT = res1;
-  return reinterpret_cast<const char*>(ptr);
-
- done2:
-  assert(res3 == 0);
-  *OUTPUT = res1 + ((res2 - 1) << 28);
-  return reinterpret_cast<const char*>(ptr);
-
- done3:
-  *OUTPUT = res1 + ((res2 - 1) << 28) + ((res3 - 1) << 56);
-  return reinterpret_cast<const char*>(ptr);
-#else
-  uint32 byte, res1, res2=0, res3=0;
+  uint32 byte, res1, res2 = 0, res3 = 0;
   byte = *(ptr++); res1 = byte & 127;
   byte = *(ptr++); res1 |= (byte & 127) <<  7; if (byte < 128) goto done1;
   byte = *(ptr++); res1 |= (byte & 127) << 14; if (byte < 128) goto done1;
@@ -147,46 +186,42 @@ const char* Varint::Parse64Fallback(const char* p, uint64* OUTPUT) {
   return reinterpret_cast<const char*>(ptr);
 
  done3:
-  *OUTPUT = res1 | (uint64(res2) << 28) | (uint64(res3) << 56);
-  return reinterpret_cast<const char*>(ptr);
-#endif
-}
+   *OUTPUT = res1 | (uint64(res2) << 28) | (uint64(res3) << 56);
+   return reinterpret_cast<const char*>(ptr);
+ }
 
-const char* Varint::Parse32BackwardSlow(const char* ptr, const char* base,
-                                        uint32* OUTPUT) {
-  // Since this method is rarely called, for simplicity, we just skip backward
-  // and then parse forward.
-  const char* prev = Skip32BackwardSlow(ptr, base);
-  if (prev == nullptr)
-    return nullptr; // no value before 'ptr'
+ const char* Varint::Parse32BackwardSlow(const char* ptr, const char* base,
+                                         uint32* OUTPUT) {
+   // Since this method is rarely called, for simplicity, we just skip backward
+   // and then parse forward.
+   const char* prev = Skip32BackwardSlow(ptr, base);
+   if (prev == nullptr) return nullptr;  // no value before 'ptr'
 
-  Parse32(prev, OUTPUT);
-  return prev;
-}
+   Parse32(prev, OUTPUT);
+   return prev;
+ }
 
-const char* Varint::Parse64BackwardSlow(const char* ptr, const char* base,
-                                        uint64* OUTPUT) {
-  // Since this method is rarely called, for simplicity, we just skip backward
-  // and then parse forward.
-  const char* prev = Skip64BackwardSlow(ptr, base);
-  if (prev == nullptr)
-    return nullptr; // no value before 'ptr'
+ const char* Varint::Parse64BackwardSlow(const char* ptr, const char* base,
+                                         uint64* OUTPUT) {
+   // Since this method is rarely called, for simplicity, we just skip backward
+   // and then parse forward.
+   const char* prev = Skip64BackwardSlow(ptr, base);
+   if (prev == nullptr) return nullptr;  // no value before 'ptr'
 
-  Parse64(prev, OUTPUT);
-  return prev;
-}
+   Parse64(prev, OUTPUT);
+   return prev;
+ }
 
-const char* Varint::Parse64WithLimit(const char* p,
-                                     const char* l,
-                                     uint64* OUTPUT) {
-  if (p + kMax64 <= l) {
-    return Parse64(p, OUTPUT);
-  } else {
-    // See detailed comment in Varint::Parse64Fallback about this general
-    // approach.
-    const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
-    const unsigned char* limit = reinterpret_cast<const unsigned char*>(l);
-    uint64 b, result;
+ const char* Varint::Parse64WithLimit(const char* p, const char* l,
+                                      uint64* OUTPUT) {
+   if (p + kMax64 <= l) {
+     return Parse64(p, OUTPUT);
+   } else {
+     // See detailed comment in Varint::Parse64Fallback about this general
+     // approach.
+     const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
+     const unsigned char* limit = reinterpret_cast<const unsigned char*>(l);
+     uint64 b, result;
 #if defined(__x86_64__)
     if (ptr >= limit) return nullptr;
     b = *(ptr++); result = b;              if (b < 128) goto done;
@@ -236,7 +271,7 @@ const char* Varint::Parse64WithLimit(const char* p,
     *OUTPUT = result;
     return reinterpret_cast<const char*>(ptr);
   }
-}
+ }
 
 const char* Varint::Skip32BackwardSlow(const char* p, const char* b) {
   const unsigned char* ptr = reinterpret_cast<const unsigned char*>(p);
@@ -276,112 +311,16 @@ const char* Varint::Skip64BackwardSlow(const char* p, const char* b) {
   return nullptr; // value is too long to be a varint64
 }
 
-void Varint::Append32Slow(string* s, uint32 value) {
+void Varint::Append32Slow(std::string* s, uint32 value) {
   const size_t start = s->size();
-  s->resize(start + Varint::Length32(value));
+  s->resize(
+                                             start + Varint::Length32(value));
   Varint::Encode32(&((*s)[start]), value);
 }
 
-void Varint::Append64Slow(string* s, uint64 value) {
+void Varint::Append64Slow(std::string* s, uint64 value) {
   const size_t start = s->size();
-  s->resize(start + Varint::Length64(value));
+  s->resize(
+                                             start + Varint::Length64(value));
   Varint::Encode64(&((*s)[start]), value);
-}
-
-void Varint::EncodeTwo32Values(string* s, uint32 a, uint32 b) {
-  uint64 v = 0;
-  int shift = 0;
-  while ((a > 0) || (b > 0)) {
-    uint8 one_byte = (a & 0xf) | ((b & 0xf) << 4);
-    v |= ((static_cast<uint64>(one_byte)) << shift);
-    shift += 8;
-    a >>= 4;
-    b >>= 4;
-  }
-  Append64(s, v);
-}
-
-namespace {
-
-// Skip the least signficant "offset" bits and extract the next "bits" bits.
-uint32 GetBits(uint32 byte, uint32 offset, uint32 bits) {
-  return (byte >> offset) & ((1u << bits) - 1);
-}
-
-template <bool RespectLimit>
-const char* DecodeTwo32ValuesInternal(const char* ptr, const char* limit,
-                                      uint32* a, uint32* b) {
-  const uint8* uptr = reinterpret_cast<const uint8*>(ptr);
-  const uint8* ulimit = reinterpret_cast<const uint8*>(limit);
-
-  // Assert that an optimized path is used in DecodeTwo32Values before
-  // DecodeTwo32ValuesSlow is invoked. This optimization does not exist for
-  // DecodeTwo32ValuesWithLimit (the same way Parse64WithLimit does not have
-  // this optimization).
-  if (!RespectLimit) {
-    assert(*uptr >= 128);
-  }
-
-// Extract portions of bits for *a and *b from a byte that is formatted
-// as follows (least significant bits first):
-//  shift bits for b
-//  4 bits for a
-//  3-shift bits for b
-//  varint termination bit
-#define PARSE_BITS_DECODE_TWO(shift, a, a_shift, b, b_shift)     \
-  if (RespectLimit && uptr >= ulimit) return nullptr;            \
-  byte = *(uptr++);                                              \
-  b |= GetBits(byte, 0, shift) << b_shift;                       \
-  a |= GetBits(byte, shift, 4) << a_shift;                       \
-  b |= GetBits(byte, shift + 4, 3 - shift) << (b_shift + shift); \
-  if (byte < 128) goto done;                                     \
-  a_shift += 4;                                                  \
-  b_shift += 3;
-
-  uint32 res1 = 0, res2 = 0, shift1 = 0, shift2 = 0, byte;
-
-  // First four bytes contain four consecutive bits of res1 each.
-  PARSE_BITS_DECODE_TWO(0, res1, shift1, res2, shift2);
-  PARSE_BITS_DECODE_TWO(1, res1, shift1, res2, shift2);
-  PARSE_BITS_DECODE_TWO(2, res1, shift1, res2, shift2);
-  PARSE_BITS_DECODE_TWO(3, res1, shift1, res2, shift2);
-
-  // Next four bytes contain four consecutive bits of res2 each.
-  // Note the switched order of variables.
-  PARSE_BITS_DECODE_TWO(0, res2, shift2, res1, shift1);
-  PARSE_BITS_DECODE_TWO(1, res2, shift2, res1, shift1);
-  PARSE_BITS_DECODE_TWO(2, res2, shift2, res1, shift1);
-  PARSE_BITS_DECODE_TWO(3, res2, shift2, res1, shift1);
-
-  // Back to the original order.
-  PARSE_BITS_DECODE_TWO(0, res1, shift1, res2, shift2);
-
-#undef PARSE_BITS_DECODE_TWO
-
-  byte = *(uptr++);
-  // 10th byte has at most one bit set.
-  if (byte > 1) {
-    return nullptr;  // Value is too long to be two encoded values.
-  }
-  res2 |= byte << 31;
-
-done:
-  *a = res1;
-  *b = res2;
-  return reinterpret_cast<const char*>(uptr);
-}
-
-}  // namespace
-
-const char* Varint::DecodeTwo32ValuesSlow(const char* p, uint32* a, uint32* b) {
-  return DecodeTwo32ValuesInternal<false>(p, nullptr, a, b);
-}
-
-const char* Varint::DecodeTwo32ValuesWithLimit(const char* ptr,
-                                               const char* limit, uint32* a,
-                                               uint32* b) {
-  if (ptr + kMax64 <= limit) {
-    return DecodeTwo32Values(ptr, a, b);
-  }
-  return DecodeTwo32ValuesInternal<true>(ptr, limit, a, b);
 }

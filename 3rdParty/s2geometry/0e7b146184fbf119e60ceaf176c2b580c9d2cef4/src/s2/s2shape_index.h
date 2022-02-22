@@ -18,6 +18,24 @@
 // S2ShapeIndex is an abstract base class for indexing polygonal geometry in
 // memory.  The main documentation is with the class definition below.
 // (Some helper classes are defined first.)
+//
+// S2ShapeIndex has two major subtypes:
+//
+//  - MutableS2ShapeIndex is for building new S2ShapeIndexes.  Indexes may
+//    also be updated dynamically by inserting or deleting shapes.  Once an
+//    index has been built it can be encoded compactly and later decoded as
+//    either a MutableS2ShapeIndex or an EncodedS2ShapeIndex.
+//
+//  - EncodedS2ShapeIndex is an S2ShapeIndex implementation that works
+//    directly with encoded data.  Rather than decoding everything in advance,
+//    geometry is decoded incrementally (down to individual edges) as needed.
+//    It can be initialized from a single block of data in nearly constant
+//    time.  This saves large amounts of memory and is also much faster in the
+//    common situation where geometric data is loaded from somewhere, decoded,
+//    and then only a single operation is performed on it.  (Speedups for
+//    large geometric objects can be over 1000x.)  It supports all
+//    S2ShapeIndex operations including boolean operations, measuring
+//    distances, etc.
 
 #ifndef S2_S2SHAPE_INDEX_H_
 #define S2_S2SHAPE_INDEX_H_
@@ -30,17 +48,18 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/macros.h"
+#include "absl/base/thread_annotations.h"
+#include "absl/memory/memory.h"
+#include "absl/synchronization/mutex.h"
+
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
-#include "s2/base/mutex.h"
 #include "s2/base/spinlock.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2shape.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/base/thread_annotations.h"
-#include "s2/third_party/absl/memory/memory.h"
 #include "s2/util/gtl/compact_array.h"
 
 class R1Interval;
@@ -174,13 +193,14 @@ class S2ShapeIndexCell {
 // so for example if you want to create an S2ShapeIndex containing a polyline
 // and 10 points, then you will need at least two different S2Shape objects.
 //
-// The most important type of S2ShapeIndex is MutableS2ShapeIndex, which
-// allows you to build an index incrementally by adding or removing shapes.
-// Soon there will also be an EncodedS2ShapeIndex type that makes it possible
-// to keep the index data in encoded form.  Code that only needs read-only
-// ("const") access to an index should use the S2ShapeIndex base class as the
-// parameter type, so that it will work with any S2ShapeIndex subtype.  For
-// example:
+// There are two important types of S2ShapeIndex.  MutableS2ShapeIndex allows
+// you to build an index incrementally by adding or removing shapes, whereas
+// EncodedS2ShapeIndex works very efficiently with existing indexes by keeping
+// the index data in encoded form (see introduction at the top of this file).
+//
+// Code that only needs read-only ("const") access to an index should use the
+// S2ShapeIndex base class as the parameter type, so that it will work with
+// any S2ShapeIndex subtype.  For example:
 //
 //   void DoSomething(const S2ShapeIndex& index) {
 //     ... works with MutableS2ShapeIndex or EncodedS2ShapeIndex ...
@@ -201,7 +221,8 @@ class S2ShapeIndexCell {
 // - S2BooleanOperation: computes boolean operations such as union,
 //                       and boolean predicates such as containment.
 //
-// - S2ShapeIndexRegion: computes approximations for a collection of geometry.
+// - S2ShapeIndexRegion: can be used together with S2RegionCoverer to
+//                       approximate geometry as a set of S2CellIds.
 //
 // - S2ShapeIndexBufferedRegion: computes approximations that have been
 //                               expanded by a given radius.
@@ -247,10 +268,10 @@ class S2ShapeIndexCell {
 //     }
 //   }
 //
-// Subtypes provided by the S2 library have the same thread-safety properties
-// as std::vector.  That is, const methods may be called concurrently from
-// multiple threads, and non-const methods require exclusive access to the
-// S2ShapeIndex.
+// The S2ShapeIndex subtypes provided by the S2 library are thread-compatible,
+// meaning that const methods are const methods may be called concurrently
+// from multiple threads, while non-const methods require exclusive access to
+// the S2ShapeIndex.
 class S2ShapeIndex {
  protected:
   class IteratorBase;
@@ -711,8 +732,7 @@ inline void S2ShapeIndex::IteratorBase::set_state(
 }
 
 inline void S2ShapeIndex::IteratorBase::set_finished() {
-  id_ = S2CellId::Sentinel();
-  set_cell(nullptr);
+  set_state(S2CellId::Sentinel(), nullptr);
 }
 
 inline const S2ShapeIndexCell* S2ShapeIndex::IteratorBase::raw_cell()

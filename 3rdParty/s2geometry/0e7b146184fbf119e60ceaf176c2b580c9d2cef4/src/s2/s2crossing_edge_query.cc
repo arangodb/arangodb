@@ -240,8 +240,12 @@ bool S2CrossingEdgeQuery::VisitCells(const S2Point& a0, const S2Point& a1,
 bool S2CrossingEdgeQuery::VisitCells(
     const S2Point& a0, const S2Point& a1, const S2PaddedCell& root,
     const CellVisitor& visitor) {
+  S2_DCHECK_EQ(root.padding(), 0);
   visitor_ = &visitor;
-  if (S2::ClipToFace(a0, a1, root.id().face(), &a0_, &a1_)) {
+  // We use padding when clipping to ensure that the result is non-empty
+  // whenever the edge (a0, a1) intersects the given root cell.
+  if (S2::ClipToPaddedFace(a0, a1, root.id().face(),
+                           S2::kFaceClipErrorUVCoord, &a0_, &a1_)) {
     R2Rect edge_bound = R2Rect::FromPointPair(a0_, a1_);
     if (root.bound().Intersects(edge_bound)) {
       return VisitCells(root, edge_bound);
@@ -259,6 +263,10 @@ bool S2CrossingEdgeQuery::VisitCells(
 // size to about 350 bytes (i.e., worst-case total stack usage of about 10K).
 bool S2CrossingEdgeQuery::VisitCells(const S2PaddedCell& pcell,
                                      const R2Rect& edge_bound) {
+  // This code uses S2PaddedCell because it has the methods we need for
+  // efficient splitting, however the actual padding is required to be zero.
+  S2_DCHECK_EQ(pcell.padding(), 0);
+
   iter_.Seek(pcell.id().range_min());
   if (iter_.done() || iter_.id() > pcell.id().range_max()) {
     // The index does not contain "pcell" or any of its descendants.

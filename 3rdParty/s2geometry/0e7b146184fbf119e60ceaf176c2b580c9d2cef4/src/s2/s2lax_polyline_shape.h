@@ -18,15 +18,18 @@
 #ifndef S2_S2LAX_POLYLINE_SHAPE_H_
 #define S2_S2LAX_POLYLINE_SHAPE_H_
 
+#include <algorithm>
 #include <memory>
 #include <vector>
+
+#include "absl/types/span.h"
 #include "s2/encoded_s2point_vector.h"
 #include "s2/s2polyline.h"
 #include "s2/s2shape.h"
 
 // S2LaxPolylineShape represents a polyline.  It is similar to
-// S2Polyline::Shape except that duplicate vertices are allowed, and the
-// representation is slightly more compact.
+// S2Polyline::Shape except that adjacent vertices are allowed to be identical
+// or antipodal, and the representation is slightly more compact.
 //
 // Polylines may have any number of vertices, but note that polylines with
 // fewer than 2 vertices do not define any edges.  (To create a polyline
@@ -34,20 +37,29 @@
 // or use S2LaxClosedPolylineShape defined in s2_lax_loop_shape.h.)
 class S2LaxPolylineShape : public S2Shape {
  public:
-  static constexpr TypeTag kTypeTag = 4;
+  // Define as enum so we don't have to declare storage.
+  // TODO(user, b/210097200): Use static constexpr when C++17 is allowed
+  // in opensource.
+  enum : TypeTag { kTypeTag = 4 };
 
   // Constructs an empty polyline.
   S2LaxPolylineShape() : num_vertices_(0) {}
 
+  // Move constructor.
+  S2LaxPolylineShape(S2LaxPolylineShape&&);
+
+  // Move-assignment operator.
+  S2LaxPolylineShape& operator=(S2LaxPolylineShape&&);
+
   // Constructs an S2LaxPolylineShape with the given vertices.
-  explicit S2LaxPolylineShape(const std::vector<S2Point>& vertices);
+  explicit S2LaxPolylineShape(absl::Span<const S2Point> vertices);
 
   // Constructs an S2LaxPolylineShape from the given S2Polyline, by copying
   // its data.
   explicit S2LaxPolylineShape(const S2Polyline& polyline);
 
   // Initializes an S2LaxPolylineShape with the given vertices.
-  void Init(const std::vector<S2Point>& vertices);
+  void Init(absl::Span<const S2Point> vertices);
 
   // Initializes an S2LaxPolylineShape from the given S2Polyline, by copying
   // its data.
@@ -60,8 +72,7 @@ class S2LaxPolylineShape : public S2Shape {
   //
   // REQUIRES: "encoder" uses the default constructor, so that its buffer
   //           can be enlarged as necessary by calling Ensure(int).
-  void Encode(Encoder* encoder,
-              s2coding::CodingHint hint = s2coding::CodingHint::COMPACT) const;
+  void Encode(Encoder* encoder, s2coding::CodingHint hint) const override;
 
   // Decodes an S2LaxPolylineShape, returning true on success.  (The method
   // name is chosen for compatibility with EncodedS2LaxPolylineShape below.)
@@ -94,6 +105,11 @@ class S2LaxPolylineShape : public S2Shape {
 // into a large contiguous buffer that contains other encoded data as well.
 class EncodedS2LaxPolylineShape : public S2Shape {
  public:
+  // Define as enum so we don't have to declare storage.
+  // TODO(user, b/210097200): Use static constexpr when C++17 is allowed
+  // in opensource.
+  enum : TypeTag { kTypeTag = S2LaxPolylineShape::kTypeTag };
+
   // Constructs an uninitialized object; requires Init() to be called.
   EncodedS2LaxPolylineShape() {}
 
@@ -101,6 +117,14 @@ class EncodedS2LaxPolylineShape : public S2Shape {
   //
   // REQUIRES: The Decoder data buffer must outlive this object.
   bool Init(Decoder* decoder);
+
+  // Appends an encoded representation of the S2LaxPolylineShape to "encoder".
+  // The coding hint is ignored, and whatever method was originally used to
+  // encode the shape is preserved.
+  //
+  // REQUIRES: "encoder" uses the default constructor, so that its buffer
+  //           can be enlarged as necessary by calling Ensure(int).
+  void Encode(Encoder* encoder, s2coding::CodingHint hint) const override;
 
   int num_vertices() const { return vertices_.size(); }
   S2Point vertex(int i) const { return vertices_[i]; }
@@ -116,6 +140,7 @@ class EncodedS2LaxPolylineShape : public S2Shape {
   Chain chain(int i) const final;
   Edge chain_edge(int i, int j) const final;
   ChainPosition chain_position(int e) const final;
+  TypeTag type_tag() const override { return kTypeTag; }
 
  private:
   s2coding::EncodedS2PointVector vertices_;

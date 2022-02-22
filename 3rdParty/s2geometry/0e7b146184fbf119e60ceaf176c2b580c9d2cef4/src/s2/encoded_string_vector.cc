@@ -20,6 +20,7 @@
 using absl::MakeSpan;
 using absl::Span;
 using absl::string_view;
+using std::string;
 using std::vector;
 
 namespace s2coding {
@@ -30,8 +31,9 @@ StringVectorEncoder::StringVectorEncoder() {
 void StringVectorEncoder::Encode(Encoder* encoder) {
   offsets_.push_back(data_.length());
   // We don't encode the first element of "offsets_", which is always zero.
-  EncodeUintVector<uint64>(MakeSpan(offsets_.data() + 1, &*offsets_.end()),
-                                    encoder);
+  EncodeUintVector<uint64>(
+      MakeSpan(offsets_.data() + 1, offsets_.data() + offsets_.size()),
+      encoder);
   encoder->Ensure(data_.length());
   encoder->putn(data_.base(), data_.length());
 }
@@ -44,7 +46,7 @@ void StringVectorEncoder::Encode(Span<const string> v, Encoder* encoder) {
 
 bool EncodedStringVector::Init(Decoder* decoder) {
   if (!offsets_.Init(decoder)) return false;
-  data_ = reinterpret_cast<const char*>(decoder->ptr());
+  data_ = decoder->skip(0);
   if (offsets_.size() > 0) {
     uint64 length = offsets_[offsets_.size() - 1];
     if (decoder->avail() < length) return false;
@@ -60,6 +62,17 @@ vector<string_view> EncodedStringVector::Decode() const {
     result[i] = (*this)[i];
   }
   return result;
+}
+
+// The encoding must be identical to StringVectorEncoder::Encode().
+void EncodedStringVector::Encode(Encoder* encoder) const {
+  offsets_.Encode(encoder);
+
+  if (offsets_.size() > 0) {
+    const uint64 length = offsets_[offsets_.size() - 1];
+    encoder->Ensure(length);
+    encoder->putn(data_, length);
+  }
 }
 
 }  // namespace s2coding

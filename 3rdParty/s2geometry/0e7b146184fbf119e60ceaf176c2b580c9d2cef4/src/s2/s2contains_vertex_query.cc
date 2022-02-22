@@ -25,8 +25,15 @@
 using std::abs;
 
 int S2ContainsVertexQuery::ContainsSign() {
-  // Find the unmatched edge that is immediately clockwise from S2::Ortho(P).
-  S2Point reference_dir = S2::Ortho(target_);
+  // Find the unmatched edge that is immediately clockwise from S2::RefDir(P)
+  // but not equal to it.  The result is +1 iff this edge is outgoing.
+  //
+  // A loop with consecutive vertices A,B,C contains vertex B if and only if
+  // the fixed vector R = S2::RefDir(B) is contained by the wedge ABC.  The
+  // wedge is closed at A and open at C, i.e. the point B is inside the loop
+  // if A = R but not if C = R.  This convention is required for compatibility
+  // with S2::VertexCrossing.
+  S2Point reference_dir = S2::RefDir(target_);
   std::pair<S2Point, int> best(reference_dir, 0);
   for (const auto& e : edge_map_) {
     S2_DCHECK_LE(abs(e.second), 1);

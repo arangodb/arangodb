@@ -22,6 +22,95 @@
 #include "s2/encoded_string_vector.h"
 #include "s2/mutable_s2shape_index.h"
 
+// EncodedS2ShapeIndex is an S2ShapeIndex implementation that works directly
+// with encoded data.  Rather than decoding everything in advance, geometry is
+// decoded incrementally (down to individual edges) as needed.  It can be
+// initialized from a single block of data in nearly constant time (about 1.3
+// microseconds per million edges).  This saves large amounts of memory and is
+// also much faster in the common situation where geometric data is loaded
+// from somewhere, decoded, and then only a single operation is performed on
+// it.  It supports all S2ShapeIndex operations including boolean operations,
+// measuring distances, etc.
+//
+// The speedups can be over 1000x for large geometric objects.  For example
+// vertices and 50,000 loops.  If this geometry is represented as an
+// S2Polygon, then simply decoding it takes ~250ms and building its internal
+// S2ShapeIndex takes a further ~1500ms.  These times are much longer than the
+// time needed for many operations, e.g. e.g. measuring the distance from the
+// polygon to one of its vertices takes only about 0.001ms.
+//
+// If the same geometry is represented using EncodedLaxPolygonShape and
+// EncodedS2ShapeIndex, initializing the index takes only 0.005ms.  The
+// distance measuring operation itself takes slightly longer than before
+// (0.0013ms vs. the original 0.001ms) but the overall time is now much lower
+// (~0.007ms vs. 1750ms).  This is possible because the new classes decode
+// data lazily (only when it is actually needed) and with fine granularity
+// (down to the level of individual edges).  The overhead associated with this
+// incremental decoding is small; operations are typically 25% slower compared
+// to fully decoding the MutableS2ShapeIndex and its underlying shapes.
+//
+// EncodedS2ShapeIndex also uses less memory than MutableS2ShapeIndex.  The
+// encoded data is contiguous block of memory that is typically between 4-20%
+// of the original index size (see MutableS2ShapeIndex::Encode for examples).
+// Constructing the EncodedS2ShapeIndex uses additional memory, but even so
+// the total memory usage immediately after construction is typically 25-35%
+// of the corresponding MutableS2ShapeIndex size.
+//
+// Note that MutableS2ShapeIndex will still be faster and use less memory if
+// you need to decode the entire index.  Similarly MutableS2ShapeIndex will be
+// faster if you plan to execute a large number of operations on it.  The main
+// advantage of EncodedS2ShapeIndex is that it is much faster and uses less
+// memory when only a small portion of the data needs to be decoded.
+//
+// Example code showing how to create an encoded index:
+//
+//   Encoder encoder;
+//   s2shapeutil::CompactEncodeTaggedShapes(index, encoder);
+//   index.Encode(encoder);
+//   string encoded(encoder.base(), encoder.length());  // Encoded data.
+//
+// Example code showing how to use an encoded index:
+//
+//   Decoder decoder(encoded.data(), encoded.size());
+//   EncodedS2ShapeIndex index;
+//   index.Init(&decoder, s2shapeutil::LazyDecodeShapeFactory(&decoder));
+//   S2ClosestEdgeQuery query(&index);
+//   S2ClosestEdgeQuery::PointTarget target(test_point);
+//   if (query.IsDistanceLessOrEqual(&target, limit)) {
+//     ...
+//   }
+//
+// Note that EncodedS2ShapeIndex does not make a copy of the encoded data, and
+// therefore the client must ensure that this data outlives the
+// EncodedS2ShapeIndex object.
+//
+// There are a number of built-in classes that work with S2ShapeIndex objects.
+// Generally these classes accept any collection of geometry that can be
+// represented by an S2ShapeIndex, i.e. any combination of points, polylines,
+// and polygons.  Such classes include:
+//
+// - S2ContainsPointQuery: returns the shape(s) that contain a given point.
+//
+// - S2ClosestEdgeQuery: returns the closest edge(s) to a given point, edge,
+//                       S2CellId, or S2ShapeIndex.
+//
+// - S2CrossingEdgeQuery: returns the edge(s) that cross a given edge.
+//
+// - S2BooleanOperation: computes boolean operations such as union,
+//                       and boolean predicates such as containment.
+//
+// - S2ShapeIndexRegion: can be used together with S2RegionCoverer to
+//                       approximate geometry as a set of S2CellIds.
+//
+// - S2ShapeIndexBufferedRegion: computes approximations that have been
+//                               expanded by a given radius.
+//
+// EncodedS2ShapeIndex is thread-compatible, meaning that const methods are
+// thread safe, and non-const methods are not thread safe.  The only non-const
+// method is Minimize(), so if you plan to call Minimize() while other threads
+// are actively using the index that you must use an external reader-writer
+// lock such as absl::Mutex to guard access to it.  (There is no global state
+// and therefore each index can be guarded independently.)
 class EncodedS2ShapeIndex final : public S2ShapeIndex {
  public:
   using Options = MutableS2ShapeIndex::Options;
@@ -133,6 +222,9 @@ class EncodedS2ShapeIndex final : public S2ShapeIndex {
 
   S2Shape* GetShape(int id) const;
   const S2ShapeIndexCell* GetCell(int i) const;
+  bool cell_decoded(int i) const;
+  void set_cell_decoded(int i) const;
+  int max_cell_cache_size() const;
 
   std::unique_ptr<ShapeFactory> shape_factory_;
 
@@ -150,10 +242,23 @@ class EncodedS2ShapeIndex final : public S2ShapeIndex {
   // A vector containing the encoded contents of each cell in the index.
   s2coding::EncodedStringVector encoded_cells_;
 
-  // A vector containing the decoded contents of each cell in the index.
-  // Initially all values are nullptr; cells are decoded on demand and added
-  // to the vector using std::atomic::compare_exchange_strong.
-  mutable std::vector<std::atomic<S2ShapeIndexCell*>> cells_;
+  // A raw array containing the decoded contents of each cell in the index.
+  // Initially all values are *uninitialized memory*.  The cells_decoded_
+  // field below keeps track of which elements are present.
+  mutable std::unique_ptr<S2ShapeIndexCell*[]> cells_;
+
+  // A bit vector indicating which elements of cells_ have been decoded.
+  // All other elements of cells_ contain uninitialized (random) memory.
+  mutable std::vector<std::atomic<uint64>> cells_decoded_;
+
+  // In order to minimize destructor time when very few cells of a large
+  // S2ShapeIndex are needed, we keep track of the indices of the first few
+  // cells to be decoded.  This lets us avoid scanning the cells_decoded_
+  // vector when the number of cells decoded is very small.
+  mutable std::vector<int> cell_cache_;
+
+  // Protects all updates to cells_ and cells_decoded_.
+  mutable SpinLock cells_lock_;
 
   EncodedS2ShapeIndex(const EncodedS2ShapeIndex&) = delete;
   void operator=(const EncodedS2ShapeIndex&) = delete;
@@ -183,8 +288,10 @@ inline void EncodedS2ShapeIndex::Iterator::Refresh() {
   if (cell_pos_ == num_cells_) {
     set_finished();
   } else {
-    set_state(index_->cell_ids_[cell_pos_],
-              index_->cells_[cell_pos_].load(std::memory_order_relaxed));
+    // It's faster to initialize the cell to nullptr even if it has already
+    // been decoded, since algorithms frequently don't need it (i.e., based on
+    // the S2CellId they might not need to look at the cell contents).
+    set_state(index_->cell_ids_[cell_pos_], nullptr);
   }
 }
 
@@ -222,9 +329,40 @@ EncodedS2ShapeIndex::NewIterator(InitialPosition pos) const {
 }
 
 inline S2Shape* EncodedS2ShapeIndex::shape(int id) const {
-  S2Shape* shape = shapes_[id].load(std::memory_order_relaxed);
+  S2Shape* shape = shapes_[id].load(std::memory_order_acquire);
   if (shape != kUndecodedShape()) return shape;
   return GetShape(id);
+}
+
+// Returns true if the given cell has already been decoded.
+inline bool EncodedS2ShapeIndex::cell_decoded(int i) const {
+  // cell_decoded(i) uses acquire/release synchronization (see .cc file).
+  uint64 group_bits = cells_decoded_[i >> 6].load(std::memory_order_acquire);
+  return (group_bits & (1ULL << (i & 63))) != 0;
+}
+
+// Marks the given cell as having been decoded.
+// REQUIRES: cells_lock_ is held
+inline void EncodedS2ShapeIndex::set_cell_decoded(int i) const {
+  // We use memory_order_release for the store operation below to ensure that
+  // cells_decoded(i) sees the most recent value, however we can use
+  // memory_order_relaxed for the load because cells_lock_ is held.
+  std::atomic<uint64>* group = &cells_decoded_[i >> 6];
+  uint64 bits = group->load(std::memory_order_relaxed);
+  group->store(bits | 1ULL << (i & 63), std::memory_order_release);
+}
+
+inline int EncodedS2ShapeIndex::max_cell_cache_size() const {
+  // The cell cache is sized so that scanning decoded_cells_ in the destructor
+  // costs about 30 cycles per decoded cell in the worst case.  (This overhead
+  // is acceptable relative to the other costs of decoding each cell.)
+  //
+  // For example, if there are 65,536 cells then we won't need to scan
+  // encoded_cells_ unless we decode at least (65536/2048) == 32 cells.  It
+  // takes about 1 cycle per 64 cells to scan encoded_cells_, so that works
+  // out to (65536/64) == 1024 cycles.  However this cost is amortized over
+  // the 32 cells decoded, which works out to 32 cycles per cell.
+  return cell_ids_.size() >> 11;
 }
 
 #endif  // S2_ENCODED_S2SHAPE_INDEX_H_

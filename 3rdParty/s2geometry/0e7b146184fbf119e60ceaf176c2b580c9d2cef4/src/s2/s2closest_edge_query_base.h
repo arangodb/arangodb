@@ -22,7 +22,8 @@
 #include <vector>
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/container/inlined_vector.h"
+#include "absl/container/btree_set.h"
+#include "absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
@@ -35,7 +36,6 @@
 #include "s2/s2shape_index.h"
 #include "s2/s2shapeutil_count_edges.h"
 #include "s2/s2shapeutil_shape_edge_id.h"
-#include "s2/util/gtl/btree_set.h"
 #include "s2/util/gtl/dense_hash_set.h"
 
 // S2ClosestEdgeQueryBase is a templatized class for finding the closest
@@ -63,7 +63,7 @@
 // The Distance template argument is used to represent distances.  Usually it
 // is a thin wrapper around S1ChordAngle, but another distance type may be
 // used as long as it implements the Distance concept described in
-// s2distance_targets.h.  For example this can be used to measure maximum
+// s2distance_target.h.  For example this can be used to measure maximum
 // distances, to get more accuracy, or to measure non-spheroidal distances.
 template <class Distance>
 class S2ClosestEdgeQueryBase {
@@ -167,7 +167,7 @@ class S2ClosestEdgeQueryBase {
   //    Such results may be returned when options.include_interiors() is true.
   //    Such results can be identified using the is_interior() method.
   //
-  //  - (shape_id() < 0) && (edge_id() < 0) is returned by `FindClosestEdge`
+  //  - (shape_id() < 0) && (edge_id() < 0) is returned by FindClosestEdge()
   //    to indicate that no edge satisfies the given query options.  Such
   //    results can be identified using is_empty() method.
   class Result {
@@ -217,7 +217,7 @@ class S2ClosestEdgeQueryBase {
 
     // Indicates that linear rather than binary search should be used when this
     // type is used as the key in gtl::btree data structures.
-    using goog_btree_prefer_linear_node_search = std::true_type;
+    using absl_btree_prefer_linear_node_search = std::true_type;
 
    private:
     Distance distance_;  // The distance from the target to this edge.
@@ -272,7 +272,7 @@ class S2ClosestEdgeQueryBase {
   Result FindClosestEdge(Target* target, const Options& options);
 
  private:
-  class QueueEntry;
+  struct QueueEntry;
 
   const Options& options() const { return *options_; }
   void FindClosestEdgesInternal(Target* target, const Options& options);
@@ -342,7 +342,7 @@ class S2ClosestEdgeQueryBase {
   // when result_set_ is used so that we could use a priority queue instead.
   Result result_singleton_;
   std::vector<Result> result_vector_;
-  gtl::btree_set<Result> result_set_;
+  absl::btree_set<Result> result_set_;
 
   // When the result edges are stored in a btree_set (see above), usually
   // duplicates can be removed simply by inserting candidate edges in the
@@ -566,10 +566,10 @@ void S2ClosestEdgeQueryBase<Distance>::FindClosestEdgesInternal(
   }
 
   if (options.include_interiors()) {
-    gtl::btree_set<int32> shape_ids;
+    absl::btree_set<int32> shape_ids;
     (void) target->VisitContainingShapes(
         *index_, [&shape_ids, &options](S2Shape* containing_shape,
-                                        const S2Point& target_point) {
+                                        const S2Point& /*target_point*/) {
           shape_ids.insert(containing_shape->id());
           return shape_ids.size() < options.max_results();
         });
@@ -709,6 +709,7 @@ void S2ClosestEdgeQueryBase<Distance>::InitQueue() {
   // process one or both of the adjacent index cells in S2CellId order,
   // provided that those cells are closer than distance_limit_.
   S2Cap cap = target_->GetCapBound();
+  if (cap.is_empty()) return;  // Empty target.
   if (options().max_results() == 1 && iter_.Locate(cap.center())) {
     ProcessEdges(QueueEntry(Distance::Zero(), iter_.id(), &iter_.cell()));
     // Skip the rest of the algorithm if we found an intersecting edge.

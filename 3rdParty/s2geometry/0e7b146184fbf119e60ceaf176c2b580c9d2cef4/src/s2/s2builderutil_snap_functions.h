@@ -184,10 +184,10 @@ class IntLatLngSnapFunction : public S2Builder::SnapFunction {
   int exponent() const;
 
   // The minum exponent supported for snapping.
-  static const int kMinExponent = 0;
+  static constexpr int kMinExponent = 0;
 
   // The maximum exponent supported for snapping.
-  static const int kMaxExponent = 10;
+  static constexpr int kMaxExponent = 10;
 
   // Defines the snap radius to be used (see s2builder.h).  The snap radius
   // must be at least the minimum value for the current exponent(), but larger

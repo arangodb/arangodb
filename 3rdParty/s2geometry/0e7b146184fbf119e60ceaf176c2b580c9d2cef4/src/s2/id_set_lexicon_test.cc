@@ -38,7 +38,7 @@ TEST(IdSetLexicon, EmptySet) {
 TEST(IdSetLexicon, SingletonSets) {
   IdSetLexicon lexicon;
   EXPECT_EQ(5, lexicon.Add(Seq{5}));
-  EXPECT_EQ(0, lexicon.Add(Seq{0}));
+  EXPECT_EQ(0, lexicon.Add(Seq{0, 0}));
   EXPECT_EQ(1, lexicon.AddSingleton(1));
   int32 m = std::numeric_limits<int32>::max();
   EXPECT_EQ(m, lexicon.Add(&m, &m + 1));

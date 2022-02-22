@@ -17,6 +17,8 @@
 
 #include "s2/s2shape_index_measures.h"
 
+#include <algorithm>
+
 #include "s2/s2shape_measures.h"
 
 namespace S2 {

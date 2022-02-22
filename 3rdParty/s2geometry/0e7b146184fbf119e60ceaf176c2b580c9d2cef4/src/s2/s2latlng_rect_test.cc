@@ -31,7 +31,7 @@
 #include "s2/s2cell.h"
 #include "s2/s2edge_distances.h"
 #include "s2/s2latlng.h"
-#include "s2/s2pointutil.h"
+#include "s2/s2predicates.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
 
@@ -154,9 +154,9 @@ TEST(S2LatLngRect, GetVertex) {
                    S1Interval(remainder(lng, 2 * M_PI),
                               remainder(lng + M_PI_2, 2 * M_PI)));
     for (int k = 0; k < 4; ++k) {
-      EXPECT_TRUE(S2::SimpleCCW(r.GetVertex(k - 1).ToPoint(),
-                                r.GetVertex(k).ToPoint(),
-                                r.GetVertex(k + 1).ToPoint()));
+      EXPECT_GT(s2pred::Sign(r.GetVertex(k - 1).ToPoint(),
+                             r.GetVertex(k).ToPoint(),
+                             r.GetVertex(k + 1).ToPoint()), 0);
     }
   }
 }
@@ -506,6 +506,10 @@ TEST(S2LatLngRect, GetCapBound) {
   // Longitude span > 180 degrees:
   EXPECT_TRUE(RectFromDegrees(-30, -150, -10, 50).GetCapBound().
               ApproxEquals(S2Cap(S2Point(0, 0, -1), S1Angle::Degrees(80))));
+
+  // Ensure hemispheres are bounded conservatively.
+  EXPECT_GE(RectFromDegrees(-10, -100, 0, 100).GetCapBound().radius(),
+            S1ChordAngle::Right());
 }
 
 static void TestCellOps(const S2LatLngRect& r, const S2Cell& cell,
@@ -877,10 +881,7 @@ static void VerifyGetDirectedHausdorffDistance(const S2LatLngRect& a,
   S1Angle hausdorff_distance = a.GetDirectedHausdorffDistance(b);
 
   static const double kResolution = 0.1;
-  // Record the max sample distance as well as the sample point realizing the
-  // max for easier debugging.
   S1Angle max_distance;
-  double lat_max, lng_max;
 
   int sample_size_on_lat =
       static_cast<int>(a.lat().GetLength() / kResolution) + 1;
@@ -898,8 +899,6 @@ static void VerifyGetDirectedHausdorffDistance(const S2LatLngRect& a,
 
       if (distance_to_b >= max_distance) {
         max_distance = distance_to_b;
-        lat_max = lat;
-        lng_max = lng;
       }
     }
   }

@@ -24,8 +24,8 @@
 #include <vector>
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/container/inlined_vector.h"
+#include "absl/base/macros.h"
+#include "absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
@@ -36,10 +36,10 @@
 #include "s2/s2min_distance_targets.h"
 #include "s2/s2shape_index.h"
 
-// S2ClosestEdgeQuery is a helper class for finding the closest edge(s) to a
-// given point, edge, S2Cell, or geometry collection.  For example, given a
-// set of polylines, the following code efficiently finds the closest 5 edges
-// to a query point:
+// S2ClosestEdgeQuery is a helper class for searching within an S2ShapeIndex
+// to find the closest edge(s) to a given point, edge, S2Cell, or geometry
+// collection.  For example, given a set of polylines, the following code
+// efficiently finds the closest 5 edges to a query point:
 //
 // void Test(const vector<S2Polyline*>& polylines, const S2Point& point) {
 //   MutableS2ShapeIndex index;
@@ -50,17 +50,19 @@
 //   query.mutable_options()->set_max_results(5);
 //   S2ClosestEdgeQuery::PointTarget target(point);
 //   for (const auto& result : query.FindClosestEdges(&target)) {
-//     // The Result struct contains the following fields:
-//     //   "distance" is the distance to the edge.
-//     //   "shape_id" identifies the S2Shape containing the edge.
-//     //   "edge_id" identifies the edge with the given shape.
+//     // The Result object contains the following accessors:
+//     //   distance() is the distance to the edge.
+//     //   shape_id() identifies the S2Shape containing the edge.
+//     //   edge_id() identifies the edge with the given shape.
+//     //   is_interior() indicates that the result is an interior point.
+//     //
 //     // The following convenience methods may also be useful:
 //     //   query.GetEdge(result) returns the endpoints of the edge.
 //     //   query.Project(point, result) computes the closest point on the
 //     //       result edge to the given target point.
-//     int polyline_index = result.shape_id;
-//     int edge_index = result.edge_id;
-//     S1ChordAngle distance = result.distance;  // Use ToAngle() for S1Angle.
+//     int polyline_index = result.shape_id();
+//     int edge_index = result.edge_id();
+//     S1ChordAngle distance = result.distance();  // Can convert to S1Angle.
 //     S2Shape::Edge edge = query.GetEdge(result);
 //     S2Point closest_point = query.Project(point, result);
 //   }
@@ -108,12 +110,27 @@ class S2ClosestEdgeQuery {
   using Distance = S2MinDistance;
   using Base = S2ClosestEdgeQueryBase<Distance>;
 
-  // Each "Result" object represents a closest edge.  It has the following
-  // fields:
+  // Each "Result" object represents a closest edge.  Here are its main
+  // methods (see S2ClosestEdgeQueryBase::Result for details):
   //
-  //   S1ChordAngle distance;  // The distance from the target to this edge.
-  //   int32 shape_id;         // Identifies an indexed shape.
-  //   int32 edge_id;          // Identifies an edge within the shape.
+  //   // The distance from the target to this edge.
+  //   Distance distance() const;
+  //
+  //   // Identifies an indexed shape.
+  //   int32 shape_id() const;
+  //
+  //   // Identifies an edge within the shape.
+  //   int32 edge_id() const;
+  //
+  //   // Returns true if this Result object represents the interior of a shape.
+  //   // Such results may be returned when options.include_interiors() is true.
+  //   bool is_interior() const;
+  //
+  //   // Returns true if this Result object indicates that no edge satisfies
+  //   // the given query options.  (This result is only returned in one special
+  //   // case, namely when FindClosestEdge() does not find any suitable edges.
+  //   // It is never returned by methods that return a vector of results.)
+  //   bool is_empty() const;
   using Result = Base::Result;
 
   // Options that control the set of edges returned.  Note that by default
@@ -242,7 +259,8 @@ class S2ClosestEdgeQuery {
   //
   // Note that if options().include_interiors() is true, the result vector may
   // include some entries with edge_id == -1.  This indicates that the target
-  // intersects the indexed polygon with the given shape_id.
+  // intersects the indexed polygon with the given shape_id.  Such results may
+  // be identifed by calling Result::is_interior().
   std::vector<Result> FindClosestEdges(Target* target);
 
   // This version can be more efficient when this method is called many times,
@@ -252,12 +270,11 @@ class S2ClosestEdgeQuery {
   //////////////////////// Convenience Methods ////////////////////////
 
   // Returns the closest edge to the target.  If no edge satisfies the search
-  // criteria, then the Result object will have distance == Infinity(),
-  // is_empty() == true, and shape_id == edge_id == -1.
+  // criteria, then the result object's is_empty() method will be true.
   //
-  // Note that if options.include_interiors() is true, edge_id == -1 is also
-  // used to indicate that the target intersects an indexed polygon (but in
-  // that case distance == Zero() and shape_id >= 0).
+  // Note that if options.include_interiors() is true, Result::is_interior()
+  // should be called to check whether the result represents an interior point
+  // (in which case edge_id() == -1).
   Result FindClosestEdge(Target* target);
 
   // Returns the minimum distance to the target.  If the index or target is
@@ -293,12 +310,7 @@ class S2ClosestEdgeQuery {
   bool IsConservativeDistanceLessOrEqual(Target* target, S1ChordAngle limit);
 
   // Returns the endpoints of the given result edge.
-  //
-  // CAVEAT: If options().include_interiors() is true, then clients must not
-  // pass this method any Result objects that correspond to shape interiors,
-  // i.e. those where result.edge_id < 0.
-  //
-  // REQUIRES: result.edge_id >= 0
+  // REQUIRES: !result.is_interior()
   S2Shape::Edge GetEdge(const Result& result) const;
 
   // Returns the point on given result edge that is closest to "point".

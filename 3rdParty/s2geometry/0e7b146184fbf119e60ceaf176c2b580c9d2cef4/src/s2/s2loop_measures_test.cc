@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "absl/strings/string_view.h"
 #include "s2/s2latlng.h"
 #include "s2/s2loop.h"
 #include "s2/s2measures.h"
@@ -31,6 +32,7 @@
 using s2textformat::ParsePointsOrDie;
 using std::fabs;
 using std::min;
+using std::string;
 using std::vector;
 
 namespace {
@@ -39,7 +41,7 @@ namespace {
 // "abac"), returns a vector of S2Points of the form (ch, 0, 0).  Note that
 // these points are not unit length and therefore are not suitable for general
 // use, however they are useful for testing certain functions below.
-vector<S2Point> MakeTestLoop(const string& loop_str) {
+vector<S2Point> MakeTestLoop(absl::string_view loop_str) {
   vector<S2Point> loop;
   for (char ch : loop_str) {
     loop.push_back(S2Point(ch, 0, 0));
@@ -49,8 +51,8 @@ vector<S2Point> MakeTestLoop(const string& loop_str) {
 
 // Given a loop whose vertices are represented as characters (such as "abcd" or
 // "abccb"), verify that S2::PruneDegeneracies() yields the loop "expected".
-void TestPruneDegeneracies(const string& input_str,
-                           const string& expected_str) {
+void TestPruneDegeneracies(absl::string_view input_str,
+                           absl::string_view expected_str) {
   vector<S2Point> input = MakeTestLoop(input_str);
   vector<S2Point> new_vertices;
   string actual_str;
@@ -88,7 +90,7 @@ TEST(PruneDegeneracies, SomeDegeneracies) {
 
 // Given a loop whose vertices are represented as characters (such as "abcd" or
 // "abccb"), verify that S2::GetCanonicalLoopOrder returns the given result.
-void TestCanonicalLoopOrder(const string& input_str,
+void TestCanonicalLoopOrder(absl::string_view input_str,
                             S2::LoopOrder expected_order) {
   EXPECT_EQ(expected_order, S2::GetCanonicalLoopOrder(MakeTestLoop(input_str)));
 }
@@ -117,6 +119,11 @@ TEST(GetPerimeter, MoreThanTwoPi) {
   // represent distances up to 2*Pi.
   auto loop = ParsePointsOrDie("0:0, 0:90, 0:180, 90:0, 0:-90");
   EXPECT_DOUBLE_EQ(5 * M_PI_2, S2::GetPerimeter(loop).radians());
+}
+
+TEST(GetSignedArea, Underflow) {
+  auto loop = ParsePointsOrDie("0:0, 0:1e-88, 1e-88:1e-88, 1e-88:0");
+  EXPECT_GT(S2::GetSignedArea(loop), 0);
 }
 
 class LoopTestBase : public testing::Test {
@@ -200,6 +207,22 @@ TEST_F(LoopTestBase, GetAreaConsistentWithCurvature) {
   TestAreaConsistentWithCurvature(skinny_chevron_);
   TestAreaConsistentWithCurvature(three_leaf_clover_);
   TestAreaConsistentWithCurvature(tessellated_loop_);
+}
+
+TEST_F(LoopTestBase, GetSurfaceIntegralGreaterThan4Pi) {
+  // This test demonstrates that even when GetSurfaceIntegral() returns a an
+  // area greater than 4*Pi, GetSignedArea() still returns an accurate result.
+
+  // GetSurfaceIntegral() returns an area > 4 * Pi for this loop.  (Note that
+  // the result of GetSurfaceIntegral is only correct modulo 4 * Pi, and that
+  // S2::GetSignedArea() automatically corrects for this.)
+  const vector<S2Point> loop1 = {
+    {1, 0, 0}, {0, 1, 1e-150}, S2Point{-1, -2, 0}.Normalize(),
+    {-1, 0, 1e-50}, {0, 0, 1}
+  };
+  ASSERT_TRUE(S2Loop(loop1).IsValid());
+  EXPECT_GT(S2::GetSurfaceIntegral(loop1, S2::SignedArea), 4 * M_PI + 0.1);
+  TestAreaConsistentWithCurvature(loop1);
 }
 
 TEST_F(LoopTestBase, GetAreaConsistentWithOrientation) {

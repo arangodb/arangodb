@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@
 #include <vector>
 
 #include "s2/base/logging.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/container/inlined_vector.h"
+#include "absl/base/macros.h"
+#include "absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
@@ -51,15 +51,17 @@
 //   query.mutable_options()->set_max_results(5);
 //   S2FurthestEdgeQuery::PointTarget target(point);
 //   for (const auto& result : query.FindFurthestEdges(&target)) {
-//     // The Result struct contains the following accessors:
-//     //   "distance()" is the distance to the edge.
-//     //   "shape_id()" identifies the S2Shape containing the edge.
-//     //   "edge_id()" identifies the edge with the given shape.
-//     // The following convenience methods may also be useful:
+//     // The Result object contains the following accessors:
+//     //   distance() is the distance to the edge.
+//     //   shape_id() identifies the S2Shape containing the edge.
+//     //   edge_id() identifies the edge with the given shape.
+//     //   is_interior() indicates that the result is an interior point.
+//     //
+//     // The following convenience method may also be useful:
 //     //   query.GetEdge(result) returns the endpoints of the edge.
 //     int polyline_index = result.shape_id();
 //     int edge_index = result.edge_id();
-//     S1ChordAngle distance = result.distance();
+//     S1ChordAngle distance = result.distance();  // Can convert to S1Angle.
 //     S2Shape::Edge edge = query.GetEdge(result);
 //   }
 // }
@@ -107,6 +109,7 @@ class S2FurthestEdgeQuery {
   // Distance concept required by S2ClosestEdgeQueryBase.  It inverts the sense
   // of some methods to enable the closest edge query to return furthest
   // edges.
+  //
   // Distance and Base are made private to prevent leakage outside of this
   // class.  The private and public sections are interleaved since the public
   // options class needs the private Base class.
@@ -201,9 +204,18 @@ class S2FurthestEdgeQuery {
     int max_brute_force_index_size() const override;
   };
 
-  // Result class to pass back to user.  We choose to pass back this result
-  // type, which has an S1ChordAngle as its distance, rather than the
-  // Base::Result returned from the query which uses S2MaxDistance.
+  // Each "Result" object represents a furthest edge.  We choose to pass back
+  // this result type, which has an S1ChordAngle as its distance, rather than
+  // the Base::Result returned from the query which uses S2MaxDistance.  Note
+  // the following special cases:
+  //
+  //  - (shape_id() >= 0) && (edge_id() < 0) represents the interior of a shape.
+  //    Such results may be returned when options.include_interiors() is true.
+  //    Such results can be identified using the is_interior() method.
+  //
+  //  - (shape_id() < 0) && (edge_id() < 0) is returned by FindFurthestEdge()
+  //    to indicate that no edge satisfies the given query options.  Such
+  //    results can be identified using is_empty() method.
   class Result {
    public:
     // The default constructor, which yields an invalid result.
@@ -218,18 +230,22 @@ class S2FurthestEdgeQuery {
     Result(S1ChordAngle distance, int32 _shape_id, int32 _edge_id)
         : distance_(distance), shape_id_(_shape_id), edge_id_(_edge_id) {}
 
-    // Returns true if this Result object does not refer to any edge.
-    // (The only case where an empty Result is returned is when the
-    // FindFurthestEdges() method does not find any edges that meet the
-    // specified criteria.)
-    bool is_empty() const { return edge_id_ < 0; }
-
     // The distance from the target to this point.
     S1ChordAngle distance() const { return distance_; }
 
     // The edge identifiers.
     int32 shape_id() const { return shape_id_; }
     int32 edge_id() const { return edge_id_; }
+
+    // Returns true if this Result object represents the interior of a shape.
+    // (Such results may be returned when options.include_interiors() is true.)
+    bool is_interior() const { return shape_id_ >= 0 && edge_id_ < 0; }
+
+    // Returns true if this Result object indicates that no edge satisfies the
+    // given query options.  (This result is only returned in one special
+    // case, namely when FindFurthestEdge() does not find any suitable edges.
+    // It is never returned by methods that return a vector of results.)
+    bool is_empty() const { return shape_id_ < 0; }
 
     // Returns true if two Result objects are identical.
     friend bool operator==(const Result& x, const Result& y) {
@@ -285,6 +301,12 @@ class S2FurthestEdgeQuery {
 
   // Returns the furthest edges to the given target that satisfy the given
   // options.  This method may be called multiple times.
+  //
+  // Note that if options().include_interiors() is true, the result vector may
+  // include some entries with edge_id == -1.  This indicates that the
+  // furthest distance is attained at a point in the interior of the indexed
+  // polygon with the given shape_id.  Such results may be identifed by
+  // calling Result::is_interior().
   std::vector<Result> FindFurthestEdges(Target* target);
 
   // This version can be more efficient when this method is called many times,
@@ -294,8 +316,11 @@ class S2FurthestEdgeQuery {
   //////////////////////// Convenience Methods ////////////////////////
 
   // Returns the furthest edge to the target.  If no edge satisfies the search
-  // criteria, then the Result object will have
-  // distance == S1ChordAngle::Negative() and shape_id == edge_id == -1.
+  // criteria, then the result object's is_empty() method will be true.
+  //
+  // Note that if options.include_interiors() is true, Result::is_interior()
+  // should be called to check whether the result represents an interior point
+  // (in which case edge_id() == -1).
   Result FindFurthestEdge(Target* target);
 
   // Returns the maximum distance to the target.  If the index or target is
@@ -324,7 +349,7 @@ class S2FurthestEdgeQuery {
                                             S1ChordAngle limit);
 
   // Returns the endpoints of the given result edge.
-  // REQUIRES: result.edge_id >= 0
+  // REQUIRES: !result.is_interior()
   S2Shape::Edge GetEdge(const Result& result) const;
 
  private:

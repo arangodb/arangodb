@@ -301,7 +301,7 @@ TEST_F(S1IntervalTestBase, IntervalOps) {
   TestIntervalOps(mid23, quad12, "FFTT", quad12eps, quad2hi);
 
   // This test checks that the union of two disjoint intervals is the smallest
-  // interval that contains both of them.  Note that the center of "mid34"
+  // interval that contains both of them.  Note that the center of "mid34" is
   // slightly CCW of -Pi/2 so that there is no ambiguity about the result.
   S1Interval quad412eps(mid34.lo(), quad12.hi());
   TestIntervalOps(quad12, mid34, "FFFF", quad412eps, empty);
@@ -451,6 +451,12 @@ TEST_F(S1IntervalTestBase, ApproxEquals) {
   EXPECT_FALSE(S1Interval(1 + kLo, 2 - kHi).ApproxEquals(S1Interval(1, 2)));
   EXPECT_FALSE(S1Interval(2 - kLo, 1 + kHi).ApproxEquals(S1Interval(2, 1)));
   EXPECT_FALSE(S1Interval(2 + kLo, 1 - kHi).ApproxEquals(S1Interval(2, 1)));
+}
+
+TEST_F(S1IntervalTestBase, OperatorEquals) {
+  EXPECT_EQ(empty, empty);
+  EXPECT_EQ(full, full);
+  EXPECT_NE(full, empty);
 }
 
 TEST_F(S1IntervalTestBase, GetDirectedHausdorffDistance) {

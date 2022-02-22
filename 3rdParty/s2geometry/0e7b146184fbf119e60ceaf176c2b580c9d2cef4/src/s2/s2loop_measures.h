@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "s2/s1angle.h"
+#include "s2/s2edge_crossings.h"
 #include "s2/s2point.h"
 #include "s2/s2point_span.h"
 #include "s2/s2pointutil.h"
@@ -142,22 +143,21 @@ LoopOrder GetCanonicalLoopOrder(S2PointLoopSpan loop);
 // integral over the spherical triangle ABC.  Here "oriented surface integral"
 // means:
 //
-// (1) f_tri(A,B,C) must be the integral of f if ABC is counterclockwise,
+// (1) f_tri(A,B,C) should return the integral of f if ABC is counterclockwise
 //     and the integral of -f if ABC is clockwise.
 //
-// (2) The result of this function is *either* the integral of f over the
-//     loop interior, or the integral of (-f) over the loop exterior.
+// (2) The result is the integral of f over the loop interior plus or minus
+//     some multiple of the integral of f over the entire sphere.
 //
 // Note that there are at least two common situations where property (2) above
 // is not a limitation:
 //
-//  - If the integral of f over the entire sphere is zero, then it doesn't
-//    matter which case is returned because they are always equal.
+//  - When the integral of f over the entire sphere is zero.  For example this
+//    is true when computing centroids.
 //
-//  - If f is non-negative, then it is easy to detect when the integral over
-//    the loop exterior has been returned, and the integral over the loop
-//    interior can be obtained by adding the integral of f over the entire
-//    unit sphere (a constant) to the result.
+//  - When f is non-negative and the integral over the entire sphere is a
+//    constant known in advance.  In this case the correct result can be
+//    obtained by using std::remainder appropriately.
 //
 // REQUIRES: The default constructor for T must initialize the value to zero.
 //           (This is true for built-in types such as "double".)
@@ -191,21 +191,22 @@ T GetSurfaceIntegral(S2PointLoopSpan loop,
   // overlapping.  Let the sign of a triangle be +1 if it is CCW and -1
   // otherwise, and let the sign of a point "x" be the sum of the signs of the
   // triangles containing "x".  Then the collection of triangles T is chosen
-  // such that either:
+  // such that every point in the loop interior has the same sign x, and every
+  // point in the loop exterior has the same sign (x - 1).  Furthermore almost
+  // always it is true that x == 0 or x == 1, meaning that either
   //
   //  (1) Each point in the loop interior has sign +1, and sign 0 otherwise; or
   //  (2) Each point in the loop exterior has sign -1, and sign 0 otherwise.
   //
   // The triangles basically consist of a "fan" from vertex 0 to every loop
-  // edge that does not include vertex 0.  These triangles will always satisfy
-  // either (1) or (2).  However, what makes this a bit tricky is that
-  // spherical edges become numerically unstable as their length approaches
-  // 180 degrees.  Of course there is not much we can do if the loop itself
-  // contains such edges, but we would like to make sure that all the triangle
-  // edges under our control (i.e., the non-loop edges) are stable.  For
-  // example, consider a loop around the equator consisting of four equally
-  // spaced points.  This is a well-defined loop, but we cannot just split it
-  // into two triangles by connecting vertex 0 to vertex 2.
+  // edge that does not include vertex 0.  However, what makes this a bit
+  // tricky is that spherical edges become numerically unstable as their
+  // length approaches 180 degrees.  Of course there is not much we can do if
+  // the loop itself contains such edges, but we would like to make sure that
+  // all the triangle edges under our control (i.e., the non-loop edges) are
+  // stable.  For example, consider a loop around the equator consisting of
+  // four equally spaced points.  This is a well-defined loop, but we cannot
+  // just split it into two triangles by connecting vertex 0 to vertex 2.
   //
   // We handle this type of situation by moving the origin of the triangle fan
   // whenever we are about to create an unstable edge.  We choose a new
@@ -226,13 +227,13 @@ T GetSurfaceIntegral(S2PointLoopSpan loop,
 
   S2Point origin = loop[0];
   for (int i = 1; i + 1 < loop.size(); ++i) {
-    // Let V_i be loop[i], let O be the current origin, and let length(A,B)
-    // be the length of edge (A,B).  At the start of each loop iteration, the
-    // "leading edge" of the triangle fan is (O,V_i), and we want to extend
-    // the triangle fan so that the leading edge is (O,V_i+1).
+    // Let V_i be loop[i], let O be the current origin, and let length(A, B)
+    // be the length of edge (A, B).  At the start of each loop iteration, the
+    // "leading edge" of the triangle fan is (O, V_i), and we want to extend
+    // the triangle fan so that the leading edge is (O, V_i+1).
     //
     // Invariants:
-    //  1. length(O,V_i) < kMaxLength for all (i > 1).
+    //  1. length(O, V_i) < kMaxLength for all (i > 1).
     //  2. Either O == V_0, or O is approximately perpendicular to V_0.
     //  3. "sum" is the oriented integral of f over the area defined by
     //     (O, V_0, V_1, ..., V_i).
@@ -244,32 +245,45 @@ T GetSurfaceIntegral(S2PointLoopSpan loop,
       // for the triangle fan.
       S2Point old_origin = origin;
       if (origin == loop[0]) {
-        // The following point is well-separated from V_i and V_0 (and
-        // therefore V_i+1 as well).
+        // The following point O' is well-separated from V_i and V_0 (and
+        // therefore V_i+1 as well).  Moving the origin transforms the leading
+        // edge of the triangle fan into a two-edge chain (V_0, O', V_i).
         origin = S2::RobustCrossProd(loop[0], loop[i]).Normalize();
       } else if (loop[i].Angle(loop[0]) < kMaxLength) {
         // All edges of the triangle (O, V_0, V_i) are stable, so we can
-        // revert to using V_0 as the origin.
+        // revert to using V_0 as the origin.  This changes the leading edge
+        // chain (V_0, O, V_i) back into a single edge (V_0, V_i).
         origin = loop[0];
       } else {
         // (O, V_i+1) and (V_0, V_i) are antipodal pairs, and O and V_0 are
         // perpendicular.  Therefore V_0.CrossProd(O) is approximately
         // perpendicular to all of {O, V_0, V_i, V_i+1}, and we can choose
         // this point O' as the new origin.
+        //
+        // NOTE(ericv): The following line is the reason why in rare cases the
+        // triangle sum can have a sign other than -1, 0, or 1.  To fix this
+        // we would need to choose either "-origin" or "origin" below
+        // depending on whether the signed area of the triangles chosen so far
+        // is positive or negative respectively.  This is easy in the case of
+        // GetSignedArea() but would be extra work for GetCentroid().  In any
+        // case this does not cause any problems in practice.
         origin = loop[0].CrossProd(old_origin);
 
-        // Advance the edge (V_0,O) to (V_0,O').
+        // The following two triangles transform the leading edge chain from
+        // (V_0, O, V_i) to (V_0, O', V_i+1).
+        //
+        // First we advance the edge (V_0, O) to (V_0, O').
         sum += f_tri(loop[0], old_origin, origin);
       }
-      // Advance the edge (O,V_i) to (O',V_i).
+      // Advance the edge (O, V_i) to (O', V_i).
       sum += f_tri(old_origin, loop[i], origin);
     }
-    // Advance the edge (O,V_i) to (O,V_i+1).
+    // Advance the edge (O, V_i) to (O, V_i+1).
     sum += f_tri(origin, loop[i], loop[i+1]);
   }
   // If the origin is not V_0, we need to sum one more triangle.
   if (origin != loop[0]) {
-    // Advance the edge (O,V_n-1) to (O,V_0).
+    // Advance the edge (O, V_n-1) to (O, V_0).
     sum += f_tri(origin, loop[loop.size() - 1], loop[0]);
   }
   return sum;

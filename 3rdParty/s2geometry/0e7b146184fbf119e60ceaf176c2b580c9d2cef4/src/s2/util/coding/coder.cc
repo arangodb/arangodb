@@ -18,33 +18,50 @@
 
 #include "s2/util/coding/coder.h"
 
-#include <algorithm>
 #include <cassert>
+
+#include <algorithm>
+#include <cstdint>
+#include <utility>
+
+#include "absl/utility/utility.h"
 
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
+#include "s2/base/port.h"
 
-// An initialization value used when we are allowed to
-unsigned char Encoder::kEmptyBuffer = 0;
+Encoder::Encoder(Encoder&& other)
+    : buf_(absl::exchange(other.buf_, nullptr)),
+      limit_(absl::exchange(other.limit_, nullptr)),
+      underlying_buffer_(absl::exchange(other.underlying_buffer_, nullptr)),
+      orig_(absl::exchange(other.orig_, nullptr)) {}
 
-Encoder::Encoder()
-  : underlying_buffer_(&kEmptyBuffer) {
+Encoder& Encoder::operator=(Encoder&& other) {
+  if (this == &other) return *this;
+  if (ensure_allowed()) DeleteBuffer(underlying_buffer_, capacity());
+  buf_ = absl::exchange(other.buf_, nullptr);
+  limit_ = absl::exchange(other.limit_, nullptr);
+  underlying_buffer_ = absl::exchange(other.underlying_buffer_, nullptr);
+  orig_ = absl::exchange(other.orig_, nullptr);
+  return *this;
 }
 
 Encoder::~Encoder() {
   S2_CHECK_LE(buf_, limit_);  // Catch the buffer overflow.
-  if (underlying_buffer_ != &kEmptyBuffer) {
-    std::allocator<unsigned char>().deallocate(
-        underlying_buffer_, limit_ - orig_);
-  }
+  if (ensure_allowed()) DeleteBuffer(underlying_buffer_, capacity());
 }
 
-int Encoder::varint32_length(uint32 v) {
-  return Varint::Length32(v);
+int Encoder::varint32_length(uint32 v) { return Varint::Length32(v); }
+
+int Encoder::varint64_length(uint64 v) { return Varint::Length64(v); }
+
+std::pair<unsigned char*, size_t> Encoder::NewBuffer(size_t size) {
+  auto* p = std::allocator<unsigned char>().allocate(size);
+  return {p, size};
 }
 
-int Encoder::varint64_length(uint64 v) {
-  return Varint::Length64(v);
+void Encoder::DeleteBuffer(unsigned char* buf, size_t size) {
+  std::allocator<unsigned char>().deallocate(buf, size);
 }
 
 void Encoder::EnsureSlowPath(size_t N) {
@@ -54,14 +71,16 @@ void Encoder::EnsureSlowPath(size_t N) {
 
   // Double buffer size, but make sure we always have at least N extra bytes
   const size_t current_len = length();
-  const size_t new_capacity = std::max(current_len + N, 2 * current_len);
+  // Used in opensource; avoid structured bindings (a C++17 feature) to
+  // remain C++11-compatible.  b/210097200
+  unsigned char* new_buffer;
+  size_t new_capacity;
+  std::tie(new_buffer, new_capacity) =
+      NewBuffer(std::max(current_len + N, 2 * current_len));
 
-  unsigned char* new_buffer = std::allocator<unsigned char>().allocate(
-      new_capacity);
-  memcpy(new_buffer, underlying_buffer_, current_len);
-  if (underlying_buffer_ != &kEmptyBuffer) {
-    std::allocator<unsigned char>().deallocate(
-        underlying_buffer_, limit_ - orig_);
+  if (underlying_buffer_) {
+    memcpy(new_buffer, underlying_buffer_, current_len);
+    DeleteBuffer(underlying_buffer_, capacity());
   }
   underlying_buffer_ = new_buffer;
 
@@ -69,11 +88,6 @@ void Encoder::EnsureSlowPath(size_t N) {
   limit_ = new_buffer + new_capacity;
   buf_ = orig_ + current_len;
   S2_CHECK(avail() >= N);
-}
-
-void Encoder::RemoveLast(size_t N) {
-  S2_CHECK(length() >= N);
-  buf_ -= N;
 }
 
 void Encoder::Resize(size_t N) {

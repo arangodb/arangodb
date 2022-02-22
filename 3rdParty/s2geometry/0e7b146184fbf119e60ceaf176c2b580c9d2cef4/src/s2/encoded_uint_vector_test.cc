@@ -18,13 +18,16 @@
 #include "s2/encoded_uint_vector.h"
 
 #include <vector>
+
 #include <gtest/gtest.h>
 
 using std::vector;
 
 namespace s2coding {
 
-static_assert(sizeof(EncodedUintVector<uint64>) == 16, "too big");
+// Make sure that this class is compact since it is extensively used.
+// 16 for 64-bit, 12 for 32-bit.
+static_assert(sizeof(EncodedUintVector<uint64>) <= 16, "too big");
 
 template <class T>
 void TestEncodedUintVector(const vector<T>& expected, size_t expected_bytes) {
@@ -67,6 +70,75 @@ TEST(EncodedUintVectorTest, ThreeBytes) {
 
 TEST(EncodedUintVectorTest, EightBytes) {
   TestEncodedUintVector(vector<uint64>{~0ULL, 0, 0x0102030405060708}, 25);
+}
+
+template <class T>
+vector<T> MakeSortedTestVector(int bytes_per_value, int num_values) {
+  S2_DCHECK_LE(bytes_per_value, sizeof(T));
+  T limit_value = ~T{0} >> (8 * (sizeof(T) - bytes_per_value));
+  vector<T> values;
+  for (int i = 0; i + 1 < num_values; ++i) {
+    values.push_back(limit_value * (static_cast<double>(i) / (num_values - 1)));
+  }
+  // The last value needs special handling since casting it to "double" loses
+  // precision when T == uint64.
+  values.push_back(limit_value);
+  S2_CHECK(std::is_sorted(values.begin(), values.end()));
+  return values;
+}
+
+template <class T>
+EncodedUintVector<T> MakeEncodedVector(const vector<T>& values,
+                                       Encoder* encoder) {
+  EncodeUintVector<T>(values, encoder);
+  Decoder decoder(encoder->base(), encoder->length());
+  EncodedUintVector<T> actual;
+  S2_CHECK(actual.Init(&decoder));
+  return actual;
+}
+
+template <class T>
+void TestLowerBound(int bytes_per_value, int num_values) {
+  auto v = MakeSortedTestVector<T>(bytes_per_value, num_values);
+  Encoder encoder;
+  auto actual = MakeEncodedVector(v, &encoder);
+  for (T x : v) {
+    EXPECT_EQ(std::lower_bound(v.begin(), v.end(), x) - v.begin(),
+              actual.lower_bound(x));
+    if (x > 0) {
+      EXPECT_EQ(std::lower_bound(v.begin(), v.end(), x - 1) - v.begin(),
+                actual.lower_bound(x - 1));
+    }
+  }
+}
+
+TEST(EncodedUintVector, LowerBound) {
+  for (int bytes_per_value = 8; bytes_per_value <= 8; ++bytes_per_value) {
+    TestLowerBound<uint64>(bytes_per_value, 10);
+    if (bytes_per_value <= 4) {
+      TestLowerBound<uint32>(bytes_per_value, 500);
+      if (bytes_per_value <= 2) {
+        TestLowerBound<uint16>(bytes_per_value, 100);
+      }
+    }
+  }
+}
+
+TEST(EncodedUintVectorTest, RoundtripEncoding) {
+  std::vector<uint64> values{10, 20, 30, 40};
+
+  Encoder a_encoder;
+  auto a = MakeEncodedVector<uint64>(values, &a_encoder);
+  ASSERT_EQ(a.Decode(), values);
+
+  Encoder b_encoder;
+  a.Encode(&b_encoder);
+  Decoder decoder(b_encoder.base(), b_encoder.length());
+
+  EncodedUintVector<uint64> v2;
+  ASSERT_TRUE(v2.Init(&decoder));
+
+  EXPECT_EQ(v2.Decode(), values);
 }
 
 }  // namespace s2coding

@@ -17,11 +17,17 @@
 
 #include "s2/encoded_s2shape_index.h"
 
+#include <algorithm>
 #include <map>
+#include <utility>
 #include <vector>
+
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
-#include "s2/third_party/absl/strings/str_cat.h"
+#include "absl/base/call_once.h"
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/escaping.h"
+#include "absl/strings/str_cat.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2builder.h"
 #include "s2/s2builderutil_s2polyline_layer.h"
@@ -40,12 +46,14 @@
 #include "s2/s2shapeutil_testing.h"
 #include "s2/s2testing.h"
 #include "s2/s2text_format.h"
+#include "s2/thread_testing.h"
 
 using absl::make_unique;
 using absl::StrCat;
 using s2builderutil::S2CellIdSnapFunction;
 using s2builderutil::S2PolylineLayer;
 using std::max;
+using std::string;
 using std::unique_ptr;
 using std::vector;
 
@@ -157,7 +165,7 @@ TEST(EncodedS2ShapeIndex, OverlappingPolylines) {
       vector<S2Point> vertices;
       int n = test_case.num_shape_edges;
       for (int j = 0; j <= n; ++j) {
-        vertices.push_back(S2::InterpolateAtDistance(j * edge_len, a, b));
+        vertices.push_back(S2::GetPointOnLine(a, b, j * edge_len));
       }
       index.Add(make_unique<S2LaxPolylineShape>(vertices));
     }
@@ -242,3 +250,95 @@ TEST(EncodedS2ShapeIndex, SnappedFractalPolylines) {
   TestEncodedS2ShapeIndex<S2LaxPolylineShape, EncodedS2LaxPolylineShape>(
       index, 8698);
 }
+
+// A test that repeatedly minimizes "index_" in one thread and then reads the
+// index_ concurrently from several other threads.  When all threads have
+// finished reading, the first thread minimizes the index again.
+//
+// Note that Minimize() is non-const and therefore does not need to be tested
+// concurrently with the const methods.
+class LazyDecodeTest : public s2testing::ReaderWriterTest {
+ public:
+  LazyDecodeTest() {
+    // We generate one shape per dimension.  Each shape has vertices uniformly
+    // distributed across the sphere, and the vertices for each dimension are
+    // different.  Having fewer cells in the index is more likely to trigger
+    // race conditions, and so shape 0 has 384 points, shape 1 is a polyline
+    // with 96 vertices, and shape 2 is a polygon with 24 vertices.
+    MutableS2ShapeIndex input;
+    for (int dim = 0; dim < 3; ++dim) {
+      int level = 3 - dim;  // See comments above.
+      vector<S2Point> vertices;
+      for (auto id = S2CellId::Begin(level);
+           id != S2CellId::End(level); id = id.next()) {
+        vertices.push_back(id.ToPoint());
+      }
+      switch (dim) {
+        case 0: input.Add(make_unique<S2PointVectorShape>(vertices)); break;
+        case 1: input.Add(make_unique<S2LaxPolylineShape>(vertices)); break;
+        default:
+          input.Add(make_unique<S2LaxPolygonShape>(
+              vector<vector<S2Point>>{std::move(vertices)}));
+          break;
+      }
+    }
+    Encoder encoder;
+    s2shapeutil::CompactEncodeTaggedShapes(input, &encoder);
+    input.Encode(&encoder);
+    encoded_.assign(encoder.base(), encoder.length());
+
+    Decoder decoder(encoded_.data(), encoded_.size());
+    index_.Init(&decoder, s2shapeutil::LazyDecodeShapeFactory(&decoder));
+  }
+
+  void WriteOp() override {
+    index_.Minimize();
+  }
+
+  void ReadOp() override {
+    S2ClosestEdgeQuery query(&index_);
+    for (int iter = 0; iter < 10; ++iter) {
+      S2ClosestEdgeQuery::PointTarget target(S2Testing::RandomPoint());
+      query.FindClosestEdge(&target);
+    }
+  }
+
+ protected:
+  string encoded_;
+  EncodedS2ShapeIndex index_;
+};
+
+TEST(EncodedS2ShapeIndex, LazyDecode) {
+  // Ensure that lazy decoding is thread-safe.  In other words, make sure that
+  // nothing bad happens when multiple threads call "const" methods that cause
+  // index and/or shape data to be decoded.
+  LazyDecodeTest test;
+
+  // The number of readers should be large enough so that it is likely that
+  // several readers will be running at once (with a multiple-core CPU).
+  const int kNumReaders = 8;
+  const int kIters = 1000;
+  test.Run(kNumReaders, kIters);
+}
+
+TEST(EncodedS2ShapeIndex, JavaByteCompatibility) {
+  MutableS2ShapeIndex expected;
+  expected.Add(make_unique<S2Polyline::OwningShape>(
+      s2textformat::MakePolylineOrDie("0:0, 1:1")));
+  expected.Add(make_unique<S2Polyline::OwningShape>(
+      s2textformat::MakePolylineOrDie("1:1, 2:2")));
+  expected.Release(0);
+
+  // bytes is the encoded data of an S2ShapeIndex with a null shape and a
+  // polyline with one edge. It was derived by base-16 encoding the buffer of
+  // an encoder to which expected was encoded.
+  string bytes = absl::HexStringToBytes(
+      "100036020102000000B4825F3C81FDEF3F27DCF7C958DE913F1EDD892B0BDF913FFC7FB8"
+      "B805F6EF3F28516A6D8FDBA13F27DCF7C958DEA13F28C809010408020010");
+  Decoder decoder(bytes.data(), bytes.length());
+  MutableS2ShapeIndex actual;
+  actual.Init(&decoder, s2shapeutil::FullDecodeShapeFactory(&decoder));
+
+  s2testing::ExpectEqual(expected, actual);
+}
+

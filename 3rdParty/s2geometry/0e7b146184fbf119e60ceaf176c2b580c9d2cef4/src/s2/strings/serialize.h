@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "s2/third_party/absl/strings/string_view.h"
+#include "absl/strings/string_view.h"
 
 namespace strings {
 

@@ -15,7 +15,7 @@
 
 // Author: ericv@google.com (Eric Veach)
 //
-// This implement Andrew's monotone chain algorithm, which is a variant of the
+// This implements Andrew's monotone chain algorithm, which is a variant of the
 // Graham scan (see https://en.wikipedia.org/wiki/Graham_scan).  The time
 // complexity is O(n log n), and the space required is O(n).  In fact only the
 // call to "sort" takes O(n log n) time; the rest of the algorithm is linear.
@@ -25,7 +25,9 @@
 
 #include "s2/s2convex_hull_query.h"
 
-#include "s2/third_party/absl/memory/memory.h"
+#include "absl/memory/memory.h"
+
+#include "s2/s2edge_distances.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2predicates.h"
 
@@ -79,9 +81,9 @@ S2Cap S2ConvexHullQuery::GetCapBound() {
   // GetRectBound() for this same reason, so it is much better to keep track
   // of a rectangular bound as we go along and convert it at the end.
   //
-  // TODO(ericv): We could compute an optimal bound by implementing Welzl's
-  // algorithm.  However we would still need to have special handling of loops
-  // and polygons, since if a loop spans more than 180 degrees in any
+  // TODO(b/203701013): We could compute an optimal bound by implementing
+  // Welzl's algorithm.  However we would still need to have special handling of
+  // loops and polygons, since if a loop spans more than 180 degrees in any
   // direction (i.e., if it contains two antipodal points), then it is not
   // enough just to bound its vertices.  In this case the only convex bounding
   // cap is S2Cap::Full(), and the only convex bounding loop is the full loop.
@@ -101,14 +103,11 @@ class OrderedCcwAround {
 };
 
 unique_ptr<S2Loop> S2ConvexHullQuery::GetConvexHull() {
+  // Test whether the bounding cap is convex.  We need this to proceed with
+  // the algorithm below in order to construct a point "origin" that is
+  // definitely outside the convex hull.
   S2Cap cap = GetCapBound();
-  if (cap.height() >= 1) {
-    // The bounding cap is not convex.  The current bounding cap
-    // implementation is not optimal, but nevertheless it is likely that the
-    // input geometry itself is not contained by any convex polygon.  In any
-    // case, we need a convex bounding cap to proceed with the algorithm below
-    // (in order to construct a point "origin" that is definitely outside the
-    // convex hull).
+  if (cap.height() >= 1 - 10 * s2pred::DBL_ERR) {
     return make_unique<S2Loop>(S2Loop::kFull());
   }
   // This code implements Andrew's monotone chain algorithm, which is a simple
@@ -186,11 +185,25 @@ unique_ptr<S2Loop> S2ConvexHullQuery::GetSinglePointLoop(const S2Point& p) {
 
 unique_ptr<S2Loop> S2ConvexHullQuery::GetSingleEdgeLoop(const S2Point& a,
                                                         const S2Point& b) {
-  // Construct a loop consisting of the two vertices and their midpoint.
+  // If the points are exactly antipodal we return the full loop.
+  //
+  // Note that we could use the code below even in this case (which would
+  // return a zero-area loop that follows the edge AB), except that (1) the
+  // direction of AB is defined using symbolic perturbations and therefore is
+  // not predictable by ordinary users, and (2) S2Loop disallows anitpodal
+  // adjacent vertices and so we would need to use 4 vertices to define the
+  // degenerate loop.  (Note that the S2Loop antipodal vertex restriction is
+  // historical and now could easily be removed, however it would still have
+  // the problem that the edge direction is not easily predictable.)
+  if (a == -b) return make_unique<S2Loop>(S2Loop::kFull());
+
+  // Construct a loop consisting of the two vertices and their midpoint.  We
+  // use S2::Interpolate() to ensure that the midpoint is very close to
+  // the edge even when its endpoints are nearly antipodal.
   vector<S2Point> vertices;
   vertices.push_back(a);
   vertices.push_back(b);
-  vertices.push_back((a + b).Normalize());
+  vertices.push_back(S2::Interpolate(a, b, 0.5));
   auto loop = make_unique<S2Loop>(vertices);
   // The resulting loop may be clockwise, so invert it if necessary.
   loop->Normalize();

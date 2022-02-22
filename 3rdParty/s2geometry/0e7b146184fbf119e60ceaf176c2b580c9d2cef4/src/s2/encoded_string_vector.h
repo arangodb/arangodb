@@ -20,8 +20,9 @@
 
 #include <memory>
 #include <string>
-#include "s2/third_party/absl/strings/string_view.h"
-#include "s2/third_party/absl/types/span.h"
+
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "s2/encoded_uint_vector.h"
 
 namespace s2coding {
@@ -43,7 +44,7 @@ class StringVectorEncoder {
   StringVectorEncoder();
 
   // Adds a string to the encoded vector.
-  void Add(const string& str);
+  void Add(const std::string& str);
 
   // Adds a string to the encoded vector by means of the given Encoder.  The
   // string consists of all output added to the encoder before the next call
@@ -61,7 +62,7 @@ class StringVectorEncoder {
   //
   // REQUIRES: "encoder" uses the default constructor, so that its buffer
   //           can be enlarged as necessary by calling Ensure(int).
-  static void Encode(absl::Span<const string> v, Encoder* encoder);
+  static void Encode(absl::Span<const std::string> v, Encoder* encoder);
 
  private:
   // A vector consisting of the starting offset of each string in the
@@ -104,10 +105,16 @@ class EncodedStringVector {
   // Returns a Decoder initialized with the string at the given index.
   Decoder GetDecoder(int i) const;
 
+  // Returns a pointer to the start of the string at the given index.  This is
+  // faster than operator[] but returns an unbounded string.
+  const char* GetStart(int i) const;
+
   // Returns the entire vector of original strings.  Requires that the
   // data buffer passed to the constructor persists until the result vector is
   // no longer needed.
   std::vector<absl::string_view> Decode() const;
+
+  void Encode(Encoder* encoder) const;
 
  private:
   EncodedUintVector<uint64> offsets_;
@@ -118,7 +125,7 @@ class EncodedStringVector {
 //////////////////   Implementation details follow   ////////////////////
 
 
-inline void StringVectorEncoder::Add(const string& str) {
+inline void StringVectorEncoder::Add(const std::string& str) {
   offsets_.push_back(data_.length());
   data_.Ensure(str.size());
   data_.putn(str.data(), str.size());
@@ -148,6 +155,11 @@ inline Decoder EncodedStringVector::GetDecoder(int i) const {
   uint64 start = (i == 0) ? 0 : offsets_[i - 1];
   uint64 limit = offsets_[i];
   return Decoder(data_ + start, limit - start);
+}
+
+inline const char* EncodedStringVector::GetStart(int i) const {
+  uint64 start = (i == 0) ? 0 : offsets_[i - 1];
+  return data_ + start;
 }
 
 }  // namespace s2coding

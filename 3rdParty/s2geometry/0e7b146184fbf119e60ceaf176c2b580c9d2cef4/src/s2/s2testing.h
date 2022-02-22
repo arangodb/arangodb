@@ -24,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/macros.h"
+
 #include "s2/base/commandlineflags.h"
 #include "s2/base/integral_types.h"
 #include "s2/_fp_contract_off.h"
@@ -31,7 +33,6 @@
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2cell_id.h"
-#include "s2/third_party/absl/base/macros.h"
 #include "s2/util/math/matrix3x3.h"
 
 class S1Angle;
@@ -51,7 +52,7 @@ class S2Region;
 //
 // This flag currently does *not* affect the initial seed value for
 // S2Testing::rnd.  TODO(user): Fix this.
-DECLARE_int32(s2_random_seed);
+S2_DECLARE_int32(s2_random_seed);
 
 // This class defines various static functions that are useful for writing
 // unit tests.
@@ -317,7 +318,7 @@ bool CheckResultSet(const std::vector<std::pair<Distance, Id>>& x,
                     int max_size, Distance max_distance,
                     typename Distance::Delta max_error,
                     typename Distance::Delta max_pruning_error,
-                    const string& label) {
+                    const std::string& label) {
   using Result = std::pair<Distance, Id>;
   // Results should be sorted by distance, but not necessarily then by Id.
   EXPECT_TRUE(std::is_sorted(x.begin(), x.end(),

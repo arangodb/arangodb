@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,12 +13,17 @@
 // limitations under the License.
 //
 
+#include "s2/s2furthest_edge_query.h"
+
 #include <memory>
 #include <set>
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "s2/third_party/absl/memory/memory.h"
+
+#include "absl/flags/flag.h"
+#include "absl/memory/memory.h"
+
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
@@ -27,7 +32,6 @@
 #include "s2/s2closest_edge_query_testing.h"
 #include "s2/s2coords.h"
 #include "s2/s2edge_distances.h"
-#include "s2/s2furthest_edge_query.h"
 #include "s2/s2loop.h"
 #include "s2/s2metrics.h"
 #include "s2/s2point.h"
@@ -396,14 +400,14 @@ static void TestWithIndexFactory(const s2testing::ShapeIndexFactory& factory,
   vector<S2Cap> index_caps;
   vector<unique_ptr<MutableS2ShapeIndex>> indexes;
   for (int i = 0; i < num_indexes; ++i) {
-    S2Testing::rnd.Reset(FLAGS_s2_random_seed + i);
+    S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed) + i);
     index_caps.push_back(S2Cap(S2Testing::RandomPoint(), kTestCapRadius));
     indexes.emplace_back(new MutableS2ShapeIndex);
     factory.AddEdges(index_caps.back(), num_edges, indexes.back().get());
   }
 
   for (int i = 0; i < num_queries; ++i) {
-    S2Testing::rnd.Reset(FLAGS_s2_random_seed + i);
+    S2Testing::rnd.Reset(absl::GetFlag(FLAGS_s2_random_seed) + i);
     int i_index = S2Testing::rnd.Uniform(num_indexes);
     const S2Cap& index_cap = index_caps[i_index];
 

@@ -22,19 +22,22 @@
 
 #include <cstring>
 
+#include <cstdint>
+#include <utility>
+
 // Avoid adding expensive includes here.
+#include "absl/base/attributes.h"
+#include "absl/base/macros.h"
+#include "absl/meta/type_traits.h"
+#include "absl/numeric/int128.h"
+#include "absl/utility/utility.h"
+
 #include "s2/base/casts.h"
 #include "s2/base/integral_types.h"
 #include "s2/base/logging.h"
 #include "s2/base/port.h"
-#include "s2/third_party/absl/base/macros.h"
-#include "s2/third_party/absl/meta/type_traits.h"
 #include "s2/util/coding/varint.h"
 #include "s2/util/endian/endian.h"
-
-#ifdef _WIN32
-#define memccpy _memccpy
-#endif
 
 /* Class for encoding data into a memory buffer */
 class Decoder;
@@ -42,7 +45,13 @@ class Encoder {
  public:
   // Creates an empty Encoder with no room that is enlarged
   // (if necessary) when "Encoder::Ensure(N)" is called.
-  Encoder();
+  Encoder() = default;
+  void reset();
+
+  // Movable.
+  Encoder(Encoder&& other);
+  Encoder& operator=(Encoder&& other);
+
   ~Encoder();
 
   // Initialize encoder to encode into "buf"
@@ -51,28 +60,31 @@ class Encoder {
   void clear();
 
   // Encoding routines.  Note that these do not check bounds
-  void put8(unsigned char v);
-  void put16(uint16 v);
-  void put32(uint32 v);
-  void put64(uint64 v);
-  void putn(const void* mem, size_t n);
+  void put8(unsigned char v) { writer().put8(v); }
+  void put16(uint16 v) { writer().put16(v); }
+  void put32(uint32 v) { writer().put32(v); }
+  void put64(uint64 v) { writer().put64(v); }
+  void put128(absl::uint128 v) { writer().put128(v); }
+  void putn(const void* mem, size_t n) { writer().putn(mem, n); }
 
   // Put no more than n bytes, stopping when c is put.
-  void putcn(const void* mem, int c, size_t n);
+  void putcn(const void* mem, int c, size_t n) { writer().putcn(mem, c, n); }
 
-  void puts(const void* mem);                // put a c-string including \0
-  void puts_without_null(const char* mem);   // put a c-string without \0
-  void putfloat(float f);
-  void putdouble(double d);
+  // put a c-string including \0.
+  void puts(const void* mem) { writer().puts(mem); }
+  // put a c-string without \0.
+  void puts_without_null(const char* mem) { writer().puts_no_null(mem); }
+  void putfloat(float f) { writer().put32(absl::bit_cast<uint32>(f)); }
+  void putdouble(double d) { writer().put64(absl::bit_cast<uint64>(d)); }
 
   // Support for variable length encoding with 7 bits per byte
   // (these are just simple wrappers around the Varint module)
-  static const int kVarintMax32 = Varint::kMax32;
-  static const int kVarintMax64 = Varint::kMax64;
+  static constexpr int kVarintMax32 = Varint::kMax32;
+  static constexpr int kVarintMax64 = Varint::kMax64;
 
-  void put_varint32(uint32 v);
-  void put_varint32_inline(uint32 v);
-  void put_varint64(uint64 v);
+  void put_varint32(uint32 v) { writer().put_varint32(v); }
+  void put_varint32_inline(uint32 v) { writer().put_varint32_inline(v); }
+  void put_varint64(uint64 v) { writer().put_varint64(v); }
   static int varint32_length(uint32 v);  // Length of var encoding of "v"
   static int varint64_length(uint64 v);  // Length of var encoding of "v"
 
@@ -94,7 +106,11 @@ class Encoder {
   // Return number of bytes of space remaining in buffer
   size_t avail() const;
 
-  // REQUIRES: Encoder was created with the 0-argument constructor interface.
+  // Return capacity of buffer.
+  size_t capacity() const { return limit_ - orig_; }
+
+  // REQUIRES: Encoder was created with the 0-argument constructor or 0-argument
+  // reset().
   //
   // This interface ensures that at least "N" more bytes are available
   // in the underlying buffer by resizing the buffer (if necessary).
@@ -106,24 +122,75 @@ class Encoder {
   void Ensure(size_t N);
 
   // Returns true if Ensure is allowed to be called on "this"
-  bool ensure_allowed() const { return underlying_buffer_ != nullptr; }
+  bool ensure_allowed() const { return orig_ == underlying_buffer_; }
 
   // Return ptr to start of encoded data.  This pointer remains valid
   // until reset or Ensure is called.
   const char* base() const { return reinterpret_cast<const char*>(orig_); }
 
-  // Advances the write pointer by "N" bytes.
-  void skip(size_t N) { buf_ += N; }
+  // Advances the write pointer by "N" bytes. It returns the position of the
+  // pointer before the skip (in other words start of the skipped bytes).
+  char* skip(ptrdiff_t N) { return writer().skip(N); }
 
   // REQUIRES: length() >= N
   // Removes the last N bytes out of the encoded buffer
-  void RemoveLast(size_t N);
+  void RemoveLast(size_t N) { writer().skip(-N); }
 
   // REQUIRES: length() >= N
   // Removes the last length()-N bytes to make the encoded buffer have length N
   void Resize(size_t N);
 
  private:
+  // All encoding operations are done through the Writer. This avoids aliasing
+  // between `buf_` and `this` which allows the compiler to avoid reloading
+  // `buf_` repeatedly. See https://godbolt.org/z/zM36s3ded.
+  struct Writer {
+    Encoder* enc;
+    char* p;
+
+    explicit Writer(Encoder* e)
+        : enc(e), p(reinterpret_cast<char*>(enc->buf_)) {}
+
+    ~Writer() {
+      enc->buf_ = reinterpret_cast<unsigned char*>(p);
+      S2_DCHECK_GE(enc->buf_, enc->orig_);
+      S2_DCHECK_LE(enc->buf_, enc->limit_);
+    }
+
+    char* skip(ptrdiff_t N) { return absl::exchange(p, p + N); }
+
+    void put8(unsigned char v) { *p++ = v; }
+    void put16(uint16 v) { LittleEndian::Store16(skip(2), v); }
+    void put32(uint32 v) { LittleEndian::Store32(skip(4), v); }
+    void put64(uint64 v) { LittleEndian::Store64(skip(8), v); }
+    void put128(absl::uint128 v) { LittleEndian::Store128(skip(16), v); }
+    void putn(const void* src, size_t n) { memcpy(skip(n), src, n); }
+    void putcn(const void* src, int c, size_t n) {
+      auto* o = p;
+      p = static_cast<char*>(memccpy(p, src, c, n));
+      if (p == nullptr) p = o + n;
+    }
+    void puts(const void* src) { putcn(src, '\0', enc->avail()); }
+    void puts_no_null(const char* mem) {
+      auto* l = reinterpret_cast<char*>(enc->limit_);
+      while (*mem != '\0' && p < l) *p++ = *mem++;
+    }
+    ABSL_ATTRIBUTE_ALWAYS_INLINE void put_varint32(uint32 v) {
+      p = Varint::Encode32(p, v);
+    }
+    ABSL_ATTRIBUTE_ALWAYS_INLINE void put_varint32_inline(uint32 v) {
+      p = Varint::Encode32Inline(p, v);
+    }
+    ABSL_ATTRIBUTE_ALWAYS_INLINE void put_varint64(uint64 v) {
+      p = Varint::Encode64(p, v);
+    }
+  };
+
+  Writer writer() { return Writer(this); }
+
+  static std::pair<unsigned char*, size_t> NewBuffer(size_t size);
+  static void DeleteBuffer(unsigned char* buf, size_t size);
+
   void EnsureSlowPath(size_t N);
 
   // Puts varint64 from decoder for varint64 sizes from 3 ~ 10. This is less
@@ -138,21 +205,14 @@ class Encoder {
   // limits_ points just past the last allocated byte in the orig_ buffer.
   unsigned char* limit_ = nullptr;
 
-
-  // If this Encoder owns its buffer, underlying_buffer_ is non-nullptr
-  // and the Encoder is allowed to resize it when Ensure() is called.
+  // If this Encoder owns its buffer, underlying_buffer_ == orig_ (note this is
+  // also the case when both are nullptr). The Encoder is allowed to resize it
+  // when Ensure() is called.
   unsigned char* underlying_buffer_ = nullptr;
 
-  // orig_ points to the start of the encoding buffer,
-  // whether or not the Encoder owns it.
+  // orig_ points to the start of the encoding buffer, whether or not the
+  // Encoder owns it.
   unsigned char* orig_ = nullptr;
-
-  static unsigned char kEmptyBuffer;
-
-#ifndef SWIG
-  Encoder(Encoder const&) = delete;
-  void operator=(Encoder const&) = delete;
-#endif  // SWIG
 };
 
 /* Class for decoding data from a memory buffer */
@@ -176,6 +236,7 @@ class Decoder {
   uint16 get16();
   uint32 get32();
   uint64 get64();
+  absl::uint128 get128();
   float  getfloat();
   double getdouble();
   void   getn(void* mem, size_t n);
@@ -183,7 +244,8 @@ class Decoder {
                                                // stopping after c is got
   void   gets(void* mem, size_t n);            // get a c-string no more than
                                                // n bytes. always appends '\0'
-  void   skip(ptrdiff_t n);
+  const char* skip(ptrdiff_t n);
+  ABSL_DEPRECATED("use skip(0) instead")
   unsigned char const* ptr() const;  // Return ptr to current position in buffer
 
   // "get_varint" actually checks bounds
@@ -221,14 +283,17 @@ inline Encoder::Encoder(void* b, size_t maxn) :
     limit_(reinterpret_cast<unsigned char*>(b) + maxn),
     orig_(reinterpret_cast<unsigned char*>(b)) { }
 
+inline void Encoder::reset() {
+  if (ensure_allowed()) DeleteBuffer(underlying_buffer_, capacity());
+  orig_ = underlying_buffer_ = limit_ = buf_ = nullptr;
+}
+
 inline void Encoder::reset(void* b, size_t maxn) {
+  // Can't use the underlying buffer anymore
+  if (ensure_allowed()) DeleteBuffer(underlying_buffer_, capacity());
+  underlying_buffer_ = nullptr;
   orig_ = buf_ = reinterpret_cast<unsigned char*>(b);
   limit_ = orig_ + maxn;
-  // Can't use the underlying buffer anymore
-  if (underlying_buffer_ != &kEmptyBuffer) {
-    delete[] underlying_buffer_;
-  }
-  underlying_buffer_ = nullptr;
 }
 
 inline void Encoder::clear() {
@@ -244,50 +309,13 @@ inline void Encoder::Ensure(size_t N) {
 
 inline size_t Encoder::length() const {
   S2_DCHECK_GE(buf_, orig_);
-  S2_CHECK_LE(buf_, limit_);  // Catch the buffer overflow.
+  S2_DCHECK_LE(buf_, limit_);
   return buf_ - orig_;
 }
 
 inline size_t Encoder::avail() const {
   S2_DCHECK_GE(limit_, buf_);
   return limit_ - buf_;
-}
-
-inline void Encoder::putn(const void* src, size_t n) {
-  memcpy(buf_, src, n);
-  buf_ += n;
-}
-
-inline void Encoder::putcn(const void* src, int c, size_t n) {
-  unsigned char *old = buf_;
-  buf_ = static_cast<unsigned char *>(memccpy(buf_, src, c, n));
-  if (buf_ == nullptr)
-    buf_ = old + n;
-}
-
-inline void Encoder::puts(const void* src) {
-  putcn(src, '\0', avail());
-}
-
-inline void Encoder::puts_without_null(const char* mem) {
-  while (*mem != '\0' && buf_ < limit_) {
-    *buf_++ = *mem++;
-  }
-}
-
-inline void Encoder::put_varint32(uint32 v) {
-  buf_ = reinterpret_cast<unsigned char*>
-         (Varint::Encode32(reinterpret_cast<char*>(buf_), v));
-}
-
-inline void Encoder::put_varint32_inline(uint32 v) {
-  buf_ = reinterpret_cast<unsigned char*>
-         (Varint::Encode32Inline(reinterpret_cast<char*>(buf_), v));
-}
-
-inline void Encoder::put_varint64(uint64 v) {
-  buf_ = reinterpret_cast<unsigned char*>
-         (Varint::Encode64(reinterpret_cast<char*>(buf_), v));
 }
 
 // Copies N bytes from *src to *dst then advances both pointers by N bytes.
@@ -447,8 +475,10 @@ inline void Decoder::gets(void* dst, size_t n) {
   getcn(dst, '\0', len);
 }
 
-inline void Decoder::skip(ptrdiff_t n) {
+inline const char* Decoder::skip(ptrdiff_t n) {
+  auto* start = reinterpret_cast<const char*>(buf_);
   buf_ += n;
+  return start;
 }
 
 inline unsigned char const* Decoder::ptr() const {
@@ -458,7 +488,7 @@ inline unsigned char const* Decoder::ptr() const {
 inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
   // This is an optimization based on the fact that Decoder(nullptr, 0) sets all
   // structure bytes to 0. This is valid because Decoder is TriviallyCopyable
-  // (http://en.cppreference.com/w/cpp/concept/TriviallyCopyable).
+  // (https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable).
   static_assert(absl::is_trivially_copy_constructible<Decoder>::value,
                 "Decoder must be trivially copy-constructible");
   static_assert(absl::is_trivially_copy_assignable<Decoder>::value,
@@ -466,38 +496,6 @@ inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
   static_assert(absl::is_trivially_destructible<Decoder>::value,
                 "Decoder must be trivially destructible");
   std::memset(array, 0, num_decoders * sizeof(Decoder));
-}
-
-inline void Encoder::put8(unsigned char v) {
-  S2_DCHECK_GE(avail(), sizeof(v));
-  *buf_ = v;
-  buf_ += sizeof(v);
-}
-
-inline void Encoder::put16(uint16 v) {
-  S2_DCHECK_GE(avail(), sizeof(v));
-  LittleEndian::Store16(buf_, v);
-  buf_ += sizeof(v);
-}
-
-inline void Encoder::put32(uint32 v) {
-  S2_DCHECK_GE(avail(), sizeof(v));
-  LittleEndian::Store32(buf_, v);
-  buf_ += sizeof(v);
-}
-
-inline void Encoder::put64(uint64 v) {
-  S2_DCHECK_GE(avail(), sizeof(v));
-  LittleEndian::Store64(buf_, v);
-  buf_ += sizeof(v);
-}
-
-inline void Encoder::putfloat(float f) {
-  put32(absl::bit_cast<uint32>(f));
-}
-
-inline void Encoder::putdouble(double d) {
-  put64(absl::bit_cast<uint64>(d));
 }
 
 inline unsigned char Decoder::get8() {
@@ -520,6 +518,12 @@ inline uint32 Decoder::get32() {
 
 inline uint64 Decoder::get64() {
   const uint64 v = LittleEndian::Load64(buf_);
+  buf_ += sizeof(v);
+  return v;
+}
+
+inline absl::uint128 Decoder::get128() {
+  const absl::uint128 v = LittleEndian::Load128(buf_);
   buf_ += sizeof(v);
   return v;
 }

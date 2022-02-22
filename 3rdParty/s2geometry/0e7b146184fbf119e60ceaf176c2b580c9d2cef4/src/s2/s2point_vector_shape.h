@@ -19,17 +19,21 @@
 #define S2_S2POINT_VECTOR_SHAPE_H_
 
 #include <vector>
+
 #include "s2/encoded_s2point_vector.h"
 #include "s2/s2shape.h"
 
 // S2PointVectorShape is an S2Shape representing a set of S2Points. Each point
-// is reprsented as a degenerate edge with the same starting and ending
+// is represented as a degenerate edge with the same starting and ending
 // vertices.
 //
 // This class is useful for adding a collection of points to an S2ShapeIndex.
 class S2PointVectorShape : public S2Shape {
  public:
-  static constexpr TypeTag kTypeTag = 3;
+  // Define as enum so we don't have to declare storage.
+  // TODO(user, b/210097200): Use static constexpr when C++17 is allowed
+  // in opensource.
+  enum : TypeTag { kTypeTag = 3 };
 
   // Constructs an empty point vector.
   S2PointVectorShape() {}
@@ -48,8 +52,7 @@ class S2PointVectorShape : public S2Shape {
   //
   // REQUIRES: "encoder" uses the default constructor, so that its buffer
   //           can be enlarged as necessary by calling Ensure(int).
-  void Encode(Encoder* encoder,
-              s2coding::CodingHint hint = s2coding::CodingHint::COMPACT) const {
+  void Encode(Encoder* encoder, s2coding::CodingHint hint) const override {
     s2coding::EncodeS2PointVector(points_, hint, encoder);
   }
 
@@ -62,8 +65,12 @@ class S2PointVectorShape : public S2Shape {
     return true;
   }
 
-  // S2Shape interface:
+  // S2Shape interface.
+
+  // Returns the number of points.
   int num_edges() const final { return num_points(); }
+
+  // Returns a point represented as a degenerate edge.
   Edge edge(int e) const final { return Edge(points_[e], points_[e]); }
   int dimension() const final { return 0; }
   ReferencePoint GetReferencePoint() const final {
@@ -91,6 +98,11 @@ class S2PointVectorShape : public S2Shape {
 // into a large contiguous buffer that contains other encoded data as well.
 class EncodedS2PointVectorShape : public S2Shape {
  public:
+  // Define as enum so we don't have to declare storage.
+  // TODO(user, b/210097200): Use static constexpr when C++17 is allowed
+  // in opensource.
+  enum : TypeTag { kTypeTag = S2PointVectorShape::kTypeTag };
+
   // Constructs an uninitialized object; requires Init() to be called.
   EncodedS2PointVectorShape() {}
 
@@ -98,6 +110,16 @@ class EncodedS2PointVectorShape : public S2Shape {
   //
   // REQUIRES: The Decoder data buffer must outlive this object.
   bool Init(Decoder* decoder) { return points_.Init(decoder); }
+
+  // Appends an encoded representation of the S2LaxPolygonShape to "encoder".
+  // The coding hint is ignored, and whatever method was originally used to
+  // encode the shape is preserved.
+  //
+  // REQUIRES: "encoder" uses the default constructor, so that its buffer
+  //           can be enlarged as necessary by calling Ensure(int).
+  void Encode(Encoder* encoder, s2coding::CodingHint) const override {
+    points_.Encode(encoder);
+  }
 
   int num_points() const { return static_cast<int>(points_.size()); }
   S2Point point(int i) const { return points_[i]; }
@@ -118,6 +140,7 @@ class EncodedS2PointVectorShape : public S2Shape {
   ChainPosition chain_position(int e) const final {
     return ChainPosition(e, 0);
   }
+  TypeTag type_tag() const override { return kTypeTag; }
 
  private:
   s2coding::EncodedS2PointVector points_;

@@ -1,4 +1,4 @@
-// Copyright 2018 Google Inc. All Rights Reserved.
+// Copyright Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
 
 #include "s2/s2shapeutil_edge_iterator.h"
 
-#include "s2/third_party/absl/strings/str_cat.h"
+#include "absl/strings/str_cat.h"
+
+using std::string;
 
 namespace s2shapeutil {
 
