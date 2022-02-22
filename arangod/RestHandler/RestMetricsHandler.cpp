@@ -146,6 +146,10 @@ RestStatus RestMetricsHandler::execute() {
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
     _response->addPayload(builder.slice());
+  } else if (it != values.end()) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::string("unknown 'type' parameter supplied."));
+    return RestStatus::DONE;
   } else {
     std::string result;
     metrics.toPrometheus(result);
