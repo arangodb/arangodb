@@ -4,6 +4,7 @@ import {
   ArangoTD,
   ArangoTH
 } from "../../../components/arango/table";
+import Link from "./Link";
 
 interface CollProps {
   links: {
@@ -14,7 +15,7 @@ interface CollProps {
   }[];
 }
 
-const CollectionList: React.FC<CollProps["links"]> = links => {
+const CollectionList = (links: CollProps["links"]) => {
   return (
     <div className="contentIn" id="indexHeaderContent">
       <ArangoTable className={"edit-index-table arango-table"}>
@@ -30,23 +31,13 @@ const CollectionList: React.FC<CollProps["links"]> = links => {
 
         <tbody>
           {links.map((c, key) => (
-            <tr>
-              <ArangoTD seq={key} key={key}>
-                {key}
-              </ArangoTD>
-              <ArangoTD seq={key} key={key}>
-                {c.attr}
-              </ArangoTD>
-              <ArangoTD seq={key} key={key}>
-                {c.name}
-              </ArangoTD>
-              <ArangoTD seq={key} key={key}>
-                {c.desc}
-              </ArangoTD>
-              <ArangoTD seq={key} key={key}>
-                {c.action}
-              </ArangoTD>
-            </tr>
+            <Link
+              name={c.name}
+              attr={c.attr}
+              desc={c.attr}
+              action={<i className="fa fa-plus-circle"></i>}
+              key={key}
+            />
           ))}
         </tbody>
         <tfoot>

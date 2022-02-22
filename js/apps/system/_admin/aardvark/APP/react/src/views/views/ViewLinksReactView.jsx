@@ -79,7 +79,7 @@ const ViewLinksReactView = ({ name }) => {
 
   return (
     <div className={"centralContent"} id={"content"}>
-      <CollectionList />
+      <CollectionList links={mockData} />
       <ArangoTable className={"edit-index-table arango-table"}>
         <thead>
           <tr class="figuresHeader">
