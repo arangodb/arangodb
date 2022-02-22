@@ -100,6 +100,8 @@ class TwoSidedEnumerator {
 
     auto provider() -> ProviderType&;
 
+    auto getGraphOptions() -> GraphOptions;
+
    private:
     auto clearProvider() -> void;
 
@@ -124,6 +126,7 @@ class TwoSidedEnumerator {
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
     Direction _direction;
     size_t _minDepth{0};
+    GraphOptions _graphOptions;
   };
 
  public:
@@ -205,6 +208,8 @@ class TwoSidedEnumerator {
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
+
+  auto getGraphOptions() -> GraphOptions;
 
  private:
   GraphOptions _options;

@@ -63,11 +63,12 @@ class PathValidator {
   using ProviderImpl = Provider;
   using PathStoreImpl = PathStore;
 
-  PathValidator(Provider& provider, PathStore& store,
-                PathValidatorOptions opts);
-  ~PathValidator();
+  PathValidator(Provider& provider, PathStore& store, PathValidatorOptions opts,
+                bool isSatelliteLeader);
+  virtual ~PathValidator();
 
-  auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
+  auto validatePath(typename PathStore::Step const& step, bool isDisjoint)
+      -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
                                   edgeUniqueness> const& otherValidator)
@@ -76,11 +77,11 @@ class PathValidator {
   void reset();
 
   // Prune section
-  bool usesPrune() const;
+  [[nodiscard]] bool usesPrune() const;
   void setPruneContext(aql::InputAqlItemRow& inputRow);
 
   // Post filter section
-  bool usesPostFilter() const;
+  [[nodiscard]] bool usesPostFilter() const;
   void setPostFilterContext(aql::InputAqlItemRow& inputRow);
 
   /**
@@ -89,6 +90,10 @@ class PathValidator {
    */
   void unpreparePruneContext();
   void unpreparePostFilterContext();
+
+  // TODO [GraphRefactor]: can be deleted? Seems to not be in use.
+  [[maybe_unused]] auto checkSmartValue(Step const& step, bool isDisjoint)
+      -> bool;
 
  private:
   // TODO [GraphRefactor]: const of _store has been removed as it is now
@@ -113,6 +118,11 @@ class PathValidator {
 
   PathValidatorOptions _options;
 
+#ifdef USE_ENTERPRISE
+  std::string_view _smartValue;
+  bool _isSatelliteLeader;
+#endif
+
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
@@ -126,6 +136,9 @@ class PathValidator {
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;
+
+  virtual auto isValidDisjointPath(typename PathStore::Step const& lastStep,
+                                   bool isSatelliteLeader) -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb

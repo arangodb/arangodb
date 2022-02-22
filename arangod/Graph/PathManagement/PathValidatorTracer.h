@@ -51,14 +51,17 @@ class PathValidatorTracer {
   using PathStore = typename PathValidatorImplementation::PathStoreImpl;
 
   PathValidatorTracer(Provider& provider, PathStore& store,
-                      PathValidatorOptions opts);
+                      PathValidatorOptions opts, bool isSatelliteLeader);
   ~PathValidatorTracer();
 
-  auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
+  auto validatePath(typename PathStore::Step const& step, bool isDisjoint)
+      -> ValidationResult;
   auto validatePath(
       typename PathStore::Step const& step,
       PathValidatorTracer<PathValidatorImplementation> const& otherValidator)
       -> ValidationResult;
+  /*auto validDisjointPath(typename PathStore::Step const& step, bool
+     isDisjoint, bool isSatelliteLeader) -> bool;*/
 
   void reset();
 

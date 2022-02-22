@@ -46,8 +46,9 @@ using namespace arangodb::graph;
 
 template<class PathValidatorImplementation>
 PathValidatorTracer<PathValidatorImplementation>::PathValidatorTracer(
-    Provider& provider, PathStore& store, PathValidatorOptions opts)
-    : _impl{provider, store, std::move(opts)} {}
+    Provider& provider, PathStore& store, PathValidatorOptions opts,
+    bool isSatelliteLeader)
+    : _impl{provider, store, std::move(opts), isSatelliteLeader} {}
 
 template<class PathValidatorImplementation>
 PathValidatorTracer<PathValidatorImplementation>::~PathValidatorTracer() {
@@ -59,13 +60,25 @@ PathValidatorTracer<PathValidatorImplementation>::~PathValidatorTracer() {
 
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
-    typename PathStore::Step const& step) -> ValidationResult {
+    typename PathStore::Step const& step, bool isDisjoint) -> ValidationResult {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["validatePath"].addTiming(TRI_microtime() - start);
   });
-  return _impl.validatePath(step);
+  return _impl.validatePath(step, isDisjoint);
 }
+
+/*
+template<class PathValidatorImplementation>
+auto PathValidatorTracer<PathValidatorImplementation>::validDisjointPath(
+    typename PathStore::Step const& step, bool isDisjoint,
+    bool isSatelliteLeader) -> bool {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["validDisjointPath"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.validDisjointPath(step, isDisjoint, isSatelliteLeader);
+}*/
 
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(

@@ -158,6 +158,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto searchMoreResults() -> void;
   void clearProvider();
 
+  bool isDisjoint();
+
  private:
   GraphOptions _options;
   ResultList _results{};
