@@ -614,73 +614,43 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
 
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
-    switch (dir) {
-      case TRI_EDGE_IN: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* indexCondition =
-            conditionBuilder.getInboundCondition()->clone(ast);
+    TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
 
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], indexCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
+    aql::AstNode* condition = (dir == TRI_EDGE_IN)
+                                  ? conditionBuilder.getInboundCondition()
+                                  : conditionBuilder.getOutboundCondition();
+    aql::AstNode* indexCondition = condition->clone(ast);
+    std::shared_ptr<Index> indexToUse;
 
-        std::optional<size_t> memberToUpdate{std::nullopt};
-        calculateMemberToUpdate(StaticStrings::ToString, memberToUpdate,
-                                indexCondition);
+    // arbitrary value for "number of edges in collection" used here. the
+    // actual value does not matter much. 1000 has historically worked fine.
+    constexpr size_t itemsInCollection = 1000;
 
-        aql::AstNode* remainderCondition =
-            conditionBuilder.getInboundCondition()->clone(ast);
-        std::unique_ptr<aql::Expression> expression =
-            generateExpression(remainderCondition, indexCondition);
-
-        auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-            ast, getRegisterPlan()->varInfo, false, false, indexCondition,
-            options()->tmpVar());
-
-        indexAccessors.emplace_back(indexToUse, indexCondition, memberToUpdate,
-                                    std::move(expression), std::move(container),
-                                    i);
-        break;
-      }
-      case TRI_EDGE_OUT: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* indexCondition =
-            conditionBuilder.getOutboundCondition()->clone(ast);
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], indexCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
-
-        std::optional<size_t> memberToUpdate{std::nullopt};
-        calculateMemberToUpdate(StaticStrings::FromString, memberToUpdate,
-                                indexCondition);
-
-        aql::AstNode* remainderCondition =
-            conditionBuilder.getOutboundCondition()->clone(ast);
-        std::unique_ptr<aql::Expression> expression =
-            generateExpression(remainderCondition, indexCondition);
-
-        auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-            ast, getRegisterPlan()->varInfo, false, false, indexCondition,
-            options()->tmpVar());
-
-        indexAccessors.emplace_back(indexToUse, indexCondition, memberToUpdate,
-                                    std::move(expression), std::move(container),
-                                    i);
-        break;
-      }
-      case TRI_EDGE_ANY:
-        TRI_ASSERT(false);
-        break;
+    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+        *_edgeColls[i], indexCondition, options()->tmpVar(), itemsInCollection,
+        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "expected edge index not found");
     }
+
+    std::optional<size_t> memberToUpdate{std::nullopt};
+    calculateMemberToUpdate(dir == TRI_EDGE_IN ? StaticStrings::ToString
+                                               : StaticStrings::FromString,
+                            memberToUpdate, indexCondition);
+
+    aql::AstNode* remainderCondition = condition->clone(ast);
+    std::unique_ptr<aql::Expression> expression =
+        generateExpression(remainderCondition, indexCondition);
+
+    auto container = aql::utils::extractNonConstPartsOfIndexCondition(
+        ast, getRegisterPlan()->varInfo, false, false, indexCondition,
+        options()->tmpVar());
+    indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
+                                memberToUpdate, std::move(expression),
+                                std::move(container), i, dir);
   }
+
   return indexAccessors;
 }
 
@@ -1064,6 +1034,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   PathValidatorOptions validatorOptions{opts->_tmpVar,
                                         opts->getExpressionCtx()};
+
   if (ServerState::instance()->isCoordinator() && !isSmart()) {
     // Note: In case we're smart, we are NOT allowed to initialize the
     // ClusterProvider.
@@ -1083,10 +1054,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
-    arangodb::graph::SingleServerBaseProviderOptions
-        singleServerBaseProviderOptions =
-            getSingleServerBaseProviderOptions(opts, filterConditionVariables);
-
     if (isSmart() && ServerState::instance()->isCoordinator()) {
       /*
        * Ok this whole file is causing a lot of headache:
@@ -1105,14 +1072,11 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        * SmartGraph at all. This will be the next step.
        *
        */
+
+      // Currently disabled.
+      // Means, we will not parse a _traversalEnumerator in that case.
       const bool forceIsRefactor = false;
       TRI_ASSERT(traverser != nullptr);
-
-      std::pair<std::vector<IndexAccessor>,
-                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
-          usedIndexes{};
-      usedIndexes.first = buildUsedIndexes();
-      usedIndexes.second = buildUsedDepthBasedIndexes();
 
       /*
        * [GraphRefactor] Note: This whole section also got lost during attempt
@@ -1126,18 +1090,29 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        *
        */
 
+      std::pair<std::vector<IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+          usedIndexes{};
+      usedIndexes.first = buildUsedIndexes();
+      usedIndexes.second = buildUsedDepthBasedIndexes();
+
+      arangodb::graph::SingleServerBaseProviderOptions smartBaseProviderOptions{
+          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+          filterConditionVariables, opts->collectionToShard()};
+
+      arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
+                                                         opts->maxDepth};
+
       // Prune Section
       if (pruneExpression() != nullptr) {
         std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
         checkPruneAvailability(false, pruneEvaluator);
-        validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
       }
 
       // Post-filter section
       if (postFilterExpression() != nullptr) {
         std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
         checkPostFilterAvailability(false, postFilterEvaluator);
-        validatorOptions.setPostFilterEvaluator(std::move(postFilterEvaluator));
       }
 
       // Vertex Expressions Section
@@ -1164,10 +1139,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        * Path Validator Duplicate Area END
        */
 
-      arangodb::graph::SingleServerBaseProviderOptions smartBaseProviderOptions{
-          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          filterConditionVariables, opts->collectionToShard()};
-
       auto executorInfos = TraversalExecutorInfos(
           std::move(traverser), outputRegisterMapping, getStartVertex(),
           inputRegister, std::move(filterConditionVariables), plan()->getAst(),
@@ -1180,24 +1151,28 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
-    } else {
-      /*
-       * TODO [GraphRefactor]: In which state and why this section is being
-       * reached?
-       */
-      auto executorInfos = TraversalExecutorInfos(
-          std::move(traverser), outputRegisterMapping, getStartVertex(),
-          inputRegister, std::move(filterConditionVariables), plan()->getAst(),
-          opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
-          opts->defaultWeight, opts->weightAttribute, opts->trx(),
-          opts->query(), std::move(validatorOptions),
-          arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-                                                     opts->maxDepth},
-          opts, std::move(singleServerBaseProviderOptions));
-
-      return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
+
+    /*
+     * TODO [GraphRefactor]: In which state and why this section is being
+     * reached?
+     */
+    arangodb::graph::SingleServerBaseProviderOptions
+        singleServerBaseProviderOptions =
+            getSingleServerBaseProviderOptions(opts, filterConditionVariables);
+
+    auto executorInfos = TraversalExecutorInfos(
+        std::move(traverser), outputRegisterMapping, getStartVertex(),
+        inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+        opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions),
+        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                   opts->maxDepth},
+        opts, std::move(singleServerBaseProviderOptions));
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
 
@@ -1337,12 +1312,14 @@ void TraversalNode::prepareOptions() {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->name(), StaticStrings::ToString,
-            globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getInboundCondition()->clone(ast),
+            /*onlyEdgeIndexes*/ false, dir);
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->name(), StaticStrings::FromString,
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast),
+            /*onlyEdgeIndexes*/ false, dir);
         break;
       case TRI_EDGE_ANY:
         TRI_ASSERT(false);
@@ -1376,13 +1353,13 @@ void TraversalNode::prepareOptions() {
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::ToString,
                                    builder->getInboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes);
+                                   depth, onlyEdgeIndexes, dir);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
                                    builder->getOutboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes);
+                                   depth, onlyEdgeIndexes, dir);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);
