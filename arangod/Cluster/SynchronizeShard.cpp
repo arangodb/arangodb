@@ -467,6 +467,12 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
   network::RequestOptions options;
   options.timeout = network::Timeout(timeout);
   options.database = getDatabase();
+  // In the hardLock case we need to continue as fast as possible
+  // and cannot be allowed to be blocked by overloading of the server.
+  // This operation now holds an exclusive lock on the leading server
+  // which will make overloading situation worse.
+  // So we want to bypass the scheduler here.
+  options.skipScheduler = !soft;
 
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Post,
                                        REPL_HOLD_READ_LOCK, *buf, options)

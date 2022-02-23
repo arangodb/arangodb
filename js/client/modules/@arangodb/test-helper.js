@@ -350,7 +350,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
   return clients;
 };
 
-exports.waitForShardsInSync = function(cn, timeout) {
+exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
   if (!timeout) {
     timeout = 300;
   }
