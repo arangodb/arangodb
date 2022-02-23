@@ -117,10 +117,10 @@ class PathValidator {
       _uniqueEdges;
 
   PathValidatorOptions _options;
+  bool _isSatelliteLeader;
 
 #ifdef USE_ENTERPRISE
   std::string_view _smartValue;
-  bool _isSatelliteLeader;
 #endif
 
   arangodb::velocypack::Builder _tmpObjectBuilder;
