@@ -75,9 +75,18 @@ struct DictateLeaderAction {
 struct EvictLeaderAction {
   static constexpr std::string_view name = "EvictLeaderAction";
 
+  explicit EvictLeaderAction(ParticipantId const &leader,
+                             ParticipantFlags flags,
+                             LogPlanTermSpecification term, size_t generation)
+      : _leader{leader}, _flags{flags}, _term{term}, _generation{generation} {
+    _flags.excluded = true;
+    _term.term = LogTerm{_term.term.value + 1};
+    _term.leader.reset();
+  }
+
   ParticipantId _leader;
   ParticipantFlags _flags;
-  LogPlanTermSpecification _newTerm;
+  LogPlanTermSpecification _term;
   std::size_t _generation;
 };
 
@@ -128,26 +137,61 @@ using Action =
                  AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
                  UpdateLogConfigAction>;
 
-// using Trace = std::vector<std::string>;
+using namespace arangodb::cluster::paths;
 
 /*
-struct CheckReplicatedLog {
-  Target const &target;
-  Plan const &plan;
-  Current const &current;
-
-  std::optional<Action> action{std::nullopt};
-  Trace trace;
-
-  auto check(std::function f) && -> CheckReplicatedLog {
-    if (action) {
-      return check;
-    } else {
-      auto [action, trace] = f(target, plan, current);
-      return CheckReplicatedLog{action, trace++ check.trace};
-    }
-  };
-};
+ * Execute a SupervisionAction
  */
+struct Executor {
+  explicit Executor(DatabaseID const &dbName, LogId const &log,
+                    arangodb::agency::envelope envelope)
+      : dbName{dbName}, log{log}, envelope{std::move(envelope)},
+        targetPath{
+            root()->arango()->target()->replicatedLogs()->database(dbName)->log(
+                log)},
+        planPath{
+            root()->arango()->plan()->replicatedLogs()->database(dbName)->log(
+                log)},
+        currentPath{root()
+                        ->arango()
+                        ->current()
+                        ->replicatedLogs()
+                        ->database(dbName)
+                        ->log(log)}
+
+        {};
+
+  DatabaseID dbName;
+  LogId log;
+  arangodb::agency::envelope envelope;
+
+  std::shared_ptr<Root::Arango::Target::ReplicatedLogs::Database::Log const>
+      targetPath;
+  std::shared_ptr<Root::Arango::Plan::ReplicatedLogs::Database::Log const>
+      planPath;
+  std::shared_ptr<Root::Arango::Current::ReplicatedLogs::Database::Log const>
+      currentPath;
+
+  std::shared_ptr<Root::Arango::Plan::Version const> planVersion;
+
+  void operator()(EmptyAction const &action);
+  void operator()(ErrorAction const &action);
+  void operator()(AddLogToPlanAction const &action);
+  void operator()(AddParticipantsToTargetAction const &action);
+  void operator()(CreateInitialTermAction const &action);
+  void operator()(UpdateTermAction const &action);
+  void operator()(DictateLeaderAction const &action);
+  void operator()(EvictLeaderAction const &action);
+  void operator()(LeaderElectionAction const &action);
+  void operator()(UpdateParticipantFlagsAction const &action);
+  void operator()(AddParticipantToPlanAction const &action);
+  void operator()(RemoveParticipantFromPlanAction const &action);
+  void operator()(UpdateLogConfigAction const &action);
+};
+
+auto execute(Action const &action, DatabaseID const &dbName, LogId const &log,
+             arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
+
+void toVelocyPack(Action const &action, VPackBuilder &builder);
 
 } // namespace arangodb::replication2::replicated_log
