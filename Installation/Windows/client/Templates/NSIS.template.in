@@ -34,7 +34,6 @@
 var retryCount
 Var MUI_TEMP
 Var STARTMENU_FOLDER
-Var SV_ALLUSERS
 Var START_MENU
 
 Var ADD_DESKTOP_ICON           ; x bool: add desktop icon
@@ -113,12 +112,14 @@ RequestExecutionLevel highest
   ; Now that we know the install scope, calculate directories:
   ${If} $TRI_INSTALL_SCOPE_ALL == 1
     SetShellVarContext all
+    ;MessageBox MB_OK 'shellvarcontext all'
     ${If} $INSTDIR == ""
     ${OrIf} $0 == 1
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     ${EndIf}
   ${Else}
     SetShellVarContext current
+    ;MessageBox MB_OK 'shellvarcontext current'
     ${If} $INSTDIR == ""
     ${OrIf} $0 == 1
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
@@ -325,7 +326,7 @@ Var AR_RegFlags
   !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
 
-  ;Page custom InstallOptionsPage1 InstallOptionsPage1_results
+  Page custom InstallOptionsPage1 InstallOptionsPage1_results
 
   !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
@@ -430,7 +431,7 @@ continueUI:
   ${NSD_CreateLabel} 0 20 100% 6% "Choose to install @CPACK_PACKAGE_NAME@ for all users or the current user:"
   Pop $0 ; Don't care...
 
-  StrCpy $ForAllTxt "for all users (and ArangoDB as a service)"
+  StrCpy $ForAllTxt "for all users"
   ${If} $AllowGlobalInstall == "0"
     StrCpy $ForAllTxt "$ForAllTxt (only available for privileged users)"
   ${EndIf}
@@ -480,7 +481,6 @@ continueUI:
   ${Else}
     StrCpy $ADD_DESKTOP_ICON "0"
   ${EndIf}
-
 
   !insertmacro determineInstallScope 1
   ; Call check_previous_install
@@ -645,6 +645,7 @@ Function un.onInit
 
   Pop $0
   SetShellVarContext current
+  ;MessageBox MB_OK 'shellvarcontext current'
   StrCpy $TRI_INSTALL_SCOPE_ALL "0"
   ${If} $AllowGlobalInstall == "1"
     ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
@@ -652,9 +653,11 @@ Function un.onInit
 
   ${If} $TRI_INSTALL_SCOPE_ALL == 1
     SetShellVarContext all
+    ;MessageBox MB_OK 'shellvarcontext all'
     EnVar::SetHKLM
   ${Else}
     SetShellVarContext current
+    ;MessageBox MB_OK 'shellvarcontext current'
     EnVar::SetHKCU
   ${EndIf}
 FunctionEnd
@@ -785,7 +788,7 @@ SectionEnd
 ; This function is used for the very first "custom page" of the installer.
 ; This custom page does not show up visibly, but it executes prior to the
 ; first visible page and sets up $INSTDIR properly...
-; Choose different default installation folder based on SV_ALLUSERS...
+; Choose different default installation folder based on TRI_INSTALL_SCOPE_ALL...
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
 
 var CMDINSTDIR
@@ -867,41 +870,16 @@ inst:
   StrCmp "$INSTDIR" "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@" 0 +2
     StrCpy $IS_DEFAULT_INSTALLDIR 1
 
-  StrCpy $SV_ALLUSERS "JustMe"
   ; if default install dir then change the default
   ; if it is installed for JustMe
   StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
-  ClearErrors
-  UserInfo::GetName
-  IfErrors noLM
-  Pop $0
-  UserInfo::GetAccountType
-  Pop $1
-  StrCmp $1 "Admin" 0 +4
-    SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Admin group'
-    StrCpy $SV_ALLUSERS "AllUsers"
-    Goto done
-  StrCmp $1 "Power" 0 +4
-    SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Power Users group'
-    StrCpy $SV_ALLUSERS "AllUsers"
-    Goto done
+  ${If} $TRI_INSTALL_SCOPE_ALL == 1
+    ;StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
+    StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+  ${EndIf}
+  ;StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
 
-  noLM:
-    StrCpy $SV_ALLUSERS "AllUsers"
-    ;MessageBox MB_OK 'noLM'
-    ;Get installation folder from registry if available
-
-  done:
-  StrCmp $SV_ALLUSERS "AllUsers" 0 +3
-    StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
-      StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-
-  StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
-  ; !insertmacro INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
-
-  noOptionsPage:
+  ;noOptionsPage:
 FunctionEnd
