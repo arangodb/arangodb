@@ -337,6 +337,12 @@ arangodb::Result fetchRevisions(
           if (inner.fail()) {
             return res;
           }
+
+          res = trx.state()->performIntermediateCommitIfRequired(collection.id());
+          if (res.fail()) {
+            return res;
+          }
+
         }
       }
       futures.pop_front();
