@@ -1,8 +1,11 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
-* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
-  replicated to the follower data-center keeping their sharding intact.
+* Harden validator for binary VelocyPack against additional types of malicious
+  inputs.
+
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now replicated
+  to the follower data-center keeping their sharding intact.
 
 * As we are now in constant stall regime, stall onset and warnings are demoted
   to DEBUG.
