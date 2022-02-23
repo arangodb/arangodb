@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -64,7 +65,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <cstring>
 
@@ -122,14 +122,14 @@ arangodb::Result removeRevisions(
   options.isRestore = true;
   options.waitForSync = false;
 
+  double t = TRI_microtime();
   for (arangodb::RevisionId const& rid : toRemove) {
-    double t = TRI_microtime();
     auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr,
                               options);
 
-    stats.waitedForRemovals += TRI_microtime() - t;
     if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // ignore not found, we remove conflicting docs ahead of time
+      stats.waitedForRemovals += TRI_microtime() - t;
       return r;
     }
 
@@ -137,6 +137,8 @@ arangodb::Result removeRevisions(
       ++stats.numDocsRemoved;
     }
   }
+
+  stats.waitedForRemovals += TRI_microtime() - t;
 
   return Result();
 }
@@ -1456,13 +1458,15 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
       batchExtend();
     }
 
+    using ::arangodb::basics::StringUtils::urlEncode;
+
     // assemble URL to call
     std::string url = baseUrl + "&" + StaticStrings::RevisionTreeResume + "=" +
-                      requestResume.toString();
+                      urlEncode(requestResume.toString());
 
     bool isVPack = false;
     auto headers = replutils::createHeaders();
-    if (_config.leader.version() >= 30900) {
+    if (_config.leader.version() >= 31000) {
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
       isVPack = true;
     }
@@ -1779,6 +1783,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         // intentional copy of options
         VPackOptions validationOptions =
             basics::VelocyPackHelper::strictRequestValidationOptions;
+        // allow custom types being sent here
+        validationOptions.disallowCustom = false;
         VPackValidator validator(&validationOptions);
 
         validator.validate(chunkResponse->getBody().begin(),
@@ -1927,6 +1933,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         return res;
       }
       toFetch.clear();
+
+      res = trx->state()->performIntermediateCommitIfRequired(coll->id());
+
+      if (res.fail()) {
+        return res;
+      }
     }
 
     // adjust counts

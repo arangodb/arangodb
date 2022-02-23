@@ -32,7 +32,6 @@
 #endif
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"

@@ -356,9 +356,10 @@ void ShardLocking::serializeIntoBuilder(
   TRI_ASSERT(builder.isOpenObject());
 }
 
-std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
+containers::FlatHashMap<ShardID, ServerID> const&
+ShardLocking::getShardMapping() {
   if (_shardMapping.empty() && !_collectionLocking.empty()) {
-    std::unordered_set<ShardID> shardIds;
+    containers::FlatHashSet<ShardID> shardIds;
     for (auto& lockInfo : _collectionLocking) {
       auto& allShards = lockInfo.second.allShards;
       TRI_ASSERT(!allShards.empty());

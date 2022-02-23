@@ -67,7 +67,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   friend class RocksDBVPackIndexIterator;
 
  public:
-  static uint64_t HashForKey(const rocksdb::Slice& key);
+  static uint64_t HashForKey(rocksdb::Slice const& key);
 
   RocksDBVPackIndex() = delete;
 
@@ -93,8 +93,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
       std::underlying_type<Index::Serialize>::type) const override;
 
   bool canBeDropped() const override { return true; }
-
-  bool hasCoveringIterator() const override { return true; }
 
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
@@ -155,10 +153,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
       RocksDBVPackIndexSearchValueFormat format) const;
 
   // build bounds for an index range
-  RocksDBKeyBounds buildIndexRangeBounds(transaction::Methods* trx,
-                                         VPackSlice searchValues,
-                                         VPackBuilder& leftSearch,
-                                         VPackSlice lastNonEq) const;
+  void buildIndexRangeBounds(transaction::Methods* trx, VPackSlice searchValues,
+                             VPackBuilder& leftSearch, VPackSlice lastNonEq,
+                             RocksDBKeyBounds& bounds) const;
 
   std::unique_ptr<IndexIterator> buildIteratorFromBounds(
       transaction::Methods* trx, bool reverse, ReadOwnWrites readOwnWrites,

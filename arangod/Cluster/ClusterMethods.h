@@ -31,6 +31,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
+#include "Metrics/Parse.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/MethodsApi.h"
@@ -39,7 +40,6 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <map>
 
@@ -124,13 +124,19 @@ futures::Future<OperationResult> countOnCoordinator(
     OperationOptions const& options, arangodb::transaction::MethodsApi api);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from DBServers
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::RawDBServers> metricsOnCoordinator(
+    NetworkFeature& network, ClusterFeature& cluster);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
 Result selectivityEstimatesOnCoordinator(
     ClusterFeature&, std::string const& dbname, std::string const& collname,
-    std::unordered_map<std::string, double>& result,
-    TransactionId tid = TransactionId::none());
+    IndexEstMap& result, TransactionId tid = TransactionId::none());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
