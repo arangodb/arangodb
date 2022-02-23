@@ -103,7 +103,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-struct  arangodb::VocBaseLogManager {
+struct arangodb::VocBaseLogManager {
   explicit VocBaseLogManager(ArangodServer& server, DatabaseID database)
       : _server(server),
         _logContext(
