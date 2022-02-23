@@ -1,6 +1,29 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Reduce memory usage of inner joins if they were performed by the IndexExecutor
+  with dynamic index lookup expressions that needed to be recomputed for input
+  from the outer loop.
+
+  For example, in the query
+  ```
+  FOR i IN 1..1000
+    FOR doc IN collection
+      FILTER doc.indexAttribute == i
+      RETURN doc
+  ```
+  the inner loop will be executed 1000 times. The IndexExecutor in the inner
+  loop needed to rebuild the index lookup attribute from the value of `i` 1000
+  times as well. The memory for index lookup attributes came from the Ast's
+  memory allocator and was not freed until the end of the query. In this query,
+  it would mean that up to 1000 lookup values were held in memory. With larger
+  inputs even more memory would be used.
+
+  Now the memory for index lookup values is freed when a new lookup value is
+  computed, i.e. only a single lookup value is held in memory.
+  This drastically reduces peak memory usage for queries that use index lookups
+  in inner loops and that get lots of different inputs from outer loops.
+
 * Harden validator for binary VelocyPack against additional types of malicious
   inputs.
 
