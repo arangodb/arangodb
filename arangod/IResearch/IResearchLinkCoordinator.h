@@ -21,7 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "ClusterEngine/ClusterIndex.h"
@@ -33,10 +32,9 @@
 namespace arangodb {
 
 struct IndexTypeFactory;  // forward declaration
-}
 
-namespace arangodb {
-namespace iresearch {
+}  // namespace arangodb
+namespace arangodb::iresearch {
 
 class IResearchViewCoordinator;
 
@@ -53,33 +51,36 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(IndexId id, arangodb::LogicalCollection& collection);
 
-  virtual bool canBeDropped() const override {
-    return IResearchLink::canBeDropped();
-  }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize from the specified definition used in make(...)
+  /// @return success
+  ////////////////////////////////////////////////////////////////////////////////
+  Result init(velocypack::Slice definition,
+              InitCallback const& initCallback = {}) final;
 
-  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
+  bool canBeDropped() const final { return IResearchLink::canBeDropped(); }
 
-  virtual bool hasSelectivityEstimate() const override {
+  arangodb::Result drop() final { return IResearchLink::drop(); }
+
+  bool hasSelectivityEstimate() const final {
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  bool isHidden() const override {
+  bool isHidden() const final {
     return true;  // always hide links
   }
 
   // IResearch does not provide a fixed default sort order
-  virtual bool isSorted() const override { return IResearchLink::isSorted(); }
+  bool isSorted() const final { return IResearchLink::isSorted(); }
 
-  virtual void load() override { IResearchLink::load(); }
+  void load() final { IResearchLink::load(); }
 
-  virtual bool matchesDefinition(
-      arangodb::velocypack::Slice const& slice) const override {
+  bool matchesDefinition(arangodb::velocypack::Slice const& slice) const final {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  virtual size_t memory() const override {
-    // FIXME return in memory size
-    return stats().indexSize;
+  size_t memory() const final {
+    return stats().indexSize;  // TODO add in memory size
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -88,22 +89,19 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack;  // for std::shared_ptr<Builder>
                               // Index::toVelocyPack(bool, Index::Serialize)
-  virtual void toVelocyPack(
+  void toVelocyPack(
       arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::Index::Serialize>::type flags)
-      const override;
+      std::underlying_type<arangodb::Index::Serialize>::type flags) const final;
 
-  void toVelocyPackFigures(velocypack::Builder& builder) const override {
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
     IResearchLink::toVelocyPackStats(builder);
   }
 
-  virtual IndexType type() const override { return IResearchLink::type(); }
+  IndexType type() const final { return IResearchLink::type(); }
 
-  virtual char const* typeName() const override {
-    return IResearchLink::typeName();
-  }
+  char const* typeName() const final { return IResearchLink::typeName(); }
 
-  virtual void unload() override {
+  void unload() final {
     auto res = IResearchLink::unload();
 
     if (!res.ok()) {
@@ -115,27 +113,25 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   /// @brief IResearchLinkCoordinator-specific implementation of an
   ///        IndexTypeFactory
   ////////////////////////////////////////////////////////////////////////////////
-  struct IndexFactory : public IndexTypeFactory {
+  class IndexFactory final : public IndexTypeFactory {
     friend class IResearchLinkCoordinator;
 
-   private:
-    IndexFactory(ArangodServer& server);
-
    public:
-    bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-               std::string const& dbname) const override;
+    explicit IndexFactory(ArangodServer& server);
 
-    std::shared_ptr<Index> instantiate(
-        LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-        bool isClusterConstructor) const override;
+    [[nodiscard]] bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+                             std::string const& dbname) const final;
 
-    virtual Result normalize(velocypack::Builder& normalized,
-                             velocypack::Slice definition, bool isCreation,
-                             TRI_vocbase_t const& vocbase) const override;
+    std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                       velocypack::Slice definition, IndexId id,
+                                       bool isClusterConstructor) const final;
+
+    Result normalize(velocypack::Builder& normalized,
+                     velocypack::Slice definition, bool isCreation,
+                     TRI_vocbase_t const& vocbase) const final;
   };
 
   static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
-};  // IResearchLinkCoordinator
+};
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

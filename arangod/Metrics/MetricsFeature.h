@@ -63,6 +63,7 @@ class MetricsFeature final : public ArangodFeature {
   bool remove(Builder const& builder);
 
   void toPrometheus(std::string& result) const;
+  void toVPack(velocypack::Builder& builder) const;
 
   ServerStatistics& serverStatistics() noexcept;
 

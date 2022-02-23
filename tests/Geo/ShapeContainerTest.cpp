@@ -27,7 +27,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Aql/VelocyPackHelper.h"
 

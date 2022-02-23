@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Configure this hook by running the following:
+#    1. cd arangodb
+#    2. cp .githooks/pre-commit .git/hooks/pre-commit
+#    3. git config core.hooksPath .git/hooks
+# pre-requisite: Linux-based system || macOS-based system
+# pre-requisite: Docker
+# pre-requisite: Bash 4
+# pre-requisite: Git 2.9+
+
+adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../.." &> /dev/null && pwd )"
+
+echo "ArangoDB directory: $adb_path"
+pushd "$adb_path" > /dev/null
+
+changed_files_filename=".clang-format-$$.changed.tmp"
+# clean up after ourselves
+trap "rm -f $changed_files_filename" EXIT
+trap "rm -f $changed_files_filename; exit" SIGINT SIGTERM SIGHUP
+
+# collect a list of file names of all modified files in $changed_files_filename
+git diff --cached --diff-filter=ACMRT --name-only -- arangod/ lib/ client-tools/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
+
+if [ -s "$changed_files_filename" ]; then
+  # hand over a list of changed files from the local filesystem into a Docker container that contains a fixed
+  # version of clang-format and some small shell wrapper to iterate over the list of files
+  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.2 "validate" "$changed_files_filename"
+fi
+status=$?
+
+popd > /dev/null
+
+exit $status

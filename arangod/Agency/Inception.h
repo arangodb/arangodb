@@ -32,7 +32,6 @@
 #include "Basics/Thread.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace consensus {

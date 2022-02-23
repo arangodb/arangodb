@@ -29,7 +29,6 @@
 #include "Benchmark/arangobench.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "Benchmark/BenchmarkStats.h"
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace arangobench {

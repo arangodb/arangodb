@@ -39,13 +39,10 @@
 #include "Metrics/MetricsFeature.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::rest;
-
+namespace arangodb {
 namespace {
+
 network::Headers buildHeaders(
     std::unordered_map<std::string, std::string> const& originalHeaders) {
   auto auth = AuthenticationFeature::instance();
@@ -60,6 +57,7 @@ network::Headers buildHeaders(
   }
   return headers;
 }
+
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,11 +70,10 @@ RestMetricsHandler::RestMetricsHandler(ArangodServer& server,
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestMetricsHandler::execute() {
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
+  auto& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
-    // dont leak information about server internals here
+    // don't leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
@@ -87,32 +84,19 @@ RestStatus RestMetricsHandler::execute() {
   }
 
   bool foundServerIdParameter;
-  std::string const& serverId =
-      _request->value("serverId", foundServerIdParameter);
+  auto const& serverId = _request->value("serverId", foundServerIdParameter);
 
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
       // not ourselves! - need to pass through the request
       auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
-      bool found = false;
-      for (auto const& srv : ci.getServers()) {
-        // validate if server id exists
-        if (srv.first == serverId) {
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) {
+      if (!ci.serverExists(serverId)) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
                       std::string("unknown serverId supplied."));
         return RestStatus::DONE;
       }
-
-      NetworkFeature const& nf = server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
+      auto* pool = server().getFeature<NetworkFeature>().pool();
       if (pool == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
@@ -129,7 +113,8 @@ RestStatus RestMetricsHandler::execute() {
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestMetricsHandler>(
                shared_from_this())](network::Response const& r) {
-            if (r.fail()) {
+            if (r.fail() || !r.hasResponse()) {
+              TRI_ASSERT(r.fail());
               self->generateError(r.combinedResult());
             } else {
               // the response will not contain any velocypack.
@@ -148,16 +133,31 @@ RestStatus RestMetricsHandler::execute() {
 
   auto& metrics = server().getFeature<metrics::MetricsFeature>();
   if (!metrics.exportAPI()) {
-    // dont export metrics, if so desired
+    // don't export metrics, if so desired
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
   }
 
-  std::string result;
-  metrics.toPrometheus(result);
-  _response->setResponseCode(rest::ResponseCode::OK);
-  _response->setContentType(rest::ContentType::TEXT);
-  _response->addRawPayload(result);
-
+  auto const& values = _request->values();
+  auto it = values.find("type");
+  if (it != values.end() && it->second == "json") {
+    VPackBuilder builder;
+    metrics.toVPack(builder);
+    _response->setResponseCode(rest::ResponseCode::OK);
+    _response->setContentType(rest::ContentType::VPACK);
+    _response->addPayload(builder.slice());
+  } else if (it != values.end()) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::string("unknown 'type' parameter supplied."));
+    return RestStatus::DONE;
+  } else {
+    std::string result;
+    metrics.toPrometheus(result);
+    _response->setResponseCode(rest::ResponseCode::OK);
+    _response->setContentType(rest::ContentType::TEXT);
+    _response->addRawPayload(result);
+  }
   return RestStatus::DONE;
 }
+
+}  // namespace arangodb

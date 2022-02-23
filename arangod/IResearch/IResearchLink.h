@@ -35,53 +35,12 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "Indexes/Index.h"
 #include "Metrics/Fwd.h"
-#include "Metrics/Guard.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb::iresearch {
-
-struct MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
-  static constexpr size_t kSize = 5;
-  static constexpr std::array<std::string_view, kSize> kName = {
-      "arangodb_search_num_docs",       //
-      "arangodb_search_num_live_docs",  //
-      "arangodb_search_num_segments",   //
-      "arangodb_search_num_files",      //
-      "arangodb_search_index_size",     //
-  };
-  using DataToString = std::string (*)(Data const&);
-  static constexpr std::array<DataToString, kSize> kToString = {
-      [](IResearchDataStore::Stats const& stats) {
-        return std::to_string(stats.numDocs);
-      },
-      [](IResearchDataStore::Stats const& stats) {
-        return std::to_string(stats.numLiveDocs);
-      },
-      [](IResearchDataStore::Stats const& stats) {
-        return std::to_string(stats.numSegments);
-      },
-      [](IResearchDataStore::Stats const& stats) {
-        return std::to_string(stats.numFiles);
-      },
-      [](IResearchDataStore::Stats const& stats) {
-        return std::to_string(stats.indexSize);
-      },
-  };
-  // TODO(MBkkt) Remove these arrays when we make generation maps from docs
-  static constexpr std::array<std::string_view, kSize> kHelp = {
-      "Number of documents",         //
-      "Number of live documents",    //
-      "Number of segments",          //
-      "Number of files",             //
-      "Size of the index in bytes",  //
-  };
-  static constexpr std::array<std::string_view, kSize> kType = {
-      "gauge", "gauge", "gauge", "gauge", "gauge",
-  };
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
@@ -174,7 +133,8 @@ class IResearchLink : public IResearchDataStore {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice definition, InitCallback const& init = {});
+  virtual Result init(velocypack::Slice definition,
+                      InitCallback const& init = {});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return arangosearch internal format identifier
