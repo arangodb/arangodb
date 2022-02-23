@@ -138,7 +138,7 @@ class PathValidator {
                                 arangodb::velocypack::Slice value) -> bool;
 
   auto isValidDisjointPath(typename PathStore::Step const& lastStep,
-                                   bool isSatelliteLeader) -> bool;
+                           bool isSatelliteLeader) -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb
