@@ -87,10 +87,26 @@ void Executor::operator()(AddParticipantsToTargetAction const &action) {
 void Executor::operator()(CreateInitialTermAction const &action) {
   auto const path = planPath->currentTerm()->str();
 
+  auto term = LogPlanTermSpecification(LogTerm{1}, action.config, std::nullopt);
+
+  envelope =
+      envelope.write()
+          .emplace_object(
+              path, [&](VPackBuilder &builder) { term.toVelocyPack(builder); })
+          .inc(paths::plan()->version()->str())
+          .precs()
+          .isEmpty(path)
+          .end();
+}
+
+void Executor::operator()(CurrentNotAvailableAction const &action) {
+  auto const path = currentPath->supervision()->error()->str();
+
   envelope = envelope.write()
                  .emplace_object(path,
                                  [&](VPackBuilder &builder) {
-                                   action._term.toVelocyPack(builder);
+                                   // TODO: proper error message/struct
+                                   builder.add(VPackValue("error"));
                                  })
                  .inc(paths::plan()->version()->str())
                  .precs()

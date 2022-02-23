@@ -43,6 +43,10 @@ struct ErrorAction {
   std::string _message;
 };
 
+struct CurrentNotAvailableAction {
+  static constexpr std::string_view name = "CurrentNotAvailableAction";
+};
+
 struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
@@ -57,7 +61,7 @@ struct AddParticipantsToTargetAction {
 struct CreateInitialTermAction {
   static constexpr std::string_view name = "CreateInitialTermAction";
 
-  LogPlanTermSpecification const _term;
+  LogConfig const config;
 };
 
 struct UpdateTermAction {
@@ -132,10 +136,10 @@ struct ConvergedToGenerationAction {
 using Action =
     std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
                  AddParticipantsToTargetAction, CreateInitialTermAction,
-                 UpdateTermAction, DictateLeaderAction, EvictLeaderAction,
-                 LeaderElectionAction, UpdateParticipantFlagsAction,
-                 AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
-                 UpdateLogConfigAction>;
+                 CurrentNotAvailableAction, UpdateTermAction,
+                 DictateLeaderAction, EvictLeaderAction, LeaderElectionAction,
+                 UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+                 RemoveParticipantFromPlanAction, UpdateLogConfigAction>;
 
 using namespace arangodb::cluster::paths;
 
@@ -179,6 +183,7 @@ struct Executor {
   void operator()(AddLogToPlanAction const &action);
   void operator()(AddParticipantsToTargetAction const &action);
   void operator()(CreateInitialTermAction const &action);
+  void operator()(CurrentNotAvailableAction const &action);
   void operator()(UpdateTermAction const &action);
   void operator()(DictateLeaderAction const &action);
   void operator()(EvictLeaderAction const &action);

@@ -65,10 +65,9 @@ auto getEnoughHealthyParticipants(size_t replicationFactor,
 auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
     -> Action {
   auto const &target = log.target;
-  auto const &plan = log.plan;
-  //  auto const &current = log.current;
+  auto const &current = log.current;
 
-  if (!plan) {
+  if (!log.plan) {
     // TODO: this is a temporary hack to make older tests work
     if (target.participants.empty()) {
       return AddParticipantsToTargetAction{getEnoughHealthyParticipants(
@@ -77,32 +76,31 @@ auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
       return AddLogToPlanAction{log.target.participants};
     }
   } else {
-#if 0
+    auto const &plan = *log.plan;
+
     if (!plan.currentTerm) {
-      return CreateInitialTermAction(config);
+      return CreateInitialTermAction{target.config};
     } else {
       if (!current) {
         // Once we log that current isn't available, current will become
         // available ;)
         return CurrentNotAvailableAction{};
       } else {
+#if 0
         if (!plan.currentTerm->leader) {
           // TODO: this would have to work correctly
           return leadershipElection(plan, *current, health);
         } else {
           if (isLeaderHealthy(*plan, health)) {
-
             // The current leader has been removed from target
             if (!target.participants.contains(
                     plan.currentTerm->leader->serverId)) {
-
             } else if (auto flags = getParticipantWithUpdatedFlags()) {
               return UpdateParticipantFlagsAction{flags};
             } else if (auto participant = getAddedParticipant()) {
               return AddParticipantAction{participant};
             } else if (target.leader &&
                        target.leader != plan.currentTerm->leader->serverId) {
-
             } else if (auto const &part =
                            getRemovedParticipant(target, *plan)) {
               if (part->first == plan.currentTerm->leader->serverId) {
@@ -122,9 +120,9 @@ auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
             return MakeUpdateTermAction(*plan->currentTerm);
           }
         }
+#endif
       }
     }
-#endif
     return EmptyAction{};
   }
 
@@ -495,4 +493,4 @@ auto getRemovedParticipant(LogTarget const &target,
 
 #endif
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log
