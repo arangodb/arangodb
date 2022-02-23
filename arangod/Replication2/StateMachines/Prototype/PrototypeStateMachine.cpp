@@ -21,11 +21,12 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/overload.h"
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
+#include "velocypack/Iterator.h"
 
 #include "PrototypeStateMachine.h"
-#include "Basics/overload.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -42,6 +43,16 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                    },
                    [&](PrototypeLogEntry::DeleteOperation const& op) {
                      store = store.erase(op.key);
+                   },
+                   [&](PrototypeLogEntry::BulkInsertOperation const& op) {
+                     for (auto const& [key, value] : op.map) {
+                       store = store.set(key, value);
+                     }
+                   },
+                   [&](PrototypeLogEntry::BulkDeleteOperation const& op) {
+                     for (auto const& it : op.keys) {
+                       store = store.erase(it);
+                     }
                    },
                },
                logEntry.operation);
@@ -93,28 +104,6 @@ auto PrototypeLeaderState::set(std::string key, std::string value)
       });
 }
 
-/*
-auto PrototypeLeaderState::set(PrototypeCore::StorageType map) ->
-futures::Future<Result> { auto stream = getStream(); PrototypeLogEntry entry{
-      PrototypeLogEntry::InsertOperation{.key = key, .value = value}};
-  auto idx = stream->insert(entry);
-
-  return stream->waitFor(idx).thenValue(
-      [self = shared_from_this(), key = std::move(key),
-       value = std::move(value)](auto&& res) mutable {
-        return self->guardedData.template doUnderLock(
-            [key = std::move(key),
-             value = std::move(value)](auto& core) mutable {
-              if (!core) {
-                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
-              }
-              core->store[std::move(key)] = std::move(value);
-              return Result{TRI_ERROR_NO_ERROR};
-            });
-      });
-}
- */
-
 auto PrototypeLeaderState::remove(std::string key) -> futures::Future<Result> {
   auto stream = getStream();
   PrototypeLogEntry entry{PrototypeLogEntry::DeleteOperation{.key = key}};
@@ -144,24 +133,6 @@ auto PrototypeLeaderState::get(std::string key) -> std::optional<std::string> {
         }
         return std::nullopt;
       });
-}
-
-template<typename Iterator, typename std::enable_if_t<std::is_same_v<
-                                typename Iterator::value_type, std::string>>>
-auto PrototypeLeaderState::get(Iterator const& begin, Iterator const& end)
-    -> PrototypeCore::StorageType {
-  return guardedData.template doUnderLock([&begin, &end](auto& core) {
-    auto result = PrototypeCore::StorageType{};
-    if (!core) {
-      return result;
-    }
-    for (auto it{begin}; it != end; ++it) {
-      if (auto found = core->store.find(*it); found != nullptr) {
-        result = result.set(*it, *found);
-      }
-    }
-    return result;
-  });
 }
 
 PrototypeFollowerState::PrototypeFollowerState(
@@ -223,6 +194,22 @@ operator()(
     TRI_ASSERT(!key.isNone());
     return PrototypeLogEntry{
         .operation = PrototypeLogEntry::DeleteOperation{key.copyString()}};
+  } else if (type.isEqualString("bulkInsert")) {
+    auto mapOb = s.get("map");
+    TRI_ASSERT(!mapOb.isNone());
+    std::unordered_map<std::string, std::string> map;
+    for (auto [key, value] : VPackObjectIterator(mapOb)) {
+      map.emplace(key.copyString(), value.copyString());
+    }
+    return PrototypeLogEntry{
+        .operation = PrototypeLogEntry::BulkInsertOperation{std::move(map)}};
+  } else if (type.isEqualString("bulkDelete")) {
+    auto keysOb = s.get("keys");
+    TRI_ASSERT(!keysOb.isNone());
+    std::vector<std::string> keys;
+    for (auto it : VPackArrayIterator(keysOb)) {
+      keys.emplace_back(it.copyString());
+    }
   }
   TRI_ASSERT(false);
   return PrototypeLogEntry{};
@@ -244,6 +231,27 @@ operator()(
                    VPackObjectBuilder ob(&b);
                    b.add("type", VPackValue("delete"));
                    b.add("key", VPackValue(op.key));
+                 },
+                 [&b](PrototypeLogEntry::BulkInsertOperation const& op) {
+                   VPackObjectBuilder ob(&b);
+                   b.add("type", VPackValue("bulkInsert"));
+                   {
+                     VPackObjectBuilder ob2(&b, "map");
+                     for (auto const& [key, value] : op.map) {
+                       b.add("key", VPackValue(key));
+                       b.add("value", VPackValue(value));
+                     }
+                   }
+                 },
+                 [&b](PrototypeLogEntry::BulkDeleteOperation const& op) {
+                   VPackObjectBuilder ob(&b);
+                   b.add("type", VPackValue("bulkDelete"));
+                   {
+                     VPackArrayBuilder ob2(&b, "keys");
+                     for (auto const& it : op.keys) {
+                       b.add(VPackValue(it));
+                     }
+                   }
                  },
              },
              e.operation);

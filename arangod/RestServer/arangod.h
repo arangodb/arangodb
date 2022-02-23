@@ -148,6 +148,9 @@ struct ReplicatedStateAppFeature;
 namespace black_hole {
 struct BlackHoleStateMachineFeature;
 }
+namespace prototype {
+struct PrototypeStateMachineFeature;
+}
 }  // namespace replication2::replicated_state
 
 using namespace application_features;
@@ -197,7 +200,8 @@ using ArangodFeatures = TypeList<
     arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    cluster::FailureOracleFeature>;
+    cluster::FailureOracleFeature,
+    replication2::replicated_state::prototype::PrototypeStateMachineFeature>;
 
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;

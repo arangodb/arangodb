@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include "Basics/UnshackledMutex.h"
+#include "Futures/Future.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
-#include "Basics/UnshackledMutex.h"
 
 #include <immer/map.hpp>
 
@@ -42,6 +43,15 @@ namespace arangodb::replication2::replicated_state {
  * Snapshot transfers are supported.
  */
 namespace prototype {
+
+template<class T>
+concept StringIterator =
+    std::same_as<typename std::iterator_traits<T>::value_type, std::string>;
+
+template<class T>
+concept MapStringIterator =
+    std::same_as<typename std::iterator_traits<T>::value_type,
+                 std::pair<std::string, std::string>>;
 
 struct PrototypeFactory;
 struct PrototypeLogEntry;
@@ -61,16 +71,19 @@ struct PrototypeLogEntry {
   struct InsertOperation {
     std::string key, value;
   };
-  /*
-  struct InsertBulkOperation {
+  struct BulkInsertOperation {
     std::unordered_map<std::string, std::string> map;
   };
-   */
   struct DeleteOperation {
     std::string key;
   };
+  struct BulkDeleteOperation {
+    std::vector<std::string> keys;
+  };
 
-  std::variant<InsertOperation, DeleteOperation> operation;
+  std::variant<InsertOperation, DeleteOperation, BulkInsertOperation,
+               BulkDeleteOperation>
+      operation;
 };
 
 struct PrototypeCore {
@@ -93,17 +106,84 @@ struct PrototypeLeaderState
       -> futures::Future<Result> override;
 
   auto set(std::string key, std::string value) -> futures::Future<Result>;
-  // auto set(PrototypeCore::StorageType map) -> futures::Future<Result>;
   auto remove(std::string key) -> futures::Future<Result>;
   auto get(std::string key) -> std::optional<std::string>;
 
-  template<typename Iterator, typename std::enable_if_t<std::is_same_v<
-                                  typename Iterator::value_type, std::string>>>
-  auto get(Iterator const& begin, Iterator const& end)
-      -> PrototypeCore::StorageType;
+  template<StringIterator Iterator>
+  auto get(Iterator begin, Iterator end)
+      -> std::unordered_map<std::string, std::string>;
+
+  template<MapStringIterator Iterator>
+  auto set(Iterator begin, Iterator end) -> futures::Future<Result>;
+
+  template<StringIterator Iterator>
+  auto remove(Iterator begin, Iterator end) -> futures::Future<Result>;
 
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
 };
+
+template<StringIterator Iterator>
+auto PrototypeLeaderState::get(Iterator begin, Iterator end)
+    -> std::unordered_map<std::string, std::string> {
+  return guardedData.template doUnderLock([begin, end](auto& core) {
+    std::unordered_map<std::string, std::string> result;
+    if (!core) {
+      return result;
+    }
+    for (auto it{begin}; it != end; ++it) {
+      if (auto found = core->store.find(*it); found != nullptr) {
+        result.emplace(*it, *found);
+      }
+    }
+    return result;
+  });
+}
+
+template<MapStringIterator Iterator>
+auto PrototypeLeaderState::set(Iterator begin, Iterator end)
+    -> futures::Future<Result> {
+  auto stream = getStream();
+
+  PrototypeLogEntry entry{
+      PrototypeLogEntry::BulkInsertOperation{.map = {begin, end}}};
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(), begin, end](auto&& res) {
+        return self->guardedData.template doUnderLock([begin, end](auto& core) {
+          if (!core) {
+            return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+          }
+          for (auto it{begin}; it != end; ++it) {
+            core->store = core->store.set(it->first, it->second);
+          }
+          return Result{TRI_ERROR_NO_ERROR};
+        });
+      });
+}
+
+template<StringIterator Iterator>
+auto PrototypeLeaderState::remove(Iterator begin, Iterator end)
+    -> futures::Future<Result> {
+  auto stream = getStream();
+
+  PrototypeLogEntry entry{
+      PrototypeLogEntry::BulkDeleteOperation{.keys = {begin, end}}};
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(), begin, end](auto&& res) {
+        return self->guardedData.template doUnderLock([begin, end](auto& core) {
+          if (!core) {
+            return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+          }
+          for (auto it{begin}; it != end; ++it) {
+            core->store = core->store.erase(*it);
+          }
+          return Result{TRI_ERROR_NO_ERROR};
+        });
+      });
+}
 
 struct PrototypeFollowerState : IReplicatedFollowerState<PrototypeState> {
   explicit PrototypeFollowerState(std::unique_ptr<PrototypeCore> core);

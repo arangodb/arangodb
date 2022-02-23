@@ -17,17 +17,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+
+#include <array>
 
 #include "Replication2/ReplicatedLog/TestHelper.h"
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/Streams/LogMultiplexer.h"
-#include "Replication2/Streams/Streams.h"
 
 #include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
 
@@ -36,8 +36,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::prototype;
 using namespace arangodb::replication2::test;
-
-struct ReplicatedStateRecoveryTest;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
@@ -50,7 +48,7 @@ struct PrototypeStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<ReplicatedStateFeature>();
 };
 
-TEST_F(PrototypeStateMachineTest, set_remove_get) {
+TEST_F(PrototypeStateMachineTest, simple_operations) {
   auto followerLog = makeReplicatedLog(LogId{1});
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
@@ -58,6 +56,7 @@ TEST_F(PrototypeStateMachineTest, set_remove_get) {
   auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
 
   leader->triggerAsyncReplication();
+
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
           feature->createReplicatedState("prototype-state", leaderLog));
@@ -66,26 +65,63 @@ TEST_F(PrototypeStateMachineTest, set_remove_get) {
   replicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
 
-  LOG_DEVEL << "before appendentries";
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
   }
-  LOG_DEVEL << "after appendentries";
 
   auto leaderState = replicatedState->getLeader();
-  LOG_DEVEL << "got leader state";
   ASSERT_NE(leaderState, nullptr);
-  LOG_DEVEL << "before set";
-  auto result = leaderState->set("foo", "bar");
-  LOG_DEVEL << "after set";
 
-  while (follower->hasPendingAppendEntries()) {
-    follower->runAsyncAppendEntries();
+  {
+    auto result = leaderState->set("foo", "bar");
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    ASSERT_TRUE(result.get().ok());
   }
-  ASSERT_TRUE(result.get().ok());
 
-  auto result2 = leaderState->get("foo");
-  ASSERT_EQ(result2, "bar");
-  auto result3 = leaderState->get("baz");
-  ASSERT_EQ(result3, std::nullopt);
+  {
+    auto result = leaderState->get("foo");
+    ASSERT_EQ(result, "bar");
+    result = leaderState->get("baz");
+    ASSERT_EQ(result, std::nullopt);
+  }
+
+  {
+    std::initializer_list<std::pair<std::string, std::string>> values{
+        {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
+    auto result = leaderState->set(values.begin(), values.end());
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    ASSERT_TRUE(result.get().ok());
+  }
+
+  {
+    std::array<std::string, 4> entries = {"foo1", "foo2", "foo3", "nofoo"};
+    std::unordered_map<std::string, std::string> result =
+        leaderState->get(entries.begin(), entries.end());
+    ASSERT_EQ(result.size(), 3);
+    ASSERT_EQ(result["foo1"], "bar1");
+  }
+
+  {
+    auto result = leaderState->remove("foo1");
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    ASSERT_TRUE(result.get().ok());
+    ASSERT_EQ(leaderState->get("foo1"), std::nullopt);
+  }
+
+  {
+    std::vector<std::string> entries = {"nofoo", "foo2"};
+    auto result = leaderState->remove(entries.begin(), entries.end());
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    ASSERT_TRUE(result.get().ok());
+    ASSERT_EQ(leaderState->get("foo2"), std::nullopt);
+    ASSERT_EQ(leaderState->get("foo3"), "bar3");
+  }
 }
