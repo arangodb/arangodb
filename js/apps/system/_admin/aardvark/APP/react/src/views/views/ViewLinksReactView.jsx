@@ -10,6 +10,7 @@ import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
 import CollectionList from "./Components/LinkList";
+import NewList from "./Components/NewLink";
 
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
@@ -80,6 +81,7 @@ const ViewLinksReactView = ({ name }) => {
   return (
     <div className={"centralContent"} id={"content"}>
       <CollectionList links={mockData} />
+      <NewList />
       <div
         id={"modal-dialog"}
         className={"createModalDialog"}
