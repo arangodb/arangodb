@@ -1059,7 +1059,7 @@ Function insert_registration_keys
   ClearErrors
   ${If} $AllowGlobalInstall == "1"
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service" "$TRI_INSTALL_SERVICE"
-    IfErrors there_are_erros
+    IfErrors there_are_errors
     WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll" "$TRI_INSTALL_SCOPE_ALL"
     IfErrors there_are_errors
   ${EndIf}
@@ -1401,41 +1401,13 @@ inst:
   StrCmp "$INSTDIR" "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@" 0 +2
     StrCpy $IS_DEFAULT_INSTALLDIR 1
 
-  StrCpy $SV_ALLUSERS "JustMe"
   ; if default install dir then change the default
   ; if it is installed for JustMe
   StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
-  ClearErrors
-  UserInfo::GetName
-  IfErrors noLM
-  Pop $0
-  UserInfo::GetAccountType
-  Pop $1
-  StrCmp $1 "Admin" 0 +4
-    SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Admin group'
-    StrCpy $SV_ALLUSERS "AllUsers"
-    Goto done
-  StrCmp $1 "Power" 0 +4
-    SetShellVarContext all
-    ;MessageBox MB_OK 'User "$0" is in the Power Users group'
-    StrCpy $SV_ALLUSERS "AllUsers"
-    Goto done
-
-  noLM:
-    StrCpy $SV_ALLUSERS "AllUsers"
-    ;MessageBox MB_OK 'noLM'
-    ;Get installation folder from registry if available
-
-  done:
-  StrCmp $SV_ALLUSERS "AllUsers" 0 +3
-    StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
-      StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-
-  StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
-  ; !insertmacro INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
-
-  noOptionsPage:
+  ${If} $TRI_INSTALL_SCOPE_ALL == 1
+    ;StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
+    StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+  ${EndIf}
 FunctionEnd

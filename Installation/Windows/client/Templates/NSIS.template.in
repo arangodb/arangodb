@@ -879,7 +879,4 @@ inst:
     ;StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
     StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
   ${EndIf}
-  ;StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
-
-  ;noOptionsPage:
 FunctionEnd
