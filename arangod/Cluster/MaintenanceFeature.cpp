@@ -75,22 +75,6 @@ DECLARE_COUNTER(
 DECLARE_COUNTER(arangodb_maintenance_action_failure_total,
                 "Failure counter for the maintenance actions");
 
-////////////////////////////////////////////////////////////////////////////////
-// FAKE DECLARATIONS - remove when v1 is removed
-////////////////////////////////////////////////////////////////////////////////
-
-DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total,
-                       "Accumulated runtime of phase one [ms]");
-DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total,
-                       "Accumulated runtime of phase two [ms]");
-DECLARE_LEGACY_COUNTER(
-    arangodb_maintenance_agency_sync_accum_runtime_msec_total,
-    "Accumulated runtime of agency sync phase [ms]");
-DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total,
-                       "Accumulated action runtime");
-DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total,
-                       "Accumulated action queue time");
-
 struct MaintenanceScale {
   static metrics::LogScale<uint64_t> scale() { return {2, 50, 8000, 10}; }
 };
@@ -168,9 +152,8 @@ arangodb::Result arangodb::maintenance::collectionCount(
   return opResult.result;
 }
 
-MaintenanceFeature::MaintenanceFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Maintenance"),
+MaintenanceFeature::MaintenanceFeature(Server& server)
+    : ArangodFeature{server, *this},
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
       _firstRun(true),
@@ -314,13 +297,6 @@ void MaintenanceFeature::initializeMetrics() {
   _agency_sync_total_runtime_msec =
       &metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
 
-  _phase1_accum_runtime_msec = &metricsFeature.add(
-      arangodb_maintenance_phase1_accum_runtime_msec_total{});
-  _phase2_accum_runtime_msec = &metricsFeature.add(
-      arangodb_maintenance_phase2_accum_runtime_msec_total{});
-  _agency_sync_total_accum_runtime_msec = &metricsFeature.add(
-      arangodb_maintenance_agency_sync_accum_runtime_msec_total{});
-
   _shards_out_of_sync = &metricsFeature.add(arangodb_shards_out_of_sync{});
   _shards_total_count = &metricsFeature.add(arangodb_shards_number{});
   _shards_leader_count = &metricsFeature.add(arangodb_shards_leader_number{});
@@ -347,12 +323,6 @@ void MaintenanceFeature::initializeMetrics() {
         metricsFeature.add(
             arangodb_maintenance_action_queue_time_msec{}.withLabel(key,
                                                                     action)),
-        metricsFeature.add(
-            arangodb_maintenance_action_accum_runtime_msec_total{}.withLabel(
-                key, action)),
-        metricsFeature.add(
-            arangodb_maintenance_action_accum_queue_time_msec_total{}.withLabel(
-                key, action)),
         metricsFeature.add(
             arangodb_maintenance_action_failure_total{}.withLabel(key,
                                                                   action)));
@@ -1213,7 +1183,7 @@ void MaintenanceFeature::addDirty(std::string const& database) {
   server().getFeature<ClusterFeature>().addDirty(database);
 }
 void MaintenanceFeature::addDirty(
-    std::unordered_set<std::string> const& databases, bool callNotify) {
+    containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
@@ -1243,8 +1213,8 @@ void MaintenanceFeature::refillToCheck() {
   std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::dirty(
-    std::unordered_set<std::string> const& more) {
+containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
+    containers::FlatHashSet<std::string> const& more) {
   auto& clusterFeature = server().getFeature<ClusterFeature>();
   auto ret = clusterFeature.dirty();  // plan & current in first run
   if (_firstRun) {

@@ -31,7 +31,7 @@
 
 #include "Cache/Cache.h"
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
 #include "Basics/cpu-relax.h"

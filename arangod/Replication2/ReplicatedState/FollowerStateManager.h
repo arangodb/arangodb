@@ -36,6 +36,7 @@ struct FollowerStateManager
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   using Stream = streams::Stream<EntryType>;
   using Iterator = typename Stream::Iterator;
@@ -43,14 +44,20 @@ struct FollowerStateManager
   FollowerStateManager(
       std::shared_ptr<ReplicatedStateBase> parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
-      std::unique_ptr<ReplicatedStateCore> core,
+      std::unique_ptr<CoreType> core,
+      std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
   void run();
-  auto getStatus() const -> StateStatus final;
-  auto getSnapshotStatus() const -> SnapshotStatus final;
 
-  auto getFollowerState() -> std::shared_ptr<IReplicatedFollowerState<S>>;
+  [[nodiscard]] auto getStatus() const -> StateStatus final;
+
+  [[nodiscard]] auto getFollowerState() const
+      -> std::shared_ptr<IReplicatedFollowerState<S>>;
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::pair<std::unique_ptr<CoreType>,
+                   std::unique_ptr<ReplicatedStateToken>> override;
 
  private:
   void awaitLeaderShip();
@@ -77,8 +84,13 @@ struct FollowerStateManager
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> ingestionRange;
 
-  std::unique_ptr<ReplicatedStateCore> core;
+  // core will be nullptr as soon as the FollowerState was created
+  std::unique_ptr<CoreType> core;
+  std::unique_ptr<ReplicatedStateToken> token;
+
   std::shared_ptr<Factory> const factory;
+
+  bool _didResign = false;
 
  private:
   void updateInternalState(FollowerInternalState newState,

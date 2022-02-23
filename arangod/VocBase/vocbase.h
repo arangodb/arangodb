@@ -40,6 +40,7 @@
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
 #include "Replication2/Version.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
@@ -68,6 +69,10 @@ struct QuickLogStatus;
 struct PersistedLog;
 struct ReplicatedLog;
 }  // namespace replicated_log
+namespace replicated_state {
+struct ReplicatedStateBase;
+struct StateStatus;
+}  // namespace replicated_state
 }  // namespace replication2
 namespace velocypack {
 class Builder;
@@ -121,7 +126,7 @@ struct TRI_vocbase_t {
     DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
-  arangodb::application_features::ApplicationServer& _server;
+  arangodb::ArangodServer& _server;
 
   arangodb::CreateDatabaseInfo _info;
 
@@ -184,6 +189,26 @@ struct TRI_vocbase_t {
       -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
 
  public:
+  auto createReplicatedState(arangodb::replication2::LogId id,
+                             std::string_view type,
+                             arangodb::velocypack::Slice data)
+      -> arangodb::ResultT<std::shared_ptr<
+          arangodb::replication2::replicated_state::ReplicatedStateBase>>;
+  auto dropReplicatedState(arangodb::replication2::LogId id)
+      -> arangodb::Result;
+  auto ensureReplicatedState(arangodb::replication2::LogId id,
+                             std::string_view type,
+                             arangodb::velocypack::Slice data)
+      -> std::shared_ptr<
+          arangodb::replication2::replicated_state::ReplicatedStateBase>;
+  [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
+      arangodb::replication2::LogId,
+      arangodb::replication2::replicated_state::StateStatus>;
+  [[nodiscard]] auto getReplicatedStateById(arangodb::replication2::LogId id)
+      const -> std::shared_ptr<
+          arangodb::replication2::replicated_state::ReplicatedStateBase>;
+
+ public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,
                                      arangodb::LogicalCollection>
       _deadlockDetector;
@@ -194,9 +219,7 @@ struct TRI_vocbase_t {
   // structures for volatile cache data (used from JavaScript)
   std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 
-  arangodb::application_features::ApplicationServer& server() const noexcept {
-    return _server;
-  }
+  arangodb::ArangodServer& server() const noexcept { return _server; }
 
   TRI_voc_tick_t id() const { return _info.getId(); }
   std::string const& name() const { return _info.getName(); }

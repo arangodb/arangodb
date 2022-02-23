@@ -33,13 +33,12 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
 /// @brief construct the configuration with default values
 ReplicationApplierConfiguration::ReplicationApplierConfiguration(
-    application_features::ApplicationServer& server)
+    ArangodServer& server)
     : _server(server),
       _endpoint(),
       _database(),
@@ -220,8 +219,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder,
 
 /// @brief create a configuration object from velocypack
 ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
-    application_features::ApplicationServer& server, VPackSlice slice,
-    std::string const& databaseName) {
+    ArangodServer& server, VPackSlice slice, std::string const& databaseName) {
   return fromVelocyPack(ReplicationApplierConfiguration(server), slice,
                         databaseName);
 }

@@ -51,7 +51,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -69,9 +68,9 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_vocbase_t& vocbase = GetContextVocBase(isolate);
 
@@ -98,9 +97,9 @@ static void JS_TickRangesLoggerReplication(
   v8::Handle<v8::Array> result;
 
   VPackBuilder builder;
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   Result res = engine.createTickRanges(builder);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -123,9 +122,9 @@ static void JS_FirstTickLoggerReplication(
   v8::HandleScope scope(isolate);
 
   TRI_voc_tick_t tick = UINT64_MAX;
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   Result res = engine.firstTick(tick);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -163,9 +162,9 @@ static void JS_LastLoggerReplication(
 
   auto transactionContext = transaction::V8Context::Create(vocbase, true);
   VPackBuilder builder(transactionContext->getVPackOptions());
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   Result res = engine.lastLogger(vocbase, tickStart, tickEnd, builder);
   v8::Handle<v8::Value> result;
 
@@ -218,10 +217,10 @@ static void SynchronizeReplication(
             .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(
-          v8g->_server, builder.slice(), databaseName);
+          v8g->server(), builder.slice(), databaseName);
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -354,8 +353,8 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate,
     applier = vocbase.replicationApplier();
   } else {
     // applier type global
-    TRI_GET_GLOBALS();
-    auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
     applier = replicationFeature.globalReplicationApplier();
   }
 
@@ -547,8 +546,9 @@ static void StateApplierReplicationAll(
     TRI_V8_THROW_EXCEPTION_USAGE("stateAll()");
   }
 
-  TRI_GET_GLOBALS();
-  DatabaseFeature& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  DatabaseFeature& databaseFeature =
+      v8g->server().getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
@@ -627,8 +627,8 @@ static void JS_FailoverEnabledGlobalApplierReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
   if (replicationFeature.isActiveFailoverEnabled()) {
     TRI_V8_RETURN_TRUE();
   }

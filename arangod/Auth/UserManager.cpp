@@ -53,7 +53,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -61,7 +60,7 @@ namespace {
 /// @brief return a pointer to the system database or nullptr on error
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
-    arangodb::application_features::ApplicationServer& server) {
+    arangodb::ArangodServer& server) {
   if (!server.hasFeature<arangodb::SystemDatabaseFeature>()) {
     LOG_TOPIC("607b8", WARN, arangodb::Logger::AUTHENTICATION)
         << "failure to find feature '"
@@ -85,16 +84,16 @@ static bool inline IsRole(std::string const& name) {
 }
 
 #ifndef USE_ENTERPRISE
-auth::UserManager::UserManager(application_features::ApplicationServer& server)
+auth::UserManager::UserManager(ArangodServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 #else
-auth::UserManager::UserManager(application_features::ApplicationServer& server)
+auth::UserManager::UserManager(ArangodServer& server)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
       _authHandler(nullptr) {}
 
-auth::UserManager::UserManager(application_features::ApplicationServer& server,
+auth::UserManager::UserManager(ArangodServer& server,
                                std::unique_ptr<auth::Handler> handler)
     : _server(server),
       _globalVersion(1),
@@ -127,8 +126,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    application_features::ApplicationServer& server) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   TRI_IF_FAILURE("QueryAllUsers") {
     // simulates the case that the _users collection is not yet available
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -639,8 +637,8 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);  // FIXME do not use
 }
 
-static Result RemoveUserInternal(
-    application_features::ApplicationServer& server, auth::User const& entry) {
+static Result RemoveUserInternal(ArangodServer& server,
+                                 auth::User const& entry) {
   TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
 

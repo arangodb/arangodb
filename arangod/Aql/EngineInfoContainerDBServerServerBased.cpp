@@ -23,6 +23,7 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/GraphNode.h"
 #include "Aql/TraverserEngineShardLists.h"
@@ -86,25 +87,6 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(
   // GraphNodes
 }
 
-void EngineInfoContainerDBServerServerBased::injectVertexCollections(
-    GraphNode* graphNode) {
-  auto const& vCols = graphNode->vertexColls();
-  if (vCols.empty()) {
-    auto& resolver = _query.resolver();
-    _query.collections().visit(
-        [&resolver, graphNode](std::string const& name,
-                               aql::Collection& collection) {
-          // If resolver cannot resolve this collection
-          // it has to be a view.
-          if (resolver.getCollection(name)) {
-            // All known edge collections will be ignored by this call!
-            graphNode->injectVertexCollection(collection);
-          }
-          return true;
-        });
-  }
-}
-
 // Insert a new node into the last engine on the stack
 // If this Node contains Collections, they will be added into the map
 // for ShardLocking
@@ -122,7 +104,6 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node,
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
       graphNode->prepareOptions();
-      injectVertexCollections(graphNode);
       break;
     }
     default:
@@ -751,7 +732,6 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
 void EngineInfoContainerDBServerServerBased::addGraphNode(
     GraphNode* node, bool pushToSingleServer) {
   node->prepareOptions();
-  injectVertexCollections(node);
   node->initializeIndexConditions();
   // SnippetID does not matter on GraphNodes
   _shardLocking.addNode(node, 0, pushToSingleServer);
@@ -829,7 +809,7 @@ void EngineInfoContainerDBServerServerBased::addSnippetPart(
 std::vector<bool>
 EngineInfoContainerDBServerServerBased::addTraversalEnginesPart(
     arangodb::velocypack::Builder& infoBuilder,
-    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     ServerID const& server) const {
   std::vector<bool> result;
   if (_graphNodes.empty()) {

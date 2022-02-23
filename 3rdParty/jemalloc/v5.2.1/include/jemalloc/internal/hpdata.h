@@ -1,7 +1,7 @@
 #ifndef JEMALLOC_INTERNAL_HPDATA_H
 #define JEMALLOC_INTERNAL_HPDATA_H
 
-#include "jemalloc/internal/flat_bitmap.h"
+#include "jemalloc/internal/fb.h"
 #include "jemalloc/internal/ph.h"
 #include "jemalloc/internal/ql.h"
 #include "jemalloc/internal/typed_list.h"
@@ -18,6 +18,7 @@
  * hugepage-sized and hugepage-aligned; it's *potentially* huge.
  */
 typedef struct hpdata_s hpdata_t;
+ph_structs(hpdata_age_heap, hpdata_t);
 struct hpdata_s {
 	/*
 	 * We likewise follow the edata convention of mangling names and forcing
@@ -61,6 +62,8 @@ struct hpdata_s {
 
 	/* And with hugifying. */
 	bool h_hugify_allowed;
+	/* When we became a hugification candidate. */
+	nstime_t h_time_hugify_allowed;
 	bool h_in_psset_hugify_container;
 
 	/* Whether or not a purge or hugify is currently happening. */
@@ -80,7 +83,7 @@ struct hpdata_s {
 
 	union {
 		/* When nonempty (and also nonfull), used by the psset bins. */
-		phn(hpdata_t) ph_link;
+		hpdata_age_heap_link_t age_link;
 		/*
 		 * When empty (or not corresponding to any hugepage), list
 		 * linkage.
@@ -110,7 +113,7 @@ struct hpdata_s {
 	 */
 	size_t h_ntouched;
 
-	/* The dirty pages (using the same definition as above). */
+	/* The touched pages (using the same definition as above). */
 	fb_group_t touched_pages[FB_NGROUPS(HUGEPAGE_PAGES)];
 };
 
@@ -118,8 +121,7 @@ TYPED_LIST(hpdata_empty_list, hpdata_t, ql_link_empty)
 TYPED_LIST(hpdata_purge_list, hpdata_t, ql_link_purge)
 TYPED_LIST(hpdata_hugify_list, hpdata_t, ql_link_hugify)
 
-typedef ph(hpdata_t) hpdata_age_heap_t;
-ph_proto(, hpdata_age_heap_, hpdata_age_heap_t, hpdata_t);
+ph_proto(, hpdata_age_heap, hpdata_t);
 
 static inline void *
 hpdata_addr_get(const hpdata_t *hpdata) {
@@ -175,8 +177,8 @@ hpdata_purge_allowed_get(const hpdata_t *hpdata) {
 
 static inline void
 hpdata_purge_allowed_set(hpdata_t *hpdata, bool purge_allowed) {
-	assert(purge_allowed == false || !hpdata->h_mid_purge);
-	hpdata->h_purge_allowed = purge_allowed;
+       assert(purge_allowed == false || !hpdata->h_mid_purge);
+       hpdata->h_purge_allowed = purge_allowed;
 }
 
 static inline bool
@@ -185,9 +187,20 @@ hpdata_hugify_allowed_get(const hpdata_t *hpdata) {
 }
 
 static inline void
-hpdata_hugify_allowed_set(hpdata_t *hpdata, bool hugify_allowed) {
-	assert(hugify_allowed == false || !hpdata->h_mid_hugify);
-	hpdata->h_hugify_allowed = hugify_allowed;
+hpdata_allow_hugify(hpdata_t *hpdata, nstime_t now) {
+	assert(!hpdata->h_mid_hugify);
+	hpdata->h_hugify_allowed = true;
+	hpdata->h_time_hugify_allowed = now;
+}
+
+static inline nstime_t
+hpdata_time_hugify_allowed(hpdata_t *hpdata) {
+	return hpdata->h_time_hugify_allowed;
+}
+
+static inline void
+hpdata_disallow_hugify(hpdata_t *hpdata) {
+	hpdata->h_hugify_allowed = false;
 }
 
 static inline bool
@@ -279,7 +292,7 @@ hpdata_ndirty_get(hpdata_t *hpdata) {
 
 static inline size_t
 hpdata_nretained_get(hpdata_t *hpdata) {
-	return hpdata->h_nactive - hpdata->h_ntouched;
+	return HUGEPAGE_PAGES - hpdata->h_ntouched;
 }
 
 static inline void
@@ -356,6 +369,7 @@ void hpdata_unreserve(hpdata_t *hpdata, void *begin, size_t sz);
 typedef struct hpdata_purge_state_s hpdata_purge_state_t;
 struct hpdata_purge_state_s {
 	size_t npurged;
+	size_t ndirty_to_purge;
 	fb_group_t to_purge[FB_NGROUPS(HUGEPAGE_PAGES)];
 	size_t next_purge_search_begin;
 };
@@ -372,7 +386,7 @@ struct hpdata_purge_state_s {
  * until you're done, and then end.  Allocating out of an hpdata undergoing
  * purging is not allowed.
  *
- * Returns the number of pages that will be purged.
+ * Returns the number of dirty pages that will be purged.
  */
 size_t hpdata_purge_begin(hpdata_t *hpdata, hpdata_purge_state_t *purge_state);
 

@@ -4,6 +4,7 @@
 #include "jemalloc/internal/assert.h"
 #include "jemalloc/internal/mutex.h"
 #include "jemalloc/internal/safety_check.h"
+#include "jemalloc/internal/san.h"
 #include "jemalloc/internal/sc.h"
 
 /******************************************************************************/
@@ -115,7 +116,7 @@ tcache_gc_item_delay_compute(szind_t szind) {
 	if (item_delay >= delay_max) {
 		item_delay = delay_max - 1;
 	}
-	return item_delay;
+	return (uint8_t)item_delay;
 }
 
 static void
@@ -133,7 +134,11 @@ tcache_gc_small(tsd_t *tsd, tcache_slow_t *tcache_slow, tcache_t *tcache,
 
 	size_t nflush = low_water - (low_water >> 2);
 	if (nflush < tcache_slow->bin_flush_delay_items[szind]) {
-		tcache_slow->bin_flush_delay_items[szind] -= nflush;
+		/* Workaround for a conversion warning. */
+		uint8_t nflush_uint8 = (uint8_t)nflush;
+		assert(sizeof(tcache_slow->bin_flush_delay_items[0]) ==
+		    sizeof(nflush_uint8));
+		tcache_slow->bin_flush_delay_items[szind] -= nflush_uint8;
 		return;
 	} else {
 		tcache_slow->bin_flush_delay_items[szind]
@@ -178,6 +183,8 @@ tcache_event(tsd_t *tsd) {
 	szind_t szind = tcache_slow->next_gc_bin;
 	bool is_small = (szind < SC_NBINS);
 	cache_bin_t *cache_bin = &tcache->bins[szind];
+
+	tcache_bin_flush_stashed(tsd, tcache, cache_bin, szind, is_small);
 
 	cache_bin_sz_t low_water = cache_bin_low_water_get(cache_bin,
 	    &tcache_bin_info[szind]);
@@ -300,7 +307,7 @@ tcache_bin_flush_match(edata_t *edata, unsigned cur_arena_ind,
 
 JEMALLOC_ALWAYS_INLINE void
 tcache_bin_flush_impl(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
-    szind_t binind, unsigned rem, bool small) {
+    szind_t binind, cache_bin_ptr_array_t *ptrs, unsigned nflush, bool small) {
 	tcache_slow_t *tcache_slow = tcache->tcache_slow;
 	/*
 	 * A couple lookup calls take tsdn; declare it once for convenience
@@ -313,24 +320,15 @@ tcache_bin_flush_impl(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
 	} else {
 		assert(binind < nhbins);
 	}
-	cache_bin_sz_t ncached = cache_bin_ncached_get_local(cache_bin,
-	    &tcache_bin_info[binind]);
-	assert((cache_bin_sz_t)rem <= ncached);
 	arena_t *tcache_arena = tcache_slow->arena;
 	assert(tcache_arena != NULL);
 
-	unsigned nflush = ncached - rem;
 	/*
 	 * Variable length array must have > 0 length; the last element is never
 	 * touched (it's just included to satisfy the no-zero-length rule).
 	 */
 	VARIABLE_ARRAY(emap_batch_lookup_result_t, item_edata, nflush + 1);
-	CACHE_BIN_PTR_ARRAY_DECLARE(ptrs, nflush);
-
-	cache_bin_init_ptr_array_for_flush(cache_bin, &tcache_bin_info[binind],
-	    &ptrs, nflush);
-
-	tcache_bin_flush_edatas_lookup(tsd, &ptrs, binind, nflush, item_edata);
+	tcache_bin_flush_edatas_lookup(tsd, ptrs, binind, nflush, item_edata);
 
 	/*
 	 * The slabs where we freed the last remaining object in the slab (and
@@ -407,7 +405,7 @@ tcache_bin_flush_impl(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
 		 */
 		if (!small) {
 			for (unsigned i = 0; i < nflush; i++) {
-				void *ptr = ptrs.ptr[i];
+				void *ptr = ptrs->ptr[i];
 				edata = item_edata[i].edata;
 				assert(ptr != NULL && edata != NULL);
 
@@ -424,12 +422,13 @@ tcache_bin_flush_impl(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
 
 		/* Deallocate whatever we can. */
 		unsigned ndeferred = 0;
-		arena_dalloc_bin_locked_info_t dalloc_bin_info;
+		/* Init only to avoid used-uninitialized warning. */
+		arena_dalloc_bin_locked_info_t dalloc_bin_info = {0};
 		if (small) {
 			arena_dalloc_bin_locked_begin(&dalloc_bin_info, binind);
 		}
 		for (unsigned i = 0; i < nflush; i++) {
-			void *ptr = ptrs.ptr[i];
+			void *ptr = ptrs->ptr[i];
 			edata = item_edata[i].edata;
 			assert(ptr != NULL && edata != NULL);
 			if (!tcache_bin_flush_match(edata, cur_arena_ind,
@@ -440,7 +439,7 @@ tcache_bin_flush_impl(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
 				 * arena.  Either way, stash the object so that
 				 * it can be handled in a future pass.
 				 */
-				ptrs.ptr[ndeferred] = ptr;
+				ptrs->ptr[ndeferred] = ptr;
 				item_edata[ndeferred].edata = edata;
 				ndeferred++;
 				continue;
@@ -501,6 +500,25 @@ tcache_bin_flush_impl(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
 		}
 	}
 
+}
+
+JEMALLOC_ALWAYS_INLINE void
+tcache_bin_flush_bottom(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
+    szind_t binind, unsigned rem, bool small) {
+	tcache_bin_flush_stashed(tsd, tcache, cache_bin, binind, small);
+
+	cache_bin_sz_t ncached = cache_bin_ncached_get_local(cache_bin,
+	    &tcache_bin_info[binind]);
+	assert((cache_bin_sz_t)rem <= ncached);
+	unsigned nflush = ncached - rem;
+
+	CACHE_BIN_PTR_ARRAY_DECLARE(ptrs, nflush);
+	cache_bin_init_ptr_array_for_flush(cache_bin, &tcache_bin_info[binind],
+	    &ptrs, nflush);
+
+	tcache_bin_flush_impl(tsd, tcache, cache_bin, binind, &ptrs, nflush,
+	    small);
+
 	cache_bin_finish_flush(cache_bin, &tcache_bin_info[binind], &ptrs,
 	    ncached - rem);
 }
@@ -508,13 +526,55 @@ tcache_bin_flush_impl(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
 void
 tcache_bin_flush_small(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
     szind_t binind, unsigned rem) {
-	tcache_bin_flush_impl(tsd, tcache, cache_bin, binind, rem, true);
+	tcache_bin_flush_bottom(tsd, tcache, cache_bin, binind, rem, true);
 }
 
 void
 tcache_bin_flush_large(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
     szind_t binind, unsigned rem) {
-	tcache_bin_flush_impl(tsd, tcache, cache_bin, binind, rem, false);
+	tcache_bin_flush_bottom(tsd, tcache, cache_bin, binind, rem, false);
+}
+
+/*
+ * Flushing stashed happens when 1) tcache fill, 2) tcache flush, or 3) tcache
+ * GC event.  This makes sure that the stashed items do not hold memory for too
+ * long, and new buffers can only be allocated when nothing is stashed.
+ *
+ * The downside is, the time between stash and flush may be relatively short,
+ * especially when the request rate is high.  It lowers the chance of detecting
+ * write-after-free -- however that is a delayed detection anyway, and is less
+ * of a focus than the memory overhead.
+ */
+void
+tcache_bin_flush_stashed(tsd_t *tsd, tcache_t *tcache, cache_bin_t *cache_bin,
+    szind_t binind, bool is_small) {
+	cache_bin_info_t *info = &tcache_bin_info[binind];
+	/*
+	 * The two below are for assertion only.  The content of original cached
+	 * items remain unchanged -- the stashed items reside on the other end
+	 * of the stack.  Checking the stack head and ncached to verify.
+	 */
+	void *head_content = *cache_bin->stack_head;
+	cache_bin_sz_t orig_cached = cache_bin_ncached_get_local(cache_bin,
+	    info);
+
+	cache_bin_sz_t nstashed = cache_bin_nstashed_get_local(cache_bin, info);
+	assert(orig_cached + nstashed <= cache_bin_info_ncached_max(info));
+	if (nstashed == 0) {
+		return;
+	}
+
+	CACHE_BIN_PTR_ARRAY_DECLARE(ptrs, nstashed);
+	cache_bin_init_ptr_array_for_stashed(cache_bin, binind, info, &ptrs,
+	    nstashed);
+	san_check_stashed_ptrs(ptrs.ptr, nstashed, sz_index2size(binind));
+	tcache_bin_flush_impl(tsd, tcache, cache_bin, binind, &ptrs, nstashed,
+	    is_small);
+	cache_bin_finish_flush_stashed(cache_bin, info);
+
+	assert(cache_bin_nstashed_get_local(cache_bin, info) == 0);
+	assert(cache_bin_ncached_get_local(cache_bin, info) == orig_cached);
+	assert(head_content == *cache_bin->stack_head);
 }
 
 void

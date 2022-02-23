@@ -28,6 +28,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/Ast.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/IndexNode.h"
@@ -45,6 +46,7 @@ class IndexIterator;
 namespace aql {
 
 class ExecutionEngine;
+class ExecutorExpressionContext;
 class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
@@ -65,6 +67,7 @@ class IndexExecutorInfos {
       Collection const* collection, Variable const* outVariable,
       bool produceResult, Expression* filter,
       arangodb::aql::Projections projections,
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
       bool oneIndexCondition,
@@ -104,6 +107,9 @@ class IndexExecutorInfos {
 
   std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister()
       const noexcept;
+
+  std::vector<std::pair<VariableId, RegisterId>> const&
+  getFilterVarsToRegister() const noexcept;
 
   // setter
   void setHasMultipleExpansions(bool flag);
@@ -153,6 +159,8 @@ class IndexExecutorInfos {
   Expression* _filter;
   arangodb::aql::Projections _projections;
 
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
+
   NonConstExpressionContainer _nonConstExpressions;
 
   RegisterId _outputRegisterId;
@@ -181,12 +189,23 @@ class IndexExecutorInfos {
  */
 class IndexExecutor {
  private:
+  struct CursorStats {
+    size_t created = 0;
+    size_t rearmed = 0;
+
+    void incrCreated() noexcept;
+    void incrRearmed() noexcept;
+
+    size_t getAndResetCreated() noexcept;
+    size_t getAndResetRearmed() noexcept;
+  };
+
   struct CursorReader {
    public:
     CursorReader(transaction::Methods& trx, IndexExecutorInfos const& infos,
                  AstNode const* condition, std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context,
-                 bool checkUniqueness);
+                 CursorStats& cursorStats, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
     size_t skipIndex(size_t toSkip);
     void reset();
@@ -208,6 +227,7 @@ class IndexExecutor {
     std::shared_ptr<Index> const& _index;
     std::unique_ptr<IndexIterator> _cursor;
     DocumentProducingFunctionContext& _context;
+    CursorStats& _cursorStats;
     Type const _type;
     bool const _checkUniqueness;
 
@@ -273,6 +293,11 @@ class IndexExecutor {
 
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   Infos& _infos;
+  std::unique_ptr<ExecutorExpressionContext> _expressionContext;
+
+  // an AST owned by the IndexExecutor, used to store data of index
+  // expressions
+  Ast _ast;
 
   /// @brief a vector of cursors for the index block
   /// cursors can be reused
@@ -285,6 +310,9 @@ class IndexExecutor {
   ///        Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   size_t _skipped;
+
+  /// statistics for cursors. is shared by reference with CursorReader instances
+  CursorStats _cursorStats;
 };
 
 }  // namespace aql

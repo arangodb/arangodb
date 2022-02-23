@@ -30,6 +30,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "velocypack/velocypack-common.h"
@@ -300,21 +301,39 @@ class Builder {
   inline void openObject(bool unindexed = false) {
     openCompoundValue(unindexed ? 0x14 : 0x0b);
   }
+  
+  template <typename T>
+  uint8_t* addUnchecked(std::string_view attrName, T const& sub) {
+    bool needCleanup = !_stack.empty();
+    if (needCleanup) {
+      reportAdd();
+    }
+    try {
+      set(Value(attrName));
+      return writeValue(sub);
+    } catch (...) {
+      // clean up in case of an exception
+      if (needCleanup) {
+        cleanupAdd();
+      }
+      throw;
+    }
+  }
 
   template <typename T>
-  uint8_t* addUnchecked(char const* attrName, std::size_t attrLength, T const& sub) {
-    if (_stack.empty()) {
-      set(ValuePair(attrName, attrLength, ValueType::String));
-      return writeValue(sub);
+  [[deprecated]] uint8_t* addUnchecked(char const* attrName, std::size_t attrLength, T const& sub) {
+    bool needCleanup = !_stack.empty();
+    if (needCleanup) {
+      reportAdd();
     }
-
-    reportAdd();
     try {
       set(ValuePair(attrName, attrLength, ValueType::String));
       return writeValue(sub);
     } catch (...) {
       // clean up in case of an exception
-      cleanupAdd();
+      if (needCleanup) {
+        cleanupAdd();
+      }
       throw;
     }
   }
@@ -487,25 +506,25 @@ class Builder {
   Builder& close();
 
   // whether or not a specific key is present in an Object value
-  bool hasKey(std::string const& key) const;
+  bool hasKey(std::string_view key) const;
 
   // return an attribute from an Object value
-  Slice getKey(std::string const& key) const;
+  Slice getKey(std::string_view key) const;
 
   // Syntactic sugar for add:
-  Builder& operator()(std::string const& attrName, Value const& sub) {
+  Builder& operator()(std::string_view attrName, Value const& sub) {
     add(attrName, sub);
     return *this;
   }
 
   // Syntactic sugar for add:
-  Builder& operator()(std::string const& attrName, ValuePair const& sub) {
+  Builder& operator()(std::string_view attrName, ValuePair const& sub) {
     add(attrName, sub);
     return *this;
   }
 
   // Syntactic sugar for add:
-  Builder& operator()(std::string const& attrName, Slice const& sub) {
+  Builder& operator()(std::string_view attrName, Slice sub) {
     add(attrName, sub);
     return *this;
   }
@@ -523,7 +542,7 @@ class Builder {
   }
 
   // Syntactic sugar for add:
-  Builder& operator()(Slice const& sub) {
+  Builder& operator()(Slice sub) {
     add(sub);
     return *this;
   }
@@ -677,9 +696,9 @@ class Builder {
     }
   }
 
-  inline void checkKeyIsString(Slice const& item) {
+  inline void checkKeyIsString(Slice item) {
     if (!_stack.empty()) {
-      ValueLength const pos = _stack.back().startPos;
+      ValueLength pos = _stack.back().startPos;
       if (_start[pos] == 0x0b || _start[pos] == 0x14) {
         if (VELOCYPACK_UNLIKELY(!_keyWritten && !item.isString())) {
           throw Exception(Exception::BuilderKeyMustBeString);
@@ -978,6 +997,9 @@ class Builder {
   bool checkAttributeUniqueness(Slice obj) const;
   bool checkAttributeUniquenessSorted(Slice obj) const;
   bool checkAttributeUniquenessUnsorted(Slice obj) const;
+
+  ValueLength effectivePaddingForOneByteMembers() const noexcept;
+  ValueLength effectivePaddingForTwoByteMembers() const noexcept;
 };
 
 struct BuilderNonDeleter {
@@ -998,16 +1020,20 @@ struct BuilderContainer {
 struct ObjectBuilder final : public BuilderContainer,
                              private NonHeapAllocatable,
                              NonCopyable {
-  ObjectBuilder(Builder* builder, bool allowUnindexed = false)
+  explicit ObjectBuilder(Builder* builder)
+      : BuilderContainer(builder) {
+    builder->openObject(/*allowUnindexed*/ false);
+  }
+  // this stunt is only necessary to prevent implicit conversions
+  // from char const* to bool for the second call argument
+  template<class T ,
+           class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  ObjectBuilder(Builder* builder, T allowUnindexed)
       : BuilderContainer(builder) {
     builder->openObject(allowUnindexed);
   }
+
   ObjectBuilder(Builder* builder, std::string_view attributeName,
-                bool allowUnindexed = false)
-      : BuilderContainer(builder) {
-    builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
-  }
-  ObjectBuilder(Builder* builder, char const* attributeName,
                 bool allowUnindexed = false)
       : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
@@ -1029,7 +1055,15 @@ struct ObjectBuilder final : public BuilderContainer,
 struct ArrayBuilder final : public BuilderContainer,
                             private NonHeapAllocatable,
                             NonCopyable {
-  ArrayBuilder(Builder* builder, bool allowUnindexed = false)
+  explicit ArrayBuilder(Builder* builder)
+      : BuilderContainer(builder) {
+    builder->openArray(/*allowUnindexed*/ false);
+  }
+  // this stunt is only necessary to prevent implicit conversions
+  // from char const* to bool for the second call argument
+  template<class T ,
+           class = typename std::enable_if<std::is_same<bool, T>::value>::type>
+  ArrayBuilder(Builder* builder, T allowUnindexed)
       : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }
@@ -1038,11 +1072,7 @@ struct ArrayBuilder final : public BuilderContainer,
       : BuilderContainer(builder) {
     builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
   }
-  ArrayBuilder(Builder* builder, char const* attributeName,
-               bool allowUnindexed = false)
-      : BuilderContainer(builder) {
-    builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
-  }
+
   ~ArrayBuilder() {
     try {
       if (!builder->isClosed()) {

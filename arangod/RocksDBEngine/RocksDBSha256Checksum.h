@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Mutex.h"
 
 #include <openssl/evp.h>

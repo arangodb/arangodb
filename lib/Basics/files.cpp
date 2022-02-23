@@ -1819,8 +1819,9 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
   return std::string(p, binaryPathLength - installPathLength);
 }
 
-static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize,
-                             std::string& error) {
+[[maybe_unused]] static bool CopyFileContents(int srcFD, int dstFD,
+                                              TRI_read_t fileSize,
+                                              std::string& error) {
   bool rc = true;
 #ifdef __linux__
   // Linux-specific file-copying code based on splice()
@@ -2586,7 +2587,6 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
   ULARGE_INTEGER totalNumberOfBytes;
   if (GetDiskFreeSpaceExW(toWString(path).data(), &freeBytesAvailableToCaller,
                           &totalNumberOfBytes, nullptr) == 0) {
-    DWORD lastError = GetLastError();
     return translateWindowsError(::GetLastError());
   }
   freeSpace = static_cast<uint64_t>(freeBytesAvailableToCaller.QuadPart);

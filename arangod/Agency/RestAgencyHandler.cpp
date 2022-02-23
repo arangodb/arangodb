@@ -26,8 +26,8 @@
 #include <thread>
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
@@ -47,9 +47,9 @@ using namespace arangodb::consensus;
 /// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, Agent* agent)
+RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {

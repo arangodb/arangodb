@@ -25,7 +25,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <iomanip>
@@ -67,7 +66,7 @@ DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
 
 /// Constructor:
-State::State(application_features::ApplicationServer& server)
+State::State(ArangodServer& server)
     : _server(server),
       _agent(nullptr),
       _vocbase(nullptr),

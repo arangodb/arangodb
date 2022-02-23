@@ -41,7 +41,6 @@
 #include "Basics/files.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
@@ -53,7 +52,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -67,8 +65,6 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -76,7 +72,7 @@ using namespace arangodb::options;
 
 namespace {
 arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(
-    arangodb::application_features::ApplicationServer& server) {
+    arangodb::ArangodServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(
       "Z",
@@ -108,8 +104,8 @@ TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
 /// @brief database manager thread main loop
 /// the purpose of this thread is to physically remove directories of databases
 /// that have been dropped
-DatabaseManagerThread::DatabaseManagerThread(ApplicationServer& server)
-    : Thread(server, "DatabaseManager") {}
+DatabaseManagerThread::DatabaseManagerThread(Server& server)
+    : ServerThread<ArangodServer>(server, "DatabaseManager") {}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
@@ -295,9 +291,8 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Database"),
+DatabaseFeature::DatabaseFeature(Server& server)
+    : ArangodFeature{server, *this},
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
@@ -404,8 +399,7 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(
-    application_features::ApplicationServer& server) {
+void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server));
 }

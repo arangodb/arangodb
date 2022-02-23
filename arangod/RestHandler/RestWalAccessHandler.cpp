@@ -53,7 +53,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -77,9 +76,9 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
   CollectionNameResolver resolver;
 };
 
-RestWalAccessHandler::RestWalAccessHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestWalAccessHandler::RestWalAccessHandler(ArangodServer& server,
+                                           GeneralRequest* request,
+                                           GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {

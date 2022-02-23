@@ -32,11 +32,10 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
@@ -48,9 +47,11 @@ class Conductor;
 class IWorker;
 class RecoveryManager;
 
-class PregelFeature final : public application_features::ApplicationFeature {
+class PregelFeature final : public ArangodFeature {
  public:
-  explicit PregelFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Pregel"; }
+
+  explicit PregelFeature(Server& server);
   ~PregelFeature();
 
   static size_t availableParallelism();

@@ -75,7 +75,7 @@ auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
           },
       .leader = leaderId,
       .term = term,
-      .largestCommonIndex = LogIndex{0},
+      .lowestIndexToKeep = LogIndex{0},
   }};
 }
 
@@ -131,18 +131,21 @@ auto FakeFollower::waitForIterator(LogIndex index)
       });
 }
 
+auto FakeFollower::waitForResign() -> futures::Future<futures::Unit> {
+  return waitForResignQueue.addWaitFor();
+}
+
 void FakeFollower::updateCommitIndex(LogIndex index) {
   guarded.getLockedGuard()->commitIndex = index;
   waitForQueue.resolve(index, replicated_log::WaitForResult{index, nullptr});
 }
 
 void FakeFollower::resign() & {
-  waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(
+  auto const exPtr =
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE))));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+  waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(exPtr));
   waitForLeaderAckedQueue.resolveAll(
-      futures::Try<replicated_log::WaitForResult>(
-          std::make_exception_ptr(replicated_log::ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
-              ADB_HERE))));
+      futures::Try<replicated_log::WaitForResult>(exPtr));
+  waitForResignQueue.resolveAll();
 }

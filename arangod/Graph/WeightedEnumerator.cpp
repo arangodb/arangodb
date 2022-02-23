@@ -31,7 +31,6 @@
 #include "Graph/TraverserOptions.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
@@ -155,7 +154,7 @@ bool WeightedEnumerator::expand() {
     TRI_ASSERT(!_queue.empty());
     NextEdge nextEdge = _queue.popTop();
 
-    bool shouldReturnPath = nextEdge.depth + 1 >= _opts->minDepth;
+    bool shouldReturnPath = nextEdge.depth + 1 > _opts->minDepth;
     bool const didInsert = expandEdge(std::move(nextEdge));
 
     if (didInsert && _opts->usesPostFilter()) {

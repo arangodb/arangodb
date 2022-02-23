@@ -53,7 +53,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using Helper = arangodb::basics::VelocyPackHelper;
 

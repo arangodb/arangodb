@@ -30,7 +30,7 @@ using namespace arangodb::replication2;
 
 struct ReplicationMaintenanceTest : ::testing::Test {
   MaintenanceFeature::errors_t errors;
-  std::unordered_set<DatabaseID> dirtyset;
+  containers::FlatHashSet<DatabaseID> dirtyset;
   bool callNotify = false;
   std::vector<std::shared_ptr<ActionDescription>> actions;
 };
@@ -53,7 +53,6 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
            defaultConfig,
            std::nullopt,
        },
-       defaultConfig,
        ParticipantsConfig{
            .generation = 0,
            .participants =
@@ -92,7 +91,6 @@ TEST_F(ReplicationMaintenanceTest,
               defaultConfig,
               std::nullopt,
           },
-          defaultConfig,
           ParticipantsConfig{
               .generation = 0,
               .participants =
@@ -132,7 +130,6 @@ TEST_F(ReplicationMaintenanceTest,
               defaultConfig,
               std::nullopt,
           },
-          defaultConfig,
           ParticipantsConfig{
               .generation = 0,
               .participants =
@@ -175,7 +172,6 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
               defaultConfig,
               std::nullopt,
           },
-          defaultConfig,
           ParticipantsConfig{
               .generation = 0,
               .participants =
@@ -220,7 +216,6 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
               defaultConfig,
               std::nullopt,
           },
-          defaultConfig,
           ParticipantsConfig{
               .generation = 0,
               .participants =
@@ -281,7 +276,7 @@ TEST_F(ReplicationMaintenanceTest,
            defaultConfig,
            std::nullopt,
        },
-       defaultConfig, participantsConfig},
+       participantsConfig},
   }};
 
   diffReplicatedLogs(database, localLogs, planLogs, "leader", errors, dirtyset,

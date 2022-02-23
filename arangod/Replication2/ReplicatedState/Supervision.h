@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,160 +23,17 @@
 
 #pragma once
 
-#include "Basics/ErrorCode.h"
-#include "Cluster/ClusterTypes.h"
+#include <Agency/TransactionBuilder.h>
+#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
+#include <Replication2/ReplicatedState/AgencySpecification.h>
+#include <Replication2/ReplicatedState/SupervisionAction.h>
 
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-common.h"
-#include "velocypack/velocypack-aliases.h"
-
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-
-#include <chrono>
-#include <optional>
-#include <string>
-#include <unordered_map>
+#include <memory>
 
 namespace arangodb::replication2::replicated_state {
 
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::agency;
-using namespace arangodb::replication2::replicated_state::agency;
-
-/* Transitional glue code  */
-struct Log {
-  LogCurrent current;
-  LogPlanSpecification plan;
-};
-using LogCurrentLocalStates =
-    std::unordered_map<ParticipantId, LogCurrentLocalState>;
-
-struct ParticipantHealth {
-  RebootId rebootId;
-  bool isHealthy;
-};
-
-struct ParticipantsHealth {
-  auto isHealthy(ParticipantId participant) const -> bool {
-    if (auto it = _health.find(participant); it != std::end(_health)) {
-      return it->second.isHealthy;
-    }
-    return false;
-  };
-  auto validRebootId(ParticipantId participant, RebootId rebootId) const
-      -> bool {
-    if (auto it = _health.find(participant); it != std::end(_health)) {
-      return it->second.rebootId == rebootId;
-    }
-    return false;
-  };
-
-  std::unordered_map<ParticipantId, ParticipantHealth> _health;
-};
-
-struct LeaderElectionCampaign {
-  enum class Reason { ServerIll, TermNotConfirmed, OK };
-
-  std::unordered_map<ParticipantId, Reason> reasons;
-  size_t numberOKParticipants{0};
-  replication2::TermIndexPair bestTermIndex;
-  std::vector<ParticipantId> electibleLeaderSet;
-
-  void toVelocyPack(VPackBuilder& builder) const;
-};
-auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view;
-auto operator<<(std::ostream& os, LeaderElectionCampaign::Reason reason)
-    -> std::ostream&;
-
-auto to_string(LeaderElectionCampaign const& campaign) -> std::string;
-auto operator<<(std::ostream& os, LeaderElectionCampaign const& action)
-    -> std::ostream&;
-
-struct Action {
-  enum class ActionType {
-    UpdateTermAction,
-    SuccessfulLeaderElectionAction,
-    FailedLeaderElectionAction,
-    ImpossibleCampaignAction
-  };
-  virtual void execute() = 0;
-  virtual ActionType type() const = 0;
-  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
-  virtual ~Action() = default;
-};
-
-auto to_string(Action::ActionType action) -> std::string_view;
-auto operator<<(std::ostream& os, Action::ActionType const& action)
-    -> std::ostream&;
-auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
-
-struct UpdateTermAction : Action {
-  UpdateTermAction(LogPlanTermSpecification const& newTerm)
-      : _newTerm(newTerm){};
-  void execute() override{};
-  ActionType type() const override {
-    return Action::ActionType::UpdateTermAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LogPlanTermSpecification _newTerm;
-};
-
-auto to_string(UpdateTermAction action) -> std::string;
-auto operator<<(std::ostream& os, UpdateTermAction const& action)
-    -> std::ostream&;
-
-struct SuccessfulLeaderElectionAction : Action {
-  SuccessfulLeaderElectionAction(){};
-  void execute() override{};
-  ActionType type() const override {
-    return Action::ActionType::SuccessfulLeaderElectionAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LeaderElectionCampaign _campaign;
-  ParticipantId _newLeader;
-  LogPlanTermSpecification _newTerm;
-};
-auto to_string(SuccessfulLeaderElectionAction action) -> std::string;
-auto operator<<(std::ostream& os, SuccessfulLeaderElectionAction const& action)
-    -> std::ostream&;
-
-struct FailedLeaderElectionAction : Action {
-  FailedLeaderElectionAction(){};
-  void execute() override{};
-  ActionType type() const override {
-    return Action::ActionType::FailedLeaderElectionAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  LeaderElectionCampaign _campaign;
-};
-auto to_string(FailedLeaderElectionAction const& action) -> std::string;
-auto operator<<(std::ostream& os, FailedLeaderElectionAction const& action)
-    -> std::ostream&;
-
-struct ImpossibleCampaignAction : Action {
-  ImpossibleCampaignAction(){};
-  void execute() override{};
-  ActionType type() const override {
-    return Action::ActionType::ImpossibleCampaignAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-};
-auto to_string(ImpossibleCampaignAction const& action) -> std::string;
-auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action)
-    -> std::ostream&;
-
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   LogTerm term) -> LeaderElectionCampaign::Reason;
-
-auto runElectionCampaign(LogCurrentLocalStates const& states,
-                         ParticipantsHealth const& health, LogTerm term)
-    -> LeaderElectionCampaign;
-
-auto replicatedLogAction(Log const&, ParticipantsHealth const&)
-    -> std::unique_ptr<Action>;
+auto checkReplicatedState(
+    std::optional<arangodb::replication2::agency::Log> const& log,
+    agency::State const& state) -> std::unique_ptr<Action>;
 
 }  // namespace arangodb::replication2::replicated_state

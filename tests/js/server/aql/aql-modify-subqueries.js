@@ -52,6 +52,8 @@ var sanitizeStats = function (stats) {
   // for the comparisons
   delete stats.scannedFull;
   delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;

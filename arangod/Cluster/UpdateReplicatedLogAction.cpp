@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
@@ -89,9 +90,12 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
+  auto failureOracle = _feature.server()
+                           .getFeature<cluster::FailureOracleFeature>()
+                           .getFailureOracle();
   auto result = replication2::algorithms::updateReplicatedLog(
       ctx, serverId, rebootId, logId,
-      spec.has_value() ? &spec.value() : nullptr);
+      spec.has_value() ? &spec.value() : nullptr, std::move(failureOracle));
   std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
                                   futures::Try<Result>&& tryResult) noexcept {
     try {
@@ -120,4 +124,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 arangodb::maintenance::UpdateReplicatedLogAction::UpdateReplicatedLogAction(
     arangodb::MaintenanceFeature& mf,
     arangodb::maintenance::ActionDescription const& desc)
-    : ActionBase(mf, desc) {}
+    : ActionBase(mf, desc) {
+  _labels.emplace(FAST_TRACK);
+}

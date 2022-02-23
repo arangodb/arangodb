@@ -3,6 +3,13 @@
 
 #include "jemalloc/internal/decay.h"
 
+static const uint64_t h_steps[SMOOTHSTEP_NSTEPS] = {
+#define STEP(step, h, x, y)			\
+		h,
+		SMOOTHSTEP
+#undef STEP
+};
+
 /*
  * Generate a new deadline that is uniformly random within the next epoch after
  * the current one.
@@ -102,6 +109,11 @@ decay_backlog_npages_limit(const decay_t *decay) {
 	return npages_limit_backlog;
 }
 
+/*
+ * Update backlog, assuming that 'nadvance_u64' time intervals have passed.
+ * Trailing 'nadvance_u64' records should be erased and 'current_npages' is
+ * placed as the newest record.
+ */
 static void
 decay_backlog_update(decay_t *decay, uint64_t nadvance_u64,
     size_t current_npages) {
@@ -142,6 +154,25 @@ decay_deadline_reached(const decay_t *decay, const nstime_t *time) {
 	return (nstime_compare(&decay->deadline, time) <= 0);
 }
 
+uint64_t
+decay_npages_purge_in(decay_t *decay, nstime_t *time, size_t npages_new) {
+	uint64_t decay_interval_ns = decay_epoch_duration_ns(decay);
+	size_t n_epoch = (size_t)(nstime_ns(time) / decay_interval_ns);
+
+	uint64_t npages_purge;
+	if (n_epoch >= SMOOTHSTEP_NSTEPS) {
+		npages_purge = npages_new;
+	} else {
+		uint64_t h_steps_max = h_steps[SMOOTHSTEP_NSTEPS - 1];
+		assert(h_steps_max >=
+		    h_steps[SMOOTHSTEP_NSTEPS - 1 - n_epoch]);
+		npages_purge = npages_new * (h_steps_max -
+		    h_steps[SMOOTHSTEP_NSTEPS - 1 - n_epoch]);
+		npages_purge >>= SMOOTHSTEP_BFP;
+	}
+	return npages_purge;
+}
+
 bool
 decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
     size_t npages_current) {
@@ -174,4 +205,91 @@ decay_maybe_advance_epoch(decay_t *decay, nstime_t *new_time,
 	    decay->npages_limit : npages_current;
 
 	return true;
+}
+
+/*
+ * Calculate how many pages should be purged after 'interval'.
+ *
+ * First, calculate how many pages should remain at the moment, then subtract
+ * the number of pages that should remain after 'interval'. The difference is
+ * how many pages should be purged until then.
+ *
+ * The number of pages that should remain at a specific moment is calculated
+ * like this: pages(now) = sum(backlog[i] * h_steps[i]). After 'interval'
+ * passes, backlog would shift 'interval' positions to the left and sigmoid
+ * curve would be applied starting with backlog[interval].
+ *
+ * The implementation doesn't directly map to the description, but it's
+ * essentially the same calculation, optimized to avoid iterating over
+ * [interval..SMOOTHSTEP_NSTEPS) twice.
+ */
+static inline size_t
+decay_npurge_after_interval(decay_t *decay, size_t interval) {
+	size_t i;
+	uint64_t sum = 0;
+	for (i = 0; i < interval; i++) {
+		sum += decay->backlog[i] * h_steps[i];
+	}
+	for (; i < SMOOTHSTEP_NSTEPS; i++) {
+		sum += decay->backlog[i] *
+		    (h_steps[i] - h_steps[i - interval]);
+	}
+
+	return (size_t)(sum >> SMOOTHSTEP_BFP);
+}
+
+uint64_t decay_ns_until_purge(decay_t *decay, size_t npages_current,
+    uint64_t npages_threshold) {
+	if (!decay_gradually(decay)) {
+		return DECAY_UNBOUNDED_TIME_TO_PURGE;
+	}
+	uint64_t decay_interval_ns = decay_epoch_duration_ns(decay);
+	assert(decay_interval_ns > 0);
+	if (npages_current == 0) {
+		unsigned i;
+		for (i = 0; i < SMOOTHSTEP_NSTEPS; i++) {
+			if (decay->backlog[i] > 0) {
+				break;
+			}
+		}
+		if (i == SMOOTHSTEP_NSTEPS) {
+			/* No dirty pages recorded.  Sleep indefinitely. */
+			return DECAY_UNBOUNDED_TIME_TO_PURGE;
+		}
+	}
+	if (npages_current <= npages_threshold) {
+		/* Use max interval. */
+		return decay_interval_ns * SMOOTHSTEP_NSTEPS;
+	}
+
+	/* Minimal 2 intervals to ensure reaching next epoch deadline. */
+	size_t lb = 2;
+	size_t ub = SMOOTHSTEP_NSTEPS;
+
+	size_t npurge_lb, npurge_ub;
+	npurge_lb = decay_npurge_after_interval(decay, lb);
+	if (npurge_lb > npages_threshold) {
+		return decay_interval_ns * lb;
+	}
+	npurge_ub = decay_npurge_after_interval(decay, ub);
+	if (npurge_ub < npages_threshold) {
+		return decay_interval_ns * ub;
+	}
+
+	unsigned n_search = 0;
+	size_t target, npurge;
+	while ((npurge_lb + npages_threshold < npurge_ub) && (lb + 2 < ub)) {
+		target = (lb + ub) / 2;
+		npurge = decay_npurge_after_interval(decay, target);
+		if (npurge > npages_threshold) {
+			ub = target;
+			npurge_ub = npurge;
+		} else {
+			lb = target;
+			npurge_lb = npurge;
+		}
+		assert(n_search < lg_floor(SMOOTHSTEP_NSTEPS) + 1);
+		++n_search;
+	}
+	return decay_interval_ns * (ub + lb) / 2;
 }

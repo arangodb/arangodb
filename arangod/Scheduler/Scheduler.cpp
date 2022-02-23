@@ -25,10 +25,10 @@
 #include "Scheduler.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -47,13 +47,14 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-class SchedulerThread : virtual public Thread {
+class SchedulerThread : public ServerThread<ArangodServer> {
  public:
-  explicit SchedulerThread(application_features::ApplicationServer& server,
-                           Scheduler& scheduler)
-      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() =
-      default;  // shutdown is called by derived implementation!
+  explicit SchedulerThread(Server& server, Scheduler& scheduler,
+                           std::string const& name = "Scheduler")
+      : ServerThread<ArangodServer>(server, name), _scheduler(scheduler) {}
+
+  // shutdown is called by derived implementation!
+  ~SchedulerThread() = default;
 
  protected:
   Scheduler& _scheduler;
@@ -61,9 +62,8 @@ class SchedulerThread : virtual public Thread {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(application_features::ApplicationServer& server,
-                               Scheduler& scheduler)
-      : Thread(server, "SchedCron"), SchedulerThread(server, scheduler) {}
+  explicit SchedulerCronThread(ArangodServer& server, Scheduler& scheduler)
+      : SchedulerThread(server, scheduler, "SchedCron") {}
 
   ~SchedulerCronThread() { shutdown(); }
 
@@ -72,7 +72,7 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
-Scheduler::Scheduler(application_features::ApplicationServer& server)
+Scheduler::Scheduler(ArangodServer& server)
     : _server(server) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where

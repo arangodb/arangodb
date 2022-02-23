@@ -25,7 +25,6 @@
 
 #include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -39,9 +38,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAuthHandler::RestAuthHandler(ArangodServer& server, GeneralRequest* request,
+                                 GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAuthHandler::execute() {

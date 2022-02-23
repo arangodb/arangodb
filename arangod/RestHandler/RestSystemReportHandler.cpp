@@ -34,7 +34,6 @@
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 
@@ -48,9 +47,9 @@ std::mutex RestSystemReportHandler::_exclusive;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSystemReportHandler::RestSystemReportHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestSystemReportHandler::RestSystemReportHandler(ArangodServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       cmds({{"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>&1"},
             {"dmesg", "time dmesg 2>&1"},
@@ -104,7 +103,7 @@ RestStatus RestSystemReportHandler::execute() {
   }
 
   using namespace std::chrono;
-  auto start = steady_clock::now();
+  [[maybe_unused]] auto start = steady_clock::now();
 
   VPackBuilder result;
   {

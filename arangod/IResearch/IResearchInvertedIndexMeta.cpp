@@ -34,10 +34,11 @@
 
 namespace arangodb::iresearch {
 
-bool IResearchInvertedIndexMeta::init(
-    arangodb::application_features::ApplicationServer& server,
-    VPackSlice const& slice, bool readAnalyzerDefinition,
-    std::string& errorField, irs::string_ref const defaultVocbase) {
+bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
+                                      VPackSlice const& slice,
+                                      bool readAnalyzerDefinition,
+                                      std::string& errorField,
+                                      irs::string_ref const defaultVocbase) {
   // copied part begin FIXME: verify and move to common base class if possible
   {
     // optional stored values
@@ -399,8 +400,8 @@ bool IResearchInvertedIndexMeta::init(
 }
 
 bool IResearchInvertedIndexMeta::json(
-    arangodb::application_features::ApplicationServer& server,
-    VPackBuilder& builder, bool writeAnalyzerDefinition,
+    arangodb::ArangodServer& server, VPackBuilder& builder,
+    bool writeAnalyzerDefinition,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
@@ -428,29 +429,6 @@ bool IResearchInvertedIndexMeta::json(
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
   return true;
-}
-
-bool IResearchInvertedIndexMeta::hasExtra() const noexcept {
-  return std::numeric_limits<size_t>::max() != extraFieldsIdx();
-}
-
-size_t IResearchInvertedIndexMeta::extraFieldsIdx() const noexcept {
-  if (!_storedValues.empty()) {
-    size_t idx{0};
-    for (auto const& f : _storedValues.columns()) {
-      bool haveFrom{false};
-      bool haveTo{false};
-      for (auto const& s : f.fields) {
-        haveFrom |= s.first == "_from";
-        haveTo |= s.first == "_to";
-        if (haveFrom && haveTo) {
-          return idx;
-        }
-      }
-      ++idx;
-    }
-  }
-  return std::numeric_limits<size_t>::max();
 }
 
 bool IResearchInvertedIndexMeta::operator==(

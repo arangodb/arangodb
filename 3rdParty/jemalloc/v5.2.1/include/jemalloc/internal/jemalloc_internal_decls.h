@@ -34,6 +34,10 @@
 #  include <pthread.h>
 #  if defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <pthread_np.h>
+#  include <sched.h>
+#  if defined(__FreeBSD__)
+#    define cpu_set_t cpuset_t
+#  endif
 #  endif
 #  include <signal.h>
 #  ifdef JEMALLOC_OS_UNFAIR_LOCK

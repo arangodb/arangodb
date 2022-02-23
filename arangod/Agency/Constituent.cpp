@@ -28,7 +28,6 @@
 #include <thread>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -74,11 +73,11 @@ void Constituent::configure(Agent* agent) {
 }
 
 // Default ctor
-Constituent::Constituent(application_features::ApplicationServer& server)
+Constituent::Constituent(ArangodServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _term(0),
-      _gterm(_server.getFeature<metrics::MetricsFeature>().add(
+      _gterm(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_term{})),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),

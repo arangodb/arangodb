@@ -34,7 +34,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -119,9 +118,8 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 }  // namespace
 
-RocksDBOptionFeature::RocksDBOptionFeature(
-    application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "RocksDBOption"),
+RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
+    : ArangodFeature{server, *this},
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
@@ -153,12 +151,11 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(16),
       _level0StopTrigger(256),
-      _pendingCompactionBytesSlowdownTrigger(8 * 1073741824ull),
+      _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
-      _enforceBlockCacheSizeLimit(false),
-      _cacheIndexAndFilterBlocks(
-          rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
+      _enforceBlockCacheSizeLimit(true),
+      _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(
           rocksDBTableOptionsDefaults
               .cache_index_and_filter_blocks_with_high_priority),
@@ -717,6 +714,12 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
       break;
 
     case RocksDBColumnFamilyManager::Family::Documents:
+      // in the documents column family, it is totally unexpected to not
+      // find a document by local document id. that means even in the lowest
+      // levels we expect to find the document when looking it up.
+      options.optimize_filters_for_hits = true;
+      [[fallthrough]];
+
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
     case RocksDBColumnFamilyManager::Family::FulltextIndex:

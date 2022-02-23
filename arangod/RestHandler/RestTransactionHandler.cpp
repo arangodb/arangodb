@@ -43,15 +43,14 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _v8Context(nullptr),
       _lock() {}

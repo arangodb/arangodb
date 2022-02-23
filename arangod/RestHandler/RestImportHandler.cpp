@@ -39,15 +39,14 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestImportHandler::RestImportHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
