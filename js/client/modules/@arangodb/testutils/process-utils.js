@@ -1351,26 +1351,7 @@ function checkInstanceAlive (instanceInfo, options) {
     return previous && ret;
   }, true);
   if (rc && options.cluster && instanceInfo.arangods.length > 1) {
-    try {
-      let health = require('internal').clusterHealth();
-      rc = instanceInfo.arangods.reduce((previous, arangod) => {
-        if (arangod.role === "agent") return true;
-        if (arangod.role === "single") return true;
-        if (health.hasOwnProperty(arangod.id)) {
-          if (health[arangod.id].Status === "GOOD") {
-            return true;
-          } else {
-            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
-            return false;
-          }
-        } else {
-          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
-          return false;
-        }
-      }, true);
-    } catch (x) {
-      print(Date() + " ClusterHealthCheck failed: " + x);
-    }
+    rc = checkServersGOOD(instanceInfo);
   }
   if (!rc) {
     dumpAgency(instanceInfo, options);
@@ -2587,6 +2568,34 @@ function aggregateFatalErrors(currentTest) {
     serverFailMessagesLocal = "";
   }
 }
+
+function checkServersGOOD(instanceInfo) {
+  try {
+    const health = internal.clusterHealth();
+    return instanceInfo.arangods.every((arangod) => {
+      if (arangod.role === "agent" || arangod.role === "single") {
+        return true;
+      }
+      if (health.hasOwnProperty(arangod.id)) {
+        if (health[arangod.id].Status === "GOOD") {
+          return true;
+        } else {
+          print(RED + "ClusterHealthCheck failed " + arangod.id + " has status "
+            + health[arangod.id].Status + " (which is not equal to GOOD)");
+          return false;
+        }
+      } else {
+        print(RED + "ClusterHealthCheck failed " + arangod.id
+          + " does not have health property");
+        return false;
+      }
+    });
+  } catch(e) {
+    print("Error checking cluster health " + e);
+    return false;
+  }
+}
+
 // exports.analyzeServerCrash = analyzeServerCrash;
 exports.makeArgs = {
   arangod: makeArgsArangod,
@@ -2634,6 +2643,7 @@ exports.restartOneInstance = restartOneInstance;
 exports.setupBinaries = setupBinaries;
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashedLocal;
+exports.checkServersGOOD = checkServersGOOD;
 
 exports.aggregateFatalErrors = aggregateFatalErrors;
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
