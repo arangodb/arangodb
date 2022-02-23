@@ -1351,7 +1351,18 @@ function checkInstanceAlive (instanceInfo, options) {
     return previous && ret;
   }, true);
   if (rc && options.cluster && instanceInfo.arangods.length > 1) {
-    rc = checkServersGOOD(instanceInfo);
+    const seconds = x => x * 1000;
+    let first = true;
+    for (
+      let start = Date.now(), rc = false;
+      !rc && Date.now() < start + seconds(60);
+      internal.sleep(1)
+    ) {
+      rc = checkServersGOOD(instanceInfo);
+      if (first) {
+        print(RESET + "Waiting for all servers to go GOOD...");
+      }
+    }
   }
   if (!rc) {
     dumpAgency(instanceInfo, options);
@@ -2469,7 +2480,7 @@ function restartOneInstance(options, oneInstance, instanceInfo, moreArgs) {
     print("relaunching: " + JSON.stringify(oneInstance));
     launchInstance(options, oneInstance, moreArgs);
   }
- 
+
   if (options.cluster && !options.skipReconnect) {
     checkClusterAlive(options, instanceInfo, {}); // todo addArgs
     print("reconnecting " + instanceInfo.endpoint);
