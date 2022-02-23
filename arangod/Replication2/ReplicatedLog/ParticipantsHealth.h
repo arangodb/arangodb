@@ -33,13 +33,13 @@ struct ParticipantHealth {
 };
 
 struct ParticipantsHealth {
-  auto notIsFailed(ParticipantId const &participant) const -> bool {
+  auto notIsFailed(ParticipantId const& participant) const -> bool {
     if (auto it = _health.find(participant); it != std::end(_health)) {
       return it->second.notIsFailed;
     }
     return false;
   };
-  auto validRebootId(ParticipantId const &participant, RebootId rebootId) const
+  auto validRebootId(ParticipantId const& participant, RebootId rebootId) const
       -> bool {
     if (auto it = _health.find(participant); it != std::end(_health)) {
       return it->second.rebootId == rebootId;
@@ -50,4 +50,4 @@ struct ParticipantsHealth {
   std::unordered_map<ParticipantId, ParticipantHealth> _health;
 };
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log
