@@ -89,7 +89,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 /// @brief increase the reference counter for a database
-bool TRI_vocbase_t::use() {
+bool   TRI_vocbase_t::use() {
   auto expected = _refCount.load(std::memory_order_relaxed);
   while (true) {
     if ((expected & 1) != 0) {
