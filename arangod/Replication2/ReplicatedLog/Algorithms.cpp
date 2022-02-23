@@ -264,8 +264,8 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
 
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantStateTuple> const& indexes,
-    CalculateCommitIndexOptions const opt, LogIndex currentCommitIndex,
-    TermIndexPair lastTermIndex)
+    CalculateCommitIndexOptions const opt, LogIndex const currentCommitIndex,
+    TermIndexPair const lastTermIndex)
     -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
   // We keep a vector of eligible participants.
   // To be eligible, a participant
@@ -385,10 +385,7 @@ auto algorithms::calculateCommitIndex(
   // above by comparing actualWriteConcern to 0;
   CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap candidates;
   for (auto const& p : indexes) {
-    if (p.isFailed()) {
-      candidates.emplace(
-          p.id, CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed);
-    } else if (p.isExcluded()) {
+    if (p.isExcluded()) {
       candidates.emplace(
           p.id,
           CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
