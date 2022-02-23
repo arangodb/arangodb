@@ -28,11 +28,14 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include <cstdint>
+#include <limits>
+#include <memory>
 #include <unordered_set>
 #include <vector>
 
 namespace arangodb {
 
+class Index;
 class IndexIteratorCoveringData;
 
 namespace transaction {
@@ -54,7 +57,7 @@ class Projections {
     /// @brief the attribute path
     AttributeNamePath path;
     /// @brief attribute position in a covering index entry. only valid if
-    /// _supportsCoveringIndex is true
+    /// usesCoveringIndex() is true
     uint16_t coveringIndexPosition;
     /// @brief attribute length in a covering index entry. this can be shorter
     /// than the projection
@@ -62,6 +65,9 @@ class Projections {
     /// @brief attribute type
     AttributeNamePath::Type type;
   };
+
+  static constexpr uint16_t kNoCoveringIndexPosition =
+      std::numeric_limits<uint16_t>::max();
 
   Projections();
 
@@ -76,13 +82,20 @@ class Projections {
   Projections(Projections const&) = default;
   Projections& operator=(Projections const&) = default;
 
-  /// @brief determine if there is covering support by indexes passed
-  void determineIndexSupport(
-      DataSourceId const& id,
-      std::vector<transaction::Methods::IndexHandle> const& indexes);
+  static bool isCoveringIndexPosition(uint16_t position) noexcept;
 
-  /// @brief whether or not the projections are backed by a covering index
-  bool supportsCoveringIndex() const noexcept { return _supportsCoveringIndex; }
+  /// @brief set covering index context for these projections
+  void setCoveringContext(DataSourceId const& id,
+                          std::shared_ptr<arangodb::Index> const& index);
+
+  /// @brief whether or not the projections are backed by the specific index
+  bool usesCoveringIndex(
+      std::shared_ptr<arangodb::Index> const& index) const noexcept {
+    return _index == index;
+  }
+
+  /// @brief whether or not the projections are backed by any index
+  bool usesCoveringIndex() const noexcept { return _index != nullptr; }
 
   /// @brief whether or not there are any projections
   bool empty() const noexcept { return _projections.empty(); }
@@ -92,6 +105,10 @@ class Projections {
 
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string const& attribute) const noexcept;
+
+  // return the covering index position for a specific attribute type.
+  // will throw if the index does not cover!
+  uint16_t coveringIndexPosition(aql::AttributeNamePath::Type type) const;
 
   /// @brief get projection at position
   Projection const& operator[](size_t index) const;
@@ -123,7 +140,6 @@ class Projections {
   /// shared prefix
   void removeSharedPrefixes();
 
- private:
   /// @brief all our projections (sorted, unique)
   std::vector<Projection> _projections;
 
@@ -132,7 +148,7 @@ class Projections {
   DataSourceId _datasourceId;
 
   /// @brief whether or not the projections are backed by a covering index
-  bool _supportsCoveringIndex;
+  std::shared_ptr<arangodb::Index> _index;
 };
 
 }  // namespace aql

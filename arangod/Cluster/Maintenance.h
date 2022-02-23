@@ -28,6 +28,8 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 
@@ -106,7 +108,7 @@ void diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
     MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions);
 
 /**
@@ -130,7 +132,7 @@ void diffReplicatedStates(
     ReplicatedStateSpecMap const& planStates,
     ReplicatedStateCurrentMap const& statesCurrent, std::string const& serverId,
     MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions);
 
 /**
@@ -149,14 +151,16 @@ void diffReplicatedStates(
  */
 arangodb::Result diffPlanLocal(
     StorageEngine& engine,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
     uint64_t planIndex,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
-    uint64_t currentIndex, std::unordered_set<std::string> dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
-    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
@@ -177,13 +181,15 @@ arangodb::Result diffPlanLocal(
  * @return         Result
  */
 arangodb::Result executePlan(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
     uint64_t planIndex,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
-    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     std::unordered_set<std::string> const& moreDirt,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
     VPackBuilder& report,
     arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap,
@@ -222,13 +228,15 @@ arangodb::Result diffLocalCurrent(
  * @return         Result
  */
 arangodb::Result phaseOne(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
     uint64_t planIndex,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
-    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     std::unordered_set<std::string> const& moreDirt,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
@@ -248,10 +256,13 @@ arangodb::Result phaseOne(
  * @return         Result
  */
 arangodb::Result phaseTwo(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& cur,
-    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        cur,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
@@ -279,10 +290,13 @@ struct ShardStatistics {
 
 arangodb::Result reportInCurrent(
     MaintenanceFeature& feature,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& cur,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        cur,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
     ReplicatedLogStatusMapByDatabase const& localLogs,
@@ -298,14 +312,16 @@ arangodb::Result reportInCurrent(
  * @param  feature   Maintenance feature
  */
 void syncReplicatedShardsWithLeaders(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-    std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        plan,
+    containers::FlatHashSet<std::string> const& dirty,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     std::string const& serverId, MaintenanceFeature& feature,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    std::unordered_set<std::string>& makeDirty,
+    containers::FlatHashSet<std::string>& makeDirty,
     std::unordered_set<std::string> const& failedServers);
 
 }  // namespace maintenance

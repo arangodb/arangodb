@@ -1183,7 +1183,7 @@ void MaintenanceFeature::addDirty(std::string const& database) {
   server().getFeature<ClusterFeature>().addDirty(database);
 }
 void MaintenanceFeature::addDirty(
-    std::unordered_set<std::string> const& databases, bool callNotify) {
+    containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
@@ -1213,8 +1213,8 @@ void MaintenanceFeature::refillToCheck() {
   std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::dirty(
-    std::unordered_set<std::string> const& more) {
+containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
+    containers::FlatHashSet<std::string> const& more) {
   auto& clusterFeature = server().getFeature<ClusterFeature>();
   auto ret = clusterFeature.dirty();  // plan & current in first run
   if (_firstRun) {

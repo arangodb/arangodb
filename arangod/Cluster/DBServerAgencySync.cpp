@@ -71,7 +71,7 @@ void DBServerAgencySync::work() {
 }
 
 Result DBServerAgencySync::getLocalCollections(
-    std::unordered_set<std::string> const& dirty,
+    containers::FlatHashSet<std::string> const& dirty,
     AgencyCache::databases_t& databases, LocalLogsMap& replLogs,
     LocalStatesMap& replStates) {
   TRI_ASSERT(ServerState::instance()->isDBServer());

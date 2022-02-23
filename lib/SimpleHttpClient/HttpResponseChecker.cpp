@@ -29,7 +29,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 

@@ -202,6 +202,8 @@ FailureOracleFeature::FailureOracleFeature(Server& server)
   setOptional(true);
   startsAfter<SchedulerFeature>();
   startsAfter<ClusterFeature>();
+  onlyEnabledWith<SchedulerFeature>();
+  onlyEnabledWith<ClusterFeature>();
 }
 
 void FailureOracleFeature::prepare() {
