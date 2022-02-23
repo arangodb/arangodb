@@ -1352,10 +1352,12 @@ function checkInstanceAlive (instanceInfo, options) {
   }, true);
   if (rc && options.cluster && instanceInfo.arangods.length > 1) {
     const seconds = x => x * 1000;
+    const allRunning = () => instanceInfo.arangods.every(arangod => statusExternal(arangod.pid).status === 'RUNNING');
     let first = true;
+    rc = false;
     for (
-      let start = Date.now(), rc = false;
-      !rc && Date.now() < start + seconds(60);
+      const start = Date.now();
+      !rc && Date.now() < start + seconds(60) && allRunning();
       internal.sleep(1)
     ) {
       rc = checkServersGOOD(instanceInfo);
