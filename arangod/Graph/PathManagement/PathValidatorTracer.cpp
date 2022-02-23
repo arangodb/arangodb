@@ -68,18 +68,6 @@ auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
   return _impl.validatePath(step, isDisjoint);
 }
 
-/*
-template<class PathValidatorImplementation>
-auto PathValidatorTracer<PathValidatorImplementation>::validDisjointPath(
-    typename PathStore::Step const& step, bool isDisjoint,
-    bool isSatelliteLeader) -> bool {
-  double start = TRI_microtime();
-  auto sg = arangodb::scopeGuard([&]() noexcept {
-    _stats["validDisjointPath"].addTiming(TRI_microtime() - start);
-  });
-  return _impl.validDisjointPath(step, isDisjoint, isSatelliteLeader);
-}*/
-
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
     typename PathStore::Step const& step,
