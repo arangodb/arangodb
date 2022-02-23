@@ -267,20 +267,28 @@ auto algorithms::calculateCommitIndex(
     CalculateCommitIndexOptions const opt, LogIndex currentCommitIndex,
     TermIndexPair lastTermIndex)
     -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
-  // We keep a vector of participants that are neither excluded nor have failed.
-  // All eligible participants have to be in the same term as the leader.
-  // Never commit log entries from older terms.
+  // We keep a vector of eligible participants.
+  // To be eligible, a participant
+  //  - must not be excluded, and
+  //  - must be in the same term as the leader.
+  // This is because we must not include an excluded server in any quorum, and
+  // must never commit log entries from older terms.
   auto eligible = std::vector<ParticipantStateTuple>{};
   eligible.reserve(indexes.size());
   std::copy_if(std::begin(indexes), std::end(indexes),
-               std::back_inserter(eligible), [&](auto& p) {
-                 return !p.isFailed() && !p.isExcluded() &&
-                        p.lastTerm() == lastTermIndex.term;
+               std::back_inserter(eligible), [&](auto const& p) {
+                 return !p.isExcluded() && p.lastTerm() == lastTermIndex.term;
                });
 
+  // If servers are unavailable because they are either failed or excluded,
+  // the actualWriteConcern may be lowered from softWriteConcern down to at
+  // least writeConcern.
+  auto const availableServers = std::size_t(std::count_if(
+      std::begin(indexes), std::end(indexes),
+      [](auto const& p) { return !p.isFailed() && !p.isExcluded(); }));
   // We write to at least writeConcern servers, ideally more if available.
-  auto actualWriteConcern = std::max(
-      opt._writeConcern, std::min(eligible.size(), opt._softWriteConcern));
+  auto const actualWriteConcern = std::max(
+      opt._writeConcern, std::min(availableServers, opt._softWriteConcern));
 
   if (actualWriteConcern > indexes.size() &&
       indexes.size() == eligible.size()) {
