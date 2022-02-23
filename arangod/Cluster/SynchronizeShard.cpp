@@ -1203,7 +1203,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // the next call to startReadLockOnLeader may set it if the leader already
   // implements it (ArangoDB 3.8.3 and higher)
   TRI_ASSERT(_tailingUpperBoundTick == 0);
-
+  TRI_IF_FAILURE("FollowerBlockRequestsLanesForSyncOnShard" +
+                 collection.name()) {
+    TRI_AddFailurePointDebugging("BlockSchedulerMediumQueue");
+  }
   Result res =
       startReadLockOnLeader(ep, collection.name(), clientId, lockJobId, false);
   if (!res.ok()) {

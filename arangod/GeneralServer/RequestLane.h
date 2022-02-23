@@ -160,7 +160,7 @@ constexpr inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
-      return RequestPriority::LOW;
+      return RequestPriority::HIGH;
     case RequestLane::SERVER_REPLICATION_CATCHUP:
       return RequestPriority::MED;
     case RequestLane::SERVER_REPLICATION:

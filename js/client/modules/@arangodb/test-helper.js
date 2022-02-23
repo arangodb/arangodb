@@ -367,7 +367,8 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
     let shards = Object.keys(collInfo.Plan);
     let insync = 0;
     for (let s of shards) {
-      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length) {
+      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length
+        && minimumRequiredFollowers <= collInfo.Plan[s].followers.length) {
         ++insync;
       }
     }
