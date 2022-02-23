@@ -143,7 +143,7 @@ void FailureOracleImpl::reload(VPackSlice const& result) {
   std::unique_lock writeLock(_mutex);
   std::swap(_isFailed, isFailed);
   _lastUpdated = std::chrono::system_clock::now();
-  if (Logger::isEnabled(LogLevel::TRACE, Logger::CLUSTER)) [[unlikely]] {
+  if (ADB_UNLIKELY(Logger::isEnabled(LogLevel::TRACE, Logger::CLUSTER))) {
     if (isFailed != _isFailed) {
       LOG_TOPIC("321d2", TRACE, Logger::CLUSTER)
           << "reloading with " << _isFailed << " at "
