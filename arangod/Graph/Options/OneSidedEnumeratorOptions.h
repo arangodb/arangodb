@@ -33,16 +33,23 @@ namespace graph {
 
 struct OneSidedEnumeratorOptions {
  public:
-  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
+  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth, bool isDisjoint,
+                            bool isSatelliteLeader);
 
   ~OneSidedEnumeratorOptions();
 
-  size_t getMinDepth() const;
-  size_t getMaxDepth() const;
+  [[nodiscard]] size_t getMinDepth() const;
+  [[nodiscard]] size_t getMaxDepth() const;
+  [[nodiscard]] bool isDisjoint() const { return _isDisjoint; }
+  [[nodiscard]] bool isSatelliteLeader() const { return _isSatelliteLeader; }
+  // TODO [GraphRefactor]: _isDisjoint && _isSatelliteLeader only relevant
+  // together. One boolean is enough here.
 
  private:
   size_t _minDepth;
   size_t _maxDepth;
+  bool _isDisjoint;
+  bool _isSatelliteLeader;
 };
 }  // namespace graph
 }  // namespace arangodb

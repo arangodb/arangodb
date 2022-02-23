@@ -36,6 +36,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
 
 #include "Basics/Exceptions.h"
@@ -49,8 +50,13 @@ template<class Provider, class PathStore,
 PathValidator<Provider, PathStore, vertexUniqueness,
               edgeUniqueness>::PathValidator(Provider& provider,
                                              PathStore& store,
-                                             PathValidatorOptions opts)
-    : _store(store), _provider(provider), _options(std::move(opts)) {}
+                                             PathValidatorOptions opts,
+                                             bool isSatelliteLeader)
+    : _store(store),
+      _provider(provider),
+      _options(std::move(opts)),  // [GraphRefactor] TODO: Cleanup options
+                                  // (disjoint, isSatelliteLeader)
+      _isSatelliteLeader(isSatelliteLeader) {}
 
 template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
@@ -62,12 +68,22 @@ template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
-    validatePath(typename PathStore::Step const& step) -> ValidationResult {
+    validatePath(typename PathStore::Step const& step, bool isDisjoint)
+        -> ValidationResult {
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
     return res;
   }
+
+#ifdef USE_ENTERPRISE
+  if (isDisjoint) {
+    if (!isValidDisjointPath(step, _isSatelliteLeader)) {
+      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
+      return res;
+    }
+  }
+#endif
 
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
     reset();
@@ -412,6 +428,17 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
   TRI_ASSERT(_options.usesPostFilter());
   _options.unpreparePostFilterContext();
 }
+
+#ifndef USE_ENTERPRISE
+template<class Provider, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
+    isValidDisjointPath(typename PathStore::Step const& lastStep,
+                        bool isSatelliteLeader) -> bool {
+  return true;
+}
+#endif
 
 namespace arangodb::graph {
 
