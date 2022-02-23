@@ -1327,7 +1327,7 @@ function abortSurvivors(arangod, options) {
   }
 }
 
-function checkInstanceAlive (instanceInfo, options) {
+function checkInstanceAlive (instanceInfo, options, {skipHealthCheck} = {skipHealthCheck: false}) {
   if (options.activefailover &&
       instanceInfo.hasOwnProperty('authOpts') &&
       (instanceInfo.url !== instanceInfo.agencyUrl)
@@ -1350,7 +1350,7 @@ function checkInstanceAlive (instanceInfo, options) {
     }
     return previous && ret;
   }, true);
-  if (rc && options.cluster && instanceInfo.arangods.length > 1) {
+  if (rc && options.cluster && !skipHealthCheck && instanceInfo.arangods.length > 1) {
     const seconds = x => x * 1000;
     const allRunning = () => instanceInfo.arangods.every(arangod => statusExternal(arangod.pid).status === 'RUNNING');
     let first = true;
@@ -1363,6 +1363,7 @@ function checkInstanceAlive (instanceInfo, options) {
       rc = checkServersGOOD(instanceInfo);
       if (first) {
         print(RESET + "Waiting for all servers to go GOOD...");
+        first = false;
       }
     }
   }
@@ -2016,7 +2017,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
   let agencyEndpoint = instanceInfo.endpoint;
   instanceInfo.agencyUrl = instanceInfo.url;
-  if (!checkInstanceAlive(instanceInfo, options)) {
+  if (!checkInstanceAlive(instanceInfo, options, {skipHealthCheck: true})) {
     throw new Error('startup of agency failed! bailing out!');
   }
 
