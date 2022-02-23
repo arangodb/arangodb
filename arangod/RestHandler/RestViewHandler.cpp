@@ -34,8 +34,6 @@
 #include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////

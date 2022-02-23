@@ -23,7 +23,6 @@
 #pragma once
 
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 #include "velocypack/velocypack-common.h"
 
 #include "Agency/TransactionBuilder.h"

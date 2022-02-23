@@ -22,8 +22,6 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/velocypack-aliases.h>
-
 #include "GeneralRequest.h"
 
 #include "Basics/StaticStrings.h"

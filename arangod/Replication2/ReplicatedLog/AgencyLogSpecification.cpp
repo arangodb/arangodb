@@ -30,7 +30,6 @@
 #include "Logger/Logger.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <type_traits>
 

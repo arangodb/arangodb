@@ -29,7 +29,6 @@
 #include <Basics/application-exit.h>
 #include <date/date.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"

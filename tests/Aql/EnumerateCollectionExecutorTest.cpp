@@ -54,7 +54,6 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <functional>
 #include <utility>
 

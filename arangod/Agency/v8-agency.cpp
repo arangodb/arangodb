@@ -35,7 +35,6 @@
 #include "V8/v8-vpack.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;

@@ -36,8 +36,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,

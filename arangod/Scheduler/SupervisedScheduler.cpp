@@ -27,7 +27,6 @@
 #include <memory>
 
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "SupervisedScheduler.h"
 

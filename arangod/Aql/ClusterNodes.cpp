@@ -25,7 +25,6 @@
 #include <type_traits>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ClusterNodes.h"
 

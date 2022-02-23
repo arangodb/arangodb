@@ -108,8 +108,30 @@ void EnvironmentFeature::prepare() {
   _operatingSystem = "unknown";
 #endif
 
+  // find parent process id and name
+  std::string parent;
+#ifdef __linux__
+  try {
+    pid_t parentId = getppid();
+    if (parentId) {
+      parent = ", parent process: " + std::to_string(parentId);
+      std::string procFileName =
+          std::string("/proc/") + std::to_string(parentId) + "/stat";
+      std::string content;
+      auto rv = basics::FileUtils::slurp(procFileName, content);
+      if (rv.ok()) {
+        std::string_view procName = ::trimProcName(content);
+        if (!procName.empty()) {
+          parent += " (" + std::string(procName) + ")";
+        }
+      }
+    }
+  } catch (...) {
+  }
+#endif
+
   LOG_TOPIC("75ddc", INFO, Logger::FIXME)
-      << "detected operating system: " << _operatingSystem;
+      << "detected operating system: " << _operatingSystem << parent;
 
   if (sizeof(void*) == 4) {
     // 32 bit build
@@ -440,26 +462,6 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
-
-#ifdef __linux__
-  try {
-    pid_t parentId = getppid();
-    std::string content;
-    if (parentId) {
-      std::string procFileName =
-          std::string("/proc/") + std::to_string(parentId) + "/stat";
-      auto rv = basics::FileUtils::slurp(procFileName, content);
-      std::string_view procName;
-      if (rv.ok()) {
-        procName = ::trimProcName(content);
-      }
-      LOG_TOPIC("51705", INFO, arangodb::Logger::STARTUP)
-          << "Parent process: " << parentId
-          << (procName.empty() ? "" : " (" + std::string(procName) + ")");
-    }
-  } catch (...) {
-  }
-#endif
 
   std::vector<std::string> paths = {
       "/sys/kernel/mm/transparent_hugepage/enabled",

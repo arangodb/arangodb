@@ -24,7 +24,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ScopeGuard.h"
 #include "Methods.h"
@@ -2239,8 +2238,6 @@ OperationResult transaction::Methods::countLocal(
 }
 
 /// @brief factory for IndexIterator objects from AQL
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& idx, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,

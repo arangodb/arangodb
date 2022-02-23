@@ -27,7 +27,6 @@
 #include "Cluster/ClusterTypes.h"
 
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 #include "velocypack/velocypack-common.h"
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"

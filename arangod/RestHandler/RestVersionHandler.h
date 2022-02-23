@@ -25,8 +25,6 @@
 
 #include "RestHandler/RestBaseHandler.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:

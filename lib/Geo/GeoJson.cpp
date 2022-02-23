@@ -29,7 +29,6 @@
 #include <vector>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <s2/s2loop.h>
 #include <s2/s2point_region.h>

@@ -57,7 +57,6 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Graph/algorithm-aliases.h>
 #include <memory>
@@ -615,73 +614,43 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
 
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
-    switch (dir) {
-      case TRI_EDGE_IN: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* indexCondition =
-            conditionBuilder.getInboundCondition()->clone(ast);
+    TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
 
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], indexCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
+    aql::AstNode* condition = (dir == TRI_EDGE_IN)
+                                  ? conditionBuilder.getInboundCondition()
+                                  : conditionBuilder.getOutboundCondition();
+    aql::AstNode* indexCondition = condition->clone(ast);
+    std::shared_ptr<Index> indexToUse;
 
-        std::optional<size_t> memberToUpdate{std::nullopt};
-        calculateMemberToUpdate(StaticStrings::ToString, memberToUpdate,
-                                indexCondition);
+    // arbitrary value for "number of edges in collection" used here. the
+    // actual value does not matter much. 1000 has historically worked fine.
+    constexpr size_t itemsInCollection = 1000;
 
-        aql::AstNode* remainderCondition =
-            conditionBuilder.getInboundCondition()->clone(ast);
-        std::unique_ptr<aql::Expression> expression =
-            generateExpression(remainderCondition, indexCondition);
-
-        auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-            ast, getRegisterPlan()->varInfo, false, false, indexCondition,
-            options()->tmpVar());
-
-        indexAccessors.emplace_back(indexToUse, indexCondition, memberToUpdate,
-                                    std::move(expression), std::move(container),
-                                    i);
-        break;
-      }
-      case TRI_EDGE_OUT: {
-        std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* indexCondition =
-            conditionBuilder.getOutboundCondition()->clone(ast);
-        bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], indexCondition, options()->tmpVar(), 1000,
-            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-        if (!res) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "expected edge index not found");
-        }
-
-        std::optional<size_t> memberToUpdate{std::nullopt};
-        calculateMemberToUpdate(StaticStrings::FromString, memberToUpdate,
-                                indexCondition);
-
-        aql::AstNode* remainderCondition =
-            conditionBuilder.getOutboundCondition()->clone(ast);
-        std::unique_ptr<aql::Expression> expression =
-            generateExpression(remainderCondition, indexCondition);
-
-        auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-            ast, getRegisterPlan()->varInfo, false, false, indexCondition,
-            options()->tmpVar());
-
-        indexAccessors.emplace_back(indexToUse, indexCondition, memberToUpdate,
-                                    std::move(expression), std::move(container),
-                                    i);
-        break;
-      }
-      case TRI_EDGE_ANY:
-        TRI_ASSERT(false);
-        break;
+    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+        *_edgeColls[i], indexCondition, options()->tmpVar(), itemsInCollection,
+        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "expected edge index not found");
     }
+
+    std::optional<size_t> memberToUpdate{std::nullopt};
+    calculateMemberToUpdate(dir == TRI_EDGE_IN ? StaticStrings::ToString
+                                               : StaticStrings::FromString,
+                            memberToUpdate, indexCondition);
+
+    aql::AstNode* remainderCondition = condition->clone(ast);
+    std::unique_ptr<aql::Expression> expression =
+        generateExpression(remainderCondition, indexCondition);
+
+    auto container = aql::utils::extractNonConstPartsOfIndexCondition(
+        ast, getRegisterPlan()->varInfo, false, false, indexCondition,
+        options()->tmpVar());
+    indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
+                                memberToUpdate, std::move(expression),
+                                std::move(container), i, dir);
   }
+
   return indexAccessors;
 }
 
@@ -1160,12 +1129,14 @@ void TraversalNode::prepareOptions() {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->name(), StaticStrings::ToString,
-            globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getInboundCondition()->clone(ast),
+            /*onlyEdgeIndexes*/ false, dir);
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->name(), StaticStrings::FromString,
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast),
+            /*onlyEdgeIndexes*/ false, dir);
         break;
       case TRI_EDGE_ANY:
         TRI_ASSERT(false);
@@ -1199,13 +1170,13 @@ void TraversalNode::prepareOptions() {
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::ToString,
                                    builder->getInboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes);
+                                   depth, onlyEdgeIndexes, dir);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
                                    builder->getOutboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes);
+                                   depth, onlyEdgeIndexes, dir);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);

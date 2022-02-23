@@ -263,9 +263,11 @@ struct MockGraphDatabase {
     auto spo = std::make_unique<ShortestPathOptions>(*query);
     spo->setVariable(tmpVar);
     spo->addLookupInfo(plan, "e", StaticStrings::FromString,
-                       _fromCondition->clone(ast));
+                       _fromCondition->clone(ast), /*onlyEdgeIndexes*/ false,
+                       TRI_EDGE_OUT);
     spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString,
-                              _toCondition->clone(ast));
+                              _toCondition->clone(ast),
+                              /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
 
     return spo;
   }

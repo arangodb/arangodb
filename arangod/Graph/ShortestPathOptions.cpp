@@ -33,7 +33,6 @@
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -161,9 +160,10 @@ double ShortestPathOptions::estimateCost(size_t& nrItems) const {
 
 void ShortestPathOptions::addReverseLookupInfo(
     aql::ExecutionPlan* plan, std::string const& collectionName,
-    std::string const& attributeName, aql::AstNode* condition) {
+    std::string const& attributeName, aql::AstNode* condition,
+    bool onlyEdgeIndexes, TRI_edge_direction_e direction) {
   injectLookupInfoInList(_reverseLookupInfos, plan, collectionName,
-                         attributeName, condition);
+                         attributeName, condition, onlyEdgeIndexes, direction);
 }
 
 double ShortestPathOptions::weightEdge(VPackSlice edge) const {

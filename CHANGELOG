@@ -18,6 +18,8 @@ devel
 
 * Support JSON schema objects for documenting Foxx endpoints.
 
+* Internal refactoring of IndexIterator APIs.
+
 * Sorted out various geo problems:
 
   - No more special detection of "latitude-longitude rectangles" is done,
@@ -34,6 +36,9 @@ devel
     lookup.
   - Use a faster algorithm for pure `GEO_CONTAINS` and `GEO_INTERSECTS`
     queries.
+
+* Fix counts and file size sum in hotbackup META files. Do no longer count
+  directories.
 
 * Fixed an assertion failure which could occur when there was an error in
   the HTTP header, so that the message body was not actually read.

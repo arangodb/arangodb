@@ -295,6 +295,11 @@ std::string const StaticStrings::FullLocalPrefix("_local_");
 std::string const StaticStrings::FullFromPrefix("_from_");
 std::string const StaticStrings::FullToPrefix("_to_");
 
+// Graph directions
+std::string const StaticStrings::GraphDirection("direction");
+std::string const StaticStrings::GraphDirectionInbound("inbound");
+std::string const StaticStrings::GraphDirectionOutbound("outbound");
+
 // Pregel Section Start
 
 // Pregel Accumulator Attributes
