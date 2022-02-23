@@ -567,18 +567,6 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
   return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
 
-/// @brief Convert any object which provides a `toVelocyPack(Builder&)` method
-/// to a JSON string, by first converting it to VelocyPack.
-template<typename T>
-requires requires(T thing, velocypack::Builder builder) {
-  thing.toVelocyPack(builder);
-}
-auto toJson(T thing) -> std::string {
-  auto builder = velocypack::Builder();
-  thing.toVelocyPack(builder);
-  return builder.toJson();
-}
-
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb

@@ -433,6 +433,18 @@ VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
       getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
 }
 
+/// @brief Convert any object which provides a `toVelocyPack(Builder&)` method
+/// to a JSON string, by first converting it to VelocyPack.
+template<typename T>
+requires requires(T thing, velocypack::Builder builder) {
+  thing.toVelocyPack(builder);
+}
+auto toJson(T thing) -> std::string {
+  auto builder = velocypack::Builder();
+  thing.toVelocyPack(builder);
+  return builder.toJson();
+}
+
 }  // namespace basics
 }  // namespace arangodb
 
