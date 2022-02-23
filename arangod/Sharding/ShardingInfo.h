@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Containers/FlatHashMap.h"
 #include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
@@ -42,7 +43,7 @@ class ApplicationServer;
 
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
-typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
+using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 class ShardingInfo {
  public:

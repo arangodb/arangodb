@@ -27,7 +27,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"

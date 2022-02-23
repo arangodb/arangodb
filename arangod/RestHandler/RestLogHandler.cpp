@@ -24,7 +24,6 @@
 #include "RestLogHandler.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Cluster/ServerState.h>
 #include <Network/ConnectionPool.h>

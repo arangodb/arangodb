@@ -45,12 +45,11 @@ struct VarInfo;
 struct NonConstExpressionContainer;
 struct RegisterId;
 
-/// code that used to be in transaction::Methods
 namespace utils {
 
 /// @brief Gets the best fitting index for an AQL condition.
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
+/// note: the contents of  root  may be modified by this function if
+/// an index is picked!!
 std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     aql::Collection const& coll, arangodb::aql::Ast* ast,
     arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
@@ -60,17 +59,15 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     bool& isAllCoveredByIndex);
 
 /// @brief Gets the best fitting index for an AQL condition.
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
+/// note: the contents of  node  may be modified by this function if
+/// an index is picked!!
 bool getBestIndexHandleForFilterCondition(
-    aql::Collection const& collection, arangodb::aql::AstNode*& node,
+    aql::Collection const& collection, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
     aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex,
     bool onlyEdgeIndexes = false);
 
 /// @brief Gets the best fitting index for an AQL sort condition
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
 bool getIndexForSortCondition(aql::Collection const& coll,
                               arangodb::aql::SortCondition const* sortCondition,
                               arangodb::aql::Variable const* reference,

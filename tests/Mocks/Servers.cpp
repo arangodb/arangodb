@@ -21,9 +21,9 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-
 #include "Servers.h"
+
+#include <algorithm>
 
 #include "Agency/AgencyStrings.h"
 #include "Agency/AsyncAgencyComm.h"
@@ -31,8 +31,8 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
@@ -55,14 +55,18 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "IResearch/AgencyMock.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/common.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "Mocks/PreparedResponseConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
@@ -70,30 +74,24 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Servers.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngineFeature.h"
+#include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
-
-#include "Servers.h"
-#include "TemplateSpecializer.h"
-
-#include "IResearch/AgencyMock.h"
-#include "IResearch/common.h"
-
-#include "Mocks/PreparedResponseConnectionPool.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
@@ -105,7 +103,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
 
@@ -904,6 +901,7 @@ MockCoordinator::MockCoordinator(bool start, bool useAgencyMock,
                                  bool injectClusterIndexes)
     : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_COORDINATOR,
                         injectClusterIndexes) {
+  addFeature<arangodb::metrics::ClusterMetricsFeature>(false).disable();
   if (start) {
     MockCoordinator::startFeatures();
     MockCoordinator::createDatabase("_system");

@@ -51,7 +51,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 
