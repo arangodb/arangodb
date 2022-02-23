@@ -38,6 +38,8 @@
 #include "Indexes/Index.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
@@ -144,7 +146,7 @@ arangodb::Result removeRevisions(
 }
 
 arangodb::Result fetchRevisions(
-    arangodb::transaction::Methods& trx,
+    arangodb::NetworkFeature& netFeature, arangodb::transaction::Methods& trx,
     arangodb::DatabaseInitialSyncer::Configuration& config,
     arangodb::Syncer::SyncerState& state,
     arangodb::LogicalCollection& collection, std::string const& leader,
@@ -175,16 +177,13 @@ arangodb::Result fetchRevisions(
 
   PhysicalCollection* physical = collection.getPhysical();
 
-  std::string url = arangodb::replutils::ReplicationUrl + "/" +
-                    RestReplicationHandler::Revisions + "/" +
-                    RestReplicationHandler::Documents + "?collection=" +
-                    arangodb::basics::StringUtils::urlEncode(leader) +
-                    "&serverId=" + state.localServerIdString +
-                    "&batchId=" + std::to_string(config.batch.id);
+  std::string path = arangodb::replutils::ReplicationUrl + "/" +
+                     RestReplicationHandler::Revisions + "/" +
+                     RestReplicationHandler::Documents;
   auto headers = arangodb::replutils::createHeaders();
 
   config.progress.set("fetching documents by revision for collection '" +
-                      collection.name() + "' from " + url);
+                      collection.name() + "' from " + path);
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {
     keyBuilder->clear();
@@ -210,130 +209,138 @@ arangodb::Result fetchRevisions(
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
       [&current, &stats]() noexcept { stats.numDocsRequested += current; });
+
   char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
-  while (current < toFetch.size()) {
-    arangodb::transaction::BuilderLeaser requestBuilder(&trx);
-    {
-      VPackArrayBuilder list(requestBuilder.get());
-      for (std::size_t i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
-        requestBuilder->add(toFetch[current + i].toValuePair(ridBuffer));
+  std::deque<arangodb::network::FutureRes> futures;
+
+  arangodb::network::ConnectionPool* pool = netFeature.pool();
+
+  while (current < toFetch.size() || !futures.empty()) {
+    // Send some requests off if not enough in flight and something to go
+    while (futures.size() < 10 && current < toFetch.size()) {
+      VPackBuilder requestBuilder;
+      {
+        VPackArrayBuilder list(&requestBuilder);
+        std::size_t i;
+        for (i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
+          requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
+        }
+        current += i;
       }
-    }
-    std::string request = requestBuilder->slice().toJson();
 
-    double t = TRI_microtime();
-    config.connection.lease(
-        [&](arangodb::httpclient::SimpleHttpClient* client) {
-          response.reset(client->retryRequest(arangodb::rest::RequestType::PUT,
-                                              url, request.data(),
-                                              request.size(), headers));
-        });
-    stats.waitedForDocs += TRI_microtime() - t;
-    ++stats.numDocsRequests;
-
-    if (arangodb::replutils::hasFailed(response.get())) {
-      return arangodb::replutils::buildHttpError(response.get(), url,
-                                                 config.connection);
+      arangodb::network::RequestOptions reqOptions;
+      reqOptions.param("collection", leader)
+          .param("serverId", state.localServerIdString)
+          .param("batchId", std::to_string(config.batch.id));
+      reqOptions.timeout = arangodb::network::Timeout(25.0);
+      auto buffer = requestBuilder.steal();
+      auto f = arangodb::network::sendRequestRetry(
+          pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
+          std::move(*buffer), reqOptions);
+      futures.emplace_back(std::move(f));
+      ++stats.numDocsRequests;
     }
 
-    arangodb::transaction::BuilderLeaser responseBuilder(&trx);
-    Result r = arangodb::replutils::parseResponse(*responseBuilder.get(),
-                                                  response.get());
-    if (r.fail()) {
-      return Result(
-          TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-          concatT("got invalid response from leader at ",
-                  config.leader.endpoint, url, ": ", r.errorMessage()));
-    }
+    if (!futures.empty()) {
+      auto& f = futures.front();
+      auto& val = f.get();
+      Result res = val.combinedResult();
+      if (res.fail()) {
+        return Result(
+            TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            concatT("got invalid response from leader at ",
+                    config.leader.endpoint, path, ": ", res.errorMessage()));
+      }
 
-    VPackSlice docs = responseBuilder->slice();
-    if (!docs.isArray()) {
-      return Result(
-          TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-          concatT("got invalid response from leader at ",
-                  config.leader.endpoint, url, ": response is not an array"));
-    }
-
-    config.progress.set("applying documents by revision for collection '" +
-                        collection.name() + "'");
-
-    for (VPackSlice leaderDoc : VPackArrayIterator(docs)) {
-      if (!leaderDoc.isObject()) {
+      VPackSlice docs = val.slice();
+      if (!docs.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          config.leader.endpoint + url +
-                          ": response document entry is not an object");
+                      concatT("got invalid response from leader at ",
+                              config.leader.endpoint, path,
+                              ": response is not an array"));
       }
 
-      VPackSlice keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
-      if (!keySlice.isString()) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          state.leader.endpoint + ": document key is invalid");
-      }
+      config.progress.set("applying documents by revision for collection '" +
+                          collection.name() + "'");
 
-      VPackSlice revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
-      if (!revSlice.isString()) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          state.leader.endpoint +
-                          ": document revision is invalid");
-      }
-
-      options.indexOperationMode = arangodb::IndexOperationMode::internal;
-
-      // we need a retry loop here for unique indexes (we will always have at
-      // least one unique index, which is the primary index, but there can be
-      // more). as documents can be presented in any state on the follower,
-      // simply inserting them in leader order may trigger a unique constraint
-      // violation on the follower. in this case we may need to remove the
-      // conflicting document. this can happen multiple times if there are
-      // multiple unique indexes! we can only stop trying once we have tried
-      // often enough, or if inserting succeeds.
-      std::size_t tries = 1 + numUniqueIndexes;
-      while (tries-- > 0) {
-        if (tries == 0) {
-          options.indexOperationMode = arangodb::IndexOperationMode::normal;
+      for (VPackSlice leaderDoc : VPackArrayIterator(docs)) {
+        if (!leaderDoc.isObject()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            config.leader.endpoint + path +
+                            ": response document entry is not an object");
         }
 
-        double tInsert = TRI_microtime();
-        Result res = physical->insert(&trx, leaderDoc, mdr, options);
-        stats.waitedForInsertions += TRI_microtime() - tInsert;
+        VPackSlice keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
+        if (!keySlice.isString()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            state.leader.endpoint +
+                            ": document key is invalid");
+        }
+
+        VPackSlice revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
+        if (!revSlice.isString()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            state.leader.endpoint +
+                            ": document revision is invalid");
+        }
 
         options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-        if (res.ok()) {
-          ++stats.numDocsInserted;
-          break;
-        }
+        // we need a retry loop here for unique indexes (we will always have at
+        // least one unique index, which is the primary index, but there can be
+        // more). as documents can be presented in any state on the follower,
+        // simply inserting them in leader order may trigger a unique constraint
+        // violation on the follower. in this case we may need to remove the
+        // conflicting document. this can happen multiple times if there are
+        // multiple unique indexes! we can only stop trying once we have tried
+        // often enough, or if inserting succeeds.
+        std::size_t tries = 1 + numUniqueIndexes;
+        while (tries-- > 0) {
+          if (tries == 0) {
+            options.indexOperationMode = arangodb::IndexOperationMode::normal;
+          }
 
-        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-          auto errorNumber = res.errorNumber();
-          res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
-                                         res.errorMessage()));
-          return res;
-        }
+          double tInsert = TRI_microtime();
+          Result res = physical->insert(&trx, leaderDoc, mdr, options);
+          stats.waitedForInsertions += TRI_microtime() - tInsert;
 
-        arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
-        // We must see our own writes, because we may have to remove conflicting
-        // documents (that we just inserted) as documents may be replicated in
-        // unexpected order.
-        if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
-                                   mdr, arangodb::ReadOwnWrites::yes)) {
-          // already have exactly this revision no need to insert
-          break;
-        }
+          options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-        // remove conflict and retry
-        // errorMessage() is this case contains the conflicting key
-        auto inner = removeConflict(res.errorMessage());
-        if (inner.fail()) {
-          return res;
+          if (res.ok()) {
+            ++stats.numDocsInserted;
+            break;
+          }
+
+          if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+            auto errorNumber = res.errorNumber();
+            res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
+                                           res.errorMessage()));
+            return res;
+          }
+
+          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
+          // We must see our own writes, because we may have to remove
+          // conflicting documents (that we just inserted) as documents may be
+          // replicated in unexpected order.
+          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
+                                     mdr, arangodb::ReadOwnWrites::yes)) {
+            // already have exactly this revision no need to insert
+            break;
+          }
+
+          // remove conflict and retry
+          // errorMessage() is this case contains the conflicting key
+          auto inner = removeConflict(res.errorMessage());
+          if (inner.fail()) {
+            return res;
+          }
         }
       }
+      futures.pop_front();
     }
-    current += docs.length();
   }
 
   return Result();
@@ -1753,6 +1760,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     // Builder will be recycled
     VPackBuilder responseBuilder;
 
+    auto& nf = coll->vocbase().server().getFeature<arangodb::NetworkFeature>();
     while (requestResume < RevisionId::max()) {
       std::unique_ptr<httpclient::SimpleHttpResult> chunkResponse;
 
@@ -1927,8 +1935,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
       toRemove.clear();
 
-      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch,
-                             stats);
+      res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
+                             toFetch, stats);
       if (res.fail()) {
         return res;
       }
