@@ -1,6 +1,9 @@
 devel
 -----
 
+* Speed up initial sync (in case there is already data present) by prefetching
+  data from leader.
+
 * Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
   replicated to the follower data-center keeping their sharding intact.
 
