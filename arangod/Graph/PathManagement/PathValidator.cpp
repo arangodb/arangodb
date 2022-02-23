@@ -78,8 +78,10 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
 #ifdef USE_ENTERPRISE
   if (isDisjoint) {
-    if (!isValidDisjointPath(step, _isSatelliteLeader)) {
-      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
+    auto validDisjPathRes = checkValidDisjointPath(step, _isSatelliteLeader);
+    if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
+        validDisjPathRes == ValidationResult::Type::FILTER) {
+      res.combine(validDisjPathRes);
       return res;
     }
   }

@@ -36,9 +36,8 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
-
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/algorithm-aliases-ee.h"
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
 #include <Logger/LogMacros.h>

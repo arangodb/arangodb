@@ -28,6 +28,7 @@
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Types/ValidationResult.h"
 
 #include <velocypack/Builder.h>
 
@@ -118,11 +119,12 @@ class PathValidator {
 
   PathValidatorOptions _options;
 
+// todo clean up all uses of USE_ENTERPRISE
 #ifdef USE_ENTERPRISE
   std::string_view _smartValue;
-  bool _isSatelliteLeader;
 #endif
 
+  bool _isSatelliteLeader;
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
@@ -137,8 +139,8 @@ class PathValidator {
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;
 
-  virtual auto isValidDisjointPath(typename PathStore::Step const& lastStep,
-                                   bool isSatelliteLeader) -> bool;
+  virtual auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
+                                   bool isSatelliteLeader) -> arangodb::graph::ValidationResult::Type;
 };
 }  // namespace graph
 }  // namespace arangodb
