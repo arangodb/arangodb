@@ -160,13 +160,11 @@
           if (!timeData.error && timeData.code === 200 && timeData.time) {
             self.fetchLicenseInfo(timeData.time);
           } else {
-            self.showGetTimeError();  
-          }
-        },
-        error: function () {
-          self.showGetTimeError();
+            self.showGetTimeError();
+          }          
         }
-      }); 
+        // intentionally no error handling: non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
+      });
     },
 
     showLicenseError: function () {

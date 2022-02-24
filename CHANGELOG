@@ -1,6 +1,11 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Remove error handling fetching license information to improve user
+  experience. To display the license informationn in the UI is only
+  informational. It disturbs the user experience to know somthing went wrong
+  and doesn't provide any important information for the user.
+
 * Reduce memory usage of inner joins if they were performed by the IndexExecutor
   with dynamic index lookup expressions that needed to be recomputed for input
   from the outer loop.
