@@ -1288,7 +1288,7 @@ bool MaintenanceFeature::unlockShard(ShardID const& shardId) noexcept {
 }
 
 MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
-  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("aaed4", TRACE, Logger::MAINTENANCE)
       << "Copy of shard action map taken.";
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;
