@@ -2550,7 +2550,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
         mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true);
     if (trxCtxtLease) {
       transaction::Methods trx{trxCtxtLease};
-      if (trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
+      if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
         referenceChecksum =
             ResultT<std::string>::success("ThisCannotBeMatched");
       }
