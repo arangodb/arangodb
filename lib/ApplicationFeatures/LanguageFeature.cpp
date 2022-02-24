@@ -101,7 +101,7 @@ void LanguageFeature::collectOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
-      "--icu-locale", "ISO-639 language code",
+      "--icu-language", "ICU language",
       new StringParameter(&_icuLanguage),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
@@ -193,10 +193,19 @@ void LanguageFeature::prepare() {
   _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
                                             binaryName);
 
-  ::setCollator(!_defaultLanguage.empty() ? _defaultLanguage : _icuLanguage ,
+  bool isDefaultSet = !_defaultLanguage.empty();
+  bool isIcuSet = !_icuLanguage.empty();
+
+  if (isDefaultSet && isIcuSet) {
+    LOG_TOPIC("d8a99", FATAL, arangodb::Logger::CONFIG)
+        << "Only one parameter from --default-language and --icu-language should be specified";
+    FATAL_ERROR_EXIT();
+  }
+
+  ::setCollator(isDefaultSet ? _defaultLanguage : _icuLanguage ,
                 _icuDataPtr,
-                !_defaultLanguage.empty()); // if _defaultLanguage is empty,
-                                            // we will work with _icuLanguage
+                isDefaultSet); // if _defaultLanguage is empty,
+                               // we will work with _icuLanguage
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
