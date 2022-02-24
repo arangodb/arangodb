@@ -13,7 +13,7 @@ import { useLinkState } from "../helpers";
 import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
-import { JsonButton } from "../Actions";
+// import { JsonButton } from "../Actions";
 
 const LinkPropertiesForm = ({
   formState,
@@ -30,26 +30,26 @@ const LinkPropertiesForm = ({
   );
   const [options, setOptions] = useState<string[]>([]);
 
-  const [buttonName, setButtonName] = useState<string>("Switch to form view");
-  const [jsonView, setJsonView] = useState(false);
+  // const [buttonName, setButtonName] = useState<string>("Switch to form view");
+  // const [jsonView, setJsonView] = useState(false);
 
-  const toggleJsonView = () => {
-    setJsonView(!jsonView);
-    if (jsonView === false) {
-      setButtonName("Switch to form view");
-    } else {
-      setButtonName("Switch to code view");
-    }
-  };
+  // const toggleJsonView = () => {
+  //   setJsonView(!jsonView);
+  //   if (jsonView === false) {
+  //     setButtonName("Switch to form view");
+  //   } else {
+  //     setButtonName("Switch to code view");
+  //   }
+  // };
 
   const linkVal = chain(links)
     .omitBy(isNull)
     .keys()
     .value();
 
-  const handleJsonButtonClick = () => {
-    toggleJsonView();
-  };
+  // const handleJsonButtonClick = () => {
+  //   toggleJsonView();
+  // };
 
   useEffect(() => {
     if (data) {
@@ -99,61 +99,27 @@ const LinkPropertiesForm = ({
     <ArangoTable>
       <thead>
         <tr>
+          <ArangoTH seq={disabled ? 0 : 1} style={{ width: "82%" }}>
+            <a href={`/${view}`}>{view}</a>/
+            <a href={`/${linkVal}`}>{linkVal}</a>
+          </ArangoTH>
+          <ArangoTH seq={disabled ? 1 : 2} style={{ width: "8%" }}>
+            Collection Name
+          </ArangoTH>
           {disabled ? null : (
             <ArangoTH
               seq={0}
               style={{
-                width: "2%",
+                width: "8%",
                 textAlign: "center"
               }}
             >
-              <i className={"fa fa-trash-o"} />
+              Action
             </ArangoTH>
           )}
-          <ArangoTH seq={disabled ? 0 : 1} style={{ width: "8%" }}>
-            <a href={`/${view}`}>{view}</a>/
-            <a href={`/${linkVal}`}>{linkVal}</a>
-          </ArangoTH>
-          <ArangoTH seq={disabled ? 1 : 2} style={{ width: "60%" }}>
-            Properties
-          </ArangoTH>
-          <ArangoTH seq={disabled ? 2 : 3} style={{ width: "30%" }}>
-            <JsonButton
-              buttonName={buttonName}
-              buttonClick={handleJsonButtonClick}
-            />
-          </ArangoTH>
         </tr>
       </thead>
       <tbody>
-        {map(links, (properties, coll) => {
-          return properties ? (
-            <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
-              {disabled ? null : (
-                <ArangoTD seq={0} valign={"middle"}>
-                  <IconButton
-                    icon={"trash-o"}
-                    type={"danger"}
-                    onClick={getLinkRemover(coll)}
-                  />
-                </ArangoTD>
-              )}
-              <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
-              <ArangoTD seq={disabled ? 1 : 2}>
-                <LinkPropertiesInput
-                  formState={properties}
-                  disabled={disabled || !properties}
-                  dispatch={
-                    (dispatch as unknown) as Dispatch<
-                      DispatchArgs<LinkProperties>
-                    >
-                  }
-                  basePath={`links[${coll}]`}
-                />
-              </ArangoTD>
-            </tr>
-          ) : null;
-        })}
         {disabled ? null : (
           <tr style={{ borderBottom: "1px  solid #DDD" }}>
             <ArangoTD seq={0} colSpan={2}>
@@ -180,6 +146,40 @@ const LinkPropertiesForm = ({
             </ArangoTD>
           </tr>
         )}
+        {map(links, (properties, coll) => {
+          return properties ? (
+            <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
+              <ArangoTD seq={disabled ? 1 : 2}>
+                <LinkPropertiesInput
+                  formState={properties}
+                  disabled={disabled || !properties}
+                  dispatch={
+                    (dispatch as unknown) as Dispatch<
+                      DispatchArgs<LinkProperties>
+                    >
+                  }
+                  basePath={`links[${coll}]`}
+                />
+              </ArangoTD>
+
+              <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
+              {disabled ? null : (
+                <ArangoTD seq={0} valign={"middle"}>
+                  <IconButton
+                    icon={"trash-o"}
+                    type={"danger"}
+                    onClick={getLinkRemover(coll)}
+                  />
+                  <IconButton
+                    icon={"eye"}
+                    type={"warning"}
+                    onClick={getLinkRemover(coll)}
+                  />
+                </ArangoTD>
+              )}
+            </tr>
+          ) : null;
+        })}
       </tbody>
     </ArangoTable>
   );
