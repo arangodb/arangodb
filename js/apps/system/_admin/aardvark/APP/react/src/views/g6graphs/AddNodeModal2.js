@@ -26,37 +26,21 @@ const ModalBody = styled.div`
   export const AddNodeModal2 = ({ shouldShow, onUpdateNode, onRequestClose, node, vertexCollections, nodeData, editorContent, children, nodeKey, nodeCollection, onNodeCreation, graphName, graphData }) => {
 
     const { Option } = Select;
-    const [visible, setVisibility] = useState(shouldShow);
-    const [nodeKeyName, setNodeKeyName] = useState('');
-    const [loading, setLoading] = useState(false);
     const keyInputRef = useRef();
     const jsonEditorRef = useRef();
     const [json, setJson] = useState(nodeData);
-    const [collection, setCollection] = useState("");
-    const [isModalVisible, setIsModalVisible] = useState(shouldShow);
+    const [collection, setCollection] = useState([]);
 
-    const openNotificationWithIcon = type => {
-      notification[type]({
+
+    const openNotificationWithIcon = nodeName => {
+      notification['success']({
         message: 'Node created',
         description:
-          `The node ${nodeKeyName} was successfully created`,
+          `The node ${nodeName} was successfully created`,
       });
     };
 
     const addNode = (graphData, updateNodeId) => {
-
-      const newNodeData = {
-        "_key": "Mannheim",
-        "population": 8080,
-        "isCapital": false,
-        "geometry": {
-          "type": "Point",
-          "coordinates": [
-            6.9527,
-            51.9385
-          ]
-        }
-      };
 
       const key = keyInputRef.current.state.value;
       if (key !== '' && key !== undefined) {
@@ -70,59 +54,23 @@ const ModalBody = styled.div`
         data: JSON.stringify(json),
         processData: true,
         success: function (response) {
-          console.log("response after addNode (success): ", response);
-          console.log("response.vertex after addNode (success): ", response.vertex);
-          onNodeCreation(response.vertex);
+          const nodeModel = {
+            id: response.vertex._id,
+            label: response.vertex._key,
+          };
+          openNotificationWithIcon(response.vertex._id);
+          onNodeCreation(nodeModel);
+          onRequestClose();
         },
         error: function (response) {
           console.log("response after addNode (error): ", response);
-          //callback(true, null, response.responseJSON.errorMessage);
         }
       });
     }
 
-    const showModal = () => {
-      setIsModalVisible(true);
-    };
-
-    const handleOk = () => {
-      setIsModalVisible(false);
-    };
-
-    const handleCancel = () => {
-      setIsModalVisible(false);
-    };
-
     const handleChange = (value) => {
-      console.log(`selected vertex collection: ${value}`);
       setCollection(value);
     }
-
-    /*
-  return (
-    <>
-      <Modal title="Basic Modal" visible={isModalVisible} onOk={handleOk} onCancel={handleCancel}>
-      <div>
-            {children}<br />
-          </div>
-          <div>
-            {
-              nodeData ? (
-                <Editor
-                  ref={jsonEditorRef}
-                  value={nodeData}
-                  onChange={(value) => {
-                    console.log('Data in jsoneditor changed: ', value);
-                    setJson(value);
-                  }}
-                  mode={'code'}
-                  history={true} />
-              ) : 'Data is loading...'
-            }
-          </div>
-      </Modal>
-    </> );
-    */
 
   return shouldShow ? (
       <ModalBackground onClick={onRequestClose}>
@@ -142,6 +90,7 @@ const ModalBody = styled.div`
             style={{ width: "100%", marginTop: '24px', marginBottom: '24px' }}
           />
           <Select
+            placeholder="Please choose the vertex collection"
             style={{ width: "100%", marginBottom: '24px' }}
             onChange={handleChange}
             suffixIcon={
