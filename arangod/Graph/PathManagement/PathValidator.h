@@ -140,7 +140,8 @@ class PathValidator {
                                 arangodb::velocypack::Slice value) -> bool;
 
   virtual auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
-                                   bool isSatelliteLeader) -> arangodb::graph::ValidationResult::Type;
+                                      bool isSatelliteLeader)
+      -> arangodb::graph::ValidationResult::Type;
 };
 }  // namespace graph
 }  // namespace arangodb
