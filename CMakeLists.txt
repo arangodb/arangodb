@@ -61,6 +61,8 @@ option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from .
 
 option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing debug information" OFF)
 
+find_package(Git 1.5.3 REQUIRED)
+
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
 # add_definitions("-DARANGODB_STANDALONE_ASIO=0")

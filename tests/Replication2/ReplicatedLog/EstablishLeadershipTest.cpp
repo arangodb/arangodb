@@ -124,7 +124,8 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
           .participants = std::move(participants),
       });
   auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4},
-                                        {follower}, participantsConfig);
+                                        {follower}, participantsConfig,
+                                        std::make_shared<FakeFailureOracle>());
 
   auto f = leader->waitForLeadership();
   {

@@ -97,9 +97,8 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, uint64_t minCell,
                           maxCell);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
-                                              VPackSlice const& left,
-                                              VPackSlice const& right) {
+RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, VPackSlice left,
+                                              VPackSlice right) {
   return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left,
                           right);
 }
@@ -110,8 +109,8 @@ RocksDBKeyBounds RocksDBKeyBounds::ZkdIndex(uint64_t indexId) {
 
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
-                                                    VPackSlice const& left,
-                                                    VPackSlice const& right) {
+                                                    VPackSlice left,
+                                                    VPackSlice right) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
                           left, right);
 }
@@ -125,7 +124,7 @@ RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId,
 
 /// used for point lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
-                                                    VPackSlice const& left) {
+                                                    VPackSlice left) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
                           left);
 }
@@ -491,6 +490,13 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    VPackSlice second, VPackSlice third)
     : _type(type) {
+  fill(type, first, second, third);
+}
+
+void RocksDBKeyBounds::fill(RocksDBEntryType type, uint64_t first,
+                            VPackSlice second, VPackSlice third) {
+  clear();
+  _type = type;
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {

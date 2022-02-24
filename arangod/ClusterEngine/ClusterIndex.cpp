@@ -35,7 +35,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -189,12 +188,10 @@ void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
 bool ClusterIndex::isSorted() const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
+           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -227,18 +224,6 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   _info = std::move(tmp);
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
-}
-
-bool ClusterIndex::hasCoveringIterator() const {
-  if (_engineType == ClusterEngineType::RocksDBEngine) {
-    return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  }
-  return false;
 }
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
@@ -422,5 +407,18 @@ ClusterIndex::coveredFields() const {
     TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
     return _coveredFields;
   }
-  return _fields;
+  switch (_indexType) {
+    case TRI_IDX_TYPE_GEO_INDEX:
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_TTL_INDEX:
+    case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+      return arangodb::Index::emptyCoveredFields;
+    }
+    default:
+      return _fields;
+  }
 }

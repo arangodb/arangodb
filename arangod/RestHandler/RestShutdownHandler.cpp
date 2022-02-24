@@ -24,7 +24,6 @@
 #include "RestShutdownHandler.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyComm.h"

@@ -59,7 +59,6 @@
 
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 std::string const garbageCollectionQuery(

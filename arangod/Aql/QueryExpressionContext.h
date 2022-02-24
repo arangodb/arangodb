@@ -38,6 +38,9 @@ class AqlFunctionsInternalCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
+  QueryExpressionContext(QueryExpressionContext const&) = delete;
+  QueryExpressionContext& operator=(QueryExpressionContext const&) = delete;
+
   explicit QueryExpressionContext(transaction::Methods& trx,
                                   QueryContext& query,
                                   AqlFunctionsInternalCache& cache) noexcept

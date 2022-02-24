@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "Aql/Projections.h"
+#include "Aql/types.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -50,6 +51,11 @@ class DocumentProducingNode {
 
  public:
   void cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const;
+
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const& replacements);
 
   /// @brief return the out variable
   Variable const* outVariable() const;

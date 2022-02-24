@@ -139,6 +139,7 @@ std::string const StaticStrings::IndexStoredValues("storedValues");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
+std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -297,9 +298,14 @@ std::string const StaticStrings::FullLocalPrefix("_local_");
 std::string const StaticStrings::FullFromPrefix("_from_");
 std::string const StaticStrings::FullToPrefix("_to_");
 
-// Graph Gharial API relevant attribuets
+// Graph Gharial API relevant attributes
 std::string const StaticStrings::GraphDetails("details");
 std::string const StaticStrings::GraphOnlyHash("onlyHash");
+
+// Graph directions
+std::string const StaticStrings::GraphDirection("direction");
+std::string const StaticStrings::GraphDirectionInbound("inbound");
+std::string const StaticStrings::GraphDirectionOutbound("outbound");
 
 // Pregel Section Start
 

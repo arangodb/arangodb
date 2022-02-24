@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "LogicalDataSource.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"

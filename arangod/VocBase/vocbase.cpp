@@ -37,7 +37,6 @@
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
@@ -72,6 +71,7 @@
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
@@ -341,17 +341,6 @@ struct arangodb::VocBaseLogManager {
       auto logIter = logs.find(id);
       if (logIter == std::end(logs)) {
         return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
-      }
-
-      // TODO remove this once we have an unconfigured replicated state
-      // For now, we do not create a replicated state on top of a unconfigured
-      // replicated log. Otherwise we would trigger an assertion later on.
-      // Hence for now, we disallow that, the maintenance will retry anyways.
-      auto const& log = logIter->second;
-      if (dynamic_cast<
-              replication2::replicated_log::LogUnconfiguredParticipant*>(
-              log->getParticipant().get()) != nullptr) {
-        return {TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE};
       }
 
       auto state = feature.createReplicatedState(type, logIter->second);

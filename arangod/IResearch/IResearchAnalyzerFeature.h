@@ -50,7 +50,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Auth/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -179,7 +178,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   // 'make(...)' method wrapper for irs::analysis::analyzer types
   struct Builder {
     using ptr = irs::analysis::analyzer::ptr;
-    static ptr make(irs::string_ref const& type, VPackSlice properties);
+    static ptr make(irs::string_ref type, VPackSlice properties);
 
     static ptr make(NullStreamTag) {
       return std::make_unique<irs::null_token_stream>();
