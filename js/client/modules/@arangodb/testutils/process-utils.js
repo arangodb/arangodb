@@ -1327,7 +1327,9 @@ function abortSurvivors(arangod, options) {
   }
 }
 
-function checkInstanceAlive (instanceInfo, options, {skipHealthCheck} = {skipHealthCheck: false}) {
+// skipHealthCheck can be set to true to avoid a call to /_admin/cluster/health
+// on the coordinator. This is necessary if only the agency is running yet.
+function checkInstanceAlive(instanceInfo, options, {skipHealthCheck = false} = {}) {
   if (options.activefailover &&
       instanceInfo.hasOwnProperty('authOpts') &&
       (instanceInfo.url !== instanceInfo.agencyUrl)
@@ -2522,8 +2524,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
         agencyInstance.arangods.push(_.clone(oneInstance));
       }
     });
-    let agencyEndpoint = instanceInfo.endpoint;
-    if (!checkInstanceAlive(agencyInstance, options)) {
+    if (!checkInstanceAlive(agencyInstance, options, {skipHealthCheck: true})) {
       throw new Error('startup of agency failed! bailing out!');
     }
   }

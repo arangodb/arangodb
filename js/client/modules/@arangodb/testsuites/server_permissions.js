@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, params */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -134,6 +134,7 @@ function startParameterTest(options, testpath, suiteName) {
       }
 
       results[testFile] = tu.runInLocalArangosh(clonedOpts, instanceInfo, testFile, {});
+      arango.reconnect(arango.getEndpoint(), '_system', "root", "", true, instanceInfo.authOpts["server.jwt-secret"]);
       shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
 
       results['shutdown'] = results['shutdown'] && shutdownStatus;
