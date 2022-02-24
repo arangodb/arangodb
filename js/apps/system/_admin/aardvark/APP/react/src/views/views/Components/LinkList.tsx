@@ -13,9 +13,10 @@ type CollProps = {
     action: React.ReactElement;
   }[];
   addClick: React.MouseEventHandler<HTMLElement>;
+  icon: string;
 };
 
-const CollectionList: React.FC<CollProps> = ({ links, addClick }) => {
+const CollectionList: React.FC<CollProps> = ({ links, addClick, icon }) => {
   return (
     <div className="contentIn" id="indexHeaderContent">
       <ArangoTable className={"edit-index-table arango-table"}>
@@ -43,7 +44,7 @@ const CollectionList: React.FC<CollProps> = ({ links, addClick }) => {
             <ArangoTD seq={0}> </ArangoTD>
             <ArangoTD seq={1}> </ArangoTD>
             <ArangoTD seq={2}>
-              <i className="fa fa-plus-circle" onClick={addClick}></i>
+              <i className={`fa ${icon}`} onClick={addClick}></i>
             </ArangoTD>
           </tr>
         </tfoot>

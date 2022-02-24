@@ -5,7 +5,7 @@ import {
   isAdminUser as userIsAdmin,
   usePermissions
 } from "../../utils/helpers";
-import { SaveButton } from "./Actions";
+import { SaveButton, BackButton } from "./Actions";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
@@ -55,11 +55,19 @@ const ViewLinksReactView = ({ name }) => {
   const formState = state.formState;
 
   const [newLink, setNewLink] = useState(false);
+  const [icon, setIcon] = useState("fa-plus-circle");
 
-  const handleNewFormClick = e => {
+  const handleNewLinkClick = e => {
     e.preventDefault();
     setNewLink(!newLink);
-    console.log(newLink);
+    if (newLink === true) {
+      setIcon("fa-minus-circle");
+    }
+  };
+
+  const handleBackClick = e => {
+    e.preventDefault();
+    setNewLink(false);
   };
 
   const mockData = [
@@ -85,7 +93,9 @@ const ViewLinksReactView = ({ name }) => {
 
   return (
     <div className={"centralContent"} id={"content"}>
-      <LinkList links={mockData} addClick={handleNewFormClick} />
+      {!newLink && (
+        <LinkList links={mockData} addClick={handleNewLinkClick} icon={icon} />
+      )}
       {newLink && (
         <div
           id={"modal-dialog"}
@@ -107,6 +117,7 @@ const ViewLinksReactView = ({ name }) => {
             </div>
           </div>
           <div className="modal-footer">
+            <BackButton buttonClick={handleBackClick} />
             <SaveButton view={formState} oldName={name} />
           </div>
         </div>
