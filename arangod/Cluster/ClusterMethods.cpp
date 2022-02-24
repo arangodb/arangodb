@@ -1382,8 +1382,7 @@ futures::Future<metrics::RawDBServers> metricsOnCoordinator(
           }
           velocypack::Slice slice{payload->data()};
           if (!slice.isArray()) {
-            TRI_ASSERT(false);
-            continue;
+            continue;  // some like 503
           }
           if (auto const size = slice.length(); size % 3 != 0) {
             TRI_ASSERT(false);
