@@ -9,7 +9,7 @@ import { SaveButton } from "./Actions";
 import LinkPropertiesForm from "./forms/LinkPropertiesForm";
 import { buildSubNav, postProcessor, useView, useCollection } from "./helpers";
 import { ArangoTable, ArangoTH, ArangoTD } from "../../components/arango/table";
-import CollectionList from "./Components/LinkList";
+import LinkList from "./Components/LinkList";
 import NewList from "./Components/NewLink";
 
 const ViewLinksReactView = ({ name }) => {
@@ -54,57 +54,63 @@ const ViewLinksReactView = ({ name }) => {
 
   const formState = state.formState;
 
+  const [newLink, setNewLink] = useState(false);
+
+  const handleNewFormClick = e => {
+    e.preventDefault();
+    setNewLink(!newLink);
+    console.log(newLink);
+  };
+
   const mockData = [
     {
       id: 0,
       name: "fooBar",
-      attr: "fooBar, foo",
-      desc: "This is fooBar",
+      properties: ["includeAllfields: true, foo: fales"],
       action: "This is an action"
     },
     {
       id: 1,
       name: "airPort",
-      attr: "Foo",
-      desc: "This is fooBar",
+      properties: ["includeAllfields: true, foo: fales"],
       action: "This is an action"
     },
     {
       id: 2,
       name: "route",
-      attr: "fooBar, foo",
-      desc: "This is fooBar",
+      properties: ["includeAllfields: true, foo: fales"],
       action: "This is an action"
     }
   ];
 
   return (
     <div className={"centralContent"} id={"content"}>
-      <CollectionList links={mockData} />
-      <NewList />
-      <div
-        id={"modal-dialog"}
-        className={"createModalDialog"}
-        tabIndex={-1}
-        role={"dialog"}
-        aria-labelledby={"myModalLabel"}
-        aria-hidden={"true"}
-      >
-        <div className="modal-body" style={{ overflowY: "visible" }}>
-          <div className={"tab-content"}>
-            <div className="tab-pane tab-pane-modal active" id="Links">
-              <LinkPropertiesForm
-                formState={formState}
-                dispatch={dispatch}
-                disabled={!isAdminUser}
-              />
+      <LinkList links={mockData} addClick={handleNewFormClick} />
+      {newLink && (
+        <div
+          id={"modal-dialog"}
+          className={"createModalDialog"}
+          tabIndex={-1}
+          role={"dialog"}
+          aria-labelledby={"myModalLabel"}
+          aria-hidden={"true"}
+        >
+          <div className="modal-body" style={{ overflowY: "visible" }}>
+            <div className={"tab-content"}>
+              <div className="tab-pane tab-pane-modal active" id="Links">
+                <LinkPropertiesForm
+                  formState={formState}
+                  dispatch={dispatch}
+                  disabled={!isAdminUser}
+                />
+              </div>
             </div>
           </div>
+          <div className="modal-footer">
+            <SaveButton view={formState} oldName={name} />
+          </div>
         </div>
-        <div className="modal-footer">
-          <SaveButton view={formState} oldName={name} />
-        </div>
-      </div>
+      )}
     </div>
   );
 };

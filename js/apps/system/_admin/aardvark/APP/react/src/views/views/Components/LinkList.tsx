@@ -8,24 +8,22 @@ import Link from "./Link";
 
 type CollProps = {
   links: {
-    attr: string;
+    properties: boolean[];
     name: string;
-    desc: string;
     action: React.ReactElement;
   }[];
+  addClick: React.MouseEventHandler<HTMLElement>;
 };
 
-const CollectionList: React.FC<CollProps> = ({ links }) => {
+const CollectionList: React.FC<CollProps> = ({ links, addClick }) => {
   return (
     <div className="contentIn" id="indexHeaderContent">
       <ArangoTable className={"edit-index-table arango-table"}>
         <thead>
           <tr className="figuresHeader">
-            <ArangoTH seq={0}>ID</ArangoTH>
-            <ArangoTH seq={1}>Attributes</ArangoTH>
-            <ArangoTH seq={2}>Name</ArangoTH>
-            <ArangoTH seq={3}>Options</ArangoTH>
-            <ArangoTH seq={4}>Action</ArangoTH>
+            <ArangoTH seq={0}>Collection Name</ArangoTH>
+            <ArangoTH seq={1}>Properties</ArangoTH>
+            <ArangoTH seq={3}>Action</ArangoTH>
           </tr>
         </thead>
 
@@ -34,9 +32,8 @@ const CollectionList: React.FC<CollProps> = ({ links }) => {
             links.map((c, key) => (
               <Link
                 name={c.name}
-                attr={c.attr}
-                desc={c.attr}
-                action={<i className="fa fa-plus-circle"></i>}
+                properties={c.properties}
+                action={<i className="fa fa-trash-circle"></i>}
                 key={key}
               />
             ))}
@@ -45,10 +42,8 @@ const CollectionList: React.FC<CollProps> = ({ links }) => {
           <tr>
             <ArangoTD seq={0}> </ArangoTD>
             <ArangoTD seq={1}> </ArangoTD>
-            <ArangoTD seq={2}> </ArangoTD>
-            <ArangoTD seq={3}> </ArangoTD>
-            <ArangoTD seq={4}>
-              <i className="fa fa-plus-circle"></i>
+            <ArangoTD seq={2}>
+              <i className="fa fa-plus-circle" onClick={addClick}></i>
             </ArangoTD>
           </tr>
         </tfoot>
