@@ -30,7 +30,6 @@
 #include <fuerte/requests.h>
 
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::network;

@@ -92,10 +92,10 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   bool isOptimized() const;
 #endif
 
-  static bool normalize_vpack(const irs::string_ref& args, std::string& out);
-  static irs::analysis::analyzer::ptr make_vpack(irs::string_ref const& args);
-  static bool normalize_json(const irs::string_ref& args, std::string& out);
-  static irs::analysis::analyzer::ptr make_json(irs::string_ref const& args);
+  static bool normalize_vpack(irs::string_ref args, std::string& out);
+  static irs::analysis::analyzer::ptr make_vpack(irs::string_ref args);
+  static bool normalize_json(irs::string_ref args, std::string& out);
+  static irs::analysis::analyzer::ptr make_json(irs::string_ref args);
 
   explicit AqlAnalyzer(Options const& options);
 
@@ -105,7 +105,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   }
 
   virtual bool next() override;
-  virtual bool reset(irs::string_ref const& field) noexcept override;
+  virtual bool reset(irs::string_ref field) noexcept override;
 
  private:
   using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);

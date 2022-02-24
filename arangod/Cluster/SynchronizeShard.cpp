@@ -65,7 +65,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
@@ -526,8 +525,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
         << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
 
-  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
-                          "startReadLockOnLeader: giving up");
+  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT);
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
@@ -1202,7 +1200,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       startReadLockOnLeader(ep, collection.name(), clientId, lockJobId, false);
   if (!res.ok()) {
     auto errorMessage = StringUtils::concatT(
-        "SynchronizeShard: error in startReadLockOnLeader (hard):",
+        "SynchronizeShard: error in startReadLockOnLeader (hard): ",
         res.errorMessage());
     return {res.errorNumber(), std::move(errorMessage)};
   }

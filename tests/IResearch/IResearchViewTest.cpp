@@ -101,7 +101,7 @@ struct DocIdScorer : public irs::sort {
     return "test_doc_id";
   }
 
-  static ptr make(const irs::string_ref&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(DocIdScorer, ptr);
     return ptr;
   }

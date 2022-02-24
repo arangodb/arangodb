@@ -265,7 +265,7 @@ describe('Foxx Swagger', function () {
           .that.has.a.property('description', 'Some error');
       });
 
-      it('includes explicit schemas', function () {
+      it('includes explicit joi schemas', function () {
         service.router.get('/hello', noop)
           .response(200, joi.object());
         service.buildRoutes();
@@ -278,6 +278,16 @@ describe('Foxx Swagger', function () {
           additionalProperties: false,
           patterns: []
         });
+      });
+
+      it('includes explicit JSON schemas', function () {
+        service.router.get('/hello', noop)
+          .response(200, {type: 'string'});
+        service.buildRoutes();
+        expect(service.docs.paths).to.have.a.property('/hello')
+          .with.a.deep.property('get.responses.200')
+          .that.has.a.property('schema')
+          .that.is.eql({type: 'string'});
       });
     });
 
@@ -377,19 +387,337 @@ describe('Foxx Swagger', function () {
 
     describe('"parameters"', function () {
       describe('in:body', function () {
-        it('TODO');
+        it('includes default schema', function () {
+          service.router.post('/hello', noop);
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              required: false
+            });
+        });
+
+        it('includes explicit joi schema', function () {
+          service.router.post('/hello', noop)
+          .body(joi.string().required());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              description: undefined,
+              required: true,
+              schema: {type: 'string'}
+            });
+        });
+
+        it('includes explicit optional joi schema', function () {
+          service.router.post('/hello', noop)
+          .body(joi.string().optional());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              description: undefined,
+              required: false,
+              schema: {type: 'string'}
+            });
+        });
+
+        it('includes explicit JSON schema', function () {
+          service.router.post('/hello', noop)
+          .body({type: 'string'});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              required: true,
+              schema: {type: 'string'}
+            });
+        });
+
+        it('includes explicit optional JSON schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: {type: 'string'}, optional: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              required: false,
+              schema: {type: 'string'}
+            });
+        });
+
+        it('includes explicit catchall schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'body',
+              name: 'body',
+              required: false
+            });
+        });
+
+        it('omits explicit forbidden schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: false});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters')
+            .to.eql([]);
+        });
       });
 
       describe('in:path', function () {
-        it('TODO');
+        it('includes implicit schema', function () {
+          service.router.post('/:foo', noop);
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/{foo}')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'path',
+              name: 'foo',
+              required: true,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit joi schema', function () {
+          service.router.post('/:foo', noop)
+          .pathParam('foo', joi.only('a', 'b', 'c'));
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/{foo}')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'path',
+              name: 'foo',
+              description: undefined,
+              required: true,
+              enum: ['a', 'b', 'c']
+            });
+        });
+
+        it('includes explicit JSON schema', function () {
+          service.router.post('/:foo', noop)
+          .pathParam('foo', {enum: ['a', 'b', 'c']});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/{foo}')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'path',
+              name: 'foo',
+              required: true,
+              enum: ['a', 'b', 'c']
+            });
+        });
       });
 
       describe('in:query', function () {
-        it('TODO');
+        it('includes implicit schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', 'custom query');
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              description: 'custom query',
+              required: false,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit joi schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', joi.string().required());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              description: undefined,
+              required: true,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit optional joi schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', joi.string().optional());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              description: undefined,
+              required: false,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit JSON schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', {type: 'string'});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              required: true,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit optional JSON schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', {schema: {type: 'string'}, optional: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              required: false,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit catchall schema', function () {
+          service.router.post('/hello', noop)
+          .queryParam('q', {schema: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'query',
+              name: 'q',
+              required: false
+            });
+        });
+
+        it('omits explicit forbidden schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: false})
+          .queryParam('q', {schema: false});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters')
+            .to.eql([]);
+        });
       });
 
       describe('in:header', function () {
-        it('TODO');
+        it('includes implicit schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', 'custom header');
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              description: 'custom header',
+              required: false,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit joi schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', joi.string().required());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              description: undefined,
+              required: true,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit optional joi schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', joi.string().optional());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              description: undefined,
+              required: false,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit JSON schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', {type: 'string'});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              required: true,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit optional JSON schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', {schema: {type: 'string'}, optional: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              required: false,
+              type: 'string'
+            });
+        });
+
+        it('includes explicit catchall schema', function () {
+          service.router.post('/hello', noop)
+          .header('x-custom', {schema: true});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters[0]')
+            .that.is.eql({
+              in: 'header',
+              name: 'x-custom',
+              required: false
+            });
+        });
+
+        it('omits explicit forbidden schema', function () {
+          service.router.post('/hello', noop)
+          .body({schema: false})
+          .header('x-custom', {schema: false});
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+            .with.a.deep.property('post.parameters')
+            .to.eql([]);
+        });
       });
     });
   });

@@ -65,7 +65,8 @@ struct Fields {
 Type type(velocypack::Slice const& vpack);
 
 /// @brief Convenience function to build a region from a GeoJson type.
-Result parseRegion(velocypack::Slice const& vpack, ShapeContainer& region);
+Result parseRegion(velocypack::Slice const& vpack, ShapeContainer& region,
+                   bool legacy);
 
 /// @brief Expects an GeoJson point or an array [lon, lat]
 Result parsePoint(velocypack::Slice const& vpack, S2LatLng& latLng);
@@ -80,13 +81,14 @@ Result parseMultiLinestring(velocypack::Slice const& vpack,
 
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
-Result parsePolygon(velocypack::Slice const& vpack, ShapeContainer& region);
+Result parsePolygon(velocypack::Slice const& vpack, ShapeContainer& region,
+                    bool legacy);
 
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
 /// The multipolygon contains an array of looops
-Result parseMultiPolygon(velocypack::Slice const& vpack,
-                         ShapeContainer& region);
+Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region,
+                         bool legacy);
 
 /// @brief Parse a loop (LinearRing)
 ///
