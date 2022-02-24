@@ -673,7 +673,7 @@ TEST_F(CalcCommitIndexTest, who_failed_excluded) {
 
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_EQ(reason, (CommitFailReason::withQuorumSizeNotReached({"A"})))
-      << "Actual: " << basics::toJson(reason);
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
 TEST_F(CalcCommitIndexTest, who_all_excluded) {
@@ -699,7 +699,7 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
             CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
            {"B",
             CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
-      << "Actual: " << basics::toJson(reason);
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
 TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
@@ -725,7 +725,7 @@ TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
             CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm},
            {"B",
             CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded}})))
-      << "Actual: " << basics::toJson(reason);
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
 
 TEST_F(CalcCommitIndexTest, write_concern_too_big) {
@@ -820,5 +820,5 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
             CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded},
            {"C", CommitFailReason::NonEligibleServerRequiredForQuorum::
                      kWrongTerm}})))
-      << "Actual: " << basics::toJson(reason);
+      << "Actual: " << basics::velocypackhelper::toJson(reason);
 }
