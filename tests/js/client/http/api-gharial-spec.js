@@ -93,8 +93,9 @@ function combinations(set) {
   return combs;
 }
 
-function checkIfDuplicateExists(arr) {
-  return new Set(arr).size !== arr.length;
+function duplicatesExists(arr) {
+  print(arr);
+  return (new Set(arr).size !== arr.length);
 }
 
 /*
@@ -2422,7 +2423,7 @@ describe('_api/gharial', () => {
           globalGraphChecksums.push(graphChecksumResult.checksum);
         }
 
-        expect(checkIfDuplicateExists(globalGraphChecksums)).to.be.true;
+        expect(duplicatesExists(globalGraphChecksums)).to.be.false;
       });
     }
 
