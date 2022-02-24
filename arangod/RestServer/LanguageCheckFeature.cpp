@@ -139,27 +139,28 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server,
 }
 
 std::tuple<std::string, bool> getOrSetPreviousLanguage(arangodb::ArangodServer& server,
-                                     std::string const& collatorLang) {
-  std::string defaultLanguage;
-  std::string icuLanguage;
-  arangodb::Result res = ::readLanguage(server, defaultLanguage, icuLanguage);
+                                                       std::string const& collatorLang,
+                                                       bool isDefaultLangSet) {
+  std::string readDefaultLanguage;
+  std::string readIcuLanguage;
+  arangodb::Result res = ::readLanguage(server, readDefaultLanguage, readIcuLanguage);
 
-  bool isDefaultLang = !defaultLanguage.empty();
   if (res.ok()) {
-    if (isDefaultLang) {
-      return std::make_tuple(defaultLanguage, isDefaultLang);
+    if (!readDefaultLanguage.empty() && isDefaultLangSet) {
+      return std::make_tuple(readDefaultLanguage, isDefaultLangSet);
+    } else if (!readIcuLanguage.empty() && !isDefaultLangSet){
+      return std::make_tuple(readIcuLanguage, isDefaultLangSet);
     } else {
-      return std::make_tuple(icuLanguage, isDefaultLang);
+        LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
+            << "current language option is differ from option at initial launch";
+        FATAL_ERROR_EXIT();
     }
   }
 
   // okay, we didn't find it, let's write out the input instead
+  ::writeLanguage(server, collatorLang, isDefaultLangSet);
 
-  // we will treat collatorLang as 'default'
-  isDefaultLang = true;
-  ::writeLanguage(server, collatorLang, isDefaultLang);
-
-  return std::make_tuple(collatorLang, isDefaultLang);
+  return std::make_tuple(collatorLang, isDefaultLangSet);
 }
 }  // namespace
 
@@ -179,15 +180,15 @@ void LanguageCheckFeature::start() {
 
   auto collatorLang = feature.getCollatorLanguage();
   std::string previousLang;
-  bool isDefaultLang;
+  bool isDefaultLangSet = !defaultLang.empty();
 
-  std::tie(previousLang, isDefaultLang)= ::getOrSetPreviousLanguage(server(), collatorLang);
+  std::tie(previousLang, isDefaultLangSet)= ::getOrSetPreviousLanguage(server(), collatorLang, isDefaultLangSet);
 
-  if (isDefaultLang && !previousLang.empty()) {
+  if (isDefaultLangSet && !previousLang.empty()) {
     // override the empty current setting for default with the previous one
     feature.resetDefaultLanguage(previousLang);
     return;
-  } else if (!isDefaultLang && !previousLang.empty()) {
+  } else if (!isDefaultLangSet && !previousLang.empty()) {
     // override the empty current setting for default with the previous one
     feature.resetIcuLanguage(previousLang);
     return;

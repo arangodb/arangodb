@@ -274,6 +274,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestViewHandlerTest.cpp
   RestHandler/VstResponseTest.cpp
   RestServer/FlushFeatureTest.cpp
+  RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
