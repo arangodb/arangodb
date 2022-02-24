@@ -112,6 +112,7 @@ const ViewLinksReactView = ({ name }) => {
                   formState={formState}
                   dispatch={dispatch}
                   disabled={!isAdminUser}
+                  view={name}
                 />
               </div>
             </div>

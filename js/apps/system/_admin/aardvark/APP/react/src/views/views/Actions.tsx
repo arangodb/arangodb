@@ -26,10 +26,23 @@ type BackButtonProps = ButtonProps & {
   buttonClick: React.MouseEventHandler<HTMLElement>;
 };
 
+type JsonButtonProps = {
+  buttonClick: React.MouseEventHandler<HTMLElement>;
+  buttonName: string;
+};
+
 export const BackButton = ({ buttonClick }: BackButtonProps) => {
   return (
     <IconButton icon={"arrow-left"} onClick={buttonClick} type={"default"}>
       Back
+    </IconButton>
+  );
+};
+
+export const JsonButton = ({ buttonClick, buttonName }: JsonButtonProps) => {
+  return (
+    <IconButton icon={"code"} onClick={buttonClick} type={"success"}>
+      {buttonName}
     </IconButton>
   );
 };
