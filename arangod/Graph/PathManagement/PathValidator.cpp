@@ -436,7 +436,7 @@ template<class Provider, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
-    isValidDisjointPath(typename PathStore::Step const& lastStep,
+    checkValidDisjointPath(typename PathStore::Step const& lastStep,
                         bool isSatelliteLeader) -> bool {
   return true;
 }
