@@ -247,14 +247,14 @@ cmd + c
 Then restart `arangodb` server with the command below:
 
 ```bash
-./build/bin/arangod ../Arango --server.authentication true --http.trusted-origin '*'
+./build/bin/arangod ../Arango --http.trusted-origin '*'
 ```
 
 Note:
 
 a: `./build/bin/arangod`: represents the location of `arangodb` binaries in your machine.
 
-b: `../Arango`: is the folder where the `arangodb` `SDK` is stored in your local machine.
+b: `../Arango`: is the database directory where the data will be stored.
 
 c: `--http.trusted-origin '*'` the prefix that allows cross-origin requests.
 
