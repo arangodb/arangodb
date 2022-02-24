@@ -243,7 +243,9 @@ arangodb::Result fetchRevisions(
 
     if (!futures.empty()) {
       auto& f = futures.front();
+      double tWait = TRI_microtime();
       auto& val = f.get();
+      stats.waitedForDocs += TRI_microtime() - tWait;
       Result res = val.combinedResult();
       if (res.fail()) {
         return Result(
@@ -337,15 +339,13 @@ arangodb::Result fetchRevisions(
           if (inner.fail()) {
             return res;
           }
-
-          res = trx.state()->performIntermediateCommitIfRequired(collection.id());
-          if (res.fail()) {
-            return res;
-          }
-
         }
       }
       futures.pop_front();
+      res = trx.state()->performIntermediateCommitIfRequired(collection.id());
+      if (res.fail()) {
+        return res;
+      }
     }
   }
 
