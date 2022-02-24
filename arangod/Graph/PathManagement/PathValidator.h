@@ -139,8 +139,8 @@ class PathValidator {
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;
 
-  virtual auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
-                                      bool isSatelliteLeader)
+  auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
+                              bool isSatelliteLeader)
       -> arangodb::graph::ValidationResult::Type;
 };
 }  // namespace graph
