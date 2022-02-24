@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-//
 #include "DatabaseInitialSyncer.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
