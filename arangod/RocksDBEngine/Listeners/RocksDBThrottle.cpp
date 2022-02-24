@@ -327,20 +327,18 @@ void RocksDBThrottle::RecalculateThrottle() {
     }
 
     // change the throttle slowly
-    //  (+1 & +2 keep throttle moving toward goal when difference new and
-    //   old is less than _scalingFactor)
     if (!_firstThrottle) {
       int64_t temp_rate = _throttleBps.load(std::memory_order_relaxed);
 
       if (temp_rate < new_throttle) {
-        temp_rate += (new_throttle - temp_rate) / _scalingFactor + 1;
+        temp_rate += (new_throttle - temp_rate) / _scalingFactor;
       } else {
-        temp_rate -= (temp_rate - new_throttle) / _scalingFactor + 2;
+        temp_rate -= (temp_rate - new_throttle) / _scalingFactor;
       }
 
       // +2 can make this go negative
-      if (temp_rate < 1) {
-        temp_rate = 1;  // throttle must always have an effect
+      if (temp_rate < 0) {
+        temp_rate = 0;
       }
 
       LOG_TOPIC("46d4a", DEBUG, arangodb::Logger::ENGINES)
@@ -446,9 +444,9 @@ int64_t RocksDBThrottle::ComputeBacklog() {
   }  // else
 
   // loop through column families to obtain family specific counts
+  property_name = rocksdb::DB::Properties::kNumFilesAtLevelPrefix + '0';
+
   for (auto const& cf : _families) {
-    property_name = rocksdb::DB::Properties::kNumFilesAtLevelPrefix;
-    property_name.append("0");
     ret_flag = _internalRocksDB->GetProperty(cf, property_name, &ret_string);
     if (ret_flag) {
       temp = std::stoi(ret_string);

@@ -52,9 +52,7 @@ bool IndexIterator::next(LocalDocumentIdCallback const& callback,
                          uint64_t batchSize) {
   if (_hasMore) {
     TRI_ASSERT(batchSize != UINT64_MAX);
-
-    size_t atMost = static_cast<size_t>(batchSize);
-    _hasMore = nextImpl(callback, atMost);
+    _hasMore = nextImpl(callback, static_cast<size_t>(batchSize));
   }
   return _hasMore;
 }
@@ -63,41 +61,16 @@ bool IndexIterator::nextDocument(DocumentCallback const& callback,
                                  uint64_t batchSize) {
   if (_hasMore) {
     TRI_ASSERT(batchSize != UINT64_MAX);
-
-    size_t atMost = static_cast<size_t>(batchSize);
-    _hasMore = nextDocumentImpl(callback, atMost);
-  }
-  return _hasMore;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Calls cb for the next batchSize many elements
-///        Uses the getExtra feature of indexes. Can only be called on those
-///        who support it.
-//////////////////////////////////////////////////////////////////////////////
-
-bool IndexIterator::nextExtra(ExtraCallback const& callback,
-                              uint64_t batchSize) {
-  TRI_ASSERT(hasExtra());
-
-  if (_hasMore) {
-    TRI_ASSERT(batchSize != UINT64_MAX);
-
-    size_t atMost = static_cast<size_t>(batchSize);
-    _hasMore = nextExtraImpl(callback, atMost);
+    _hasMore = nextDocumentImpl(callback, static_cast<size_t>(batchSize));
   }
   return _hasMore;
 }
 
 bool IndexIterator::nextCovering(CoveringCallback const& callback,
                                  uint64_t batchSize) {
-  TRI_ASSERT(hasCovering());
-
   if (_hasMore) {
     TRI_ASSERT(batchSize != UINT64_MAX);
-
-    size_t atMost = static_cast<size_t>(batchSize);
-    _hasMore = nextCoveringImpl(callback, atMost);
+    _hasMore = nextCoveringImpl(callback, static_cast<size_t>(batchSize));
   }
   return _hasMore;
 }
@@ -157,7 +130,6 @@ bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*,
 
 /// @brief default implementation for nextImpl
 bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
-  TRI_ASSERT(hasExtra());
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "requested next values from an index iterator that does not support it");
@@ -173,23 +145,16 @@ bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
       limit);
 }
 
-/// @brief default implementation for nextExtra
-bool IndexIterator::nextExtraImpl(ExtraCallback const&, size_t /*limit*/) {
-  TRI_ASSERT(hasExtra());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "requested next extra values from an index "
-                                 "iterator that does not support it");
-}
-
 /// @brief default implementation for nextCovering
 /// specialized index iterators can implement this method with some
 /// sensible behavior
 bool IndexIterator::nextCoveringImpl(CoveringCallback const&,
                                      size_t /*limit*/) {
-  TRI_ASSERT(hasCovering());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "requested next covering values from an index "
-                                 "iterator that does not support it");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("requested next covering values from an index "
+                  "iterator that does not support it (") +
+          typeName() + ")");
 }
 
 /// @brief default implementation for skip
@@ -262,20 +227,12 @@ bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
   return true;
 }
 
-bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback,
-                                       size_t limit) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "requested extra values from an index iterator that does not support it");
-}
-
 /// @brief Get the next elements
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextCoveringImpl(CoveringCallback const& callback,
                                           size_t limit) {
-  TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 IndexIteratorCoveringData& data) {
     if (callback(token, data)) {

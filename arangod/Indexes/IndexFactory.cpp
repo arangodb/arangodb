@@ -39,7 +39,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <limits.h>
 
 #include <regex>
@@ -575,6 +574,15 @@ void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition,
   }
 }
 
+/// @brief process the legacyPolygons flag and add it to the json
+void IndexFactory::processIndexLegacyPolygonsFlag(VPackSlice definition,
+                                                  VPackBuilder& builder) {
+  bool legacyPolygons = basics::VelocyPackHelper::getBooleanValue(
+      definition, StaticStrings::IndexLegacyPolygons, false);
+
+  builder.add(StaticStrings::IndexLegacyPolygons, VPackValue(legacyPolygons));
+}
+
 /// @brief enhances the json of a persistent index (hash and skiplist are
 /// aliases for this too)
 Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
@@ -645,6 +653,7 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     builder.add(StaticStrings::IndexSparse, velocypack::Value(true));
     builder.add(StaticStrings::IndexUnique, velocypack::Value(false));
     IndexFactory::processIndexGeoJsonFlag(definition, builder);
+    IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
     processIndexInBackground(definition, builder);
   }

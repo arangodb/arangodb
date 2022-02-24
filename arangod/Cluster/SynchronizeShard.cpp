@@ -65,7 +65,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
@@ -526,8 +525,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
         << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
 
-  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
-                          "startReadLockOnLeader: giving up");
+  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT);
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
@@ -587,11 +585,11 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         return tailingSyncer->inheritFromInitialSyncer(syncer);
       });
 
-  /*
-  syncer->setAbortionCheckCallback([&]() -> bool {
+  auto& agencyCache =
+      job.feature().server().getFeature<ClusterFeature>().agencyCache();
+
+  syncer->setCancellationCheckCallback([=, &agencyCache]() -> bool {
     // Will return true if the SynchronizeShard job should be aborted.
-    auto& agencyCache =
-        job.feature().server().getFeature<ClusterFeature>().agencyCache();
     std::string path = "Plan/Collections/" + database + "/" +
                        std::to_string(col->planId().id()) + "/shards/" +
                        col->name();
@@ -600,15 +598,13 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
     if (!builder.isEmpty()) {
       VPackSlice plan = builder.slice();
-      if (plan.isArray()) {
-        if (plan.length() >= 2) {
-          if (plan[0].isString() && plan[0].isEqualString(leaderId)) {
-            std::string myself = arangodb::ServerState::instance()->getId();
-            for (size_t i = 1; i < plan.length(); ++i) {
-              if (plan[i].isString() && plan[i].isEqualString(myself)) {
-                // do not abort the synchronization
-                return false;
-              }
+      if (plan.isArray() && plan.length() >= 2) {
+        if (plan[0].isString() && plan[0].isEqualString(leaderId)) {
+          std::string myself = arangodb::ServerState::instance()->getId();
+          for (size_t i = 1; i < plan.length(); ++i) {
+            if (plan[i].isString() && plan[i].isEqualString(myself)) {
+              // do not abort the synchronization
+              return false;
             }
           }
         }
@@ -621,7 +617,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         << " because we are not planned as a follower anymore";
     return true;
   });
-  */
 
   SyncerId syncerId{syncer->syncerId()};
 
@@ -1205,7 +1200,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       startReadLockOnLeader(ep, collection.name(), clientId, lockJobId, false);
   if (!res.ok()) {
     auto errorMessage = StringUtils::concatT(
-        "SynchronizeShard: error in startReadLockOnLeader (hard):",
+        "SynchronizeShard: error in startReadLockOnLeader (hard): ",
         res.errorMessage());
     return {res.errorNumber(), std::move(errorMessage)};
   }

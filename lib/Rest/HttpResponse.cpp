@@ -28,7 +28,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 #include <time.h>
 
 #include "Basics/Exceptions.h"

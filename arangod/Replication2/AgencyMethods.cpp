@@ -30,7 +30,6 @@
 #include <string>
 #include <utility>
 
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"

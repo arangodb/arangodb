@@ -24,7 +24,6 @@
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"

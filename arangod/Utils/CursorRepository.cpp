@@ -38,7 +38,6 @@
 
 #include <Basics/ScopeGuard.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {

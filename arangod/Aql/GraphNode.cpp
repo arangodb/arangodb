@@ -54,7 +54,6 @@
 #endif
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <utility>
 
 using namespace arangodb;

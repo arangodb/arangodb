@@ -68,6 +68,47 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
   EXPECT_TRUE(f.isReady());
 }
 
+TEST_F(EstablishLeadershipTest, check_meta_create_leader_entry) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto followerLog = makeReplicatedLog(LogId{1});
+
+  auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+  leader->triggerAsyncReplication();
+
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  EXPECT_TRUE(leader->isLeadershipEstablished());
+  {
+    auto status = leader->getStatus();
+    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
+    EXPECT_TRUE(
+        std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
+  }
+
+  // check the log for the meta log entry
+  {
+    auto log = leader->copyInMemoryLog();
+    auto entry = log.getEntryByIndex(LogIndex{1});
+    ASSERT_NE(entry, std::nullopt);
+    auto const& persenty = entry->entry();
+    EXPECT_TRUE(persenty.hasMeta());
+    ASSERT_NE(persenty.meta(), nullptr);
+    auto const& meta = *persenty.meta();
+    ASSERT_TRUE(
+        std::holds_alternative<LogMetaPayload::FirstEntryOfTerm>(meta.info));
+    auto const& info = std::get<LogMetaPayload::FirstEntryOfTerm>(meta.info);
+    EXPECT_EQ(info.leader, "leader");
+
+    auto const expectedConfiguration = ParticipantsConfig{
+        .generation = 1, .participants = {{"leader", {}}, {"follower", {}}}};
+
+    EXPECT_EQ(info.participants, expectedConfiguration);
+  }
+}
+
 TEST_F(EstablishLeadershipTest, excluded_follower) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{1});
@@ -83,7 +124,8 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
           .participants = std::move(participants),
       });
   auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4},
-                                        {follower}, participantsConfig);
+                                        {follower}, participantsConfig,
+                                        std::make_shared<FakeFailureOracle>());
 
   auto f = leader->waitForLeadership();
   {

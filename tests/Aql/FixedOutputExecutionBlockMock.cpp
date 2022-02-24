@@ -62,7 +62,8 @@ FixedOutputExecutionBlockMock::FixedOutputExecutionBlockMock(
     std::deque<SharedAqlItemBlockPtr>&& data)
     : ExecutionBlock(engine, node),
       _infos{::blocksToInfos(data)},
-      _blockData{std::move(data)} {}
+      _blockData{std::move(data)},
+      _executeEnterHook([](AqlCallStack const&) {}) {}
 
 std::pair<ExecutionState, arangodb::Result>
 FixedOutputExecutionBlockMock::initializeCursor(InputAqlItemRow const& input) {
@@ -72,6 +73,8 @@ FixedOutputExecutionBlockMock::initializeCursor(InputAqlItemRow const& input) {
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 FixedOutputExecutionBlockMock::execute(AqlCallStack const& stack) {
+  _executeEnterHook(stack);
+  traceExecuteBegin(stack);
   SkipResult skipped{};
   for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
     // For every additional subquery level we need to increase the skipped
@@ -79,7 +82,10 @@ FixedOutputExecutionBlockMock::execute(AqlCallStack const& stack) {
     skipped.incrementSubquery();
   }
   if (_blockData.empty()) {
-    return {ExecutionState::DONE, skipped, nullptr};
+    std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> res = {
+        ExecutionState::DONE, skipped, nullptr};
+    traceExecuteEnd(res);
+    return res;
   }
   // This Block is very dump, it does NOT care what you ask it for. it will just
   // deliver what it has in the queue
@@ -88,4 +94,9 @@ FixedOutputExecutionBlockMock::execute(AqlCallStack const& stack) {
   ExecutionState state =
       _blockData.empty() ? ExecutionState::DONE : ExecutionState::HASMORE;
   return {state, skipped, block};
+}
+
+void FixedOutputExecutionBlockMock::setExecuteEnterHook(
+    std::function<void(AqlCallStack const& stack)> hook) {
+  _executeEnterHook = hook;
 }

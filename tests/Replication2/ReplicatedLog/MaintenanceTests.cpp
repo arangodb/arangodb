@@ -30,7 +30,7 @@ using namespace arangodb::replication2;
 
 struct ReplicationMaintenanceTest : ::testing::Test {
   MaintenanceFeature::errors_t errors;
-  std::unordered_set<DatabaseID> dirtyset;
+  containers::FlatHashSet<DatabaseID> dirtyset;
   bool callNotify = false;
   std::vector<std::shared_ptr<ActionDescription>> actions;
 };

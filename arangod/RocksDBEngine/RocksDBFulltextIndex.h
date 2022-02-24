@@ -80,6 +80,12 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
       velocypack::Builder&,
       std::underlying_type<Index::Serialize>::type) const override;
 
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the index attribute!
+    return Index::emptyCoveredFields;
+  }
+
   bool matchesDefinition(VPackSlice const&) const override;
 
   bool isSame(std::string const& field, int minWordLength) const {

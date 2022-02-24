@@ -25,6 +25,9 @@
 #include "Basics/debugging.h"
 #include "Metrics/Metric.h"
 
+#include <velocypack/Value.h>
+#include <velocypack/Builder.h>
+
 #include <atomic>
 
 namespace arangodb::metrics {
@@ -38,13 +41,15 @@ class Gauge final : public Metric {
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
 
-  void toPrometheus(std::string& result, bool first,
-                    std::string_view globals) const final {
-    if (first) {
-      addHelpType(result);
-    }
-    addName(result, globals);
+  void toPrometheus(std::string& result, std::string_view globals) const final {
+    Metric::addMark(result, name(), globals, labels());
     result.append(std::to_string(load())) += '\n';
+  }
+
+  void toVPack(velocypack::Builder& builder, ArangodServer&) const final {
+    builder.add(velocypack::Value{name()});
+    builder.add(velocypack::Value{labels()});
+    builder.add(velocypack::Value{load(std::memory_order_relaxed)});
   }
 
   [[nodiscard]] T load(

@@ -1508,6 +1508,48 @@ TEST(ParserTest, NestedArrayInvalid3) {
   ASSERT_EQ(34U, parser.errorPos());
 }
 
+TEST(ParserTest, ArrayNestingCloseToLimit1) {
+  Options options;
+  options.nestingLimit = 6;
+
+  std::string const value("[[[[[]]]]]");
+
+  Parser parser(&options);
+  ValueLength len = parser.parse(value);
+  ASSERT_EQ(1ULL, len);
+}
+
+TEST(ParserTest, ArrayNestingCloseToLimit2) {
+  Options options;
+  options.nestingLimit = 6;
+
+  std::string const value("[1, [2, [3, [4, [5] ] ] ] ]");
+
+  Parser parser(&options);
+  ValueLength len = parser.parse(value);
+  ASSERT_EQ(1ULL, len);
+}
+
+TEST(ParserTest, ArrayNestingBeyondLimit1) {
+  Options options;
+  options.nestingLimit = 5;
+
+  std::string const value("[[[[[[]]]]]]");
+
+  Parser parser(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(parser.parse(value), Exception::TooDeepNesting);
+}
+
+TEST(ParserTest, ArrayNestingBeyondLimit2) {
+  Options options;
+  options.nestingLimit = 5;
+
+  std::string const value("[1, [2, [3, [4, [5, [6] ] ] ] ] ]");
+
+  Parser parser(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(parser.parse(value), Exception::TooDeepNesting);
+}
+
 TEST(ParserTest, BrokenArray1) {
   std::string const value("[");
 
@@ -2310,6 +2352,48 @@ TEST(ParserTest, NoDuplicateAttributesUnsortedObjects) {
     Parser parser(&options);
     ASSERT_TRUE(parser.parse(value) > 0);
   }
+}
+
+TEST(ParserTest, ObjectNestingCloseToLimit1) {
+  Options options;
+  options.nestingLimit = 6;
+
+  std::string const value("{\"a\":{\"b\":{\"c\":{\"d\":{}}}}}");
+
+  Parser parser(&options);
+  ValueLength len = parser.parse(value);
+  ASSERT_EQ(1ULL, len);
+}
+
+TEST(ParserTest, ObjectNestingCloseToLimit2) {
+  Options options;
+  options.nestingLimit = 6;
+
+  std::string const value("{ \"a\": { \"b\": { \"c\": { \"d\": { } } } } }");
+
+  Parser parser(&options);
+  ValueLength len = parser.parse(value);
+  ASSERT_EQ(1ULL, len);
+}
+
+TEST(ParserTest, ObjectNestingBeyondLimit1) {
+  Options options;
+  options.nestingLimit = 5;
+
+  std::string const value("{\"a\":{\"b\":{\"c\":{\"d\":{\"e\":{}}}}}}");
+
+  Parser parser(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(parser.parse(value), Exception::TooDeepNesting);
+}
+
+TEST(ParserTest, ObjectNestingBeyondLimit2) {
+  Options options;
+  options.nestingLimit = 5;
+
+  std::string const value("{ \"a\": { \"b\": { \"c\": { \"d\": { \"e\": { } } } } } }");
+
+  Parser parser(&options);
+  ASSERT_VELOCYPACK_EXCEPTION(parser.parse(value), Exception::TooDeepNesting);
 }
 
 TEST(ParserTest, FromJsonString) {

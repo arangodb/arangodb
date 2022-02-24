@@ -29,7 +29,6 @@
 #include <vector>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"

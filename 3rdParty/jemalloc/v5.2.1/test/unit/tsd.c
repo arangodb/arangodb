@@ -48,6 +48,13 @@ thd_start(void *arg) {
 	int d = (int)(uintptr_t)arg;
 	void *p;
 
+	/*
+	 * Test free before tsd init -- the free fast path (which does not
+	 * explicitly check for NULL) has to tolerate this case, and fall back
+	 * to free_default.
+	 */
+	free(NULL);
+
 	tsd_t *tsd = tsd_fetch();
 	expect_x_eq(tsd_test_data_get(tsd), MALLOC_TSD_TEST_DATA_INIT,
 	    "Initial tsd get should return initialization value");

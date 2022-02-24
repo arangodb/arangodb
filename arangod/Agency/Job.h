@@ -33,7 +33,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
@@ -63,6 +62,7 @@ extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const planRepLogPrefix;
 extern std::string const targetRepLogPrefix;
+extern std::string const targetRepStatePrefix;
 extern std::string const curColPrefix;
 extern std::string const planDBPrefix;
 extern std::string const curServersKnown;

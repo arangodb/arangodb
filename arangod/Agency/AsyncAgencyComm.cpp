@@ -38,7 +38,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 using namespace arangodb::fuerte;
@@ -458,7 +457,6 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
 
   fuerte::StringMap params;
   std::string url = fuerte::extractPathParameters(urlIn, params);
-
   return agencyAsyncSend(
              _manager,
              RequestMeta({timeout, method, type, url, std::move(clientIds),
@@ -562,8 +560,8 @@ const char* AGENCY_URL_WRITE = "/_api/agency/write";
 const char* AGENCY_URL_POLL = "/_api/agency/poll";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(
-    std::string const& path) const {
-  return sendTransaction(120s, AgencyReadTransaction(path));
+    std::string const& path, std::optional<network::Timeout> timeout) const {
+  return sendTransaction(timeout.value_or(120s), AgencyReadTransaction(path));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::poll(network::Timeout timeout,
@@ -572,8 +570,10 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::poll(network::Timeout timeout,
 }
 
 AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(
-    std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const {
-  return sendTransaction(120s, AgencyReadTransaction(path->str()))
+    std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
+    std::optional<network::Timeout> timeout) const {
+  return sendTransaction(timeout.value_or(120s),
+                         AgencyReadTransaction(path->str()))
       .thenValue([path = path](AsyncAgencyCommResult&& result) mutable {
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
           return futures::makeFuture(

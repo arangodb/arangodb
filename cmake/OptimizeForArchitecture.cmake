@@ -203,25 +203,7 @@ macro(AutodetectHostArchitecture)
    endif(_vendor_id STREQUAL "GenuineIntel")
 endmacro()
 
-macro(OptimizeForArchitecture)
-   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
-Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
-Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
-Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
-\"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
-\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
-\"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
-\"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
-\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\".")
-   set(_force)
-   if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
-      message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
-      set(_force FORCE)
-   endif()
-   set(_last_target_arch "${TARGET_ARCHITECTURE}" CACHE STRING "" FORCE)
-   mark_as_advanced(_last_target_arch)
-   string(TOLOWER "${TARGET_ARCHITECTURE}" TARGET_ARCHITECTURE)
-
+macro(OptimizeForArchitectureX86)
    set(_march_flag_list)
    set(_available_vector_units_list)
 
@@ -595,5 +577,50 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
             AddCompilerFlag("-mno-${_flag}" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
          endforeach(_flag)
       endif()
+   endif()
+endmacro(OptimizeForArchitectureX86)
+
+macro(OptimizeForArchitectureArm)
+  if(TARGET_ARCHITECTURE STREQUAL "auto")
+     message(WARNING "Architecture auto-detection for CMAKE_SYSTEM_PROCESSOR '${CMAKE_SYSTEM_PROCESSOR}' is not supported by OptimizeForArchitecture.cmake on ARM")
+  elseif(TARGET_ARCHITECTURE STREQUAL "neon")
+    AddCompilerFlag(-mfloat-abi=softfp CXX_FLAGS Vc_ARCHITECTURE_FLAGS) # FIXME(gnusi): check
+    AddCompilerFlag(-mfpu=neon CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
+  else()
+    message(FATAL_ERROR "Unknown target architecture: \"${TARGET_ARCHITECTURE}\". Please set TARGET_ARCHITECTURE to a supported value.")
+  endif()
+endmacro(OptimizeForArchitectureArm)
+
+macro(OptimizeForArchitecture)
+ if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
+   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
+Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
+Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
+Other supported values are: \"neon\".")
+  else()
+   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
+Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
+Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
+Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
+\"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
+\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
+\"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
+\"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
+\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\".")
+  endif()
+
+   set(_force)
+   if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
+      message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
+      set(_force FORCE)
+   endif()
+   set(_last_target_arch "${TARGET_ARCHITECTURE}" CACHE STRING "" FORCE)
+   mark_as_advanced(_last_target_arch)
+   string(TOLOWER "${TARGET_ARCHITECTURE}" TARGET_ARCHITECTURE)
+
+   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
+      OptimizeForArchitectureArm()
+   else()
+      OptimizeForArchitectureX86()
    endif()
 endmacro(OptimizeForArchitecture)

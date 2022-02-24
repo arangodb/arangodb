@@ -28,7 +28,6 @@
 #include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 #include <utility>
 
 using namespace arangodb;

@@ -114,7 +114,6 @@
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iomanip>
 #include <limits>
@@ -2134,13 +2133,6 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("fa6e5", DEBUG, Logger::ENGINES) << "RocksDBEngine::dropView";
 #endif
-  VPackBuilder builder;
-
-  builder.openObject();
-  view.properties(builder,
-                  LogicalDataSource::Serialization::PersistenceWithInProgress);
-  builder.close();
-
   auto logValue =
       RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), view.guid());
 
@@ -2160,10 +2152,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   return rocksutils::convertStatus(res);
 }
 
-Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
-                                 arangodb::LogicalView const& view,
-                                 bool /*doSync*/
-) {
+Result RocksDBEngine::changeView(LogicalView const& view,
+                                 velocypack::Slice update) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("405da", DEBUG, Logger::ENGINES) << "RocksDBEngine::changeView";
 #endif
@@ -2171,20 +2161,13 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
     // nothing to do
     return {};
   }
+  auto& vocbase = view.vocbase();
 
   RocksDBKey key;
-
   key.constructView(vocbase.id(), view.id());
 
-  VPackBuilder infoBuilder;
-
-  infoBuilder.openObject();
-  view.properties(infoBuilder,
-                  LogicalDataSource::Serialization::PersistenceWithInProgress);
-  infoBuilder.close();
-
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
-  RocksDBValue const value = RocksDBValue::View(infoBuilder.slice());
+  RocksDBValue const value = RocksDBValue::View(update);
 
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
