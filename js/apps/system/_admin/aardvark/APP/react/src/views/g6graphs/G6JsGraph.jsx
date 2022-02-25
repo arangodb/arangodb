@@ -19,6 +19,7 @@ import { LoadDocument } from './LoadDocument';
 import { EditModal } from './EditModal';
 import { EditEdgeModal } from './EditEdgeModal';
 import { AddNodeModal2 } from './AddNodeModal2';
+import { AddEdgeModal } from './AddEdgeModal';
 import { FetchFullGraphModal } from './FetchFullGraphModal';
 import AqlEditor from './AqlEditor';
 import { SlideInMenu } from './SlideInMenu';
@@ -111,6 +112,8 @@ const G6JsGraph = () => {
   const [showEditEdgeModal, setShowEditEdgeModal] = useState(false);
   const [editNode, setEditNode] = useState();
   const [vertexCollections, setVertexCollections] = useState([]);
+  const [edgeCollections, setEdgeCollections] = useState([]);
+  const [edgeModelToAdd, setEdgeModelToAdd] = useState([]);
   const [nodeToEdit, setNodeToEdit] = useState(
   {
     "keys": [
@@ -130,7 +133,7 @@ const G6JsGraph = () => {
   const [nodeKey, setNodeKey] = useState('Hamburg');
   const [edgeKey, setEdgeKey] = useState('Hamburg');
   const [nodeCollection, setNodeCollection] = useState('germanCity');
-  const [edgeCollection, setEdgeCollection] = useState('germanCity');
+  const [edgeCollection, setEdgeCollection] = useState('germanHighway');
   const [selectedNodeData, setSelectedNodeData] = useState();
   const [nodeToAdd, setNodeToAdd] = useState();
   const [nodeToAddKey, setNodeToAddKey] = useState("Munich");
@@ -138,6 +141,7 @@ const G6JsGraph = () => {
   const [nodeToAddData, setNodeToAddData] = useState();
   const [isNewNodeToEdit, setIsNewNodeToEdit] = useState(false);
   const [showNodeToAddModal, setShowNodeToAddModal] = useState();
+  const [showEdgeToAddModal, setShowEdgeToAddModal] = useState();
   const [type, setLayout] = React.useState('graphin-force');
   let [aqlQueryString, setAqlQueryString] = useState("/_admin/aardvark/g6graph/routeplanner");
 
@@ -160,6 +164,8 @@ const G6JsGraph = () => {
       console.log("NEW DATA for graphData: ", data);
       console.log("data.settings.vertexCollections: ", data.settings.vertexCollections);
       setVertexCollections(data.settings.vertexCollections);
+      setEdgeCollections(data.settings.edgeCollections);
+      console.log("data.settings.edgeCollections: ", data.settings.edgeCollections);
       setGraphData(data);
     })
     .catch((err) => {
@@ -171,6 +177,30 @@ const G6JsGraph = () => {
     fetchData();
   }, [fetchData]);
   // fetching data # end
+
+  // fetching edge collections # start
+  const fetchEdgeCollections = useCallback(() => {
+    console.log("#######FETCHING COLLECTIONS##########");
+    arangoFetch(arangoHelper.databaseUrl('/_api/collection'), {
+      method: "GET"
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("returned COLLECTIONS: ", data);
+      console.log("data.result: ", data.result);
+      const returnedEdgeCollections = data.result.filter(collection => collection.type === 3);
+      console.log("returnedEdgeCollections: ", returnedEdgeCollections);
+      setEdgeCollections(returnedEdgeCollections);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchEdgeCollections();
+  }, [fetchEdgeCollections]);
+  // fetching edge collections # end
 
   // Instantiate the Minimap
   const minimap = new G6.Minimap({
@@ -574,6 +604,46 @@ const G6JsGraph = () => {
     setShowEditEdgeModal(true);
   }
 
+  const openAddEdgeModal = (newEdge) => {
+    console.log(">>>>>>>>>>>> openAddEdgeModal");
+    const data = [{
+      "keys": [
+        "Munich"
+      ],
+      "collection": "germanCity"
+    }];
+    //setNodeToAdd(data);
+    //setNodeToAddKey("Munich");
+    //setNodeToAddCollection("germanCity");
+    const nodeToAddDataObject = {
+      "keys": [
+        "Munich"
+      ],
+      "collection": "germanCity"
+    };
+    /*
+      arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+        method: "POST",
+        body: JSON.stringify(nodeToAddDataObject),
+      })
+      .then(response => response.json())
+      .then(data => {
+        const allowedDocuments = omit(data.documents[0], '_id', '_key');
+        console.log("allowedDocuments: ", allowedDocuments);
+        setNodeToAddData(data.documents[0]);
+        //setNodeDataToEdit(data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+    */
+    console.log("openAddEdgeModal");
+    //return <LoadDocument node={node} />
+    console.log("setShowEdgeToAddModal (1): ", setShowEdgeToAddModal);
+    setShowEdgeToAddModal(true);
+    console.log("setShowEdgeToAddModal (2): ", setShowEdgeToAddModal);
+  }
+
   const openAddNodeModal = () => {
     console.log(">>>>>>>>>>>> openAddNodeModal");
     const data = [{
@@ -824,6 +894,27 @@ const G6JsGraph = () => {
           <strong>Fetch full graph</strong>
           <p><span class="text-error">Caution:</span> Really load full graph? If no limit is set, your result set could be too big.</p>
         </FetchFullGraphModal>
+        <AddEdgeModal
+          edgeModelToAdd={edgeModelToAdd}
+          shouldShow={showEdgeToAddModal}
+          onRequestClose={() => {
+            setShowEdgeToAddModal(false);
+          }}
+          edgeCollections={edgeCollections}
+          editorContent={'edgeToEdit'}
+          onAddEdge={() => {
+            setShowEdgeToAddModal(false);
+          }}
+          onEdgeCreation={(newEdge) => {
+            console.log("newEdge in G6JsGraph: ", newEdge);
+            updateGraphDataWithEdge(newEdge)
+          }}
+          edgeData={[]}
+          graphName={graphName}
+          graphData={graphData}
+        >
+          <strong>Add edge</strong>
+        </AddEdgeModal>
         <AddNodeModal2
           shouldShow={showNodeToAddModal}
           onRequestClose={() => {
@@ -858,7 +949,11 @@ const G6JsGraph = () => {
               onUpdateNodeGraphData={(newGraphData) => updateGraphDataNodes(newGraphData)}
               onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
               onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
-              onAddSingleEdge={(newEdge) => updateGraphDataWithEdge(newEdge)}
+              onAddSingleEdge={(newEdge) => {
+                setEdgeModelToAdd(newEdge);
+                openAddEdgeModal(newEdge);
+                //updateGraphDataWithEdge(newEdge)
+              }}
               onRemoveSingleNode={(node) => removeNode(node)}
               onRemoveSingleEdge={(edge) => removeEdge(edge)}
               onEditNode={(node) => openEditModal(node)}
