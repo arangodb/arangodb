@@ -157,8 +157,6 @@ arangodb::Result fetchRevisions(
   using arangodb::Result;
   using arangodb::basics::StringUtils::concatT;
 
-  LOG_DEVEL << "fetchRevisions called with " << toFetch.size() << " revisions.";
-
   if (toFetch.empty()) {
     return Result();  // nothing to do
   }
@@ -245,14 +243,12 @@ arangodb::Result fetchRevisions(
       futures.emplace_back(std::move(f));
       shoppingLists.emplace_back(std::move(shoppingList));
       ++stats.numDocsRequests;
-      LOG_DEVEL << "Request sent for one future";
     }
 
     if (!futures.empty()) {
       auto& f = futures.front();
       double tWait = TRI_microtime();
       auto& val = f.get();
-      LOG_DEVEL << "Got one future back";
       stats.waitedForDocs += TRI_microtime() - tWait;
       Result res = val.combinedResult();
       if (res.fail()) {
@@ -323,9 +319,7 @@ arangodb::Result fetchRevisions(
           arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
           // We must see our own writes, because we may have to remove
           if (res.ok()) {
-            if (!sl.erase(rid)) {
-              LOG_DEVEL << "Attention: could not erase rid " << rid.toString();
-            }
+            sl.erase(rid);
             ++stats.numDocsInserted;
             break;
           }
@@ -342,9 +336,6 @@ arangodb::Result fetchRevisions(
           if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
                                      mdr, arangodb::ReadOwnWrites::yes)) {
             // already have exactly this revision no need to insert
-            if (!sl.erase(rid)) {
-              LOG_DEVEL << "Attention2: could not erase rid " << rid.toString();
-            }
             sl.erase(rid);
             break;
           }
@@ -363,7 +354,6 @@ arangodb::Result fetchRevisions(
       // the right to send fewer documents. In this case, we have to order
       // another batch:
       if (!sl.empty()) {
-        LOG_DEVEL << "shopping list still has " << sl.size() << " elements.";
         // Take out the nonempty list:
         std::unordered_set<arangodb::RevisionId> newList = std::move(sl);
         VPackBuilder requestBuilder;
@@ -386,7 +376,6 @@ arangodb::Result fetchRevisions(
         futures.emplace_back(std::move(f));
         shoppingLists.emplace_back(std::move(newList));
         ++stats.numDocsRequests;
-        LOG_DEVEL << "Request sent for one more future";
       }
       futures.pop_front();
       shoppingLists.pop_front();
