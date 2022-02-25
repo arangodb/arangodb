@@ -1,5 +1,6 @@
 import React from "react";
 import { ArangoTD } from "../../../components/arango/table";
+import Badge from "../../../components/arango/badges";
 
 interface LinkProps {
   link: {
@@ -22,7 +23,11 @@ const Link: React.FC<LinkProps["link"]> = ({
     <tr>
       <ArangoTD seq={key}>{name}</ArangoTD>
       <ArangoTD seq={key}>{includeAllFields}</ArangoTD>
-      <ArangoTD seq={key}>{analyzers}</ArangoTD>
+      <ArangoTD seq={key}>
+        {analyzers.map(a => (
+          <Badge name={a} />
+        ))}
+      </ArangoTD>
       <ArangoTD seq={key}>{action}</ArangoTD>
     </tr>
   );
