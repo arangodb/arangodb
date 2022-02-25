@@ -430,7 +430,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT)
           << "Updating failed servers list.";
       auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      ci.setFailedServers(failedServers);
+      ci.setFailedServers(std::move(failedServers));
       transaction::cluster::abortTransactionsWithFailedServers(ci);
     } else {
       LOG_TOPIC("80491", WARN, Logger::HEARTBEAT)

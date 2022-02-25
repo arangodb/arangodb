@@ -5789,10 +5789,9 @@ std::vector<std::string> ClusterInfo::getFailedServers() const {
   return _failedServers;
 }
 
-void ClusterInfo::setFailedServers(
-    std::vector<std::string> const& failedServers) {
+void ClusterInfo::setFailedServers(std::vector<std::string> failedServers) {
   MUTEX_LOCKER(guard, _failedServersMutex);
-  _failedServers = failedServers;
+  _failedServers = std::move(failedServers);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

@@ -924,7 +924,7 @@ class ClusterInfo final {
 
   std::vector<std::string> getFailedServers() const;
 
-  void setFailedServers(std::vector<std::string> const& failedServers);
+  void setFailedServers(std::vector<std::string> failedServers);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setServers(containers::FlatHashMap<ServerID, std::string> servers);
@@ -1247,6 +1247,7 @@ class ClusterInfo final {
 
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
+  // TODO(MBkkt) std::mutex or absl::Mutex
   mutable arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
 
