@@ -28,7 +28,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
@@ -234,20 +234,19 @@ class TransactionState {
   }
 
   /// @brief servers already contacted
-  [[nodiscard]] ::arangodb::containers::HashSet<std::string> const&
-  knownServers() const {
+  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers() const {
     return _knownServers;
   }
 
-  [[nodiscard]] bool knowsServer(std::string const& uuid) const {
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const {
     return _knownServers.find(uuid) != _knownServers.end();
   }
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string const& uuid) { _knownServers.emplace(uuid); }
+  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string const& uuid) { _knownServers.erase(uuid); }
+  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
 
   void clearKnownServers() { _knownServers.clear(); }
 
@@ -333,7 +332,7 @@ class TransactionState {
   containers::FlatHashMap<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
-  ::arangodb::containers::HashSet<std::string> _knownServers;
+  containers::FlatHashSet<ServerID> _knownServers;
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction = false;

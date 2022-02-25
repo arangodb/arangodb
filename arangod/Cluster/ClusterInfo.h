@@ -922,9 +922,9 @@ class ClusterInfo final {
   getCurrent(uint64_t& currentIndex,
              containers::FlatHashSet<std::string> const&);
 
-  std::vector<std::string> getFailedServers() const;
+  containers::FlatHashSet<ServerID> getFailedServers() const;
 
-  void setFailedServers(std::vector<std::string> failedServers);
+  void setFailedServers(containers::FlatHashSet<ServerID> failedServers);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setServers(containers::FlatHashMap<ServerID, std::string> servers);
@@ -1249,7 +1249,7 @@ class ClusterInfo final {
 
   // TODO(MBkkt) std::mutex or absl::Mutex
   mutable arangodb::Mutex _failedServersMutex;
-  std::vector<std::string> _failedServers;
+  containers::FlatHashSet<ServerID> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief plan and current update threads

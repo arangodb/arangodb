@@ -5784,12 +5784,13 @@ ClusterInfo::getCurrent(uint64_t& index,
   return ret;
 }
 
-std::vector<std::string> ClusterInfo::getFailedServers() const {
+containers::FlatHashSet<ServerID> ClusterInfo::getFailedServers() const {
   MUTEX_LOCKER(guard, _failedServersMutex);
   return _failedServers;
 }
 
-void ClusterInfo::setFailedServers(std::vector<std::string> failedServers) {
+void ClusterInfo::setFailedServers(
+    containers::FlatHashSet<ServerID> failedServers) {
   MUTEX_LOCKER(guard, _failedServersMutex);
   _failedServers = std::move(failedServers);
 }
