@@ -13,7 +13,6 @@ import { useLinkState } from "../helpers";
 import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
-// import { JsonButton } from "../Actions";
 
 const LinkPropertiesForm = ({
   formState,
@@ -30,26 +29,10 @@ const LinkPropertiesForm = ({
   );
   const [options, setOptions] = useState<string[]>([]);
 
-  // const [buttonName, setButtonName] = useState<string>("Switch to form view");
-  // const [jsonView, setJsonView] = useState(false);
-
-  // const toggleJsonView = () => {
-  //   setJsonView(!jsonView);
-  //   if (jsonView === false) {
-  //     setButtonName("Switch to form view");
-  //   } else {
-  //     setButtonName("Switch to code view");
-  //   }
-  // };
-
   const linkVal = chain(links)
     .omitBy(isNull)
     .keys()
     .value();
-
-  // const handleJsonButtonClick = () => {
-  //   toggleJsonView();
-  // };
 
   useEffect(() => {
     if (data) {
@@ -120,7 +103,7 @@ const LinkPropertiesForm = ({
         </tr>
       </thead>
       <tbody>
-        {disabled ? null : (
+        {!disabled && linkVal.length < 1 && (
           <tr style={{ borderBottom: "1px  solid #DDD" }}>
             <ArangoTD seq={0} colSpan={2}>
               <AutoCompleteTextInput
@@ -168,11 +151,6 @@ const LinkPropertiesForm = ({
                   <IconButton
                     icon={"trash-o"}
                     type={"danger"}
-                    onClick={getLinkRemover(coll)}
-                  />
-                  <IconButton
-                    icon={"eye"}
-                    type={"warning"}
                     onClick={getLinkRemover(coll)}
                   />
                 </ArangoTD>

@@ -4,6 +4,7 @@ import {
   ArangoTD,
   ArangoTH
 } from "../../../components/arango/table";
+import { IconButton } from "../../../components/arango/buttons";
 import Link from "./Link";
 import { chain, isNull } from "lodash";
 
@@ -56,7 +57,16 @@ const CollectionList: React.FC<CollProps> = ({ links, addClick, icon }) => {
                 }
                 analyzers={c.analyzers}
                 includeAllFields={c.includeAllFields}
-                action={<i className="fa fa-trash-circle"></i>}
+                action={
+                  <>
+                    <IconButton icon={"trash-o"} type={"danger"} />
+                    <IconButton
+                      icon={"eye"}
+                      type={"warning"}
+                      onClick={addClick}
+                    />
+                  </>
+                }
                 key={key}
               />
             ))}
