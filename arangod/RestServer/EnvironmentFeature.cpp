@@ -44,7 +44,31 @@
 
 #ifdef __linux__
 #include <sys/sysinfo.h>
+#include <unistd.h>
 #endif
+
+namespace {
+#ifdef __linux__
+std::string_view trimProcName(std::string_view content) {
+  std::size_t pos = content.find(' ');
+  if (pos != std::string_view::npos && pos + 1 < content.size()) {
+    std::size_t pos2 = std::string_view::npos;
+    if (content[++pos] == '(') {
+      ++pos;
+      if (pos + 1 < content.size()) {
+        pos2 = content.find(')', pos);
+      }
+    } else {
+      pos2 = content.find(' ', pos);
+    }
+    if (pos2 != std::string_view::npos) {
+      return content.substr(pos, pos2 - pos);
+    }
+  }
+  return {};
+}
+#endif
+}  // namespace
 
 using namespace arangodb::basics;
 
@@ -84,8 +108,30 @@ void EnvironmentFeature::prepare() {
   _operatingSystem = "unknown";
 #endif
 
+  // find parent process id and name
+  std::string parent;
+#ifdef __linux__
+  try {
+    pid_t parentId = getppid();
+    if (parentId) {
+      parent = ", parent process: " + std::to_string(parentId);
+      std::string procFileName =
+          std::string("/proc/") + std::to_string(parentId) + "/stat";
+      std::string content;
+      auto rv = basics::FileUtils::slurp(procFileName, content);
+      if (rv.ok()) {
+        std::string_view procName = ::trimProcName(content);
+        if (!procName.empty()) {
+          parent += " (" + std::string(procName) + ")";
+        }
+      }
+    }
+  } catch (...) {
+  }
+#endif
+
   LOG_TOPIC("75ddc", INFO, Logger::FIXME)
-      << "detected operating system: " << _operatingSystem;
+      << "detected operating system: " << _operatingSystem << parent;
 
   if (sizeof(void*) == 4) {
     // 32 bit build

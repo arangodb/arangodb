@@ -741,7 +741,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     }
 
     // find scorers that have to be evaluated by a view
-    scorerReplacer.extract(viewNode.outVariable(), scorers);
+    scorerReplacer.extract(viewNode, scorers);
     viewNode.scorers(std::move(scorers));
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {

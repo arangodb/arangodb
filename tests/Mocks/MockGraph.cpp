@@ -25,7 +25,6 @@
 #include "IResearch/RestHandlerMock.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 
-#include "MockGraph.h"
 #include "gtest/gtest.h"
 
 #include "Mocks/PreparedResponseConnectionPool.h"

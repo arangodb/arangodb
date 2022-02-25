@@ -20,15 +20,21 @@
 ///
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Metrics/MetricsFeature.h"
+
+#include <frozen/unordered_set.h>
+#include <velocypack/Builder.h>
+
+#include <chrono>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -36,8 +42,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-
-#include <chrono>
 
 namespace arangodb::metrics {
 
@@ -108,52 +112,100 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 }
 
 void MetricsFeature::toPrometheus(std::string& result) const {
+  auto& cm = server().getFeature<ClusterMetricsFeature>();
+  if (cm.isEnabled()) {
+    cm.asyncUpdate();
+  }
+
   // minimize reallocs
   result.reserve(32768);
 
   // QueryRegistryFeature
   auto& q = server().getFeature<QueryRegistryFeature>();
   q.updateMetrics();
-  initGlobalLabels();
+  bool hasGlobals = false;
   {
-    std::shared_lock lock{_mutex};
+    auto lock = initGlobalLabels();
+    hasGlobals = hasShortname && hasRole;
     std::string_view last;
     std::string_view curr;
     for (auto const& i : _registry) {
       TRI_ASSERT(i.second);
       curr = i.second->name();
-      bool const first = last != curr;
-      if (first) {
+      if (last != curr) {
         last = curr;
+        Metric::addInfo(result, curr, i.second->help(), i.second->type());
       }
-      i.second->toPrometheus(result, first, _globals);
+      i.second->toPrometheus(result, _globals);
+    }
+    for (auto const& [_, batch] : _batch) {
+      TRI_ASSERT(batch);
+      // TODO(MBkkt) merge vector::reserve's between IBatch::toPrometheus
+      batch->toPrometheus(result, _globals);
     }
   }
   auto& sf = server().getFeature<StatisticsFeature>();
-  sf.toPrometheus(result,
-                  std::chrono::duration<double, std::milli>(
-                      std::chrono::system_clock::now().time_since_epoch())
-                      .count());
+  auto time = std::chrono::duration<double, std::milli>(
+      std::chrono::system_clock::now().time_since_epoch());
+  sf.toPrometheus(result, time.count());
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
   if (es.typeName() == RocksDBEngine::kEngineName) {
     es.getStatistics(result);
   }
+  if (hasGlobals && cm.isEnabled()) {
+    cm.toPrometheus(result, _globals);
+  }
+}
+constexpr auto kCoordinatorBatch = frozen::make_unordered_set<frozen::string>({
+    "arangodb_search_link_stats",
+});
+
+constexpr auto kCoordinatorMetrics =
+    frozen::make_unordered_set<frozen::string>({
+        "arangodb_search_num_failed_commits",
+        "arangodb_search_num_failed_cleanups",
+        "arangodb_search_num_failed_consolidations",
+        "arangodb_search_commit_time",
+        "arangodb_search_cleanup_time",
+        "arangodb_search_consolidation_time",
+    });
+
+void MetricsFeature::toVPack(velocypack::Builder& builder) const {
+  builder.openArray(true);
+  std::shared_lock lock{_mutex};
+  for (auto const& i : _registry) {
+    TRI_ASSERT(i.second);
+    auto const name = i.second->name();
+    if (kCoordinatorMetrics.count(name)) {
+      i.second->toVPack(builder, server());
+    }
+  }
+  for (auto const& [name, batch] : _batch) {
+    TRI_ASSERT(batch);
+    if (kCoordinatorBatch.count(name)) {
+      batch->toVPack(builder, server());
+    }
+  }
+  lock.unlock();
+  builder.close();
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() noexcept {
   return *_serverStatistics;
 }
 
-void MetricsFeature::initGlobalLabels() const {
+std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
+  std::shared_lock sharedLock{_mutex};
   auto instance = ServerState::instance();
-  if (!instance) {
-    return;
+  if (!instance || (hasShortname && hasRole)) {
+    return sharedLock;
   }
-  std::lock_guard lock{_mutex};
+  sharedLock.unlock();
+  std::unique_lock uniqueLock{_mutex};
   if (!hasShortname) {
-    // Very early after a server start it is possible that the short name isn't
-    // yet known. This check here is to prevent that the label is permanently
-    // empty if metrics are requested too early.
+    // Very early after a server start it is possible that the short name
+    // isn't yet known. This check here is to prevent that the label is
+    // permanently empty if metrics are requested too early.
     if (auto shortname = instance->getShortName(); !shortname.empty()) {
       auto label = "shortname=\"" + shortname + "\"";
       _globals = label + (_globals.empty() ? "" : "," + _globals);
@@ -166,6 +218,35 @@ void MetricsFeature::initGlobalLabels() const {
       _globals += (_globals.empty() ? "" : ",") + label;
       hasRole = true;
     }
+  }
+  uniqueLock.unlock();
+  sharedLock.lock();
+  return sharedLock;
+}
+
+std::pair<std::shared_lock<std::shared_mutex>, metrics::IBatch*>
+MetricsFeature::getBatch(std::string_view name) const {
+  std::shared_lock lock{_mutex};
+  metrics::IBatch* batch = nullptr;
+  if (auto it = _batch.find(name); it != _batch.end()) {
+    batch = it->second.get();
+  } else {
+    lock.unlock();
+    lock.release();
+  }
+  return {std::move(lock), batch};
+}
+
+void MetricsFeature::batchRemove(std::string_view name,
+                                 std::string_view labels) {
+  std::unique_lock lock{_mutex};
+  auto it = _batch.find(name);
+  if (it == _batch.end()) {
+    return;
+  }
+  TRI_ASSERT(it->second);
+  if (it->second->remove(labels) == 0) {
+    _batch.erase(name);
   }
 }
 

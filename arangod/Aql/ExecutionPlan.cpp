@@ -23,7 +23,6 @@
 
 #include <Graph/TraverserOptions.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ExecutionPlan.h"
 

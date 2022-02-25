@@ -35,7 +35,6 @@
 #include "Basics/ConditionalDeleter.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Logger/LogMacros.h>
 #include <utility>

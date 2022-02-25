@@ -49,7 +49,7 @@ irs::string_ref columnCompressionToString(
 }
 
 irs::type_info::type_id columnCompressionFromString(
-    irs::string_ref const& c) noexcept {
+    irs::string_ref c) noexcept {
   TRI_ASSERT(!c.null());
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if (c == "test") {

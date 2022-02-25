@@ -27,7 +27,6 @@
 #include "Basics/ReadWriteLock.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <map>
 #include <string>

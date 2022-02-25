@@ -46,6 +46,7 @@ struct AsyncFollower : replicated_log::ILogFollower {
   auto appendEntries(replicated_log::AppendEntriesRequest request)
       -> futures::Future<replicated_log::AppendEntriesResult> override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+  auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
   auto getLeader() const noexcept
       -> std::optional<ParticipantId> const& override;

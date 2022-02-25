@@ -23,7 +23,6 @@
 
 #include "vst.h"
 #include "Basics/Format.h"
-#include <velocypack/velocypack-aliases.h>
 
 namespace fu = ::arangodb::fuerte;
 
