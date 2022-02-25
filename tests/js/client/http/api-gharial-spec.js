@@ -94,7 +94,6 @@ function combinations(set) {
 }
 
 function duplicatesExists(arr) {
-  print(arr);
   return (new Set(arr).size !== arr.length);
 }
 
