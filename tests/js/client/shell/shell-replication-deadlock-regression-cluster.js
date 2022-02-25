@@ -80,7 +80,6 @@ function ReplicationDeadLockSuite() {
       col.save([{}, {}, {}, {}]);
 
       for (const server of getDBServers()) {
-        // TODO activate Failure Points
         debugSetFailAt(getEndpointById(server.id), `LeaderWrongChecksumOnSoftLock${shardName}`);
         debugSetFailAt(getEndpointById(server.id), `FollowerBlockRequestsLanesForSyncOnShard${shardName}`);
         debugSetFailAt(getEndpointById(server.id), `LeaderBlockRequestsLanesForSyncOnShard${shardName}`);
