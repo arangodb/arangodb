@@ -172,10 +172,10 @@ export class GraphView extends React.Component {
       enabledStack: true,
       layout: {
         type: 'gForce',
-        minMovement: 0.01,
-        maxIteration: 100,
+        //minMovement: 0.01,
+        //maxIteration: 100,
         preventOverlap: true,
-        damping: 0.99,
+        //damping: 0.99,
         fitView: true,
         linkDistance: 100
       },
@@ -264,6 +264,8 @@ export class GraphView extends React.Component {
       },
     });
 
+    console.log("Render this data: ", this.props.data);
+    console.log("Render this data.nodes: ", this.props.data.nodes);
     this.graph.data(this.props.data);
     this.graph.render();
 
@@ -540,6 +542,11 @@ export class GraphView extends React.Component {
   <button onClick={this.changeLayout}>Change layout</button>
 
   <LayoutSelector value={this.type} onChange={this.changeLayout} />
+  <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
+  <AddCollectionNameToEdgesSelector onAddCollectionNameToEdgesChange={(value) => this.addCollectionNameToEdges(value)} />
+  
+  <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
+  <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
   */
 
   colorNodesByCollection = (graphData) => {
@@ -561,8 +568,13 @@ export class GraphView extends React.Component {
     */
   }
 
+  printVertexCollections = () => {
+    console.log("Print vertex collections in GraphView: ", this.props.vertexCollections);
+  }
+
   render() {
     return <>
+      <button onClick={() => this.printVertexCollections()}>Print vertex collections</button>
       <button onClick={() => {
         console.log("Color these nodes: ", this.props.data.nodes);
         this.props.data.nodes.forEach(node => {
@@ -589,10 +601,6 @@ export class GraphView extends React.Component {
           duration: 100,
         });
       }}>Find node Paris</button>
-      <NodeStyleSelector onNodeStyleChange={(typeModel) => this.changeNodeStyle(typeModel)} />
-      <EdgeStyleSelector onEdgeStyleChange={(typeModel) => this.changeEdgeStyle(typeModel)} />
-      <AddCollectionNameToNodesSelector onAddCollectionNameToNodesChange={(value) => this.addCollectionNameToNodes(value)} />
-      <AddCollectionNameToEdgesSelector onAddCollectionNameToEdgesChange={(value) => this.addCollectionNameToEdges(value)} />
       <Headerinfo
         graphName={this.props.graphName}
         graphData={this.props.data}
