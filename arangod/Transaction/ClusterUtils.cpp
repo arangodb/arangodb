@@ -118,7 +118,7 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     // only care about failed coordinators TODO(MBkkt) What's going on here?
     for (auto it = failedServers.begin(), end = failedServers.end();
          it != end;) {
-      if (ClusterHelpers::isDBServerName(*it)) {
+      if (ClusterHelpers::isCoordinatorName(*it)) {
         ++it;
       } else {
         auto erase_it = it++;
