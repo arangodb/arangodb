@@ -26,11 +26,15 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Ast.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/NonConstExpression.h"
+#include "Aql/Projections.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Indexes/IndexIterator.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -58,7 +62,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
   std::string_view str(edge.stringView());
   size_t pos = str.find('/');
   TRI_ASSERT(pos != std::string_view::npos);
-  return trx->isInaccessibleCollection(std::string(str.substr(0, pos)));
+  return trx->isInaccessibleCollection(str.substr(0, pos));
 }
 #endif
 }  // namespace
@@ -66,7 +70,9 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
 template<class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
     IndexAccessor* accessor)
-    : _accessor(accessor), _cursor(nullptr) {}
+    : _accessor(accessor),
+      _cursor(nullptr),
+      _coveringIndexPosition(aql::Projections::kNoCoveringIndexPosition) {}
 
 template<class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
@@ -84,6 +90,12 @@ RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getExpression() {
 template<class Step>
 size_t RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getCursorID() const {
   return _accessor->cursorId();
+}
+
+template<class Step>
+uint16_t RefactoredSingleServerEdgeCursor<
+    Step>::LookupInfo::coveringIndexPosition() const noexcept {
+  return _coveringIndexPosition;
 }
 
 template<class Step>
@@ -141,12 +153,39 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
+    auto index = _accessor->indexHandle();
+
     _cursor = trx->indexScanForCondition(
-        _accessor->indexHandle(), node, tmpVar, ::defaultIndexIteratorOptions,
-        ReadOwnWrites::no,
+        index, node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no,
         static_cast<int>(_accessor->getMemberToUpdate().has_value()
                              ? _accessor->getMemberToUpdate().value()
                              : transaction::Methods::kNoMutableConditionIdx));
+
+    uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
+
+    // projections we want to cover
+    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
+        {StaticStrings::FromString, StaticStrings::ToString}));
+
+    if (index->covers(edgeProjections)) {
+      // find opposite attribute
+      edgeProjections.setCoveringContext(index->collection().id(), index);
+
+      TRI_edge_direction_e dir = _accessor->direction();
+      TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+
+      if (dir == TRI_EDGE_OUT) {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::ToAttribute);
+      } else {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::FromAttribute);
+      }
+
+      TRI_ASSERT(aql::Projections::isCoveringIndexPosition(coveringPosition));
+    }
+
+    _coveringIndexPosition = coveringPosition;
   }
 }
 
@@ -204,6 +243,7 @@ void RefactoredSingleServerEdgeCursor<
   auto& nonConstPart = _accessor->nonConstPart();
   for (auto& toReplace : nonConstPart._expressions) {
     auto exp = toReplace->expression.get();
+    TRI_ASSERT(exp != nullptr);
     bool mustDestroy;
     AqlValue a = exp->execute(&ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
@@ -268,12 +308,20 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     auto& cursor = lookupInfo.cursor();
     LogicalCollection* collection = cursor.collection();
     auto cid = collection->id();
-    bool hasExtra = !_requiresFullDocument && cursor.hasExtra();
     auto* expression = lookupInfo.getExpression();
+    uint16_t coveringPosition = lookupInfo.coveringIndexPosition();
 
-    if (hasExtra) {
-      cursor.allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
+    if (!_requiresFullDocument &&
+        aql::Projections::isCoveringIndexPosition(coveringPosition)) {
+      // use covering index and projections
+      cursor.allCovering([&](LocalDocumentId const& token,
+                             IndexIteratorCoveringData& covering) {
         stats.addScannedIndex(1);
+
+        TRI_ASSERT(covering.isArray());
+        VPackSlice edge = covering.at(coveringPosition);
+        TRI_ASSERT(edge.isString());
+
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
           return false;
@@ -292,6 +340,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
         return true;
       });
     } else {
+      // fetch full documents
       cursor.all([&](LocalDocumentId const& token) {
         return collection->getPhysical()
             ->read(

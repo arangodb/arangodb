@@ -56,6 +56,7 @@ constexpr char const* PHASE_TWO = "phaseTwo";
 constexpr char const* PLAN_RAFT_INDEX = "planRaftIndex";
 constexpr char const* REPLICATED_LOG_ID = "replicatedLogId";
 constexpr char const* REPLICATED_LOG_SPEC = "replicatedLogSpec";
+constexpr char const* REPLICATED_STATE_CURRENT = "replicatedStateCurrent";
 constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
 constexpr char const* SCHEMA = "schema";
 constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
@@ -70,6 +71,7 @@ constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* UPDATE_REPLICATED_LOG = "UpdateReplicatedLog";
+constexpr char const* UPDATE_REPLICATED_STATE = "UpdateReplicatedState";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 
 }  // namespace maintenance

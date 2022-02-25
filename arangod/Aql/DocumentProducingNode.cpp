@@ -35,7 +35,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -90,6 +89,13 @@ void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
   c.copyCountFlag(this);
   c.setCanReadOwnWrites(canReadOwnWrites());
   c.setMaxProjections(maxProjections());
+}
+
+void DocumentProducingNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (hasFilter()) {
+    _filter->replaceVariables(replacements);
+  }
 }
 
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,

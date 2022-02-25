@@ -62,7 +62,9 @@ void FixedVarExpressionContext::clearVariableValues() noexcept {
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var,
                                                  AqlValue const& value) {
-  _vars.try_emplace(var, value);
+  TRI_ASSERT(!_vars.contains(var));
+  // always overwrite current map value if it exists.
+  _vars.insert_or_assign(var, value);
 }
 
 void FixedVarExpressionContext::clearVariableValue(

@@ -26,46 +26,28 @@
 
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 #include <numeric>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
-    : _finalState{state}, _aqlItemMatrix{nullptr} {
+AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(MainQueryState state)
+    : _finalState(state), _aqlItemMatrix{nullptr} {
   // TODO As we only allow HASMORE, just use the default constructor and remove
   //      this one.
-  TRI_ASSERT(state == ExecutorState::HASMORE);
+  TRI_ASSERT(state == MainQueryState::HASMORE);
   TRI_ASSERT(_aqlItemMatrix == nullptr);
   TRI_ASSERT(!hasDataRow());
 }
 
-AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state,
+AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(MainQueryState state,
                                                  AqlItemMatrix* aqlItemMatrix)
-    : _finalState{state}, _aqlItemMatrix{aqlItemMatrix} {
+    : _finalState(state), _aqlItemMatrix{aqlItemMatrix} {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // Fast forward to initialize the _shadowRow
     advanceBlockIndexAndShadowRow();
   }
-}
-
-AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-
-  if (_lastRange.hasDataRow()) {
-    return _lastRange;
-  }
-  // Need initialize lastRange
-  if (_aqlItemMatrix->numberOfBlocks() == 0) {
-    _lastRange = {AqlItemBlockInputRange{upstreamState()}};
-  } else {
-    auto [blockPtr, start] = _aqlItemMatrix->getBlock(_currentBlockRowIndex);
-    ExecutorState state = incrBlockIndex();
-    _lastRange = {state, 0, std::move(blockPtr), start};
-  }
-  return _lastRange;
 }
 
 std::pair<ExecutorState, AqlItemMatrix const*>
@@ -82,11 +64,10 @@ ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
       (hasShadowRow() || _aqlItemMatrix->stoppedOnShadowRow())) {
     return ExecutorState::DONE;
   }
-  return _finalState;
-}
-
-bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
-  return upstreamState() == ExecutorState::HASMORE;
+  if (_finalState == MainQueryState::DONE) {
+    return ExecutorState::DONE;
+  }
+  return ExecutorState::HASMORE;
 }
 
 bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
@@ -97,7 +78,7 @@ bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   return _aqlItemMatrix != nullptr && !hasShadowRow() &&
          (_aqlItemMatrix->stoppedOnShadowRow() ||
-          (_aqlItemMatrix->size() > 0 && _finalState == ExecutorState::DONE));
+          (_aqlItemMatrix->size() > 0 && _finalState == MainQueryState::DONE));
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow>
@@ -108,7 +89,6 @@ AqlItemBlockInputMatrix::nextShadowRow() {
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // next row will be a shadow row
     _shadowRow = _aqlItemMatrix->popShadowRow();
-    resetBlockIndex();
   } else {
     _shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
   }
@@ -117,7 +97,11 @@ AqlItemBlockInputMatrix::nextShadowRow() {
   if (_shadowRow.isInitialized() || _aqlItemMatrix->stoppedOnShadowRow()) {
     state = ExecutorState::HASMORE;
   } else {
-    state = _finalState;
+    if (_finalState == MainQueryState::DONE) {
+      state = ExecutorState::DONE;
+    } else {
+      state = ExecutorState::HASMORE;
+    }
   }
 
   return {state, std::move(tmpShadowRow)};
@@ -142,7 +126,6 @@ void AqlItemBlockInputMatrix::advanceBlockIndexAndShadowRow() noexcept {
       // but there was no place for the ShadowRow.
       _aqlItemMatrix->clear();
     }
-    resetBlockIndex();
   }
 }
 
@@ -188,24 +171,7 @@ size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
     TRI_ASSERT(_aqlItemMatrix->numberOfBlocks() == 0);
   }
 #endif
-  resetBlockIndex();
   return skipped;
-}
-
-ExecutorState AqlItemBlockInputMatrix::incrBlockIndex() {
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-  if (_currentBlockRowIndex + 1 < _aqlItemMatrix->numberOfBlocks()) {
-    _currentBlockRowIndex++;
-    // we were able to increase the size as we reached not the end yet
-    return ExecutorState::HASMORE;
-  }
-  // we could not increase the index, we already reached the end
-  return ExecutorState::DONE;
-}
-
-void AqlItemBlockInputMatrix::resetBlockIndex() noexcept {
-  _lastRange = {AqlItemBlockInputRange{upstreamState()}};
-  _currentBlockRowIndex = 0;
 }
 
 [[nodiscard]] auto AqlItemBlockInputMatrix::countDataRows() const noexcept
@@ -227,6 +193,6 @@ void AqlItemBlockInputMatrix::resetBlockIndex() noexcept {
 }
 
 [[nodiscard]] auto AqlItemBlockInputMatrix::finalState() const noexcept
-    -> ExecutorState {
+    -> MainQueryState {
   return _finalState;
 }

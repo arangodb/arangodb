@@ -51,7 +51,6 @@
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 
@@ -303,7 +302,7 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
     VPackBuilder stats;
     StorageEngine& engine =
         server().getFeature<EngineSelectorFeature>().engine();
-    engine.getStatistics(stats, /*v2*/ true);
+    engine.getStatistics(stats);
 
     auto names = {
         // edge cache

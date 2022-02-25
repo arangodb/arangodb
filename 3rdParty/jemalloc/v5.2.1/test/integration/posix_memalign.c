@@ -101,7 +101,7 @@ TEST_BEGIN(test_alignment_and_size) {
 					    "size=%zu (%#zx): %s",
 					    alignment, size, size, buf);
 				}
-				total += malloc_usable_size(ps[i]);
+				total += TEST_MALLOC_SIZE(ps[i]);
 				if (total >= (MAXALIGN << 1)) {
 					break;
 				}

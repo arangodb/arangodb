@@ -27,7 +27,6 @@
 #include <memory>
 
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "SupervisedScheduler.h"
 
@@ -156,12 +155,6 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 DECLARE_GAUGE(arangodb_scheduler_num_awake_threads, uint64_t,
               "Number of awake worker threads");
-DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_dequeued, uint64_t,
-                     "Total number of jobs dequeued");
-DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_done, uint64_t,
-                     "Total number of queue jobs done");
-DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_submitted, uint64_t,
-                     "Total number of jobs submitted to the scheduler");
 DECLARE_COUNTER(arangodb_scheduler_jobs_done_total,
                 "Total number of queue jobs done");
 DECLARE_COUNTER(arangodb_scheduler_jobs_submitted_total,
@@ -226,12 +219,6 @@ SupervisedScheduler::SupervisedScheduler(
       _numAwake(0),
       _metricsQueueLength(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_scheduler_queue_length{})),
-      _metricsJobsDone(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_done{})),
-      _metricsJobsSubmitted(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_submitted{})),
-      _metricsJobsDequeued(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_dequeued{})),
       _metricsJobsDoneTotal(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_scheduler_jobs_done_total{})),
       _metricsJobsSubmittedTotal(
@@ -505,7 +492,7 @@ void SupervisedScheduler::runWorker() {
   std::shared_ptr<WorkerState> state;
 
   {
-    std::lock_guard<std::mutex> guard1(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     id =
         _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
@@ -609,9 +596,6 @@ void SupervisedScheduler::runSupervisor() {
     if (roundCount++ >= 5) {
       // approx every 0.5s update the metrics
       _metricsQueueLength.operator=(queueLength);
-      _metricsJobsDone.operator=(jobsDone);
-      _metricsJobsSubmitted.operator=(jobsSubmitted);
-      _metricsJobsDequeued.operator=(jobsDequeued);
       _metricsJobsDoneTotal.operator=(jobsDone);
       _metricsJobsSubmittedTotal.operator=(jobsSubmitted);
       _metricsJobsDequeuedTotal.operator=(jobsDequeued);

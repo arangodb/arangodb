@@ -2,12 +2,14 @@
 #define JEMALLOC_INTERNAL_ECACHE_H
 
 #include "jemalloc/internal/eset.h"
+#include "jemalloc/internal/san.h"
 #include "jemalloc/internal/mutex.h"
 
 typedef struct ecache_s ecache_t;
 struct ecache_s {
 	malloc_mutex_t mtx;
 	eset_t eset;
+	eset_t guarded_eset;
 	/* All stored extents must be in the same state. */
 	extent_state_t state;
 	/* The index of the ehooks the ecache is associated with. */
@@ -21,17 +23,22 @@ struct ecache_s {
 
 static inline size_t
 ecache_npages_get(ecache_t *ecache) {
-	return eset_npages_get(&ecache->eset);
+	return eset_npages_get(&ecache->eset) +
+	    eset_npages_get(&ecache->guarded_eset);
 }
+
 /* Get the number of extents in the given page size index. */
 static inline size_t
 ecache_nextents_get(ecache_t *ecache, pszind_t ind) {
-	return eset_nextents_get(&ecache->eset, ind);
+	return eset_nextents_get(&ecache->eset, ind) +
+	    eset_nextents_get(&ecache->guarded_eset, ind);
 }
+
 /* Get the sum total bytes of the extents in the given page size index. */
 static inline size_t
 ecache_nbytes_get(ecache_t *ecache, pszind_t ind) {
-	return eset_nbytes_get(&ecache->eset, ind);
+	return eset_nbytes_get(&ecache->eset, ind) +
+	    eset_nbytes_get(&ecache->guarded_eset, ind);
 }
 
 static inline unsigned

@@ -348,8 +348,8 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => {
         return [
           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: TraversalBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0}
+          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(

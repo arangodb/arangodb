@@ -24,10 +24,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ScopeGuard.h"
-#include "Logger/LogContextKeys.h"
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -57,9 +55,7 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -1024,6 +1020,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
         case FollowerInfo::WriteState::FORBIDDEN:
           // We cannot fulfill minimum replication Factor. Reject write.
           return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
                                  options);
@@ -1075,6 +1072,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
   VPackBuilder resultBuilder;
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
+
+  [[maybe_unused]] size_t numExclusions = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
@@ -1161,6 +1160,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
         // we have not written anything, so exclude this document from
         // replication!
         excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        numExclusions++;
+#endif
+
         return res;
       }
 
@@ -1169,6 +1173,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
         // document
         res =
             collection->update(this, value, docResult, options, prevDocResult);
+        if (res.ok() && prevDocResult.revisionId() == docResult.revisionId()) {
+          excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          numExclusions++;
+#endif
+        }
       } else if (options.overwriteMode ==
                  OperationOptions::OverwriteMode::Replace) {
         // in case of unique constraint violation: replace existing document
@@ -1266,6 +1277,10 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(numExclusions == excludePositions.size());
+#endif
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok()) {
@@ -1397,6 +1412,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
         case FollowerInfo::WriteState::FORBIDDEN:
           // We cannot fulfill minimum replication Factor. Reject write.
           return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
                                  options);
@@ -1461,10 +1477,13 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
 
+  [[maybe_unused]] size_t numExclusions = 0;
+
   // lambda //////////////
-  auto workForOneDocument =
-      [this, &operation, &options, &collection, &resultBuilder, &cid, &previous,
-       &result](VPackSlice const newVal, bool isBabies) -> Result {
+  auto workForOneDocument = [this, &numExclusions, &operation, &options,
+                             &collection, &resultBuilder, &cid, &previous,
+                             &result](VPackSlice const newVal, bool isBabies,
+                                      bool& excludeFromReplication) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1506,6 +1525,14 @@ Future<OperationResult> transaction::Methods::modifyLocal(
                             result.revisionId(), previous.revisionId(),
                             options.returnOld ? &previous : nullptr,
                             options.returnNew ? &result : nullptr);
+      if (result.revisionId() == previous.revisionId() &&
+          operation != TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+        excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        numExclusions++;
+#endif
+      }
     }
 
     return res;  // must be ok!
@@ -1515,25 +1542,40 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   Result res;
   std::unordered_map<ErrorCode, size_t> errorCounter;
 
+  std::unordered_set<size_t> excludePositions;
   if (newValue.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     VPackArrayIterator it(newValue);
     while (it.valid()) {
-      res = workForOneDocument(it.value(), true);
+      bool excludeFromReplication = false;
+      res = workForOneDocument(it.value(), true, excludeFromReplication);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
+      } else if (excludeFromReplication) {
+        excludePositions.insert(it.index());
       }
       it.next();
     }
-
     // it is ok to clobber res here!
     res.reset();
   } else {
-    res = workForOneDocument(newValue, false);
+    bool excludeFromReplication = false;
+    res = workForOneDocument(newValue, false, excludeFromReplication);
+    if (res.ok() && excludeFromReplication) {
+      excludePositions.insert(0);
+    }
   }
 
   TRI_ASSERT(!newValue.isArray() || options.silent ||
              resultBuilder.slice().length() == newValue.length());
+
+  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+    TRI_ASSERT(excludePositions.empty());
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(numExclusions == excludePositions.size());
+#endif
 
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
@@ -1550,7 +1592,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
       // Now replicate the good operations on all followers:
       return replicateOperations(collection, followers, options, newValue,
-                                 operation, resDocs, {})
+                                 operation, resDocs,
+                                 std::move(excludePositions))
           .thenValue([options, errs = std::move(errorCounter),
                       resDocs](Result&& res) mutable {
             if (!res.ok()) {
@@ -1640,6 +1683,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
         case FollowerInfo::WriteState::FORBIDDEN:
           // We cannot fulfill minimum replication Factor. Reject write.
           return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
                                  options);
@@ -1907,6 +1951,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
         case FollowerInfo::WriteState::FORBIDDEN:
           // We cannot fulfill minimum replication Factor. Reject write.
           return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
                                  options);
@@ -2193,8 +2238,6 @@ OperationResult transaction::Methods::countLocal(
 }
 
 /// @brief factory for IndexIterator objects from AQL
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& idx, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,

@@ -49,7 +49,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -72,7 +71,7 @@ IndexNode::IndexNode(
       _allCoveredByOneIndex(allCoveredByOneIndex) {
   TRI_ASSERT(_condition != nullptr);
 
-  _projections.determineIndexSupport(this->collection()->id(), _indexes);
+  prepareProjections();
 }
 
 /// @brief constructor for IndexNode
@@ -186,13 +185,12 @@ IndexNode::IndexNode(ExecutionPlan* plan,
     }
   }
 
-  _projections.determineIndexSupport(this->collection()->id(), _indexes);
+  prepareProjections();
 }
 
 void IndexNode::setProjections(arangodb::aql::Projections projections) {
-  auto dn = dynamic_cast<DocumentProducingNode*>(this);
-  dn->setProjections(std::move(projections));
-  dn->projections().determineIndexSupport(this->collection()->id(), _indexes);
+  _projections = std::move(projections);
+  prepareProjections();
 }
 
 /// @brief doToVelocyPack, for IndexNode
@@ -206,7 +204,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
   builder.add("indexCoversProjections",
-              VPackValue(_projections.supportsCoveringIndex()));
+              VPackValue(_projections.usesCoveringIndex()));
 
   builder.add(VPackValue("indexes"));
   {
@@ -238,7 +236,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
           return index->id() == _outNonMaterializedIndVars.first;
         });
     TRI_ASSERT(indIt != _indexes.cend());
-    auto const& fields = (*indIt)->fields();
+    auto const& coveredFields = (*indIt)->coveredFields();
     VPackArrayBuilder arrayScope(&builder, "indexValuesVars");
     for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
@@ -247,9 +245,9 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("name",
                   VPackValue(fieldVar.first->name));  // for explainer.js
       std::string fieldName;
-      TRI_ASSERT(fieldVar.second < fields.size());
-      basics::TRI_AttributeNamesToString(fields[fieldVar.second], fieldName,
-                                         true);
+      TRI_ASSERT(fieldVar.second < coveredFields.size());
+      basics::TRI_AttributeNamesToString(coveredFields[fieldVar.second],
+                                         fieldName, true);
       builder.add("field", VPackValue(fieldName));  // for explainer.js
     }
   }
@@ -320,6 +318,22 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   /// by their _condition node path indexes
   auto nonConstExpressions = initializeOnce();
 
+  // check which variables are used by the node's post-filter
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+
+  if (hasFilter()) {
+    VarSet inVars;
+    filter()->variables(inVars);
+
+    filterVarsToRegs.reserve(inVars.size());
+
+    for (auto& var : inVars) {
+      TRI_ASSERT(var != nullptr);
+      auto regId = variableToRegisterId(var);
+      filterVarsToRegs.emplace_back(var->id, regId);
+    }
+  }
+
   auto const outVariable =
       isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
   auto const outRegister = variableToRegisterId(outVariable);
@@ -367,10 +381,10 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto executorInfos = IndexExecutorInfos(
       outRegister, engine.getQuery(), this->collection(), _outVariable,
       isProduceResult(), this->_filter.get(), this->projections(),
-      std::move(nonConstExpressions), doCount(), canReadOwnWrites(),
-      _condition->root(), _allCoveredByOneIndex, this->getIndexes(),
-      _plan->getAst(), this->options(), _outNonMaterializedIndVars,
-      std::move(outNonMaterializedIndRegs));
+      std::move(filterVarsToRegs), std::move(nonConstExpressions), doCount(),
+      canReadOwnWrites(), _condition->root(), _allCoveredByOneIndex,
+      this->getIndexes(), _plan->getAst(), this->options(),
+      _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -411,6 +425,13 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+/// @brief replaces variables in the internals of the execution node
+/// replacements are { old variable id => new variable }
+void IndexNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  DocumentProducingNode::replaceVariables(replacements);
 }
 
 /// @brief destroy the IndexNode
@@ -458,9 +479,15 @@ CostEstimate IndexNode::estimateCost() const {
 /// @brief getVariablesUsedHere, modifying the set in-place
 void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
-
+  if (hasFilter()) {
+    Ast::getReferencedVariables(filter()->node(), vars);
+  }
+  for (auto const& it : _outNonMaterializedIndVars.second) {
+    vars.erase(it.first);
+  }
   vars.erase(_outVariable);
 }
+
 ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
 
 Condition* IndexNode::condition() const { return _condition.get(); }
@@ -506,5 +533,23 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
   for (auto& indVars : indexVariables) {
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
+  }
+}
+
+void IndexNode::prepareProjections() {
+  if (_indexes.empty()) {
+    return;
+  }
+  // cannot apply the optimization if we use more than one different index
+  auto const& idx = _indexes[0];
+  for (size_t i = 1; i < _indexes.size(); ++i) {
+    if (_indexes[i] != idx) {
+      // different indexes used => cannot use projections
+      return;
+    }
+  }
+
+  if (idx->covers(_projections)) {
+    _projections.setCoveringContext(collection()->id(), idx);
   }
 }

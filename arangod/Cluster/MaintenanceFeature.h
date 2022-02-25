@@ -398,10 +398,10 @@ class MaintenanceFeature : public ArangodFeature {
    * @brief mark and list dirty databases
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases,
+  void addDirty(containers::FlatHashSet<std::string> const& databases,
                 bool callNotify);
-  std::unordered_set<std::string> dirty(std::unordered_set<std::string> const& =
-                                            std::unordered_set<std::string>());
+  containers::FlatHashSet<std::string> dirty(
+      containers::FlatHashSet<std::string> const& = {});
   /// @brief get n random db names
   std::unordered_set<std::string> pickRandomDirty(size_t n);
 
@@ -587,10 +587,6 @@ class MaintenanceFeature : public ArangodFeature {
   metrics::Histogram<metrics::LogScale<uint64_t>>*
       _agency_sync_total_runtime_msec = nullptr;
 
-  metrics::Counter* _phase1_accum_runtime_msec = nullptr;
-  metrics::Counter* _phase2_accum_runtime_msec = nullptr;
-  metrics::Counter* _agency_sync_total_accum_runtime_msec = nullptr;
-
   metrics::Counter* _action_duplicated_counter = nullptr;
   metrics::Counter* _action_registered_counter = nullptr;
   metrics::Counter* _action_done_counter = nullptr;
@@ -598,18 +594,14 @@ class MaintenanceFeature : public ArangodFeature {
   struct ActionMetrics {
     metrics::Histogram<metrics::LogScale<uint64_t>>& _runtime_histogram;
     metrics::Histogram<metrics::LogScale<uint64_t>>& _queue_time_histogram;
-    metrics::Counter& _accum_runtime;
-    metrics::Counter& _accum_queue_time;
     metrics::Counter& _failure_counter;
 
     ActionMetrics(metrics::Histogram<metrics::LogScale<uint64_t>>& a,
                   metrics::Histogram<metrics::LogScale<uint64_t>>& b,
-                  metrics::Counter& c, metrics::Counter& d, metrics::Counter& e)
+                  metrics::Counter& c)
         : _runtime_histogram(a),
           _queue_time_histogram(b),
-          _accum_runtime(c),
-          _accum_queue_time(d),
-          _failure_counter(e) {}
+          _failure_counter(c) {}
   };
 
   std::unordered_map<std::string, ActionMetrics> _maintenance_job_metrics_map;

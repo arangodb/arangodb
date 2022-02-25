@@ -147,7 +147,7 @@ struct TraverserOptions : public graph::BaseOptions {
                           std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth,
-                          bool onlyEdgeIndexes = false);
+                          bool onlyEdgeIndexes, TRI_edge_direction_e direction);
 
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 
@@ -175,6 +175,15 @@ struct TraverserOptions : public graph::BaseOptions {
   std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
+
+  std::unique_ptr<aql::PruneExpressionEvaluator> createPruneEvaluator(
+      std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+      size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx,
+      aql::Expression* expr);
+
+  std::unique_ptr<aql::PruneExpressionEvaluator> createPostFilterEvaluator(
+      std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+      size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr);
 
   void activatePrune(std::vector<aql::Variable const*> vars,
                      std::vector<aql::RegisterId> regs, size_t vertexVarIdx,

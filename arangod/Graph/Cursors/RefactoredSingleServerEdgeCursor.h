@@ -37,6 +37,7 @@
 #include "Aql/OptimizerUtils.h"
 
 #include "Graph/Providers/TypeAliases.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <vector>
 
@@ -65,7 +66,7 @@ template<class StepType>
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
-    LookupInfo(IndexAccessor* accessor);
+    explicit LookupInfo(IndexAccessor* accessor);
 
     ~LookupInfo();
 
@@ -81,12 +82,16 @@ class RefactoredSingleServerEdgeCursor {
 
     size_t getCursorID() const;
 
+    uint16_t coveringIndexPosition() const noexcept;
+
     void calculateIndexExpressions(aql::Ast* ast, aql::ExpressionContext& ctx);
 
    private:
     IndexAccessor* _accessor;
 
     std::unique_ptr<IndexIterator> _cursor;
+
+    uint16_t _coveringIndexPosition;
   };
 
   enum Direction { FORWARD, BACKWARD };
@@ -111,7 +116,9 @@ class RefactoredSingleServerEdgeCursor {
   containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
+  // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+
   bool _requiresFullDocument;
 
  public:

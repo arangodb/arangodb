@@ -40,8 +40,6 @@
 #include "Enterprise/Aql/LocalGraphNode.h"
 #endif
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -576,8 +574,7 @@ auto QuerySnippet::prepareFirstBranch(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     ShardLocking& shardLocking) -> ResultT<MapNodeToColNameToShards> {
   MapNodeToColNameToShards localExpansions;
-  std::unordered_map<ShardID, ServerID> const& shardMapping =
-      shardLocking.getShardMapping();
+  auto const& shardMapping = shardLocking.getShardMapping();
 
   // It is of utmost importance that this is an ordered set of Shards.
   // We can only join identical indexes of shards for each collection
