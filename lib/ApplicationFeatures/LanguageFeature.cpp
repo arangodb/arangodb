@@ -202,10 +202,10 @@ void LanguageFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  ::setCollator(isDefaultSet ? _defaultLanguage : _icuLanguage ,
+  ::setCollator(isIcuSet ? _icuLanguage : _defaultLanguage ,
                 _icuDataPtr,
-                isDefaultSet); // if _defaultLanguage is empty,
-                               // we will work with _icuLanguage
+                !isIcuSet); // if _defaultLanguage is empty,
+                            // we will work with _icuLanguage
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }

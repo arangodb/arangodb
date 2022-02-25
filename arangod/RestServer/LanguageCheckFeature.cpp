@@ -146,19 +146,38 @@ std::tuple<std::string, bool> getOrSetPreviousLanguage(arangodb::ArangodServer& 
   std::string readIcuLanguage = {};
   arangodb::Result res = ::readLanguage(server, readDefaultLanguage, readIcuLanguage);
 
+  auto error = [] {
+      LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
+          << "current language option is differ from option at initial launch";
+      FATAL_ERROR_EXIT();
+  };
+
   if (res.ok()) {
-    if ((!readDefaultLanguage.empty() && isDefaultLangSet) || !readDefaultLanguage.empty()) {
-      return std::make_tuple(readDefaultLanguage, true); // true - default lang set
-    } else if ((!readIcuLanguage.empty() && isIcuLangSet) || !readIcuLanguage.empty()){
-      return std::make_tuple(readIcuLanguage, false); // false - icu lang set
-    } else {
-        LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
-            << "current language option is differ from option at initial launch";
-        FATAL_ERROR_EXIT();
+    if (!readDefaultLanguage.empty()) {
+      // if default language is not set, we will treat it as default
+      // but if icu language is specified, this is an error
+      if (!isIcuLangSet) {
+        return std::make_tuple(readDefaultLanguage, true);
+      } else {
+        error();
+      }
+    } else { // !readIcuLanguage.empty()
+      if (!isDefaultLangSet) {
+        return std::make_tuple(readIcuLanguage, false);
+      } else {
+        error();
+      }
     }
   }
 
   // okay, we didn't find it, let's write out the input instead
+
+  // if no parameters are specified,
+  // treat language as default-language
+  if(!isDefaultLangSet && !isIcuLangSet) {
+    isDefaultLangSet = true;
+  }
+
   ::writeLanguage(server, collatorLang, isDefaultLangSet);
 
   return std::make_tuple(collatorLang, isDefaultLangSet);
@@ -186,11 +205,12 @@ void LanguageCheckFeature::start() {
   std::tie(previousLang, isDefaultLangSet)= ::getOrSetPreviousLanguage(server(), collatorLang,
                                                                        !defaultLang.empty(),
                                                                        !icuLang.empty());
-  if (isDefaultLangSet && !previousLang.empty()) {
+
+  if (defaultLang.empty() && isDefaultLangSet && !previousLang.empty()) {
     // override the empty current setting for default with the previous one
     feature.resetDefaultLanguage(previousLang);
     return;
-  } else if (!isDefaultLangSet && !previousLang.empty()) {
+  } else if (icuLang.empty() && !isDefaultLangSet && !previousLang.empty()) {
     // override the empty current setting for default with the previous one
     feature.resetIcuLanguage(previousLang);
     return;
