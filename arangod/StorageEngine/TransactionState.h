@@ -27,6 +27,7 @@
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
@@ -37,7 +38,6 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
-#include <map>
 #include <string_view>
 #include <variant>
 
@@ -330,7 +330,7 @@ class TransactionState {
   TransactionId _id;  /// @brief local trx id
 
   /// a collection of stored cookies
-  std::map<void const*, Cookie::ptr> _cookies;
+  containers::FlatHashMap<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
