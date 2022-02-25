@@ -233,8 +233,8 @@ class GraphProviderTest : public ::testing::Test {
       auto clusterCache =
           std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
-      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(),
-                                      false);
+      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false,
+                                      true);
       return ClusterProvider<ClusterProviderStep>(*query.get(), std::move(opts),
                                                   resourceMonitor);
     }

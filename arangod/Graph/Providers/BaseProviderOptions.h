@@ -148,19 +148,21 @@ struct ClusterBaseProviderOptions {
  public:
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
-      std::unordered_map<ServerID, aql::EngineId> const* engines,
-      bool backward);
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      bool produceVertices);
 
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
       std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
-      aql::FixedVarExpressionContext* expressionContext,
+      bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
           filterConditionVariables);
 
   RefactoredClusterTraverserCache* getCache();
 
   bool isBackward() const;
+
+  bool produceVertices() const;
 
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
       const;
@@ -184,6 +186,8 @@ struct ClusterBaseProviderOptions {
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
   bool _backward;
+
+  bool _produceVertices;
 
   // [GraphRefactor] Note: All vars below used in SingleServer && Cluster case
   aql::FixedVarExpressionContext* _expressionContext;

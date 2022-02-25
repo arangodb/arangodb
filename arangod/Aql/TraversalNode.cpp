@@ -777,7 +777,11 @@ ClusterBaseProviderOptions TraversalNode::getClusterBaseProviderOptions(
         filterConditionVariables) const {
   auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
       opts->query().resourceMonitor());
-  return {traverserCache, engines(), false, &opts->getExpressionCtx(),
+  return {traverserCache,
+          engines(),
+          false,
+          opts->produceVertices(),
+          &opts->getExpressionCtx(),
           filterConditionVariables};
 }
 

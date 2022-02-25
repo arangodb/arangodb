@@ -144,7 +144,8 @@ void SingleServerBaseProviderOptions::unPrepareContext() {
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
-    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+    bool produceVertices)
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),
@@ -157,7 +158,7 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
     std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
-    aql::FixedVarExpressionContext* expressionContext,
+    bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
     std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
         filterConditionVariables)
     : _cache(std::move(cache)),
@@ -176,6 +177,10 @@ RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
 }
 
 bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
+
+bool ClusterBaseProviderOptions::produceVertices() const {
+  return _produceVertices;
+}
 
 std::unordered_map<ServerID, aql::EngineId> const*
 ClusterBaseProviderOptions::engines() const {

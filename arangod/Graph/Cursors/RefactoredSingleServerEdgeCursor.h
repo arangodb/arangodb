@@ -119,7 +119,8 @@ class RefactoredSingleServerEdgeCursor {
   // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
-  bool _requiresFullDocument;
+  // TODO [GraphRefactor]: Potentially can be removed.
+  [[maybe_unused]] bool _requiresFullDocument;
 
  public:
   void readAll(SingleServerProvider<StepType>& provider,

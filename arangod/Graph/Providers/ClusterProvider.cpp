@@ -184,6 +184,8 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
         // Will be protected by the datalake.
         // We flag to retain the payload.
         _opts.getCache()->cacheVertex(vertexKey, pair.value);
+        // increase scanned Index for every vertex we cache.
+        _stats.addScannedIndex(1);
         needToRetainPayload = true;
       }
     }
@@ -395,8 +397,21 @@ auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
 
   if (!looseEnds.empty()) {
     result.reserve(looseEnds.size());
-    fetchVerticesFromEngines(looseEnds, result);
-    _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
+    if (!_opts.produceVertices()) {
+      // in that case we do not have to fetch the actual vertex data
+
+      for (auto& lE : looseEnds) {
+        if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
+          // we'll only cache the vertex id, we do not need the data
+          _opts.getCache()->cacheVertex(lE->getVertexIdentifier(),
+                                        VPackSlice::nullSlice());
+        }
+        result.emplace_back(lE);
+      }
+    } else {
+      fetchVerticesFromEngines(looseEnds, result);
+      _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
+    }
 
     for (auto const& step : result) {
       if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
