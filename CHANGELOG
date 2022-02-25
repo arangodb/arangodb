@@ -6,7 +6,7 @@ devel
   on the leader so we have a reliable point in time where we can prove that the data is consistent.
   If the leader at this point is flooded with write requests to that shard there is a chance
   that all worker threads only pick up those writes, which cannot make any progress until the
-  lock is cleared. However the process to clear the lock was on the same priority as those writes.
+  lock is cleared. However, the process to clear the lock was on the same priority as those writes.
   Hence this lock clear operations could not bypass the writes. Now we moved every follow up request
   after the lock to HIGH lanes, which will allow them to bypass all non-internal operations.
 
