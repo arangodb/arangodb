@@ -214,7 +214,7 @@ SingleServerProvider<Step>::buildCursor(
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
-      _opts.hasWeightMethod()/*, requiresFullDocument*/);
+      _opts.hasWeightMethod() /*, requiresFullDocument*/);
 }
 
 template<class Step>
