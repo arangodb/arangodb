@@ -42,7 +42,6 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 

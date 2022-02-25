@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "RestServer/arangod.h"

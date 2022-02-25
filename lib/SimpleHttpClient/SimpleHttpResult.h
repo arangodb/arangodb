@@ -29,7 +29,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for storing a request result

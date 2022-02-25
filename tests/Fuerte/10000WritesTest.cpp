@@ -27,7 +27,6 @@
 
 #include <velocypack/Parser.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <iostream>

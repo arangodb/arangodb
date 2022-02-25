@@ -26,7 +26,6 @@
 
 #include <analysis/analyzers.hpp>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 TestAnalyzer::TestAnalyzer()
     : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {}
