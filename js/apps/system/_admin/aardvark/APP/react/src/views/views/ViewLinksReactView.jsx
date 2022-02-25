@@ -22,6 +22,7 @@ const ViewLinksReactView = ({ name }) => {
     initialState.current
   );
   const view = useView(name);
+  const links = view.links;
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
 
@@ -33,12 +34,6 @@ const ViewLinksReactView = ({ name }) => {
       formState: view
     });
   }, [view, name]);
-
-  const collections = useCollection();
-
-  useEffect(() => {
-    console.log(collections);
-  }, [collections]);
 
   useEffect(() => {
     const observer = buildSubNav(isAdminUser, name, "Links");
@@ -60,9 +55,6 @@ const ViewLinksReactView = ({ name }) => {
   const handleNewLinkClick = e => {
     e.preventDefault();
     setNewLink(!newLink);
-    if (newLink === true) {
-      setIcon("fa-minus-circle");
-    }
   };
 
   const handleBackClick = e => {
@@ -70,31 +62,10 @@ const ViewLinksReactView = ({ name }) => {
     setNewLink(false);
   };
 
-  const mockData = [
-    {
-      id: 0,
-      name: "fooBar",
-      properties: ["includeAllfields: true, foo: fales"],
-      action: "This is an action"
-    },
-    {
-      id: 1,
-      name: "airPort",
-      properties: ["includeAllfields: true, foo: fales"],
-      action: "This is an action"
-    },
-    {
-      id: 2,
-      name: "route",
-      properties: ["includeAllfields: true, foo: fales"],
-      action: "This is an action"
-    }
-  ];
-
   return (
     <div className={"centralContent"} id={"content"}>
       {!newLink && (
-        <LinkList links={mockData} addClick={handleNewLinkClick} icon={icon} />
+        <LinkList links={links} addClick={handleNewLinkClick} icon={icon} />
       )}
       {newLink && (
         <div

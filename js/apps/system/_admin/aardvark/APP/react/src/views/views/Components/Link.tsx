@@ -4,7 +4,8 @@ import { ArangoTD } from "../../../components/arango/table";
 interface LinkProps {
   link: {
     name: string;
-    properties: boolean[];
+    includeAllFields: boolean;
+    analyzers: [];
     action: React.ReactElement;
     key: number;
   };
@@ -12,14 +13,16 @@ interface LinkProps {
 
 const Link: React.FC<LinkProps["link"]> = ({
   name,
-  properties,
+  includeAllFields,
+  analyzers,
   action,
   key
 }) => {
   return (
     <tr>
       <ArangoTD seq={key}>{name}</ArangoTD>
-      <ArangoTD seq={key}>{properties}</ArangoTD>
+      <ArangoTD seq={key}>{includeAllFields}</ArangoTD>
+      <ArangoTD seq={key}>{analyzers}</ArangoTD>
       <ArangoTD seq={key}>{action}</ArangoTD>
     </tr>
   );
