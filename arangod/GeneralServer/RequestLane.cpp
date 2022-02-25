@@ -73,7 +73,9 @@ std::string LaneName(arangodb::RequestLane lane) {
     case arangodb::RequestLane::UNDEFINED:
       return "UNDEFINED";
   }
+  // Should not be reachable
   TRI_ASSERT(false);
+  return "UNDEFINED";
 }
 
 std::string PriorityName(arangodb::RequestLane lane) {
@@ -89,6 +91,9 @@ std::string PriorityName(arangodb::RequestLane lane) {
     case arangodb::RequestPriority::LOW:
       return "LOW";
   }
+  // Should not be reachable
+  TRI_ASSERT(false);
+  return "UNDEFINED";
 }
 }  // namespace
 
