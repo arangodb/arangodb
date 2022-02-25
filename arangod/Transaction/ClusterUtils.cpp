@@ -115,17 +115,14 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     });
 
   } else if (ServerState::instance()->isDBServer()) {
-    // only care about failed coordinators TODO(MBkkt) What's going on here?
-    for (auto it = failedServers.begin(), end = failedServers.end();
-         it != end;) {
-      if (ClusterHelpers::isCoordinatorName(*it)) {
-        ++it;
-      } else {
-        auto erase_it = it++;
-        failedServers.erase(erase_it);
+    // only care about failed coordinators
+    size_t coordinatorsCount = 0;
+    for (auto const& server : failedServers) {
+      if (ClusterHelpers::isCoordinatorName(server)) {
+        ++coordinatorsCount;
       }
     }
-    if (failedServers.empty()) {  // TODO(MBkkt) Maybe just counter?
+    if (coordinatorsCount == 0) {
       return;
     }
 
