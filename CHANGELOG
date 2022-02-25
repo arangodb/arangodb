@@ -11,7 +11,7 @@ devel
   after the lock to HIGH lanes, which will allow them to bypass all non-internal operations.
 
 * arangosh now uses the same header the UI uses to gain higher priority on initial connection.
-  This will increase the chance for an arangosh to connect to a server under very load.
+  This will increase the chance for an arangosh to connect to a server under very high load.
 
 * Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
   replicated to the follower data-center keeping their sharding intact.
