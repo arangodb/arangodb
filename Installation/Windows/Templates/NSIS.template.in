@@ -1393,21 +1393,4 @@ inst:
   !insertmacro SectionList "InitSection"
 
   ReadEnvStr $PROGRAMDATA ProgramData
-  ; check to see if /D has been used to change
-  ; the install directory by comparing it to the
-  ; install directory that is expected to be the
-  ; default
-  StrCpy $IS_DEFAULT_INSTALLDIR 0
-  StrCmp "$INSTDIR" "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@" 0 +2
-    StrCpy $IS_DEFAULT_INSTALLDIR 1
-
-  ; if default install dir then change the default
-  ; if it is installed for JustMe
-  StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
-    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-
-  ${If} $TRI_INSTALL_SCOPE_ALL == 1
-    ;StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
-    StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-  ${EndIf}
 FunctionEnd
