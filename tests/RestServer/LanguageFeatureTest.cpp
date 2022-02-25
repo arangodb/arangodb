@@ -40,22 +40,43 @@
 // -----------------------------------------------------------------------------
 
 namespace  {
-  void checkCollatorSettings(bool isDefaultLang) {
+  void checkCollatorSettings(const std::string& language) {
+
+    // Create collator with expected language
     UErrorCode status = U_ZERO_ERROR;
-    const auto* collator = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
+    icu::Collator* expectedColl = nullptr;
+    if (language == "") {
+      // get default collator for empty language
+      expectedColl = icu::Collator::createInstance(status);
+    } else {
+      icu::Locale locale(language.c_str());
+      expectedColl = icu::Collator::createInstance(locale, status);
+    }
 
-    auto actualCaseFirst = collator->getAttribute(UCOL_CASE_FIRST, status); // UCOL_UPPER_FIRST
-    auto actualNorm = collator->getAttribute(UCOL_NORMALIZATION_MODE, status); // UCOL_OFF
-    auto actualStrength = collator->getAttribute(UCOL_STRENGTH, status); // UCOL_IDENTICAL
+    ASSERT_FALSE(U_FAILURE(status));
 
-//    ASSERT_EQ(actualCaseFirst == UCOL_UPPER_FIRST, isDefaultLang);
-//    ASSERT_EQ(actualNorm == UCOL_OFF, isDefaultLang);
-//    ASSERT_EQ(actualStrength == UCOL_IDENTICAL, isDefaultLang);
+    // Get actual collator
+    const auto* actualColl = arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
+    status = U_ZERO_ERROR;
 
+    ASSERT_EQ(expectedColl->getAttribute(UCOL_CASE_FIRST, status),
+              actualColl->getAttribute(UCOL_CASE_FIRST, status));
+    ASSERT_FALSE(U_FAILURE(status));
+
+    ASSERT_EQ(expectedColl->getAttribute(UCOL_NORMALIZATION_MODE, status),
+              actualColl->getAttribute(UCOL_NORMALIZATION_MODE, status));
+    ASSERT_FALSE(U_FAILURE(status));
+
+    ASSERT_EQ(expectedColl->getAttribute(UCOL_STRENGTH, status),
+              actualColl->getAttribute(UCOL_STRENGTH, status));
+    ASSERT_FALSE(U_FAILURE(status));
+
+    delete expectedColl;
   }
 
   void checkLanguageFile(const arangodb::ArangodServer& server, const std::string expectedLang,
-                         const std::string& expectedParameter) {
+                         const std::string& expectedParameter,
+                         bool shouldBeEqual) {
 
     auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
     std::string filename = databasePath.subdirectoryName("LANGUAGE");
@@ -78,7 +99,7 @@ namespace  {
 
       auto actualLang = actualSlice.copyString();
 
-      ASSERT_EQ(actualLang, expectedLang);
+      ASSERT_EQ(actualLang == expectedLang, shouldBeEqual);
 
     } catch (...) {
       ASSERT_TRUE(false);
@@ -133,13 +154,9 @@ class ArangoLanguageFeatureTest
 // -----------------------------------------------------------------------------
 
 TEST_F(ArangoLanguageFeatureTest, test_1) {
-
-
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
   auto& langCheckFeature = server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
-
   langFeature.collectOptions(server.server().options());
-
 
   std::string lang = "ru";
   std::string parameter = "icu-language";
@@ -149,14 +166,18 @@ TEST_F(ArangoLanguageFeatureTest, test_1) {
           parameter)
       ->set(lang);
 
-
   langFeature.validateOptions(server.server().options());
 
+  // Simulate server launch
   langFeature.prepare();
   langCheckFeature.start();
 
-  checkLanguageFile(server.server(), lang, parameter);
+  bool shouldBeEqual = true;
+  checkLanguageFile(server.server(), lang, parameter, shouldBeEqual);
+  checkCollatorSettings(lang);
 
+  // Assume that server is stoped
+  // We launch it again with parameters
   server.server()
       .options()
       ->get<StringParameter>(
@@ -165,12 +186,36 @@ TEST_F(ArangoLanguageFeatureTest, test_1) {
 
   langFeature.validateOptions(server.server().options());
 
+  // Simulate server launch
   langFeature.prepare();
   langCheckFeature.start();
 
-  checkLanguageFile(server.server(), lang, parameter);
+  checkLanguageFile(server.server(), lang, parameter, shouldBeEqual);
+  checkCollatorSettings(lang);
+}
 
+TEST_F(ArangoLanguageFeatureTest, test_2) {
+  auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
+  langFeature.collectOptions(server.server().options());
 
+  std::string lang = "ru";
+  server.server()
+      .options()
+      ->get<StringParameter>(
+          "icu-language")
+      ->set(lang);
+  server.server()
+      .options()
+      ->get<StringParameter>(
+          "default-language")
+      ->set(lang);
+
+  langFeature.validateOptions(server.server().options());
+
+  // Simulate server launch
+  EXPECT_DEATH(langFeature.prepare(),
+              "");
 }
 
 /*

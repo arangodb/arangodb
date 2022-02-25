@@ -83,7 +83,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
     LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG)
         << "using default language: " << defaultLanguage;
   } else {
-    LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG)
+    LOG_TOPIC("c490e", TRACE, arangodb::Logger::CONFIG)
         << "using icu language: " << icuLanguage;
   }
 
@@ -115,7 +115,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server,
           << "cannot save default language in file '" << filename
           << "': out of memory";
     } else {
-      LOG_TOPIC("4fa50", ERR, arangodb::Logger::CONFIG)
+      LOG_TOPIC("4fa51", ERR, arangodb::Logger::CONFIG)
           << "cannot save icu language in file '" << filename
           << "': out of memory";
     }
