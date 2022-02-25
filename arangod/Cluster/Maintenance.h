@@ -268,7 +268,7 @@ arangodb::Result phaseTwo(
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
     ReplicatedStateStatusMapByDatabase const& localStates,
-    std::unordered_set<std::string> const& failedServers);
+    containers::FlatHashSet<ServerID> const& failedServers);
 
 /**
  * @brief          Report local changes to current
@@ -322,7 +322,7 @@ void syncReplicatedShardsWithLeaders(
     std::string const& serverId, MaintenanceFeature& feature,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     containers::FlatHashSet<std::string>& makeDirty,
-    std::unordered_set<std::string> const& failedServers);
+    containers::FlatHashSet<ServerID> const& failedServers);
 
 }  // namespace maintenance
 }  // namespace arangodb

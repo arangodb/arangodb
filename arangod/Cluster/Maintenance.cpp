@@ -2246,7 +2246,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
     std::string const& serverId, MaintenanceFeature& feature,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     containers::FlatHashSet<std::string>& makeDirty,
-    std::unordered_set<std::string> const& failedServers) {
+    containers::FlatHashSet<ServerID> const& failedServers) {
+  // TODO(MBkkt) Maybe we should remove unused parameters???
   for (auto const& dbname : dirty) {
     auto pit = plan.find(dbname);
     VPackSlice pdb;
@@ -2392,7 +2393,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
     ReplicatedStateStatusMapByDatabase const& localStates,
-    std::unordered_set<std::string> const& failedServers) {
+    containers::FlatHashSet<ServerID> const& failedServers) {
   auto start = std::chrono::steady_clock::now();
 
   MaintenanceFeature::errors_t allErrors;
