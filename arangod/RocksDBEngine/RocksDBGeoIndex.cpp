@@ -41,7 +41,6 @@
 #include <s2/s2cell_id.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 

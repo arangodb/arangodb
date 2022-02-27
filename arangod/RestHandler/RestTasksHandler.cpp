@@ -37,7 +37,6 @@
 #include "VocBase/Methods/Tasks.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;

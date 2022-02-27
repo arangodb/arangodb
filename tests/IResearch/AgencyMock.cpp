@@ -35,8 +35,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 #include <utility>
 
 namespace arangodb::consensus {

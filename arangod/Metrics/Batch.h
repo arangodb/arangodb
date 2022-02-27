@@ -27,6 +27,8 @@
 #include "Metrics/IBatch.h"
 #include "Metrics/Metric.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
 #include <vector>
 
 namespace arangodb::metrics {
@@ -49,6 +51,23 @@ class Batch final : public IBatch {
       for (size_t j = 0; auto& [labels, _] : _metrics) {
         Metric::addMark(result, T::kName[i], globals, labels);
         result.append(T::kToString[i](metrics[j++])) += '\n';
+      }
+    }
+  }
+
+  void toVPack(velocypack::Builder& builder,
+               ArangodServer& server) const final {
+    for (auto& [labels, metric] : _metrics) {
+      if (T::skip(server, labels)) {
+        continue;
+      }
+      auto const coordinatorLabels = T::coordinatorLabels(labels);
+      auto const data = metric.load();
+      // TODO(MBkkt) Write labels once
+      for (size_t i = 0; i != T::kSize; ++i) {
+        builder.add(velocypack::Value{T::kName[i]});
+        builder.add(velocypack::Value{coordinatorLabels});
+        builder.add(velocypack::Value{T::kToValue[i](data)});
       }
     }
   }

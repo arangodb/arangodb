@@ -26,6 +26,7 @@
 #include "Basics/Mutex.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
+#include "Containers/FlatHashMap.h"
 
 #include <map>
 #include <memory>
@@ -73,7 +74,8 @@ class RebootTracker {
   CallbackGuard callMeOnChange(PeerState const& peerState, Callback callback,
                                std::string callbackDescription);
 
-  void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
+  void updateServerState(
+      containers::FlatHashMap<ServerID, RebootId> const& state);
 
  private:
   using CallbackId = uint64_t;

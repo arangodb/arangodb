@@ -398,10 +398,10 @@ class MaintenanceFeature : public ArangodFeature {
    * @brief mark and list dirty databases
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases,
+  void addDirty(containers::FlatHashSet<std::string> const& databases,
                 bool callNotify);
-  std::unordered_set<std::string> dirty(std::unordered_set<std::string> const& =
-                                            std::unordered_set<std::string>());
+  containers::FlatHashSet<std::string> dirty(
+      containers::FlatHashSet<std::string> const& = {});
   /// @brief get n random db names
   std::unordered_set<std::string> pickRandomDirty(size_t n);
 

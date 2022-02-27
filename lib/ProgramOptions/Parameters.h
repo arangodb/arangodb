@@ -29,7 +29,6 @@
 #include "Basics/fpconv.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <atomic>
 #include <limits>

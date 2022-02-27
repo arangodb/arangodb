@@ -25,6 +25,7 @@
 #include "IResearch/common.h"
 
 #include "Aql/Ast.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
@@ -85,35 +86,6 @@ class SimpleDataSetProvider {
 class SortedSimpleDataSetProvider : public SimpleDataSetProvider {
  public:
   static SortFields sortFields() { return {{"a", true}, {"b", false}}; }
-};
-
-class ExtraDataSetProvider {
- public:
-  static DocsMap docs() {
-    return {
-        {arangodb::LocalDocumentId(1), arangodb::velocypack::Parser::fromJson(
-                                           R"({"_to":"2", "a":"1", "b":"2"})")},
-        {arangodb::LocalDocumentId(2),
-         arangodb::velocypack::Parser::fromJson(
-             R"({"_from": "1", "_to":"2", "a":"2", "b":"1"})")},
-        {arangodb::LocalDocumentId(3),
-         arangodb::velocypack::Parser::fromJson(
-             R"({"_from": "1", "_to":"2", "a":"2", "b":"2"})")},
-        {arangodb::LocalDocumentId(4),
-         arangodb::velocypack::Parser::fromJson(
-             R"({"_from": "1", "_to":"2", "a":"1", "b":"1"})")},
-        {arangodb::LocalDocumentId(5),
-         arangodb::velocypack::Parser::fromJson(
-             R"({"_from": "1", "a":"3", "b":"3"})")}};
-  }
-
-  static StoredFields storedFields() {
-    return {{"_from"}, {"a", "b"}, {"a"}, {"b"}, {"_to"}};
-  }
-
-  static Fields indexFields() { return {"a", "b", "_from", "_to"}; }
-
-  static SortFields sortFields() { return {}; }
 };
 
 }  // namespace
@@ -278,8 +250,6 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skipAll) {
   auto test = [](arangodb::IndexIterator* iterator) {
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     uint64_t skipped{0};
     iterator->skipAll(skipped);
     ASSERT_EQ(3, skipped);
@@ -298,8 +268,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next) {
     iterator->skip(1, skipped);
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
+
     std::vector<arangodb::LocalDocumentId> docs;
     auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
       docs.push_back(token);
@@ -328,8 +297,6 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next_skip) {
     iterator->skip(1, skipped);
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     std::vector<arangodb::LocalDocumentId> docs;
     auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
       docs.push_back(token);
@@ -355,15 +322,18 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
   std::string queryString{
       R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+    arangodb::aql::Projections projections(
+        std::vector<arangodb::aql::AttributeNamePath>(
+            {std::string("a"), std::string("b")}));
+    ASSERT_TRUE(index().covers(projections));
+
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
     uint64_t skipped{0};
     iterator->skip(1, skipped);
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     std::vector<arangodb::LocalDocumentId> docs;
 
     auto docCallback = [&expectedDocs, &docs](
@@ -421,11 +391,14 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
   std::string queryString{R"(FOR d IN col FILTER d.arr[*] == 1 RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+    arangodb::aql::Projections projections(
+        std::vector<arangodb::aql::AttributeNamePath>(
+            {std::string("a"), std::string("b")}));
+    ASSERT_TRUE(index().covers(projections));
+
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     std::vector<arangodb::LocalDocumentId> docs;
 
     auto docCallback = [&expectedDocs, &docs](
@@ -483,12 +456,15 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_subarray) {
   std::string queryString{
       R"(FOR d IN col FILTER d.subarr[*].val == 1 RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+    arangodb::aql::Projections projections(
+        std::vector<arangodb::aql::AttributeNamePath>(
+            {std::string("a"), std::string("b")}));
+    ASSERT_TRUE(index().covers(projections));
+
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     std::vector<arangodb::LocalDocumentId> docs;
 
     auto docCallback = [&expectedDocs, &docs](
@@ -546,15 +522,18 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_skip) {
   std::string queryString{
       R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" OR d.b == "3" RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+    arangodb::aql::Projections projections(
+        std::vector<arangodb::aql::AttributeNamePath>(
+            {std::string("a"), std::string("b")}));
+    ASSERT_TRUE(index().covers(projections));
+
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
     uint64_t skipped{0};
     iterator->skip(1, skipped);
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     std::vector<arangodb::LocalDocumentId> docs;
 
     auto docCallback = [&expectedDocs, &docs](
@@ -626,42 +605,6 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_skip) {
   executeIteratorTest(queryString, test);
 }
 
-using IResearchInvertedIndexIteratorExtraTest =
-    IResearchInvertedIndexIteratorTestBase<ExtraDataSetProvider>;
-
-TEST_F(IResearchInvertedIndexIteratorExtraTest, test_skip_nextExtra_skip) {
-  std::string queryString{
-      R"(FOR d IN col FILTER d._from == "1" AND (d.a == "1" OR d.b == "2" OR d.b == "3") RETURN d)"};
-  auto expectedDocs = data();
-  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
-    ASSERT_NE(iterator, nullptr);
-    ASSERT_TRUE(iterator->hasMore());
-    uint64_t skipped{0};
-    iterator->skip(1, skipped);
-    ASSERT_EQ(1, skipped);
-    ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_TRUE(iterator->hasExtra());
-    ASSERT_TRUE(iterator->canRearm());
-    std::vector<arangodb::LocalDocumentId> docs;
-    auto docCallback = [&expectedDocs, &docs](arangodb::LocalDocumentId token,
-                                              VPackSlice extra) {
-      docs.push_back(token);
-      auto expectedSlice = expectedDocs[token]->slice().get("_to");
-      EXPECT_EQUAL_SLICES(expectedSlice, extra);
-      return true;
-    };
-    ASSERT_TRUE(iterator->nextExtra(docCallback, 1));
-    ASSERT_EQ(docs.size(), 1);
-    ASSERT_TRUE(iterator->hasMore());
-    uint64_t skipped2{0};
-    iterator->skipAll(skipped2);
-    ASSERT_EQ(1, skipped2);
-    ASSERT_FALSE(iterator->hasMore());
-  };
-  executeIteratorTest(queryString, test, "d", nullptr, 0);
-}
-
 using IResearchInvertedIndexIteratorSortedTest =
     IResearchInvertedIndexIteratorTestBase<SortedSimpleDataSetProvider>;
 
@@ -676,8 +619,6 @@ TEST_F(IResearchInvertedIndexIteratorSortedTest, test_next_full) {
   auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     ASSERT_FALSE(iterator->canRearm());
     std::vector<arangodb::LocalDocumentId> docs;
     auto docCallback = [&docs](arangodb::LocalDocumentId token) {
@@ -700,14 +641,17 @@ TEST_F(IResearchInvertedIndexIteratorSortedTest, test_nextCovering_full) {
                               SORT d.a ASC, d.b DESC
                               RETURN d)"};
   auto expectedDocs = data();
-  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs, this](arangodb::IndexIterator* iterator) {
+    arangodb::aql::Projections projections(
+        std::vector<arangodb::aql::AttributeNamePath>(
+            {std::string("a"), std::string("b")}));
+    ASSERT_TRUE(index().covers(projections));
+
     std::vector<arangodb::LocalDocumentId> orderedDocs = {
         arangodb::LocalDocumentId(1), arangodb::LocalDocumentId(4),
         arangodb::LocalDocumentId(3), arangodb::LocalDocumentId(5)};
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
-    ASSERT_TRUE(iterator->hasCovering());
-    ASSERT_FALSE(iterator->hasExtra());
     ASSERT_FALSE(iterator->canRearm());
     std::vector<arangodb::LocalDocumentId> docs;
     auto docCallback = [&expectedDocs, &docs](

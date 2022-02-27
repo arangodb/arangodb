@@ -88,7 +88,9 @@ class Index {
 
   virtual ~Index();
 
- public:
+  static std::vector<std::vector<arangodb::basics::AttributeName>> const
+      emptyCoveredFields;
+
   /// @brief index types
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
@@ -171,7 +173,7 @@ class Index {
   ///        _to
   virtual std::vector<std::vector<arangodb::basics::AttributeName>> const&
   coveredFields() const {
-    return fields();
+    return _fields;
   }
 
   /// @brief return the index fields names
@@ -264,7 +266,6 @@ class Index {
   /// @brief checks if the index could be used without explicit hint
   static bool onlyHintForced(IndexType type);
 
- public:
   virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
@@ -307,13 +308,6 @@ class Index {
                                    size_t itemsInIndex, size_t invocations);
 
   virtual bool canBeDropped() const = 0;
-
-  /// @brief whether or not the index provides an iterator that can extract
-  /// attribute values from the index data, without having to refer to the
-  /// actual document data
-  /// By default, indexes do not have this type of iterator, but they can
-  /// add it as a performance optimization
-  virtual bool hasCoveringIterator() const { return false; }
 
   /// @brief Checks if this index is identical to the given definition
   virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
@@ -496,10 +490,6 @@ class Index {
 
   mutable bool _unique;
   mutable bool _sparse;
-
-  // use this with c++17  --  attributeMatches
-  // static inline std::vector<arangodb::basics::AttributeName> const vec_id {{
-  // StaticStrings::IdString, false }};
 };
 
 /// @brief simple struct that takes an AstNode of type comparison and

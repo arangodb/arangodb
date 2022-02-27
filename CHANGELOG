@@ -1,6 +1,9 @@
 devel
 -----
 
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
+  replicated to the follower data-center keeping their sharding intact.
+
 * Optimize further RocksDB throttle to allow for no change on any
   given calculation cycle.
 
@@ -17,6 +20,8 @@ devel
   with ArangoDB 3.8 and higher.
 
 * Support JSON schema objects for documenting Foxx endpoints.
+
+* Internal refactoring of IndexIterator APIs.
 
 * Sorted out various geo problems:
 

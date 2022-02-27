@@ -81,8 +81,6 @@ class ClusterIndex : public Index {
 
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
-  bool hasCoveringIterator() const override;
-
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
 

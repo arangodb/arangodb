@@ -65,8 +65,6 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

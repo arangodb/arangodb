@@ -36,7 +36,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/FeatureFlags.h"
 #include "Basics/StringUtils.h"

@@ -57,7 +57,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <regex>
 
 using namespace arangodb;
@@ -120,7 +119,7 @@ arangodb::Result Indexes::getAll(
     auto& databaseName = collection->vocbase().name();
     std::string const& cid = collection->name();
 
-    std::unordered_map<std::string, double> estimates;
+    IndexEstMap estimates;
 
     if (Index::hasFlag(flags, Index::Serialize::Estimates)) {
       auto& feature =
