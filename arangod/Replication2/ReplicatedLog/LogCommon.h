@@ -260,7 +260,6 @@ struct CommitFailReason {
   struct NonEligibleServerRequiredForQuorum {
     enum Why {
       kExcluded,
-      kFailed,
       // WrongTerm might be misleading, because the follower might be in the
       // right term, it just never has acked an entry of the current term.
       kWrongTerm,
