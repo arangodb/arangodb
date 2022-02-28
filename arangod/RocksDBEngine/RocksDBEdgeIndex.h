@@ -60,13 +60,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexWarmupTask;
 
  public:
-  static uint64_t HashForKey(const rocksdb::Slice& key);
+  static uint64_t HashForKey(rocksdb::Slice const& key);
 
   RocksDBEdgeIndex() = delete;
 
   RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& collection,
-                   arangodb::velocypack::Slice const& info,
-                   std::string const& attr);
+                   arangodb::velocypack::Slice info, std::string const& attr);
 
   ~RocksDBEdgeIndex();
 
@@ -75,8 +74,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   char const* typeName() const override { return "edge"; }
 
   bool canBeDropped() const override { return false; }
-
-  bool hasCoveringIterator() const override { return true; }
 
   bool isSorted() const override { return false; }
 

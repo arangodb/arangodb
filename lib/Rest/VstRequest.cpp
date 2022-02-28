@@ -34,7 +34,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"

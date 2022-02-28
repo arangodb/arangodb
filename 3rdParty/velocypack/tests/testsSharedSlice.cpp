@@ -188,7 +188,7 @@ forAllTestCases(F f) {
     auto sliceString = [&]() {
       try {
         return sharedSlice.toString();
-      } catch (Exception const& e) {
+      } catch (Exception const&) {
         return sharedSlice.toHex();
       }
     }();

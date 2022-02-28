@@ -23,7 +23,6 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "RestAdminStatisticsHandler.h"
 

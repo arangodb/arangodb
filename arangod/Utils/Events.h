@@ -26,7 +26,6 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Rest/CommonDefines.h"
 #include "Utils/OperationOptions.h"

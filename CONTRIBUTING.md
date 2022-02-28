@@ -8,42 +8,41 @@ Please follow these guidelines if you want to contribute to ArangoDB:
 
 # Reporting Bugs
 
-When reporting bugs, please use our issue tracker on GitHub.  Please make sure
+When reporting bugs, please use our issue tracker on GitHub. Please make sure
 to include the version number of ArangoDB in your bug report, along with the
-platform you are using (e.g. `Linux OpenSuSE x86_64`).  Please also include the
+platform you are using (e.g. `Linux OpenSuSE x86_64`). Please also include the
 ArangoDB startup mode (daemon, console, supervisor mode) plus any special
-configuration.  This will help us reproducing and finding bugs.
+configuration. This will help us reproducing and finding bugs.
 
 Please also take the time to check there are no similar/identical issues open
 yet.
 
-
 # Contributing features, documentation, tests
 
-* Create a new branch in your fork, based on the **devel** branch
+- Create a new branch in your fork, based on the **devel** branch
 
-* Develop and test your modifications there
+- Develop and test your modifications there
 
-* Commit as you like, but preferably in logical chunks. Use meaningful commit
+- Commit as you like, but preferably in logical chunks. Use meaningful commit
   messages and make sure you do not commit unnecessary files (e.g. object
   files). It is normally a good idea to reference the issue number from the
   commit message so the issues will get updated automatically with comments.
 
-* If the modifications change any documented behavior or add new features,
+- If the modifications change any documented behavior or add new features,
   document the changes. It should be written in American English.
   The documentation can be found in [docs repository](https://github.com/arangodb/docs#readme).
 
-* When done, run the complete test suite and make sure all tests pass. 
+- When done, run the complete test suite and make sure all tests pass.
 
-* When finished, push the changes to your GitHub repository and send a pull
+- When finished, push the changes to your GitHub repository and send a pull
   request from your fork to the ArangoDB repository. Please make sure to select
   the appropriate branches there. This will most likely be **devel**.
 
-* You must use the Apache License for your changes and have signed our 
+- You must use the Apache License for your changes and have signed our
   [CLA](https://www.arangodb.com/documents/cla.pdf). We cannot accept pull requests
   from contributors that didn't sign the CLA.
 
-* Please let us know if you plan to work on a ticket. This way we can make sure
+- Please let us know if you plan to work on a ticket. This way we can make sure
   redundant work is avoided.
 
 # Main sections
@@ -59,7 +58,7 @@ yet.
   - [capturing test HTTP communication](#running-tcpdump--windump-for-the-sut) but
     [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
   - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
-    sorting by setup time etc. 
+    sorting by setup time etc.
 - [what to test where and how](tests/README.md)
 
 ## Source Code
@@ -73,8 +72,9 @@ in the ArangoDB source tree:
 
 ### Style Guide
 
-We use `clang-format` to enfore consistent code formatting. Check STYLEGUIDE.md
-for comprehensive description of ArangoDB Coding Guidelines.
+We use `clang-format` to enfore consistent code formatting. Check 
+[STYLEGUIDE.md](STYLEGUIDE.md) for a comprehensive description of ArangoDB's 
+Coding Guidelines.
 
 ### Compiler support policy
 
@@ -108,7 +108,7 @@ to lint your modified files.
 
     ./utils/jslint.sh
 
-to find out whether all of your files comply to jslint.  This is required to
+to find out whether all of your files comply to jslint. This is required to
 make continuous integration work smoothly.
 
 If you want to add new files / patterns to this make target, edit the respective
@@ -148,18 +148,18 @@ Then there is a helper script `utils/generateAllMetricsDocumentation.py`
 which needs `python3` with the `yaml` module. It will check and do the
 following things:
 
- - every declared metric in some `.cpp` file in the source has a
-   corresponding documentation snippet in `Documentation/Metrics`
-   under the name of the metric with `.yaml` appended
- - each such file is a YAML file of a certain format (see template
-   under `Documentation/Metrics/template.yaml`)
- - many of the componentes are required, so please provide adequate
-   information about your metric
- - the script can also assemble all these YAML documentation snippets
-   into a single file under `Documentation/Metrics/allMetrics.yaml`,
-   the format is again a structured YAML file which can easily be
-   processed by the documentation tools, this is only needed when
-   we update the documentation web pages.
+- every declared metric in some `.cpp` file in the source has a
+  corresponding documentation snippet in `Documentation/Metrics`
+  under the name of the metric with `.yaml` appended
+- each such file is a YAML file of a certain format (see template
+  under `Documentation/Metrics/template.yaml`)
+- many of the componentes are required, so please provide adequate
+  information about your metric
+- the script can also assemble all these YAML documentation snippets
+  into a single file under `Documentation/Metrics/allMetrics.yaml`,
+  the format is again a structured YAML file which can easily be
+  processed by the documentation tools, this is only needed when
+  we update the documentation web pages.
 
 Please, if you have added or modified a metric, make sure to declare
 the metric as shown above and add a documentation YAML snippet in the
@@ -170,7 +170,6 @@ correct format. Afterwards, run
 but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
 (as was a previous policy). The file is only generated if you add
 `-d` as command line option to the script.
-
 
 ---
 
@@ -200,7 +199,7 @@ For building the ArangoDB starter checkout the
 
 ### Building the Web Interface
 
-To build Web UI, also known as frontend or *Aardvark*, [Node.js](https://nodejs.org/)
+To build Web UI, also known as frontend or _Aardvark_, [Node.js](https://nodejs.org/)
 and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
 build directory:
 
@@ -233,6 +232,33 @@ favorite browser and open the web UI.
 All changes to any source will automatically re-build and reload your browser.
 Enjoy :)
 
+### Cross Orogin Policy (CORS) ERROR
+
+Our front-end development server currently runs on port:`3000`, while the backend runs on port:`8529` respectively. This implies that when the front-end sends a request to the backend would result in Cross-Origin-Policy security checks which recently got enforced by some browsers for security reasons. Until recently, we never had reports of CORS errors when running both the backend and front-end dev servers independently, however,
+we recently confirmed that this error occurs in ( Chrome v: 98.0.4758.102 and Firefox v: 96.0.1 ).
+
+In case you run into CORS errors while running the development server, here is a quick fix:
+
+Simply stop your already running backend process with the command below:
+
+```bash
+cmd + c
+```
+
+Then restart `arangodb` server with the command below:
+
+```bash
+./build/bin/arangod ../Arango --http.trusted-origin '*'
+```
+
+Note:
+
+a: `./build/bin/arangod`: represents the location of `arangodb` binaries in your machine.
+
+b: `../Arango`: is the database directory where the data will be stored.
+
+c: `--http.trusted-origin '*'` the prefix that allows cross-origin requests.
+
 #### NPM Dependencies
 
 To add new NPM dependencies switch into the `js/node` folder and install them
@@ -249,7 +275,7 @@ The `save` and `save-exact` options are necessary to make sure the
 
 The `global-style` option prevents newer versions of npm from unrolling nested
 dependencies inside the `node_modules` folder. Omitting this option results in
-exposing *all* dependencies of *all* modules to ArangoDB users.
+exposing _all_ dependencies of _all_ modules to ArangoDB users.
 
 Finally add the module's licensing information to
 `LICENSES-OTHER-COMPONENTS.md`.
@@ -282,10 +308,11 @@ Without arguments it starts 2 DB-Servers and 1 Coordinator in the background,
 running on ports 8629, 8630 and 8530 respectively. The Agency runs on port 4001.
 
 Mode:
+
 - `C`: Starts the first Coordinator with `--console` in a separate window
   (using an `xterm`).
 - `D`: Starts all DB-Servers in the GNU debugger in separate windows
-  (using `xterm`s). Hit *ENTER* in the original terminal where the script
+  (using `xterm`s). Hit _ENTER_ in the original terminal where the script
   runs to continue once all processes have been started up in the debugger.
 
 ---
@@ -300,7 +327,7 @@ Mode:
 
 ### Startup
 
-Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript.  A
+Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript. A
 sample version to help working with the arangod rescue console may look like
 that:
 
@@ -316,7 +343,7 @@ that:
     };
     print = internal.print;
 
-*Hint*: You shouldn't lean on these variables in your Foxx services.
+_Hint_: You shouldn't lean on these variables in your Foxx services.
 
 ### Debugging AQL execution blocks
 
@@ -347,9 +374,10 @@ is to generate a core file. If core dumps are not enabled, the crash handler wil
 terminate the program with a non-zero exit code.
 
 The crash handler can be disabled at server start by setting the environment variable
-`ARANGODB_OVERRIDE_CRASH_HANDLER` to `0` or `off`. 
+`ARANGODB_OVERRIDE_CRASH_HANDLER` to `0` or `off`.
 
 An example log output from the crash handler looks like this:
+
 ```
 2020-05-26T23:26:10Z [16657] FATAL [a7902] {crash} ArangoDB 3.7.1-devel enterprise [linux], thread 22 [Console] caught unexpected signal 11 (SIGSEGV) accessing address 0x0000000000000000: signal handler invoked
 2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 1 [0x00007f9124e93ece]: _ZN12_GLOBAL__N_112crashHandlerEiP9siginfo_tPv (+0x000000000000002e)
@@ -363,9 +391,10 @@ An example log output from the crash handler looks like this:
 2020-05-26T23:26:10Z [16657] INFO [ded81] {crash} available physical memory: 41721995264, rss usage: 294256640, vsz usage: 1217839104, threads: 46
 Segmentation fault (core dumped)
 ```
+
 The first line of the crash output will contain the cause of the crash (SIGSEGV in
-this case). The following lines contain information about the stack frames. The 
-hexadecimal value presented for each frame is the instruction pointer, and if debug 
+this case). The following lines contain information about the stack frames. The
+hexadecimal value presented for each frame is the instruction pointer, and if debug
 symbols are installed, there will be name information about the called procedures (in
 mangled format) plus the offsets into the procedures. If no debug symbols are
 installed, symbol names and offsets cannot be shown for the stack frames.
@@ -384,7 +413,7 @@ Use this `cmake` option in addition to the normal options:
 when building. Make sure you are using the builtin `jemalloc`. You need
 debugging symbols to analyze the heap dumps later on, so compile with
 `-DCMAKE_BUILD_TYPE=Debug` or `RelWithDebInfo`. `Debug` is probably
-less confusing in the end. 
+less confusing in the end.
 
 Then set the environment variable for each instance you want to profile:
 
@@ -446,11 +475,11 @@ You should then see:
 
 for each shell and its subsequent processes.
 
-*Hint*: on Ubuntu the `apport` package may interfere with this; however you may
+_Hint_: on Ubuntu the `apport` package may interfere with this; however you may
 use the `systemd-coredump` package which automates much of the following:
 
 So that the unit testing framework can autorun gdb it needs to reliably find the
-corefiles.  In Linux this is configured via the `/proc` filesystem, you can make
+corefiles. In Linux this is configured via the `/proc` filesystem, you can make
 this reboot permanent by creating the file `/etc/sysctl.d/corepattern.conf` (or
 add the following lines to `/etc/sysctl.conf`)
 
@@ -463,7 +492,7 @@ to reload the above settings most systems support:
 
     sudo sysctl -p
 
-Note that the `proc` paths translate sub-directories to dots.  The non permanent
+Note that the `proc` paths translate sub-directories to dots. The non permanent
 way of doing this in a running system is:
 
     echo 1 > /proc/sys/kernel/core_uses_pid
@@ -473,7 +502,7 @@ way of doing this in a running system is:
 
 More modern systems facilitate
 [`systemd-coredump`](https://www.freedesktop.org/software/systemd/man/systemd-coredump.html)
-(via a similar named package) to control core dumps.  On most systems it will
+(via a similar named package) to control core dumps. On most systems it will
 put compressed core dumps to `/var/lib/systemd/coredump`.
 
 In order to use automatic core dump analysis with the unittests you need to
@@ -481,7 +510,7 @@ configure `/etc/systemd/coredump.conf` and set `Compress=no` - so instant
 analysis may take place.
 
 Please note that we can't support
-[Ubuntu Apport](https://wiki.ubuntu.com/Apport).  Please use `apport-unpack` to
+[Ubuntu Apport](https://wiki.ubuntu.com/Apport). Please use `apport-unpack` to
 send us the bare core dumps.
 
 In order to get core dumps from binaries changing their UID the system needs to
@@ -507,7 +536,7 @@ LimitCORE=0
 
 Enable new systemd settings:
 
-`systemctl daemon-reload &&  systemctl restart arangodb3.service`
+`systemctl daemon-reload && systemctl restart arangodb3.service`
 
 Enable suid process dumping:
 
@@ -579,31 +608,31 @@ For the average \*nix user windows debugging has some awkward methods.
 ##### Windows Core Dump Generation
 
 Core dumps can be created using the task manager; switch it to detail view, the
-context menu offers to *create dump file*; the generated file ends in a
+context menu offers to _create dump file_; the generated file ends in a
 directory that explorer hides from you - AppData - you have to type that in the
 location bar. This however only for running processes which is not as useful as
 having dumps of crashing processes.
 
 While it is a common feature to turn on core dumps with the system facilities on
 \*nix systems, it is not as easy in Windows. You need an external program from
-the *Sysinternals package*:
+the _Sysinternals package_:
 [ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx).
 First look up the PID of arangod, you can find it in the brackets in the
-ArangoDB logfile. Then invoke *procdump* like this:
+ArangoDB logfile. Then invoke _procdump_ like this:
 
     procdump -accepteula -e -ma <PID-of-arangod>
 
 It will keep on running and monitor arangod until eventually a crash happens.
-You will then get a core dump if an incident occurs or *Dump count not reached.*
-if nothing happened, *Dump count reached.* if a dump was written - the filename
+You will then get a core dump if an incident occurs or _Dump count not reached._
+if nothing happened, _Dump count reached._ if a dump was written - the filename
 will be printed above.
 
 ##### Windows Debugging Symbols
 
 Releases are supported by a public symbol server so you will be able to debug
-cores.  Please replace `XX` with the major and minor release number (e.g. `38`
-for v3.8).  Note that you should run the latest version of a release series
-before reporting bugs.  Either
+cores. Please replace `XX` with the major and minor release number (e.g. `38`
+for v3.8). Note that you should run the latest version of a release series
+before reporting bugs. Either
 [WinDbg](https://docs.microsoft.com/de-de/windows-hardware/drivers/debugger/debugger-download-tools)
 or Visual Studio support setting the symbol path via the environment variable or
 in the menu. Given we want to store the symbols on `E:\symbol_cache` we add the
@@ -621,18 +650,18 @@ The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is
 browseable; thus you can easily download the files you need by hand. It
 contains of a list of directories corresponding to the components of ArangoDB, e.g.:
 
-  - arango - the basic arangodb library needed by all components
-  - arango_v8 - the basic V8 wrappers needed by all components
-  - arangod - the server process
-  - the client utilities:
-    - arangobackup
-    - arangobench
-    - arangodump
-    - arangoexport
-    - arangoimport
-    - arangorestore
-    - arangosh
-    - arangovpack
+- lib - the basic arangodb libraries needed by all components
+- lib/V8 - the basic V8 wrappers needed by all components
+- arangod - the server process
+- the client utilities:
+  - arangobackup
+  - arangobench
+  - arangodump
+  - arangoexport
+  - arangoimport
+  - arangorestore
+  - arangosh
+  - arangovpack
 
 In these directories you will find subdirectories with the hash corresponding to
 the id of the binaries. Their date should correspond to the release date of
@@ -640,9 +669,9 @@ their respective arango release.
 
 This means i.e. for ArangoDB 3.1.11:
 
- https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
+https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
 
-This file is a microsoft cabinet file, which is a little bit compressed.  You
+This file is a microsoft cabinet file, which is a little bit compressed. You
 can extract it by invoking `cabextract` or dismantle it so the Windows Explorer
 offers you its proper handler by renaming it to .cab; click on the now named
 `arangod.cab`, copy the contained arangod.pdb into your symbol path.
@@ -658,11 +687,11 @@ to obtain automatical stack traces for crashes. We run it like that:
     cdb -z <dump file> -c 'kp; ~*kb; dv; !analyze -v; q'
 
 These commands for `-c` mean:
-    kp           print curren threads backtrace with arguments
-    ~*kb         print all threads stack traces
-    dv           analyze local variables (if)
-    !analyze -v  print verbose analysis
-    q            quit the debugger
+kp print curren threads backtrace with arguments
+~\*kb print all threads stack traces
+dv analyze local variables (if)
+!analyze -v print verbose analysis
+q quit the debugger
 
 If you don't specify them via `-c` you can also use them in an interactive
 manner.
@@ -680,53 +709,53 @@ and use the commands above to obtain stacktraces.
 
 ### Dependencies
 
-- *Ruby*, *rspec*, *httparty*; to install the required dependencies run the
+- _Ruby_, _rspec_, _httparty_; to install the required dependencies run the
   following commands in the source root:
   ```
   gem install bundler
   cd tests/rb/HttpInterface
   bundler
   ```
-- *Google Test* (compile time, shipped in the 3rdParty directory)
+- _Google Test_ (compile time, shipped in the 3rdParty directory)
 
 ### Folder Locations
 
 There are several major places where unittests live:
 
-| Path / File                                                  | Description
-|:-------------------------------------------------------------|:-----------------------------
-| `tests/js/server/`                                           | JavaScript tests, runnable on the server
-| `tests/js/common/`                                           | JavaScript tests, runnable on the server & via arangosh
-| `tests/js/common/test-data/`                                 | Mock data used for the JavaScript tests
-| `tests/js/client/`                                           | JavaScript tests, runnable via arangosh
-| `tests/rb/`                                                  | rspec tests (Ruby)
-| `tests/rb/HttpInterface/`                                    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server.
-| `tests/` (remaining)                                         | Google Test unittests
+| Path / File                                                  | Description                                                                                                                        |
+| :----------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/js/server/`                                           | JavaScript tests, runnable on the server                                                                                           |
+| `tests/js/common/`                                           | JavaScript tests, runnable on the server & via arangosh                                                                            |
+| `tests/js/common/test-data/`                                 | Mock data used for the JavaScript tests                                                                                            |
+| `tests/js/client/`                                           | JavaScript tests, runnable via arangosh                                                                                            |
+| `tests/rb/`                                                  | rspec tests (Ruby)                                                                                                                 |
+| `tests/rb/HttpInterface/`                                    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server. |
+| `tests/` (remaining)                                         | Google Test unittests                                                                                                              |
 | implementation specific files                                |
-| `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`
-| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.
-| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating
-| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes 
-| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.
-| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
-| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
-| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
-| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module
-| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
+| `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`                                                                                   |
+| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.                                                               |
+| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating                                                                      |
+| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes                                                                          |
+| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.                                                                 |
+| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools                                                                   |
+| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage                                               |
+| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each                                                                      |
+| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                                               |
+| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                                        |
 
 ### Filename conventions
 
 Special patterns in the test filenames are used to select tests to be executed
 or skipped depending on parameters:
 
-| Substring       | Description
-|:----------------|:----------------
-| `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).
-| `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)
-| `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to *true*.
-| `-spec`         | These tests are run using the mocha framework instead of jsunity.
-| `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
-| `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.
+| Substring       | Description                                                                                                                                                                                                                                                                                                                                                                                   |
+| :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).                                                                                                                                                                                                                                                                                                        |
+| `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)                                                                                                                                                                                                                                                                                                          |
+| `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to _true_.                                                                                                                               |
+| `-spec`         | These tests are run using the mocha framework instead of jsunity.                                                                                                                                                                                                                                                                                                                             |
+| `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.                                                                                                                                                                                                                                                                |
+| `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date. |
 
 ### JavaScript Framework
 
@@ -775,16 +804,16 @@ Run all tests:
 
 `scripts/unittest` is only a wrapper for the most part, the backend
 functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
-`process-utils.js`, `test-utils.js`).  The actual testsuites are located in the
+`process-utils.js`, `test-utils.js`). The actual testsuites are located in the
 `testsuites` subfolder.
 
 #### Passing Options
 
-The first parameter chooses the facility to execute.  Available choices include:
+The first parameter chooses the facility to execute. Available choices include:
 
- - **all**:                This target is utilized by most of the Jenkins builds invoking unit tests (calls multiple)
- - **single_client**:      (see [Running a single unittest suite](#running-a-single-unittest-suite))
- - **single_server**:      (see [Running a single unittest suite](#running-a-single-unittest-suite))
+- **all**: This target is utilized by most of the Jenkins builds invoking unit tests (calls multiple)
+- **single_client**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
+- **single_server**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
 
 Different facilities may take different options. The above mentioned usage
 output contains the full detail.
@@ -792,7 +821,7 @@ output contains the full detail.
 Instead of starting its own instance, `unittest` can also make use of a
 previously started arangod instance. You can launch the instance as you want
 including via a debugger or `rr` and prepare it for what you want to test with
-it.  You then launch the test on it like this (assuming the default endpoint):
+it. You then launch the test on it like this (assuming the default endpoint):
 
     ./scripts/unittest http_server --server tcp://127.0.0.1:8529/
 
@@ -921,37 +950,41 @@ You can only run tests which are intended to be ran via arangosh.
 ### Mocha Tests
 
 All tests with `-spec` in their names are using the
-[mochajs.org](https://mochajs.org) framework.  To run those tests, e.g. in the
+[mochajs.org](https://mochajs.org) framework. To run those tests, e.g. in the
 arangosh, use this:
 
     require("@arangodb/mocha-runner").runTest('tests/js/client/endpoint-spec.js', true)
 
 ### Release tests
+
 [RTA](https://github.com/arangodb/release-test-automation) has some tests to verify production integration.
 To aid their development, they can also be used from the ArangoDB source tree.
 
 #### MakeData / CheckData suite
+
 The [makedata framework](https://github.com/arangodb/release-test-automation#makedata--checkdata-framework)
 is implemented in arangosh javascript.
 It uses the respective interface to execute DDL and DML operations. 
-It falicitates a per database approach, and can be run multiple times in loops. 
+It facilitates a per database approach, and can be run multiple times in loops. 
 It has hooks, that are intended to create DDL/DML objects in a way their existence
-can be revalidated later on by other script hooks. The check hooks must respect a 
+can be revalidated later on by other script hooks. The check hooks must respect a
 flag whether they can create resources or whether they're talking to a read-only source.
 Thus, the check-hooks may create data, but must remove it on success.
-The checks should be considered not as time intense as the creation of the data. 
+The checks should be considered not as time intense as the creation of the data.
 
 It is used by RTA to:
+
 - revalidate data can be created
 - data survives hot backup / restore
 - data makes it across the replication
 - data is accessible with clusters with one failing DB-Server
 - data makes it across DC2DC replication
 
-With this integration additional DDL/DML checks can be more easily be developed without the 
+With this integration additional DDL/DML checks can be more easily be developed without the
 rather time and resource consuming and complex RTA framework.
 
 The `rta_makedata` testsuite can be invoked with:
+
 - `--cluster false` - to be ran on a single server setup.
 - `--activefailover true` to be ran on an active failover setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resillience with 2 remaining dbservers.
@@ -960,20 +993,21 @@ Invoke it like this:
 
     ./scripts/unittest rta_makedata --cluster true --rtasource ../release-test-automation/
 
-(with `--rtasource ../release-test-automation` being the default value, 
-that can be overriden with another directory with a git clone of RTA) 
+(with `--rtasource ../release-test-automation` being the default value,
+that can be overriden with another directory with a git clone of RTA)
 
 ### Driver tests
 
 #### Go driver
 
 Pre-requisites:
- - have a go-driver checkout next to the ArangoDB source tree
- - have the go binary in the path
+
+- have a go-driver checkout next to the ArangoDB source tree
+- have the go binary in the path
 
 Once this is completed, you may run it like this:
 
-    ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true 
+    ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
 As an aditional parameter we pass `-timeout 100m` to the driver test.
@@ -984,9 +1018,10 @@ the tests expect to have at least 3 DB-Servers.
 #### Java driver
 
 Pre-requisites:
- - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
- - have a maven binary in the path (mvn) configured to use JDK 11
- 
+
+- have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
+- have a maven binary in the path (mvn) configured to use JDK 11
+
 You can check if maven is correctly configured to use JDK 11 executing: `mvn -version`.
 In case you have multiple JVMs in your machine and JDK 11 is not the default one, you can set
 the environment variable `JAVA_HOME` to the root path of JDK 11.
@@ -1006,9 +1041,10 @@ in the java source, or the
 #### ArangoJS
 
 Pre-requisites:
- - have a arangojs checkout next to the ArangoDB source tree
- - have a nodejs and yarn binaries installed and in the path
- - ran `yarn` once in the arangojs source tree
+
+- have a arangojs checkout next to the ArangoDB source tree
+- have a nodejs and yarn binaries installed and in the path
+- ran `yarn` once in the arangojs source tree
 
 Once this is completed, you may run it like this:
 
@@ -1019,8 +1055,9 @@ Once this is completed, you may run it like this:
 #### arangodb-php
 
 Pre-requisites:
- - have a arangodb-php checkout next to the ArangoDB source tree
- - have `php` and `phpunit` binaries installed and in the path
+
+- have a arangodb-php checkout next to the ArangoDB source tree
+- have `php` and `phpunit` binaries installed and in the path
 
 At the time being phpunit version 6.5 is supported. Install it like this:
 
@@ -1038,6 +1075,7 @@ Once this is completed, you may run it like this:
 (without connection keepalive)
 
 #### generic driver interface
+
 The generic driver interface expects to find i.e. script inside the
 driver source, that does all the plumbing to run the respective tests against
 the provided arangodb instance.
@@ -1045,26 +1083,26 @@ The invoked script is expected to exit non-zero on failure.
 All content of `stdout` will be forwarded to the testresults.
 All required data is passed as parameters:
 
- - driversource - the source directory with the workingcopy of the driver
- - driverScript - the script to be executed. defaults to `run_tests.sh`
- - driverScriptInterpreter  - since currently there is no shebang support,
-   this needs to be provided or defaults to `/bin/bash`.
- - driverOptions options to be passed on to the driver works in the form of
-   `--driverOptions.argname value` evaluating to `--argname` `value`
- - `--test testcase` evaluates to `--testsuite testcase`
- - `--testCase testcaseExp` evalates to `--filter testcaseExp`
+- driversource - the source directory with the workingcopy of the driver
+- driverScript - the script to be executed. defaults to `run_tests.sh`
+- driverScriptInterpreter - since currently there is no shebang support,
+  this needs to be provided or defaults to `/bin/bash`.
+- driverOptions options to be passed on to the driver works in the form of
+  `--driverOptions.argname value` evaluating to `--argname` `value`
+- `--test testcase` evaluates to `--testsuite testcase`
+- `--testCase testcaseExp` evalates to `--filter testcaseExp`
 
 Statically provided options (with sample values):
- - `--instanceUrl http://127.0.0.1:7327`
- - `--instanceEndpoint tcp://127.0.0.1:7327`
- - `--port 7327`
- - `--host 127.0.0.1`
- - `--auth false`
- - `--username root`
- - `--password ''`
- - `--[no-]enterprise`
- - `--deployment-mode [SINGLE_SERVER|ACTIVE_FAILOVER|CLUSTER]`
 
+- `--instanceUrl http://127.0.0.1:7327`
+- `--instanceEndpoint tcp://127.0.0.1:7327`
+- `--port 7327`
+- `--host 127.0.0.1`
+- `--auth false`
+- `--username root`
+- `--password ''`
+- `--[no-]enterprise`
+- `--deployment-mode [SINGLE_SERVER|ACTIVE_FAILOVER|CLUSTER]`
 
 ### Debugging Tests
 
@@ -1106,7 +1144,7 @@ While velocypack is better for the machine to machine communication, JSON does a
 if you want to observe the communication using `tcpdump`.
 Hence a downgrade of the communication to JSON can be made at start time:
 
-    arangosh --server.force-json true --server.endpoint ... 
+    arangosh --server.force-json true --server.endpoint ...
 
 ### Running tcpdump / windump for the SUT
 
@@ -1116,7 +1154,7 @@ make sure that your current shell has sudo enabled. Try like this:
     sudo /bin/true; ./scripts/unittest http_server \
       --sniff sudo --cleanup false
 
-The pcap file will end up in your tests temporary directory.  You may need to
+The pcap file will end up in your tests temporary directory. You may need to
 press an additional `ctrl+c` to force stop the sudo'ed tcpdump.
 
 On Windows you can use TShark, you need a npcap enabled installation. List your
@@ -1146,51 +1184,52 @@ All test results of testruns are dumped to a json file named
 
 Currently available Analyzers are:
 
-  - unitTestPrettyPrintResults - Prints a pretty summary and writes an ASCII representation into `out/testfailures.txt` (if any errors)
-  - saveToJunitXML - saves jUnit compatible XML files
-  - locateLongRunning - searches the 10 longest running tests from a testsuite; may add comparison to `--otherFile` specified times
-  - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
-  - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
-  - yaml - dumps the json file as a yaml file
-  - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
-    - `duration` - the time spent in the complete testfile
-    - `status` - sucess/fail
-    - `failed` - fail?
-    - `total` - the time spent in the testcase
-    - `totalSetUp` - the time spent in setup summarized
-    - `totalTearDown` - the time spent in teardown summarized
-    - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` summarized over all instances
-    - `processStats.sum_servers.majorPageFaults` - 
-    - `processStats.sum_servers.userTime` - 
-    - `processStats.sum_servers.systemTime` - 
-    - `processStats.sum_servers.numberOfThreads` - 
-    - `processStats.sum_servers.residentSize` - 
-    - `processStats.sum_servers.residentSizePercent` - 
-    - `processStats.sum_servers.virtualSize` - 
-    - `processStats.sum_servers.rchar` - 
-    - `processStats.sum_servers.wchar` - 
-    - `processStats.sum_servers.syscr` - 
-    - `processStats.sum_servers.syscw` - 
-    - `processStats.sum_servers.read_bytes` - 
-    - `processStats.sum_servers.write_bytes` - 
-    - `processStats.sum_servers.cancelled_write_bytes` - 
-    - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` summarized over all instances
-    - `processStats.sum_servers.sockstat_TCP_inuse` - 
-    - `processStats.sum_servers.sockstat_TCP_orphan` - 
-    - `processStats.sum_servers.sockstat_TCP_tw` - 
-    - `processStats.sum_servers.sockstat_TCP_alloc` - 
-    - `processStats.sum_servers.sockstat_TCP_mem` - 
-    - `processStats.sum_servers.sockstat_UDP_inuse` - 
-    - `processStats.sum_servers.sockstat_UDP_mem` - 
-    - `processStats.sum_servers.sockstat_UDPLITE_inuse` - 
-    - `processStats.sum_servers.sockstat_RAW_inuse` - 
-    - `processStats.sum_servers.sockstat_FRAG_inuse` - 
-    - `processStats.sum_servers.sockstat_FRAG_memory` -
-    
-    Process stats are kept by process.
-    So if your DB-Server had the PID `1721882`, you can dial its values by specifying
-    `processStats.1721882_dbserver.sockstat_TCP_tw`
-    into the generated table.
+- unitTestPrettyPrintResults - Prints a pretty summary and writes an ASCII representation into `out/testfailures.txt` (if any errors)
+- saveToJunitXML - saves jUnit compatible XML files
+- locateLongRunning - searches the 10 longest running tests from a testsuite; may add comparison to `--otherFile` specified times
+- locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
+- locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
+- yaml - dumps the json file as a yaml file
+- unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
+
+  - `duration` - the time spent in the complete testfile
+  - `status` - sucess/fail
+  - `failed` - fail?
+  - `total` - the time spent in the testcase
+  - `totalSetUp` - the time spent in setup summarized
+  - `totalTearDown` - the time spent in teardown summarized
+  - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` summarized over all instances
+  - `processStats.sum_servers.majorPageFaults` -
+  - `processStats.sum_servers.userTime` -
+  - `processStats.sum_servers.systemTime` -
+  - `processStats.sum_servers.numberOfThreads` -
+  - `processStats.sum_servers.residentSize` -
+  - `processStats.sum_servers.residentSizePercent` -
+  - `processStats.sum_servers.virtualSize` -
+  - `processStats.sum_servers.rchar` -
+  - `processStats.sum_servers.wchar` -
+  - `processStats.sum_servers.syscr` -
+  - `processStats.sum_servers.syscw` -
+  - `processStats.sum_servers.read_bytes` -
+  - `processStats.sum_servers.write_bytes` -
+  - `processStats.sum_servers.cancelled_write_bytes` -
+  - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` summarized over all instances
+  - `processStats.sum_servers.sockstat_TCP_inuse` -
+  - `processStats.sum_servers.sockstat_TCP_orphan` -
+  - `processStats.sum_servers.sockstat_TCP_tw` -
+  - `processStats.sum_servers.sockstat_TCP_alloc` -
+  - `processStats.sum_servers.sockstat_TCP_mem` -
+  - `processStats.sum_servers.sockstat_UDP_inuse` -
+  - `processStats.sum_servers.sockstat_UDP_mem` -
+  - `processStats.sum_servers.sockstat_UDPLITE_inuse` -
+  - `processStats.sum_servers.sockstat_RAW_inuse` -
+  - `processStats.sum_servers.sockstat_FRAG_inuse` -
+  - `processStats.sum_servers.sockstat_FRAG_memory` -
+
+  Process stats are kept by process.
+  So if your DB-Server had the PID `1721882`, you can dial its values by specifying
+  `processStats.1721882_dbserver.sockstat_TCP_tw`
+  into the generated table.
 
 i.e.
 
@@ -1219,13 +1258,12 @@ getting the PIDs of the server in the testrun using jq:
     "1721884_dbserver": {
     "1721885_coordinator": {
 
-
 # Additional Resources
 
-* [ArangoDB website](https://www.arangodb.com/)
+- [ArangoDB website](https://www.arangodb.com/)
 
-* [ArangoDB on Twitter](https://twitter.com/arangodb)
+- [ArangoDB on Twitter](https://twitter.com/arangodb)
 
-* [General GitHub documentation](https://help.github.com/)
+- [General GitHub documentation](https://help.github.com/)
 
-* [GitHub pull request documentation](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork/)
+- [GitHub pull request documentation](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork/)

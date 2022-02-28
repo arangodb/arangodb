@@ -29,7 +29,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for storing a request result
@@ -201,12 +200,6 @@ class SimpleHttpResult final {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns whether the result is JSON-encoded
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isJson() const { return _isJson; }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns whether the request has been sent in its entirety, this
   /// is only meaningful if isComplete() returns false.
   //////////////////////////////////////////////////////////////////////////////
@@ -232,7 +225,6 @@ class SimpleHttpResult final {
   size_t _contentLength;
   int _returnCode;
   bool _foundHeader;
-  bool _isJson;
   bool _hasContentLength;
   bool _chunked;
   bool _deflated;

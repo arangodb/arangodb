@@ -54,7 +54,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -270,7 +269,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         isolate, obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
 
-  VPackBuilder filtered = methods::Collections::filterInput(propSlice);
+  VPackBuilder filtered = methods::Collections::filterInput(propSlice, false);
   propSlice = filtered.slice();
 
   bool allowSystem = VelocyPackHelper::getBooleanValue(

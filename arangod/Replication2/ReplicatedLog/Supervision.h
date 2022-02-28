@@ -28,11 +28,10 @@
 
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
-#include "velocypack/velocypack-aliases.h"
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 using namespace arangodb::replication2::agency;
@@ -52,7 +51,7 @@ auto checkLeaderPresent(LogPlanSpecification const& plan,
                         ParticipantsHealth const& health)
     -> std::unique_ptr<Action>;
 
-auto checkLeaderHealth(LogPlanSpecification const& plan,
+auto checkLeaderFailed(LogPlanSpecification const& plan,
                        ParticipantsHealth const& health)
     -> std::unique_ptr<Action>;
 

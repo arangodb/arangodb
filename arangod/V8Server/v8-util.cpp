@@ -23,7 +23,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/conversions.h"

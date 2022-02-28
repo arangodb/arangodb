@@ -27,7 +27,6 @@
 #include <memory>
 
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "SupervisedScheduler.h"
 
@@ -493,7 +492,7 @@ void SupervisedScheduler::runWorker() {
   std::shared_ptr<WorkerState> state;
 
   {
-    std::lock_guard<std::mutex> guard1(_mutex);
+    std::lock_guard<std::mutex> guard(_mutex);
     id =
         _numWorkers++;  // increase the number of workers here, to obtain the id
     // copy shared_ptr with worker state
