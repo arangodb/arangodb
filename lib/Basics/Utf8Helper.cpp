@@ -233,13 +233,9 @@ std::string Utf8Helper::getCollatorLanguage() {
   return "";
 }
 
-icu::Collator* Utf8Helper::getCollator() const {
-  return _coll;
-}
+icu::Collator* Utf8Helper::getCollator() const { return _coll; }
 
-void Utf8Helper::setCollator(icu::Collator* coll) {
-  _coll = coll;
-}
+void Utf8Helper::setCollator(icu::Collator* coll) { _coll = coll; }
 
 std::string Utf8Helper::getCollatorCountry() {
   if (_coll) {

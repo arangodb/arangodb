@@ -42,10 +42,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace {
-void setCollator(std::string const& language, void* icuDataPtr, bool isOldLanguage) {
+void setCollator(std::string const& language, void* icuDataPtr,
+                 bool isOldLanguage) {
   using arangodb::basics::Utf8Helper;
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language,
-                                                         icuDataPtr,
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr,
                                                          isOldLanguage)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
@@ -101,8 +101,7 @@ void LanguageFeature::collectOptions(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
-      "--icu-language", "ICU language",
-      new StringParameter(&_icuLanguage),
+      "--icu-language", "ICU language", new StringParameter(&_icuLanguage),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options
@@ -198,14 +197,14 @@ void LanguageFeature::prepare() {
 
   if (isDefaultSet && isIcuSet) {
     LOG_TOPIC("d8a99", FATAL, arangodb::Logger::CONFIG)
-        << "Only one parameter from --default-language and --icu-language should be specified";
+        << "Only one parameter from --default-language and --icu-language "
+           "should be specified";
     FATAL_ERROR_EXIT();
   }
 
-  ::setCollator(isIcuSet ? _icuLanguage : _defaultLanguage ,
-                _icuDataPtr,
-                !isIcuSet); // if _defaultLanguage is empty,
-                            // we will work with _icuLanguage
+  ::setCollator(isIcuSet ? _icuLanguage : _defaultLanguage, _icuDataPtr,
+                !isIcuSet);  // if _defaultLanguage is empty,
+                             // we will work with _icuLanguage
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }

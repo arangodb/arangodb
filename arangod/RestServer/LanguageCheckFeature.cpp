@@ -62,7 +62,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
     VPackSlice icuSlice = content.get("icu-language");
 
     if (!(defaultSlice.isString() ^ icuSlice.isString())) {
-        return TRI_ERROR_INTERNAL;
+      return TRI_ERROR_INTERNAL;
     }
 
     if (defaultSlice.isString()) {
@@ -92,8 +92,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
 
 /// @brief writes the default language to file
 ErrorCode writeLanguage(arangodb::ArangodServer& server,
-                        std::string const& lang,
-                        bool isDefaultLang) {
+                        std::string const& lang, bool isDefaultLang) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
@@ -138,18 +137,18 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::tuple<std::string, bool> getOrSetPreviousLanguage(arangodb::ArangodServer& server,
-                                                       std::string const& collatorLang,
-                                                       bool isDefaultLangSet,
-                                                       bool isIcuLangSet) {
+std::tuple<std::string, bool> getOrSetPreviousLanguage(
+    arangodb::ArangodServer& server, std::string const& collatorLang,
+    bool isDefaultLangSet, bool isIcuLangSet) {
   std::string readDefaultLanguage = {};
   std::string readIcuLanguage = {};
-  arangodb::Result res = ::readLanguage(server, readDefaultLanguage, readIcuLanguage);
+  arangodb::Result res =
+      ::readLanguage(server, readDefaultLanguage, readIcuLanguage);
 
   auto error = [] {
-      LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
-          << "Current language option is differ from option at initial launch";
-      FATAL_ERROR_EXIT();
+    LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
+        << "Current language option is differ from option at initial launch";
+    FATAL_ERROR_EXIT();
   };
 
   if (res.ok()) {
@@ -161,7 +160,7 @@ std::tuple<std::string, bool> getOrSetPreviousLanguage(arangodb::ArangodServer& 
       } else {
         error();
       }
-    } else { // !readIcuLanguage.empty()
+    } else {  // !readIcuLanguage.empty()
       if (!isDefaultLangSet) {
         return std::make_tuple(readIcuLanguage, false);
       } else {
@@ -174,7 +173,7 @@ std::tuple<std::string, bool> getOrSetPreviousLanguage(arangodb::ArangodServer& 
 
   // if no parameters are specified,
   // treat language as default-language
-  if(!isDefaultLangSet && !isIcuLangSet) {
+  if (!isDefaultLangSet && !isIcuLangSet) {
     isDefaultLangSet = true;
   }
 
@@ -202,9 +201,8 @@ void LanguageCheckFeature::start() {
   std::string previousLang = {};
 
   bool isDefaultLangSet = {};
-  std::tie(previousLang, isDefaultLangSet)= ::getOrSetPreviousLanguage(server(), collatorLang,
-                                                                       !defaultLang.empty(),
-                                                                       !icuLang.empty());
+  std::tie(previousLang, isDefaultLangSet) = ::getOrSetPreviousLanguage(
+      server(), collatorLang, !defaultLang.empty(), !icuLang.empty());
 
   if (defaultLang.empty() && isDefaultLangSet && !previousLang.empty()) {
     // override the empty current setting for default with the previous one
@@ -221,7 +219,8 @@ void LanguageCheckFeature::start() {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
           << "Specified language '" << collatorLang
-          << "' does not match previously used language '" << previousLang << "'";
+          << "' does not match previously used language '" << previousLang
+          << "'";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)

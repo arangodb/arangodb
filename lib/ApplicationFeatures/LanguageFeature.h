@@ -70,8 +70,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
 
  private:
   icu::Locale _locale;
-  std::string _defaultLanguage {};
-  std::string _icuLanguage {};
+  std::string _defaultLanguage{};
+  std::string _icuLanguage{};
   char const* _binaryPath;
   void* _icuDataPtr;
   bool _forceLanguageCheck;
