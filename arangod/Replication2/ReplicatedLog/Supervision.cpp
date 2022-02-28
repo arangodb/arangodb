@@ -46,7 +46,7 @@ auto checkLogAdded(const Log& log, ParticipantsHealth const& health)
       auto newTarget = log.target;
 
       for (auto const& [pid, health] : health._health) {
-        if (health.isHealthy) {
+        if (health.notIsFailed) {
           newTarget.participants.emplace(pid, ParticipantFlags{});
         }
         if (newTarget.participants.size() ==
@@ -76,7 +76,7 @@ auto checkTermPresent(LogPlanSpecification const& plan, LogConfig const& config)
   return std::make_unique<EmptyAction>();
 }
 
-auto checkLeaderHealth(LogPlanSpecification const& plan,
+auto checkLeaderFailed(LogPlanSpecification const& plan,
                        ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   // TODO: if we assert this here, we assume we're always called
@@ -84,13 +84,13 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
   TRI_ASSERT(plan.currentTerm != std::nullopt);
   TRI_ASSERT(plan.currentTerm->leader != std::nullopt);
 
-  if (health.isHealthy(plan.currentTerm->leader->serverId) &&
+  if (health.notIsFailed(plan.currentTerm->leader->serverId) &&
       health.validRebootId(plan.currentTerm->leader->serverId,
                            plan.currentTerm->leader->rebootId)) {
     // Current leader is all healthy so nothing to do.
     return std::make_unique<EmptyAction>();
   } else {
-    // Leader is not healthy; start a new term
+    // Leader has failed; start a new term
     auto newTerm = *plan.currentTerm;
 
     newTerm.leader.reset();
@@ -226,7 +226,7 @@ auto checkLeaderInTarget(LogTarget const& target,
           plan.id, LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
     }
 
-    if (!health.isHealthy(*target.leader)) {
+    if (!health.notIsFailed(*target.leader)) {
       return std::make_unique<EmptyAction>();
       // TODO: we need to be able to trace why actions were not taken
       //       distinguishing between errors and conditions not being met (?)
@@ -268,7 +268,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
     auto const excluded =
         participantsConfig.participants.contains(participant) and
         participantsConfig.participants.at(participant).excluded;
-    auto const healthy = health.isHealthy(participant);
+    auto const healthy = health.notIsFailed(participant);
     auto reason = computeReason(status, healthy, excluded, term);
     election.detail.emplace(participant, reason);
 
@@ -501,7 +501,7 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // If the leader is unhealthy, we need to create a new term that
   // does not have a leader; in the next round we should be electing
   // a new leader above
-  if (auto action = checkLeaderHealth(*log.plan, health);
+  if (auto action = checkLeaderFailed(*log.plan, health);
       !isEmptyAction(action)) {
     return action;
   }

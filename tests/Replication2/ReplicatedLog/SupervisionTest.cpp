@@ -66,9 +66,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
       {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}}};
 
   auto health = ParticipantsHealth{._health{
-      {"A", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}},
-      {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}},
-      {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
+      {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"B", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"C", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}}}};
 
   auto config = ParticipantsConfig{
       .generation = 0,
@@ -99,9 +99,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
       {"C", {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}}}};
 
   auto health = ParticipantsHealth{._health{
-      {"A", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = false}},
-      {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = false}},
-      {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
+      {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = false}},
+      {"B", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = false}},
+      {"C", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}}}};
 
   auto config = ParticipantsConfig{
       .generation = 0,
@@ -153,11 +153,12 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
               {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
   auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}},
+                  {"B", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}},
+                  {"C", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}}}};
 
   auto r = tryLeadershipElection(plan, current, health);
   EXPECT_NE(r, nullptr);
@@ -206,13 +207,14 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
               {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
   auto const& health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{43},
+                                          .notIsFailed = true}},
+                  {"B", ParticipantHealth{.rebootId = RebootId{14},
+                                          .notIsFailed = true}},
+                  {"C", ParticipantHealth{.rebootId = RebootId{14},
+                                          .notIsFailed = true}}}};
 
-  auto r = checkLeaderHealth(plan, health);
+  auto r = checkLeaderFailed(plan, health);
 
   ASSERT_NE(r, nullptr);
   EXPECT_EQ(r->type(), Action::ActionType::UpdateTermAction);
@@ -250,11 +252,12 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
               {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
   auto const& health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{43},
+                                          .notIsFailed = true}},
+                  {"B", ParticipantHealth{.rebootId = RebootId{14},
+                                          .notIsFailed = true}},
+                  {"C", ParticipantHealth{.rebootId = RebootId{14},
+                                          .notIsFailed = true}}}};
 
   auto r = tryLeadershipElection(plan, current, health);
 
@@ -279,13 +282,14 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
       {});
 
   auto const& health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}},
+                  {"B", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}},
+                  {"C", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}}}};
 
-  auto r = checkLeaderHealth(plan, health);
+  auto r = checkLeaderFailed(plan, health);
 
   EXPECT_NE(r, nullptr);
   EXPECT_EQ(r->type(), Action::ActionType::EmptyAction);
@@ -368,11 +372,12 @@ TEST_F(SupervisionLogTest, test_checkleader_present) {
               {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
   auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
+      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}},
+                  {"B", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}},
+                  {"C", ParticipantHealth{.rebootId = RebootId{1},
+                                          .notIsFailed = true}}}};
 
   auto r = checkLeaderPresent(plan, current, health);
   EXPECT_NE(r, nullptr);
