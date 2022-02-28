@@ -30,6 +30,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <memory>
+#include <mutex>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
@@ -1247,8 +1248,7 @@ class ClusterInfo final {
 
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
-  // TODO(MBkkt) std::mutex or absl::Mutex
-  mutable arangodb::Mutex _failedServersMutex;
+  mutable std::mutex _failedServersMutex;
   containers::FlatHashSet<ServerID> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////
