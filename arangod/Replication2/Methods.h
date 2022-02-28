@@ -99,4 +99,13 @@ struct ReplicatedLogMethods {
       -> std::shared_ptr<ReplicatedLogMethods>;
 };
 
+struct ReplicatedStateMethods {
+  virtual ~ReplicatedStateMethods() = default;
+  virtual auto getLocalStatus(LogId) const
+      -> futures::Future<replicated_state::StateStatus> = 0;
+
+  static auto createInstance(TRI_vocbase_t& vocbase)
+      -> std::shared_ptr<ReplicatedStateMethods>;
+};
+
 }  // namespace arangodb::replication2

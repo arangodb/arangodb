@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 const _ = require("lodash");
 const LH = require("@arangodb/testutils/replicated-logs-helper");
+const request = require('@arangodb/request');
 
 
 const readReplicatedStateAgency = function (database, logId) {
@@ -47,5 +48,13 @@ const updateReplicatedStatePlan = function (database, logId, callback) {
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const getLocalStatus = function (serverId, database, logId) {
+  let url = LH.getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/replicated-state/${logId}/local-status`);
+  LH.checkRequestResult(res);
+  return res.json.result;
+};
+
 exports.readReplicatedStateAgency = readReplicatedStateAgency;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
+exports.getLocalStatus = getLocalStatus;
