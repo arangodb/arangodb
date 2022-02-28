@@ -134,7 +134,10 @@ function startParameterTest(options, testpath, suiteName) {
       }
 
       results[testFile] = tu.runInLocalArangosh(clonedOpts, instanceInfo, testFile, {});
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "", true, instanceInfo.authOpts["server.jwt-secret"]);
+      if (instanceInfo.hasOwnProperty("authOpts") && instanceInfo.authOpts.hasOwnProperty("server.jwt-secret")) {
+        // Reconnect to set the server credentials right
+        arango.reconnect(arango.getEndpoint(), '_system', "root", "", true, instanceInfo.authOpts["server.jwt-secret"]);
+      }
       shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
 
       results['shutdown'] = results['shutdown'] && shutdownStatus;
