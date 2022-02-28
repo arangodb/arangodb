@@ -10,10 +10,10 @@ import { chain, difference, isEmpty, isNull, map } from "lodash";
 import LinkPropertiesInput from "./inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
 import { useLinkState } from "../helpers";
-import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import NewLink from "../Components/NewLink";
+import LinkView from "../Components/LinkView";
 
 const LinkPropertiesForm = ({
   formState,
@@ -113,6 +113,14 @@ const LinkPropertiesForm = ({
             options={options}
           />
         )}
+
+        <LinkView
+          links={links}
+          dispatch={
+            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
+          }
+          disabled={disabled}
+        />
         {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
