@@ -223,9 +223,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   for (auto it = moreDirt.begin(); it != moreDirt.end();) {
     if (dirty.find(*it) == dirty.end()) {
       dirty.insert(*it);
-      it++;
+      ++it;
     } else {
-      it = moreDirt.erase(it);
+      auto erase_it = it++;
+      moreDirt.erase(erase_it);
     }
   }
 
@@ -329,10 +330,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
-    auto failedServers = clusterInfo.getFailedServers();
     tmp = arangodb::maintenance::phaseTwo(
         plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
-        currentShardLocks, localLogs, localStates, failedServers);
+        currentShardLocks, localLogs, localStates);
 
     LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
