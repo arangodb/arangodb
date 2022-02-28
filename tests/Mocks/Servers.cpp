@@ -394,6 +394,7 @@ MockV8Server::~MockV8Server() {
 MockAqlServer::MockAqlServer(bool start) : MockServer() {
   // setup required application features
   SetupAqlPhase(*this);
+
   if (start) {
     MockAqlServer::startFeatures();
   }

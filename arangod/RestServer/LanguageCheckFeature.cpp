@@ -148,7 +148,7 @@ std::tuple<std::string, bool> getOrSetPreviousLanguage(arangodb::ArangodServer& 
 
   auto error = [] {
       LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
-          << "current language option is differ from option at initial launch";
+          << "Current language option is differ from option at initial launch";
       FATAL_ERROR_EXIT();
   };
 
@@ -199,7 +199,7 @@ void LanguageCheckFeature::start() {
   auto icuLang = feature.getIcuLanguage();
 
   auto collatorLang = feature.getCollatorLanguage();
-  std::string previousLang;
+  std::string previousLang = {};
 
   bool isDefaultLangSet = {};
   std::tie(previousLang, isDefaultLangSet)= ::getOrSetPreviousLanguage(server(), collatorLang,
@@ -211,7 +211,7 @@ void LanguageCheckFeature::start() {
     feature.resetDefaultLanguage(previousLang);
     return;
   } else if (icuLang.empty() && !isDefaultLangSet && !previousLang.empty()) {
-    // override the empty current setting for default with the previous one
+    // override the empty current setting for icu-lang with the previous one
     feature.resetIcuLanguage(previousLang);
     return;
   }
@@ -220,12 +220,12 @@ void LanguageCheckFeature::start() {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)
-          << "specified language '" << collatorLang
+          << "Specified language '" << collatorLang
           << "' does not match previously used language '" << previousLang << "'";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC("54a68", WARN, arangodb::Logger::CONFIG)
-          << "specified language '" << collatorLang
+          << "Specified language '" << collatorLang
           << "' does not match previously used language '" << previousLang
           << "'. starting anyway due to --default-language-check=false "
              "setting";

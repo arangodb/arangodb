@@ -209,7 +209,6 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang,
     }
   }
 
-
   if (_coll) {
     delete _coll;
   }
