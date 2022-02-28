@@ -9,9 +9,9 @@ message(STATUS "VelocyPack building bench performance test suite: ${BuildBench}"
 option(BuildTools "Build support programs and tools" ON)
 message(STATUS "VelocyPack building support programs and tools: ${BuildTools}")
 
-# build json-to-vpack.cpp
 if(BuildTools)
-  add_executable("json-to-vpack" json-to-vpack.cpp  )
+  # build json-to-vpack.cpp
+  add_executable("json-to-vpack" json-to-vpack.cpp)
   target_link_libraries("json-to-vpack" velocypack)
   install(TARGETS "json-to-vpack" DESTINATION bin)
 
@@ -24,6 +24,13 @@ if(BuildTools)
   add_executable("vpack-validate" vpack-validate.cpp)
   target_link_libraries("vpack-validate" velocypack)
   install(TARGETS "vpack-validate" DESTINATION bin)
+
+  # build fuzzer.cpp
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+  add_executable("fuzzer" fuzzer.cpp)
+  target_link_libraries("fuzzer" PRIVATE velocypack Threads::Threads)
+  install(TARGETS "fuzzer" DESTINATION bin)
 endif()
 
 # build bench.cpp

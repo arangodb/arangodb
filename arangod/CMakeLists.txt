@@ -45,8 +45,6 @@ endif ()
 ## IResearch
 ################################################################################
 
-find_package(IResearch REQUIRED)
-
 list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/ApplicationServerHelper.h
   IResearch/AqlHelper.h
@@ -543,6 +541,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
 
 set(LIB_ARANGO_INDEXES_SOURCES
   GeoIndex/Index.cpp
+  GeoIndex/Covering.cpp
   GeoIndex/Near.cpp
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp
@@ -606,6 +605,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/LogFollower.cpp
   Replication2/ReplicatedLog/LogLeader.cpp
   Replication2/ReplicatedLog/LogStatus.cpp
+  Replication2/ReplicatedLog/LogUnconfiguredParticipant.cpp
   Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
   Replication2/ReplicatedLog/NetworkMessages.cpp
   Replication2/ReplicatedLog/ReplicatedLog.cpp
@@ -613,10 +613,12 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
   Replication2/ReplicatedLog/Supervision.cpp
   Replication2/ReplicatedLog/SupervisionAction.cpp
+  Replication2/ReplicatedLog/WaitForBag.cpp Replication2/ReplicatedLog/WaitForBag.h
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
   Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
+  Replication2/ReplicatedState/UnconfiguredStateManager.tpp Replication2/ReplicatedState/UnconfiguredStateManager.h
   Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/StateCommon.cpp
@@ -638,6 +640,7 @@ set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Metric.cpp
   Metrics/MetricKey.cpp
   Metrics/MetricsFeature.cpp
+  Metrics/ClusterMetricsFeature.cpp
   RestHandler/RestMetricsHandler.cpp
   )
 
@@ -741,6 +744,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
+  Cluster/FailureOracleFeature.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp

@@ -31,7 +31,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 class RocksDBKeyLeaser;
@@ -61,8 +60,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   char const* typeName() const override { return "primary"; }
 
   bool canBeDropped() const override { return false; }
-
-  bool hasCoveringIterator() const override { return true; }
 
   bool isSorted() const override { return true; }
 
@@ -171,7 +168,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                           bool isId) const;
 
   /// @brief add a single value node to the iterator's keys
-  void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
+  void handleValNode(transaction::Methods* trx, VPackBuilder& keys,
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
  private:

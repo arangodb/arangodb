@@ -50,7 +50,7 @@ struct LeaderStateManager
   using Stream = streams::ProducerStream<EntryType>;
   using Iterator = typename Stream::Iterator;
 
-  auto getStatus() const -> StateStatus final;
+  [[nodiscard]] auto getStatus() const -> StateStatus final;
 
   void run();
 

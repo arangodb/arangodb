@@ -50,3 +50,18 @@ then the following executables will be compiled:
   * `--hex`: try to turn hex-encoded input into binary vpack
 
   On Linux, *vpack-validate* supports the pseudo filename `-` for stdin.
+* 
+* `fuzzer`: this tool can be used generate random VPack or JSON structures and 
+  validate them. 
+  These are the options for running this tool:
+  * `--vpack`: generate VPack structures. If neither this option or `--json` is
+    provided, the default format is VPack.
+  * `--json`: generate JSON structures. If neither this option or `--vpack` is
+    provided, the default format is VPack.
+  * `--evil`: edit the generated valid byte sequences with byte insertions, 
+    removals or overwrites. Can be used to simulate attacks with malicious 
+    inputs.
+  * `--iterations`: number of iterations that will be run. Default is 1.
+  * `--threads`: number of threads for parallelization. Default is 1.
+  * `--seed`: number that will be used as seed for random generation (to make
+    fuzzer runs repeatable if necessary). 

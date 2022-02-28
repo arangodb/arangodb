@@ -36,8 +36,6 @@
 #include "Network/Methods.h"
 #include "Scheduler/SchedulerFeature.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;

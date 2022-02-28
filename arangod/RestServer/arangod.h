@@ -27,8 +27,8 @@
 #include "Basics/TypeList.h"
 
 namespace arangodb {
-
 namespace application_features {
+
 class AgencyFeaturePhase;
 class CommunicationFeaturePhase;
 class AqlFeaturePhase;
@@ -46,8 +46,16 @@ class ApplicationServerT;
 
 }  // namespace application_features
 namespace metrics {
+
 class MetricsFeature;
-}
+class ClusterMetricsFeature;
+
+}  // namespace metrics
+namespace cluster {
+
+class FailureOracleFeature;
+
+}  // namespace cluster
 class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
@@ -126,57 +134,127 @@ class EncryptionFeature;
 class SslServerFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
+
 namespace transaction {
+
 class ManagerFeature;
-}
+
+}  // namespace transaction
 namespace aql {
+
 class AqlFunctionFeature;
 class OptimizerRulesFeature;
+
 }  // namespace aql
 namespace pregel {
+
 class PregelFeature;
-}
+
+}  // namespace pregel
 namespace iresearch {
+
 class IResearchAnalyzerFeature;
 class IResearchFeature;
+
 }  // namespace iresearch
 namespace replication2::replicated_state {
-struct ReplicatedStateAppFeature;
-namespace black_hole {
-struct BlackHoleStateMachineFeature;
-}
 
+struct ReplicatedStateAppFeature;
+
+namespace black_hole {
+
+struct BlackHoleStateMachineFeature;
+
+}  // namespace black_hole
 }  // namespace replication2::replicated_state
 
 using namespace application_features;
 
+// clang-format off
 using ArangodFeatures = TypeList<
     // Adding the Phases
-    AgencyFeaturePhase, CommunicationFeaturePhase, AqlFeaturePhase,
-    BasicFeaturePhaseServer, ClusterFeaturePhase, DatabaseFeaturePhase,
-    FinalFeaturePhase, FoxxFeaturePhase, GreetingsFeaturePhase,
-    ServerFeaturePhase, V8FeaturePhase,
+    AgencyFeaturePhase,
+    CommunicationFeaturePhase,
+    AqlFeaturePhase,
+    BasicFeaturePhaseServer,
+    ClusterFeaturePhase,
+    DatabaseFeaturePhase,
+    FinalFeaturePhase,
+    FoxxFeaturePhase,
+    GreetingsFeaturePhase,
+    ServerFeaturePhase,
+    V8FeaturePhase,
     // Adding the features
-    metrics::MetricsFeature,  // MetricsFeature must go first
-    VersionFeature, ActionFeature, AgencyFeature, AqlFeature,
-    AuthenticationFeature, BootstrapFeature, CacheManagerFeature,
-    CheckVersionFeature, ClusterFeature, ClusterUpgradeFeature, ConfigFeature,
-    ConsoleFeature, CpuUsageFeature, DatabaseFeature, DatabasePathFeature,
-    HttpEndpointProvider, EngineSelectorFeature, EnvironmentFeature,
-    FlushFeature, FortuneFeature, FoxxFeature, FrontendFeature,
-    GeneralServerFeature, GreetingsFeature, InitDatabaseFeature,
-    LanguageCheckFeature, LanguageFeature, TimeZoneFeature, LockfileFeature,
-    LogBufferFeature, LoggerFeature, MaintenanceFeature, MaxMapCountFeature,
-    NetworkFeature, NonceFeature, PrivilegeFeature, QueryRegistryFeature,
-    RandomFeature, ReplicationFeature, ReplicatedLogFeature,
-    ReplicationMetricsFeature, ReplicationTimeoutFeature, SchedulerFeature,
-    ScriptFeature, ServerFeature, ServerIdFeature, ServerSecurityFeature,
-    ShardingFeature, SharedPRNGFeature, ShellColorsFeature, ShutdownFeature,
-    SoftShutdownFeature, SslFeature, StatisticsFeature, StorageEngineFeature,
-    SystemDatabaseFeature, TempFeature, TtlFeature, UpgradeFeature,
-    V8DealerFeature, V8PlatformFeature, V8SecurityFeature,
-    transaction::ManagerFeature, ViewTypesFeature, aql::AqlFunctionFeature,
-    aql::OptimizerRulesFeature, pregel::PregelFeature, RocksDBOptionFeature,
+    metrics::MetricsFeature, // metrics::MetricsFeature must go first
+    metrics::ClusterMetricsFeature,
+    VersionFeature,
+    ActionFeature,
+    AgencyFeature,
+    AqlFeature,
+    AuthenticationFeature,
+    BootstrapFeature,
+    CacheManagerFeature,
+    CheckVersionFeature,
+    ClusterFeature,
+    ClusterUpgradeFeature,
+    ConfigFeature,
+    ConsoleFeature,
+    CpuUsageFeature,
+    DatabaseFeature,
+    DatabasePathFeature,
+    HttpEndpointProvider,
+    EngineSelectorFeature,
+    EnvironmentFeature,
+    FlushFeature,
+    FortuneFeature,
+    FoxxFeature,
+    FrontendFeature,
+    GeneralServerFeature,
+    GreetingsFeature,
+    InitDatabaseFeature,
+    LanguageCheckFeature,
+    LanguageFeature,
+    TimeZoneFeature,
+    LockfileFeature,
+    LogBufferFeature,
+    LoggerFeature,
+    MaintenanceFeature,
+    MaxMapCountFeature,
+    NetworkFeature,
+    NonceFeature,
+    PrivilegeFeature,
+    QueryRegistryFeature,
+    RandomFeature,
+    ReplicationFeature,
+    ReplicatedLogFeature,
+    ReplicationMetricsFeature,
+    ReplicationTimeoutFeature,
+    SchedulerFeature,
+    ScriptFeature,
+    ServerFeature,
+    ServerIdFeature,
+    ServerSecurityFeature,
+    ShardingFeature,
+    SharedPRNGFeature,
+    ShellColorsFeature,
+    ShutdownFeature,
+    SoftShutdownFeature,
+    SslFeature,
+    StatisticsFeature,
+    StorageEngineFeature,
+    SystemDatabaseFeature,
+    TempFeature,
+    TtlFeature,
+    UpgradeFeature,
+    V8DealerFeature,
+    V8PlatformFeature,
+    V8SecurityFeature,
+    transaction::ManagerFeature,
+    ViewTypesFeature,
+    aql::AqlFunctionFeature,
+    aql::OptimizerRulesFeature,
+    pregel::PregelFeature,
+    RocksDBOptionFeature,
     RocksDBRecoveryManager,
 #ifdef _WIN32
     WindowsServiceFeature,
@@ -185,16 +263,26 @@ using ArangodFeatures = TypeList<
     FileDescriptorsFeature,
 #endif
 #ifdef ARANGODB_HAVE_FORK
-    DaemonFeature, SupervisorFeature,
+    DaemonFeature,
+    SupervisorFeature,
 #endif
 #ifdef USE_ENTERPRISE
-    AuditFeature, LdapFeature, LicenseFeature, RCloneFeature, HotBackupFeature,
+    AuditFeature,
+    LdapFeature,
+    LicenseFeature,
+    RCloneFeature,
+    HotBackupFeature,
     EncryptionFeature,
 #endif
-    SslServerFeature, arangodb::iresearch::IResearchAnalyzerFeature,
-    arangodb::iresearch::IResearchFeature, ClusterEngine, RocksDBEngine,
+    SslServerFeature,
+    iresearch::IResearchAnalyzerFeature,
+    iresearch::IResearchFeature,
+    ClusterEngine,
+    RocksDBEngine,
+    cluster::FailureOracleFeature,
     replication2::replicated_state::ReplicatedStateAppFeature,
-    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature>;
+    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature
+>;  // clang-format on
 
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;

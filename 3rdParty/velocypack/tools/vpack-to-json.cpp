@@ -199,17 +199,19 @@ int main(int argc, char* argv[]) {
     s = convertFromHex(s);
   }
   
+  Options options;
+  options.prettyPrint = pretty;
+  options.checkAttributeUniqueness = true;
+  options.validateUtf8Strings = true;
+  options.unsupportedTypeBehavior = 
+    (printUnsupported ? Options::ConvertUnsupportedType : Options::FailOnUnsupportedType);
+  
   if (validate) {
-    Validator validator;
+    Validator validator(&options);
     validator.validate(reinterpret_cast<uint8_t const*>(s.data()), s.size(), false);
   }
 
   Slice const slice(reinterpret_cast<uint8_t const*>(s.data()));
-
-  Options options;
-  options.prettyPrint = pretty;
-  options.unsupportedTypeBehavior = 
-    (printUnsupported ? Options::ConvertUnsupportedType : Options::FailOnUnsupportedType);
 
   Buffer<char> buffer(4096);
   CharBufferSink sink(&buffer);

@@ -39,7 +39,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 #include <iostream>
@@ -532,7 +531,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
   arangodb::ArangodServer as;
-  std::unordered_set<DatabaseID> makeDirty;
+  containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, Node> localNodes;
@@ -844,9 +843,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 std::vector<std::string> PLAN_SECTIONS{ANALYZERS,       COLLECTIONS,
                                        DATABASES,       VIEWS,
                                        REPLICATED_LOGS, REPLICATED_STATES};
-std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> planToChangeset(
-    Node const& plan) {
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> ret;
+containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
+planToChangeset(Node const& plan) {
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> ret;
   for (auto const& db : plan.get(DATABASES)->get().children()) {
     VPackBuilder& dbbuilder =
         *ret.try_emplace(db.first, std::make_shared<VPackBuilder>())
@@ -879,9 +878,9 @@ std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> planToChangeset(
   return ret;
 }
 
-std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> localToChangeset(
-    Node const& local) {
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> ret;
+containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
+localToChangeset(Node const& local) {
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> ret;
   for (auto const& db : local.children()) {
     ret.try_emplace(db.first,
                     std::make_shared<VPackBuilder>(db.second->toBuilder()));
@@ -894,7 +893,7 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
 
   auto pcs = planToChangeset(plan);
 
-  std::unordered_set<std::string> dirty{};
+  containers::FlatHashSet<std::string> dirty{};
   bool callNotify = false;
   for (auto const& node : localNodes) {
     arangodb::maintenance::diffPlanLocal(
@@ -935,7 +934,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
   localNodes.begin()->second.getOrCreate("db3") =
       arangodb::velocypack::Slice::emptyObjectSlice();
-  std::unordered_set<std::string> dirty{};
+  containers::FlatHashSet<std::string> dirty{};
   bool callNotify = false;
 
   arangodb::maintenance::diffPlanLocal(
@@ -965,7 +964,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   std::vector<std::shared_ptr<ActionDescription>> actions;
   localNodes.begin()->second.getOrCreate("db3/col") =
       arangodb::velocypack::Slice::emptyObjectSlice();
-  std::unordered_set<std::string> dirty{"db3"};
+  containers::FlatHashSet<std::string> dirty{"db3"};
   bool callNotify = false;
 
   arangodb::maintenance::diffPlanLocal(
@@ -987,7 +986,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   plan = originalPlan;
   createPlanDatabase(dbname, plan);
   createPlanCollection(dbname, colname, 1, 3, plan);
-  std::unordered_set<std::string> dirty{"db3"};
+  containers::FlatHashSet<std::string> dirty{"db3"};
   bool callNotify = false;
 
   for (auto node : localNodes) {
@@ -1015,7 +1014,7 @@ TEST_F(
     add_one_collection_to_db3_in_plan_with_shards_for_all_db_servers_shard_locked) {
   // This tests that phaseOne does not consider a shard which is locked.
   std::string dbname("db3"), colname("x");
-  std::unordered_set<std::string> dirty{"db3"};
+  containers::FlatHashSet<std::string> dirty{"db3"};
   bool callNotify = false;
 
   plan = originalPlan;
@@ -1056,7 +1055,7 @@ TEST_F(
 TEST_F(MaintenanceTestActionPhaseOne,
        add_two_more_collections_to_db3_in_plan_with_shards_for_all_db_servers) {
   std::string dbname("db3"), colname1("x"), colname2("y");
-  std::unordered_set<std::string> dirty{"db3"};
+  containers::FlatHashSet<std::string> dirty{"db3"};
   bool callNotify = false;
 
   plan = originalPlan;
@@ -1089,7 +1088,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
   auto cid = collectionMap(plan).at("_system/_queues");
   auto shards =
       plan.getOrCreate({"Collections", "_system", cid, "shards"}).children();
-  std::unordered_set<std::string> dirty{"_system"};
+  containers::FlatHashSet<std::string> dirty{"_system"};
   bool callNotify = false;
 
   createPlanIndex("_system", cid, "hash", {"someField"}, false, false, false,
@@ -1132,7 +1131,7 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
   plan.getOrCreate({"Collections", dbname, cid, indexes})
       .handle<POP>(arangodb::velocypack::Slice::emptyObjectSlice());
-  std::unordered_set<std::string> dirty{"_system"};
+  containers::FlatHashSet<std::string> dirty{"_system"};
   bool callNotify = false;
 
   for (auto node : localNodes) {
@@ -1162,12 +1161,12 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
 TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
   plan = originalPlan;
-  std::unordered_set<std::string> dirty{"_system"};
+  containers::FlatHashSet<std::string> dirty{"_system"};
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
     createLocalCollection("_system", "1111111", node.second);
-    std::unordered_set<std::string> dirty{"_system"};
+    containers::FlatHashSet<std::string> dirty{"_system"};
     bool callNotify = false;
 
     arangodb::maintenance::diffPlanLocal(
@@ -1192,7 +1191,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   v.add(VPackValue(true));
   std::string dbname = "_system";
   std::string prop = arangodb::maintenance::WAIT_FOR_SYNC;
-  std::unordered_set<std::string> dirty{dbname};
+  containers::FlatHashSet<std::string> dirty{dbname};
   bool callNotify = false;
 
   for (auto node : localNodes) {
@@ -1232,7 +1231,7 @@ TEST_F(
   plan = originalPlan;
   auto type = LogicalCollection::InternalValidatorType::LocalSmartEdge;
   changeInternalCollectionTypePlan(dbName(), planId(), type, plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1267,7 +1266,7 @@ TEST_F(
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_self) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1292,7 +1291,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_self_local_self) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1323,7 +1322,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_self) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1355,7 +1354,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_other_local_self) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1385,7 +1384,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_other) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1418,7 +1417,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_self_local_other) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1449,7 +1448,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_other_local_other) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1474,7 +1473,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_other_local_other) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1499,7 +1498,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_self_local_resigned) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1533,7 +1532,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_self_local_resigned) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1558,7 +1557,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_other_local_resigned) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1584,7 +1583,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_other_local_resigned) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1609,7 +1608,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne, leader_behaviour_plan_self_local_reboot) {
   plan = originalPlan;
   takeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1642,7 +1641,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_self_local_reboot) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1674,7 +1673,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_other_local_reboot) {
   plan = originalPlan;
   otherTakeLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1707,7 +1706,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        leader_behaviour_plan_resign_other_local_reboot) {
   plan = originalPlan;
   otherTakeResignedLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto [server, local] : localNodes) {
@@ -1739,7 +1738,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
   VPackBuilder v;
   v.add(VPackValue(std::string()));
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto node : localNodes) {
@@ -1775,7 +1774,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
 TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
   plan = originalPlan;
   resignLeadershipPlan(dbName(), planId(), plan);
-  std::unordered_set<std::string> dirty{dbName()};
+  containers::FlatHashSet<std::string> dirty{dbName()};
   bool callNotify = false;
 
   for (auto node : localNodes) {
@@ -1805,7 +1804,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
        empty_db3_in_plan_should_drop_all_local_db3_collections_on_all_servers) {
   plan.getOrCreate(PLAN_COL_PATH + "db3") =
       arangodb::velocypack::Slice::emptyObjectSlice();
-  std::unordered_set<std::string> dirty{"db3"};
+  containers::FlatHashSet<std::string> dirty{"db3"};
   bool callNotify = false;
 
   createPlanDatabase("db3", plan);
@@ -1835,7 +1834,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
   auto cid = collectionMap(plan).at(dbname + "/" + colname);
   auto& shards =
       plan.getOrCreate({"Collections", dbname, cid, "shards"}).children();
-  std::unordered_set<std::string> dirty{dbname};
+  containers::FlatHashSet<std::string> dirty{dbname};
   bool callNotify = false;
 
   for (auto const& node : localNodes) {
@@ -1894,7 +1893,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   std::string const followerName = b.slice()[1].copyString();
   firstShard->second->handle<POP>(
       arangodb::velocypack::Slice::emptyObjectSlice());
-  std::unordered_set<std::string> dirty{dbname};
+  containers::FlatHashSet<std::string> dirty{dbname};
   bool callNotify = false;
 
   for (auto const& node : localNodes) {

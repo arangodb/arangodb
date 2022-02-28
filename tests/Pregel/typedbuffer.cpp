@@ -44,7 +44,7 @@ TEST(PregelTypedBufferTest, test_with_malloc) {
   ASSERT_EQ(mapped.capacity(), 1024);
   ASSERT_EQ(mapped.remainingCapacity(), 0);
 
-  int *ptr = mapped.begin();
+  int* ptr = mapped.begin();
   for (int i = 0; i < 1024; i++) {
     *(ptr + i) = i;
   }
@@ -67,7 +67,7 @@ TEST(PregelTypedBufferTest, test_with_mmap) {
   ASSERT_EQ(mapped.capacity(), 1024);
   ASSERT_EQ(mapped.remainingCapacity(), 0);
 
-  int64_t *ptr = mapped.begin();
+  int64_t* ptr = mapped.begin();
   for (int i = 0; i < 1024; i++) {
     *(ptr + i) = i;
   }
