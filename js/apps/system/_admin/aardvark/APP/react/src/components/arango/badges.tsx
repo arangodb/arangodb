@@ -15,7 +15,9 @@ const BadgeContainer = styled.div<BadgeProps>`
   padding: 0.4rem 0.5rem;
   border-radius: 10px;
   font-size: 0.8rem;
-  width: 40px;
+  margin-left: 0.5rem;
+  width: 50px;
+  display: inline-block;
   &:hover {
     cursor: pointer;
   }

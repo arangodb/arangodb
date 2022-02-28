@@ -1,14 +1,8 @@
 import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { FormState, LinkProperties } from "../constants";
 import React, { Dispatch, useEffect, useState } from "react";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../components/arango/table";
+import { ArangoTable, ArangoTH } from "../../../components/arango/table";
 import { chain, difference, isEmpty, isNull, map } from "lodash";
-import LinkPropertiesInput from "./inputs/LinkPropertiesInput";
-import { IconButton } from "../../../components/arango/buttons";
 import { useLinkState } from "../helpers";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
@@ -63,20 +57,6 @@ const LinkPropertiesForm = ({
     setCollection("");
   };
 
-  const removeLink = (collection: string) => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: `links[${collection}]`,
-        value: null
-      }
-    });
-  };
-
-  const getLinkRemover = (collection: string) => () => {
-    removeLink(collection);
-  };
-
   return disabled && isEmpty(links) ? (
     <span>No links found.</span>
   ) : (
@@ -121,7 +101,7 @@ const LinkPropertiesForm = ({
           }
           disabled={disabled}
         />
-        {map(links, (properties, coll) => {
+        {/* {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
               <ArangoTD seq={disabled ? 1 : 2}>
@@ -149,7 +129,7 @@ const LinkPropertiesForm = ({
               )}
             </tr>
           ) : null;
-        })}
+        })} */}
       </tbody>
     </ArangoTable>
   );
