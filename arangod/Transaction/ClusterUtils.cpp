@@ -118,7 +118,7 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     // only care about failed coordinators
     failed.erase(std::remove_if(failed.begin(), failed.end(),
                                 [](ServerID const& str) {
-                                  return !ClusterHelpers::isDBServerName(str);
+                                  return !ClusterHelpers::isCoordinatorName(str);
                                 }),
                  failed.end());
     if (failed.empty()) {
