@@ -92,10 +92,6 @@ class PathValidator {
   void unpreparePruneContext();
   void unpreparePostFilterContext();
 
-  // TODO [GraphRefactor]: can be deleted? Seems to not be in use.
-  [[maybe_unused]] auto checkSmartValue(Step const& step, bool isDisjoint)
-      -> bool;
-
  private:
   // TODO [GraphRefactor]: const of _store has been removed as it is now
   // necessary to build a PathResult in place. Please double check if we find a
