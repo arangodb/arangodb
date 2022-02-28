@@ -50,30 +50,28 @@ const ModalBody = styled.div`
     json._from = edgeModelToAdd.source;
     json._to = edgeModelToAdd.target;
 
-      //http://localhost:8529/_db/_system/_api/gharial/routeplanner/edge/germanHighway
-      $.ajax({
-        type: 'POST',
-        url: arangoHelper.databaseUrl('/_api/gharial/') + encodeURIComponent(graphName) + '/edge/' + encodeURIComponent(collection),
-        contentType: 'application/json',
-        data: JSON.stringify(json),
-        processData: true,
-        success: function (response) {
-          console.log("data after edge creation: ", response);
-          /*
-          const edgeModel = {
-            _from: response.vertex._id,
-            _to: 
-            label: response.vertex._key,
-          };
-          openNotificationWithIcon(response.edge._id);
-          onEdgeCreation(edgeModel);
-          onRequestClose();
-          */
-        },
-        error: function (response) {
-          console.log("response after addEdge (error): ", response);
-        }
-      });
+    $.ajax({
+      type: 'POST',
+      url: arangoHelper.databaseUrl('/_api/gharial/') + encodeURIComponent(graphName) + '/edge/' + encodeURIComponent(collection),
+      contentType: 'application/json',
+      data: JSON.stringify(json),
+      processData: true,
+      success: function (response) {
+        console.log("data after edge creation: ", response);
+        const edgeModel = {
+          id: response.edge._id,
+          label: response.edge._key,
+          source: edgeModelToAdd.source,
+          target: edgeModelToAdd.target
+        };
+        openNotificationWithIcon(response.edge._id);
+        onEdgeCreation(edgeModel);
+        onRequestClose();
+      },
+      error: function (response) {
+        console.log("response after addEdge (error): ", response);
+      }
+    });
     }
 
     const handleChange = (value) => {
@@ -86,6 +84,8 @@ const ModalBody = styled.div`
         <ModalBody onClick={(e) => e.stopPropagation()}>
           <div>
             {children}<br />
+            <strong>_from:</strong> {edgeModelToAdd.source}<br />
+            <strong>_to:</strong> {edgeModelToAdd.target}
           </div>
           <Input
             ref={keyInputRef}

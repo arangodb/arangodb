@@ -305,18 +305,14 @@ export class GraphView extends React.Component {
       const edgeModel = {
         id: id,
         source: e.edge._cfg.model.source,
-        target: e.edge._cfg.model.target,
-        data: {
-          type: 'name1',
-          amount: '1000,00',
-          date: '2022-01-13'
-        }
+        target: e.edge._cfg.model.target
       };
       
       this.graph.addItem('edge', edgeModel);
       this.props.onAddSingleEdge(edgeModel);
 
       const edges = this.graph.save().edges;
+      /*
       G6.Util.processParallelEdges(edges);
       this.graph.getEdges().forEach((edge, i) => {
         this.graph.updateItem(edge, {
@@ -324,6 +320,7 @@ export class GraphView extends React.Component {
           curvePosition: edges[i].curvePosition,
         });
       });
+      */
     });
   }
 
