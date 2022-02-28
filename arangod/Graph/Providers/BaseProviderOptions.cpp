@@ -149,6 +149,7 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),
+      _produceVertices(produceVertices),
       _expressionContext(nullptr),
       _weightCallback(std::nullopt) {
   TRI_ASSERT(_cache != nullptr);
@@ -164,6 +165,7 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),
+      _produceVertices(produceVertices),
       _expressionContext(expressionContext),
       _filterConditionVariables(filterConditionVariables),
       _weightCallback(std::nullopt) {
