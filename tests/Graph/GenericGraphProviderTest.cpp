@@ -331,8 +331,16 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
                               ClusterProvider<ClusterProviderStep>>) {
       EXPECT_EQ(stats.getHttpRequests(), 2);
     }
-    // We have 1 edge, this shall be counted
-    EXPECT_EQ(stats.getScannedIndex(), 1);
+
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                                SingleServerProviderStep>> ||
+                  std::is_same_v<TypeParam, MockGraphProvider>) {
+      // We have 1 edge, this shall be counted
+      EXPECT_EQ(stats.getScannedIndex(), 1);
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
+      EXPECT_EQ(stats.getScannedIndex(), 2);  // we count edge + start vertex
+    }
   }
   {
     // Make sure stats are reset after we stole them
@@ -399,8 +407,15 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
                               ClusterProvider<ClusterProviderStep>>) {
       EXPECT_EQ(stats.getHttpRequests(), 2);
     }
-    // We have 3 edges, this shall be counted
-    EXPECT_EQ(stats.getScannedIndex(), 3);
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                                SingleServerProviderStep>> ||
+                  std::is_same_v<TypeParam, MockGraphProvider>) {
+      // We have 3 edges, this shall be counted
+      EXPECT_EQ(stats.getScannedIndex(), 3);
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
+      EXPECT_EQ(stats.getScannedIndex(), 4);  // we count edge + start vertex
+    }
   }
 }
 
