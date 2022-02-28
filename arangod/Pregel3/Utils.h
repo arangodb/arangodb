@@ -55,5 +55,11 @@ class Utils {
   static constexpr auto vertexCollectionNames = "vertexCollectionNames";
   static constexpr auto edgeCollectionNames = "edgeCollectionNames";
   static constexpr auto state = "state";
+  static constexpr auto algorithmSpec = "algorithmSpec";
+  static constexpr auto algorithmName = "algorithmName";
+  static constexpr auto defaultCapacity = "defaultCapacity";
+  static constexpr auto capacityProp = "capacityProp";
+  static constexpr auto sourceVertexId = "sourceVertexId";
+  static constexpr auto targetVertexId = "targetVertexId";
 };
 }  // namespace arangodb::pregel3

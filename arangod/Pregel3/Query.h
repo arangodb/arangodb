@@ -33,7 +33,9 @@
 #include "Utils.h"
 #include "GraphSpecification.h"
 #include "Utils/DatabaseGuard.h"
-#include "Graph.h"
+#include "Graph01.h"
+#include "AlgorithmSpecification.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb::pregel3 {
 
@@ -49,9 +51,11 @@ using VertexId = std::string;
 
 using QueryId = std::string;
 struct Query : std::enable_shared_from_this<Query> {
-  Query(TRI_vocbase_t& vocbase, QueryId id, GraphSpecification graphSpec)
+  Query(TRI_vocbase_t& vocbase, QueryId id, GraphSpecification graphSpec,
+        AlgorithmSpecification algSpec)
       : id{std::move(id)},
         _graphSpec{std::move(graphSpec)},
+        _algSpec{std::move(algSpec)},
         _vocbase(vocbase){};
 
   void loadGraph();
@@ -67,8 +71,17 @@ struct Query : std::enable_shared_from_this<Query> {
  private:
   QueryId id;
   GraphSpecification _graphSpec;
+  AlgorithmSpecification _algSpec;
   std::shared_ptr<BaseGraph> _graph{nullptr};
   State _state = State::CREATED;
   TRI_vocbase_t& _vocbase;
+  // needed only to load the graph; will be cleared after use
+  // (must be a member variable because used in callback lambda functions and
+  // we do not have any influence on the parameters of those functions:
+  // addVertex, addSingleEdge)
+  std::unordered_map<std::string_view, size_t> _vertexIdToIdx;
+  containers::FlatHashMap<std::pair<size_t, size_t>, size_t>
+      _vertexVertexToEdge;
+  double _defaultCapacity = 0.0;
 };
 }  // namespace arangodb::pregel3

@@ -34,6 +34,7 @@
 
 #include "Pregel3/Methods.h"
 #include "RestServer/arangod.h"
+#include "Pregel3/AlgorithmSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel3;
@@ -145,11 +146,20 @@ auto RestPregel3Handler::handlePostRequest(
     _generateErrorWrongInput("The graph is not specified.");
     return RestStatus::DONE;
   }
+  // todo make GraphSpecification::fromVelocyPack return ResultT similar to
+  //  AlgorithmSpecification::fromVelocyPack
   auto graphSpec =
       GraphSpecification::fromVelocyPack(body.get(Utils::graphSpec));
 
+  if (!body.hasKey(Utils::algorithmSpec)) {
+    _generateErrorWrongInput("The algorithm is not specified.");
+    return RestStatus::DONE;
+  }
+  auto algSpec =
+      AlgorithmSpecification::fromVelocyPack(body.get(Utils::algorithmSpec));
+
   // create a query
-  _pregel3Feature.createQuery(_vocbase, queryId, graphSpec);
+  _pregel3Feature.createQuery(_vocbase, queryId, graphSpec, algSpec.get());
 
   // send the answer
   VPackBuilder builder;

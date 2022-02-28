@@ -40,7 +40,8 @@ class Pregel3Feature final : public ArangodFeature {
   void prepare() override;
 
   void createQuery(TRI_vocbase_t& vocbase, std::string queryId,
-                   pregel3::GraphSpecification const& graph);
+                   pregel3::GraphSpecification const& graphSpec,
+                   pregel3::AlgorithmSpecification const& algSpec);
 
   /**
    * Generate the id from the next number not already in use.

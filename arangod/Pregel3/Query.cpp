@@ -30,6 +30,38 @@
 
 namespace arangodb::pregel3 {
 
+ResultT<double> getCapacity(VPackSlice slice) {
+  if (slice.hasKey(Utils::capacityProp)) {
+    VPackSlice cap = slice.get(Utils::capacityProp);
+    if (cap.isDouble()) {
+      return slice.get(Utils::capacityProp).getDouble();
+    } else {
+      return ResultT<double>::error(TRI_ERROR_BAD_PARAMETER,
+                                    "Capacity should be a double.");
+    }
+  } else {
+    return ResultT<double>::error(
+        TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,
+        "Edge has no capacity: " + slice.copyString());
+  }
+}
+
+ResultT<double> extractDefaultCapacity(AlgorithmSpecification& algSpec) {
+  if (algSpec.defaultCapacity.has_value()) {
+    try {
+      return std::stod(algSpec.defaultCapacity.value());
+    } catch (std::invalid_argument const& e) {
+      return ResultT<double>::error(
+          TRI_ERROR_BAD_PARAMETER,
+          "Default specification has a wrong format. " + std::string(e.what()));
+    } catch (std::out_of_range const& e) {
+      return ResultT<double>::error(TRI_ERROR_BAD_PARAMETER, "");
+    }
+  } else {
+    return -1.0;
+  }
+}
+
 void Query::loadGraph() {
   // todo clean up
 
@@ -53,11 +85,22 @@ void Query::loadGraph() {
 
     std::string vertexId = transaction::helpers::extractIdString(
         &collectionNameResolver, slice, VPackSlice());
-    size_t const newVertexIdx = _graph->vertexProperties.size();
-    _graph->vertexIdToIdx.emplace(vertexId, newVertexIdx);
-    _graph->idxToVertexId.emplace_back(vertexId);
-    _graph->vertexProperties.emplace_back(BaseGraph::VertexProps(token));
-
+    //    auto graphVerticesEdges =
+    //    _getCastedGraphVerticesEdges(_algSpec.algName);
+    //    std::get<0>(std::get<0>(graphVerticesEdges))->vertices
+    if (_algSpec.algName == "MinCut") {
+      // todo the graph is casted each time a vertex is inserted
+      auto graph = dynamic_cast<MinCutGraph*>(_graph.get());
+      graph->vertices.emplace_back();
+      // trust that each vertex id appears only once
+      _vertexIdToIdx[vertexId] = graph->vertexIds.size();
+      graph->vertexIds.push_back(vertexId);
+    } else {
+      auto graph = dynamic_cast<EmptyPropertiesGraph*>(_graph.get());
+      graph->vertices.emplace_back();
+      _vertexIdToIdx[vertexId] = graph->vertexIds.size();
+      graph->vertexIds.push_back(vertexId);
+    }
     return true;  // this is needed to make cursor->nextDocument(cb, batchSize)
                   // happy which expects a callback function returning a bool
   };
@@ -65,92 +108,41 @@ void Query::loadGraph() {
   // adding an edge if we know that the graph has no multiple edges (but can
   // have self-loops). In this case, we don't check if a neighbor has already
   // been added. todo check this lambda, it may be wrong
-  [[maybe_unused]] auto addEdgeSingleEdge = [&](LocalDocumentId const& token,
-                                                VPackSlice slice) -> bool {
+  [[maybe_unused]] auto addSingleEdge = [&](LocalDocumentId const& token,
+                                            VPackSlice slice) -> bool {
     // LOG_DEVEL << "Adding an edge" << slice.toJson();
-    _graph->edgeProperties.emplace_back(BaseGraph::EdgeProps());
-    // get _to and _from
     std::string to = slice.get("_to").copyString();
     std::string from = slice.get("_from").copyString();
-    size_t const toIdx = _graph->vertexIdToIdx.find(to)->second;
-    size_t const fromIdx = _graph->vertexIdToIdx.find(from)->second;
+    size_t const toIdx = _vertexIdToIdx.find(to)->second;
+    size_t const fromIdx = _vertexIdToIdx.find(from)->second;
 
-    _graph->vertexProperties[fromIdx].neighbors.push_back(toIdx);
-    _graph->vertexProperties[fromIdx].neighborsReverse[toIdx] =
-        _graph->vertexProperties[fromIdx].neighbors.size();
-    if (!_graph->graphProperties.isDirected) {
-      _graph->vertexProperties[toIdx].neighbors.push_back(fromIdx);
-    }
-    return true;
-  };
-
-  // adding an edge in the situation where another edge from the source to the
-  // target may already exist in the graph
-  auto addEdgeMultEdge = [&](LocalDocumentId const& token,
-                             VPackSlice slice) -> bool {
-    // LOG_DEVEL << "Adding an edge" << slice.toJson();
-
-    // emplace a new edge
-    _graph->edgeProperties.emplace_back(
-        BaseGraph::EdgeProps(/*currently empty*/));
-    size_t const edgeIdx = _graph->edgeProperties.size();
-    // get _to and _from
-    std::string to = slice.get("_to").copyString();
-    std::string from = slice.get("_from").copyString();
-    size_t const toIdx = _graph->vertexIdToIdx.find(to)->second;
-    size_t const fromIdx = _graph->vertexIdToIdx.find(from)->second;
-
-    // toIdx may have already been added as a neighbor of fromIdx
-    auto it = _graph->vertexProperties[fromIdx].neighborsReverse.find(toIdx);
-    if (it == _graph->vertexProperties[fromIdx].neighborsReverse.end()) {
-      // fromIdx doesn't have toIdx as a neighbor
-      size_t const posOfToIdx =
-          _graph->vertexProperties[fromIdx].neighbors.size();
-      _graph->vertexProperties[fromIdx].neighbors.push_back(toIdx);
-      // set the reverse
-      _graph->vertexProperties[fromIdx].neighborsReverse.insert(
-          std::make_pair(toIdx, posOfToIdx));
-      // insert the edge index to the edges of fromIdx
-      _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].emplace_back(
-          edgeIdx);
-      // set the reverse. this is the first edge, hence the 0
-      _graph->vertexProperties[fromIdx].egdesReverse[edgeIdx] =
-          BaseVertexProperties::IncidentEdgePosition{posOfToIdx, 0};
-
-      if (!_graph->isDirected()) {
-        // insert the index of the same edge as an edge from toIdx to fromIdx
-        _graph->vertexProperties[toIdx].neighbors.push_back(fromIdx);
-        size_t const posOfFromIdx =
-            _graph->vertexProperties[toIdx].neighbors.size();
-        _graph->vertexProperties[toIdx].neighborsReverse[fromIdx] =
-            posOfFromIdx;
-        _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].emplace_back(
-            edgeIdx);
-        _graph->vertexProperties[toIdx].egdesReverse[edgeIdx] =
-            BaseVertexProperties::IncidentEdgePosition{posOfFromIdx, 0};
+    if (_algSpec.algName == "MinCut") {
+      // todo the graph is casted each time a vertex is inserted
+      auto graph = dynamic_cast<MinCutGraph*>(_graph.get());
+      size_t const edgeIdx = graph->edges.size();
+      // for the reverse edge (if any)
+      _vertexVertexToEdge[std::make_pair(toIdx, fromIdx)] = edgeIdx;
+      // get the capacity
+      double capacity = _defaultCapacity;
+      auto resCapacity = getCapacity(slice);
+      if (resCapacity.fail()) {
+        // todo print a warning
+      } else {
+        capacity = resCapacity.get();
       }
-    } else {  // toIdx is already a neighbor of fromIdx
-      size_t const posOfToIdx = it->second;  // see comment on neighbors
-      // insert (currently, empty) edge properties of the current edge
-      // (fromIdx, toIdx) to the edges of fromIdx
-      _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].emplace_back(
-          edgeIdx);
-      // set the inverse
-      _graph->vertexProperties[fromIdx].egdesReverse[edgeIdx] =
-          BaseVertexProperties::IncidentEdgePosition{
-              posOfToIdx,
-              _graph->vertexProperties[fromIdx].outEdges[posOfToIdx].size() -
-                  1};
-      if (!_graph->graphProperties.isDirected) {
-        size_t const posOfFromIdx =
-            _graph->vertexProperties[toIdx].neighborsReverse[fromIdx];
-        _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].emplace_back(
-            edgeIdx);
-        _graph->vertexProperties[toIdx].egdesReverse[edgeIdx] =
-            BaseVertexProperties::IncidentEdgePosition{
-                posOfFromIdx,
-                _graph->vertexProperties[toIdx].outEdges[posOfFromIdx].size()};
+
+      auto revEdge = _vertexVertexToEdge.find(std::make_pair(toIdx, fromIdx));
+      if (revEdge != _vertexVertexToEdge.end()) {
+        graph->edges.emplace_back(fromIdx, toIdx, capacity, revEdge->second);
+      } else {
+        graph->edges.emplace_back(fromIdx, toIdx, capacity);
       }
+    } else {
+      auto graph = dynamic_cast<EmptyPropertiesGraph*>(_graph.get());
+      size_t const edgeIdx = graph->edges.size();
+      // for the reverse edge (if any)
+      _vertexVertexToEdge[std::make_pair(toIdx, fromIdx)] = edgeIdx;
+      graph->edges.emplace_back(fromIdx, toIdx);
     }
     return true;
   };
@@ -159,7 +151,20 @@ void Query::loadGraph() {
           GraphSpecification::GraphSpecificationByCollections>(
           _graphSpec._graphSpec)) {
     // todo choose one of standard graph types (define some) or CustomGraph
-    _graph = std::make_shared<BaseGraph>();
+    _graph =
+        std::make_shared<Graph<EmptyVertexProperties, EmptyEdgeProperties>>();
+    if (_algSpec.algName == "MinCut") {
+      _graph = std::make_shared<MinCutGraph>();
+      auto resDefCap = extractDefaultCapacity(_algSpec);
+      if (resDefCap.fail()) {
+        // todo print a warning
+      } else {
+        _defaultCapacity = resDefCap.get();
+      }
+    } else {
+      _graph =
+          std::make_shared<Graph<EmptyVertexProperties, EmptyEdgeProperties>>();
+    }
     // todo add graph properties
 
     // add vertices
@@ -171,9 +176,14 @@ void Query::loadGraph() {
           collName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
       uint64_t sizeColl = cursor->collection()->numberDocuments(
           &trx, transaction::CountType::Normal);
-      _graph->vertexProperties.reserve(_graph->vertexProperties.size() +
-                                       sizeColl);
-      _graph->idxToVertexId.reserve(_graph->idxToVertexId.size() + sizeColl);
+
+      if (_algSpec.algName == "MinCut") {
+        auto const graph = dynamic_cast<MinCutGraph*>(_graph.get());
+        graph->vertices.reserve(graph->vertices.size() + sizeColl);
+      } else {
+        auto const graph = dynamic_cast<EmptyPropertiesGraph*>(_graph.get());
+        graph->vertices.reserve(graph->vertices.size() + sizeColl);
+      }
       while (cursor->nextDocument(
           addVertex, Utils::standardBatchSize)) {  // todo let user input it
       }
@@ -188,26 +198,28 @@ void Query::loadGraph() {
           collName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
       uint64_t sizeColl = cursor->collection()->numberDocuments(
           &trx, transaction::CountType::Normal);
-      _graph->vertexProperties.reserve(_graph->vertexProperties.size() +
-                                       sizeColl);
-      while (cursor->nextDocument(addEdgeMultEdge, Utils::standardBatchSize)) {
+      if (_algSpec.algName == "MinCut") {
+        auto const graph = dynamic_cast<MinCutGraph*>(_graph.get());
+        graph->edges.reserve(graph->edges.size() + sizeColl);
+        while (cursor->nextDocument(addSingleEdge, Utils::standardBatchSize)) {
+        }
       }
+      // test
+      //    for (auto const& [v, idx] : _graph->vertexIdToIdx) {
+      //      LOG_DEVEL << "Neighbours of " << v << " ";
+      //      std::string neighbs;
+      //      for (auto const& w : _graph->vertexProperties.at(idx).neighbors) {
+      //        neighbs += " " + _graph->idxToVertexId.at(w);
+      //      }
+      //      LOG_DEVEL << neighbs;
+      //    }
+      LOG_DEVEL << "finished in "
+                << std::chrono::duration_cast<std::chrono::seconds>(
+                       std::chrono::steady_clock::now() - start)
+                       .count()
+                << " sec";
     }
-    // test
-    //    for (auto const& [v, idx] : _graph->vertexIdToIdx) {
-    //      LOG_DEVEL << "Neighbours of " << v << " ";
-    //      std::string neighbs;
-    //      for (auto const& w : _graph->vertexProperties.at(idx).neighbors) {
-    //        neighbs += " " + _graph->idxToVertexId.at(w);
-    //      }
-    //      LOG_DEVEL << neighbs;
-    //    }
-    LOG_DEVEL << "finished in "
-              << std::chrono::duration_cast<std::chrono::seconds>(
-                     std::chrono::steady_clock::now() - start)
-                     .count()
-              << " sec";
   }
 }
 
-};  // namespace arangodb::pregel3
+}  // namespace arangodb::pregel3
