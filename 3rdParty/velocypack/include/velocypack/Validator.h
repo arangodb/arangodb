@@ -27,6 +27,8 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Options.h"
 
+#include <cstdint>
+
 namespace arangodb::velocypack {
 class Slice;
 
@@ -37,7 +39,6 @@ class Validator {
   explicit Validator(Options const* options = &Options::Defaults);
   ~Validator() = default;
 
- public:
   // validates a VelocyPack Slice value starting at ptr, with length bytes length
   // throws if the data is invalid
   bool validate(char const* ptr, std::size_t length, bool isSubPart = false) {
@@ -47,8 +48,11 @@ class Validator {
   // validates a VelocyPack Slice value starting at ptr, with length bytes length
   // throws if the data is invalid
   bool validate(uint8_t const* ptr, std::size_t length, bool isSubPart = false);
-
+  
  private:
+  void validatePart(uint8_t const* ptr, std::size_t length, bool isSubPart);
+
+  void validateTagged(uint8_t const* ptr, std::size_t length);
   void validateArray(uint8_t const* ptr, std::size_t length);
   void validateCompactArray(uint8_t const* ptr, std::size_t length);
   void validateUnindexedArray(uint8_t const* ptr, std::size_t length);
@@ -64,7 +68,7 @@ class Validator {
   Options const* options;
 
  private:
-  int _level;
+  uint32_t _level;
 };
 
 }  // namespace arangodb::velocypack

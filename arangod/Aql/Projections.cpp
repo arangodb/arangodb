@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Projections.h"
+#include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -39,42 +40,14 @@ namespace {
 /// @brief velocypack attribute name for serializing/unserializing projections
 constexpr std::string_view projectionsKey("projections");
 
-/// @brief extract the (single) index to be used for an index scan. this will
-/// return the index if only a single index is used, or if the same index is
-/// used multiple times. if different indexes or no indexes are used, returns
-/// a nullptr.
-arangodb::transaction::Methods::IndexHandle const getIndex(
-    std::vector<arangodb::transaction::Methods::IndexHandle> const& indexes) {
-  if (indexes.empty()) {
-    return nullptr;
-  }
-
-  // cannot apply the optimization if we use more than one different index
-  auto const& idx = indexes[0];
-  for (size_t i = 1; i < indexes.size(); ++i) {
-    if (indexes[i] != idx) {
-      // different indexes used => optimization not possible
-      return nullptr;
-    }
-  }
-
-  if (!idx->hasCoveringIterator()) {
-    return nullptr;
-  }
-
-  // return the index to be used
-  return idx;
-}
-
 }  // namespace
 
 namespace arangodb {
 namespace aql {
 
-Projections::Projections() : _supportsCoveringIndex(false) {}
+Projections::Projections() {}
 
-Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths)
-    : _supportsCoveringIndex(false) {
+Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths) {
   _projections.reserve(paths.size());
   for (auto& path : paths) {
     if (path.empty()) {
@@ -87,7 +60,8 @@ Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths)
     // comparisons at runtime later
     arangodb::aql::AttributeNamePath::Type type = path.type();
     // take over the projection
-    _projections.emplace_back(Projection{std::move(path), 0, 0, type});
+    _projections.emplace_back(
+        Projection{std::move(path), kNoCoveringIndexPosition, 0, type});
   }
 
   TRI_ASSERT(_projections.size() <= paths.size());
@@ -96,8 +70,7 @@ Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths)
 }
 
 Projections::Projections(
-    std::unordered_set<arangodb::aql::AttributeNamePath> const& paths)
-    : _supportsCoveringIndex(false) {
+    std::unordered_set<arangodb::aql::AttributeNamePath> const& paths) {
   _projections.reserve(paths.size());
   for (auto& path : paths) {
     if (path.empty()) {
@@ -110,7 +83,8 @@ Projections::Projections(
     // comparisons at runtime later
     arangodb::aql::AttributeNamePath::Type type = path.type();
     // take over the projection
-    _projections.emplace_back(Projection{std::move(path), 0, 0, type});
+    _projections.emplace_back(
+        Projection{std::move(path), kNoCoveringIndexPosition, 0, type});
   }
 
   TRI_ASSERT(_projections.size() <= paths.size());
@@ -118,23 +92,38 @@ Projections::Projections(
   init();
 }
 
-/// @brief determine if there is covering support by indexes passed
-void Projections::determineIndexSupport(
-    DataSourceId const& id,
-    std::vector<transaction::Methods::IndexHandle> const& indexes) {
-  _datasourceId = id;
+bool Projections::isCoveringIndexPosition(uint16_t position) noexcept {
+  return position != kNoCoveringIndexPosition;
+}
 
-  auto index = getIndex(indexes);
-  if (index != nullptr) {
-    _supportsCoveringIndex = index->covers(*this);
-  } else {
-    _supportsCoveringIndex = false;
-  }
+/// @brief set the index context for projections using an index
+void Projections::setCoveringContext(
+    DataSourceId const& id, std::shared_ptr<arangodb::Index> const& index) {
+  TRI_ASSERT(_index == nullptr);
+
+  _datasourceId = id;
+  _index = index;
 }
 
 /// @brief checks if we have a single attribute projection on the attribute
 bool Projections::isSingle(std::string const& attribute) const noexcept {
   return _projections.size() == 1 && _projections[0].path[0] == attribute;
+}
+
+// return the covering index position for a specific attribute type.
+// will throw if the index does not cover!
+uint16_t Projections::coveringIndexPosition(
+    aql::AttributeNamePath::Type type) const {
+  TRI_ASSERT(usesCoveringIndex());
+
+  for (auto const& it : _projections) {
+    if (it.type == type) {
+      TRI_ASSERT(isCoveringIndexPosition(it.coveringIndexPosition));
+      return it.coveringIndexPosition;
+    }
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unable to determine covering index position");
 }
 
 void Projections::toVelocyPackFromDocument(
@@ -227,7 +216,7 @@ void Projections::toVelocyPackFromDocument(
 void Projections::toVelocyPackFromIndex(
     arangodb::velocypack::Builder& b, IndexIteratorCoveringData& covering,
     transaction::Methods const* trxPtr) const {
-  TRI_ASSERT(_supportsCoveringIndex);
+  TRI_ASSERT(_index != nullptr);
   TRI_ASSERT(b.isOpenObject());
 
   bool const isArray = covering.isArray();
@@ -241,6 +230,7 @@ void Projections::toVelocyPackFromIndex(
       // populate the result with the projection values. this case will
       // be triggered for indexes that can be set up on any number of
       // attributes (persistent/hash/skiplist)
+      TRI_ASSERT(isCoveringIndexPosition(it.coveringIndexPosition));
       VPackSlice found = covering.at(it.coveringIndexPosition);
       if (found.isNone()) {
         found = VPackSlice::nullSlice();

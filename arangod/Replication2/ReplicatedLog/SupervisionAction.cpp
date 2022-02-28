@@ -25,7 +25,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "Agency/AgencyPaths.h"
 

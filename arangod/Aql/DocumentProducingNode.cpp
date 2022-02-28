@@ -35,7 +35,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 

@@ -49,24 +49,24 @@ auto to_string(Action::ActionType action) -> std::string_view {
          "is-a-bug";
 }
 
-auto operator<<(std::ostream &os, Action::ActionType const &action)
-    -> std::ostream & {
+auto operator<<(std::ostream& os, Action::ActionType const& action)
+    -> std::ostream& {
   return os << to_string(action);
 }
-auto to_string(Action const &action) -> std::string {
+auto to_string(Action const& action) -> std::string {
   VPackBuilder bb;
   action.toVelocyPack(bb);
   return bb.toString();
 }
 
-auto operator<<(std::ostream &os, Action const &action) -> std::ostream & {
+auto operator<<(std::ostream& os, Action const& action) -> std::ostream& {
   return os << to_string(action);
 }
 
 /*
  * EmptyAction
  */
-void EmptyAction::toVelocyPack(VPackBuilder &builder) const {
+void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -78,7 +78,7 @@ auto EmptyAction::execute(std::string dbName,
   return envelope;
 }
 
-void AddStateToPlanAction::toVelocyPack(VPackBuilder &builder) const {
+void AddStateToPlanAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -105,10 +105,10 @@ auto AddStateToPlanAction::execute(std::string dbName,
   return envelope.write()
       .emplace_object(
           logTargetPath,
-          [&](VPackBuilder &builder) { logTarget.toVelocyPack(builder); })
+          [&](VPackBuilder& builder) { logTarget.toVelocyPack(builder); })
       .emplace_object(
           statePlanPath,
-          [&](VPackBuilder &builder) { statePlan.toVelocyPack(builder); })
+          [&](VPackBuilder& builder) { statePlan.toVelocyPack(builder); })
       .inc(paths::target()->version()->str())
       .inc(paths::plan()->version()->str())
       .precs()
@@ -117,7 +117,7 @@ auto AddStateToPlanAction::execute(std::string dbName,
       .end();
 }
 
-void AddParticipantAction::toVelocyPack(VPackBuilder &builder) const {
+void AddParticipantAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -140,12 +140,12 @@ auto AddParticipantAction::execute(std::string dbName,
   return envelope.write()
       .emplace_object(
           logTargetParticipantPath,
-          [&](VPackBuilder &builder) {
+          [&](VPackBuilder& builder) {
             ParticipantFlags{.excluded = true}.toVelocyPack(builder);
           })
       .emplace_object(
           statePlanParticipantPath,
-          [&](VPackBuilder &builder) {
+          [&](VPackBuilder& builder) {
             agency::Plan::Participant{.generation = generation}.toVelocyPack(
                 builder);
           })
@@ -160,7 +160,7 @@ auto AddParticipantAction::execute(std::string dbName,
       .end();
 }
 
-void UnExcludeParticipantAction::toVelocyPack(VPackBuilder &builder) const {
+void UnExcludeParticipantAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -178,7 +178,7 @@ auto UnExcludeParticipantAction::execute(std::string dbName,
   return envelope.write()
       .emplace_object(
           logTargetPath,
-          [&](VPackBuilder &builder) { builder.add(VPackValue(false)); })
+          [&](VPackBuilder& builder) { builder.add(VPackValue(false)); })
       .inc(paths::target()->version()->str())
       .end();
 }
