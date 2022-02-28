@@ -13,6 +13,7 @@ import { useLinkState } from "../helpers";
 import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import NewLink from "../Components/NewLink";
 
 const LinkPropertiesForm = ({
   formState,
@@ -104,30 +105,13 @@ const LinkPropertiesForm = ({
       </thead>
       <tbody>
         {!disabled && linkVal.length < 1 && (
-          <tr style={{ borderBottom: "1px  solid #DDD" }}>
-            <ArangoTD seq={0} colSpan={2}>
-              <AutoCompleteTextInput
-                placeholder={"Collection"}
-                value={collection}
-                minChars={1}
-                spacer={""}
-                onSelect={updateCollection}
-                matchAny={true}
-                options={options}
-                onChange={updateCollection}
-              />
-            </ArangoTD>
-            <ArangoTD seq={1}>
-              <IconButton
-                icon={"plus"}
-                type={"warning"}
-                onClick={addLink}
-                disabled={addDisabled || !options.includes(collection)}
-              >
-                Add
-              </IconButton>
-            </ArangoTD>
-          </tr>
+          <NewLink
+            disabled={addDisabled || !options.includes(collection)}
+            addLink={addLink}
+            collection={collection}
+            updateCollection={updateCollection}
+            options={options}
+          />
         )}
         {map(links, (properties, coll) => {
           return properties ? (
