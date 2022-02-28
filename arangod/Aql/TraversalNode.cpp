@@ -1001,16 +1001,14 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
        * Default Cluster Traverser
        */
       if (opts->refactor()) {
-        LOG_DEVEL << "Using refactored cluster engine.";
-
+        // Note: Using refactored cluster engine.
         return createRefactoredBlock(
             engine, std::move(filterConditionVariables), checkPruneAvailability,
             checkPostFilterAvailability, outputRegisterMapping, inputRegister,
             registerInfos, engines());
 
       } else {
-        LOG_DEVEL << "Using non-refactored cluster engine.";
-
+        // Note: Using non-refactored cluster engine.
         traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
             opts, engines(), engine.getQuery().vocbase().name());
       }
