@@ -574,8 +574,7 @@ auto QuerySnippet::prepareFirstBranch(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     ShardLocking& shardLocking) -> ResultT<MapNodeToColNameToShards> {
   MapNodeToColNameToShards localExpansions;
-  std::unordered_map<ShardID, ServerID> const& shardMapping =
-      shardLocking.getShardMapping();
+  auto const& shardMapping = shardLocking.getShardMapping();
 
   // It is of utmost importance that this is an ordered set of Shards.
   // We can only join identical indexes of shards for each collection

@@ -293,7 +293,20 @@ function recovery (options) {
           duration: -1
         });
       } catch (er) {}
-      runArangodRecovery(params);
+      try {
+        runArangodRecovery(params);
+      } catch (err) {
+        results[test] = {
+          failed: 1,
+          status: false,
+          message: "Crashed! \n" + err + "\nAborting execution of more tests",
+          duration: -1
+        };
+        results.status = false;
+        results.crashed = true;
+        print("skipping more tests!");
+        return results;
+      }
 
       results[test] = tu.readTestResult(
         params.args['temp.path'],

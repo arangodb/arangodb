@@ -28,6 +28,7 @@
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
 
@@ -38,7 +39,7 @@ namespace arangodb {
 
 class AgencyCache final : public ServerThread<ArangodServer> {
  public:
-  typedef std::unordered_map<std::string, consensus::query_t> databases_t;
+  using databases_t = containers::FlatHashMap<std::string, consensus::query_t>;
 
   struct change_set_t {
     consensus::index_t ind;   // Raft index
