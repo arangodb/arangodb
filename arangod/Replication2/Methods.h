@@ -88,11 +88,23 @@ struct ReplicatedLogMethods {
   virtual auto tail(LogId, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
 
-  virtual auto insert(LogId, LogPayload) const -> futures::Future<
-      std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
-  virtual auto insert(LogId, TypedLogIterator<LogPayload>& iter) const
+  virtual auto insert(LogId, LogPayload, bool waitForSync) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
+  virtual auto insert(LogId, TypedLogIterator<LogPayload>& iter,
+                      bool waitForSync) const
       -> futures::Future<
           std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>> = 0;
+
+  // Insert an entry without waiting for the corresponding LogIndex to be
+  // committed.
+  // TODO This could be merged with `insert()` by using a common result type,
+  //      Future<InsertResult> or so, which internally differentiates between
+  //      the variants.
+  // TODO Implement this for a list of payloads as well, as insert() does.
+  virtual auto insertWithoutCommit(LogId, LogPayload, bool waitForSync) const
+      -> futures::Future<LogIndex> = 0;
+
   virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)
