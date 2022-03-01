@@ -26,7 +26,8 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
-
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -84,8 +85,8 @@ class DBServerAgencySync {
    * @param  collections  Builder to fill to
    */
   arangodb::Result getLocalCollections(
-      std::unordered_set<std::string> const& dirty,
-      std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>&
+      containers::FlatHashSet<std::string> const& dirty,
+      containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
       LocalLogsMap& replLogs, LocalStatesMap& replStates);
 

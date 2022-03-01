@@ -33,10 +33,6 @@
 
 #include "Mocks/Servers.h"
 
-//#include "Basics/Exceptions.h"
-//#include "Basics/VelocyPackHelper.h"
-#include <velocypack/velocypack-aliases.h>
-
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"

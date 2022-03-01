@@ -36,7 +36,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
 #include "Basics/operating-system.h"

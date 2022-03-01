@@ -25,7 +25,6 @@
 #include "Scheduler.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <thread>
 

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "Network/Methods.h"
 
 #include <queue>
@@ -68,13 +69,14 @@ class ShardDistributionReporter {
 
   bool testAllShardsInSync(
       std::string const& dbName, LogicalCollection const* col,
-      std::unordered_map<std::string, std::vector<std::string>> const*
+      containers::FlatHashMap<std::string, std::vector<std::string>> const*
           allShards);
 
   void helperDistributionForDatabase(
       std::string const& dbName, arangodb::velocypack::Builder& result,
       std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
-      double endtime, std::unordered_map<std::string, std::string>& aliases,
+      double endtime,
+      containers::FlatHashMap<std::string, std::string>& aliases,
       bool progress);
 
  private:

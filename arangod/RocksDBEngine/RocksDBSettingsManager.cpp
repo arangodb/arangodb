@@ -36,7 +36,6 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
-#include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -54,7 +53,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 arangodb::Result writeSettings(arangodb::StorageEngine& engine,

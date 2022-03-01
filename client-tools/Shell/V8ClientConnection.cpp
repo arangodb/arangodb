@@ -59,7 +59,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
@@ -590,8 +589,10 @@ static void ClientConnection_reconnect(
   }
 
   if (args.Length() < 2) {
+    // Note that there are two additional parameters, which aren't advertised,
+    // namely `warnConnect` and `jwtSecret`.
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "reconnect(<endpoint>, <database>, [, <username>, <password>])");
+        "reconnect(<endpoint>, <database>, [ <username>, <password> ])");
   }
 
   std::string const endpoint = TRI_ObjectToString(isolate, args[0]);
@@ -629,6 +630,11 @@ static void ClientConnection_reconnect(
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
   }
 
+  std::string jwtSecret;
+  if (args.Length() > 5) {
+    jwtSecret = TRI_ObjectToString(isolate, args[5]);
+  }
+
   V8SecurityFeature& v8security =
       v8connection->server().getFeature<V8SecurityFeature>();
   if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
@@ -642,6 +648,7 @@ static void ClientConnection_reconnect(
   client->setUsername(username);
   client->setPassword(password);
   client->setWarnConnect(warnConnect);
+  client->setJwtSecret(jwtSecret);
 
   try {
     v8connection->reconnect();
