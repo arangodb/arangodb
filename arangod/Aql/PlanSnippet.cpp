@@ -833,7 +833,6 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
   // their behaviour.
   switch (node->getType()) {
     case ExecutionNode::FILTER:
-    case ExecutionNode::LIMIT:
     case ExecutionNode::ENUMERATE_LIST: {
       // Nodes that can be trivially joined, and have no effect on Sharding
       _last = node;
@@ -863,6 +862,7 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
       // We can optimize them by joining with what we have below and above
       break;
     }
+    case ExecutionNode::LIMIT:
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
     case ExecutionNode::INSERT:
