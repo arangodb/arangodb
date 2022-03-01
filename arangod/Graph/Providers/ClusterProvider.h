@@ -107,7 +107,6 @@ class ClusterProvider {
 
   aql::TraversalStats stealStats();
 
-  // TODO: This may need to be implemented.
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
 
