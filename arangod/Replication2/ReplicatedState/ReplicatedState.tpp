@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedState/LeaderStateManager.tpp"
 #include "Replication2/ReplicatedState/FollowerStateManager.tpp"
 #include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -65,6 +66,26 @@ auto IReplicatedFollowerState<S>::getStream() const
   }
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+}
+
+template<typename S>
+void IReplicatedFollowerState<S>::setStateManager(
+    std::shared_ptr<FollowerStateManager<S>> manager) noexcept {
+  _manager = manager;
+  _stream = manager->getStream();
+  TRI_ASSERT(_stream != nullptr);
+}
+
+template<typename S>
+auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
+    -> futures::Future<futures::Unit> {
+  if (auto manager = _manager.lock(); manager != nullptr) {
+    return manager->waitForApplied(index);
+  } else {
+    WaitForAppliedFuture future(
+        std::make_exception_ptr(replicated_log::ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE)));
+  }
 }
 
 template<typename S>
