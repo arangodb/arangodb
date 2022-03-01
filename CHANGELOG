@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
 * Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
   always bundling your own copy of third-party modules, even ones listed as
   public.
