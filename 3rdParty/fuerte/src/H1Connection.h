@@ -29,15 +29,13 @@
 
 #include <atomic>
 #include <chrono>
+#include <optional>
 
 #include <llhttp.h>
 
 #include "GeneralConnection.h"
 #include "http.h"
 
-#include <optional>
-
-#include <iostream>
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
