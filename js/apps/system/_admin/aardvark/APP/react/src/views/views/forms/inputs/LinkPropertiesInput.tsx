@@ -7,15 +7,11 @@ import React, {
   useMemo,
   useState
 } from "react";
-import { chain, isEmpty, map, without } from "lodash";
+import { chain, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { DispatchArgs } from "../../../../utils/constants";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../../components/arango/table";
+import { ArangoTD } from "../../../../components/arango/table";
 import Textbox from "../../../../components/pure-css/form/Textbox";
 import { IconButton } from "../../../../components/arango/buttons";
 import { useLinkState } from "../../helpers";
@@ -24,8 +20,7 @@ import { getBooleanFieldSetter } from "../../../../utils/helpers";
 import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCompleteMultiSelect";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
-import Badge from "../../../../components/arango/badges";
-import FieldView from "../../Components/FieldView";
+import FieldView from "../../Components/FieldList";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -63,20 +58,6 @@ const LinkPropertiesInput = ({
 
   const updateField = (event: ChangeEvent<HTMLInputElement>) => {
     setField(event.target.value);
-  };
-
-  const removeField = (field: string) => {
-    dispatch({
-      type: "unsetField",
-      field: {
-        path: `fields[${field}]`
-      },
-      basePath
-    });
-  };
-
-  const getFieldRemover = (field: string) => () => {
-    removeField(field);
   };
 
   const addField = () => {
@@ -229,40 +210,21 @@ const LinkPropertiesInput = ({
       {disabled && isEmpty(fields) ? null : (
         <Cell size={"1"}>
           <Fieldset legend={"Fields"}>
-            <ArangoTable style={{ marginLeft: 0 }}>
-              <thead>
-                <tr>
-                  <ArangoTH seq={disabled ? 0 : 1} style={{ width: "8%" }}>
-                    Field
-                  </ArangoTH>
-                  <ArangoTH seq={disabled ? 1 : 2} style={{ width: "72%" }}>
-                    Analyzers
-                  </ArangoTH>
-                  {disabled ? null : (
-                    <ArangoTH seq={0} style={{ width: "20%" }}>
-                      Action
-                    </ArangoTH>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                <FieldView
-                  fields={fields}
-                  disabled={disabled}
-                  dispatch={
-                    (dispatch as unknown) as Dispatch<
-                      DispatchArgs<LinkProperties>
-                    >
-                  }
-                  basePath={basePath}
-                  options={options}
-                  values={analyzers}
-                  onRemove={removeAnalyzer}
-                  onSelect={addAnalyzer}
-                  label={"Analyzers"}
-                />
+            <FieldView
+              fields={fields}
+              disabled={disabled}
+              dispatch={
+                (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
+              }
+              basePath={basePath}
+              options={options}
+              values={analyzers}
+              onRemove={removeAnalyzer}
+              onSelect={addAnalyzer}
+              label={"Analyzers"}
+            />
 
-                {map(fields, (properties, fld) => {
+            {/* {map(fields, (properties, fld) => {
                   return (
                     <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
                       <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
@@ -298,9 +260,7 @@ const LinkPropertiesInput = ({
                       )}
                     </tr>
                   );
-                })}
-              </tbody>
-            </ArangoTable>
+                })} */}
           </Fieldset>
         </Cell>
       )}
