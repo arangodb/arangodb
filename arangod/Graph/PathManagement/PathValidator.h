@@ -66,7 +66,7 @@ class PathValidator {
 
   PathValidator(Provider& provider, PathStore& store,
                 PathValidatorOptions opts);
-  virtual ~PathValidator();
+  ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
@@ -113,12 +113,6 @@ class PathValidator {
       _uniqueEdges;
 
   PathValidatorOptions _options;
-
-// todo clean up all uses of USE_ENTERPRISE
-#ifdef USE_ENTERPRISE
-  std::string_view _smartValue;
-#endif
-
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
