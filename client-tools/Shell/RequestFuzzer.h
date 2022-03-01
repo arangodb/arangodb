@@ -29,7 +29,8 @@
 #include <random>
 #include <string>
 #include <unordered_map>
-#include <Logger/LogMacros.h>
+
+#include <optional>
 
 namespace arangodb {
 namespace fuzzer {
@@ -84,33 +85,29 @@ class RequestFuzzer {
   };
 
  public:
-  RequestFuzzer(uint32_t numIt = limitNumIterations,
-                uint32_t seed = std::random_device()())
-      : _numIterations(numIt),
-        _seed(seed),
-        _randContext{seed},
+  RequestFuzzer(std::optional<uint32_t> numIt, std::optional<uint32_t> seed)
+      : _numIterations(numIt.value_or(limitNumIterations)),
+        _seed(seed.value_or(std::random_device()())),
+        _randContext{_seed},
         _stringLines{} {}
 
-  void randomizeHeader(std::string &header);
+  void randomizeHeader(std::string& header);
 
  private:
-  void randomizeCharOperation(std::string &input, uint32_t numIts = 1);
+  void randomizeCharOperation(std::string& input, uint32_t numIts = 1);
 
   void randomizeLineOperation(uint32_t numIts = 1);
 
   template<typename T>
   T generateRandNumWithinRange(T min, T max);
 
-  void generateRandAsciiString(std::string &input);
+  void generateRandAsciiString(std::string& input);
 
   static constexpr size_t limitNumIterations = 10;
   uint32_t _numIterations;
   uint32_t _seed;
   RandContext _randContext;
   std::vector<std::string> _stringLines;
-  RequestType _reqType;
-  HttpWord _httpWord;
-  HttpVersion _httpVersion;
 
   const std::unordered_map<RequestType, std::string> _requestTypes = {
       {RequestType::GET, "GET"},       {RequestType::PUT, "PUT"},

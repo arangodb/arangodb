@@ -118,6 +118,10 @@ void RequestFuzzer::randomizeHeader(std::string& header) {
   }
   _stringLines.emplace_back(firstLine);
   randomizeLineOperation(_numIterations);
+  for (auto const& line : _stringLines) {
+    header.append(line);
+    header.push_back('\n');
+  }
 }
 
 template<typename T>

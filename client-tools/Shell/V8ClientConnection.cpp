@@ -992,17 +992,15 @@ static void ClientConnection_httpPostRaw(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void httpFuzzRequest(V8ClientConnection* v8connection,
-                            v8::FunctionCallbackInfo<v8::Value> const& args,
+                            v8::Isolate* isolate,
                             fuzzer::RequestFuzzer* fuzzer) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  TRI_V8_TRY_CATCH_END
   std::string header;
   fuzzer->randomizeHeader(header);
-  TRI_V8_RETURN(v8connection->requestFuzz(isolate, header));
+  v8connection->requestFuzz(isolate, header);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1027,50 +1025,38 @@ static void ClientConnection_httpFuzzRequests(
         "instance.");
   }
 
-  std::unique_ptr<fuzzer::RequestFuzzer> fuzzer;
-
+  // arg0 = number of iterations, arg1 = number of requests, arg2 = seed for
+  // rand
   uint32_t numReqs = 2;
-  fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
-  /* NOT USING FOR INTERMEDIATE COMMIT
-  uint32_t numReqs = 1000;
-  if (args.Length() == 0) {
-    fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
-  } else {
-    uint32_t* arg0 = nullptr;
-    uint32_t* arg1 = nullptr;
-    uint32_t* arg2 = nullptr;
-    if (args.Length() < 3) {
-      if (args[0]->Uint32Value(isolate->GetCurrentContext()).To(arg0)) {
-        fuzzer = std::make_unique<fuzzer::RequestFuzzer>(*arg0);
-      } else {
-        fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
-      }
-      if (args.Length() == 2 &&
-          args[1]->Uint32Value(isolate->GetCurrentContext()).To(arg1)) {
-        numReqs = *arg1;
-      }
-    } else if (args.Length() == 3) {
-      bool success0 =
-          args[0]->Uint32Value(isolate->GetCurrentContext()).To(arg0);
-      bool success2 =
-          args[2]->Uint32Value(isolate->GetCurrentContext()).To(arg2);
-      if (success0 && success2) {
-        fuzzer = std::make_unique<fuzzer::RequestFuzzer>(*arg0, *arg2);
-      } else {
-        fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
-      }
-      if (args[1]->Uint32Value(isolate->GetCurrentContext()).To(arg1)) {
-        numReqs = *arg1;
-      }
-    } else {
-      TRI_V8_THROW_EXCEPTION_USAGE(
-          "fuzzRequests(<numIterations>, <numRequests>, <seed>). "
-          "(numIterations and numRequests must be > 0).");
+  std::optional<uint32_t> numIts;
+  std::optional<uint32_t> seed;
+  if (args.Length() > 0) {
+    if (!args[0]->IsUint32()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("<numRequests> must be an unsigned int.");
     }
+    numReqs = TRI_ObjectToUInt64(isolate, args[0], false);
   }
-  */
+  if (args.Length() > 1) {
+    if (!args[1]->IsUint32()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("<numIts> must be an unsigned int.");
+    }
+    numIts = TRI_ObjectToUInt64(isolate, args[1], false);
+  }
+  if (args.Length() > 2) {
+    if (!args[2]->IsUint32()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
+    }
+    seed = TRI_ObjectToUInt64(isolate, args[2], false);
+  }
+  if (args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "fuzzRequests(<numRequests>, <numIterations>, <seed>). "
+        "(numIterations and numRequests must be > 0).");
+  }
+  auto fuzzer = std::make_unique<fuzzer::RequestFuzzer>(numIts, seed);
+
   for (uint32_t i = 0; i < numReqs; ++i) {
-    httpFuzzRequest(v8connection, args, fuzzer.get());
+    httpFuzzRequest(v8connection, isolate, fuzzer.get());
   }
 
   TRI_V8_TRY_CATCH_END

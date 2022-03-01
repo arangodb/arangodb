@@ -34,6 +34,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
