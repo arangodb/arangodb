@@ -119,7 +119,8 @@ class RefactoredSingleServerEdgeCursor {
   // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
-  // TODO [GraphRefactor]: Potentially can be removed (maybe unused).
+  // TODO [GraphRefactor]: This is currently unused. Ticket: #GORDO-1364
+  // Will be implemented in the future (Performance Optimization).
   bool _requiresFullDocument;
 
  public:
