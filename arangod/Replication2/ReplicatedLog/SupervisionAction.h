@@ -93,6 +93,46 @@ struct EvictLeaderAction {
   std::size_t _generation;
 };
 
+struct LeaderElectionImpossibleAction {
+  static constexpr std::string_view name = "LeaderElectionImpossibleAction";
+  size_t configuredParticipants;
+  size_t writeConcern;
+};
+
+struct LeaderElectionNumElectibleOutOfRangeAction {
+  static constexpr std::string_view name =
+      "LeaderElectionNumElectibleOutOfRangeAction";
+
+  LogCurrentSupervisionElection election;
+};
+
+struct LeaderElectionNotEnoughParticipantsAction {
+  static constexpr std::string_view name =
+      "LeaderElectionNotEnoughParticipants";
+
+  LogCurrentSupervisionElection election;
+};
+
+struct LeaderElectionSuccessAction {
+  static constexpr std::string_view name = "LeaderElectionSuccessAction";
+
+  explicit LeaderElectionSuccessAction(LogCurrentSupervisionElection election,
+                                       LogTerm currentTerm, LogConfig config,
+                                       ParticipantId leader,
+                                       RebootId leaderRebootId)
+      : election{election}, newTerm{LogPlanTermSpecification(
+                                LogTerm{currentTerm.value + 1}, config,
+                                LogPlanTermSpecification::Leader{
+                                    .serverId = leader,
+                                    .rebootId = leaderRebootId})},
+        leader{leader}, leaderRebootId{leaderRebootId} {};
+
+  LogCurrentSupervisionElection election;
+  LogPlanTermSpecification newTerm;
+  ParticipantId leader;
+  RebootId leaderRebootId;
+};
+
 struct LeaderElectionAction {
   static constexpr std::string_view name = "LeaderElectionAction";
 
@@ -132,13 +172,14 @@ struct ConvergedToGenerationAction {
   std::size_t _generation;
 };
 
-using Action =
-    std::variant<EmptyAction, ErrorAction, AddLogToPlanAction,
-                 AddParticipantsToTargetAction, CreateInitialTermAction,
-                 CurrentNotAvailableAction, UpdateTermAction,
-                 DictateLeaderAction, EvictLeaderAction, LeaderElectionAction,
-                 UpdateParticipantFlagsAction, AddParticipantToPlanAction,
-                 RemoveParticipantFromPlanAction, UpdateLogConfigAction>;
+using Action = std::variant<
+    EmptyAction, ErrorAction, AddLogToPlanAction, AddParticipantsToTargetAction,
+    CreateInitialTermAction, CurrentNotAvailableAction, UpdateTermAction,
+    DictateLeaderAction, EvictLeaderAction, LeaderElectionImpossibleAction,
+    LeaderElectionNumElectibleOutOfRangeAction,
+    LeaderElectionNotEnoughParticipantsAction, LeaderElectionSuccessAction,
+    UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+    RemoveParticipantFromPlanAction, UpdateLogConfigAction>;
 
 using namespace arangodb::cluster::paths;
 
@@ -175,7 +216,17 @@ struct Executor {
   std::shared_ptr<Root::Arango::Current::ReplicatedLogs::Database::Log const>
       currentPath;
 
-  std::shared_ptr<Root::Arango::Plan::Version const> planVersion;
+  std::shared_ptr<Root::Arango::Plan::Version const> planVersionPath;
+
+  // bool targetUpdated{false};
+  bool planUpdated{false};
+  bool currentUpdated{false};
+
+  void insertNewPlanEntry(std::shared_ptr<Root::Arango::Plan> path,
+                          VPackSlice entry);
+
+  void updatePlanEntry(std::shared_ptr<Root::Arango::Plan> path,
+                       VPackSlice entry);
 
   void operator()(EmptyAction const &action);
   void operator()(ErrorAction const &action);
@@ -186,7 +237,10 @@ struct Executor {
   void operator()(UpdateTermAction const &action);
   void operator()(DictateLeaderAction const &action);
   void operator()(EvictLeaderAction const &action);
-  void operator()(LeaderElectionAction const &action);
+  void operator()(LeaderElectionImpossibleAction const &action);
+  void operator()(LeaderElectionNumElectibleOutOfRangeAction const &action);
+  void operator()(LeaderElectionNotEnoughParticipantsAction const &action);
+  void operator()(LeaderElectionSuccessAction const &action);
   void operator()(UpdateParticipantFlagsAction const &action);
   void operator()(AddParticipantToPlanAction const &action);
   void operator()(RemoveParticipantFromPlanAction const &action);

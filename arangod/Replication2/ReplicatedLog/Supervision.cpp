@@ -46,11 +46,11 @@ namespace arangodb::replication2::replicated_log {
  *
  * */
 auto getEnoughHealthyParticipants(size_t replicationFactor,
-                                  ParticipantsHealth const &health)
+                                  ParticipantsHealth const& health)
     -> LogTarget::Participants {
   LogTarget::Participants participants;
 
-  for (auto const &[pid, health] : health._health) {
+  for (auto const& [pid, health] : health._health) {
     if (health.isHealthy) {
       participants.emplace(pid, ParticipantFlags{});
     }
@@ -62,10 +62,9 @@ auto getEnoughHealthyParticipants(size_t replicationFactor,
 }
 
 // The main function
-auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
+auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> Action {
-  auto const &target = log.target;
-  auto const &current = log.current;
+  auto const& target = log.target;
 
   if (!log.plan) {
     // TODO: this is a temporary hack to make older tests work
@@ -76,21 +75,23 @@ auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
       return AddLogToPlanAction{log.target.participants};
     }
   } else {
-    auto const &plan = *log.plan;
+    auto const& plan = *log.plan;
 
     if (!plan.currentTerm) {
       return CreateInitialTermAction{target.config};
     } else {
-      if (!current) {
+      if (!log.current) {
         // Once we log that current isn't available, current will become
         // available ;)
         return CurrentNotAvailableAction{};
       } else {
-#if 0
+        auto const& current = *log.current;
         if (!plan.currentTerm->leader) {
           // TODO: this would have to work correctly
-          return leadershipElection(plan, *current, health);
-        } else {
+          return leadershipElection(plan, current, health);
+        }
+#if 0
+        else {
           if (isLeaderHealthy(*plan, health)) {
             // The current leader has been removed from target
             if (!target.participants.contains(
@@ -130,6 +131,101 @@ auto checkReplicatedLog(Log const &log, ParticipantsHealth const &health)
   // that is a problem; signal this problem
   TRI_ASSERT(false);
   return EmptyAction{};
+}
+
+/* leadership election */
+auto computeReason(LogCurrentLocalState const& status, bool healthy,
+                   bool excluded, LogTerm term)
+    -> LogCurrentSupervisionElection::ErrorCode {
+  if (!healthy) {
+    return LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
+  } else if (excluded) {
+    return LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED;
+  } else if (term != status.term) {
+    return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
+  } else {
+    return LogCurrentSupervisionElection::ErrorCode::OK;
+  }
+}
+
+auto runElection(LogCurrentLocalStates const& states,
+                 ParticipantsConfig const& participantsConfig,
+                 ParticipantsHealth const& health, LogTerm term)
+    -> LogCurrentSupervisionElection {
+  auto election = LogCurrentSupervisionElection();
+
+  for (auto const& [participant, status] : states) {
+    auto const excluded =
+        participantsConfig.participants.contains(participant) and
+        participantsConfig.participants.at(participant).excluded;
+    auto const healthy = health.isHealthy(participant);
+    auto reason = computeReason(status, healthy, excluded, term);
+    election.detail.emplace(participant, reason);
+
+    if (reason == LogCurrentSupervisionElection::ErrorCode::OK) {
+      election.participantsAvailable += 1;
+
+      if (status.spearhead >= election.bestTermIndex) {
+        if (status.spearhead != election.bestTermIndex) {
+          election.electibleLeaderSet.clear();
+        }
+        election.electibleLeaderSet.push_back(participant);
+        election.bestTermIndex = status.spearhead;
+      }
+    }
+  }
+  return election;
+}
+
+auto leadershipElection(LogPlanSpecification const& plan,
+                        LogCurrent const& current,
+                        ParticipantsHealth const& health) -> Action {
+  /*  LogTerm const& currentTerm,
+                      LogCurrentLocalState const& currentLocalState,
+                      ParticipantsHealth const& health) -> Action { */
+  // TODO: pull out some of these and make them parameters to leadershipElection
+  auto const& participantsConfig = plan.participantsConfig;
+  auto const& configuredParticipants = participantsConfig.participants.size();
+  auto const& currentTerm = *plan.currentTerm;
+  auto const& writeConcern = currentTerm.config.writeConcern;
+
+  auto const& currentLocalState = current.localState;
+
+  // Check whether there are enough participants to reach a quorum
+  if (configuredParticipants + 1 <= writeConcern) {
+    return LeaderElectionImpossibleAction{
+        .configuredParticipants = configuredParticipants,
+        .writeConcern = writeConcern};
+  } else {
+    auto const requiredNumberOfOKParticipants =
+        configuredParticipants + 1 - writeConcern;
+
+    // Find the participants that are healthy and that have the best LogTerm
+    auto election = runElection(currentLocalState, participantsConfig, health,
+                                currentTerm.term);
+
+    auto const numElectible = election.electibleLeaderSet.size();
+
+    if (numElectible == 0 ||
+        numElectible > std::numeric_limits<uint16_t>::max()) {
+      return LeaderElectionNumElectibleOutOfRangeAction{.election = election};
+    } else {
+      if (election.participantsAvailable < requiredNumberOfOKParticipants) {
+        // Not enough participants
+        return LeaderElectionNotEnoughParticipantsAction{.election = election};
+      } else {
+        // We randomly elect on of the electible leaders
+        auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+        auto const& newLeader =
+            election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+        auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
+
+        return LeaderElectionSuccessAction(election, currentTerm.term,
+                                           currentTerm.config, newLeader,
+                                           newLeaderRebootId);
+      }
+    }
+  }
 }
 
 #if 0
@@ -403,49 +499,6 @@ auto runElectionCampaign(LogCurrentLocalStates const &states,
   return election;
 }
 
-auto leadershipElection(LogTerm const &currentTerm,
-                        LogParticipantsConfig const &participantsConfig,
-                        LogCurrentLocalState const &currentLocalState,
-                        ParticipantsHealth const &health) -> Action {
-
-  auto const configuredParticipants = participantsConfig.participants.size();
-  auto const writeConcern = currentTerm.config.writeConcern;
-
-  // Check whether there are enough participants to reach a quorum
-  if (configuredParticipants + 1 <= writeConcern) {
-    return LeaderElectionImpossibleAction{};
-  } else {
-    auto const requiredNumberOfOKParticipants =
-        configuredParticipants + 1 - writeConcern;
-
-    // Find the participants that are healthy and that have the best LogTerm
-    auto election = runElectionCampaign(currentLocalState, participantsConfig,
-                                        health, currentTerm);
-
-    auto const numElectible = election.electibleLeaderSet.size();
-
-    if (numElectible == 0 ||
-        numElectible > std::numeric_limits<uint16_t>::max()) {
-      return LeaderElectionImpossibleAction(election);
-    } else {
-
-      if (election.participantsAvailable < requiredNumberOfOKParticipants) {
-        // Not enough participants
-        return LeaderElectionFailedAction{election};
-      } else {
-
-        // We randomly elect on of the electible leaders
-        auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-        auto const &newLeader =
-            election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-        auto const &newLeaderRebootId = health._health.at(newLeader).rebootId;
-
-        return MakeLeaderElectionSuccessAction(election, currentTerm, newLeader,
-                                               newLeaderRebootId);
-      }
-    }
-  }
-}
 
 auto desiredParticipantFlags(LogTarget const &target,
                              LogPlanSpecification const &plan,

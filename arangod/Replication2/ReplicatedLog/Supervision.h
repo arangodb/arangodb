@@ -41,48 +41,9 @@ namespace arangodb::replication2::replicated_log {
 using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
-// Check whether a log has been added to target
-auto checkLogAdded(Log const &log, ParticipantsHealth const &health) -> Action;
-
-//
-auto checkLeaderPresent(LogPlanSpecification const &plan,
+auto leadershipElection(LogPlanSpecification const &plan,
                         LogCurrent const &current,
-                        ParticipantsHealth const &health)
-    -> std::unique_ptr<Action>;
-
-auto checkLeaderHealth(LogPlanSpecification const &plan,
-                       ParticipantsHealth const &health)
-    -> std::unique_ptr<Action>;
-
-auto computeReason(LogCurrentLocalState const &status, bool healthy,
-                   bool excluded, LogTerm term)
-    -> LogCurrentSupervisionElection::ErrorCode;
-
-auto runElectionCampaign(LogCurrentLocalStates const &states,
-                         ParticipantsConfig const &participantsConfig,
-                         ParticipantsHealth const &health, LogTerm term)
-    -> LogCurrentSupervisionElection;
-
-auto tryLeadershipElection(LogPlanSpecification const &plan,
-                           LogCurrent const &current,
-                           ParticipantsHealth const &health)
-    -> std::unique_ptr<Action>;
-
-auto checkLogTargetParticipantFlags(LogTarget const &target,
-                                    LogPlanSpecification const &plan)
-    -> std::unique_ptr<Action>;
-
-auto checkLogTargetParticipantAdded(LogTarget const &target,
-                                    LogPlanSpecification const &plan)
-    -> std::unique_ptr<Action>;
-
-auto checkLogTargetParticipantRemoved(LogTarget const &target,
-                                      LogPlanSpecification const &plan)
-    -> std::unique_ptr<Action>;
-
-auto checkLogTargetConfig(LogTarget const &target,
-                          LogPlanSpecification const &plan)
-    -> std::unique_ptr<Action>;
+                        ParticipantsHealth const &health) -> Action;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
