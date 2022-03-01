@@ -1839,7 +1839,10 @@ function complexInternaSuite() {
       vc2.save({_key: '1'});
       ec.save(vn + '/1', vn2 + '/1', {});
 
-      //TODO [GraphRefactor]: Check why this worked earlier.
+      // [GraphRefactor] Note: Eventually related to #GORDO-1361
+      // Currently we always load the start vertex, even if it might not be required.
+      // Therefore, "WITH ${vn}" have been added here. This can be improved, after we
+      // are capable of handling the issue: #GORDO-1360.
       var query = `WITH ${vn}, ${vn2}
       FOR x IN OUTBOUND @startId @@eCol
       RETURN x`;
