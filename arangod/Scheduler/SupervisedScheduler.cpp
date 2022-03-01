@@ -730,6 +730,8 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
     return threadsWorking < limit;
   }
 
+  TRI_IF_FAILURE("BlockSchedulerMediumQueue") { return false; }
+
   if (queueIndex == MediumPriorityQueue) {
     // We can work on med if less than 75% of the workers are busy
     size_t limit =

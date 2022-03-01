@@ -113,13 +113,13 @@ Result DatabaseTailingSyncer::syncCollectionCatchup(
     if (res.fail()) {
       // if we failed, we can already unregister ourselves on the leader, so
       // that we don't block WAL pruning
-      unregisterFromLeader();
+      unregisterFromLeader(false);
     }
     return res;
   } catch (std::exception const& ex) {
     // when we leave this method, we must unregister ourselves from the leader,
     // otherwise the leader may keep WAL logs around for us for too long
-    unregisterFromLeader();
+    unregisterFromLeader(false);
     return {TRI_ERROR_INTERNAL, ex.what()};
   }
 }
@@ -164,13 +164,13 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
 
     // always unregister our tailer, because syncCollectionFinalize is at
     // the end of the sync progress
-    unregisterFromLeader();
+    unregisterFromLeader(true);
 
     return res;
   } catch (std::exception const& ex) {
     // when we leave this method, we must unregister ourselves from the leader,
     // otherwise the leader may keep WAL logs around for us for too long
-    unregisterFromLeader();
+    unregisterFromLeader(true);
     return {TRI_ERROR_INTERNAL, ex.what()};
   }
 }
@@ -218,16 +218,20 @@ Result DatabaseTailingSyncer::registerOnLeader() {
   return {};
 }
 
-void DatabaseTailingSyncer::unregisterFromLeader() {
+void DatabaseTailingSyncer::unregisterFromLeader(bool hard) {
   if (!_unregisteredFromLeader) {
     try {
       _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
         std::unique_ptr<httpclient::SimpleHttpResult> response;
-        std::string const url = tailingBaseUrl("tail") +
-                                "serverId=" + _state.localServerIdString +
-                                "&syncerId=" + syncerId().toString();
+        std::string url = tailingBaseUrl("tail") +
+                          "serverId=" + _state.localServerIdString +
+                          "&syncerId=" + syncerId().toString();
         LOG_TOPIC("22640", DEBUG, Logger::REPLICATION)
             << "unregistering tailing syncer from leader, url: " << url;
+
+        if (hard) {
+          url += "&withHardLock=true";
+        }
 
         // simply send the request, but don't care about the response. if it
         // fails, there is not much we can do from here.
@@ -318,6 +322,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       // we must only send the syncerId along if it is != 0, otherwise we will
       // trigger an error on the leader
       url += "&syncerId=" + syncerId().toString();
+    }
+    if (hard) {
+      url += "&withHardLock=true";
     }
 
     // optional upper bound for tailing (used to stop tailing if we have the
