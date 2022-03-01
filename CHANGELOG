@@ -1,6 +1,10 @@
 devel
 -----
 
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
 * Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
   replicated to the follower data-center keeping their sharding intact.
 

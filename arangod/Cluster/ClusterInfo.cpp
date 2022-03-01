@@ -5784,15 +5784,15 @@ ClusterInfo::getCurrent(uint64_t& index,
   return ret;
 }
 
-std::vector<std::string> ClusterInfo::getFailedServers() const {
-  MUTEX_LOCKER(guard, _failedServersMutex);
+containers::FlatHashSet<ServerID> ClusterInfo::getFailedServers() const {
+  std::lock_guard lock{_failedServersMutex};
   return _failedServers;
 }
 
 void ClusterInfo::setFailedServers(
-    std::vector<std::string> const& failedServers) {
-  MUTEX_LOCKER(guard, _failedServersMutex);
-  _failedServers = failedServers;
+    containers::FlatHashSet<ServerID> failedServers) {
+  std::lock_guard lock{_failedServersMutex};
+  _failedServers = std::move(failedServers);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

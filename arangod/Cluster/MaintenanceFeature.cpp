@@ -1187,14 +1187,15 @@ void MaintenanceFeature::addDirty(
   server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
+containers::FlatHashSet<std::string> MaintenanceFeature::pickRandomDirty(
+    size_t n) {
   size_t left = _databasesToCheck.size();
   bool more = false;
   if (n >= left) {
     n = left;
     more = true;
   }
-  std::unordered_set<std::string> ret(
+  containers::FlatHashSet<std::string> ret(
       std::make_move_iterator(_databasesToCheck.end() - n),
       std::make_move_iterator(_databasesToCheck.end()));
   _databasesToCheck.erase(_databasesToCheck.end() - n, _databasesToCheck.end());
