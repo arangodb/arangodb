@@ -93,3 +93,35 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_future_test) {
   state->apply.resolveWith({});
   EXPECT_TRUE(f2.isReady());
 }
+
+TEST_F(FollowerWaitForAppliedTest, wait_for_applied_resign_resolve) {
+  auto follower =
+      std::make_shared<test::FakeFollower>("follower", "leader", LogTerm{1});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "A", .value = "a"});
+  follower->updateCommitIndex(LogIndex{1});  // insert and commit index 1
+
+  auto manager = std::make_shared<FollowerStateManager<State>>(
+      nullptr, follower, std::move(core),
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory);
+  manager->run();
+  follower->triggerLeaderAcked();
+
+  // complete snapshot transfer
+  auto state = factory->getLatestFollower();
+  state->acquire.resolveWith(Result{});
+
+  // apply index 1
+  state->apply.resolveWith(Result{});
+  state->apply.reset();
+
+  auto f1 = state->waitForApplied(LogIndex{1});
+  ASSERT_TRUE(f1.isReady());
+
+  auto f2 = state->waitForApplied(LogIndex{4});
+  ASSERT_FALSE(f2.isReady());
+  std::move(*manager).resign();
+
+  // This is now fulfilled because we dropped the return value of resign
+  ASSERT_TRUE(f2.isReady());
+}
