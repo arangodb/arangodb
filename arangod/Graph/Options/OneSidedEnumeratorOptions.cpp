@@ -28,13 +28,8 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth,
-                                                     size_t maxDepth,
-                                                     bool isDisjoint,
-                                                     bool isSatelliteLeader)
-    : _minDepth(minDepth),
-      _maxDepth(maxDepth),
-      _isDisjoint(isDisjoint),
-      _isSatelliteLeader(isSatelliteLeader) {}
+                                                     size_t maxDepth)
+    : _minDepth(minDepth), _maxDepth(maxDepth) {}
 
 OneSidedEnumeratorOptions::~OneSidedEnumeratorOptions() = default;
 

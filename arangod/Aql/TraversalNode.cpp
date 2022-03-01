@@ -693,15 +693,24 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
     std::unordered_map<ServerID, aql::EngineId> const* engines) const {
   TraverserOptions* opts = this->options();
 
-  bool isSatLeader = false;
-  if (isDisjoint()) {
-    isSatLeader = opts->isSatelliteLeader();
-  }
+  arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
+                                                     opts->maxDepth};
+  /*
+   * PathValidator Disjoint Helper (TODO [GraphRefactor]: Copy from createBlock)
+   * Clean this up as soon we clean up the whole TraversalNode as well.
+   */
+  auto generateDisjointPathValidatorOptions = [&]() -> std::pair<bool, bool> {
+    bool isSatLeader = false;
+    if (isDisjoint()) {
+      isSatLeader = opts->isSatelliteLeader();
+    }
+    return {isDisjoint(), isSatLeader};
+  };
+  auto isDisjointIsSat = generateDisjointPathValidatorOptions();
 
-  arangodb::graph::OneSidedEnumeratorOptions options{
-      opts->minDepth, opts->maxDepth, isDisjoint(), isSatLeader};
-  PathValidatorOptions validatorOptions{opts->_tmpVar,
-                                        opts->getExpressionCtx()};
+  PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx(),
+                                        isDisjointIsSat.first,
+                                        isDisjointIsSat.second};
 
   // Prune Section
   if (pruneExpression() != nullptr) {
@@ -847,6 +856,16 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
   TraverserOptions* opts = this->options();
   std::unique_ptr<Traverser> traverser;
+  /*
+   * PathValidator Disjoint Helper
+   */
+  auto generateDisjointPathValidatorOptions = [&]() -> std::pair<bool, bool> {
+    bool isSatLeader = false;
+    if (isDisjoint()) {
+      isSatLeader = opts->isSatelliteLeader();
+    }
+    return {isDisjoint(), isSatLeader};
+  };
 
   /*
    * PRUNE SECTION
@@ -1039,8 +1058,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   TRI_ASSERT(traverser != nullptr);
 
-  PathValidatorOptions validatorOptions{opts->_tmpVar,
-                                        opts->getExpressionCtx()};
+  auto isDisjointIsSat = generateDisjointPathValidatorOptions();
+  PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx(),
+                                        isDisjointIsSat.first,
+                                        isDisjointIsSat.second};
 
   if (ServerState::instance()->isCoordinator() && !isSmart()) {
     // Note: In case we're smart, we are NOT allowed to initialize the
@@ -1048,19 +1069,14 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     auto clusterBaseProviderOptions =
         getClusterBaseProviderOptions(opts, filterConditionVariables);
 
-    bool isSatLeader = false;
-    if (isDisjoint()) {
-      isSatLeader = opts->isSatelliteLeader();
-    }
-
     auto executorInfos = TraversalExecutorInfos(
         std::move(traverser), outputRegisterMapping, getStartVertex(),
         inputRegister, std::move(filterConditionVariables), plan()->getAst(),
         opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
         std::move(validatorOptions),
-        arangodb::graph::OneSidedEnumeratorOptions{
-            opts->minDepth, opts->maxDepth, isDisjoint(), isSatLeader},
+        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                   opts->maxDepth},
         opts, std::move(clusterBaseProviderOptions));
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
@@ -1112,13 +1128,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
           filterConditionVariables, opts->collectionToShard()};
 
-      bool isSatLeader = false;
-      if (isDisjoint()) {
-        isSatLeader = opts->isSatelliteLeader();
-      }
-
-      arangodb::graph::OneSidedEnumeratorOptions options{
-          opts->minDepth, opts->maxDepth, isDisjoint(), isSatLeader};
+      arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
+                                                         opts->maxDepth};
 
       // Prune Section
       if (pruneExpression() != nullptr) {
@@ -1162,8 +1173,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->uniqueVertices, opts->uniqueEdges, opts->mode, forceIsRefactor,
           opts->defaultWeight, opts->weightAttribute, opts->trx(),
           opts->query(), std::move(validatorOptions),
-          arangodb::graph::OneSidedEnumeratorOptions{
-              opts->minDepth, opts->maxDepth, isDisjoint(), isSatLeader},
+          arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                     opts->maxDepth},
           opts, std::move(smartBaseProviderOptions));
 
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
@@ -1178,19 +1189,14 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         singleServerBaseProviderOptions =
             getSingleServerBaseProviderOptions(opts, filterConditionVariables);
 
-    bool isSatLeader = false;
-    if (isDisjoint()) {
-      isSatLeader = opts->isSatelliteLeader();
-    }
-
     auto executorInfos = TraversalExecutorInfos(
         std::move(traverser), outputRegisterMapping, getStartVertex(),
         inputRegister, std::move(filterConditionVariables), plan()->getAst(),
         opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
         std::move(validatorOptions),
-        arangodb::graph::OneSidedEnumeratorOptions{
-            opts->minDepth, opts->maxDepth, isDisjoint(), isSatLeader},
+        arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                   opts->maxDepth},
         opts, std::move(singleServerBaseProviderOptions));
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(

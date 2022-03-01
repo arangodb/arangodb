@@ -307,10 +307,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
           &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
-  const bool isDisjoint = traversalOptions.isDisjoint();
-  bool isSatelliteLeader = (isDisjoint && traversalOptions.isSatelliteLeader());
-  arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{
-      1, 1, isDisjoint, isSatelliteLeader};
+  arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
   TraversalExecutorInfos
       executorInfos;  // TODO [GraphRefactor]: We need to test all variants of
                       // graph refactor here as well.
@@ -331,7 +328,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         noFixed(""),
         registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {},
                       {RegIdSet{0}}),
-        enumeratorOptions(1, 1, isDisjoint, isSatelliteLeader),
+        enumeratorOptions(1, 1),
         executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg,
                       filterConditionVariables, fakedQuery->ast(),
                       traverser::TraverserOptions::UniquenessLevel::NONE,
@@ -524,13 +521,10 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
           &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
-  const bool isDisjoint = traversalOptions.isDisjoint();
-  bool isSatelliteLeader = (isDisjoint && traversalOptions.isSatelliteLeader());
-  arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{
-      1, 1, isDisjoint, isSatelliteLeader};
-  TraversalExecutorInfos
-      executorInfos;  // TODO [GraphRefactor]: We need to test all variants of
-                      // graph refactor here as well
+  arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
+  TraversalExecutorInfos executorInfos;
+  // TODO [GraphRefactor]: We need to test all variants of graph refactor here
+  // as well
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),

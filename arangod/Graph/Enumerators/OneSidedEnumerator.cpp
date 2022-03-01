@@ -55,8 +55,7 @@ OneSidedEnumerator<Configuration>::OneSidedEnumerator(
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
       _interior(resourceMonitor),
-      _validator(_provider, _interior, std::move(validatorOptions),
-                 options.isSatelliteLeader()) {}
+      _validator(_provider, _interior, std::move(validatorOptions)) {}
 
 template<class Configuration>
 OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;
@@ -126,7 +125,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     _results.emplace_back(step);
     return;
   }
-  ValidationResult res = _validator.validatePath(step, isDisjoint());
+  ValidationResult res = _validator.validatePath(step);
   LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
       << std::boolalpha
       << "<Traverser> Validated Vertex: " << step.getVertex().getID()
@@ -325,11 +324,6 @@ auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
   if (validatorUsesPostFilter()) {
     _validator.unpreparePostFilterContext();
   }
-}
-
-template<class Configuration>
-bool OneSidedEnumerator<Configuration>::isDisjoint() {
-  return _options.isDisjoint();
 }
 
 /* SingleServerProvider Section */

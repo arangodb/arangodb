@@ -64,12 +64,11 @@ class PathValidator {
   using ProviderImpl = Provider;
   using PathStoreImpl = PathStore;
 
-  PathValidator(Provider& provider, PathStore& store, PathValidatorOptions opts,
-                bool isSatelliteLeader);
+  PathValidator(Provider& provider, PathStore& store,
+                PathValidatorOptions opts);
   virtual ~PathValidator();
 
-  auto validatePath(typename PathStore::Step const& step, bool isDisjoint)
-      -> ValidationResult;
+  auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
                                   edgeUniqueness> const& otherValidator)
@@ -114,7 +113,6 @@ class PathValidator {
       _uniqueEdges;
 
   PathValidatorOptions _options;
-  bool _isSatelliteLeader;
 
 // todo clean up all uses of USE_ENTERPRISE
 #ifdef USE_ENTERPRISE
@@ -128,16 +126,18 @@ class PathValidator {
       -> ValidationResult;
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
-  auto exposeUniqueVertices() const
+  [[nodiscard]] auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                          std::equal_to<VertexRef>> const&;
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;
 
-  auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
-                              bool isSatelliteLeader)
+  auto checkValidDisjointPath(typename PathStore::Step const& lastStep)
       -> arangodb::graph::ValidationResult::Type;
+
+  auto isDisjoint() const { return _options.isDisjoint(); }
+  auto isSatelliteLeader() const { return _options.isSatelliteLeader(); }
 };
 }  // namespace graph
 }  // namespace arangodb

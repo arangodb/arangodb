@@ -62,8 +62,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       _interior(resourceMonitor),
       _queue(resourceMonitor),
       _provider(std::move(provider)),
-      _validator(_provider, _interior, std::move(validatorOptions),
-                 false /* TODO [GraphRefactor]: replace by a real value*/),
+      _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _minDepth(options.getMinDepth()),
       _graphOptions(options) {}
@@ -215,8 +214,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
-    ValidationResult res =
-        _validator.validatePath(n, getGraphOptions().isDisjoint());
+    ValidationResult res = _validator.validatePath(n);
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
@@ -291,13 +289,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::Ball::provider() -> ProviderType& {
   return _provider;
-}
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidatorType>::Ball::getGraphOptions()
-    -> TwoSidedEnumerator::GraphOptions {
-  return _graphOptions;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,

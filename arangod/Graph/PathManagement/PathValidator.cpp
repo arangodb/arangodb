@@ -50,13 +50,8 @@ template<class Provider, class PathStore,
 PathValidator<Provider, PathStore, vertexUniqueness,
               edgeUniqueness>::PathValidator(Provider& provider,
                                              PathStore& store,
-                                             PathValidatorOptions opts,
-                                             bool isSatelliteLeader)
-    : _store(store),
-      _provider(provider),
-      _options(std::move(opts)),  // [GraphRefactor] TODO: Cleanup options
-                                  // (disjoint, isSatelliteLeader)
-      _isSatelliteLeader(isSatelliteLeader) {}
+                                             PathValidatorOptions opts)
+    : _store(store), _provider(provider), _options(std::move(opts)) {}
 
 template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
@@ -68,8 +63,7 @@ template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
-    validatePath(typename PathStore::Step const& step, bool isDisjoint)
-        -> ValidationResult {
+    validatePath(typename PathStore::Step const& step) -> ValidationResult {
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
@@ -77,8 +71,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
 
 #ifdef USE_ENTERPRISE
-  if (isDisjoint) {
-    auto validDisjPathRes = checkValidDisjointPath(step, _isSatelliteLeader);
+  if (isDisjoint()) {
+    auto validDisjPathRes = checkValidDisjointPath(step);
     if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
         validDisjPathRes == ValidationResult::Type::FILTER) {
       res.combine(validDisjPathRes);
@@ -436,8 +430,7 @@ template<class Provider, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
-    checkValidDisjointPath(typename PathStore::Step const& lastStep,
-                           bool isSatelliteLeader)
+    checkValidDisjointPath(typename PathStore::Step const& lastStep)
         -> arangodb::graph::ValidationResult::Type {
   return ValidationResult::Type::TAKE;
 }

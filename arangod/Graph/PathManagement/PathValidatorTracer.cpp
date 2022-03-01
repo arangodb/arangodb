@@ -46,9 +46,8 @@ using namespace arangodb::graph;
 
 template<class PathValidatorImplementation>
 PathValidatorTracer<PathValidatorImplementation>::PathValidatorTracer(
-    Provider& provider, PathStore& store, PathValidatorOptions opts,
-    bool isSatelliteLeader)
-    : _impl{provider, store, std::move(opts), isSatelliteLeader} {}
+    Provider& provider, PathStore& store, PathValidatorOptions opts)
+    : _impl{provider, store, std::move(opts)} {}
 
 template<class PathValidatorImplementation>
 PathValidatorTracer<PathValidatorImplementation>::~PathValidatorTracer() {
@@ -60,12 +59,12 @@ PathValidatorTracer<PathValidatorImplementation>::~PathValidatorTracer() {
 
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
-    typename PathStore::Step const& step, bool isDisjoint) -> ValidationResult {
+    typename PathStore::Step const& step) -> ValidationResult {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["validatePath"].addTiming(TRI_microtime() - start);
   });
-  return _impl.validatePath(step, isDisjoint);
+  return _impl.validatePath(step);
 }
 
 template<class PathValidatorImplementation>

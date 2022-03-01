@@ -29,10 +29,9 @@ using namespace arangodb::graph;
 
 TwoSidedEnumeratorOptions::TwoSidedEnumeratorOptions(size_t minDepth,
                                                      size_t maxDepth)
-    : _minDepth(minDepth), _maxDepth(maxDepth), _isDisjoint(false) {}
+    : _minDepth(minDepth), _maxDepth(maxDepth) {}
 
 TwoSidedEnumeratorOptions::~TwoSidedEnumeratorOptions() = default;
 
 size_t TwoSidedEnumeratorOptions::getMinDepth() const { return _minDepth; }
 size_t TwoSidedEnumeratorOptions::getMaxDepth() const { return _maxDepth; }
-bool TwoSidedEnumeratorOptions::isDisjoint() const { return _isDisjoint; }
