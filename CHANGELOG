@@ -1,6 +1,8 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
+
 * Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
   always bundling your own copy of third-party modules, even ones listed as
   public.
@@ -40,8 +42,6 @@ v3.9.1 (XXXX-XX-XX)
 * Shorten the license grace period to the documented 3 hours.
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
-
-* Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
 
 * Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
   containing the keywords UPDATE or REPLACE together with the keyword WITH and
