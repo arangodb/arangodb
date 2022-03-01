@@ -303,6 +303,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
 
       if (isCluster) {
         // TODO [GraphRefactor]: Refactored variant uses now more memory. Check if we can improve here.
+        // [GraphRefactor] Note: Related to #GORDO-1361
         let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 27 * 1000 * 1000 }).json;
         assertEqual(79800, actual.length);
       } else {
