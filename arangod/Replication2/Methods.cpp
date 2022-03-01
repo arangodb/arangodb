@@ -593,9 +593,32 @@ struct ReplicatedLogMethodsCoordinator final
   network::ConnectionPool* pool;
 };
 
-struct ReplicatedStateDBServerMethods : ReplicatedStateMethods {
+struct ReplicatedStateDBServerMethods
+    : std::enable_shared_from_this<ReplicatedStateDBServerMethods>,
+      ReplicatedStateMethods {
   explicit ReplicatedStateDBServerMethods(TRI_vocbase_t& vocbase)
-      : vocbase(vocbase) {}
+      : vocbase(vocbase),
+        clusterInfo(
+            vocbase.server().getFeature<ClusterFeature>().clusterInfo()) {}
+
+  auto createReplicatedState(replicated_state::agency::Target const& spec) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::createReplicatedState(vocbase.name(),
+                                                                spec)
+        .thenValue([self = shared_from_this()](
+                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+          if (res.fail()) {
+            return futures::Future<Result>{std::in_place, res.result()};
+          }
+
+          return self->clusterInfo.waitForPlan(res.get());
+        });
+  }
+
+  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   auto getLocalStatus(LogId id) const
       -> futures::Future<replicated_state::StateStatus> override {
     auto state = vocbase.getReplicatedStateById(id);
@@ -606,6 +629,7 @@ struct ReplicatedStateDBServerMethods : ReplicatedStateMethods {
   }
 
   TRI_vocbase_t& vocbase;
+  ClusterInfo& clusterInfo;
 };
 
 }  // namespace

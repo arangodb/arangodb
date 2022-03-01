@@ -26,9 +26,7 @@
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
-const {sleep} = require('internal');
 const db = arangodb.db;
-const ERRORS = arangodb.errors;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
@@ -96,7 +94,7 @@ const replicatedStateSuite = function () {
   const createReplicatedState = function () {
     const stateId = lh.nextUniqueLogId();
 
-    const servers = _.sampleSize(lh.dbservers, 3);
+    const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
     let participants = {};
     for (const server of servers) {
       participants[server] = {};
@@ -180,28 +178,6 @@ const replicatedStateSuite = function () {
       lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
         [newParticipant]: {excluded: false, forced: false},
       }));
-    },
-
-    testGetLocalStatus: function () {
-      const {stateId, followers, leader} = createReplicatedState();
-
-
-      {
-        const status = sh.getLocalStatus(leader, database, stateId);
-        assertEqual(status.role, "leader");
-        assertEqual(status.manager.managerState, "ServiceAvailable");
-
-        assertEqual(status.snapshot.status, "Completed");
-        assertEqual(status.generation, 1);
-      }
-
-      for (const server of followers) {
-        const status = sh.getLocalStatus(server, database, stateId);
-        assertEqual(status.role, "follower");
-        assertEqual(status.manager.managerState, "NothingToApply");
-        assertEqual(status.snapshot.status, "Completed");
-        assertEqual(status.generation, 1);
-      }
     },
   };
 };
