@@ -71,13 +71,14 @@ auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
     typename PathStore::Step const& step,
-    PathValidatorTracer<PathValidatorImplementation> const& otherValidator)
+    PathValidatorTracer<PathValidatorImplementation> const& otherValidator,
+    std::string_view smartValue, bool isDisjoint)
     -> ValidationResult {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["validatePath"].addTiming(TRI_microtime() - start);
   });
-  return _impl.validatePath(step, otherValidator._impl);
+  return _impl.validatePath(step, otherValidator._impl, smartValue, isDisjoint);
 }
 
 template<class PathValidatorImplementation>

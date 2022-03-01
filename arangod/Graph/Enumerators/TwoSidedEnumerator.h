@@ -65,7 +65,11 @@ class TwoSidedEnumerator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
   using Shell = std::multiset<Step>;
-  using ResultList = std::vector<std::pair<Step, Step>>;
+  // When the left and the right paths meet, we store the meeting point as the
+  // last steps of both paths. The vertices will be the same, the edges
+  // distinct. From these steps, the corresponding path can be iterated with
+  // visitReversePath().
+  using MeetingPoints = std::vector<std::pair<Step, Step>>;
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
 
   class Ball {
@@ -81,22 +85,23 @@ class TwoSidedEnumerator {
     [[nodiscard]] auto getDepth() const -> size_t;
     [[nodiscard]] auto shellSize() const -> size_t;
     [[nodiscard]] auto doneWithDepth() const -> bool;
-    auto testDepthZero(Ball& other, ResultList& results) -> void;
+    auto testDepthZero(Ball& other, MeetingPoints& results) -> void;
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, ResultList& results,
-                             PathValidatorType const& otherSideValidator)
+    auto matchResultsInShell(Step const& match, MeetingPoints& meetingPoints,
+                             PathValidatorType const& otherSideValidator,
+                             std::string_view smartValue)
         -> void;
-    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
+    auto computeNeighbourhoodOfNextVertex(Ball& other, MeetingPoints& results)
         -> void;
 
     // Ensure that we have fetched all vertices
     // in the _results list.
     // Otherwise we will not be able to
     // generate the resulting path
-    auto fetchResults(ResultList& results) -> void;
+    auto fetchResults(MeetingPoints& results) -> void;
 
     auto provider() -> ProviderType&;
 
@@ -106,7 +111,9 @@ class TwoSidedEnumerator {
     auto clearProvider() -> void;
 
    private:
-    // Fast path, to test if we find a connecting vertex between left and right.
+    // To test if we find a connecting vertex between left and right.
+    // _shell contains every seen step and handles two steps as equal
+    // if they have the same vertex.
     Shell _shell{};
 
     // TODO: Double check if we really need the monitor here. Currently unused.
@@ -216,7 +223,7 @@ class TwoSidedEnumerator {
   Ball _left;
   Ball _right;
   bool _searchLeft{true};
-  ResultList _results{};
+  MeetingPoints _results{}; // todo rename to _meetingPoints
   bool _resultsFetched{false};
 
   PathResult<ProviderType, Step> _resultPath;

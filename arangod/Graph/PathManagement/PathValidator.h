@@ -68,11 +68,13 @@ class PathValidator {
                 bool isSatelliteLeader);
   virtual ~PathValidator();
 
-  auto validatePath(typename PathStore::Step const& step, bool isDisjoint)
-      -> ValidationResult;
+  auto validatePath(typename PathStore::Step const& step, bool isDisjoint,
+                    std::string_view smartValue = "") -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
-                                  edgeUniqueness> const& otherValidator)
+                                  edgeUniqueness> const& otherValidator,
+                    std::string_view smartValue,
+                    bool isDisjoint)
       -> ValidationResult;
 
   void reset();
@@ -140,7 +142,8 @@ class PathValidator {
                                 arangodb::velocypack::Slice value) -> bool;
 
   auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
-                              bool isSatelliteLeader)
+                              bool isSatelliteLeader,
+                              std::string_view smartValue)
       -> arangodb::graph::ValidationResult::Type;
 };
 }  // namespace graph

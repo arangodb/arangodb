@@ -160,9 +160,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::fetchResults(ResultList& results)
-    -> void {
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+    Ball::fetchResults(MeetingPoints& results) -> void {
   std::vector<Step*> looseEnds{};
 
   if (_direction == Direction::FORWARD) {
@@ -196,7 +195,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
-    Ball::computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
+    Ball::computeNeighbourhoodOfNextVertex(Ball& other,
+                                           MeetingPoints& meetingPoints)
         -> void {
   // Pull next element from Queue
   // Do 1 step search
@@ -227,7 +227,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match as
       // result, clear both sides. => This will give the shortest path.
       // TODO: Check if the GLOBAL holds true for weightedEdges
-      other.matchResultsInShell(n, results, _validator);
+      other.matchResultsInShell(n, meetingPoints, _validator,
+                                res.getSmartValue());
     }
     if (!res.isPruned()) {
       // Add the step to our shell
@@ -239,35 +240,42 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
-    Ball::testDepthZero(Ball& other, ResultList& results) {
+    Ball::testDepthZero(Ball& other, MeetingPoints& results) {
   for (auto const& step : _shell) {
-    other.matchResultsInShell(step, results, _validator);
+    other.matchResultsInShell(step, results, _validator,
+                              "");  // todo remove "" after adding default value
   }
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
-    Ball::matchResultsInShell(Step const& match, ResultList& results,
-                              PathValidator const& otherSideValidator) -> void {
+    Ball::matchResultsInShell(Step const& match, MeetingPoints& meetingPoints,
+                              PathValidator const& otherSideValidator,
+                              std::string_view smartValue) -> void {
+  // Iterate over all seen steps with vertex match.
   auto [first, last] = _shell.equal_range(match);
   if (_direction == FORWARD) {
     while (first != last) {
-      auto res = _validator.validatePath(*first, otherSideValidator);
+      // validatePath() returns filtered if the path starting (in the reverse
+      // direction) from *first contains match: except if *first IS match
+      auto res = _validator.validatePath(*first, otherSideValidator, smartValue,
+                                         _graphOptions.isDisjoint());
       if (!res.isFiltered()) {
         LOG_TOPIC("6a01b", DEBUG, Logger::GRAPHS)
             << "Found path " << *first << " and " << match;
-        results.push_back(std::make_pair(*first, match));
+        meetingPoints.push_back(std::make_pair(*first, match));
       }
       first++;
     }
   } else {
     while (first != last) {
-      auto res = _validator.validatePath(*first, otherSideValidator);
+      auto res = _validator.validatePath(*first, otherSideValidator, smartValue,
+                                         _graphOptions.isDisjoint());
       if (!res.isFiltered()) {
         LOG_TOPIC("d1830", DEBUG, Logger::GRAPHS)
             << "Found path " << match << " and " << *first;
-        results.push_back(std::make_pair(match, *first));
+        meetingPoints.push_back(std::make_pair(match, *first));
       }
       first++;
     }

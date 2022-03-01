@@ -68,8 +68,8 @@ template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
-    validatePath(typename PathStore::Step const& step, bool isDisjoint)
-        -> ValidationResult {
+    validatePath(typename PathStore::Step const& step, bool isDisjoint,
+                 std::string_view smartValue) -> ValidationResult {
   auto res = evaluateVertexCondition(step);
   if (res.isFiltered() && res.isPruned()) {
     // Can give up here. This Value is not used
@@ -78,7 +78,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
 #ifdef USE_ENTERPRISE
   if (isDisjoint) {
-    auto validDisjPathRes = checkValidDisjointPath(step, _isSatelliteLeader);
+    auto validDisjPathRes =
+        checkValidDisjointPath(step, _isSatelliteLeader, smartValue);
     if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
         validDisjPathRes == ValidationResult::Type::FILTER) {
       res.combine(validDisjPathRes);
@@ -146,8 +147,22 @@ template<class ProviderType, class PathStore,
 auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     validatePath(typename PathStore::Step const& step,
                  PathValidator<ProviderType, PathStore, vertexUniqueness,
-                               edgeUniqueness> const& otherValidator)
+                               edgeUniqueness> const& otherValidator,
+                 std::string_view smartValue, bool isDisjoint)
         -> ValidationResult {
+  ValidationResult res(ValidationResult::Type::TAKE);
+#ifdef USE_ENTERPRISE
+  if (isDisjoint) {
+    auto resType = checkValidDisjointPath(step, _isSatelliteLeader, smartValue);
+    if (resType == ValidationResult::Type::FILTER) {
+      res = ValidationResult(ValidationResult::Type::FILTER);
+    } else {
+      if (resType == ValidationResult::Type::FILTER_AND_PRUNE) {
+        return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
+      }
+    }
+  }
+#endif
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
     // For PATH: take _uniqueVertices of otherValidator, and run Visitor of
     // other side, check if one vertex is duplicate.
@@ -156,7 +171,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     bool success = _store.visitReversePath(
         step, [&](typename PathStore::Step const& innerStep) -> bool {
           // compare memory address for equality (instead of comparing their
-          // values)
+          // values). note: needed to distinguish between "innerStep is the
+          // end of the path (and the beginning of reverse visiting)" and
+          // "innerStep is a vertex we have already seen"
           if (&step == &innerStep) {
             return true;
           }
@@ -170,7 +187,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     if (!success) {
       return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
-    return ValidationResult{ValidationResult::Type::TAKE};
+    return res;
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
     auto const& [unused, added] =
@@ -179,11 +196,11 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     if (!added) {
       return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
-    return ValidationResult{ValidationResult::Type::TAKE};
+    return res;
   }
 
   // For NONE: ignoreOtherValidator return TAKE
-  return ValidationResult{ValidationResult::Type::TAKE};
+  return res;
 }
 
 template<class ProviderType, class PathStore,

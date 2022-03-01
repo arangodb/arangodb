@@ -79,3 +79,6 @@ std::ostream& arangodb::graph::operator<<(std::ostream& stream,
   }
   return stream;
 }
+auto ValidationResult::getSmartValue() -> std::string_view {
+  return std::string_view(_smartValue);
+}
