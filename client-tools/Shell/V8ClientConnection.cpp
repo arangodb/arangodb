@@ -1022,6 +1022,9 @@ static void ClientConnection_httpFuzzRequests(
 
   std::unique_ptr<fuzzer::RequestFuzzer> fuzzer;
 
+  uint32_t numReqs = 2;
+  fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
+  /* NOT USING FOR INTERMEDIATE COMMIT
   uint32_t numReqs = 1000;
   if (args.Length() == 0) {
     fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
@@ -1058,6 +1061,7 @@ static void ClientConnection_httpFuzzRequests(
           "(numIterations and numRequests must be > 0).");
     }
   }
+  */
   for (uint32_t i = 0; i < numReqs; ++i) {
     httpFuzzRequest(v8connection, args, fuzzer.get());
   }
