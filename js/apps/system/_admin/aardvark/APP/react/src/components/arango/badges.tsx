@@ -2,7 +2,7 @@ import React from "react";
 import styled, { css } from "styled-components";
 
 interface BadgeInfo {
-  name: string;
+  name: string | any;
 }
 
 type BadgeProps = {

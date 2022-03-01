@@ -25,6 +25,7 @@ import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCo
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import Badge from "../../../../components/arango/badges";
+import FieldView from "../../Components/FieldView";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -245,6 +246,21 @@ const LinkPropertiesInput = ({
                 </tr>
               </thead>
               <tbody>
+                <FieldView
+                  fields={fields}
+                  disabled={disabled}
+                  dispatch={
+                    (dispatch as unknown) as Dispatch<
+                      DispatchArgs<LinkProperties>
+                    >
+                  }
+                  basePath={basePath}
+                  options={options}
+                  values={analyzers}
+                  onRemove={removeAnalyzer}
+                  onSelect={addAnalyzer}
+                  label={"Analyzers"}
+                />
                 {map(fields, (properties, fld) => {
                   return (
                     <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
