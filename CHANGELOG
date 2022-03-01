@@ -13,6 +13,10 @@ devel
 * arangosh now uses the same header the UI uses to gain higher priority on initial connection.
   This will increase the chance for an arangosh to connect to a server under very high load.
 
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
 * Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
   replicated to the follower data-center keeping their sharding intact.
 
