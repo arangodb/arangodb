@@ -1,7 +1,6 @@
 import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { FormState, LinkProperties } from "../constants";
 import React, { Dispatch, useEffect, useState } from "react";
-import { ArangoTable, ArangoTH } from "../../../components/arango/table";
 import { chain, difference, isEmpty, isNull, map } from "lodash";
 import { useLinkState } from "../helpers";
 import useSWR from "swr";
@@ -24,11 +23,6 @@ const LinkPropertiesForm = ({
   );
   const [options, setOptions] = useState<string[]>([]);
 
-  const linkVal = chain(links)
-    .omitBy(isNull)
-    .keys()
-    .value();
-
   useEffect(() => {
     if (data) {
       const linkKeys = chain(links)
@@ -41,6 +35,11 @@ const LinkPropertiesForm = ({
       setOptions(tempOptions);
     }
   }, [data, links]);
+
+  const linkVal = chain(links)
+    .omitBy(isNull)
+    .keys()
+    .value()[0];
 
   const updateCollection = (value: string | number) => {
     setCollection(value);
@@ -60,48 +59,27 @@ const LinkPropertiesForm = ({
   return disabled && isEmpty(links) ? (
     <span>No links found.</span>
   ) : (
-    <ArangoTable>
-      <thead>
-        <tr>
-          <ArangoTH seq={disabled ? 0 : 1} style={{ width: "82%" }}>
-            <a href={`/${view}`}>{view}</a>/
-            <a href={`/${linkVal}`}>{linkVal}</a>
-          </ArangoTH>
-          <ArangoTH seq={disabled ? 1 : 2} style={{ width: "8%" }}>
-            Collection Name
-          </ArangoTH>
-          {disabled ? null : (
-            <ArangoTH
-              seq={0}
-              style={{
-                width: "8%",
-                textAlign: "center"
-              }}
-            >
-              Action
-            </ArangoTH>
-          )}
-        </tr>
-      </thead>
-      <tbody>
-        {!disabled && linkVal.length < 1 && (
-          <NewLink
-            disabled={addDisabled || !options.includes(collection)}
-            addLink={addLink}
-            collection={collection}
-            updateCollection={updateCollection}
-            options={options}
-          />
-        )}
-
-        <LinkView
-          links={links}
-          dispatch={
-            (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-          }
-          disabled={disabled}
+    <>
+      {!disabled && linkVal.length < 1 && (
+        <NewLink
+          disabled={addDisabled || !options.includes(collection)}
+          addLink={addLink}
+          collection={collection}
+          updateCollection={updateCollection}
+          options={options}
         />
-        {/* {map(links, (properties, coll) => {
+      )}
+
+      <LinkView
+        view={view}
+        link={linkVal}
+        links={links}
+        dispatch={
+          (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
+        }
+        disabled={disabled}
+      />
+      {/* {map(links, (properties, coll) => {
           return properties ? (
             <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
               <ArangoTD seq={disabled ? 1 : 2}>
@@ -130,8 +108,7 @@ const LinkPropertiesForm = ({
             </tr>
           ) : null;
         })} */}
-      </tbody>
-    </ArangoTable>
+    </>
   );
 };
 

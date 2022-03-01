@@ -261,6 +261,7 @@ const LinkPropertiesInput = ({
                   onSelect={addAnalyzer}
                   label={"Analyzers"}
                 />
+
                 {map(fields, (properties, fld) => {
                   return (
                     <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>

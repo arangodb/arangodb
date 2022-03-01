@@ -1,4 +1,5 @@
 import React, { Dispatch } from "react";
+import ViewLayout from "./ViewLayout";
 import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
 import { ArangoTD } from "../../../components/arango/table";
@@ -10,9 +11,17 @@ interface LinkViewProps {
   links: {}[];
   disabled: boolean | undefined;
   dispatch: Dispatch<DispatchArgs<LinkProperties>>;
+  view?: string | undefined;
+  link?: string;
 }
 
-const LinkView: React.FC<LinkViewProps> = ({ links, disabled, dispatch }) => {
+const LinkView: React.FC<LinkViewProps> = ({
+  links,
+  disabled,
+  dispatch,
+  view,
+  link
+}) => {
   const removeLink = (collection: string | number) => {
     dispatch({
       type: "setField",
@@ -28,7 +37,7 @@ const LinkView: React.FC<LinkViewProps> = ({ links, disabled, dispatch }) => {
   };
 
   return (
-    <>
+    <ViewLayout view={view} disabled={disabled} link={link}>
       {map(links, (properties, coll) => (
         <tr key={coll} style={{ borderBottom: "1px  solid #DDD" }}>
           <ArangoTD seq={disabled ? 1 : 2}>
@@ -52,7 +61,7 @@ const LinkView: React.FC<LinkViewProps> = ({ links, disabled, dispatch }) => {
           )}
         </tr>
       ))}
-    </>
+    </ViewLayout>
   );
 };
 export default LinkView;
