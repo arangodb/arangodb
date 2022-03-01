@@ -37,6 +37,10 @@ struct FollowerStateManager
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  using WaitForAppliedQueue =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+  using WaitForAppliedPromise =
+      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedPromise;
 
   using Stream = streams::Stream<EntryType>;
   using Iterator = typename Stream::Iterator;
@@ -48,7 +52,7 @@ struct FollowerStateManager
       std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
-  void run();
+  void run() override;
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
@@ -56,15 +60,13 @@ struct FollowerStateManager
       -> std::shared_ptr<IReplicatedFollowerState<S>>;
 
   [[nodiscard]] auto resign() && noexcept
-      -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<ReplicatedStateToken>> override;
+      -> std::tuple<std::unique_ptr<CoreType>,
+                    std::unique_ptr<ReplicatedStateToken>,
+                    std::unique_ptr<WaitForAppliedQueue>> override;
 
   [[nodiscard]] auto getStream() const noexcept -> std::shared_ptr<Stream>;
 
   auto waitForApplied(LogIndex) -> futures::Future<futures::Unit>;
-
-  using WaitForAppliedPromise = futures::Promise<futures::Unit>;
-  using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
 
  private:
   void awaitLeaderShip();

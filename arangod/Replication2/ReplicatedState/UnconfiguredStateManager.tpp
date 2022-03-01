@@ -77,9 +77,10 @@ auto UnconfiguredStateManager<S>::getStatus() const -> StateStatus {
 
 template<typename S>
 auto UnconfiguredStateManager<S>::resign() && noexcept
-    -> std::pair<std::unique_ptr<CoreType>,
-                 std::unique_ptr<ReplicatedStateToken>> {
-  return {std::move(_core), std::move(_token)};
+    -> std::tuple<std::unique_ptr<CoreType>,
+                  std::unique_ptr<ReplicatedStateToken>,
+                  std::unique_ptr<WaitForAppliedQueue>> {
+  return {std::move(_core), std::move(_token), nullptr};
 }
 
 }  // namespace arangodb::replication2::replicated_state

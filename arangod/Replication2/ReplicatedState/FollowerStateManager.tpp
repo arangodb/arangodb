@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FollowerStateManager.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
+
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
@@ -127,10 +129,10 @@ auto FollowerStateManager<S>::waitForApplied(LogIndex idx)
     return futures::Future<futures::Unit>{std::in_place};
   }
 
-  auto it = guard->waitForAppliedQueue.emplace(idx);
+  auto it = guard->waitForAppliedQueue.emplace(idx, WaitForAppliedPromise{});
   auto f = it->second.getFuture();
   TRI_ASSERT(f.valid());
-  return std::move(f);
+  return f;
 }
 
 template<typename S>
@@ -333,8 +335,10 @@ auto FollowerStateManager<S>::getFollowerState() const
 
 template<typename S>
 auto FollowerStateManager<S>::resign() && noexcept
-    -> std::pair<std::unique_ptr<CoreType>,
-                 std::unique_ptr<ReplicatedStateToken>> {
+    -> std::tuple<std::unique_ptr<CoreType>,
+                  std::unique_ptr<ReplicatedStateToken>,
+                  std::unique_ptr<WaitForAppliedQueue>> {
+  auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
   LOG_TOPIC("63622", TRACE, Logger::REPLICATED_STATE)
       << "Follower manager resigning";
   auto guard = _guardedData.getLockedGuard();
@@ -350,7 +354,8 @@ auto FollowerStateManager<S>::resign() && noexcept
   TRI_ASSERT(guard->token != nullptr);
   TRI_ASSERT(!guard->_didResign);
   guard->_didResign = true;
-  return {std::move(core), std::move(guard->token)};
+  std::swap(*resolveQueue, guard->waitForAppliedQueue);
+  return {std::move(core), std::move(guard->token), std::move(resolveQueue)};
 }
 
 template<typename S>
@@ -372,6 +377,8 @@ auto FollowerStateManager<S>::GuardedData::updateNextIndex(LogIndex index)
     -> DeferredAction {
   nextEntry = index;
   auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
+  LOG_TOPIC("9929a", TRACE, Logger::REPLICATED_STATE)
+      << "Resolving WaitForApplied promises upto " << index;
   auto const end = waitForAppliedQueue.lower_bound(index);
   for (auto it = waitForAppliedQueue.begin(); it != end;) {
     resolveQueue->insert(waitForAppliedQueue.extract(it++));
