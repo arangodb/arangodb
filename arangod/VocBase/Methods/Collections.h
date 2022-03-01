@@ -145,7 +145,7 @@ struct Collections {
 
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(
-      arangodb::velocypack::Slice slice);
+      arangodb::velocypack::Slice slice, bool allowDC2DCAttributes);
 };
 
 #ifdef USE_ENTERPRISE
