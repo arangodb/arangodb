@@ -1,6 +1,10 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
 * Reduce memory usage of inner joins if they were performed by the IndexExecutor
   with dynamic index lookup expressions that needed to be recomputed for input
   from the outer loop.
