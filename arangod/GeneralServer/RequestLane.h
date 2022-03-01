@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <iosfwd>
+
 namespace arangodb {
 enum class RequestLane {
   // For requests that do not block or wait for something.
@@ -160,7 +162,7 @@ constexpr inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
-      return RequestPriority::LOW;
+      return RequestPriority::HIGH;
     case RequestLane::SERVER_REPLICATION_CATCHUP:
       return RequestPriority::MED;
     case RequestLane::SERVER_REPLICATION:
@@ -185,5 +187,7 @@ constexpr inline RequestPriority PriorityRequestLane(RequestLane lane) {
   }
   return RequestPriority::LOW;
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::RequestLane const& lane);
 
 }  // namespace arangodb
