@@ -48,6 +48,8 @@ auto arangodb::RestReplicatedStateHandler::executeByMethod(
   switch (_request->requestType()) {
     case rest::RequestType::GET:
       return handleGetRequest(methods);
+    case rest::RequestType::POST:
+      return handlePostRequest(methods);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -71,5 +73,34 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
         VPackBuilder buffer;
         status.toVelocyPack(buffer);
         generateOk(rest::ResponseCode::OK, buffer.slice());
+      }));
+}
+
+auto arangodb::RestReplicatedStateHandler::handlePostRequest(
+    const replication2::ReplicatedStateMethods& methods)
+    -> arangodb::RestStatus {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() != 0) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting _api/replicated-state");
+    return RestStatus::DONE;
+  }
+
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  // create a new log
+  auto spec =
+      replication2::replicated_state::agency::Target::fromVelocyPack(body);
+  return waitForFuture(
+      methods.createReplicatedState(spec).thenValue([this](auto&& result) {
+        if (result.ok()) {
+          generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+        } else {
+          generateError(result);
+        }
       }));
 }

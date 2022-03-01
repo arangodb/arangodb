@@ -46,5 +46,7 @@ class RestReplicatedStateHandler : public RestVocbaseBaseHandler {
       replication2::ReplicatedStateMethods const& methods);
   RestStatus handleGetRequest(
       replication2::ReplicatedStateMethods const& methods);
+  RestStatus handlePostRequest(
+      replication2::ReplicatedStateMethods const& methods);
 };
 }  // namespace arangodb

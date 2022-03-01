@@ -2396,7 +2396,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
           : public StaticComponent<ReplicatedStates, Target> {
        public:
         constexpr char const* component() const noexcept {
-          return "ReplicatedLogs";
+          return "ReplicatedStates";
         }
 
         using BaseType::StaticComponent;
