@@ -46,7 +46,7 @@ struct LogPlanTermSpecification {
   };
   std::optional<Leader> leader;
 
-  auto toVelocyPack(VPackBuilder &) const -> void;
+  auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
@@ -60,7 +60,7 @@ struct LogPlanSpecification {
 
   ParticipantsConfig participantsConfig;
 
-  auto toVelocyPack(velocypack::Builder &) const -> void;
+  auto toVelocyPack(velocypack::Builder&) const -> void;
   static auto fromVelocyPack(velocypack::Slice) -> LogPlanSpecification;
   LogPlanSpecification(from_velocypack_t, VPackSlice);
   LogPlanSpecification();
@@ -74,7 +74,7 @@ struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
 
-  auto toVelocyPack(VPackBuilder &) const -> void;
+  auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrentLocalState() = default;
   LogCurrentLocalState(from_velocypack_t, VPackSlice);
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
@@ -98,13 +98,12 @@ struct LogCurrentSupervisionElection {
   std::unordered_map<ParticipantId, ErrorCode> detail;
   std::vector<ParticipantId> electibleLeaderSet;
 
-  auto toVelocyPack(VPackBuilder &) const -> void;
+  auto toVelocyPack(VPackBuilder&) const -> void;
 
-  friend auto operator==(LogCurrentSupervisionElection const &,
-                         LogCurrentSupervisionElection const &) noexcept
-      -> bool;
-  friend auto operator!=(LogCurrentSupervisionElection const &left,
-                         LogCurrentSupervisionElection const &right) noexcept
+  friend auto operator==(LogCurrentSupervisionElection const&,
+                         LogCurrentSupervisionElection const&) noexcept -> bool;
+  friend auto operator!=(LogCurrentSupervisionElection const& left,
+                         LogCurrentSupervisionElection const& right) noexcept
       -> bool {
     return !(left == right);
   }
@@ -113,12 +112,12 @@ struct LogCurrentSupervisionElection {
   LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice);
 };
 
-auto operator==(LogCurrentSupervisionElection const &,
-                LogCurrentSupervisionElection const &) noexcept -> bool;
+auto operator==(LogCurrentSupervisionElection const&,
+                LogCurrentSupervisionElection const&) noexcept -> bool;
 
 auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept
     -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder &)
+auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
     -> void;
 
 enum class LogCurrentSupervisionError {
@@ -127,13 +126,13 @@ enum class LogCurrentSupervisionError {
 };
 
 auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder &) -> void;
+auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder&) -> void;
 
 struct LogCurrentSupervision {
   std::optional<LogCurrentSupervisionElection> election;
   std::optional<LogCurrentSupervisionError> error;
 
-  auto toVelocyPack(VPackBuilder &) const -> void;
+  auto toVelocyPack(VPackBuilder&) const -> void;
 
   LogCurrentSupervision() = default;
   LogCurrentSupervision(from_velocypack_t, VPackSlice slice);
@@ -152,14 +151,14 @@ struct LogCurrent {
     // will be set after 5s if leader is unable to establish leadership
     std::optional<replicated_log::CommitFailReason> commitStatus;
 
-    auto toVelocyPack(VPackBuilder &) const -> void;
+    auto toVelocyPack(VPackBuilder&) const -> void;
     static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
   // Will be nullopt until a leader has been assumed leadership
   std::optional<Leader> leader;
 
-  auto toVelocyPack(VPackBuilder &) const -> void;
+  auto toVelocyPack(VPackBuilder&) const -> void;
   static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent(from_velocypack_t, VPackSlice);
   LogCurrent() = default;
@@ -175,27 +174,27 @@ struct LogTarget {
   std::optional<ParticipantId> leader;
 
   struct Properties {
-    void toVelocyPack(velocypack::Builder &) const;
+    void toVelocyPack(velocypack::Builder&) const;
     static auto fromVelocyPack(velocypack::Slice) -> Properties;
   };
   Properties properties;
 
   struct Supervision {
     std::size_t maxActionsTraceLength{0};
-    auto toVelocyPack(velocypack::Builder &) const -> void;
+    auto toVelocyPack(velocypack::Builder&) const -> void;
     static auto fromVelocyPack(velocypack::Slice) -> Supervision;
   };
 
   std::optional<Supervision> supervision;
 
   static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
-  void toVelocyPack(velocypack::Builder &) const;
+  void toVelocyPack(velocypack::Builder&) const;
 
   LogTarget(from_velocypack_t, VPackSlice);
   LogTarget() = default;
 
-  LogTarget(LogId id, Participants const &participants,
-            LogConfig const &config);
+  LogTarget(LogId id, Participants const& participants,
+            LogConfig const& config);
 };
 
 /* Convenience Wrapper */
@@ -209,4 +208,4 @@ struct Log {
   std::optional<LogCurrent> current;
 };
 
-} // namespace arangodb::replication2::agency
+}  // namespace arangodb::replication2::agency
