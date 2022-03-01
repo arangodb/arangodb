@@ -681,15 +681,32 @@ const G6JsGraph = () => {
   }
 
   const expandNode = (node) => {
+    // /_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Caen&depth=2&limit=1&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true&query=FOR v, e, p IN 1..1 ANY "germanCity/Hamburg" GRAPH "routeplanner" RETURN p
     console.log(">>>>>>>>>>>> expandNode (node): ", node);
-    const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+    //const url = `/_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Caen&depth=2&limit=250&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true&query=FOR v, e, p IN 1..1 ANY "frenchCity/Caen" GRAPH "routeplanner" RETURN p`;
+    //const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+    const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=%232ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=%23cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
       arangoFetch(arangoHelper.databaseUrl(url), {
         method: "GET"
       })
       .then(response => response.json())
       .then(data => {
         console.log("Received expanded garph data: ", data);
-        setGraphData(data);
+        console.log("Current nodes: ", graphData.nodes);
+        console.log("Received nodes: ", data.nodes);
+        console.log("Current edges: ", graphData.edges);
+        console.log("Received edges: ", data.edges);
+        const newGraphData = {
+          nodes: [
+            ...graphData.nodes,
+            ...data.nodes
+          ],
+          edges: [
+            ...graphData.edges,
+            ...data.edges
+          ]
+        };
+        setGraphData(newGraphData);
       })
       .catch((err) => {
         console.log(err);
@@ -942,6 +959,7 @@ const G6JsGraph = () => {
         </AddNodeModal2>
         <button onClick={() => testApiParams()}>Test API Params</button>
         <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
+        <button onClick={() => updateGraphDataWithEdge(edgeModelToAdd)}>Add edge to graph drawing</button>
         
         <GraphView
               data={graphData}
@@ -950,6 +968,7 @@ const G6JsGraph = () => {
               onUpdateEdgeGraphData={(newGraphData) => updateGraphDataEdges(newGraphData)}
               onAddSingleNode={(newNode) => updateGraphDataWithNode(newNode)}
               onAddSingleEdge={(newEdge) => {
+                console.log("onAddSingleEdge (newEdge): ", newEdge);
                 setEdgeModelToAdd(newEdge);
                 openAddEdgeModal(newEdge);
                 //updateGraphDataWithEdge(newEdge)
