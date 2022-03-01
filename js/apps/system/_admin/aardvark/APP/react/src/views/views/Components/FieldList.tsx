@@ -9,29 +9,19 @@ import {
 } from "../../../components/arango/table";
 import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
-import AutoCompleteMultiSelect from "../../../components/pure-css/form/AutoCompleteMultiSelect";
 
 type FieldViewProps = {
   fields: any;
   disabled: boolean | undefined;
   dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   basePath: string;
-  options?: string[] | number[] | undefined;
-  label?: React.ReactNode;
-  onSelect: (value: string | number) => void;
-  values?: string[] | number[];
-  onRemove: (value: string | number) => void;
 };
 
 const FieldView: React.FC<FieldViewProps> = ({
   fields,
   disabled,
   dispatch,
-  basePath,
-  options,
-  label,
-  onRemove,
-  onSelect
+  basePath
 }) => {
   const removeField = (field: string | number) => {
     dispatch({
@@ -72,14 +62,6 @@ const FieldView: React.FC<FieldViewProps> = ({
               <ArangoTD seq={disabled ? 1 : 2}>
                 {properties &&
                   map(properties.analyzers, a => <Badge name={a} />)}
-                <AutoCompleteMultiSelect
-                  values={properties.analyzers}
-                  options={options}
-                  onRemove={onRemove}
-                  onSelect={onSelect}
-                  label={label}
-                />
-
                 {/* <LinkPropertiesInput
               formState={properties}
               disabled={disabled}

@@ -20,7 +20,7 @@ import { getBooleanFieldSetter } from "../../../../utils/helpers";
 import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCompleteMultiSelect";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
-import FieldView from "../../Components/FieldList";
+import FieldList from "../../Components/FieldList";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -210,18 +210,13 @@ const LinkPropertiesInput = ({
       {disabled && isEmpty(fields) ? null : (
         <Cell size={"1"}>
           <Fieldset legend={"Fields"}>
-            <FieldView
+            <FieldList
               fields={fields}
               disabled={disabled}
               dispatch={
                 (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
               }
               basePath={basePath}
-              options={options}
-              values={analyzers}
-              onRemove={removeAnalyzer}
-              onSelect={addAnalyzer}
-              label={"Analyzers"}
             />
 
             {/* {map(fields, (properties, fld) => {
