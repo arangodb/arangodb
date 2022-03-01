@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated snowball to version 2.2.0
+
 * Fixed: Deadlock created by high load and a follower trying to get into sync.
   In the final synchronization phase the follower needs to temporarily block writes
   on the leader so we have a reliable point in time where we can prove that the data is consistent.
