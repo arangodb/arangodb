@@ -2,13 +2,15 @@ devel
 -----
 
 * Added an http fuzzer that will fizz requests (the header for the actual
-  moment) and send to the server. The amount of requests sent if provided 
+  moment) and send to the server. The amount of requests sent is provided 
   by one of the parameters of the function `fuzzRequests()` in arangosh.
   The optional parameters that can be supplied are: 
   `fuzzRequests(<numRequests>, <numIterations>, <seed>)`
   The parameter numIterations is the amount of times the fuzzer is going to 
-  perform it's random actions on the header, and seed is for the seed that is 
+  perform its random actions on the header, and seed is for the seed that is 
   used for randomizing. 
+
+* Updated snowball to version 2.2.0
 
 * Fixed: Deadlock created by high load and a follower trying to get into sync.
   In the final synchronization phase the follower needs to temporarily block writes
