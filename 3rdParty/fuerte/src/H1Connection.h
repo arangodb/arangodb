@@ -35,6 +35,8 @@
 #include "GeneralConnection.h"
 #include "http.h"
 
+#include <optional>
+
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // in-flight request data
@@ -89,9 +91,14 @@ class H1Connection final : public fuerte::GeneralConnection<ST, RequestItem> {
 
   virtual std::unique_ptr<RequestItem> createRequest(
       std::unique_ptr<Request>&& req, RequestCallback&& cb) override {
-    auto h = buildRequestHeader(*req);
-    return std::make_unique<RequestItem>(std::move(req), std::move(cb),
-                                         std::move(h));
+    if (req->getFuzzerReq()) {
+      return std::make_unique<RequestItem>(std::move(req), std::move(cb),
+                                           std::move(req->getFuzzReqHeader().value_or("")));
+    } else {
+      auto h = buildRequestHeader(*req);
+      return std::make_unique<RequestItem>(std::move(req), std::move(cb),
+                                           std::move(h));
+    }
   }
 
  private:

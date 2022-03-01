@@ -193,8 +193,13 @@ class Request final : public Message {
   /// @brief request header
   RequestHeader header;
 
+
   MessageType type() const override { return MessageType::Request; }
   MessageHeader const& messageHeader() const override { return header; }
+  void setFuzzReqHeader(std::string& fuzzHeader) {_fuzzReqHeader = fuzzHeader;}
+  std::optional<std::string> getFuzzReqHeader() const {return _fuzzReqHeader;}
+  void setFuzzerReq(bool isFuzzerReq) {_isFuzzerReq = isFuzzerReq;}
+  bool getFuzzerReq() const {return _isFuzzerReq;}
 
   ///////////////////////////////////////////////
   // header accessors
@@ -230,6 +235,8 @@ class Request final : public Message {
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
+  bool _isFuzzerReq = false;
+  std::optional<std::string> _fuzzReqHeader = std::nullopt;
 };
 
 // Response contains the message resulting from a request to a server.

@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Shell/arangosh.h"
+#include "Shell/RequestFuzzer.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
@@ -33,6 +34,7 @@
 #include <v8.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -69,6 +71,11 @@ class V8ClientConnection {
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);
+  // void setFuzzer(std::unique_ptr<fuzzer::RequestFuzzer>& fuzzer) {_fuzzer =
+  // fuzzer;}
+  void randomizeHeader(std::string& header) {
+    _fuzzer->randomizeHeader(header);
+  }
   bool isConnected() const;
 
   void connect();
@@ -134,6 +141,8 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
 
+  v8::Local<v8::Value> requestFuzz(v8::Isolate* isolate, std::string& header);
+
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
@@ -185,6 +194,8 @@ class V8ClientConnection {
   velocypack::Options _vpackOptions;
   bool _forceJson;
   std::atomic<bool> _setCustomError;
+
+  std::unique_ptr<fuzzer::RequestFuzzer> _fuzzer = nullptr;
 
   // a per-endpoint, per-user cache for connections. whenever we reconnect
   // to another endpoint, we can put the old connection into this cache,

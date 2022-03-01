@@ -981,6 +981,91 @@ static void ClientConnection_httpPostRaw(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method wrap single fuzz request
+////////////////////////////////////////////////////////////////////////////////
+
+static void httpFuzzRequest(V8ClientConnection* v8connection,
+                            v8::FunctionCallbackInfo<v8::Value> const& args,
+                            fuzzer::RequestFuzzer* fuzzer) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+  TRI_V8_TRY_CATCH_END
+  std::string header;
+  fuzzer->randomizeHeader(header);
+  TRI_V8_RETURN(v8connection->requestFuzz(isolate, header));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "fuzzRequests"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_httpFuzzRequests(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "fuzzRequests() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  std::unique_ptr<fuzzer::RequestFuzzer> fuzzer;
+
+  uint32_t numReqs = 1000;
+  if (args.Length() == 0) {
+    fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
+  } else {
+    uint32_t* arg0 = nullptr;
+    uint32_t* arg1 = nullptr;
+    uint32_t* arg2 = nullptr;
+    if (args.Length() < 3) {
+      if (args[0]->Uint32Value(isolate->GetCurrentContext()).To(arg0)) {
+        fuzzer = std::make_unique<fuzzer::RequestFuzzer>(*arg0);
+      } else {
+        fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
+      }
+      if (args.Length() == 2 &&
+          args[1]->Uint32Value(isolate->GetCurrentContext()).To(arg1)) {
+        numReqs = *arg1;
+      }
+    } else if (args.Length() == 3) {
+      bool success0 =
+          args[0]->Uint32Value(isolate->GetCurrentContext()).To(arg0);
+      bool success2 =
+          args[2]->Uint32Value(isolate->GetCurrentContext()).To(arg2);
+      if (success0 && success2) {
+        fuzzer = std::make_unique<fuzzer::RequestFuzzer>(*arg0, *arg2);
+      } else {
+        fuzzer = std::make_unique<fuzzer::RequestFuzzer>();
+      }
+      if (args[1]->Uint32Value(isolate->GetCurrentContext()).To(arg1)) {
+        numReqs = *arg1;
+      }
+    } else {
+      TRI_V8_THROW_EXCEPTION_USAGE(
+          "fuzzRequests(<numIterations>, <numRequests>, <seed>). "
+          "(numIterations and numRequests must be > 0).");
+    }
+  }
+  for (uint32_t i = 0; i < numReqs; ++i) {
+    httpFuzzRequest(v8connection, args, fuzzer.get());
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "PUT" helper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2153,6 +2238,75 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
   }
 }
 
+v8::Local<v8::Value> V8ClientConnection::requestFuzz(v8::Isolate* isolate,
+                                                     std::string& header) {
+  bool retry = true;
+
+again:
+  auto req = std::make_unique<fu::Request>();
+
+  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  if (!connection || connection->state() == fu::Connection::State::Closed) {
+    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                 "not connected");
+    return v8::Undefined(isolate);
+  }
+
+  fu::Error rc = fu::Error::NoError;
+  std::unique_ptr<fu::Response> response;
+  try {
+    req->setFuzzReqHeader(header);
+    req->setFuzzerReq(true);
+    response = connection->sendRequest(std::move(req));
+  } catch (fu::Error const& ec) {
+    rc = ec;
+  }
+
+  if (rc == fu::Error::ConnectionClosed && retry) {
+    retry = false;
+    goto again;
+  }
+
+  auto context = TRI_IGETC;
+  // not complete
+  if (!response) {
+    v8::Local<v8::Object> result = v8::Object::New(isolate);
+    auto errorNumber = fuerteToArangoErrorCode(rc);
+    _lastErrorMessage = fu::to_string(rc);
+    _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
+
+    setResultMessage(isolate, context, true, errorNumber, _lastErrorMessage,
+                     result);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "code"),
+              v8::Integer::New(
+                  isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)))
+        .FromMaybe(false);
+
+    return result;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  // complete
+  _lastHttpReturnCode = response->statusCode();
+
+  // got a body
+  if (canParseResponse(*response)) {
+    return parseReplyBodyToV8(*response, isolate);
+  }
+
+  auto payloadSize = response->payload().size();
+  if (payloadSize > 0) {
+    return translateResultBodyToV8(*response, isolate);
+  } else {
+    // no body
+    v8::Local<v8::Object> result = v8::Object::New(isolate);
+    setResultMessage(isolate, context, false, _lastHttpReturnCode, result);
+    return result;
+  }
+}
+
 v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
@@ -2396,6 +2550,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "SEND_FILE",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
+
+  connection_proto->Set(
+      isolate, "fuzzRequests",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpFuzzRequests));
 
   connection_proto->Set(isolate, "getEndpoint",
                         v8::FunctionTemplate::New(
