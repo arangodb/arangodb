@@ -104,7 +104,6 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
-    // TODO: Check depth constraints before fetching more loose ends.
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
