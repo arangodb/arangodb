@@ -132,3 +132,59 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
     follower->resolveRequest(std::move(result));
   }
 }
+
+struct WaitForSyncPersistorTest : ReplicatedLogTest {};
+
+TEST_F(WaitForSyncPersistorTest, wait_for_sync_entry) {
+  auto leaderId = LogId{1};
+  auto followerId = LogId{2};
+  bool const waitForSyncGlobal = false;
+
+  auto followerLog = makeReplicatedLog(followerId);
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  auto leaderLog = makeReplicatedLog(leaderId);
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2,
+                                        waitForSyncGlobal);
+  leader->triggerAsyncReplication();
+
+  auto leaderPersisted = _persistedLogs.at(leaderId);
+  auto followerPersisted = _persistedLogs.at(followerId);
+
+  auto idx = leader->insert(LogPayload::createFromString("first entry"));
+  follower->runAllAsyncAppendEntries();
+  EXPECT_FALSE(leaderPersisted->checkEntryWaitedForSync(idx));
+  EXPECT_FALSE(followerPersisted->checkEntryWaitedForSync(idx));
+  auto idx2 =
+      leader->insert(LogPayload::createFromString("second entry"), true);
+  follower->runAllAsyncAppendEntries();
+  EXPECT_TRUE(leaderPersisted->checkEntryWaitedForSync(idx2));
+  EXPECT_TRUE(followerPersisted->checkEntryWaitedForSync(idx2));
+}
+
+TEST_F(WaitForSyncPersistorTest, wait_for_sync_global) {
+  auto leaderId = LogId{1};
+  auto followerId = LogId{2};
+  bool const waitForSyncGlobal = true;
+
+  auto followerLog = makeReplicatedLog(followerId);
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  auto leaderLog = makeReplicatedLog(leaderId);
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2,
+                                        waitForSyncGlobal);
+  leader->triggerAsyncReplication();
+
+  auto leaderPersisted = _persistedLogs.at(leaderId);
+  auto followerPersisted = _persistedLogs.at(followerId);
+
+  auto idx = leader->insert(LogPayload::createFromString("first entry"));
+  follower->runAllAsyncAppendEntries();
+  EXPECT_TRUE(leaderPersisted->checkEntryWaitedForSync(idx));
+  EXPECT_TRUE(followerPersisted->checkEntryWaitedForSync(idx));
+  auto idx2 =
+      leader->insert(LogPayload::createFromString("second entry"), true);
+  follower->runAllAsyncAppendEntries();
+  EXPECT_TRUE(leaderPersisted->checkEntryWaitedForSync(idx2));
+  EXPECT_TRUE(followerPersisted->checkEntryWaitedForSync(idx2));
+}
