@@ -131,7 +131,7 @@ struct ReplicatedState final
     [[nodiscard]] virtual auto resign() && noexcept
         -> std::tuple<std::unique_ptr<CoreType>,
                       std::unique_ptr<ReplicatedStateToken>,
-                      std::unique_ptr<WaitForAppliedQueue>> = 0;
+                      DeferredAction> = 0;
   };
 
  private:
@@ -152,21 +152,19 @@ struct ReplicatedState final
     auto runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
                    std::unique_ptr<CoreType>,
                    std::unique_ptr<ReplicatedStateToken> token)
-        -> std::shared_ptr<StateManagerBase>;
+        -> DeferredAction;
     auto runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
                      std::unique_ptr<CoreType>,
                      std::unique_ptr<ReplicatedStateToken> token)
-        -> std::shared_ptr<StateManagerBase>;
+        -> DeferredAction;
     auto runUnconfigured(
         std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
             unconfiguredParticipant,
         std::unique_ptr<CoreType> core,
-        std::unique_ptr<ReplicatedStateToken> token)
-        -> std::shared_ptr<StateManagerBase>;
+        std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
 
     auto rebuild(std::unique_ptr<CoreType> core,
-                 std::unique_ptr<ReplicatedStateToken> token)
-        -> std::shared_ptr<StateManagerBase>;
+                 std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
 
     auto flush(StateGeneration planGeneration) -> DeferredAction;
 

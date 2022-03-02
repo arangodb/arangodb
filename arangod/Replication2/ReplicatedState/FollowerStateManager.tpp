@@ -336,8 +336,7 @@ auto FollowerStateManager<S>::getFollowerState() const
 template<typename S>
 auto FollowerStateManager<S>::resign() && noexcept
     -> std::tuple<std::unique_ptr<CoreType>,
-                  std::unique_ptr<ReplicatedStateToken>,
-                  std::unique_ptr<WaitForAppliedQueue>> {
+                  std::unique_ptr<ReplicatedStateToken>, DeferredAction> {
   auto resolveQueue = std::make_unique<WaitForAppliedQueue>();
   LOG_TOPIC("63622", TRACE, Logger::REPLICATED_STATE)
       << "Follower manager resigning";
@@ -355,7 +354,14 @@ auto FollowerStateManager<S>::resign() && noexcept
   TRI_ASSERT(!guard->_didResign);
   guard->_didResign = true;
   std::swap(*resolveQueue, guard->waitForAppliedQueue);
-  return {std::move(core), std::move(guard->token), std::move(resolveQueue)};
+  return {
+      std::move(core), std::move(guard->token),
+      DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
+        for (auto& p : *resolveQueue) {
+          p.second.setException(replicated_log::ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+        }
+      })};
 }
 
 template<typename S>

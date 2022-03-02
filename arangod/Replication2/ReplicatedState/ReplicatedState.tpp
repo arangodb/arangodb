@@ -154,13 +154,13 @@ void ReplicatedState<S>::start(std::unique_ptr<ReplicatedStateToken> token) {
   auto deferred =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
   // execute *after* the lock has been released
-  deferred->run();
+  deferred.fire();
 }
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::rebuild(
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> std::shared_ptr<StateManagerBase> try {
+    -> DeferredAction try {
   LOG_TOPIC("edaef", TRACE, Logger::REPLICATED_STATE)
       << "replicated state rebuilding - query participant";
   auto participant = _self.log->getParticipant();
@@ -203,7 +203,7 @@ template<typename S>
 auto ReplicatedState<S>::GuardedData::runFollower(
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> std::shared_ptr<StateManagerBase> try {
+    -> DeferredAction try {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
   auto manager = std::make_shared<FollowerStateManager<S>>(
@@ -211,7 +211,7 @@ auto ReplicatedState<S>::GuardedData::runFollower(
       std::move(token), _self.factory);
   currentManager = manager;
 
-  return manager;
+  return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_TOPIC("ab9de", DEBUG, Logger::REPLICATED_STATE)
       << "runFollower caught exception: " << e.what();
@@ -222,14 +222,14 @@ template<typename S>
 auto ReplicatedState<S>::GuardedData::runLeader(
     std::shared_ptr<replicated_log::ILogLeader> logLeader,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> std::shared_ptr<StateManagerBase> try {
+    -> DeferredAction try {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
   auto manager = std::make_shared<LeaderStateManager<S>>(
       _self.shared_from_this(), std::move(logLeader), std::move(core),
       std::move(token), _self.factory);
   currentManager = manager;
 
-  return manager;
+  return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_TOPIC("016f3", DEBUG, Logger::REPLICATED_STATE)
       << "run leader caught exception: " << e.what();
@@ -241,7 +241,7 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
     std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
         unconfiguredParticipant,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
-    -> std::shared_ptr<StateManagerBase> try {
+    -> DeferredAction try {
   LOG_TOPIC("5d7c6", DEBUG, Logger::REPLICATED_STATE)
       << "create unconfigured state";
   auto manager = std::make_shared<UnconfiguredStateManager<S>>(
@@ -249,7 +249,7 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
       std::move(core), std::move(token));
   currentManager = manager;
 
-  return manager;
+  return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_TOPIC("6f1eb", DEBUG, Logger::REPLICATED_STATE)
       << "run unconfigured caught exception: " << e.what();
@@ -259,18 +259,10 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
 template<typename S>
 auto ReplicatedState<S>::GuardedData::forceRebuild() -> DeferredAction {
   try {
-    auto [core, token, queue] = std::move(*currentManager).resign();
-    auto manager = rebuild(std::move(core), std::move(token));
-    return DeferredAction([queue = std::move(queue),
-                           manager = std::move(manager)]() mutable noexcept {
-      if (queue != nullptr) {
-        for (auto& p : *queue) {
-          p.second.setException(replicated_log::ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
-        }
-      }
-      manager->run();
-    });
+    auto [core, token, queueAction] = std::move(*currentManager).resign();
+    auto runAction = rebuild(std::move(core), std::move(token));
+    return DeferredAction::combine(std::move(queueAction),
+                                   std::move(runAction));
   } catch (std::exception const& e) {
     LOG_TOPIC("af348", DEBUG, Logger::REPLICATED_STATE)
         << "forced rebuild caught exception: " << e.what();
@@ -281,22 +273,13 @@ auto ReplicatedState<S>::GuardedData::forceRebuild() -> DeferredAction {
 template<typename S>
 auto ReplicatedState<S>::GuardedData::flush(StateGeneration planGeneration)
     -> DeferredAction {
-  auto [core, token, queue] = std::move(*currentManager).resign();
+  auto [core, token, queueAction] = std::move(*currentManager).resign();
   if (token->generation != planGeneration) {
     token = std::make_unique<ReplicatedStateToken>(planGeneration);
   }
 
-  auto manager = rebuild(std::move(core), std::move(token));
-  return DeferredAction([queue = std::move(queue),
-                         manager = std::move(manager)]() mutable noexcept {
-    if (queue != nullptr) {
-      for (auto& p : *queue) {
-        p.second.setException(replicated_log::ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
-      }
-    }
-    manager->run();
-  });
+  auto runAction = rebuild(std::move(core), std::move(token));
+  return DeferredAction::combine(std::move(queueAction), std::move(runAction));
 }
 
 }  // namespace arangodb::replication2::replicated_state

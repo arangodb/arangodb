@@ -120,8 +120,11 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_resign_resolve) {
 
   auto f2 = state->waitForApplied(LogIndex{4});
   ASSERT_FALSE(f2.isReady());
-  std::move(*manager).resign();
+  auto [core, token, action] = std::move(*manager).resign();
+  action.fire();
 
   // This is now fulfilled because we dropped the return value of resign
   ASSERT_TRUE(f2.isReady());
+  ASSERT_TRUE(f2.hasException());
+  ASSERT_THROW({ f2.get(); }, replicated_log::ParticipantResignedException);
 }

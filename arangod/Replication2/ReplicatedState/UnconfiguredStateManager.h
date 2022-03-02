@@ -64,7 +64,7 @@ struct UnconfiguredStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::tuple<std::unique_ptr<CoreType>,
                     std::unique_ptr<ReplicatedStateToken>,
-                    std::unique_ptr<WaitForAppliedQueue>> override;
+                    DeferredAction> override;
 
  private:
   std::weak_ptr<ReplicatedState<S>> _parent;

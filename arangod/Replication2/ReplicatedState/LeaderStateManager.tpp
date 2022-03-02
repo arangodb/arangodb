@@ -177,8 +177,7 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
 template<typename S>
 auto LeaderStateManager<S>::resign() && noexcept
     -> std::tuple<std::unique_ptr<CoreType>,
-                  std::unique_ptr<ReplicatedStateToken>,
-                  std::unique_ptr<WaitForAppliedQueue>> {
+                  std::unique_ptr<ReplicatedStateToken>, DeferredAction> {
   LOG_TOPIC("edcf3", TRACE, Logger::REPLICATED_STATE)
       << "Leader manager resign";
   auto core = std::invoke([&] {
@@ -193,7 +192,7 @@ auto LeaderStateManager<S>::resign() && noexcept
   TRI_ASSERT(token != nullptr);
   TRI_ASSERT(!_didResign);
   _didResign = true;
-  return {std::move(core), std::move(token), nullptr};
+  return std::make_tuple(std::move(core), std::move(token), DeferredAction{});
 }
 
 template<typename S>

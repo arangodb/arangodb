@@ -62,7 +62,7 @@ struct FollowerStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::tuple<std::unique_ptr<CoreType>,
                     std::unique_ptr<ReplicatedStateToken>,
-                    std::unique_ptr<WaitForAppliedQueue>> override;
+                    DeferredAction> override;
 
   [[nodiscard]] auto getStream() const noexcept -> std::shared_ptr<Stream>;
 

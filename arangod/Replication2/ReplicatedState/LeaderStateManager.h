@@ -62,7 +62,7 @@ struct LeaderStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::tuple<std::unique_ptr<CoreType>,
                     std::unique_ptr<ReplicatedStateToken>,
-                    std::unique_ptr<WaitForAppliedQueue>> override;
+                    DeferredAction> override;
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
   std::shared_ptr<IReplicatedLeaderState<S>> state;
