@@ -704,6 +704,7 @@ set(LIB_ARANGO_V8SERVER_SOURCES
 
 set(LIB_ARANGO_WASM_SOURCES
   WasmServer/Methods.cpp
+  WasmServer/WasmCommon.cpp
   RestHandler/RestWasmHandler.cpp
 )
 

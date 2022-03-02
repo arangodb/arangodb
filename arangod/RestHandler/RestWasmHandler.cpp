@@ -35,6 +35,8 @@
 #include "WasmServer/Methods.h"
 #include "RestServer/arangod.h"
 
+#include "WasmServer/WasmCommon.h"
+
 using namespace arangodb;
 using namespace arangodb::wasm;
 
@@ -66,11 +68,30 @@ auto RestWasmHandler::executeByMethod(WasmVmMethods const& methods)
 
 auto RestWasmHandler::handleGetRequest(WasmVmMethods const& methods)
     -> RestStatus {
-  LOG_DEVEL << "Hello world";
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  for (auto& suffix : suffixes) {
+    LOG_DEVEL << suffix;
+  }
   return RestStatus::DONE;
 }
 
 auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
     -> RestStatus {
+  auto success = bool{};
+  auto slice = parseVPackBody(success);
+  if (!success) {
+    generateError(ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
+                  "Could not parse Json");
+    return RestStatus::DONE;
+  }
+  if (!slice.isObject()) {
+    generateError(ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
+                  "Expecting body to contain Json Object");
+    return RestStatus::DONE;
+  }
+  auto function = WasmFunction::fromVelocyPack(slice);
+  auto builder = VPackBuilder();
+  toVelocyPack(function, builder);
+  LOG_DEVEL << "Hello" << builder.toJson();
   return RestStatus::DONE;
 }
