@@ -242,7 +242,6 @@ inline constexpr std::string_view NonEligibleServerRequiredForQuorumEnum =
     "NonEligibleServerRequiredForQuorum";
 inline constexpr std::string_view WhoFieldName = "who";
 inline constexpr std::string_view CandidatesFieldName = "candidates";
-inline constexpr std::string_view NonEligibleFailed = "failed";
 inline constexpr std::string_view NonEligibleExcluded = "excluded";
 inline constexpr std::string_view NonEligibleWrongTerm = "wrongTerm";
 }  // namespace
@@ -322,8 +321,6 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
                   NonEligibleServerRequiredForQuorum::Why why) noexcept
     -> std::string_view {
   switch (why) {
-    case kFailed:
-      return NonEligibleFailed;
     case kExcluded:
       return NonEligibleExcluded;
     case kWrongTerm:
@@ -343,9 +340,7 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
   CandidateMap candidates;
   for (auto const& [key, value] :
        velocypack::ObjectIterator(s.get(CandidatesFieldName))) {
-    if (value.isEqualString(NonEligibleFailed)) {
-      candidates[key.copyString()] = kFailed;
-    } else if (value.isEqualString(NonEligibleExcluded)) {
+    if (value.isEqualString(NonEligibleExcluded)) {
       candidates[key.copyString()] = kExcluded;
     } else if (value.isEqualString(NonEligibleWrongTerm)) {
       candidates[key.copyString()] = kWrongTerm;

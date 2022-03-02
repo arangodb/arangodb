@@ -187,7 +187,7 @@ arangodb::Result executePlan(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
-    std::unordered_set<std::string> const& moreDirt,
+    containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
@@ -208,7 +208,8 @@ arangodb::Result executePlan(
  * @return         Result
  */
 arangodb::Result diffLocalCurrent(
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
+        local,
     VPackSlice const& current, std::string const& serverId,
     Transactions& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap);
@@ -234,7 +235,7 @@ arangodb::Result phaseOne(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
-    std::unordered_set<std::string> const& moreDirt,
+    containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, MaintenanceFeature& feature,
@@ -267,8 +268,7 @@ arangodb::Result phaseTwo(
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     ReplicatedLogStatusMapByDatabase const& localLogs,
-    ReplicatedStateStatusMapByDatabase const& localStates,
-    std::unordered_set<std::string> const& failedServers);
+    ReplicatedStateStatusMapByDatabase const& localStates);
 
 /**
  * @brief          Report local changes to current
@@ -321,8 +321,7 @@ void syncReplicatedShardsWithLeaders(
         local,
     std::string const& serverId, MaintenanceFeature& feature,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    containers::FlatHashSet<std::string>& makeDirty,
-    std::unordered_set<std::string> const& failedServers);
+    containers::FlatHashSet<std::string>& makeDirty);
 
 }  // namespace maintenance
 }  // namespace arangodb
