@@ -343,7 +343,16 @@ class Builder {
     return addInternal<Value>(attrName, sub);
   }
 
-  [[deprecated]] inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
+  template<typename T,
+           std::enable_if_t<!std::is_same_v<std::decay_t<T>, Value> &&
+                                std::is_constructible_v<Value, T&&>,
+                            bool> = true>
+  uint8_t* add(std::string_view attrName, T&& sub) {
+    return add(attrName, Value(std::forward<T>(sub)));
+  }
+
+  [[deprecated]] inline uint8_t* add(char const* attrName,
+                                     std::size_t attrLength, Value const& sub) {
     return addInternal<Value>(std::string_view(attrName, attrLength), sub);
   }
 
