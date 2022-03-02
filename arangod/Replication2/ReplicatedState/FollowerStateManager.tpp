@@ -38,7 +38,7 @@ void FollowerStateManager<S>::applyEntries(
   LOG_TOPIC("3678e", TRACE, Logger::REPLICATED_STATE)
       << "apply entries in range " << range;
 
-  auto state = _guardedData.template doUnderLock([&](GuardedData& data) {
+  auto state = _guardedData.doUnderLock([&](GuardedData& data) {
     data.updateInternalState(FollowerInternalState::kApplyRecentEntries, range);
     return data.state;
   });
@@ -86,14 +86,13 @@ void FollowerStateManager<S>::applyEntries(
 
 template<typename S>
 void FollowerStateManager<S>::pollNewEntries() {
-  auto [stream, index] =
-      _guardedData.template doUnderLock([&](GuardedData& data) {
-        TRI_ASSERT(data.stream != nullptr);
-        LOG_TOPIC("a1462", TRACE, Logger::REPLICATED_STATE)
-            << "polling for new entries nextEntry = " << data.nextEntry;
-        data.updateInternalState(FollowerInternalState::kNothingToApply);
-        return std::make_pair(data.stream, data.nextEntry);
-      });
+  auto [stream, index] = _guardedData.doUnderLock([&](GuardedData& data) {
+    TRI_ASSERT(data.stream != nullptr);
+    LOG_TOPIC("a1462", TRACE, Logger::REPLICATED_STATE)
+        << "polling for new entries nextEntry = " << data.nextEntry;
+    data.updateInternalState(FollowerInternalState::kNothingToApply);
+    return std::make_pair(data.stream, data.nextEntry);
+  });
 
   stream->waitForIterator(index).thenFinal(
       [weak = this->weak_from_this()](
@@ -177,13 +176,12 @@ void FollowerStateManager<S>::tryTransferSnapshot(
 template<typename S>
 void FollowerStateManager<S>::checkSnapshot(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  bool needsSnapshot =
-      _guardedData.template doUnderLock([&](GuardedData& data) {
-        LOG_TOPIC("aee5b", TRACE, Logger::REPLICATED_STATE)
-            << "snapshot status is " << data.token->snapshot.status
-            << ", generation is " << data.token->generation;
-        return data.token->snapshot.status != SnapshotStatus::kCompleted;
-      });
+  bool needsSnapshot = _guardedData.doUnderLock([&](GuardedData& data) {
+    LOG_TOPIC("aee5b", TRACE, Logger::REPLICATED_STATE)
+        << "snapshot status is " << data.token->snapshot.status
+        << ", generation is " << data.token->generation;
+    return data.token->snapshot.status != SnapshotStatus::kCompleted;
+  });
   if (needsSnapshot) {
     LOG_TOPIC("3d0fc", DEBUG, Logger::REPLICATED_STATE)
         << "new snapshot is required";
