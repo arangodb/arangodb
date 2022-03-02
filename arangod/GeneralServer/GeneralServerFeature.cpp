@@ -103,6 +103,7 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
+#include "RestHandler/RestWasmHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
@@ -580,6 +581,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/wasm", RestHandlerCreator<RestWasmHandler>::createNoData);
 
   if (agency.isEnabled()) {
     _handlerFactory->addPrefixHandler(

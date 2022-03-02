@@ -702,6 +702,11 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   V8Server/v8-vocindex.cpp
   V8Server/v8-replicated-logs.cpp V8Server/v8-replicated-logs.h)
 
+set(LIB_ARANGO_WASM_SOURCES
+  WasmServer/Methods.cpp
+  RestHandler/RestWasmHandler.cpp
+)
+
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp
   Network/ConnectionPool.cpp
@@ -953,6 +958,10 @@ add_library(arango_v8server STATIC
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
+add_library(arango_wasm STATIC
+  ${LIB_ARANGO_WASM_SOURCES}
+)
+
 add_library(arango_utils STATIC
   ${LIB_ARANGO_UTILS_SOURCES}
 )
@@ -1172,6 +1181,8 @@ target_link_libraries(arango_vocbase arango_replication2)
 target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arango_vocbase arango::validation)
 
+target_link_libraries(arango_wasm arango)
+
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
 target_link_libraries(arangoserver arango_cluster_engine)
@@ -1189,6 +1200,7 @@ target_link_libraries(arangoserver arango_storage_engine)
 target_link_libraries(arangoserver arango_utils)
 target_link_libraries(arangoserver arango_v8server)
 target_link_libraries(arangoserver arango_vocbase)
+target_link_libraries(arangoserver arango_wasm)
 target_link_libraries(arangoserver boost_boost)
 
 target_link_libraries(arangoserver
@@ -1276,6 +1288,7 @@ foreach(TARGET
   arango_utils
   arango_v8server
   arango_vocbase
+  arango_wasm
   arangod
   arangoserver
 )
