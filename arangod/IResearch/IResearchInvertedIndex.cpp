@@ -862,19 +862,15 @@ IResearchInvertedIndex::sortedFields(IResearchInvertedIndexMeta const& meta) {
 }
 
 Result IResearchInvertedIndex::init(
+    bool& pathExists,
     IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
-  auto const& storedValuesColumns = _meta._storedValues.columns();
   TRI_ASSERT(_meta._sortCompression);
-  auto const primarySortCompression =
-      _meta._sortCompression ? _meta._sortCompression : getDefaultCompression();
-  auto const res = initDataStore(initCallback, _meta._version, isSorted(),
-                                 storedValuesColumns, primarySortCompression);
-
-  if (!res.ok()) {
-    return res;
+  auto r = initDataStore(pathExists, initCallback, _meta._version, isSorted(),
+                         _meta._storedValues.columns(), _meta._sortCompression);
+  if (r.ok()) {
+    _comparer.reset(_meta._sort);
   }
-  _comparer.reset(_meta._sort);
-  return {};
+  return r;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

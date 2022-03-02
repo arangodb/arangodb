@@ -106,9 +106,19 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
       definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
-
+  bool pathExists = false;
+  auto cleanup = scopeGuard([&]() noexcept {
+    if (pathExists) {
+      try {
+        link->unload();  // TODO(MBkkt) unload should be implicit noexcept?
+      } catch (...) {
+      }
+    } else {
+      link->drop();
+    }
+  });
   auto const res =
-      link->init(definition, [this]() -> irs::directory_attributes {
+      link->init(definition, pathExists, [this]() -> irs::directory_attributes {
         auto& selector = _server.getFeature<EngineSelectorFeature>();
         TRI_ASSERT(selector.isRocksDB());
         auto& engine = selector.engine<RocksDBEngine>();
@@ -120,11 +130,10 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
         }
         return irs::directory_attributes{};
       });
-
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
+  cleanup.cancel();
   return link;
 }
 
