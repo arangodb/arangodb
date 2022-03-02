@@ -1,6 +1,10 @@
 v3.9.1 (XXXX-XX-XX)
 -------------------
 
+* Avoid a deadlock in agency, when Inception::gossip() acquired a mutex, then 
+  could call Agent under the mutex, and Agent could finally could call 
+  Inception::signalConditionVar(), which would try to acquire the mutex again.
+
 * Upgraded JavaScript "i" module from 0.3.6 to 0.3.7.
 
 * Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
