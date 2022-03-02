@@ -247,7 +247,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/Types/ValidationResult.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
-)
+        ../enterprise/Enterprise/Graph/Steps/SmartGraphCoordinatorStep.cpp ../enterprise/Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h)
 
 set(LIB_ARANGO_PREGEL_AIR_SOURCES
   Pregel/Algos/AIR/AIR.cpp

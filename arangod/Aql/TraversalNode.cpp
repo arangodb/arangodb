@@ -881,7 +881,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 #ifdef USE_ENTERPRISE
     }
 #endif
-  } else {
+  }
+  {
     if (isDisjoint()) {
       opts->setDisjoint();
     }
@@ -906,10 +907,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         vars.emplace_back(var);
         regs.emplace_back(reg);
       }
-
-      arangodb::graph::BaseProviderOptions baseProviderOptions{
-          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          filterConditionVariables, opts->collectionToShard()};
 
       arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
                                                          opts->maxDepth};
@@ -948,20 +945,45 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
             vertexExpressionPerDepth.second->clone(_plan->getAst());
         validatorOptions.setVertexExpression(depth, std::move(expression));
       }
+      // TODO This is still hacekd, do not merge this back.
+      // First unify with ClusterProvider and then cleanup.
+      if (isSmart()) {
+        auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
+            opts->query().resourceMonitor());
+        arangodb::graph::ClusterBaseProviderOptions baseProviderOptions{
+            traverserCache, engines(), false};
+        auto executorInfos = TraversalExecutorInfos(
+            nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
+            std::move(filterConditionVariables), plan()->getAst(),
+            opts->uniqueVertices, opts->uniqueEdges, opts->mode,
+            opts->refactor(), opts->defaultWeight, opts->weightAttribute,
+            opts->trx(), opts->query(), std::move(baseProviderOptions),
+            std::move(validatorOptions),
+            //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+            //                                 opts->maxDepth});
+            std::move(options));
 
-      auto executorInfos = TraversalExecutorInfos(
-          nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
-          std::move(filterConditionVariables), plan()->getAst(),
-          opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
-          opts->defaultWeight, opts->weightAttribute, opts->trx(),
-          opts->query(), std::move(baseProviderOptions),
-          std::move(validatorOptions),
-          //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-          //                                 opts->maxDepth});
-          std::move(options));
+        return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      } else {
+        arangodb::graph::BaseProviderOptions baseProviderOptions{
+            opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+            filterConditionVariables, opts->collectionToShard()};
+        auto executorInfos = TraversalExecutorInfos(
+            nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
+            std::move(filterConditionVariables), plan()->getAst(),
+            opts->uniqueVertices, opts->uniqueEdges, opts->mode,
+            opts->refactor(), opts->defaultWeight, opts->weightAttribute,
+            opts->trx(), opts->query(), std::move(baseProviderOptions),
+            std::move(validatorOptions),
+            //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+            //                                 opts->maxDepth});
+            std::move(options));
 
-      return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+        return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      }
+
     } else {
       traverser =
           std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);

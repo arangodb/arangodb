@@ -77,6 +77,23 @@ class TraversalExecutorInfos {
       arangodb::graph::BaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions);
+
+  TraversalExecutorInfos(
+      std::unique_ptr<traverser::Traverser>&& traverser,
+      std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                         TraversalExecutorInfosHelper::OutputNameHash>
+          registerMapping,
+      std::string fixedSource, RegisterId inputRegister,
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariables,
+      Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
+      traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
+      traverser::TraverserOptions::Order order, bool refactor,
+      double defaultWeight, std::string weightAttribute,
+      transaction::Methods* trx, arangodb::aql::QueryContext& query,
+      arangodb::graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions,
+      arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions);
   // TODO [GraphRefactor]: Tidy-up input parameter "mess" after refactor is
   // done.
   // TODO [GraphRefactor]: Thinking about a new class / struct for passing /

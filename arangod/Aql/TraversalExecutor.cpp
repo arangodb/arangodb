@@ -37,6 +37,12 @@
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
+#endif
+
 #include "Graph/algorithm-aliases.h"
 
 using namespace arangodb;
@@ -103,6 +109,77 @@ TraversalExecutorInfos::TraversalExecutorInfos(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
         _weightAttribute, query, std::move(baseProviderOptions),
         std::move(pathValidatorOptions), std::move(enumeratorOptions));
+    TRI_ASSERT(_traversalEnumerator != nullptr);
+  }
+}
+
+// on the coordinator
+TraversalExecutorInfos::TraversalExecutorInfos(
+    std::unique_ptr<traverser::Traverser>&& traverser,
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash>
+        registerMapping,
+    std::string fixedSource, RegisterId inputRegister,
+    std::vector<std::pair<Variable const*, RegisterId>>
+        filterConditionVariables,
+    Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
+    traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
+    traverser::TraverserOptions::Order order, bool refactor,
+    double defaultWeight, std::string weightAttribute,
+    transaction::Methods* trx, arangodb::aql::QueryContext& query,
+    arangodb::graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions,
+    arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions)
+    : _traverser(std::move(traverser)),
+      _registerMapping(std::move(registerMapping)),
+      _fixedSource(std::move(fixedSource)),
+      _inputRegister(inputRegister),
+      _filterConditionVariables(
+          std::move(filterConditionVariables)),  // TODO [GraphRefactor]:
+                                                 // Remove the _ as soon as we
+                                                 // can get rid of the old code
+      _ast(ast),
+      _uniqueVertices(vertexUniqueness),
+      _uniqueEdges(edgeUniqueness),
+      _order(order),
+      _refactor(refactor),
+      _defaultWeight(defaultWeight),
+      _weightAttribute(std::move(weightAttribute)),
+      _trx(trx),
+      _query(query) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  if (!refactor) {
+    TRI_ASSERT(_traverser != nullptr);
+  }
+
+  // _fixedSource XOR _inputRegister
+  // note: _fixedSource can be the empty string here
+  TRI_ASSERT(_fixedSource.empty() ||
+             (!_fixedSource.empty() &&
+              _inputRegister.value() == RegisterId::maxRegisterId));
+  // All Nodes are located in the AST it cannot be non existing.
+  TRI_ASSERT(_ast != nullptr);
+  if (isRefactor()) {
+    /*
+     * In the refactored variant we need to parse the correct enumerator type
+     * here, before we're allowed to use it.
+     */
+    TRI_ASSERT(_traversalEnumerator == nullptr);
+
+    // TODO just local test do not comit!!!
+    using SmartGraphTest = graph::DFSEnumerator<
+        arangodb::graph::enterprise::SmartGraphProvider<
+            arangodb::graph::enterprise::SmartGraphCoordinatorStep>,
+        graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::PATH>;
+
+    _traversalEnumerator = std::make_unique<SmartGraphTest>(
+        graph::enterprise::SmartGraphProvider<
+            graph::enterprise::SmartGraphCoordinatorStep>{
+            query, std::move(clusterBaseProviderOptions),
+            query.resourceMonitor()},
+        std::move(enumeratorOptions), std::move(pathValidatorOptions),
+        query.resourceMonitor());
+
     TRI_ASSERT(_traversalEnumerator != nullptr);
   }
 }
@@ -260,7 +337,6 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void {
   // TODO [GraphRefactor]: Temporary try to minimize copy-paste-tank, but
   // failed. auto [vertexUnique, edgeUnique] = convertUniquenessLevels();
-
   if (order == TraverserOptions::Order::DFS) {
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:

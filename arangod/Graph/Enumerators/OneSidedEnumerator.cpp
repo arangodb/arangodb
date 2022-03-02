@@ -40,6 +40,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/algorithm-aliases-ee.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
 #endif
 
 #include <Logger/LogMacros.h>
@@ -570,5 +571,5 @@ template class ::arangodb::graph::OneSidedEnumerator<
 
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
     arangodb::graph::enterprise::SmartGraphProvider<
-        arangodb::graph::enterprise::SmartGraphStep>)
+        arangodb::graph::enterprise::SmartGraphCoordinatorStep>)
 #endif

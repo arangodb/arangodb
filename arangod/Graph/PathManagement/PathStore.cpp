@@ -32,6 +32,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
@@ -310,42 +311,50 @@ template void PathStore<ClusterProviderStep>::reverseBuildPath<
         path) const;
 
 #ifdef USE_ENTERPRISE
-template void PathStore<enterprise::SmartGraphStep>::buildPath<
-    PathResult<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
-               enterprise::SmartGraphStep>>(
-    enterprise::SmartGraphStep const& vertex,
-    PathResult<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
-               enterprise::SmartGraphStep>& path) const;
 
-template void PathStore<enterprise::SmartGraphStep>::reverseBuildPath<
-    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>(
-    enterprise::SmartGraphStep const& vertex,
-    PathResult<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
-               enterprise::SmartGraphStep>& path) const;
+template class PathStore<enterprise::SmartGraphCoordinatorStep>;
+template void
+PathStore<enterprise::SmartGraphCoordinatorStep>::buildPath<PathResult<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>,
+    enterprise::SmartGraphCoordinatorStep>>(
+    enterprise::SmartGraphCoordinatorStep const& vertex,
+    PathResult<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>,
+        enterprise::SmartGraphCoordinatorStep>& path) const;
+
+template void
+PathStore<enterprise::SmartGraphCoordinatorStep>::reverseBuildPath<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>>(
+    enterprise::SmartGraphCoordinatorStep const& vertex,
+    PathResult<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>,
+        enterprise::SmartGraphCoordinatorStep>& path) const;
 
 // Tracing
 
-template void PathStore<enterprise::SmartGraphStep>::buildPath<PathResult<
-    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
-    ProviderTracer<
-        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>>(
-    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::
-        Step const& vertex,
-    PathResult<ProviderTracer<
-                   enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+template void PathStore<enterprise::SmartGraphCoordinatorStep>::buildPath<
+    PathResult<ProviderTracer<enterprise::SmartGraphProvider<
+                   enterprise::SmartGraphCoordinatorStep>>,
                ProviderTracer<enterprise::SmartGraphProvider<
-                   enterprise::SmartGraphStep>>::Step>& path) const;
+                   enterprise::SmartGraphCoordinatorStep>>::Step>>(
+    ProviderTracer<enterprise::SmartGraphProvider<
+        enterprise::SmartGraphCoordinatorStep>>::Step const& vertex,
+    PathResult<ProviderTracer<enterprise::SmartGraphProvider<
+                   enterprise::SmartGraphCoordinatorStep>>,
+               ProviderTracer<enterprise::SmartGraphProvider<
+                   enterprise::SmartGraphCoordinatorStep>>::Step>& path) const;
 
-template void PathStore<ProviderTracer<
-    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>::
+template void PathStore<ProviderTracer<enterprise::SmartGraphProvider<
+    enterprise::SmartGraphCoordinatorStep>>::Step>::
     reverseBuildPath<ProviderTracer<
-        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>>(
+        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>>>(
         ProviderTracer<enterprise::SmartGraphProvider<
-            enterprise::SmartGraphStep>>::Step const& vertex,
+            enterprise::SmartGraphCoordinatorStep>>::Step const& vertex,
         PathResult<ProviderTracer<enterprise::SmartGraphProvider<
-                       enterprise::SmartGraphStep>>,
+                       enterprise::SmartGraphCoordinatorStep>>,
                    ProviderTracer<enterprise::SmartGraphProvider<
-                       enterprise::SmartGraphStep>>::Step>& path) const;
+                       enterprise::SmartGraphCoordinatorStep>>::Step>& path)
+        const;
 #endif
 
 }  // namespace graph
