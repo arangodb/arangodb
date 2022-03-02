@@ -65,8 +65,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   std::string_view getIcuLanguage() const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
-  void resetDefaultLanguage(std::string const& language);
-  void resetIcuLanguage(std::string const& language);
+  void resetDefaultLanguage(std::string_view language);
+  void resetIcuLanguage(std::string_view language);
 
  private:
   icu::Locale _locale;

@@ -234,14 +234,14 @@ std::string LanguageFeature::getCollatorLanguage() const {
   return languageName;
 }
 
-void LanguageFeature::resetDefaultLanguage(std::string const& language) {
+void LanguageFeature::resetDefaultLanguage(std::string_view language) {
   _icuLanguage.clear();
   _defaultLanguage = language;
   ::setCollator(_defaultLanguage, _icuDataPtr, true);
   ::setLocale(_locale);
 }
 
-void LanguageFeature::resetIcuLanguage(std::string const& language) {
+void LanguageFeature::resetIcuLanguage(std::string_view language) {
   _defaultLanguage.clear();
   _icuLanguage = language;
   ::setCollator(_icuLanguage, _icuDataPtr, false);
