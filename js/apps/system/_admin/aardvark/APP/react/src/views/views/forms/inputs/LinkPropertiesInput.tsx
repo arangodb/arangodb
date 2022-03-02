@@ -251,19 +251,23 @@ const LinkPropertiesInput = ({
 
       <Cell size={"1"}>
         <Fieldset legend={"Fields"}>
-          {disabled && showField === false && isEmpty(fields) ? null : (
-            <FieldList
-              fields={fields}
-              disabled={disabled}
-              dispatch={
-                (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-              }
-              basePath={basePath}
-              viewField={handleShowField}
-            />
+          {!showField && (
+            <>
+              {disabled && isEmpty(fields) ? null : (
+                <FieldList
+                  fields={fields}
+                  disabled={disabled}
+                  dispatch={
+                    (dispatch as unknown) as Dispatch<
+                      DispatchArgs<LinkProperties>
+                    >
+                  }
+                  basePath={basePath}
+                  viewField={handleShowField}
+                />
+              )}
+            </>
           )}
-
-          {showField && handleShowField}
 
           {/* {map(fields, (properties, fld) => {
               return (
@@ -298,6 +302,8 @@ const LinkPropertiesInput = ({
                 </tr>
               );
             })} */}
+
+          {showField && handleShowField}
         </Fieldset>
       </Cell>
     </Grid>
