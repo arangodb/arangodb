@@ -811,6 +811,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestLicenseHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestReplicatedStateHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
