@@ -1,6 +1,9 @@
 devel
 -----
 
+* Enable range deletions in the WAL for truncate operationns in the cluster, 
+  too. This can speed up truncate operations for large collections/shards.
+
 * Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
   objects to about 200.
 
@@ -22,7 +25,7 @@ devel
   always bundling your own copy of third-party modules, even ones listed as
   public.
 
-* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
+* Bugfix: DC2DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
   replicated to the follower data-center keeping their sharding intact.
 
 * Optimize further RocksDB throttle to allow for no change on any
