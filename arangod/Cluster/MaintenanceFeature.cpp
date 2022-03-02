@@ -1183,18 +1183,19 @@ void MaintenanceFeature::addDirty(std::string const& database) {
   server().getFeature<ClusterFeature>().addDirty(database);
 }
 void MaintenanceFeature::addDirty(
-    std::unordered_set<std::string> const& databases, bool callNotify) {
+    containers::FlatHashSet<std::string> const& databases, bool callNotify) {
   server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
+containers::FlatHashSet<std::string> MaintenanceFeature::pickRandomDirty(
+    size_t n) {
   size_t left = _databasesToCheck.size();
   bool more = false;
   if (n >= left) {
     n = left;
     more = true;
   }
-  std::unordered_set<std::string> ret(
+  containers::FlatHashSet<std::string> ret(
       std::make_move_iterator(_databasesToCheck.end() - n),
       std::make_move_iterator(_databasesToCheck.end()));
   _databasesToCheck.erase(_databasesToCheck.end() - n, _databasesToCheck.end());
@@ -1213,8 +1214,8 @@ void MaintenanceFeature::refillToCheck() {
   std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::dirty(
-    std::unordered_set<std::string> const& more) {
+containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
+    containers::FlatHashSet<std::string> const& more) {
   auto& clusterFeature = server().getFeature<ClusterFeature>();
   auto ret = clusterFeature.dirty();  // plan & current in first run
   if (_firstRun) {
@@ -1288,7 +1289,7 @@ bool MaintenanceFeature::unlockShard(ShardID const& shardId) noexcept {
 }
 
 MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
-  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("aaed4", TRACE, Logger::MAINTENANCE)
       << "Copy of shard action map taken.";
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;

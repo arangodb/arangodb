@@ -797,10 +797,11 @@ static void JS_GetCollectionInfoClusterInfo(
         if (t.at(0) == '_') {
           t = t.substr(1);
         }
-        shorts
-            ->Set(context, pos, TRI_V8_STD_STRING(isolate, serverAliases.at(t)))
-            .FromMaybe(false);
-        pos++;
+        if (auto it = serverAliases.find(t); it != serverAliases.end()) {
+          shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, it->second))
+              .FromMaybe(false);
+          pos++;
+        }
       } catch (...) {
       }
     }
@@ -900,8 +901,10 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
   uint32_t pos = 0;
   for (auto const& s : servers) {
     try {
-      shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, serverAliases.at(s)))
-          .FromMaybe(false);
+      if (auto it = serverAliases.find(s); it != serverAliases.end()) {
+        shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, it->second))
+            .FromMaybe(false);
+      }
     } catch (...) {
     }
     list->Set(context, pos, TRI_V8_STD_STRING(isolate, s)).FromMaybe(false);
@@ -971,7 +974,7 @@ static void JS_GetResponsibleServersClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
 
-  std::unordered_set<std::string> shardIds;
+  containers::FlatHashSet<std::string> shardIds;
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
 
   uint32_t const n = array->Length();

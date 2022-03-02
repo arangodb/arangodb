@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-compiler.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/ClusterFeature.h"
@@ -43,7 +44,9 @@ namespace arangodb::cluster {
 namespace {
 constexpr auto kSupervisionHealthPath = "Supervision/Health";
 constexpr auto kHealthyServerKey = "Status";
-constexpr auto HealthyServerValue = "GOOD";
+[[maybe_unused]] constexpr auto kServerStatusGood = "GOOD";
+[[maybe_unused]] constexpr auto kServerStatusBad = "BAD";
+constexpr auto kServerStatusFailed = "FAILED";
 }  // namespace
 
 class FailureOracleImpl final
@@ -93,10 +96,13 @@ void FailureOracleImpl::start() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Expected non-null AgencyCallbackRegistry "
                                    "while starting FailureOracle.");
+    TRI_ASSERT(false);
   }
+  LOG_TOPIC("848eb", DEBUG, Logger::CLUSTER) << "Started Failure Oracle";
   Result res = agencyCallbackRegistry->registerCallback(_agencyCallback, true);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
+    TRI_ASSERT(false);
   }
 
   scheduleFlush();
@@ -104,6 +110,7 @@ void FailureOracleImpl::start() {
 
 void FailureOracleImpl::stop() {
   _is_running.store(false);
+  LOG_TOPIC("cf940", DEBUG, Logger::CLUSTER) << "Stopping Failure Oracle";
 
   try {
     auto agencyCallbackRegistry = _clusterFeature.agencyCallbackRegistry();
@@ -126,21 +133,30 @@ auto FailureOracleImpl::getStatus() -> FailureOracleFeature::Status {
                                       .lastUpdated = _lastUpdated};
 }
 
-void FailureOracleImpl::reload(const VPackSlice& result) {
+void FailureOracleImpl::reload(VPackSlice const& result) {
   FailureOracleFeature::FailureMap isFailed;
-  for (auto [key, value] : VPackObjectIterator(result)) {
-    auto serverId = key.copyString();
-    auto isServerGood =
-        value.get(kHealthyServerKey).isEqualString(HealthyServerValue);
-    isFailed[serverId] = !isServerGood;
+  for (auto const [key, value] : VPackObjectIterator(result)) {
+    auto const serverId = key.copyString();
+    auto const isServerFailed =
+        value.get(kHealthyServerKey).isEqualString(kServerStatusFailed);
+    isFailed[serverId] = isServerFailed;
   }
   std::unique_lock writeLock(_mutex);
-  _isFailed = std::move(isFailed);
+  std::swap(_isFailed, isFailed);
   _lastUpdated = std::chrono::system_clock::now();
+  if (ADB_UNLIKELY(Logger::isEnabled(LogLevel::TRACE, Logger::CLUSTER))) {
+    if (isFailed != _isFailed) {
+      LOG_TOPIC("321d2", TRACE, Logger::CLUSTER)
+          << "reloading with " << _isFailed << " at "
+          << timepointToString(_lastUpdated);
+    }
+  }
 }
 
 void FailureOracleImpl::flush() {
   if (!_is_running.load()) {
+    LOG_TOPIC("65a8b", TRACE, Logger::CLUSTER)
+        << "Failure Oracle feature no longer running, ignoring flush";
     return;
   }
   std::shared_ptr<VPackBuilder> builder;
@@ -151,6 +167,10 @@ void FailureOracleImpl::flush() {
         << " expected object in agency at " << kSupervisionHealthPath
         << " but got " << result.toString();
     reload(result);
+  } else {
+    LOG_TOPIC("f6403", ERR, Logger::CLUSTER)
+        << "Agency cache returned no result for " << kSupervisionHealthPath;
+    TRI_ASSERT(false);
   }
 }
 
@@ -159,6 +179,8 @@ void FailureOracleImpl::scheduleFlush() noexcept {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (!scheduler) {
+    LOG_TOPIC("6c08b", ERR, Logger::CLUSTER)
+        << "Scheduler unavailable, aborting scheduled flushes.";
     return;
   }
 
@@ -170,11 +192,14 @@ void FailureOracleImpl::scheduleFlush() noexcept {
           try {
             self->flush();
           } catch (std::exception& ex) {
-            LOG_TOPIC("42bf3", WARN, Logger::CLUSTER)
+            LOG_TOPIC("42bf3", FATAL, Logger::CLUSTER)
                 << "Exception while flushing the failure oracle " << ex.what();
             FATAL_ERROR_EXIT();
           }
           self->scheduleFlush();
+        } else {
+          LOG_TOPIC("b5839", DEBUG, Logger::CLUSTER)
+              << "Failure Oracle is gone, exiting scheduled flush loop.";
         }
       });
 }
@@ -186,11 +211,19 @@ void FailureOracleImpl::createAgencyCallback(Server& server) {
       server, kSupervisionHealthPath,
       [weak = weak_from_this()](VPackSlice const& result) {
         auto self = weak.lock();
-        if (self && !result.isNone()) {
-          TRI_ASSERT(result.isObject())
-              << " expected object in agency at " << kSupervisionHealthPath
-              << " but got " << result.toString();
-          self->reload(result);
+        if (self) {
+          if (!result.isNone()) {
+            TRI_ASSERT(result.isObject())
+                << " expected object in agency at " << kSupervisionHealthPath
+                << " but got " << result.toString();
+            self->reload(result);
+          } else {
+            LOG_TOPIC("581ba", WARN, Logger::CLUSTER)
+                << "Failure Oracle callback got no result, skipping reload";
+          }
+        } else {
+          LOG_TOPIC("453b4", DEBUG, Logger::CLUSTER)
+              << "Failure Oracle is gone, ignoring agency callback";
         }
         return true;
       },
@@ -202,6 +235,8 @@ FailureOracleFeature::FailureOracleFeature(Server& server)
   setOptional(true);
   startsAfter<SchedulerFeature>();
   startsAfter<ClusterFeature>();
+  onlyEnabledWith<SchedulerFeature>();
+  onlyEnabledWith<ClusterFeature>();
 }
 
 void FailureOracleFeature::prepare() {
