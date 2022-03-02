@@ -2607,8 +2607,8 @@ void Supervision::checkReplicatedLogs() {
                                                     ->log(idString)
                                                     ->str(SkipComponents(1)));
 
-      auto action =
-          std::invoke([&, &dbName = dbName]() -> std::unique_ptr<Action> {
+      auto maybeAction =
+          std::invoke([&, &dbName = dbName]() -> std::optional<Action> {
             try {
               return checkReplicatedLog(Log{target, plan, current}, info);
             } catch (std::exception const& err) {
@@ -2616,11 +2616,16 @@ void Supervision::checkReplicatedLogs() {
                   << "Supervision caught exception in checkReplicatedLog for "
                      "replicated log "
                   << dbName << "/" << target.id << ": " << err.what();
-              return nullptr;
+              return std::nullopt;
             }
           });
 
-      if (action != nullptr) {
+      auto maybeLogId = replication2::LogId::fromString(idString);
+
+      if (maybeAction && maybeLogId) {
+        auto const& action = *maybeAction;
+        auto const& logId = *maybeLogId;
+
         if (target.supervision.has_value() &&
             target.supervision->maxActionsTraceLength > 0) {
           envelope =
@@ -2638,12 +2643,14 @@ void Supervision::checkReplicatedLogs() {
                         b.add("time", VPackValue(timepointToString(
                                           std::chrono::system_clock::now())));
                         b.add(VPackValue("desc"));
-                        action->toVelocyPack(b);
+                        arangodb::replication2::replicated_log::toVelocyPack(
+                            action, b);
                       },
                       target.supervision->maxActionsTraceLength)
                   .end();
         }
-        envelope = action->execute(dbName, std::move(envelope));
+        envelope = arangodb::replication2::replicated_log::execute(
+            action, dbName, logId, std::move(envelope));
       }
     }
   }
