@@ -137,6 +137,7 @@ class IResearchInvertedIndexIteratorTestBase
     EXPECT_TRUE(_index);
     bool pathExists = false;
     EXPECT_TRUE(_index->init(pathExists).ok());
+    EXPECT_FALSE(pathExists);
 
     // now populate the docs
     static std::vector<std::string> const EMPTY;
