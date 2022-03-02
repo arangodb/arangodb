@@ -56,6 +56,7 @@ inline constexpr auto StringRole = std::string_view{"role"};
 inline constexpr auto StringUnconfigured = std::string_view{"unconfigured"};
 inline constexpr auto StringDetail = std::string_view{"detail"};
 inline constexpr auto StringManagerState = std::string_view{"managerState"};
+inline constexpr auto StringManager = std::string_view{"manager"};
 inline constexpr auto StringLog = std::string_view{"log"};
 
 auto followerStateFromString(std::string_view str) -> FollowerInternalState {
@@ -152,7 +153,7 @@ auto StateStatus::fromVelocyPack(velocypack::Slice slice) -> StateStatus {
 void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add(StringRole, velocypack::Value(StaticStrings::Follower));
-  builder.add(velocypack::Value(StringManagerState));
+  builder.add(velocypack::Value(StringManager));
   managerState.toVelocyPack(builder);
   builder.add(velocypack::Value("snapshot"));
   snapshot.toVelocyPack(builder);
@@ -162,7 +163,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
 void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add(StringRole, velocypack::Value(StaticStrings::Leader));
-  builder.add(velocypack::Value(StringManagerState));
+  builder.add(velocypack::Value(StringManager));
   managerState.toVelocyPack(builder);
   builder.add(velocypack::Value("snapshot"));
   snapshot.toVelocyPack(builder);
@@ -190,7 +191,7 @@ auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice s)
 
 auto FollowerStatus::fromVelocyPack(velocypack::Slice s) -> FollowerStatus {
   TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Follower);
-  auto state = ManagerState::fromVelocyPack(s.get(StringManagerState));
+  auto state = ManagerState::fromVelocyPack(s.get(StringManager));
   auto generation = s.get(StringLog).extract<StateGeneration>();
   auto snapshot = SnapshotInfo::fromVelocyPack(s.get("snapshot"));
   return FollowerStatus{.managerState = std::move(state),
@@ -200,7 +201,7 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice s) -> FollowerStatus {
 
 auto LeaderStatus::fromVelocyPack(velocypack::Slice s) -> LeaderStatus {
   TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Leader);
-  auto state = ManagerState::fromVelocyPack(s.get(StringManagerState));
+  auto state = ManagerState::fromVelocyPack(s.get(StringManager));
   auto generation = s.get(StringLog).extract<StateGeneration>();
   auto snapshot = SnapshotInfo::fromVelocyPack(s.get("snapshot"));
   return LeaderStatus{.managerState = std::move(state),

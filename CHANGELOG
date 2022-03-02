@@ -4,6 +4,27 @@ devel
 * Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
   objects to about 200.
 
+* Updated snowball to version 2.2.0
+
+* Fixed: Deadlock created by high load and a follower trying to get into sync.
+  In the final synchronization phase the follower needs to temporarily block writes
+  on the leader so we have a reliable point in time where we can prove that the data is consistent.
+  If the leader at this point is flooded with write requests to that shard there is a chance
+  that all worker threads only pick up those writes, which cannot make any progress until the
+  lock is cleared. However, the process to clear the lock was on the same priority as those writes.
+  Hence this lock clear operations could not bypass the writes. Now we moved every follow up request
+  after the lock to HIGH lanes, which will allow them to bypass all non-internal operations.
+
+* arangosh now uses the same header the UI uses to gain higher priority on initial connection.
+  This will increase the chance for an arangosh to connect to a server under very high load.
+
+* Removed internal JavaScript dependencies "mocha" and "chalk". We recommend
+  always bundling your own copy of third-party modules, even ones listed as
+  public.
+
+* Bugfix: DC-2-DC Disjoint-SmartGraphs and Hybrid-SmartGraphs are now
+  replicated to the follower data-center keeping their sharding intact.
+
 * Optimize further RocksDB throttle to allow for no change on any
   given calculation cycle.
 
