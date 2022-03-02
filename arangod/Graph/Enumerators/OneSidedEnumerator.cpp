@@ -127,7 +127,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     _results.emplace_back(step);
     return;
   }
-  ValidationResult res = _validator.validatePath(step, isDisjoint());
+  ValidationResult res = _validator.validatePath(step, isDisjoint(), "");
   LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
       << std::boolalpha
       << "<Traverser> Validated Vertex: " << step.getVertex().getID()

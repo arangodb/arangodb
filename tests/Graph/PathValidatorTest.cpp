@@ -223,7 +223,7 @@ TYPED_TEST(PathValidatorTest,
 
   Step s = this->startPath(0);
   {
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
@@ -234,7 +234,7 @@ TYPED_TEST(PathValidatorTest,
     ASSERT_EQ(neighbors.size(), 1)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
   }
@@ -244,7 +244,7 @@ TYPED_TEST(PathValidatorTest,
     auto neighbors = this->expandPath(s);
     ASSERT_EQ(neighbors.size(), 1);
     s = neighbors.at(0);
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
 
     if (this->getVertexUniqueness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
@@ -266,7 +266,7 @@ TYPED_TEST(PathValidatorTest,
 
   Step s = this->startPath(0);
   {
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
@@ -277,7 +277,7 @@ TYPED_TEST(PathValidatorTest,
     ASSERT_EQ(neighbors.size(), 1)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
   }
@@ -287,7 +287,7 @@ TYPED_TEST(PathValidatorTest,
     auto neighbors = this->expandPath(s);
     ASSERT_EQ(neighbors.size(), 1);
     s = neighbors.at(0);
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
 
     if (this->getVertexUniqueness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
@@ -309,7 +309,7 @@ TYPED_TEST(PathValidatorTest,
 
   Step s = this->startPath(0);
   {
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
@@ -320,7 +320,7 @@ TYPED_TEST(PathValidatorTest,
     ASSERT_EQ(neighbors.size(), 1)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
   }
@@ -330,7 +330,7 @@ TYPED_TEST(PathValidatorTest,
     auto neighbors = this->expandPath(s);
     ASSERT_EQ(neighbors.size(), 1);
     s = neighbors.at(0);
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
 
     if (this->getVertexUniqueness() == VertexUniquenessLevel::NONE) {
       // No uniqueness check, take the vertex
@@ -354,7 +354,7 @@ TYPED_TEST(PathValidatorTest,
 
   Step s = this->startPath(0);
   {
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
@@ -367,7 +367,7 @@ TYPED_TEST(PathValidatorTest,
     {
       // Test the branch vertex itself
       s = branch.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -377,7 +377,7 @@ TYPED_TEST(PathValidatorTest,
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -387,7 +387,7 @@ TYPED_TEST(PathValidatorTest,
     {
       // Test the branch vertex itself
       s = branch.at(1);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -396,7 +396,7 @@ TYPED_TEST(PathValidatorTest,
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -406,7 +406,7 @@ TYPED_TEST(PathValidatorTest,
       auto neighbors = this->expandPath(s);
       ASSERT_EQ(neighbors.size(), 1);
       s = neighbors.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
 
       if (this->getVertexUniqueness() != VertexUniquenessLevel::GLOBAL) {
         // The vertex is visited twice, but not on same path.
@@ -433,7 +433,7 @@ TYPED_TEST(PathValidatorTest,
 
   Step s = this->startPath(0);
   {
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
@@ -449,7 +449,7 @@ TYPED_TEST(PathValidatorTest,
     {
       // Test the branch vertex itself
       s = branch.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -458,7 +458,7 @@ TYPED_TEST(PathValidatorTest,
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -468,7 +468,7 @@ TYPED_TEST(PathValidatorTest,
     {
       // Test the branch vertex itself
       s = branch.at(1);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -477,7 +477,7 @@ TYPED_TEST(PathValidatorTest,
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -487,7 +487,7 @@ TYPED_TEST(PathValidatorTest,
       auto neighbors = this->expandPath(s);
       ASSERT_EQ(neighbors.size(), 1);
       s = neighbors.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
 
       if (this->getVertexUniqueness() != VertexUniquenessLevel::GLOBAL) {
         // The vertex is visited twice, but not on same path.
@@ -513,7 +513,7 @@ TYPED_TEST(PathValidatorTest,
 
   Step s = this->startPath(0);
   {
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
@@ -528,7 +528,7 @@ TYPED_TEST(PathValidatorTest,
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);  //  s == 1, s == 2
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -539,7 +539,7 @@ TYPED_TEST(PathValidatorTest,
     ASSERT_EQ(neighbors.size(), 1)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);  // s == 1 (second time)
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     if (this->getVertexUniqueness() == VertexUniquenessLevel::PATH ||
         this->getVertexUniqueness() == VertexUniquenessLevel::GLOBAL) {
       EXPECT_TRUE(res.isFiltered());
@@ -552,7 +552,7 @@ TYPED_TEST(PathValidatorTest,
       s = neighbors.at(0);              // 2
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
-      res = validator.validatePath(s, false);
+      res = validator.validatePath(s, false, "");
       if (this->getEdgeUniqueness() == EdgeUniquenessLevel::NONE) {
         EXPECT_FALSE(res.isFiltered());
         EXPECT_FALSE(res.isPruned());
@@ -579,7 +579,7 @@ TYPED_TEST(PathValidatorTest,
 
   Step s = this->startPath(0);
   {
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     // The start vertex is always valid
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
@@ -595,7 +595,7 @@ TYPED_TEST(PathValidatorTest,
     {
       // Test the branch vertex itself
       s = branch.at(0);  // vertex 1
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -604,7 +604,7 @@ TYPED_TEST(PathValidatorTest,
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }
@@ -614,13 +614,13 @@ TYPED_TEST(PathValidatorTest,
     {
       // Test the branch vertex itself
       s = branch.at(1);  // vertex 4
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
 
       // extend to vertex 2
       auto neighbors = this->expandPath(s);  // {2}
-      res = validator.validatePath(s, false);
+      res = validator.validatePath(s, false, "");
       ASSERT_EQ(neighbors.size(), 1)
           << "Not enough connections after step " << s.getVertexIdentifier();
       if (this->getVertexUniqueness() == VertexUniquenessLevel::GLOBAL) {
@@ -633,7 +633,7 @@ TYPED_TEST(PathValidatorTest,
         neighbors = this->expandPath(s);
         ASSERT_EQ(neighbors.size(), 1)
             << "Not enough connections after step " << s.getVertexIdentifier();
-        res = validator.validatePath(s, false);
+        res = validator.validatePath(s, false, "");
         if (this->getEdgeUniqueness() == EdgeUniquenessLevel::NONE ||
             this->getEdgeUniqueness() == EdgeUniquenessLevel::PATH) {
           EXPECT_FALSE(res.isFiltered());
@@ -658,7 +658,7 @@ TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
   {
     // Testing x._key == "1" with `{_key: "1"} => Should succeed
     Step s = this->startPath(1);
-    auto res = validator.validatePath(s, false);
+    auto res = validator.validatePath(s, false, "");
     EXPECT_FALSE(res.isFiltered());
     EXPECT_FALSE(res.isPruned());
   }
@@ -670,7 +670,7 @@ TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
     // Testing x._key == "1" with `{_key: "0"} => Should fail
     Step s = this->startPath(0);
     {
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_TRUE(res.isFiltered());
       EXPECT_TRUE(res.isPruned());
     }
@@ -681,7 +681,7 @@ TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
     s = neighbors.at(0);
     {
       // Testing x._key == "1" with `{_key: "1"} => Should succeed
-      auto res = validator.validatePath(s, false);
+      auto res = validator.validatePath(s, false, "");
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
     }

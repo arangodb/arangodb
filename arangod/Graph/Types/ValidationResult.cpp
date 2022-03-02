@@ -82,3 +82,8 @@ std::ostream& arangodb::graph::operator<<(std::ostream& stream,
 auto ValidationResult::getSmartValue() -> std::string_view {
   return std::string_view(_smartValue);
 }
+#ifdef USE_ENTERPRISE
+auto ValidationResult::setSmartValue(std::string_view smartValue) {
+  _smartValue = smartValue;
+}
+#endif

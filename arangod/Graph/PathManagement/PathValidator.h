@@ -69,12 +69,11 @@ class PathValidator {
   virtual ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step, bool isDisjoint,
-                    std::string_view smartValue = "") -> ValidationResult;
+                    std::string_view smartValue) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
                                   edgeUniqueness> const& otherValidator,
-                    std::string_view smartValue,
-                    bool isDisjoint)
+                    std::string& smartValue, bool isDisjoint)
       -> ValidationResult;
 
   void reset();
@@ -140,11 +139,13 @@ class PathValidator {
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
                                 arangodb::velocypack::Slice value) -> bool;
-
-  auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
-                              bool isSatelliteLeader,
-                              std::string_view smartValue)
-      -> arangodb::graph::ValidationResult::Type;
 };
+
+template<class PathStore>
+auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
+                            bool isSatelliteLeader,
+                            PathStore const& store, std::string& smartValue)
+    -> arangodb::graph::ValidationResult::Type;
+
 }  // namespace graph
 }  // namespace arangodb

@@ -37,6 +37,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "../../../tests/Mocks/MockGraphProvider.h"
 #endif
 
 using namespace arangodb;
@@ -169,6 +170,16 @@ template void arangodb::graph::
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::
                 Step>& path) const;
+
+#ifdef USE_ENTERPRISE
+template bool ::arangodb::graph::PathStoreTracer<
+    PathStore<arangodb::tests::graph::MockGraphProvider::Step>>::
+    visitReversePath(
+        arangodb::tests::graph::MockGraphProvider::Step const& step,
+        std::function<
+            bool(const arangodb::tests::graph::MockGraphProvider::Step&)> const&
+            visitor) const;
+#endif
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::PathStoreTracer<

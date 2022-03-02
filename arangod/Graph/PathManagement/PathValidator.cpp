@@ -36,7 +36,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
 
 #include "Basics/Exceptions.h"
@@ -78,8 +77,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
 #ifdef USE_ENTERPRISE
   if (isDisjoint) {
-    auto validDisjPathRes =
-        checkValidDisjointPath(step, _isSatelliteLeader, smartValue);
+    std::string localSmartValue(smartValue);
+    auto validDisjPathRes = checkValidDisjointPath<PathStore>(
+        step, _isSatelliteLeader, _store, localSmartValue);
     if (validDisjPathRes == ValidationResult::Type::FILTER_AND_PRUNE ||
         validDisjPathRes == ValidationResult::Type::FILTER) {
       res.combine(validDisjPathRes);
@@ -148,12 +148,13 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     validatePath(typename PathStore::Step const& step,
                  PathValidator<ProviderType, PathStore, vertexUniqueness,
                                edgeUniqueness> const& otherValidator,
-                 std::string_view smartValue, bool isDisjoint)
+                 std::string& smartValue, bool isDisjoint)
         -> ValidationResult {
   ValidationResult res(ValidationResult::Type::TAKE);
 #ifdef USE_ENTERPRISE
   if (isDisjoint) {
-    auto resType = checkValidDisjointPath(step, _isSatelliteLeader, smartValue);
+    auto resType = checkValidDisjointPath<PathStore>(step, _isSatelliteLeader,
+                                                     _store, smartValue);
     if (resType == ValidationResult::Type::FILTER) {
       res = ValidationResult(ValidationResult::Type::FILTER);
     } else {
@@ -449,12 +450,10 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
 }
 
 #ifndef USE_ENTERPRISE
-template<class Provider, class PathStore,
-         VertexUniquenessLevel vertexUniqueness,
-         EdgeUniquenessLevel edgeUniqueness>
-auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
-    checkValidDisjointPath(typename PathStore::Step const& lastStep,
-                           bool isSatelliteLeader)
+template<class PathStore>
+    auto checkValidDisjointPath(typename PathStore::Step const& lastStep,
+                           bool isSatelliteLeader,
+                       PathStore const& store, std::string& smartValue)
         -> arangodb::graph::ValidationResult::Type {
   return ValidationResult::Type::TAKE;
 }

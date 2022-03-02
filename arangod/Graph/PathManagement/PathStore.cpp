@@ -32,6 +32,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "../../../tests/Mocks/MockGraphProvider.h"
 #endif
 
 #include <Logger/LogMacros.h>
@@ -213,6 +214,15 @@ template void PathStore<SingleServerProviderStep>::reverseBuildPath<
     SingleServerProviderStep const& vertex,
     PathResult<SingleServerProvider<SingleServerProviderStep>,
                SingleServerProviderStep>& path) const;
+
+#ifdef USE_ENTERPRISE
+template bool
+PathStore<arangodb::tests::graph::MockGraphProvider::Step>::visitReversePath(
+    arangodb::tests::graph::MockGraphProvider::Step const& step,
+    std::function<bool(
+        const arangodb::tests::graph::MockGraphProvider::Step&)> const& visitor)
+    const;
+#endif
 
 // Tracing
 

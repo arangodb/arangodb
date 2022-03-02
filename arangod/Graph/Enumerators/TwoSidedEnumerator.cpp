@@ -216,7 +216,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
     ValidationResult res =
-        _validator.validatePath(n, getGraphOptions().isDisjoint());
+        _validator.validatePath(n, getGraphOptions().isDisjoint(), "");
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
@@ -254,12 +254,13 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
                               PathValidator const& otherSideValidator,
                               std::string_view smartValue) -> void {
   // Iterate over all seen steps with vertex match.
+  std::string smartV(smartValue);
   auto [first, last] = _shell.equal_range(match);
   if (_direction == FORWARD) {
     while (first != last) {
       // validatePath() returns filtered if the path starting (in the reverse
       // direction) from *first contains match: except if *first IS match
-      auto res = _validator.validatePath(*first, otherSideValidator, smartValue,
+      auto res = _validator.validatePath(*first, otherSideValidator, smartV,
                                          _graphOptions.isDisjoint());
       if (!res.isFiltered()) {
         LOG_TOPIC("6a01b", DEBUG, Logger::GRAPHS)
@@ -270,7 +271,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     }
   } else {
     while (first != last) {
-      auto res = _validator.validatePath(*first, otherSideValidator, smartValue,
+      auto res = _validator.validatePath(*first, otherSideValidator, smartV,
                                          _graphOptions.isDisjoint());
       if (!res.isFiltered()) {
         LOG_TOPIC("d1830", DEBUG, Logger::GRAPHS)

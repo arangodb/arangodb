@@ -38,6 +38,12 @@ class ValidationResult {
 
   explicit ValidationResult(Type type) : _type(type) {}
 
+#ifdef USE_ENTERPRISE
+//  ValidationResult(Type type, std::string_view smartValue)
+//      : _type(type), _smartValue(smartValue) {}
+  auto setSmartValue(std::string_view smartValue);
+#endif
+
   bool isPruned() const noexcept;
   bool isFiltered() const noexcept;
 
@@ -45,9 +51,9 @@ class ValidationResult {
 
  private:
   Type _type;
-  std::string _smartValue; // todo std::string_view?
+  std::string _smartValue;  // todo std::string_view?
  public:
-  auto getSmartValue()  -> std::string_view;
+  auto getSmartValue() -> std::string_view;
 };
 
 std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);

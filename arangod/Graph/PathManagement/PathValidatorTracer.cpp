@@ -60,20 +60,20 @@ PathValidatorTracer<PathValidatorImplementation>::~PathValidatorTracer() {
 
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
-    typename PathStore::Step const& step, bool isDisjoint) -> ValidationResult {
+    typename PathStore::Step const& step, bool isDisjoint,
+    std::string_view smartValue) -> ValidationResult {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["validatePath"].addTiming(TRI_microtime() - start);
   });
-  return _impl.validatePath(step, isDisjoint);
+  return _impl.validatePath(step, isDisjoint, smartValue);
 }
 
 template<class PathValidatorImplementation>
 auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
     typename PathStore::Step const& step,
     PathValidatorTracer<PathValidatorImplementation> const& otherValidator,
-    std::string_view smartValue, bool isDisjoint)
-    -> ValidationResult {
+    std::string& smartValue, bool isDisjoint) -> ValidationResult {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["validatePath"].addTiming(TRI_microtime() - start);
