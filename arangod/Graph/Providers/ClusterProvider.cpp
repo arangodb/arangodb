@@ -268,8 +268,6 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   TRI_ASSERT(step != nullptr);
 
   auto const* engines = _opts.engines();
-  // TODO Assert that the step is not in _vertexConnections after no-loose-end
-  // handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
   leased->add("backward",
@@ -416,8 +414,6 @@ auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
     for (auto const& step : result) {
       if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
         auto res = fetchEdgesFromEngines(step);
-        // TODO: check stats (also take a look of vertex stats)
-        // add http stats
         _stats.addHttpRequests(_opts.engines()->size());
 
         if (res.fail()) {
