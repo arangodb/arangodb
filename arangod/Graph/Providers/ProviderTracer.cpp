@@ -33,6 +33,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 using namespace arangodb;
@@ -171,7 +172,12 @@ template class ::arangodb::graph::ProviderTracer<
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::ProviderTracer<
-    arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>;
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::enterprise::SmartGraphStep>>;
+
+template class ::arangodb::graph::ProviderTracer<
+    arangodb::graph::enterprise::SmartGraphProvider<
+        arangodb::graph::enterprise::SmartGraphStep>>;
 #endif
 
 template class ::arangodb::graph::ProviderTracer<

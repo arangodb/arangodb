@@ -33,6 +33,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 #include <velocypack/Builder.h>
@@ -166,3 +167,14 @@ template class ::arangodb::graph::PathResult<
     ::arangodb::graph::ProviderTracer<
         ::arangodb::graph::ClusterProvider<ClusterProviderStep>>,
     ::arangodb::graph::ClusterProviderStep>;
+
+#ifdef USE_ENTERPRISE
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::enterprise::SmartGraphProvider<
+        enterprise::SmartGraphStep>,
+    enterprise::SmartGraphStep>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::ProviderTracer<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+    enterprise::SmartGraphStep>;
+#endif

@@ -39,6 +39,16 @@ ClusterGraphDatalake::ClusterGraphDatalake(
 
 ClusterGraphDatalake::~ClusterGraphDatalake() { clear(); }
 
+ClusterGraphDatalake::ClusterGraphDatalake(
+    ClusterGraphDatalake&& other) noexcept
+    : _resourceMonitor{other._resourceMonitor},
+      _totalMemoryUsage{other._totalMemoryUsage},
+      _data{std::move(other._data)} {
+  // Reset the others data, we have taken it over!
+  other._totalMemoryUsage = 0;
+  other._data.clear();
+}
+
 arangodb::velocypack::Slice ClusterGraphDatalake::operator[](
     size_t index) const noexcept {
   TRI_ASSERT(index < _data.size());

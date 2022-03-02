@@ -39,6 +39,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/algorithm-aliases-ee.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 #include <Logger/LogMacros.h>
@@ -330,6 +331,32 @@ auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
+#define MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                           vertexUniqueness, edgeUniqueness) \
+  template class ::arangodb::graph::OneSidedEnumerator<                      \
+      configuration<provider, vertexUniqueness, edgeUniqueness, false>>;     \
+  template class ::arangodb::graph::OneSidedEnumerator<                      \
+      configuration<provider, vertexUniqueness, edgeUniqueness, true>>;
+
+#define MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, configuration) \
+  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                     VertexUniquenessLevel::NONE,      \
+                                     EdgeUniquenessLevel::NONE)        \
+  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                     VertexUniquenessLevel::NONE,      \
+                                     EdgeUniquenessLevel::PATH)        \
+  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                     VertexUniquenessLevel::PATH,      \
+                                     EdgeUniquenessLevel::PATH)        \
+  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
+                                     VertexUniquenessLevel::GLOBAL,    \
+                                     EdgeUniquenessLevel::PATH)
+
+#define MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(provider)          \
+  MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, BFSConfiguration) \
+  MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, DFSConfiguration) \
+  MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, WeightedConfiguration)
+
 // Breadth First Search
 template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<
     SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
@@ -540,4 +567,8 @@ template class ::arangodb::graph::OneSidedEnumerator<
         SingleServerProvider<enterprise::SmartGraphStep>,
         arangodb::graph::VertexUniquenessLevel::GLOBAL,
         EdgeUniquenessLevel::PATH, true>>;
+
+MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
+    arangodb::graph::enterprise::SmartGraphProvider<
+        arangodb::graph::enterprise::SmartGraphStep>)
 #endif

@@ -32,6 +32,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 #include <Logger/LogMacros.h>
@@ -307,6 +308,45 @@ template void PathStore<ClusterProviderStep>::reverseBuildPath<
     PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
                ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
         path) const;
+
+#ifdef USE_ENTERPRISE
+template void PathStore<enterprise::SmartGraphStep>::buildPath<
+    PathResult<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
+               enterprise::SmartGraphStep>>(
+    enterprise::SmartGraphStep const& vertex,
+    PathResult<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
+               enterprise::SmartGraphStep>& path) const;
+
+template void PathStore<enterprise::SmartGraphStep>::reverseBuildPath<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>(
+    enterprise::SmartGraphStep const& vertex,
+    PathResult<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
+               enterprise::SmartGraphStep>& path) const;
+
+// Tracing
+
+template void PathStore<enterprise::SmartGraphStep>::buildPath<PathResult<
+    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+    ProviderTracer<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>>(
+    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::
+        Step const& vertex,
+    PathResult<ProviderTracer<
+                   enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+               ProviderTracer<enterprise::SmartGraphProvider<
+                   enterprise::SmartGraphStep>>::Step>& path) const;
+
+template void PathStore<ProviderTracer<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>::
+    reverseBuildPath<ProviderTracer<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>>(
+        ProviderTracer<enterprise::SmartGraphProvider<
+            enterprise::SmartGraphStep>>::Step const& vertex,
+        PathResult<ProviderTracer<enterprise::SmartGraphProvider<
+                       enterprise::SmartGraphStep>>,
+                   ProviderTracer<enterprise::SmartGraphProvider<
+                       enterprise::SmartGraphStep>>::Step>& path) const;
+#endif
 
 }  // namespace graph
 }  // namespace arangodb

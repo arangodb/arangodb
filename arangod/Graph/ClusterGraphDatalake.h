@@ -42,6 +42,7 @@ namespace graph {
 class ClusterGraphDatalake {
  public:
   ClusterGraphDatalake(ClusterGraphDatalake const&) = delete;
+  ClusterGraphDatalake(ClusterGraphDatalake&&) noexcept;
   ClusterGraphDatalake& operator=(ClusterGraphDatalake const&) = delete;
 
   explicit ClusterGraphDatalake(arangodb::ResourceMonitor& resourceMonitor);

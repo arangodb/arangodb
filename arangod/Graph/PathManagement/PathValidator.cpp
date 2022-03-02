@@ -36,6 +36,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 #include "Basics/Exceptions.h"
@@ -532,5 +533,46 @@ template class PathValidator<
     PathStoreTracer<
         PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+
+#ifdef USE_ENTERPRISE
+template class PathValidator<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
+    PathStore<enterprise::SmartGraphStep>, VertexUniquenessLevel::NONE,
+    EdgeUniquenessLevel::NONE>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>>,
+    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
+template class PathValidator<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
+    PathStore<enterprise::SmartGraphStep>, VertexUniquenessLevel::NONE,
+    EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>>,
+    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
+
+template class PathValidator<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
+    PathStore<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>::Step>,
+    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>>,
+    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
+
+template class PathValidator<
+    enterprise::SmartGraphProvider<enterprise::SmartGraphStep>,
+    PathStore<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>::Step>,
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphStep>>::Step>>,
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+#endif
 
 }  // namespace arangodb::graph
