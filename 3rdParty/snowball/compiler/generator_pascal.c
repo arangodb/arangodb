@@ -272,7 +272,7 @@ static void generate_AE(struct generator * g, struct node * p) {
         case c_maxint:
             write_string(g, "MAXINT"); break;
         case c_minint:
-            write_string(g, "MININT"); break;
+            write_string(g, "(-MAXINT - 1)"); break;
         case c_neg:
             write_char(g, '-'); generate_AE(g, p->right); break;
         case c_multiply:
@@ -282,7 +282,7 @@ static void generate_AE(struct generator * g, struct node * p) {
         case c_minus:
             s = " - "; goto label0;
         case c_divide:
-            s = " / ";
+            s = " div ";
         label0:
             write_char(g, '('); generate_AE(g, p->left);
             write_string(g, s); generate_AE(g, p->right); write_char(g, ')'); break;
@@ -431,6 +431,7 @@ static void generate_try(struct generator * g, struct node * p) {
     if (keep_c) write_savecursor(g, p, savevar);
 
     g->failure_label = new_label(g);
+    str_clear(g->failure_str);
     if (keep_c) restore_string(p, g->failure_str, savevar);
 
     wsetlab_begin(g);
@@ -522,6 +523,7 @@ static void generate_GO(struct generator * g, struct node * p, int style) {
     if (keep_c) write_savecursor(g, p, savevar);
 
     g->failure_label = new_label(g);
+    str_clear(g->failure_str);
     wsetlab_begin(g);
     generate(g, p->left);
 
@@ -669,10 +671,19 @@ static void generate_hop(struct generator * g, struct node * p) {
     generate_AE(g, p->AE);
     w(g, ";~N");
 
-    g->S[0] = p->mode == m_forward ? "0" : "FBkLimit";
-
-    write_failure_if(g, "(~S0 > C) Or (C > FLimit)", p);
-    writef(g, "~MFCursor := c;~N", p);
+    g->S[1] = p->mode == m_forward ? "> FLimit" : "< FBkLimit";
+    g->S[2] = p->mode == m_forward ? "<" : ">";
+    if (p->AE->type == c_number) {
+        // Constant distance hop.
+        //
+        // No need to check for negative hop as that's converted to false by
+        // the analyser.
+        write_failure_if(g, "C ~S1", p);
+    } else {
+        write_failure_if(g, "(C ~S1) Or (C ~S2 FCursor)", p);
+    }
+    writef(g, "~MFCursor := C;~N", p);
+    g->temporary_used = true;
     writef(g, "~}", p);
 }
 
@@ -739,7 +750,10 @@ static void generate_insert(struct generator * g, struct node * p, int style) {
     int keep_c = style == c_attach;
     write_comment(g, p);
     if (p->mode == m_backward) keep_c = !keep_c;
-    if (keep_c) w(g, "~{~MC := FCursor;~N");
+    if (keep_c) {
+        w(g, "~{~MC := FCursor;~N");
+        g->temporary_used = true;
+    }
     writef(g, "~Minsert(FCursor, FCursor, ", p);
     generate_address(g, p);
     writef(g, ");~N", p);
@@ -750,7 +764,10 @@ static void generate_assignfrom(struct generator * g, struct node * p) {
     int keep_c = p->mode == m_forward; /* like 'attach' */
 
     write_comment(g, p);
-    if (keep_c) writef(g, "~{~MC := FCursor;~N", p);
+    if (keep_c) {
+        writef(g, "~{~MC := FCursor;~N", p);
+        g->temporary_used = true;
+    }
     if (p->mode == m_forward) {
         writef(g, "~Minsert(FCursor, FLimit, ", p);
     } else {
@@ -989,18 +1006,21 @@ static void generate_define(struct generator * g, struct node * p) {
 
     /* Generate function body. */
     w(g, "~{");
+    g->temporary_used = false;
     generate(g, p->left);
     if (!g->unreachable) w(g, "~MResult := True;~N");
     w(g, "~}");
 
-    str_append_string(saved_output, "Var\n");
-    str_append_string(saved_output, "    C : Integer;\n");
-
-    if (p->amongvar_needed) {
-        str_append_string(saved_output, "    AmongVar : Integer;\n");
+    if (g->temporary_used) {
+        str_append_string(g->declarations, "    C : Integer;\n");
     }
 
-    if (g->var_number) {
+    if (p->amongvar_needed) {
+        str_append_string(g->declarations, "    AmongVar : Integer;\n");
+    }
+
+    if (str_len(g->declarations) > 0) {
+        str_append_string(saved_output, "Var\n");
         str_append(saved_output, g->declarations);
     }
 
@@ -1138,7 +1158,7 @@ static void generate(struct generator * g, struct node * p) {
         case c_plusassign:    generate_integer_assign(g, p, "+"); break;
         case c_minusassign:   generate_integer_assign(g, p, "-"); break;
         case c_multiplyassign:generate_integer_assign(g, p, "*"); break;
-        case c_divideassign:  generate_integer_assign(g, p, "/"); break;
+        case c_divideassign:  generate_integer_assign(g, p, "div"); break;
         case c_eq:            generate_integer_test(g, p, "="); break;
         case c_ne:            generate_integer_test(g, p, "<>"); break;
         case c_gr:            generate_integer_test(g, p, ">"); break;

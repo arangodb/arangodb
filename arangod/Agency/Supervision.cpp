@@ -2575,13 +2575,14 @@ void Supervision::checkReplicatedLogs() {
     std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
     auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
     for (auto const& [serverId, node] : dbservers) {
-      bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
+      bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
+                               (serverHealth(serverId) == HEALTH_STATUS_BAD);
 
       auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
           curServersKnown, serverId, "/", StaticStrings::RebootId));
       if (rebootID) {
         info.emplace(serverId,
-                     ParticipantHealth{RebootId{*rebootID}, isHealthy});
+                     ParticipantHealth{RebootId{*rebootID}, notIsFailed});
       }
     }
     return ParticipantsHealth{info};
