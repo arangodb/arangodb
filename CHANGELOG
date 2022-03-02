@@ -1,6 +1,9 @@
 devel
 -----
 
+* Set max recursion depth for VelocyPack, JSON and JavaScript arrays and 
+  objects to about 200.
+
 * Updated snowball to version 2.2.0
 
 * Fixed: Deadlock created by high load and a follower trying to get into sync.
