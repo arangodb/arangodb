@@ -45,11 +45,9 @@ class ValidationResult {
 
  private:
   Type _type;
-#ifdef USE_ENTERPRISE
   std::string _smartValue; // todo std::string_view?
  public:
   auto getSmartValue()  -> std::string_view;
-#endif
 };
 
 std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
