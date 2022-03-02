@@ -2,6 +2,7 @@ import React, { Dispatch } from "react";
 import { DispatchArgs } from "../../../utils/constants";
 import { LinkProperties } from "../constants";
 import { map } from "lodash";
+// import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import {
   ArangoTable,
   ArangoTD,
@@ -10,18 +11,20 @@ import {
 import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
 
-type FieldViewProps = {
+type FieldListProps = {
   fields: any;
   disabled: boolean | undefined;
   dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   basePath: string;
+  viewField: (field: string | number) => void;
 };
 
-const FieldView: React.FC<FieldViewProps> = ({
+const FieldView: React.FC<FieldListProps> = ({
   fields,
   disabled,
   dispatch,
-  basePath
+  basePath,
+  viewField
 }) => {
   const removeField = (field: string | number) => {
     dispatch({
@@ -38,58 +41,57 @@ const FieldView: React.FC<FieldViewProps> = ({
   };
 
   return (
-    <>
-      <ArangoTable style={{ marginLeft: 0 }}>
-        <thead>
-          <tr>
-            <ArangoTH seq={disabled ? 0 : 1} style={{ width: "8%" }}>
-              Field
+    <ArangoTable style={{ marginLeft: 0 }}>
+      <thead>
+        <tr>
+          <ArangoTH seq={disabled ? 0 : 1} style={{ width: "8%" }}>
+            Field
+          </ArangoTH>
+          <ArangoTH seq={disabled ? 1 : 2} style={{ width: "72%" }}>
+            Analyzers
+          </ArangoTH>
+          {disabled ? null : (
+            <ArangoTH seq={0} style={{ width: "20%" }}>
+              Action
             </ArangoTH>
-            <ArangoTH seq={disabled ? 1 : 2} style={{ width: "72%" }}>
-              Analyzers
-            </ArangoTH>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {map(fields, (properties, fld) => (
+          <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
+            <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
+            <ArangoTD seq={disabled ? 1 : 2}>
+              {properties && map(properties.analyzers, a => <Badge name={a} />)}
+              {/* <LinkPropertiesInput
+                formState={properties}
+                disabled={disabled}
+                basePath={`${basePath}.fields[${fld}]`}
+                dispatch={
+                  (dispatch as unknown) as Dispatch<
+                    DispatchArgs<LinkProperties>
+                  >
+                }
+              /> */}
+            </ArangoTD>
             {disabled ? null : (
-              <ArangoTH seq={0} style={{ width: "20%" }}>
-                Action
-              </ArangoTH>
+              <ArangoTD seq={0} valign={"middle"}>
+                <IconButton
+                  icon={"trash-o"}
+                  type={"danger"}
+                  onClick={getFieldRemover(fld)}
+                />
+                <IconButton
+                  icon={"eye"}
+                  type={"warning"}
+                  onClick={() => viewField(fld)}
+                />
+              </ArangoTD>
             )}
           </tr>
-        </thead>
-        <tbody>
-          {map(fields, (properties, fld) => (
-            <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
-              <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
-              <ArangoTD seq={disabled ? 1 : 2}>
-                {properties &&
-                  map(properties.analyzers, a => <Badge name={a} />)}
-                {/* <LinkPropertiesInput
-              formState={properties}
-              disabled={disabled}
-              basePath={`${basePath}.fields[${fld}]`}
-              dispatch={
-                (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
-              }
-            /> */}
-              </ArangoTD>
-              {disabled ? null : (
-                <ArangoTD seq={0} valign={"middle"}>
-                  <IconButton
-                    icon={"trash-o"}
-                    type={"danger"}
-                    onClick={getFieldRemover(fld)}
-                  />
-                  <IconButton
-                    icon={"eye"}
-                    type={"warning"}
-                    onClick={getFieldRemover(fld)}
-                  />
-                </ArangoTD>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </ArangoTable>
-    </>
+        ))}
+      </tbody>
+    </ArangoTable>
   );
 };
 

@@ -21,6 +21,7 @@ import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCo
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import FieldList from "../../Components/FieldList";
+import FieldView from "../../Components/FieldView";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -44,6 +45,33 @@ const LinkPropertiesInput = ({
   const analyzers = useMemo(() => formState.analyzers || [], [
     formState.analyzers
   ]);
+
+  const [showField, setShowField] = useState(false);
+
+  const toggleShowField = () => {
+    setShowField(!showField);
+  };
+
+  const ShowField = (field: string | number) => {
+    return (
+      <FieldView
+        fields={field}
+        disabled={disabled}
+        dispatch={dispatch}
+        basePath={`fields[${field}]`}
+        viewField={handleShowField}
+      />
+    );
+  };
+
+  const handleShowField = (field: string | number) => {
+    toggleShowField();
+    console.log(field);
+    console.log(showField);
+    if (showField !== false) {
+      ShowField(field);
+    }
+  };
 
   useEffect(() => {
     if (data) {
@@ -106,6 +134,20 @@ const LinkPropertiesInput = ({
       basePath
     });
   };
+
+  // const removeField = (field: string | number) => {
+  //   dispatch({
+  //     type: "unsetField",
+  //     field: {
+  //       path: `fields[${field}]`
+  //     },
+  //     basePath
+  //   });
+  // };
+
+  // const getFieldRemover = (field: string | number) => () => {
+  //   removeField(field);
+  // };
 
   const storeIdValues = formState.storeValues === "id";
   const hideInBackgroundField = disabled || basePath.includes(".fields");
@@ -207,9 +249,9 @@ const LinkPropertiesInput = ({
         </Grid>
       </Cell>
 
-      {disabled && isEmpty(fields) ? null : (
-        <Cell size={"1"}>
-          <Fieldset legend={"Fields"}>
+      <Cell size={"1"}>
+        <Fieldset legend={"Fields"}>
+          {disabled && showField === false && isEmpty(fields) ? null : (
             <FieldList
               fields={fields}
               disabled={disabled}
@@ -217,48 +259,47 @@ const LinkPropertiesInput = ({
                 (dispatch as unknown) as Dispatch<DispatchArgs<LinkProperties>>
               }
               basePath={basePath}
+              viewField={handleShowField}
             />
+          )}
 
-            {/* {map(fields, (properties, fld) => {
-                  return (
-                    <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
-                      <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
-                      <ArangoTD seq={disabled ? 1 : 2}>
-                        {map(properties.analyzers, a => (
-                          <Badge name={a} />
-                        ))}
+          {showField && handleShowField}
 
-                        <LinkPropertiesInput
-                          formState={properties}
-                          disabled={disabled}
-                          basePath={`${basePath}.fields[${fld}]`}
-                          dispatch={
-                            (dispatch as unknown) as Dispatch<
-                              DispatchArgs<LinkProperties>
-                            >
-                          }
-                        />
-                      </ArangoTD>
-                      {disabled ? null : (
-                        <ArangoTD seq={0} valign={"middle"}>
-                          <IconButton
-                            icon={"trash-o"}
-                            type={"danger"}
-                            onClick={getFieldRemover(fld)}
-                          />
-                          <IconButton
-                            icon={"eye"}
-                            type={"warning"}
-                            onClick={getFieldRemover(fld)}
-                          />
-                        </ArangoTD>
-                      )}
-                    </tr>
-                  );
-                })} */}
-          </Fieldset>
-        </Cell>
-      )}
+          {/* {map(fields, (properties, fld) => {
+              return (
+                <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
+                  <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
+                  <ArangoTD seq={disabled ? 1 : 2}>
+                    <LinkPropertiesInput
+                      formState={properties}
+                      disabled={disabled}
+                      basePath={`${basePath}.fields[${fld}]`}
+                      dispatch={
+                        (dispatch as unknown) as Dispatch<
+                          DispatchArgs<LinkProperties>
+                        >
+                      }
+                    />
+                  </ArangoTD>
+                  {disabled ? null : (
+                    <ArangoTD seq={0} valign={"middle"}>
+                      <IconButton
+                        icon={"trash-o"}
+                        type={"danger"}
+                        onClick={getFieldRemover(fld)}
+                      />
+                      <IconButton
+                        icon={"eye"}
+                        type={"warning"}
+                        onClick={getFieldRemover(fld)}
+                      />
+                    </ArangoTD>
+                  )}
+                </tr>
+              );
+            })} */}
+        </Fieldset>
+      </Cell>
     </Grid>
   );
 };
