@@ -198,7 +198,7 @@ void FollowerStateManager<S>::checkSnapshot(
 template<typename S>
 void FollowerStateManager<S>::startService(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
-  _guardedData.template doUnderLock([&](GuardedData& data) {
+  _guardedData.doUnderLock([&](GuardedData& data) {
     LOG_TOPIC("26c55", TRACE, Logger::REPLICATED_STATE)
         << "starting service as follower";
     data.state = hiddenState;
@@ -209,7 +209,7 @@ void FollowerStateManager<S>::startService(
 
 template<typename S>
 void FollowerStateManager<S>::ingestLogData() {
-  auto core = _guardedData.template doUnderLock([&](GuardedData& data) {
+  auto core = _guardedData.doUnderLock([&](GuardedData& data) {
     data.updateInternalState(FollowerInternalState::kTransferSnapshot);
     auto demux = Demultiplexer::construct(logFollower);
     demux->listen();
@@ -359,7 +359,8 @@ auto FollowerStateManager<S>::resign() && noexcept
       DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
         for (auto& p : *resolveQueue) {
           p.second.setException(replicated_log::ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+              ADB_HERE));
         }
       })};
 }
