@@ -48,9 +48,6 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  std::string defaultFound = {};
-  std::string icuFound = {};
-
   try {
     VPackBuilder builder =
         arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
@@ -61,23 +58,23 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
     VPackSlice defaultSlice = content.get("default");
     VPackSlice icuSlice = content.get("icu-language");
 
-    if (!(defaultSlice.isString() ^ icuSlice.isString())) {
+    // both languages are specified in files
+    if (defaultSlice.isString() && icuSlice.isString()) {
       return TRI_ERROR_INTERNAL;
     }
 
     if (defaultSlice.isString()) {
-      defaultFound = defaultSlice.copyString();
+      defaultLanguage = defaultSlice.stringView();
+    } else if (icuSlice.isString()) {
+      icuLanguage = icuSlice.stringView();
     } else {
-      icuFound = icuSlice.copyString();
+      return TRI_ERROR_INTERNAL;
     }
 
   } catch (...) {
     // Nothing to free
     return TRI_ERROR_INTERNAL;
   }
-
-  defaultLanguage = defaultFound;
-  icuLanguage = icuFound;
 
   if (!defaultLanguage.empty()) {
     LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG)
@@ -140,33 +137,19 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server,
 std::tuple<std::string, bool> getOrSetPreviousLanguage(
     arangodb::ArangodServer& server, std::string const& collatorLang,
     bool isDefaultLangSet, bool isIcuLangSet) {
-  std::string readDefaultLanguage = {};
-  std::string readIcuLanguage = {};
+  std::string readDefaultLanguage;
+  std::string readIcuLanguage;
   arangodb::Result res =
       ::readLanguage(server, readDefaultLanguage, readIcuLanguage);
 
-  auto error = [] {
-    LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
-        << "Current language option is differ from option at initial launch";
-    FATAL_ERROR_EXIT();
-  };
-
   if (res.ok()) {
     if (!readDefaultLanguage.empty()) {
-      // if default language is not set, we will treat it as default
-      // but if icu language is specified, this is an error
-      if (!isIcuLangSet) {
-        return std::make_tuple(readDefaultLanguage, true);
-      } else {
-        error();
-      }
-    } else {  // !readIcuLanguage.empty()
-      if (!isDefaultLangSet) {
-        return std::make_tuple(readIcuLanguage, false);
-      } else {
-        error();
-      }
+      return {readDefaultLanguage, true};
     }
+    if (!readIcuLanguage.empty()) {
+      return {readIcuLanguage, false};
+    }
+    TRI_ASSERT(false);
   }
 
   // okay, we didn't find it, let's write out the input instead
@@ -198,17 +181,34 @@ void LanguageCheckFeature::start() {
   auto icuLang = feature.getIcuLanguage();
 
   auto collatorLang = feature.getCollatorLanguage();
-  std::string previousLang = {};
+  std::string previousLang;
 
-  bool isDefaultLangSet = {};
+  bool isDefaultLangSet = false;
   std::tie(previousLang, isDefaultLangSet) = ::getOrSetPreviousLanguage(
       server(), collatorLang, !defaultLang.empty(), !icuLang.empty());
+
+  if (!defaultLang.empty()) {
+    // if default language is not set, we will treat it as default
+    // but if icu language is specified, this is an error
+    if (!isDefaultLangSet) {
+      LOG_TOPIC("55a68", FATAL, arangodb::Logger::CONFIG)
+          << "Current language option is differ from option at initial launch";
+      FATAL_ERROR_EXIT();
+    }
+  } else if (!icuLang.empty()) {
+    if (isDefaultLangSet) {
+      LOG_TOPIC("55a69", FATAL, arangodb::Logger::CONFIG)
+          << "Current language option is differ from option at initial launch";
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   if (defaultLang.empty() && isDefaultLangSet && !previousLang.empty()) {
     // override the empty current setting for default with the previous one
     feature.resetDefaultLanguage(previousLang);
     return;
-  } else if (icuLang.empty() && !isDefaultLangSet && !previousLang.empty()) {
+  }
+  if (icuLang.empty() && !isDefaultLangSet && !previousLang.empty()) {
     // override the empty current setting for icu-lang with the previous one
     feature.resetIcuLanguage(previousLang);
     return;

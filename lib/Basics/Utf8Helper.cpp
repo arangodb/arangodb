@@ -145,7 +145,8 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
 }
 
 bool Utf8Helper::setCollatorLanguage(std::string const& lang,
-                                     void* icuDataPointer, bool isOldLanguage) {
+                                     void* icuDataPointer,
+                                     bool isDefaultLanguage) {
   if (icuDataPointer == nullptr) {
     return false;
   }
@@ -192,7 +193,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang,
     return false;
   }
 
-  if (isOldLanguage) {
+  if (isDefaultLanguage) {
     // set the default attributes for sorting:
     coll->setAttribute(UCOL_CASE_FIRST, UCOL_UPPER_FIRST, status);  // A < a
     coll->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF,

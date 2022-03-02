@@ -61,8 +61,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
                           std::string const& binaryExecutionPath,
                           std::string& path, std::string const& binaryName);
   icu::Locale& getLocale();
-  std::string const& getDefaultLanguage() const;
-  std::string const& getIcuLanguage() const;
+  std::string_view getDefaultLanguage() const;
+  std::string_view getIcuLanguage() const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
   void resetDefaultLanguage(std::string const& language);
@@ -70,8 +70,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
 
  private:
   icu::Locale _locale;
-  std::string _defaultLanguage{};
-  std::string _icuLanguage{};
+  std::string _defaultLanguage;
+  std::string _icuLanguage;
   char const* _binaryPath;
   void* _icuDataPtr;
   bool _forceLanguageCheck;

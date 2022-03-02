@@ -43,10 +43,10 @@
 
 namespace {
 void setCollator(std::string const& language, void* icuDataPtr,
-                 bool isOldLanguage) {
+                 bool isDefaultLanguage) {
   using arangodb::basics::Utf8Helper;
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr,
-                                                         isOldLanguage)) {
+                                                         isDefaultLanguage)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
         << "The icudtl.dat file might be of the wrong version. "
@@ -211,11 +211,11 @@ void LanguageFeature::start() { ::setLocale(_locale); }
 
 icu::Locale& LanguageFeature::getLocale() { return _locale; }
 
-std::string const& LanguageFeature::getDefaultLanguage() const {
+std::string_view LanguageFeature::getDefaultLanguage() const {
   return _defaultLanguage;
 }
 
-std::string const& LanguageFeature::getIcuLanguage() const {
+std::string_view LanguageFeature::getIcuLanguage() const {
   return _icuLanguage;
 }
 
@@ -235,12 +235,14 @@ std::string LanguageFeature::getCollatorLanguage() const {
 }
 
 void LanguageFeature::resetDefaultLanguage(std::string const& language) {
+  _icuLanguage.clear();
   _defaultLanguage = language;
   ::setCollator(_defaultLanguage, _icuDataPtr, true);
   ::setLocale(_locale);
 }
 
 void LanguageFeature::resetIcuLanguage(std::string const& language) {
+  _defaultLanguage.clear();
   _icuLanguage = language;
   ::setCollator(_icuLanguage, _icuDataPtr, false);
   ::setLocale(_locale);
