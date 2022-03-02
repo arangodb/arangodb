@@ -45,6 +45,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
@@ -343,5 +344,5 @@ struct IndexIteratorOptions {
 };
 
 /// index estimate map, defined here because it was convenient
-typedef std::unordered_map<std::string, double> IndexEstMap;
+using IndexEstMap = containers::FlatHashMap<std::string, double>;
 }  // namespace arangodb
