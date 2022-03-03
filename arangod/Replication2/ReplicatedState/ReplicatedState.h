@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <map>
+
 #include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
@@ -34,7 +36,10 @@
 namespace arangodb::futures {
 template<typename T>
 class Future;
-}
+template<typename T>
+class Promise;
+struct Unit;
+}  // namespace arangodb::futures
 namespace arangodb {
 class Result;
 }
@@ -117,10 +122,16 @@ struct ReplicatedState final
 
   struct StateManagerBase {
     virtual ~StateManagerBase() = default;
+    virtual void run() = 0;
+
+    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+    using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
+
     [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
     [[nodiscard]] virtual auto resign() && noexcept
-        -> std::pair<std::unique_ptr<CoreType>,
-                     std::unique_ptr<ReplicatedStateToken>> = 0;
+        -> std::tuple<std::unique_ptr<CoreType>,
+                      std::unique_ptr<ReplicatedStateToken>,
+                      DeferredAction> = 0;
   };
 
  private:
