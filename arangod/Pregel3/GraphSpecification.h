@@ -75,6 +75,17 @@ struct GraphSpecification {
    */
   static auto fromVelocyPack(VPackSlice slice) -> GraphSpecification;
 
+  auto isEmpty() -> bool {
+    return (std::holds_alternative<GraphName>(_graphSpec) &&
+            std::get<GraphName>(_graphSpec).empty()) ||
+           (std::holds_alternative<GraphSpecificationByCollections>(
+                _graphSpec) &&
+            std::get<GraphSpecificationByCollections>(_graphSpec)
+                .vertexCollectionNames
+                .empty());  // don't check vertexCollectionNames, should be
+                            // empty too
+  }
+
   void toVelocyPack(VPackBuilder&);
 };
 }  // namespace arangodb::pregel3

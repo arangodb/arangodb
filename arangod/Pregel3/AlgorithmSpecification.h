@@ -13,7 +13,7 @@ struct AlgorithmSpecification {
   AlgName algName;
 
   std::string capacityProp;
-  std::optional<std::string> defaultCapacity;
+  std::optional<double> defaultCapacity;
   std::string sourceVertexId;
   std::string targetVertexId;
 

@@ -48,15 +48,7 @@ ResultT<double> getCapacity(VPackSlice slice) {
 
 ResultT<double> extractDefaultCapacity(AlgorithmSpecification& algSpec) {
   if (algSpec.defaultCapacity.has_value()) {
-    try {
-      return std::stod(algSpec.defaultCapacity.value());
-    } catch (std::invalid_argument const& e) {
-      return ResultT<double>::error(
-          TRI_ERROR_BAD_PARAMETER,
-          "Default specification has a wrong format. " + std::string(e.what()));
-    } catch (std::out_of_range const& e) {
-      return ResultT<double>::error(TRI_ERROR_BAD_PARAMETER, "");
-    }
+    return algSpec.defaultCapacity.value();
   } else {
     return -1.0;
   }
@@ -108,8 +100,8 @@ void Query::loadGraph() {
   // adding an edge if we know that the graph has no multiple edges (but can
   // have self-loops). In this case, we don't check if a neighbor has already
   // been added. todo check this lambda, it may be wrong
-  [[maybe_unused]] auto addSingleEdge = [&](LocalDocumentId const& token,
-                                            VPackSlice slice) -> bool {
+  auto addSingleEdge = [&](LocalDocumentId const& token,
+                           VPackSlice slice) -> bool {
     // LOG_DEVEL << "Adding an edge" << slice.toJson();
     std::string to = slice.get("_to").copyString();
     std::string from = slice.get("_from").copyString();
