@@ -62,10 +62,20 @@ const ViewLinksReactView = ({ name }) => {
     setNewLink(false);
   };
 
+  const handleViewLink = link => {
+    console.log(link);
+    setNewLink(true);
+  };
+
   return (
     <div className={"centralContent"} id={"content"}>
       {!newLink && (
-        <LinkList links={links} addClick={handleNewLinkClick} icon={icon} />
+        <LinkList
+          links={links}
+          addClick={handleNewLinkClick}
+          viewLink={handleViewLink}
+          icon={icon}
+        />
       )}
       {newLink && (
         <div

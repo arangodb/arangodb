@@ -66,8 +66,8 @@ const LinkPropertiesInput = ({
 
   const handleShowField = (field: string | number) => {
     toggleShowField();
-    console.log(field);
-    console.log(showField);
+    // console.log(field);
+    // console.log(showField);
     if (showField !== false) {
       ShowField(field);
     }
@@ -154,100 +154,104 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid>
-      <Cell size={"1-1"}>
-        <Grid>
+      {!showField && (
+        <>
           <Cell size={"1-1"}>
-            {disabled ? null : (
-              <>
-                <ArangoTD seq={0} colSpan={2}>
-                  <Textbox
-                    type={"text"}
-                    placeholder={"Field"}
-                    onChange={updateField}
-                    value={field}
-                  />
-                </ArangoTD>
-                <ArangoTD seq={1}>
-                  <IconButton
-                    style={{ marginTop: "12px" }}
-                    icon={"plus"}
-                    type={"warning"}
-                    onClick={addField}
-                    disabled={addDisabled}
-                  >
-                    Add
-                  </IconButton>
-                </ArangoTD>
-              </>
-            )}
-          </Cell>
-        </Grid>
-      </Cell>
-
-      <Cell size={"1-1"}>
-        <Grid style={{ marginTop: 24 }}>
-          <Cell size={"1-3"}>
-            <AutoCompleteMultiSelect
-              values={analyzers}
-              onRemove={removeAnalyzer}
-              onSelect={addAnalyzer}
-              options={options}
-              label={"Analyzers"}
-              disabled={disabled}
-            />
-          </Cell>
-          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-            <Checkbox
-              onChange={getBooleanFieldSetter(
-                "includeAllFields",
-                dispatch,
-                basePath
-              )}
-              inline={true}
-              label={"Include All Fields"}
-              disabled={disabled}
-              checked={formState.includeAllFields}
-            />
-          </Cell>
-          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-            <Checkbox
-              onChange={getBooleanFieldSetter(
-                "trackListPositions",
-                dispatch,
-                basePath
-              )}
-              label={"Track List Positions"}
-              disabled={disabled}
-              inline={true}
-              checked={formState.trackListPositions}
-            />
-          </Cell>
-          <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
-            <Checkbox
-              onChange={updateStoreValues}
-              label={"Store ID Values"}
-              disabled={disabled}
-              inline={true}
-              checked={storeIdValues}
-            />
-          </Cell>
-          {hideInBackgroundField ? null : (
-            <Cell size={"1-6"}>
-              <Checkbox
-                onChange={getBooleanFieldSetter(
-                  "inBackground",
-                  dispatch,
-                  basePath
+            <Grid>
+              <Cell size={"1-1"}>
+                {disabled ? null : (
+                  <>
+                    <ArangoTD seq={0} colSpan={2}>
+                      <Textbox
+                        type={"text"}
+                        placeholder={"Field"}
+                        onChange={updateField}
+                        value={field}
+                      />
+                    </ArangoTD>
+                    <ArangoTD seq={1}>
+                      <IconButton
+                        style={{ marginTop: "12px" }}
+                        icon={"plus"}
+                        type={"warning"}
+                        onClick={addField}
+                        disabled={addDisabled}
+                      >
+                        Add
+                      </IconButton>
+                    </ArangoTD>
+                  </>
                 )}
-                label={"In Background"}
-                inline={true}
-                disabled={disabled}
-                checked={formState.inBackground}
-              />
-            </Cell>
-          )}
-        </Grid>
-      </Cell>
+              </Cell>
+            </Grid>
+          </Cell>
+
+          <Cell size={"1-1"}>
+            <Grid style={{ marginTop: 24 }}>
+              <Cell size={"1-3"}>
+                <AutoCompleteMultiSelect
+                  values={analyzers}
+                  onRemove={removeAnalyzer}
+                  onSelect={addAnalyzer}
+                  options={options}
+                  label={"Analyzers"}
+                  disabled={disabled}
+                />
+              </Cell>
+              <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+                <Checkbox
+                  onChange={getBooleanFieldSetter(
+                    "includeAllFields",
+                    dispatch,
+                    basePath
+                  )}
+                  inline={true}
+                  label={"Include All Fields"}
+                  disabled={disabled}
+                  checked={formState.includeAllFields}
+                />
+              </Cell>
+              <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+                <Checkbox
+                  onChange={getBooleanFieldSetter(
+                    "trackListPositions",
+                    dispatch,
+                    basePath
+                  )}
+                  label={"Track List Positions"}
+                  disabled={disabled}
+                  inline={true}
+                  checked={formState.trackListPositions}
+                />
+              </Cell>
+              <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
+                <Checkbox
+                  onChange={updateStoreValues}
+                  label={"Store ID Values"}
+                  disabled={disabled}
+                  inline={true}
+                  checked={storeIdValues}
+                />
+              </Cell>
+              {hideInBackgroundField ? null : (
+                <Cell size={"1-6"}>
+                  <Checkbox
+                    onChange={getBooleanFieldSetter(
+                      "inBackground",
+                      dispatch,
+                      basePath
+                    )}
+                    label={"In Background"}
+                    inline={true}
+                    disabled={disabled}
+                    checked={formState.inBackground}
+                  />
+                </Cell>
+              )}
+            </Grid>
+          </Cell>
+        </>
+      )}
 
       <Cell size={"1"}>
         <Fieldset legend={"Fields"}>

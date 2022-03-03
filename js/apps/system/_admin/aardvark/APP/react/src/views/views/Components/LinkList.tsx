@@ -1,4 +1,6 @@
-import React from "react";
+import React, { Dispatch } from "react";
+import { DispatchArgs } from "../../../utils/constants";
+import { LinkProperties } from "../constants";
 import {
   ArangoTable,
   ArangoTD,
@@ -16,10 +18,18 @@ type CollProps = {
     action: React.ReactElement;
   }[];
   addClick: React.MouseEventHandler<HTMLElement>;
+  viewLink: (link: {} | []) => void;
+  dispatch: Dispatch<DispatchArgs<LinkProperties>>;
   icon: string;
 };
 
-const CollectionList: React.FC<CollProps> = ({ links, addClick, icon }) => {
+const CollectionList: React.FC<CollProps> = ({
+  links,
+  addClick,
+  icon,
+  viewLink,
+  dispatch
+}) => {
   const checkLinks = () => {
     if (links) {
       console.log(Object.values(links));
@@ -29,6 +39,20 @@ const CollectionList: React.FC<CollProps> = ({ links, addClick, icon }) => {
         );
       });
     }
+  };
+
+  const removeLink = (collection: string | number) => {
+    dispatch({
+      type: "setField",
+      field: {
+        path: `links[${collection}]`,
+        value: null
+      }
+    });
+  };
+
+  const getLinkRemover = (collection: string | number) => () => {
+    removeLink(collection);
   };
 
   checkLinks();
@@ -59,11 +83,15 @@ const CollectionList: React.FC<CollProps> = ({ links, addClick, icon }) => {
                 includeAllFields={c.includeAllFields}
                 action={
                   <>
-                    <IconButton icon={"trash-o"} type={"danger"} />
+                    <IconButton
+                      icon={"trash-o"}
+                      type={"danger"}
+                      onClick={getLinkRemover}
+                    />
                     <IconButton
                       icon={"eye"}
                       type={"warning"}
-                      onClick={addClick}
+                      onClick={() => viewLink(c)}
                     />
                   </>
                 }

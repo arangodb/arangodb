@@ -49,7 +49,7 @@ const LinkView: React.FC<LinkViewProps> = ({
             />
           </ArangoTD>
 
-          <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
+          {/* <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD> */}
           {disabled ? null : (
             <ArangoTD seq={0} valign={"middle"}>
               <IconButton
