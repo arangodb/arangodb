@@ -144,7 +144,7 @@ inflect.singularize('guys'); // === 'person'
 
 ```js
 inflect.inflections.human(/^(.*)_cnt$/i, '$1_count');
-inflect.inflections.humanize('jargon_cnt'); // === 'Jargon count'
+inflect.humanize('jargon_cnt'); // === 'Jargon count'
 ```
 
 ### Custom uncountable

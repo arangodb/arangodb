@@ -525,6 +525,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
           infos.getProjections(), false,
           infos.getIndexes().size() > 1 || infos.hasMultipleExpansions()),
       _infos(infos),
+      _ast(_infos.query()),
       _currentIndex(_infos.getIndexes().size()),
       _skipped(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());
@@ -591,12 +592,13 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
 
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
-  auto ast = _infos.getAst();
   auto* condition = const_cast<AstNode*>(_infos.getCondition());
   // modify the existing node in place
   TEMPORARILY_UNLOCK_NODE(condition);
 
   auto& query = _infos.query();
+
+  _ast.clearMost();
 
   for (size_t posInExpressions = 0;
        posInExpressions < _infos.getNonConstExpressions().size();
@@ -616,7 +618,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
 
     AqlValueMaterializer materializer(&_trx.vpackOptions());
     VPackSlice slice = materializer.slice(a, false);
-    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
+    AstNode* evaluatedNode = _ast.nodeFromVPack(slice, true);
 
     AstNode* tmp = condition;
     for (size_t x = 0; x < toReplace->indexPath.size(); x++) {

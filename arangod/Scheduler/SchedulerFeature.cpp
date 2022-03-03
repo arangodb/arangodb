@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <limits>
 #include <thread>
 
 #include "SchedulerFeature.h"
@@ -67,6 +68,19 @@ size_t defaultNumberOfThreads() {
   }
   return result;
 }
+
+// atomic flag to track shutdown requests
+std::atomic<bool> receivedShutdownRequest{false};
+
+#ifndef _WIN32
+// id of process that will not be used to send SIGHUP requests
+constexpr pid_t processIdUnspecified{std::numeric_limits<pid_t>::min()};
+
+static_assert(processIdUnspecified != 0, "minimum pid number must be != 0");
+
+// id of process that requested a log rotation via SIGHUP
+std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
+#endif
 
 }  // namespace
 
@@ -376,15 +390,12 @@ bool CtrlHandler(DWORD eventType) {
     return true;
   }
 
-  static bool seen = false;
-
-  if (!seen) {
+  if (!::receivedShutdownRequest.exchange(true)) {
     LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
         << shutdownMessage << ", beginning shut down sequence";
 
     application_features::ApplicationServer::CTRL_C.store(true);
 
-    seen = true;
     return true;
   }
 
@@ -402,15 +413,10 @@ bool CtrlHandler(DWORD eventType) {
 
 extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
-    static std::atomic<bool> seen{false};
-
-    if (!seen.exchange(true)) {
-      std::string sender =
-          info ? std::to_string(info->si_pid) : std::string("unknown");
+    if (!::receivedShutdownRequest.exchange(true)) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
-          << signals::name(signal) << " received (sender pid " << sender
-          << "), beginning shut down sequence";
-
+          << signals::name(signal) << " received (sender pid "
+          << (info ? info->si_pid : 0) << "), beginning shut down sequence";
       application_features::ApplicationServer::CTRL_C.store(true);
     } else {
       LOG_TOPIC("11ca3", FATAL, arangodb::Logger::FIXME)
@@ -423,16 +429,44 @@ extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
 }
 
 extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
-  if (signal == SIGHUP) {
-    std::string sender =
-        info ? std::to_string(info->si_pid) : std::string("unknown");
-    LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
-        << "hangup received, about to reopen logfile (sender pid " << sender
-        << ")";
-    LogAppender::reopen();
-    LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
-        << "hangup received, reopened logfile";
+  TRI_ASSERT(signal == SIGHUP);
+
+  // id of process that issued the SIGHUP.
+  // if we don't have any information about the issuing process, we
+  // assume a pid of 0.
+  pid_t processIdRequesting = info ? info->si_pid : 0;
+  // note that we need to be able to tell pid 0 and the "unspecified"
+  // process id apart.
+  static_assert(::processIdUnspecified != 0, "unspecified pid should be != 0");
+
+  // the expected process id that we want to see
+  pid_t processIdExpected = ::processIdUnspecified;
+
+  // only set log rotate request if we don't have one queued already. this
+  // prevents duplicate execution of log rotate requests.
+  // if the CAS fails, it doesn't matter, because it means that a log rotate
+  // request was already queued
+  if (!::processIdRequestingLogRotate.compare_exchange_strong(
+          processIdExpected, processIdRequesting)) {
+    // already a log rotate request queued. do nothing...
+    return;
   }
+
+  // no log rotate request queued before. now issue one.
+  SchedulerFeature::SCHEDULER->queue(
+      RequestLane::CLIENT_SLOW, [processIdRequesting]() {
+        try {
+          LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
+              << "hangup received, about to reopen logfile (sender pid "
+              << processIdRequesting << ")";
+          LogAppender::reopen();
+          LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
+              << "hangup received, reopened logfile";
+        } catch (...) {
+          // cannot do much if log rotate request goes wrong
+        }
+        ::processIdRequestingLogRotate.store(::processIdUnspecified);
+      });
 }
 #endif
 
@@ -448,7 +482,7 @@ void SchedulerFeature::buildHangupHandler() {
 
   if (res < 0) {
     LOG_TOPIC("b7ed0", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
+        << "cannot initialize signal handler for hang up";
   }
 #endif
 }
