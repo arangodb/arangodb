@@ -169,7 +169,11 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _exclusiveWrites(false),
       _vpackCmp(new RocksDBVPackComparator()),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0},
-      _minWriteBufferNumberToMergeTouched(false) {
+      _minWriteBufferNumberToMergeTouched(false),
+      _enableBlobDB(true),
+      _minBlobSize(512),
+      _enableBlobGarbageCollection(true) ,
+      _blobFileSize(_writeBufferSize) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<size_t>(2), NumberOfCores::getValue()));
@@ -228,6 +232,15 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "amount of data to build up in memory before converting "
                      "to a sorted on-disk file (0 = disabled)",
                      new UInt64Parameter(&_writeBufferSize));
+
+  options->addOption("--rocksdb.blob-buffer-size",
+                     "amount of data to build up in memory before converting "
+                     "to a sorted on-disk blob file (0 = disabled)",
+                     new UInt64Parameter(&_blobFileSize));
+
+  options->addOption("--rocksdb.min-blob-size",
+                     "minimum value of value to be handled as blob (bytes)",
+                     new UInt64Parameter(&_minBlobSize));
 
   options->addOption("--rocksdb.max-write-buffer-number",
                      "maximum number of write buffers that build up in memory "
@@ -643,6 +656,11 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
       break;
 
     case RocksDBColumnFamilyManager::Family::Documents:
+      options.enable_blob_files = _enableBlobDB;
+      options.min_blob_size = _minBlobSize;
+      options.enable-blob-garbage-collection = true;
+      options.blob-file-size = _blobFileSize;
+
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
     case RocksDBColumnFamilyManager::Family::FulltextIndex: {
