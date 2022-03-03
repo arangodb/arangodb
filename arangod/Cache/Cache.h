@@ -41,8 +41,8 @@
 
 namespace arangodb::cache {
 
-class PlainCache;          // forward declaration
-class TransactionalCache;  // forward declaration
+class PlainCache;
+class TransactionalCache;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The common structure of all caches managed by Manager.

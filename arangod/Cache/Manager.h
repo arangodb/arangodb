@@ -50,10 +50,10 @@ class SharedPRNGFeature;
 
 namespace arangodb::cache {
 
-class Cache;           // forward declaration
-class FreeMemoryTask;  // forward declaration
-class MigrateTask;     // forward declaration
-class Rebalancer;      // forward declaration
+class Cache;
+class FreeMemoryTask;
+class MigrateTask;
+class Rebalancer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Coordinates a system of caches all sharing a single memory pool.

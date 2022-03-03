@@ -28,10 +28,9 @@
 #include <atomic>
 #include <cstdint>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
-class Cache;  // forward declaration
+class Cache;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Metadata object to facilitate information sharing between individual
@@ -144,5 +143,4 @@ struct Metadata {
   bool _resizing;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache
