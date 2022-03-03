@@ -184,6 +184,7 @@ class Parser {
     _start = start;
     _size = size;
     _pos = 0;
+    _nesting = 0;
     if (options->clearBuilderBeforeParse) {
       _builder->clear();
     }
