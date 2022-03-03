@@ -2695,7 +2695,7 @@ void Supervision::checkReplicatedStates() {
 
       auto action = std::invoke(
           [&, &dbName = dbName, &idString = idString]()
-              -> std::unique_ptr<replication2::replicated_state::Action> {
+              -> std::optional<replication2::replicated_state::Action> {
             try {
               return replication2::replicated_state::checkReplicatedState(
                   log, state);
@@ -2705,12 +2705,13 @@ void Supervision::checkReplicatedStates() {
                      "for "
                      "replicated log "
                   << dbName << "/" << idString << ": " << err.what();
-              return nullptr;
+              return std::nullopt;
             }
           });
 
-      if (action != nullptr) {
-        envelope = action->execute(dbName, std::move(envelope));
+      if (action.has_value()) {
+        envelope =
+            execute(state.target.id, dbName, *action, std::move(envelope));
       }
     }
   }
