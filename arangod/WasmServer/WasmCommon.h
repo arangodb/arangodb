@@ -27,6 +27,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 #include "Basics/ResultT.h"
+#include "velocypack/Slice.h"
 
 namespace arangodb::wasm {
 struct WasmFunction {
@@ -36,5 +37,7 @@ struct WasmFunction {
   static auto fromVelocyPack(arangodb::velocypack::Slice slice) -> ResultT<WasmFunction>;
 };
 
-void toVelocyPack(WasmFunction const& wasmFunction, VPackBuilder& builder);
+  void toVelocyPack(WasmFunction const& wasmFunction, VPackBuilder& builder);
+  auto requiredStringSliceField(std::string_view fieldName, velocypack::Slice slice) -> ResultT<velocypack::Slice>;
+  auto deterministicField(velocypack::Slice slice) -> arangodb::ResultT<bool>;
 }  // namespace arangodb::wasm

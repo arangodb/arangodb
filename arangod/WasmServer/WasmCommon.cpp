@@ -17,31 +17,58 @@ void arangodb::wasm::toVelocyPack(WasmFunction const& wasmFunction,
 
 auto WasmFunction::fromVelocyPack(Slice slice) -> ResultT<WasmFunction> {
   auto wasmFunction = WasmFunction{};
-  if (!slice.hasKey("name")) {
-    return ResultT<WasmFunction>::error(TRI_ERROR_BAD_PARAMETER, "Field name is missing");
-  }
-  if (auto name = slice.get("name"); name.isString()) {
-      wasmFunction.name = name.copyString();
+
+  if (auto nameslice = requiredStringSliceField("name", slice);
+      nameslice.ok()) {
+    wasmFunction.name = nameslice.get().copyString();
   } else {
-    return ResultT<WasmFunction>::error(TRI_ERROR_BAD_PARAMETER, "Field name should be a string");
-  } 
-  if (!slice.hasKey("code")) {
-    return ResultT<WasmFunction>::error(TRI_ERROR_BAD_PARAMETER, "Field code is missing");
+    return ResultT<WasmFunction>::error(nameslice.errorNumber(),
+                                        nameslice.errorMessage());
   }
-  if (auto code = slice.get("code"); code.isString()) {
-      wasmFunction.code = code.copyString();
+
+  if (auto codeslice = requiredStringSliceField("code", slice);
+      codeslice.ok()) {
+    wasmFunction.code = codeslice.get().copyString();
   } else {
-    return ResultT<WasmFunction>::error(TRI_ERROR_BAD_PARAMETER, "Field code should be a string");
+    return ResultT<WasmFunction>::error(codeslice.errorNumber(),
+                                        codeslice.errorMessage());
   }
-  // TODO decide if isDeterministic should have default value
-  if (!slice.hasKey("isDeterministic")) {
-    wasmFunction.isDeterministic = false;
+
+  if (auto isDeterministic = deterministicField(slice); isDeterministic.ok()) {
+    wasmFunction.isDeterministic = isDeterministic.get();
   } else {
-    if (auto isDeterministic = slice.get("isDeterministic"); isDeterministic.isBool()) {
-      wasmFunction.isDeterministic = isDeterministic.getBool();
-    } else {
-      return ResultT<WasmFunction>::error(TRI_ERROR_BAD_PARAMETER, "Field code should be a bool");
-    }
+    return ResultT<WasmFunction>::error(isDeterministic.errorNumber(),
+                                        isDeterministic.errorMessage());
   }
+
   return ResultT<WasmFunction>(wasmFunction);
+}
+
+auto arangodb::wasm::requiredStringSliceField(std::string_view fieldName,
+                                              Slice slice)
+    -> arangodb::ResultT<Slice> {
+  if (!slice.hasKey(fieldName)) {
+    return arangodb::ResultT<Slice>::error(TRI_ERROR_BAD_PARAMETER,
+                                           "Field name is missing");
+  }
+  if (auto name = slice.get(fieldName); name.isString()) {
+    return name;
+  } else {
+    return arangodb::ResultT<Slice>::error(TRI_ERROR_BAD_PARAMETER,
+                                           "Field name should be a string");
+  }
+}
+
+auto arangodb::wasm::deterministicField(Slice slice)
+    -> arangodb::ResultT<bool> {
+  if (!slice.hasKey("isDeterministic")) {
+    return false;
+  }
+  if (auto isDeterministic = slice.get("isDeterministic");
+      isDeterministic.isBool()) {
+    return isDeterministic.getBool();
+  } else {
+    return arangodb::ResultT<bool>::error(TRI_ERROR_BAD_PARAMETER,
+                                          "Field code should be a bool");
+  }
 }
