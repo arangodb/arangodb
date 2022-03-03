@@ -217,6 +217,7 @@ auto to_string(Action const& action) -> std::string_view {
 
 void toVelocyPack(Action const& action, VPackBuilder& builder) {
   auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(action)));
 }
 
