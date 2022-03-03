@@ -499,13 +499,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   stats += _right.provider().stealStats();
   return stats;
 }
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidatorType>::getGraphOptions()
-    -> TwoSidedEnumerator::GraphOptions {
-  return _options;
-}
 
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;

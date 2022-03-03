@@ -100,8 +100,6 @@ class TwoSidedEnumerator {
 
     auto provider() -> ProviderType&;
 
-    auto getGraphOptions() -> GraphOptions;
-
    private:
     auto clearProvider() -> void;
 
@@ -208,8 +206,6 @@ class TwoSidedEnumerator {
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
-
-  auto getGraphOptions() -> GraphOptions;
 
  private:
   GraphOptions _options;
