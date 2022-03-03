@@ -281,12 +281,13 @@ auto algorithms::calculateCommitIndex(
   // If servers are unavailable because they are either failed or excluded,
   // the actualWriteConcern may be lowered from softWriteConcern down to at
   // least writeConcern.
-  auto const availableServers = std::size_t(std::count_if(
+  auto const numAvailableParticipants = std::size_t(std::count_if(
       std::begin(participants), std::end(participants),
       [](auto const& p) { return !p.isFailed() && !p.isExcluded(); }));
   // We write to at least writeConcern servers, ideally more if available.
-  auto const effectiveWriteConcern = std::max(
-      opt._writeConcern, std::min(availableServers, opt._softWriteConcern));
+  auto const effectiveWriteConcern =
+      std::max(opt._writeConcern,
+               std::min(numAvailableParticipants, opt._softWriteConcern));
 
   if (effectiveWriteConcern > participants.size() &&
       participants.size() == eligible.size()) {
