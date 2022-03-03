@@ -293,7 +293,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
             }
             break;
           }  // finding found
-          if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+          if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
             // We really have not found an entry.
             // Otherwise we do not know yet
             break;
@@ -783,7 +783,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
           shouldTry = false;
           needsInsert = false;
         } else if (  // shouldTry if failed lookup was just a lock timeout
-            finding.result().errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+            finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
           shouldTry = false;
           needsInsert = true;
           builder.openArray(true);
