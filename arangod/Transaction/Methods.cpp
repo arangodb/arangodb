@@ -1073,7 +1073,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  [[maybe_unused]] size_t numExclusions = 0;
+  size_t numExclusions = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
@@ -1161,10 +1161,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
         // replication!
         excludeFromReplication = true;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         numExclusions++;
-#endif
-
         return res;
       }
 
@@ -1175,10 +1172,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
             collection->update(this, value, docResult, options, prevDocResult);
         if (res.ok() && prevDocResult.revisionId() == docResult.revisionId()) {
           excludeFromReplication = true;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           numExclusions++;
-#endif
         }
       } else if (options.overwriteMode ==
                  OperationOptions::OverwriteMode::Replace) {
@@ -1278,9 +1272,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(numExclusions == excludePositions.size());
-#endif
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok()) {
