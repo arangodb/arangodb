@@ -26,8 +26,7 @@
 #include "Basics/Result.h"
 #include "Cache/CachedValue.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A helper class for managing CachedValue lifecycles.
@@ -44,9 +43,9 @@ class Finding {
   explicit Finding(CachedValue* v);
   explicit Finding(CachedValue* v, Result const& r);
   Finding(Finding const& other) = delete;
-  Finding(Finding&& other);
+  Finding(Finding&& other) noexcept;
   Finding& operator=(Finding const& other) = delete;
-  Finding& operator=(Finding&& other);
+  Finding& operator=(Finding&& other) noexcept;
   ~Finding();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -68,7 +67,7 @@ class Finding {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Specifies whether the value was found. If not, value is nullptr.
   //////////////////////////////////////////////////////////////////////////////
-  bool found() const;
+  bool found() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the underlying value pointer.
@@ -88,12 +87,11 @@ class Finding {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the status result object associated with the lookup.
   /////////////////////////////////////////////////////////////////////////////
-  Result const& result() const;
+  Result const& result() const noexcept;
 
  private:
   CachedValue* _value;
   Result _result;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+}  // end namespace arangodb::cache

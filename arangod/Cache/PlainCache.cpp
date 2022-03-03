@@ -21,10 +21,8 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <atomic>
 #include <chrono>
 #include <cstdint>
-#include <list>
 
 #include "Cache/PlainCache.h"
 
@@ -57,7 +55,6 @@ Finding PlainCache::find(void const* key, std::uint32_t keySize) {
   }
 
   PlainBucket& bucket = guard.bucket<PlainBucket>();
-  ;
   result.set(bucket.find(hash, key, keySize));
   if (result.found()) {
     recordStat(Stat::findHit);
@@ -180,13 +177,6 @@ Result PlainCache::banish(void const* key, std::uint32_t keySize) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-std::uint64_t PlainCache::allocationSize(bool enableWindowedStats) {
-  return sizeof(PlainCache) +
-         (enableWindowedStats ? (sizeof(StatBuffer) +
-                                 StatBuffer::allocationSize(_findStatsCapacity))
-                              : 0);
-}
-
 std::shared_ptr<Cache> PlainCache::create(Manager* manager, std::uint64_t id,
                                           Metadata&& metadata,
                                           std::shared_ptr<Table> table,
@@ -196,10 +186,10 @@ std::shared_ptr<Cache> PlainCache::create(Manager* manager, std::uint64_t id,
                                       enableWindowedStats);
 }
 
-PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager,
+PlainCache::PlainCache(Cache::ConstructionGuard /*guard*/, Manager* manager,
                        std::uint64_t id, Metadata&& metadata,
                        std::shared_ptr<Table> table, bool enableWindowedStats)
-    : Cache(guard, manager, id, std::move(metadata), table, enableWindowedStats,
+    : Cache(manager, id, std::move(metadata), table, enableWindowedStats,
             PlainCache::bucketClearer, PlainBucket::slotsData) {}
 
 PlainCache::~PlainCache() {
