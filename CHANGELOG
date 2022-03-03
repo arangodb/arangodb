@@ -1,7 +1,7 @@
 v3.8.6 (2022-02-16)
 -------------------
 
-* Log a better startup error in case an ArangoDB 3.7 is started on a too new 
+* Log a better startup error in case an ArangoDB 3.8 is started on a too new 
   database directory (3.9 or higher).
 
 * Harden validator for binary VelocyPack against additional types of malicious
