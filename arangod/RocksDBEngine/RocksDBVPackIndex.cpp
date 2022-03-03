@@ -631,7 +631,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         // LOG_DEVEL << "CACHE VALUE NOT FOUND: " << _bounds;
         ++_lookupMisses;
       }
-      if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+      if (finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
         // We really have not found an entry.
         // Otherwise we do not know yet
         break;
