@@ -50,6 +50,7 @@
 #include <velocypack/Slice.h>
 
 #include <Basics/Identifier.h>
+#include <Containers/FlatHashMap.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
 namespace arangodb::velocypack {
@@ -241,9 +242,18 @@ struct CommitFailReason {
         -> bool = default;
   };
   struct QuorumSizeNotReached {
+    struct ParticipantInfo {
+      bool isFailed{};
+      static auto fromVelocyPack(velocypack::Slice) -> ParticipantInfo;
+      void toVelocyPack(velocypack::Builder& builder) const;
+      friend auto operator==(ParticipantInfo const& left,
+                             ParticipantInfo const& right) noexcept
+          -> bool = default;
+    };
+    using who_type = containers::FlatHashMap<ParticipantId, ParticipantInfo>;
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
     void toVelocyPack(velocypack::Builder& builder) const;
-    ParticipantId who;
+    who_type who;
     friend auto operator==(QuorumSizeNotReached const& left,
                            QuorumSizeNotReached const& right) noexcept
         -> bool = default;
@@ -278,18 +288,36 @@ struct CommitFailReason {
         NonEligibleServerRequiredForQuorum const& right) noexcept
         -> bool = default;
   };
+  struct FewerParticipantsThanWriteConcern {
+    std::size_t writeConcern{};
+    std::size_t softWriteConcern{};
+    std::size_t effectiveWriteConcern{};
+    std::size_t numParticipants{};
+    static auto fromVelocyPack(velocypack::Slice)
+        -> FewerParticipantsThanWriteConcern;
+    void toVelocyPack(velocypack::Builder& builder) const;
+    friend auto operator==(
+        FewerParticipantsThanWriteConcern const& left,
+        FewerParticipantsThanWriteConcern const& right) noexcept
+        -> bool = default;
+  };
   std::variant<NothingToCommit, QuorumSizeNotReached,
-               ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum>
+               ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum,
+               FewerParticipantsThanWriteConcern>
       value;
 
   static auto withNothingToCommit() noexcept -> CommitFailReason;
-  static auto withQuorumSizeNotReached(ParticipantId who) noexcept
-      -> CommitFailReason;
+  static auto withQuorumSizeNotReached(
+      QuorumSizeNotReached::who_type who) noexcept -> CommitFailReason;
   static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept
       -> CommitFailReason;
   static auto withNonEligibleServerRequiredForQuorum(
       NonEligibleServerRequiredForQuorum::CandidateMap) noexcept
       -> CommitFailReason;
+  // This would have too many `std::size_t` arguments to not be confusing,
+  // so taking the full object instead.
+  static auto withFewerParticipantsThanWriteConcern(
+      FewerParticipantsThanWriteConcern) -> CommitFailReason;
 
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -301,6 +329,10 @@ struct CommitFailReason {
   template<typename... Args>
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
+
+auto operator<<(std::ostream&,
+                CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
+    -> std::ostream&;
 
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
