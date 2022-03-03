@@ -1015,6 +1015,15 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     let rx = new RegExp('ruby.exe$');
     rspec = options.ruby.replace(rx, 'rspec');
     command = options.ruby;
+    if (!fs.exists(rspec) || !fs.exists(command)) {
+      return {
+        total: 0,
+        failed: 1,
+        status: false,
+        forceTerminate: false,
+        message: "rspec missing on your system! either " + rspec + " or " + command + " is unavailable!"
+      };
+    }
   } else {
     if (platform.substr(0, 3) !== 'win') {
       command = 'rspec';
