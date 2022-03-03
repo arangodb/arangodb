@@ -36,6 +36,7 @@
 #include "RestServer/arangod.h"
 
 #include "WasmServer/WasmCommon.h"
+#include "Basics/ResultT.h"
 
 using namespace arangodb;
 using namespace arangodb::wasm;
@@ -80,8 +81,6 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   auto success = bool{};
   auto slice = parseVPackBody(success);
   if (!success) {
-    generateError(ResponseCode::BAD, ErrorCode(TRI_ERROR_BAD_PARAMETER),
-                  "Could not parse Json");
     return RestStatus::DONE;
   }
   if (!slice.isObject()) {
@@ -89,9 +88,14 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
                   "Expecting body to contain Json Object");
     return RestStatus::DONE;
   }
-  auto function = WasmFunction::fromVelocyPack(slice);
+  ResultT<WasmFunction> function = WasmFunction::fromVelocyPack(slice);
+  if (function.fail()) {
+    generateError(ResponseCode::BAD, function.errorNumber(),
+                  function.errorMessage());
+    return RestStatus::DONE;
+  }
   auto builder = VPackBuilder();
-  toVelocyPack(function, builder);
+  toVelocyPack(function.get(), builder);
   LOG_DEVEL << "Hello" << builder.toJson();
   return RestStatus::DONE;
 }

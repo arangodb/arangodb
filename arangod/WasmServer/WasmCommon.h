@@ -26,13 +26,14 @@
 #include <string>
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
+#include "Basics/ResultT.h"
 
 namespace arangodb::wasm {
 struct WasmFunction {
   std::string name;
   std::string code;
   bool isDeterministic;
-  static auto fromVelocyPack(arangodb::velocypack::Slice slice) -> WasmFunction;
+  static auto fromVelocyPack(arangodb::velocypack::Slice slice) -> ResultT<WasmFunction>;
 };
 
 void toVelocyPack(WasmFunction const& wasmFunction, VPackBuilder& builder);
