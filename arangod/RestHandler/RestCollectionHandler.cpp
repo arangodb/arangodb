@@ -372,9 +372,12 @@ void RestCollectionHandler::handleCommandPost() {
     }
   }
 
+  bool isDC2DCContext = ExecContext::current().isSuperuser();
+
   // for some "security" a list of allowed parameters (i.e. all
   // others are disallowed!)
-  VPackBuilder filtered = methods::Collections::filterInput(body);
+  VPackBuilder filtered =
+      methods::Collections::filterInput(body, isDC2DCContext);
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection

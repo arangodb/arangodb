@@ -15,7 +15,8 @@ pushd "$adb_path" > /dev/null
 
 changed_files_filename=".clang-format-$$.changed.tmp"
 # clean up after ourselves
-trap "rm -f $changed_files_filename" EXIT SIGINT SIGTERM SIGHUP
+trap "rm -f $changed_files_filename" EXIT
+trap "rm -f $changed_files_filename; exit" SIGINT SIGTERM SIGHUP
 
 # collect a list of file names of all modified files in $changed_files_filename
 git diff --cached --diff-filter=ACMRT --name-only -- arangod/ lib/ arangosh/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' > "$changed_files_filename"
@@ -23,7 +24,7 @@ git diff --cached --diff-filter=ACMRT --name-only -- arangod/ lib/ arangosh/ tes
 if [ -s "$changed_files_filename" ]; then
   # hand over a list of changed files from the local filesystem into a Docker container that contains a fixed
   # version of clang-format and some small shell wrapper to iterate over the list of files
-  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.1 "validate" "$changed_files_filename"
+  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.2 "validate" "$changed_files_filename"
 fi
 status=$?
 

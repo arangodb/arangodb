@@ -152,6 +152,7 @@ bool TRI_vocbase_t::markAsDropped() {
   return (oldValue % 2 == 0);
 }
 
+/// @brief whether or not the database is the system database
 bool TRI_vocbase_t::isSystem() const {
   return _info.getName() == StaticStrings::SystemDatabase;
 }
