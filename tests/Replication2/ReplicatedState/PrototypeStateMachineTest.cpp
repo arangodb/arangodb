@@ -88,9 +88,18 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   }
 
   {
-    std::initializer_list<std::pair<std::string, std::string>> values{
+    std::initializer_list<std::pair<std::string, std::string>> values1{
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
-    auto result = leaderState->set(values.begin(), values.end());
+
+    auto result = leaderState->set(values1);
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    ASSERT_TRUE(result.get().ok());
+
+    std::unordered_map<std::string, std::string> values2{
+        {std::string("foo1"), std::string("bar1")}};
+    result = leaderState->set(values2.begin(), values2.end());
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }

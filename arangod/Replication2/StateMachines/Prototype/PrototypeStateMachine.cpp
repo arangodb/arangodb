@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/overload.h"
-#include <Basics/voc-errors.h>
-#include <Futures/Future.h>
+#include "Basics/voc-errors.h"
+#include "Futures/Future.h"
 #include "velocypack/Iterator.h"
 
 #include "PrototypeStateMachine.h"
@@ -72,7 +72,7 @@ auto PrototypeLeaderState::resign() && noexcept
 
 auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
-  return guardedData.doUnderLock([ptr = std::move(ptr)](auto& core) mutable {
+  return guardedData.doUnderLock([ptr = move(ptr)](auto& core) mutable {
     if (!core) {
       return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
     }
@@ -104,6 +104,31 @@ auto PrototypeLeaderState::set(std::string key, std::string value)
       });
 }
 
+auto PrototypeLeaderState::set(
+    std::vector<std::pair<std::string, std::string>> entries)
+    -> futures::Future<Result> {
+  auto stream = getStream();
+
+  PrototypeLogEntry entry{PrototypeLogEntry::BulkInsertOperation{
+      .map = {entries.begin(), entries.end()}}};
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(),
+       entries = std::move(entries)](auto&& res) mutable {
+        return self->guardedData.template doUnderLock(
+            [entries = std::move(entries)](auto& core) {
+              if (!core) {
+                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+              }
+              for (auto const& [key, value] : entries) {
+                core->store = core->store.set(key, value);
+              }
+              return Result{TRI_ERROR_NO_ERROR};
+            });
+      });
+}
+
 auto PrototypeLeaderState::remove(std::string key) -> futures::Future<Result> {
   auto stream = getStream();
   PrototypeLogEntry entry{PrototypeLogEntry::DeleteOperation{.key = key}};
@@ -117,6 +142,29 @@ auto PrototypeLeaderState::remove(std::string key) -> futures::Future<Result> {
                 return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
               }
               core->store = core->store.erase(key);
+              return Result{TRI_ERROR_NO_ERROR};
+            });
+      });
+}
+
+auto PrototypeLeaderState::remove(std::vector<std::string> keys)
+    -> futures::Future<Result> {
+  auto stream = getStream();
+
+  PrototypeLogEntry entry{PrototypeLogEntry::BulkDeleteOperation{.keys = keys}};
+  auto idx = stream->insert(entry);
+
+  return stream->waitFor(idx).thenValue(
+      [self = shared_from_this(),
+       entries = std::move(keys)](auto&& res) mutable {
+        return self->guardedData.template doUnderLock(
+            [entries = std::move(entries)](auto& core) {
+              if (!core) {
+                return Result{TRI_ERROR_CLUSTER_NOT_LEADER};
+              }
+              for (auto it{entries.begin()}; it != entries.end(); ++it) {
+                core->store = core->store.erase(*it);
+              }
               return Result{TRI_ERROR_NO_ERROR};
             });
       });
@@ -142,6 +190,7 @@ PrototypeFollowerState::PrototypeFollowerState(
 auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
                                              LogIndex) noexcept
     -> futures::Future<Result> {
+  // TODO
   return {TRI_ERROR_NO_ERROR};
 }
 
@@ -181,35 +230,37 @@ operator()(
     velocypack::Slice s) const
     -> replicated_state::prototype::PrototypeLogEntry {
   auto type = s.get("type");
-  TRI_ASSERT(!type.isNone());
+  TRI_ASSERT(type.isString());
 
   if (type.isEqualString("insert")) {
     auto key = s.get("key");
     auto value = s.get("value");
-    TRI_ASSERT(!key.isNone() && !value.isNone());
+    TRI_ASSERT(key.isString() && value.isString());
     return PrototypeLogEntry{.operation = PrototypeLogEntry::InsertOperation{
                                  key.copyString(), value.copyString()}};
   } else if (type.isEqualString("delete")) {
     auto key = s.get("key");
-    TRI_ASSERT(!key.isNone());
+    TRI_ASSERT(key.isString());
     return PrototypeLogEntry{
         .operation = PrototypeLogEntry::DeleteOperation{key.copyString()}};
   } else if (type.isEqualString("bulkInsert")) {
     auto mapOb = s.get("map");
-    TRI_ASSERT(!mapOb.isNone());
+    TRI_ASSERT(mapOb.isObject());
     std::unordered_map<std::string, std::string> map;
-    for (auto [key, value] : VPackObjectIterator(mapOb)) {
+    for (auto const& [key, value] : VPackObjectIterator(mapOb)) {
       map.emplace(key.copyString(), value.copyString());
     }
     return PrototypeLogEntry{
         .operation = PrototypeLogEntry::BulkInsertOperation{std::move(map)}};
   } else if (type.isEqualString("bulkDelete")) {
-    auto keysOb = s.get("keys");
-    TRI_ASSERT(!keysOb.isNone());
+    auto keysAr = s.get("keys");
+    TRI_ASSERT(keysAr.isArray());
     std::vector<std::string> keys;
-    for (auto it : VPackArrayIterator(keysOb)) {
+    for (auto const& it : VPackArrayIterator(keysAr)) {
       keys.emplace_back(it.copyString());
     }
+    return PrototypeLogEntry{
+        .operation = PrototypeLogEntry::BulkDeleteOperation{std::move(keys)}};
   }
   TRI_ASSERT(false);
   return PrototypeLogEntry{};

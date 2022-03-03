@@ -631,8 +631,10 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/StateMachines/Prototype/PrototypeStateMachine.cpp
   Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.cpp
+  Replication2/StateMachines/Prototype/PrototypeStateMethods.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
+  RestHandler/RestPrototypeStateHandler.cpp
   RestHandler/RestLogInternalHandler.cpp
 )
 

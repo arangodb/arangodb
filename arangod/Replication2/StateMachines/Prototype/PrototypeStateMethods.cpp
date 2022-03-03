@@ -1,0 +1,173 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Alexandru Petenchea
+////////////////////////////////////////////////////////////////////////////////
+
+#include <Basics/Exceptions.h>
+#include <Basics/voc-errors.h>
+#include <Futures/Future.h>
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
+#include "VocBase/vocbase.h"
+
+#include "PrototypeStateMethods.h"
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::replicated_state;
+using namespace arangodb::replication2::replicated_state::prototype;
+
+struct PrototypeStateMethodsDBServer final
+    : PrototypeStateMethods,
+      std::enable_shared_from_this<PrototypeStateMethodsDBServer> {
+  explicit PrototypeStateMethodsDBServer(TRI_vocbase_t& vocbase)
+      : _vocbase(vocbase) {}
+
+  auto insert(LogId id, std::string key, std::string value) const
+      -> futures::Future<Result> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->set(std::move(key), std::move(value));
+  }
+
+  auto insert(LogId id,
+              std::vector<std::pair<std::string, std::string>> const& entries)
+      const -> futures::Future<Result> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->set(entries);
+  };
+
+  auto get(LogId id, std::string key) const
+      -> futures::Future<std::optional<std::string>> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->get(key);
+  }
+
+  auto get(LogId id, std::vector<std::string> const& keys) const
+      -> futures::Future<
+          std::unordered_map<std::string, std::string>> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->get(keys.begin(), keys.end());
+  }
+
+  auto remove(LogId id, std::string key) const
+      -> futures::Future<Result> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->remove(std::move(key));
+  }
+
+  auto remove(LogId id, std::vector<std::string> keys) const
+      -> futures::Future<Result> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->remove(std::move(keys));
+  }
+
+ private:
+  auto getPrototypeStateLeaderById(LogId id) const
+      -> std::shared_ptr<PrototypeLeaderState> {
+    auto stateMachine =
+        std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+            _vocbase.getReplicatedStateById(id));
+    if (stateMachine == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
+                                  "Failed to get ProtoypeState with id ", id));
+    }
+    auto leader = stateMachine->getLeader();
+    if (leader == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          basics::StringUtils::concatT(
+              "Failed to get leader of ProtoypeState with id ", id));
+    }
+    return leader;
+  }
+
+ private:
+  TRI_vocbase_t& _vocbase;
+};
+
+struct PrototypeStateMethodsCoordinator final
+    : PrototypeStateMethods,
+      std::enable_shared_from_this<PrototypeStateMethodsCoordinator> {
+  auto insert(LogId id, std::string key, std::string value) const
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto insert(LogId id,
+              std::vector<std::pair<std::string, std::string>> const& entries)
+      const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto get(LogId id, std::string key) const
+      -> futures::Future<std::optional<std::string>> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto get(LogId id, std::vector<std::string> const& keys) const
+      -> futures::Future<
+          std::unordered_map<std::string, std::string>> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto remove(LogId id, std::string key) const
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto remove(LogId id, std::vector<std::string> keys) const
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  explicit PrototypeStateMethodsCoordinator(TRI_vocbase_t& vocbase)
+      : _vocbase(vocbase),
+        _clusterInfo(
+            vocbase.server().getFeature<ClusterFeature>().clusterInfo()),
+        _pool(vocbase.server().getFeature<NetworkFeature>().pool()) {}
+
+ public:
+  TRI_vocbase_t& _vocbase;
+  ClusterInfo& _clusterInfo;
+  network::ConnectionPool* _pool;
+};
+
+auto PrototypeStateMethods::createInstance(TRI_vocbase_t& vocbase)
+    -> std::shared_ptr<PrototypeStateMethods> {
+  switch (ServerState::instance()->getRole()) {
+    case ServerState::ROLE_COORDINATOR:
+      return std::make_shared<PrototypeStateMethodsCoordinator>(vocbase);
+    case ServerState::ROLE_DBSERVER:
+      return std::make_shared<PrototypeStateMethodsDBServer>(vocbase);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "api only on available coordinators or dbservers");
+  }
+}

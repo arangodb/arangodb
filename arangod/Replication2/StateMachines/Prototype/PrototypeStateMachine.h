@@ -51,6 +51,8 @@ concept StringIterator =
 template<class T>
 concept MapStringIterator =
     std::same_as<typename std::iterator_traits<T>::value_type,
+                 std::pair<const std::string, std::string>> ||
+    std::same_as<typename std::iterator_traits<T>::value_type,
                  std::pair<std::string, std::string>>;
 
 struct PrototypeFactory;
@@ -106,18 +108,20 @@ struct PrototypeLeaderState
       -> futures::Future<Result> override;
 
   auto set(std::string key, std::string value) -> futures::Future<Result>;
-  auto remove(std::string key) -> futures::Future<Result>;
-  auto get(std::string key) -> std::optional<std::string>;
-
-  template<StringIterator Iterator>
-  auto get(Iterator begin, Iterator end)
-      -> std::unordered_map<std::string, std::string>;
-
+  auto set(std::vector<std::pair<std::string, std::string>> entries)
+      -> futures::Future<Result>;
   template<MapStringIterator Iterator>
   auto set(Iterator begin, Iterator end) -> futures::Future<Result>;
 
+  auto remove(std::string key) -> futures::Future<Result>;
+  auto remove(std::vector<std::string> keys) -> futures::Future<Result>;
   template<StringIterator Iterator>
   auto remove(Iterator begin, Iterator end) -> futures::Future<Result>;
+
+  auto get(std::string key) -> std::optional<std::string>;
+  template<StringIterator Iterator>
+  auto get(Iterator begin, Iterator end)
+      -> std::unordered_map<std::string, std::string>;
 
   Guarded<std::unique_ptr<PrototypeCore>, basics::UnshackledMutex> guardedData;
 };

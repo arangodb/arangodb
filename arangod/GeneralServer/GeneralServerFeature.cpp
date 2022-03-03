@@ -83,6 +83,7 @@
 #include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPregelHandler.h"
+#include "RestHandler/RestPrototypeStateHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
@@ -536,6 +537,9 @@ void GeneralServerFeature::defineHandlers() {
   if (cluster.isEnabled()) {
     _handlerFactory->addPrefixHandler(
         "/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        "/_api/prototype-state",
+        RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
   }
 #endif
 
