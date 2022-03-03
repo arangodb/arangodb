@@ -251,6 +251,7 @@ struct Executor {
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
 
+auto to_string(Action const& action) -> std::string_view;
 void toVelocyPack(Action const& action, VPackBuilder& builder);
 
 }  // namespace arangodb::replication2::replicated_log
