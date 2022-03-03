@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <memory>
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 
@@ -44,10 +45,8 @@ struct EmptyAction {
 struct ErrorAction {
   static constexpr std::string_view name = "ErrorAction";
 
-  ErrorAction(LogId const& id, LogCurrentSupervisionError const& error)
-      : _id{id}, _error{error} {};
+  ErrorAction(LogCurrentSupervisionError const& error) : _error{error} {};
 
-  LogId _id;
   LogCurrentSupervisionError _error;
 };
 
@@ -68,37 +67,31 @@ struct AddParticipantsToTargetAction {
 struct CreateInitialTermAction {
   static constexpr std::string_view name = "CreateIntialTermAction";
 
-  CreateInitialTermAction(LogId id, LogPlanTermSpecification const& term)
-      : _id(id), _term(term){};
+  CreateInitialTermAction(LogPlanTermSpecification const& term) : _term(term){};
 
-  LogId const _id;
   LogPlanTermSpecification const _term;
 };
 
 struct DictateLeaderAction {
   static constexpr std::string_view name = "DictateLeaderAction";
 
-  DictateLeaderAction(LogId const& id, LogPlanTermSpecification const& newTerm)
-      : _id(id), _term{newTerm} {};
+  DictateLeaderAction(LogPlanTermSpecification const& newTerm)
+      : _term{newTerm} {};
 
-  LogId const _id;
   LogPlanTermSpecification _term;
 };
 
 struct EvictLeaderAction {
   static constexpr std::string_view name = "EvictLeaderAction";
 
-  EvictLeaderAction(LogId const& id, ParticipantId const& leader,
-                    ParticipantFlags const& flags,
+  EvictLeaderAction(ParticipantId const& leader, ParticipantFlags const& flags,
                     LogPlanTermSpecification const& newTerm,
                     std::size_t generation)
-      : _id(id),
-        _leader{leader},
+      : _leader{leader},
         _flags{flags},
         _newTerm{newTerm},
         _generation{generation} {};
 
-  LogId const _id;
   ParticipantId _leader;
   ParticipantFlags _flags;
   LogPlanTermSpecification _newTerm;
@@ -108,23 +101,21 @@ struct EvictLeaderAction {
 struct UpdateTermAction {
   static constexpr std::string_view name = "UpdateTermAction";
 
-  UpdateTermAction(LogId const& id, LogPlanTermSpecification const& newTerm)
-      : _id{id}, _newTerm(newTerm){};
+  UpdateTermAction(LogPlanTermSpecification const& newTerm)
+      : _newTerm(newTerm){};
 
-  LogId const _id;
   LogPlanTermSpecification _newTerm;
 };
 
 struct LeaderElectionAction {
   static constexpr std::string_view name = "LeaderElectionAction";
 
-  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election)
-      : _id(id), _election{election}, _newTerm{std::nullopt} {};
-  LeaderElectionAction(LogId id, LogCurrentSupervisionElection const& election,
+  LeaderElectionAction(LogCurrentSupervisionElection const& election)
+      : _election{election}, _newTerm{std::nullopt} {};
+  LeaderElectionAction(LogCurrentSupervisionElection const& election,
                        LogPlanTermSpecification newTerm)
-      : _id(id), _election{election}, _newTerm{newTerm} {};
+      : _election{election}, _newTerm{newTerm} {};
 
-  LogId const _id;
   LogCurrentSupervisionElection _election;
   std::optional<LogPlanTermSpecification> _newTerm;
 };
@@ -132,15 +123,11 @@ struct LeaderElectionAction {
 struct UpdateParticipantFlagsAction {
   static constexpr std::string_view name = "UpdateParticipantFlagsAction";
 
-  UpdateParticipantFlagsAction(LogId id, ParticipantId const& participant,
+  UpdateParticipantFlagsAction(ParticipantId const& participant,
                                ParticipantFlags const& flags,
                                std::size_t generation)
-      : _id(id),
-        _participant(participant),
-        _flags(flags),
-        _generation{generation} {};
+      : _participant(participant), _flags(flags), _generation{generation} {};
 
-  LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
   std::size_t _generation;
@@ -149,15 +136,11 @@ struct UpdateParticipantFlagsAction {
 struct AddParticipantToPlanAction {
   static constexpr std::string_view name = "AddParticipantToPlanAction";
 
-  AddParticipantToPlanAction(LogId id, ParticipantId const& participant,
+  AddParticipantToPlanAction(ParticipantId const& participant,
                              ParticipantFlags const& flags,
                              std::size_t generation)
-      : _id{id},
-        _participant(participant),
-        _flags(flags),
-        _generation{generation} {};
+      : _participant(participant), _flags(flags), _generation{generation} {};
 
-  LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
   std::size_t _generation;
@@ -166,12 +149,10 @@ struct AddParticipantToPlanAction {
 struct RemoveParticipantFromPlanAction {
   static constexpr std::string_view name = "RemoveParticipantFromPlanAction";
 
-  RemoveParticipantFromPlanAction(LogId const& id,
-                                  ParticipantId const& participant,
+  RemoveParticipantFromPlanAction(ParticipantId const& participant,
                                   std::size_t generation)
-      : _id{id}, _participant(participant), _generation{generation} {};
+      : _participant(participant), _generation{generation} {};
 
-  LogId const _id;
   ParticipantId _participant;
   std::size_t _generation;
 };
@@ -179,10 +160,8 @@ struct RemoveParticipantFromPlanAction {
 struct UpdateLogConfigAction {
   static constexpr std::string_view name = "UpdateLogConfigAction";
 
-  UpdateLogConfigAction(LogId const& id, LogConfig const& config)
-      : _id(id), _config(config){};
+  UpdateLogConfigAction(LogConfig const& config) : _config(config){};
 
-  LogId const _id;
   LogConfig _config;
 };
 
@@ -232,6 +211,27 @@ struct Executor {
       currentPath;
 
   std::shared_ptr<Root::Arango::Plan::Version const> planVersionPath;
+
+  void operator()(EmptyAction const& action);
+  void operator()(ErrorAction const& action);
+  void operator()(AddLogToPlanAction const& action);
+  void operator()(AddParticipantsToTargetAction const& action);
+  void operator()(CreateInitialTermAction const& action);
+  void operator()(DictateLeaderAction const& action);
+  void operator()(EvictLeaderAction const& action);
+  void operator()(UpdateTermAction const& action);
+  void operator()(LeaderElectionAction const& action);
+  void operator()(UpdateParticipantFlagsAction const& action);
+  void operator()(AddParticipantToPlanAction const& action);
+  void operator()(RemoveParticipantFromPlanAction const& action);
+  void operator()(UpdateLogConfigAction const& action);
+};
+
+struct VelocyPacker {
+  VelocyPacker(VPackBuilder& builder) : builder(builder), ob(&builder){};
+  VelocyPacker(VelocyPacker&) = delete;
+  VPackBuilder& builder;
+  VPackObjectBuilder ob;
 
   void operator()(EmptyAction const& action);
   void operator()(ErrorAction const& action);

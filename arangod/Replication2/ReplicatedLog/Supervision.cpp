@@ -70,7 +70,7 @@ auto checkTermPresent(LogPlanSpecification const& plan, LogConfig const& config)
     -> Action {
   if (!plan.currentTerm) {
     return CreateInitialTermAction(
-        plan.id, LogPlanTermSpecification(LogTerm(1), config, std::nullopt));
+        LogPlanTermSpecification(LogTerm(1), config, std::nullopt));
   }
   return EmptyAction();
 }
@@ -94,7 +94,7 @@ auto checkLeaderFailed(LogPlanSpecification const& plan,
     newTerm.leader.reset();
     newTerm.term = LogTerm{plan.currentTerm->term.value + 1};
 
-    return UpdateTermAction(plan.id, newTerm);
+    return UpdateTermAction(newTerm);
   }
 }
 
@@ -150,7 +150,7 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
             term, plan.currentTerm->config,
             LogPlanTermSpecification::Leader{participant, rebootId});
 
-        return DictateLeaderAction(target.id, termSpec);
+        return DictateLeaderAction(termSpec);
       }
     }
 
@@ -167,7 +167,7 @@ auto checkLeaderRemovedFromTarget(LogTarget const& target,
 
       flags.forced = true;
 
-      return UpdateParticipantFlagsAction(target.id, chosenOne, flags,
+      return UpdateParticipantFlagsAction(chosenOne, flags,
                                           plan.participantsConfig.generation);
     } else {
       // We should be signaling that we could not determine a leader
@@ -210,16 +210,14 @@ auto checkLeaderInTarget(LogTarget const& target,
         // Error has already been reported; don't re-report
         return EmptyAction();
       } else {
-        return ErrorAction(plan.id,
-                           LogCurrentSupervisionError::TARGET_LEADER_INVALID);
+        return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_INVALID);
       }
     }
     auto const& planLeaderConfig =
         plan.participantsConfig.participants.at(*target.leader);
 
     if (planLeaderConfig.forced != true || planLeaderConfig.excluded == true) {
-      return ErrorAction(plan.id,
-                         LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
+      return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
     }
 
     if (!health.notIsFailed(*target.leader)) {
@@ -234,7 +232,7 @@ auto checkLeaderInTarget(LogTarget const& target,
         term, plan.currentTerm->config,
         LogPlanTermSpecification::Leader{*target.leader, rebootId});
 
-    return DictateLeaderAction(target.id, termSpec);
+    return DictateLeaderAction(termSpec);
   }
   return EmptyAction();
 }
@@ -293,7 +291,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
     auto election = LogCurrentSupervisionElection();
     election.term = plan.currentTerm->term;
     election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
-    return LeaderElectionAction(plan.id, election);
+    return LeaderElectionAction(election);
   }
 
   TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
@@ -314,7 +312,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   if (numElectible == 0 ||
       numElectible > std::numeric_limits<uint16_t>::max()) {
     election.outcome = LogCurrentSupervisionElection::Outcome::IMPOSSIBLE;
-    return LeaderElectionAction(plan.id, election);
+    return LeaderElectionAction(election);
   }
 
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
@@ -326,7 +324,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
 
     election.outcome = LogCurrentSupervisionElection::Outcome::SUCCESS;
     return LeaderElectionAction(
-        plan.id, election,
+        election,
         LogPlanTermSpecification(
             LogTerm{plan.currentTerm->term.value + 1}, plan.currentTerm->config,
             LogPlanTermSpecification::Leader{.serverId = newLeader,
@@ -335,7 +333,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
     election.outcome = LogCurrentSupervisionElection::Outcome::FAILED;
-    return LeaderElectionAction(plan.id, election);
+    return LeaderElectionAction(election);
   }
 }
 
@@ -378,7 +376,7 @@ auto checkLogTargetParticipantFlags(LogTarget const& target,
       auto const df = desiredParticipantFlags(target, plan, targetParticipant);
       if (df != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return UpdateParticipantFlagsAction(target.id, targetParticipant, df,
+        return UpdateParticipantFlagsAction(targetParticipant, df,
                                             plan.participantsConfig.generation);
       }
     }
@@ -399,7 +397,7 @@ auto checkLogTargetParticipantAdded(LogTarget const& target,
     if (auto const& planParticipant = pps.find(targetParticipant);
         planParticipant == pps.end()) {
       // Here's a participant that is not in plan yet; we add it
-      return AddParticipantToPlanAction(plan.id, targetParticipant, targetFlags,
+      return AddParticipantToPlanAction(targetParticipant, targetFlags,
                                         plan.participantsConfig.generation);
     }
   }
@@ -422,11 +420,11 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
         auto newTerm = *plan.currentTerm;
         newTerm.term = LogTerm{newTerm.term.value + 1};
         newTerm.leader.reset();
-        return EvictLeaderAction(plan.id, planParticipant, desiredFlags,
-                                 newTerm, plan.participantsConfig.generation);
+        return EvictLeaderAction(planParticipant, desiredFlags, newTerm,
+                                 plan.participantsConfig.generation);
       } else {
         return RemoveParticipantFromPlanAction(
-            plan.id, planParticipant, plan.participantsConfig.generation);
+            planParticipant, plan.participantsConfig.generation);
       }
     }
   }
@@ -439,7 +437,7 @@ auto checkLogTargetConfig(LogTarget const& target,
                           LogPlanSpecification const& plan) -> Action {
   if (plan.currentTerm && target.config != plan.currentTerm->config) {
     // TODO: validity Check on target config
-    return UpdateLogConfigAction(plan.id, target.config);
+    return UpdateLogConfigAction(target.config);
   }
   return EmptyAction();
 }

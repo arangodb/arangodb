@@ -38,171 +38,182 @@ namespace arangodb::replication2::replicated_log {
 void Executor::operator()(EmptyAction const& action) {}
 
 void Executor::operator()(ErrorAction const& action) {
-  envelope.write()
-      .emplace_object(currentPath->supervision()->error()->str(),
-                      [&](VPackBuilder& builder) {
-                        ::toVelocyPack(action._error, builder);
-                      })
-      .inc(paths::current()->version()->str())
-      .precs()
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(currentPath->supervision()->error()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   ::toVelocyPack(action._error, builder);
+                                 })
+                 .inc(paths::current()->version()->str())
+                 .precs()
+                 .end();
 }
 
 void Executor::operator()(AddLogToPlanAction const& action) {
-  envelope.write()
-      .emplace_object(
-          planPath->str(),
-          [&](VPackBuilder& builder) { action._spec.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isEmpty(planPath->str())
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(planPath->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._spec.toVelocyPack(builder);
+                                 })
+                 .inc(paths::plan()->version()->str())
+                 .precs()
+                 .isEmpty(planPath->str())
+                 .end();
 }
 
 void Executor::operator()(AddParticipantsToTargetAction const& action) {
-  envelope.write()
-      .emplace_object(
-          targetPath->str(),
-          [&](VPackBuilder& builder) { action._spec.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(targetPath->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._spec.toVelocyPack(builder);
+                                 })
+                 .inc(paths::plan()->version()->str())
+                 .precs()
+                 .end();
 }
 
 void Executor::operator()(CreateInitialTermAction const& action) {
-  envelope.write()
-      .emplace_object(
-          planPath->currentTerm()->str(),
-          [&](VPackBuilder& builder) { action._term.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isEmpty(planPath->currentTerm()->str())
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(planPath->currentTerm()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._term.toVelocyPack(builder);
+                                 })
+                 .inc(paths::plan()->version()->str())
+                 .precs()
+                 .isEmpty(planPath->currentTerm()->str())
+                 .end();
 }
 
 void Executor::operator()(DictateLeaderAction const& action) {
-  envelope.write()
-      .emplace_object(
-          planPath->currentTerm()->str(),
-          [&](VPackBuilder& builder) { action._term.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
+  envelope = envelope.write()
+                 .emplace_object(planPath->currentTerm()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._term.toVelocyPack(builder);
+                                 })
+                 .inc(paths::plan()->version()->str())
 
-      /* TODO: previous term should still be there
-            .precs()
-            .isEmpty(path)
-       */
-      .end();
+                 /* TODO: previous term should still be there
+                       .precs()
+                       .isEmpty(path)
+                  */
+                 .end();
 }
 
 void Executor::operator()(EvictLeaderAction const& action) {
-  envelope.write()
-      .emplace_object(
-          planPath->participantsConfig()
-              ->participants()
-              ->server(action._leader)
-              ->str(),
-          [&](VPackBuilder& builder) { action._flags.toVelocyPack(builder); })
-      .emplace_object(
-          planPath->currentTerm()->str(),
-          [&](VPackBuilder& builder) { action._newTerm.toVelocyPack(builder); })
-      .inc(planPath->participantsConfig()->generation()->str())
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isEqual(planPath->participantsConfig()->generation()->str(),
-               action._generation)
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(planPath->participantsConfig()
+                                     ->participants()
+                                     ->server(action._leader)
+                                     ->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._flags.toVelocyPack(builder);
+                                 })
+                 .emplace_object(planPath->currentTerm()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._newTerm.toVelocyPack(builder);
+                                 })
+                 .inc(planPath->participantsConfig()->generation()->str())
+                 .inc(paths::plan()->version()->str())
+                 .precs()
+                 .isEqual(planPath->participantsConfig()->generation()->str(),
+                          action._generation)
+                 .end();
 }
 
 void Executor::operator()(UpdateTermAction const& action) {
-  envelope.write()
-      .emplace_object(
-          planPath->currentTerm()->str(),
-          [&](VPackBuilder& builder) { action._newTerm.toVelocyPack(builder); })
-      .inc(paths::plan()->version()->str())
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(planPath->currentTerm()->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._newTerm.toVelocyPack(builder);
+                                 })
+                 .inc(paths::plan()->version()->str())
+                 .end();
 }
 
 void Executor::operator()(LeaderElectionAction const& action) {
   if (action._election.outcome ==
       LogCurrentSupervisionElection::Outcome::SUCCESS) {
     TRI_ASSERT(action._newTerm);
-    envelope.write()
-        .emplace_object(planPath->currentTerm()->str(),
-                        [&](VPackBuilder& builder) {
-                          action._newTerm->toVelocyPack(builder);
-                        })
-        .inc(paths::plan()->version()->str())
-        .emplace_object(currentPath->supervision()->election()->str(),
-                        [&](VPackBuilder& builder) {
-                          action._election.toVelocyPack(builder);
-                        })
-        .inc(paths::current()->version()->str())
-        .precs()
-        .end();
+    envelope =
+        envelope.write()
+            .emplace_object(planPath->currentTerm()->str(),
+                            [&](VPackBuilder& builder) {
+                              action._newTerm->toVelocyPack(builder);
+                            })
+            .inc(paths::plan()->version()->str())
+            .emplace_object(currentPath->supervision()->election()->str(),
+                            [&](VPackBuilder& builder) {
+                              action._election.toVelocyPack(builder);
+                            })
+            .inc(paths::current()->version()->str())
+            .precs()
+            .end();
   } else {
-    envelope.write()
-        .emplace_object(currentPath->supervision()->election()->str(),
-                        [&](VPackBuilder& builder) {
-                          action._election.toVelocyPack(builder);
-                        })
-        .inc(paths::current()->version()->str())
-        .precs()
-        .end();
+    envelope =
+        envelope.write()
+            .emplace_object(currentPath->supervision()->election()->str(),
+                            [&](VPackBuilder& builder) {
+                              action._election.toVelocyPack(builder);
+                            })
+            .inc(paths::current()->version()->str())
+            .precs()
+            .end();
   }
 }
 
 void Executor::operator()(UpdateParticipantFlagsAction const& action) {
-  envelope.write()
-      .emplace_object(
-          planPath->participantsConfig()
-              ->participants()
-              ->server(action._participant)
-              ->str(),
-          [&](VPackBuilder& builder) { action._flags.toVelocyPack(builder); })
-      .inc(planPath->participantsConfig()->generation()->str())
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isEqual(planPath->participantsConfig()->generation()->str(),
-               action._generation)
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(planPath->participantsConfig()
+                                     ->participants()
+                                     ->server(action._participant)
+                                     ->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._flags.toVelocyPack(builder);
+                                 })
+                 .inc(planPath->participantsConfig()->generation()->str())
+                 .inc(paths::plan()->version()->str())
+                 .precs()
+                 .isEqual(planPath->participantsConfig()->generation()->str(),
+                          action._generation)
+                 .end();
 }
 
 void Executor::operator()(AddParticipantToPlanAction const& action) {
-  envelope.write()
-      .emplace_object(
-          planPath->participantsConfig()
-              ->participants()
-              ->server(action._participant)
-              ->str(),
-          [&](VPackBuilder& builder) { action._flags.toVelocyPack(builder); })
-      .inc(planPath->participantsConfig()->generation()->str())
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isEmpty(planPath->participantsConfig()
-                   ->participants()
-                   ->server(action._participant)
-                   ->str())
-      .isEqual(planPath->participantsConfig()->generation()->str(),
-               action._generation)
-      .end();
+  envelope = envelope.write()
+                 .emplace_object(planPath->participantsConfig()
+                                     ->participants()
+                                     ->server(action._participant)
+                                     ->str(),
+                                 [&](VPackBuilder& builder) {
+                                   action._flags.toVelocyPack(builder);
+                                 })
+                 .inc(planPath->participantsConfig()->generation()->str())
+                 .inc(paths::plan()->version()->str())
+                 .precs()
+                 .isEmpty(planPath->participantsConfig()
+                              ->participants()
+                              ->server(action._participant)
+                              ->str())
+                 .isEqual(planPath->participantsConfig()->generation()->str(),
+                          action._generation)
+                 .end();
 }
 
 void Executor::operator()(RemoveParticipantFromPlanAction const& action) {
-  envelope.write()
-      .remove(planPath->participantsConfig()
-                  ->participants()
-                  ->server(action._participant)
-                  ->str())
-      .inc(planPath->participantsConfig()->generation()->str())
-      .inc(paths::plan()->version()->str())
-      .precs()
-      .isNotEmpty(planPath->participantsConfig()
-                      ->participants()
-                      ->server(action._participant)
-                      ->str())
-      .isEqual(planPath->participantsConfig()->generation()->str(),
-               action._generation)
-      .end();
+  envelope = envelope.write()
+                 .remove(planPath->participantsConfig()
+                             ->participants()
+                             ->server(action._participant)
+                             ->str())
+                 .inc(planPath->participantsConfig()->generation()->str())
+                 .inc(paths::plan()->version()->str())
+                 .precs()
+                 .isNotEmpty(planPath->participantsConfig()
+                                 ->participants()
+                                 ->server(action._participant)
+                                 ->str())
+                 .isEqual(planPath->participantsConfig()->generation()->str(),
+                          action._generation)
+                 .end();
 }
 
 void Executor::operator()(UpdateLogConfigAction const& action) {
@@ -215,10 +226,95 @@ auto to_string(Action const& action) -> std::string_view {
   return std::visit([](auto&& arg) { return arg.name; }, action);
 }
 
-void toVelocyPack(Action const& action, VPackBuilder& builder) {
-  auto ob = VPackObjectBuilder(&builder);
+void VelocyPacker::operator()(EmptyAction const& action) {
   builder.add(VPackValue("type"));
-  builder.add(VPackValue(to_string(action)));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(ErrorAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("error"));
+  ::toVelocyPack(action._error, builder);
+}
+
+void VelocyPacker::operator()(AddLogToPlanAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(AddParticipantsToTargetAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(CreateInitialTermAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(DictateLeaderAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("newTerm"));
+  action._term.toVelocyPack(builder);
+}
+
+void VelocyPacker::operator()(EvictLeaderAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(UpdateTermAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("newTerm"));
+  action._newTerm.toVelocyPack(builder);
+}
+
+void VelocyPacker::operator()(LeaderElectionAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add(VPackValue("campaign"));
+  action._election.toVelocyPack(builder);
+
+  if (action._newTerm) {
+    builder.add(VPackValue("newTerm"));
+    action._newTerm->toVelocyPack(builder);
+  }
+}
+
+void VelocyPacker::operator()(UpdateParticipantFlagsAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+
+  builder.add("participant", VPackValue(action._participant));
+  builder.add(VPackValue("flags"));
+  action._flags.toVelocyPack(builder);
+}
+
+void VelocyPacker::operator()(AddParticipantToPlanAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(RemoveParticipantFromPlanAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void VelocyPacker::operator()(UpdateLogConfigAction const& action) {
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(action.name));
+}
+
+void toVelocyPack(Action const& action, VPackBuilder& builder) {
+  auto packer = VelocyPacker(builder);
+  std::visit(packer, action);
 }
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
