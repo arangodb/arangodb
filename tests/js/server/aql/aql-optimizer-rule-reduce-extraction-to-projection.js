@@ -88,7 +88,7 @@ function optimizerRuleTestSuite () {
       });
     },
     
-    testFailBecauseIndexHint : function () {
+    testFailBecauseIndexHintUnusable : function () {
       const queries = [
         "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN 1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc",
