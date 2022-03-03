@@ -36,6 +36,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+// For additional information, please read PathValidatorEE.cpp
 #include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
 
